@@ -395,10 +395,6 @@ class Index {
   // called when the index is dropped
   virtual Result drop();
 
-  /// @brief called after the collection was truncated
-  /// @param tick at which truncate was applied
-  virtual void afterTruncate(TRI_voc_tick_t, transaction::Methods*) {}
-
   /// @brief whether or not the filter condition is supported by the index
   /// returns detailed information about the costs associated with using this
   /// index
@@ -459,6 +455,13 @@ class Index {
   /// @param key the conflicting key
   Result& addErrorMsg(Result& r, std::string_view key = {}) const;
 
+  void progress(double p) noexcept {
+    _progress.store(p, std::memory_order_relaxed);
+  }
+  double progress() const noexcept {
+    return _progress.load(std::memory_order_relaxed);
+  }
+
  protected:
   static std::vector<std::vector<basics::AttributeName>> parseFields(
       velocypack::Slice fields, bool allowEmpty, bool allowExpansion);
@@ -485,6 +488,7 @@ class Index {
   LogicalCollection& _collection;
   std::string _name;
   std::vector<std::vector<basics::AttributeName>> const _fields;
+  std::atomic<double> _progress;
   bool const _useExpansion;
 
   mutable bool _unique;

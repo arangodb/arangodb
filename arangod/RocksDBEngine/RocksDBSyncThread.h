@@ -57,6 +57,16 @@ class RocksDBSyncThread final : public Thread {
   /// @brief unconditionally syncs the RocksDB WAL, static variant
   static Result sync(rocksdb::DB* db);
 
+  struct ISyncListener {
+    virtual ~ISyncListener() = default;
+
+    /// @brief called when the RocksDB WAL has been synced and the last sequence
+    /// number has been updated. It should schedule a separate thread to do the
+    /// actual work.
+    virtual void onSync(rocksdb::SequenceNumber seq) noexcept = 0;
+  };
+  void registerSyncListener(std::shared_ptr<ISyncListener> listener);
+
  protected:
   void run() override;
 
@@ -80,5 +90,13 @@ class RocksDBSyncThread final : public Thread {
 
   /// @brief protects _lastSyncTime and _lastSequenceNumber
   arangodb::basics::ConditionVariable _condition;
+
+  /// @brief listeners to be notified when _lastSequenceNumber is updated after
+  /// a sync. We don't need to protect this vector because it is only
+  /// modified once after the syncer thread is started.
+  std::vector<std::shared_ptr<ISyncListener>> _syncListeners;
+
+  /// @brief notify listeners about the sequence number update
+  void notifySyncListeners(rocksdb::SequenceNumber seq) noexcept;
 };
 }  // namespace arangodb

@@ -171,7 +171,12 @@ class Scheduler {
   template<typename F>
   struct WorkItem final : WorkItemBase, F {
     explicit WorkItem(F f)
-        : F(std::move(f)), logContext(LogContext::current()) {}
+        : F(std::move(f)), logContext(LogContext::current()) {
+      schedulerJobMemoryAccounting(static_cast<int64_t>(sizeof(*this)));
+    }
+    ~WorkItem() {
+      schedulerJobMemoryAccounting(-static_cast<int64_t>(sizeof(*this)));
+    }
     void invoke() override {
       LogContext::ScopedContext ctxGuard(logContext);
       this->operator()();
@@ -240,9 +245,6 @@ class Scheduler {
   void runCronThread();
   friend class SchedulerCronThread;
 
-  // Removed all tasks from the priority queue and cancels them
-  void cancelAllCronTasks();
-
   typedef std::pair<clock::time_point, std::weak_ptr<DelayedWorkItem>>
       CronWorkItem;
 
@@ -274,8 +276,23 @@ class Scheduler {
   virtual void toVelocyPack(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
 
+  virtual void trackCreateHandlerTask() noexcept = 0;
+  virtual void trackBeginOngoingLowPriorityTask() noexcept = 0;
+  virtual void trackEndOngoingLowPriorityTask() noexcept = 0;
+
+  virtual void trackQueueTimeViolation() = 0;
+  virtual void trackQueueItemSize(std::int64_t) noexcept = 0;
+
   /// @brief returns the last stored dequeue time [ms]
   virtual uint64_t getLastLowPriorityDequeueTime() const noexcept = 0;
+
+  /// @brief set the time it took for the last low prio item to be dequeued
+  /// (time between queuing and dequeing) [ms]
+  virtual void setLastLowPriorityDequeueTime(uint64_t time) noexcept = 0;
+
+  /// @brief get information about low prio queue:
+  virtual std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()
+      const = 0;
 
   /// @brief approximate fill grade of the scheduler's queue (in %)
   virtual double approximateQueueFillGrade() const = 0;
@@ -298,6 +315,8 @@ class Scheduler {
   virtual bool isStopping() = 0;
 
  private:
+  static void schedulerJobMemoryAccounting(std::int64_t x) noexcept;
+
   Scheduler(Scheduler const&) = delete;
   Scheduler(Scheduler&&) = delete;
   void operator=(Scheduler const&) = delete;

@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_tasks
-@brief registers a new task with a pre-defined id; not compatible with load balancers
 
-@RESTHEADER{PUT /_api/tasks/{id}, creates a task with id, createTaskWithId}
+@RESTHEADER{PUT /_api/tasks/{id}, Create a task with ID, createTaskWithId}
 
 @RESTURLPARAM{id,string,required}
 The id of the task to create
@@ -23,12 +22,14 @@ number of seconds between the executions
 Number of seconds initial delay
 
 @RESTDESCRIPTION
-registers a new task with the specified id
+Registers a new task with the specified ID.
+
+Not compatible with load balancers.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the task *id* already exists or the rest body is not accurate, *HTTP 400* is returned.
+If the task `id` already exists or the rest body is not accurate, *HTTP 400* is returned.
 
 @EXAMPLES
 

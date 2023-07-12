@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_collection_collection_properties
-@brief reads the properties of the specified collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}/properties, Read properties of a collection, getCollectionProperties}
+@RESTHEADER{GET /_api/collection/{collection-name}/properties, Get the properties of a collection, getCollectionProperties}
 
 @HINTS
 {% hint 'warning' %}
@@ -18,11 +17,11 @@ The name of the collection.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404*
+If the `collection-name` is unknown, then a *HTTP 404*
 is returned.
 
 @RESTRETURNCODE{200}

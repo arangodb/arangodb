@@ -1,7 +1,6 @@
 @startDocuBlock post_api_foxx_development
-@brief enable development mode
 
-@RESTHEADER{POST /_api/foxx/development, Enable development mode, enableFoxxDevelopmentMode}
+@RESTHEADER{POST /_api/foxx/development, Enable the development mode, enableFoxxDevelopmentMode}
 
 @RESTDESCRIPTION
 Puts the service into development mode.

@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_replication_sync
-@brief start a replication
 
-@RESTHEADER{PUT /_api/replication/sync, Synchronize data from a remote endpoint, startReplicationSync}
+@RESTHEADER{PUT /_api/replication/sync, Start replication from a remote endpoint, startReplicationSync}
 
 @RESTBODYPARAM{endpoint,string,required,string}
 the leader endpoint to connect to (e.g. "tcp://192.168.173.13:8529").

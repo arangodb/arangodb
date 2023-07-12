@@ -93,8 +93,8 @@ else
   SE_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS + $NRDBSERVERS + $NRAGENTS ))
 fi
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
-ENDPOINT=[::]
-ADDRESS=${ADDRESS:-[::1]}
+ENDPOINT=localhost
+ADDRESS=${ADDRESS:-localhost}
 
 if [ -z "$JWT_SECRET" ];then
   AUTHENTICATION="--server.authentication false"
@@ -174,7 +174,7 @@ EOM
           --database.auto-upgrade true \
           2>&1 | tee cluster/$PORT.stdout
     fi
-    
+
     # ignore version mismatch between database directory and executable.
     # this allows us to switch executable versions easier without having
     # to run --database.auto-upgrade first.
@@ -211,6 +211,11 @@ start() {
         CMD="rr $CMD"
     fi
 
+    REPLICATION_VERSION_PARAM=""
+    if [ -n "$REPLICATION_VERSION" ]; then
+      REPLICATION_VERSION_PARAM="--database.default-replication-version=${REPLICATION_VERSION}"
+    fi
+
     TYPE=$1
     PORT=$2
     mkdir -p cluster/data$PORT
@@ -239,6 +244,7 @@ start() {
       --http.trusted-origin all
       --database.check-version false
       --database.upgrade-check false
+      $REPLICATION_VERSION_PARAM
 EOM
 
     SERVER_OPTIONS="$SERVER_OPTIONS $SYSTEM_REPLICATION_FACTOR $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"

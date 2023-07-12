@@ -24,6 +24,9 @@
 
 #include "IResearchQueryCommon.h"
 
+#include "IResearch/VelocyPackHelper.h"
+#include "VocBase/LogicalCollection.h"
+
 namespace arangodb::tests {
 namespace {
 

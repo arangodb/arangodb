@@ -230,7 +230,7 @@ bool FailedLeader::start(bool& aborts) {
     if (_jb == nullptr) {
       auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
       if (jobIdNode) {
-        jobIdNode->get().toBuilder(todo);
+        jobIdNode->toBuilder(todo);
       } else {
         LOG_TOPIC("96395", INFO, Logger::SUPERVISION)
             << "Failed to get key " << toDoPrefix << _jobId
@@ -498,8 +498,8 @@ JOB_STATUS FailedLeader::status() {
   std::string database, shard;
   auto const& job = _snapshot.hasAsNode(pendingPrefix + _jobId);
   if (job) {
-    auto tmp_database = job->get().hasAsString("database");
-    auto tmp_shard = job->get().hasAsString("shard");
+    auto tmp_database = job->hasAsString("database");
+    auto tmp_shard = job->hasAsString("shard");
     if (tmp_database && tmp_shard) {
       database = tmp_database.value();
       shard = tmp_shard.value();

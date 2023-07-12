@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <errno.h>
-#include <string.h>
+#include <cerrno>
+#include <cstring>
 #include <string>
 
 #include "Basics/Common.h"
@@ -33,6 +33,9 @@
 #include <WinSock2.h>
 #endif
 
+#if defined(__linux__) || defined(__APPLE__)
+#include <fcntl.h>
+#endif
 #include <openssl/opensslv.h>
 #include <openssl/ssl.h>
 #ifndef OPENSSL_VERSION_NUMBER
@@ -56,6 +59,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Ssl/ssl-helper.h"
+#include <chrono>
 
 #undef TRACE_SSL_CONNECTIONS
 
@@ -188,7 +192,8 @@ SslClientConnection::SslClientConnection(
                               connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
-      _sslProtocol(sslProtocol) {
+      _sslProtocol(sslProtocol),
+      _socketFlags(0) {
   init(sslProtocol);
 }
 
@@ -200,7 +205,8 @@ SslClientConnection::SslClientConnection(
                               connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
-      _sslProtocol(sslProtocol) {
+      _sslProtocol(sslProtocol),
+      _socketFlags(0) {
   init(sslProtocol);
 }
 
@@ -309,11 +315,24 @@ bool SslClientConnection::connectSocket() {
     return false;
   }
 
+  if (_isSocketNonBlocking) {
+    if (!setSocketToNonBlocking()) {
+      _isConnected = false;
+      disconnectSocket();
+      return false;
+    }
+  }
+
   _isConnected = true;
 
   _ssl = SSL_new(_ctx);
 
   if (_ssl == nullptr) {
+    if (_isSocketNonBlocking) {
+      // we don't care about the return value here because we were already
+      // unsuccessful in the connection attempt
+      cleanUpSocketFlags();
+    }
     _errorDetails = "failed to create ssl context";
     disconnectSocket();
     _isConnected = false;
@@ -332,6 +351,11 @@ bool SslClientConnection::connectSocket() {
   SSL_set_connect_state(_ssl);
 
   if (SSL_set_fd(_ssl, (int)TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
+    if (_isSocketNonBlocking) {
+      // we don't care about the return value here because we were already
+      // unsuccessful in the connection attempt
+      cleanUpSocketFlags();
+    }
     _errorDetails = std::string("SSL: failed to create context ") +
                     ERR_error_string(ERR_get_error(), nullptr);
     disconnectSocket();
@@ -343,17 +367,46 @@ bool SslClientConnection::connectSocket() {
 
   ERR_clear_error();
 
-  int ret = SSL_connect(_ssl);
+  int ret = -1;
+  int errorDetail = -1;
+
+  if (_isSocketNonBlocking) {
+    auto start = std::chrono::steady_clock::now();
+    while ((ret = SSL_connect(_ssl)) == -1) {
+      errorDetail = SSL_get_error(_ssl, ret);
+      if (_isInterrupted) {
+        break;
+      }
+      auto end = std::chrono::steady_clock::now();
+      if ((errorDetail != SSL_ERROR_WANT_READ &&
+           errorDetail != SSL_ERROR_WANT_WRITE) ||
+          std::chrono::duration_cast<std::chrono::seconds>(end - start)
+                  .count() >= _connectTimeout) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+  } else {
+    if ((ret = SSL_connect(_ssl)) == -1) {
+      errorDetail = SSL_get_error(_ssl, ret);
+    }
+  }
+
+  if (_isSocketNonBlocking) {
+    if (!cleanUpSocketFlags()) {
+      disconnectSocket();
+      _isConnected = false;
+      return false;
+    }
+  }
 
   if (ret != 1) {
     _errorDetails.append("SSL: during SSL_connect: ");
 
-    int errorDetail;
     long certError;
 
-    errorDetail = SSL_get_error(_ssl, ret);
-    if ((errorDetail == SSL_ERROR_WANT_READ) ||
-        (errorDetail == SSL_ERROR_WANT_WRITE)) {
+    if (!_isSocketNonBlocking && ((errorDetail == SSL_ERROR_WANT_READ) ||
+                                  (errorDetail == SSL_ERROR_WANT_WRITE))) {
       return true;
     }
 
@@ -589,4 +642,48 @@ bool SslClientConnection::readable() {
   }
 
   return false;
+}
+
+bool SslClientConnection::setSocketToNonBlocking() {
+#if defined(__linux__) || defined(__APPLE__)
+  _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
+  if (_socketFlags == -1) {
+    _errorDetails = "Socket file descriptor read returned with error " +
+                    std::to_string(errno);
+    return false;
+  }
+  if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags | O_NONBLOCK) == -1) {
+    _errorDetails = "Attempt to create non-blocking socket generated error " +
+                    std::to_string(errno);
+    return false;
+  }
+#else
+  u_long nonBlocking = 1;
+  if (ioctlsocket(_socket.fileDescriptor, FIONBIO, &nonBlocking) != 0) {
+    _errorDetails = "Attempt to create non-blocking socket generated error " +
+                    std::to_string(WSAGetLastError());
+    return false;
+  }
+#endif
+  return true;
+}
+
+bool SslClientConnection::cleanUpSocketFlags() {
+  TRI_ASSERT(_isSocketNonBlocking);
+#if defined(__linux__) || defined(__APPLE__)
+  if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags & ~O_NONBLOCK) ==
+      -1) {
+    _errorDetails = "Attempt to make socket blocking generated error " +
+                    std::to_string(errno);
+    return false;
+  }
+#else
+  u_long nonBlocking = 0;
+  if (ioctlsocket(_socket.fileDescriptor, FIONBIO, &nonBlocking) != 0) {
+    _errorDetails = "Attempt to make socket blocking generated error " +
+                    std::to_string(WSAGetLastError());
+    return false;
+  }
+#endif
+  return true;
 }

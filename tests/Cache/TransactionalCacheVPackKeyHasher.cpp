@@ -39,7 +39,6 @@
 #include "RestServer/SharedPRNGFeature.h"
 
 #include "Mocks/Servers.h"
-#include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
@@ -51,7 +50,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -65,7 +64,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
                                                 s.start(), s.byteSize());
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(s.start(), static_cast<uint32_t>(s.byteSize()));
       ASSERT_TRUE(f.found());
       ASSERT_EQ(0, memcmp(f.value()->value(), s.start(), s.byteSize()));
@@ -83,7 +82,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
                                                 s.start(), s.byteSize());
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(s.start(), static_cast<uint32_t>(s.byteSize()));
       ASSERT_TRUE(f.found());
       ASSERT_EQ(0, memcmp(f.value()->value(), s.start(), s.byteSize()));
@@ -101,7 +100,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -115,10 +114,10 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     CachedValue* value = CachedValue::construct(builder.data(), builder.size(),
                                                 builder.data(), builder.size());
     TRI_ASSERT(value != nullptr);
-    Result status;
+    ::ErrorCode status = TRI_ERROR_INTERNAL;
     do {
       status = cache->insert(value);
-    } while (!status.ok());
+    } while (status != TRI_ERROR_NO_ERROR);
   }
 
   // look up as UInt
@@ -244,7 +243,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -258,10 +257,10 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     CachedValue* value = CachedValue::construct(builder.data(), builder.size(),
                                                 builder.data(), builder.size());
     TRI_ASSERT(value != nullptr);
-    Result status;
+    ::ErrorCode status = TRI_ERROR_INTERNAL;
     do {
       status = cache->insert(value);
-    } while (!status.ok());
+    } while (status != TRI_ERROR_NO_ERROR);
   }
 
   // remove as Int
@@ -281,10 +280,10 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     while (true) {
       auto s =
           cache->remove(builder.data(), static_cast<uint32_t>(builder.size()));
-      if (s.fail() && s.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      if (s != TRI_ERROR_NO_ERROR && s != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         continue;
       }
-      ASSERT_TRUE(s.ok());
+      ASSERT_EQ(TRI_ERROR_NO_ERROR, s);
       break;
     }
   }
@@ -428,7 +427,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -444,10 +443,10 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     CachedValue* value = CachedValue::construct(s.start(), s.byteSize(),
                                                 s.start(), s.byteSize());
     TRI_ASSERT(value != nullptr);
-    Result status;
+    ::ErrorCode status = TRI_ERROR_NO_ERROR;
     do {
       status = cache->insert(value);
-    } while (!status.ok());
+    } while (status != TRI_ERROR_NO_ERROR);
   }
 
   for (std::uint64_t i = 512; i < 1024; i++) {
@@ -456,11 +455,11 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     builder.add(VPackValue(static_cast<int64_t>(i)));
     VPackSlice s = builder.slice();
 
-    Result status;
+    ::ErrorCode status = TRI_ERROR_INTERNAL;
     do {
       status = cache->banish(s.start(), static_cast<uint32_t>(s.byteSize()));
-    } while (!status.ok());
-    ASSERT_TRUE(status.ok());
+    } while (status != TRI_ERROR_NO_ERROR);
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
 
     while (true) {
       auto f = cache->find(s.start(), static_cast<uint32_t>(s.byteSize()));
@@ -482,7 +481,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
                                                 s.start(), s.byteSize());
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    ASSERT_TRUE(status.fail());
+    ASSERT_NE(TRI_ERROR_NO_ERROR, status);
     delete value;
     auto f = cache->find(s.start(), static_cast<uint32_t>(s.byteSize()));
     ASSERT_FALSE(f.found());
@@ -500,11 +499,11 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     CachedValue* value = CachedValue::construct(s.start(), s.byteSize(),
                                                 s.start(), s.byteSize());
     TRI_ASSERT(value != nullptr);
-    Result status;
+    ::ErrorCode status = TRI_ERROR_INTERNAL;
     do {
       status = cache->insert(value);
-    } while (!status.ok());
-    ASSERT_TRUE(status.ok());
+    } while (status != TRI_ERROR_NO_ERROR);
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
 
     // look it up again as int64
     builder.clear();

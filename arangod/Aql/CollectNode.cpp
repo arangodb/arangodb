@@ -253,8 +253,7 @@ CollectNode::calcInputVariableNames() const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   switch (aggregationMethod()) {
     case CollectOptions::CollectMethod::HASH: {
       ExecutionNode const* previousNode = getFirstDependency();
@@ -752,6 +751,8 @@ CostEstimate CollectNode::estimateCost() const {
 }
 
 ExecutionNode::NodeType CollectNode::getType() const { return COLLECT; }
+
+size_t CollectNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 bool CollectNode::isDistinctCommand() const { return _isDistinctCommand; }
 

@@ -51,6 +51,9 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                              velocypack::Slice info);
   ~RocksDBCollection();
 
+  void deferDropCollection(
+      std::function<bool(LogicalCollection&)> const& cb) override final;
+
   Result updateProperties(velocypack::Slice slice) override;
 
   /// @brief export properties
@@ -63,8 +66,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  std::shared_ptr<Index> createIndex(velocypack::Slice info, bool restore,
-                                     bool& created) override;
+  std::shared_ptr<Index> createIndex(
+      velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(double)>> =
+          nullptr) override;
 
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;

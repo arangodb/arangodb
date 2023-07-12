@@ -1,7 +1,6 @@
 @startDocuBlock get_api_control_pregel
-@brief Get the overview of currently running Pregel jobs
 
-@RESTHEADER{GET /_api/control_pregel, Get currently running Pregel jobs, listPregelJobs}
+@RESTHEADER{GET /_api/control_pregel, List the running Pregel jobs, listPregelJobs}
 
 @RESTDESCRIPTION
 Returns a list of currently running and recently finished Pregel jobs without

@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_replication_batch_batch
-@brief handle a dump batch command
 
-@RESTHEADER{PUT /_api/replication/batch/{id}, Prolong existing dump batch, extendReplicationBatch}
+@RESTHEADER{PUT /_api/replication/batch/{id}, Extend the TTL of a dump batch, extendReplicationBatch}
 
 @HINTS
 {% hint 'info' %}
@@ -18,10 +17,10 @@ the time-to-live for the new batch (in seconds)
 The id of the batch.
 
 @RESTDESCRIPTION
-Extends the ttl of an existing dump batch, using the batch's id and
-the provided ttl value.
+Extends the time-to-live (TTL) of an existing dump batch, using the batch's ID and
+the provided TTL value.
 
-If the batch's ttl can be extended successfully, the response is empty.
+If the batch's TTL can be extended successfully, the response is empty.
 
 **Note**: on a Coordinator, this request must have a `DBserver`
 query parameter which must be an ID of a DB-Server.

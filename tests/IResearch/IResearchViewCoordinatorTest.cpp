@@ -24,7 +24,6 @@
 
 #include "../Mocks/StorageEngineMock.h"
 #include "../Mocks/Servers.h"
-#include "AgencyMock.h"
 #include "common.h"
 #include "gtest/gtest.h"
 
@@ -32,6 +31,7 @@
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -39,12 +39,14 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/NoResultsExecutor.h"
+#include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -7917,9 +7919,6 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     );
     node.addDependency(&singleton);
 
-    std::unordered_map<arangodb::aql::ExecutionNode*,
-                       arangodb::aql::ExecutionBlock*>
-        cache;
     singleton.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
     singleton.setVarsValid({{}});
     node.setVarsUsedLater({{}});
@@ -7928,8 +7927,8 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     node.setVarUsageValid();
     singleton.planRegisters();
     node.planRegisters();
-    auto singletonBlock = singleton.createBlock(*query->rootEngine(), cache);
-    auto execBlock = node.createBlock(*query->rootEngine(), cache);
+    auto singletonBlock = singleton.createBlock(*query->rootEngine());
+    auto execBlock = node.createBlock(*query->rootEngine());
     ASSERT_TRUE(nullptr != execBlock);
     ASSERT_TRUE(nullptr !=
                 dynamic_cast<arangodb::aql::ExecutionBlockImpl<

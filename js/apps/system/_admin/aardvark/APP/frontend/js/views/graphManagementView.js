@@ -1253,7 +1253,8 @@
 
         // create graph section
         title = 'Create Graph';
-
+        var graphNameValidations = 
+          window.arangoValidationHelper.getGraphNameValidations();
         tableContent.push(
           window.modalView.createTextEntry(
             'createNewGraphName',
@@ -1261,7 +1262,8 @@
             '',
             rowDescription.graphName.description,
             rowDescription.graphName.placeholder,
-            true
+            true,
+            graphNameValidations
           )
         );
 
@@ -1299,7 +1301,7 @@
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                 msg: 'Must be a number.'
               }
             ]
@@ -1316,7 +1318,7 @@
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                 msg: rowDescription.writeConcern.description
               }
             ]
@@ -1378,7 +1380,7 @@
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                 msg: 'Must be a number.'
               }
             ]
@@ -1394,7 +1396,7 @@
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                 msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
               }
             ]

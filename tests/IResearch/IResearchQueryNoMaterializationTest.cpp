@@ -25,13 +25,20 @@
 
 #include <velocypack/Iterator.h>
 
+#include "Aql/AqlFunctionFeature.h"
 #include "Aql/IResearchViewNode.h"
+#include "Aql/Query.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewStoredValues.h"
 #include "IResearchQueryCommon.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"

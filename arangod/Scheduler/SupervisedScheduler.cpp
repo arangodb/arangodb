@@ -178,6 +178,8 @@ DECLARE_GAUGE(arangodb_scheduler_num_working_threads, uint64_t,
               "Number of working threads");
 DECLARE_GAUGE(arangodb_scheduler_num_worker_threads, uint64_t,
               "Number of worker threads");
+DECLARE_GAUGE(arangodb_scheduler_stack_memory, uint64_t,
+              "Approximate stack memory usage of worker threads");
 DECLARE_GAUGE(
     arangodb_scheduler_ongoing_low_prio, uint64_t,
     "Total number of ongoing RestHandlers coming from the low prio queue");
@@ -194,6 +196,8 @@ DECLARE_COUNTER(arangodb_scheduler_threads_started_total,
                 "Number of scheduler threads started");
 DECLARE_COUNTER(arangodb_scheduler_threads_stopped_total,
                 "Number of scheduler threads stopped");
+DECLARE_GAUGE(arangodb_scheduler_queue_memory, std::int64_t,
+              "Number of bytes allocated for tasks in the scheduler queue");
 
 SupervisedScheduler::SupervisedScheduler(
     ArangodServer& server, uint64_t minThreads, uint64_t maxThreads,
@@ -228,6 +232,9 @@ SupervisedScheduler::SupervisedScheduler(
           metrics.add(arangodb_scheduler_num_working_threads{})),
       _metricsNumWorkerThreads(
           metrics.add(arangodb_scheduler_num_worker_threads{})),
+      _metricsStackMemoryWorkerThreads(
+          metrics.add(arangodb_scheduler_stack_memory{})),
+      _schedulerQueueMemory(metrics.add(arangodb_scheduler_queue_memory{})),
       _metricsHandlerTasksCreated(
           metrics.add(arangodb_scheduler_handler_tasks_created_total{})),
       _metricsThreadsStarted(
@@ -255,6 +262,10 @@ SupervisedScheduler::SupervisedScheduler(
 }
 
 SupervisedScheduler::~SupervisedScheduler() = default;
+
+void SupervisedScheduler::trackQueueItemSize(std::int64_t x) noexcept {
+  _schedulerQueueMemory += x;
+}
 
 bool SupervisedScheduler::queueItem(RequestLane lane,
                                     std::unique_ptr<WorkItemBase> work,
@@ -477,6 +488,8 @@ void SupervisedScheduler::shutdown() {
   }
 }
 
+constexpr uint64_t approxWorkerStackSize = 4'000'000;  // 4 MB
+
 void SupervisedScheduler::runWorker() {
   uint64_t id;
 
@@ -593,6 +606,8 @@ void SupervisedScheduler::runSupervisor() {
       _metricsNumAwakeThreads.operator=(numAwake);
       _metricsNumWorkingThreads.operator=(numWorking);
       _metricsNumWorkerThreads.operator=(numWorkers);
+      _metricsStackMemoryWorkerThreads.operator=(
+          numWorkers* approxWorkerStackSize);
       roundCount = 0;
     }
 
@@ -1015,7 +1030,7 @@ void SupervisedScheduler::trackEndOngoingLowPriorityTask() noexcept {
   --_ongoingLowPriorityGauge;
 }
 
-void SupervisedScheduler::trackQueueTimeViolation() {
+void SupervisedScheduler::trackQueueTimeViolation() noexcept {
   ++_metricsQueueTimeViolations;
 }
 
@@ -1026,8 +1041,15 @@ uint64_t SupervisedScheduler::getLastLowPriorityDequeueTime() const noexcept {
 
 void SupervisedScheduler::setLastLowPriorityDequeueTime(
     uint64_t time) noexcept {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  bool setDequeueTime = false;
+  TRI_IF_FAILURE("Scheduler::alwaysSetDequeueTime") { setDequeueTime = true; }
+#else
+  constexpr bool setDequeueTime = false;
+#endif
+
   // update only probabilistically, in order to reduce contention on the gauge
-  if ((_sharedPRNG.rand() & 7) == 0) {
+  if (setDequeueTime || (_sharedPRNG.rand() & 7) == 0) {
     _metricsLastLowPriorityDequeueTime.operator=(time);
   }
 }

@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_replication_logger_first_tick
-@brief Return the first available tick value from the server
 
-@RESTHEADER{GET /_api/replication/logger-first-tick, Returns the first available tick value, getReplicationLoggerFirstTick}
+@RESTHEADER{GET /_api/replication/logger-first-tick, Get the first available replication tick value, getReplicationLoggerFirstTick}
 
 @RESTDESCRIPTION
 Returns the first available tick value that can be served from the server's
@@ -10,7 +9,7 @@ replication log. This method can be called by replication clients after to
 determine if certain data (identified by a tick value) is still available
 for replication.
 
-The result is a JSON object containing the attribute *firstTick*. This
+The result is a JSON object containing the attribute `firstTick`. This
 attribute contains the minimum tick value available in the server's
 replication
 log.

@@ -1,8 +1,7 @@
 
 @startDocuBlock delete_api_database_database
-@brief drop an existing database
 
-@RESTHEADER{DELETE /_api/database/{database-name}, Drop database, deleteDatabase}
+@RESTHEADER{DELETE /_api/database/{database-name}, Drop a database, deleteDatabase}
 
 @RESTURLPARAMETERS
 
@@ -12,8 +11,8 @@ The name of the database
 @RESTDESCRIPTION
 Drops the database along with all data stored in it.
 
-**Note**: dropping a database is only possible from within the *_system* database.
-The *_system* database itself cannot be dropped.
+**Note**: dropping a database is only possible from within the `_system` database.
+The `_system` database itself cannot be dropped.
 
 @RESTRETURNCODES
 
@@ -24,7 +23,7 @@ is returned if the database was dropped successfully.
 is returned if the request is malformed.
 
 @RESTRETURNCODE{403}
-is returned if the request was not executed in the *_system* database.
+is returned if the request was not executed in the `_system` database.
 
 @RESTRETURNCODE{404}
 is returned if the database could not be found.

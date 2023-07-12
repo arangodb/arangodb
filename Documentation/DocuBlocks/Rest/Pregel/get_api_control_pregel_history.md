@@ -1,5 +1,4 @@
 @startDocuBlock get_api_control_pregel_history
-@brief Get the overview of all Pregel jobs
 
 @RESTHEADER{GET /_api/control_pregel/history, Get the execution statistics of all Pregel jobs, listPregelJobsStatisics}
 

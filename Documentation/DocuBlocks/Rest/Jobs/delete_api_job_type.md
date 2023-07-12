@@ -1,8 +1,7 @@
 
 @startDocuBlock delete_api_job_type
-@brief deletes an async job result
 
-@RESTHEADER{DELETE /_api/job/{job-id}, Deletes async job, deleteJob}
+@RESTHEADER{DELETE /_api/job/{job-id}, Delete async job results, deleteJob}
 
 @RESTURLPARAMETERS
 

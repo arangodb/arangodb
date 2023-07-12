@@ -23,31 +23,22 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-#include "Containers/SmallVector.h"
-#include "Network/types.h"
-#include "Metrics/Fwd.h"
-#include "VocBase/voc-types.h"
-
-#include <fuerte/loop.h>
 #include <fuerte/types.h>
-#include <atomic>
-#include <chrono>
-#include <unordered_map>
+#include "Basics/Common.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 namespace fuerte {
 inline namespace v1 {
 class Connection;
 class ConnectionBuilder;
+class EventLoopService;
 }  // namespace v1
 }  // namespace fuerte
 class ClusterInfo;
 
 namespace network {
 
-// using ConnectionPtr = std::shared_ptr<fuerte::Connection>;
 class ConnectionPtr;
 
 /// @brief simple connection pool managing fuerte connections
@@ -85,7 +76,7 @@ class ConnectionPool final {
 
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down
-  fuerte::EventLoopService& eventLoopService() { return _loop; }
+  fuerte::EventLoopService& eventLoopService();
 
   /// @brief shutdown all connections
   void drainConnections();
@@ -105,46 +96,17 @@ class ConnectionPool final {
   Config const& config() const;
 
  protected:
-  struct Context {
-    Context(std::shared_ptr<fuerte::Connection>,
-            std::chrono::steady_clock::time_point, std::size_t);
-
-    std::shared_ptr<fuerte::Connection> fuerte;
-    std::chrono::steady_clock::time_point lastLeased;  /// last time leased
-    std::atomic<std::size_t> leases;  // number of active users, including those
-                                      // who may not have sent a request yet
-  };
+  struct Context;
 
   /// @brief endpoint bucket
-  struct Bucket {
-    mutable std::mutex mutex;
-    // TODO statistics ?
-    //    uint64_t bytesSend;
-    //    uint64_t bytesReceived;
-    //    uint64_t numRequests;
-    containers::SmallVector<std::shared_ptr<Context>, 4> list;
-  };
+  struct Bucket;
 
   TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(
       fuerte::ConnectionBuilder&);
-  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket,
-                                 bool& isFromPool);
 
  private:
-  Config const _config;
-
-  mutable basics::ReadWriteLock _lock;
-  std::unordered_map<std::string, std::unique_ptr<Bucket>> _connections;
-
-  /// @brief contains fuerte asio::io_context
-  fuerte::EventLoopService _loop;
-
-  metrics::Gauge<uint64_t>& _totalConnectionsInPool;
-  metrics::Counter& _successSelect;
-  metrics::Counter& _noSuccessSelect;
-  metrics::Counter& _connectionsCreated;
-
-  metrics::Histogram<metrics::LogScale<float>>& _leaseHistMSec;
+  struct Impl;
+  std::unique_ptr<Impl> _impl;
 };
 
 class ConnectionPtr {

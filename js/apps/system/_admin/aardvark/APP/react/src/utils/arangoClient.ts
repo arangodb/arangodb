@@ -15,3 +15,4 @@ export const getRouteForDB = memoize((db: string, route: string) => getDB(db).ro
   (db: string, route: string) => `${db}/${route}`);
 
 export const getApiRouteForCurrentDB = () => getRouteForDB(window.frontendConfig.db, '_api');
+export const getAdminRouteForCurrentDB = () => getRouteForDB(window.frontendConfig.db, '_admin');

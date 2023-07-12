@@ -1,5 +1,4 @@
 @startDocuBlock post_admin_backup_delete
-@brief delete a specific local backup
 
 @RESTHEADER{POST /_admin/backup/delete, Delete a backup, deleteBackup}
 

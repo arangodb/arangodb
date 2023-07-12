@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_collection
-@brief returns all collections
 
-@RESTHEADER{GET /_api/collection,reads all collections, listCollections}
+@RESTHEADER{GET /_api/collection, List all collections, listCollections}
 
 @RESTQUERYPARAMETERS
 
@@ -10,11 +9,11 @@
 Whether or not system collections should be excluded from the result.
 
 @RESTDESCRIPTION
-Returns an object with an attribute *result* containing an
-array of all collection descriptions.
+Returns an object with a `result` attribute containing an array with the
+descriptions of all collections in the current database.
 
-By providing the optional query parameter *excludeSystem* with a value of
-*true*, all system collections will be excluded from the response.
+By providing the optional `excludeSystem` query parameter with a value of
+`true`, all system collections are excluded from the response.
 
 @RESTRETURNCODES
 

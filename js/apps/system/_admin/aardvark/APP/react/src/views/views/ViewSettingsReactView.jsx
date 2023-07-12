@@ -1,7 +1,7 @@
 import React from "react";
-import { ViewSettingsWrap } from "./ViewSettingsWrap";
+import { EditViewWrap } from "./editView/EditViewWrap";
 
 const ViewSettingsReactView = ({ name }) => {
-  return <ViewSettingsWrap name={name} />;
+  return <EditViewWrap name={name} />;
 };
 window.ViewSettingsReactView = ViewSettingsReactView;

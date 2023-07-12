@@ -1,7 +1,6 @@
 @startDocuBlock delete_api_foxx_development
-@brief disable development mode
 
-@RESTHEADER{DELETE /_api/foxx/development, Disable development mode, disableFoxxDevelopmentMode}
+@RESTHEADER{DELETE /_api/foxx/development, Disable the development mode, disableFoxxDevelopmentMode}
 
 @RESTDESCRIPTION
 Puts the service at the given mount path into production mode.

@@ -45,7 +45,7 @@
 #endif
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {
@@ -99,41 +99,50 @@ auto inspect(Inspector& f, MessageId& x) {
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 struct AppendEntriesResult {
-  LogTerm const logTerm;
-  ErrorCode const errorCode;
+  LogTerm logTerm;
+  ErrorCode errorCode;
   AppendEntriesErrorReason reason;
   MessageId messageId;
+  // TODO With some error reasons (at least kLostLogCore, i.e. when the follower
+  //      resigned already) information about the snapshot is unavailable. Maybe
+  //      this should be an optional<bool>.
   bool snapshotAvailable{false};
+
+  LogIndex syncIndex;
 
   std::optional<TermIndexPair> conflict;
 
   [[nodiscard]] auto isSuccess() const noexcept -> bool;
 
   AppendEntriesResult(LogTerm term, MessageId id, TermIndexPair conflict,
-                      AppendEntriesErrorReason reason,
-                      bool snapshotAvailable) noexcept;
-  AppendEntriesResult(LogTerm, MessageId, bool snapshotAvailable) noexcept;
+                      AppendEntriesErrorReason reason, bool snapshotAvailable,
+                      LogIndex syncIndex) noexcept;
+  AppendEntriesResult(LogTerm, MessageId, bool snapshotAvailable,
+                      LogIndex syncIndex) noexcept;
   AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
                       AppendEntriesErrorReason reason, MessageId,
-                      bool snapshotAvailable) noexcept;
+                      bool snapshotAvailable, LogIndex syncIndex) noexcept;
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 
   static auto withConflict(LogTerm, MessageId, TermIndexPair conflict,
-                           bool snapshotAvailable) noexcept
+                           bool snapshotAvailable, LogIndex syncIndex) noexcept
       -> AppendEntriesResult;
   static auto withRejection(LogTerm, MessageId, AppendEntriesErrorReason,
-                            bool snapshotAvailable) noexcept
+                            bool snapshotAvailable, LogIndex syncIndex) noexcept
       -> AppendEntriesResult;
   static auto withPersistenceError(LogTerm, MessageId, Result const&,
-                                   bool snapshotAvailable) noexcept
+                                   bool snapshotAvailable,
+                                   LogIndex syncIndex) noexcept
       -> AppendEntriesResult;
-  static auto withOk(LogTerm, MessageId, bool snapshotAvailable) noexcept
-      -> AppendEntriesResult;
+  static auto withOk(LogTerm, MessageId, bool snapshotAvailable,
+                     LogIndex syncIndex) noexcept -> AppendEntriesResult;
 };
 #if (defined(__GNUC__) && !defined(__clang__))
 #pragma GCC diagnostic pop
 #endif
+
+auto to_string(AppendEntriesResult const& res) -> std::string;
 
 struct AppendEntriesRequest {
   using EntryContainer =

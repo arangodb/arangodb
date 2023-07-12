@@ -23,22 +23,29 @@
 
 #pragma once
 
-#include "IResearch/AgencyMock.h"
-#include "StorageEngineMock.h"
-
 #include "Mocks/LogLevels.h"
 
-#include "Agency/Store.h"
+#include "Agency/AgencyCommon.h"
 #include "RestServer/arangod.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "Logger/LogMacros.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 
 struct TRI_vocbase_t;
 
+class StorageEngineMock;
+
 namespace arangodb {
+
+class LogicalCollection;
+class Scheduler;
+
+namespace network {
+class ConnectionPool;
+}
 
 namespace transaction {
 class Methods;
@@ -122,7 +129,7 @@ class MockServer {
       _oldApplicationServerState = arangodb::application_features::
           ApplicationServer::State::UNINITIALIZED;
   arangodb::ArangodServer _server;
-  StorageEngineMock _engine;
+  std::unique_ptr<StorageEngineMock> _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool>
       _features;
   std::string _testFilesystemPath;
@@ -176,6 +183,11 @@ class MockAqlServer
   // want to use within the Query.
   std::shared_ptr<arangodb::aql::Query> createFakeQuery(
       bool activateTracing = false, std::string queryString = "",
+      std::function<void(arangodb::aql::Query&)> runBeforePrepare =
+          [](arangodb::aql::Query&) {}) const;
+  std::shared_ptr<arangodb::aql::Query> createFakeQuery(
+      Scheduler* scheduler, bool activateTracing = false,
+      std::string queryString = "",
       std::function<void(arangodb::aql::Query&)> runBeforePrepare =
           [](arangodb::aql::Query&) {}) const;
 };

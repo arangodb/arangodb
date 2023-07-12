@@ -68,11 +68,12 @@ class RemoteNode final : public DistributeConsumerNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTE; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -136,11 +137,12 @@ class ScatterNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override { return SCATTER; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -208,11 +210,12 @@ class DistributeNode final : public ScatterNode,
   /// @brief return the type of the node
   NodeType getType() const override final { return DISTRIBUTE; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -286,6 +289,9 @@ class GatherNode final : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return GATHER; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
@@ -297,9 +303,7 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -381,11 +385,12 @@ class SingleRemoteOperationNode final : public ExecutionNode,
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTESINGLE; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,

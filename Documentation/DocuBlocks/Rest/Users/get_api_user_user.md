@@ -1,7 +1,6 @@
 @startDocuBlock get_api_user_user
-@brief fetch the properties of a user.
 
-@RESTHEADER{GET /_api/user/{user}, Fetch User, getUser}
+@RESTHEADER{GET /_api/user/{user}, Get a user, getUser}
 
 @RESTURLPARAMETERS
 
@@ -19,7 +18,7 @@ execute this REST call.
 The user was found.
 
 @RESTRETURNCODE{401}
-Returned if you have *No access* database access level to the *_system*
+Returned if you have *No access* database access level to the `_system`
 database.
 
 @RESTRETURNCODE{403}

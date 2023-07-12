@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_index_ttl
-@brief creates a TTL (time-to-live) index
 
-@RESTHEADER{POST /_api/index#ttl, Create TTL index, createIndexTtl}
+@RESTHEADER{POST /_api/index#ttl, Create a TTL index, createIndexTtl}
 
 @RESTQUERYPARAMETERS
 
@@ -10,7 +9,7 @@
 The collection name.
 
 @RESTBODYPARAM{type,string,required,string}
-must be equal to *"ttl"*.
+must be equal to `"ttl"`.
 
 @RESTBODYPARAM{name,string,optional,string}
 An easy-to-remember name for the index to look it up or refer to it in index hints.
@@ -28,12 +27,12 @@ documents expire as soon as the server time passes the point in time stored in
 the document attribute, or to a higher number to delay the expiration.
 
 @RESTBODYPARAM{inBackground,boolean,optional,}
-The optional attribute **inBackground** can be set to *true* to create the index
+You can set this option to `true` to create the index
 in the background, which will not write-lock the underlying collection for
-as long as if the index is built in the foreground. The default value is *false*.
+as long as if the index is built in the foreground. The default value is `false`.
 
 @RESTDESCRIPTION
-Creates a TTL index for the collection *collection-name* if it
+Creates a time-to-live (TTL) index for the collection `collection-name` if it
 does not already exist. The call expects an object containing the index
 details.
 
@@ -51,7 +50,7 @@ If the collection already contains another TTL index, then an *HTTP 400* is
 returned, as there can be at most one TTL index per collection.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404* is returned.
+If the `collection-name` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 

@@ -82,6 +82,7 @@ class Manager {
   struct MemoryStats {
     std::uint64_t globalLimit = 0;
     std::uint64_t globalAllocation = 0;
+    std::uint64_t peakGlobalAllocation = 0;
     std::uint64_t spareAllocation = 0;
     std::uint64_t activeTables = 0;
     std::uint64_t spareTables = 0;
@@ -100,7 +101,8 @@ class Manager {
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
   Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
-          std::uint64_t globalLimit, bool enableWindowedStats = true);
+          std::uint64_t globalLimit, bool enableWindowedStats,
+          double idealLowerFillRatio, double idealUpperFillRatio);
 
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
@@ -174,6 +176,9 @@ class Manager {
 
   [[nodiscard]] std::pair<double, double> globalHitRates();
 
+  double idealLowerFillRatio() const noexcept { return _idealLowerFillRatio; }
+  double idealUpperFillRatio() const noexcept { return _idealUpperFillRatio; }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Open a new transaction.
   ///
@@ -215,12 +220,12 @@ class Manager {
   bool _shuttingDown;
   bool _resizing;
   bool _rebalancing;
+  bool _enableWindowedStats;
 
   // structure to handle access frequency monitoring
   Manager::AccessStatBuffer _accessStats;
 
   // structures to handle hit rate monitoring
-  bool _enableWindowedStats;
   std::unique_ptr<Manager::FindStatBuffer> _findStats;
   basics::SharedCounter<64> _findHits;
   basics::SharedCounter<64> _findMisses;
@@ -242,8 +247,12 @@ class Manager {
   std::uint64_t _fixedAllocation;
   std::uint64_t _spareTableAllocation;
   std::uint64_t _globalAllocation;
+  std::uint64_t _peakGlobalAllocation;
   std::uint64_t _activeTables;
   std::uint64_t _spareTables;
+
+  double const _idealLowerFillRatio;
+  double const _idealUpperFillRatio;
 
   // transaction management
   TransactionManager _transactions;

@@ -303,6 +303,19 @@ Result CreateDatabaseInfo::checkOptions() {
   return DatabaseNameValidator::validateName(isSystem, extendedNames, _name);
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+CreateDatabaseInfo::CreateDatabaseInfo(CreateDatabaseInfo::MockConstruct,
+                                       ArangodServer& server,
+                                       ExecContext const& execContext,
+                                       std::string const& name,
+                                       std::uint64_t id)
+    : _server(server),
+      _context(execContext),
+      _id(id),
+      _name(name),
+      _valid(true) {}
+#endif
+
 VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
                                  bool strictValidation) {
   TRI_ASSERT(options.isObject());

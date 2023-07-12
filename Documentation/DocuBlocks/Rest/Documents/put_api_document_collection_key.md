@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_document_collection_key
-@brief replaces a document
 
-@RESTHEADER{PUT /_api/document/{collection}/{key},Replace document,replaceDocument}
+@RESTHEADER{PUT /_api/document/{collection}/{key},Replace a document,replaceDocument}
 
 @RESTALLBODYPARAM{document,object,required}
 A JSON representation of a single document.
@@ -72,7 +71,7 @@ If a precondition is violated, an *HTTP 412* is returned.
 
 If the document exists and can be updated, then an *HTTP 201* or
 an *HTTP 202* is returned (depending on `waitForSync`, see below),
-the `Etag` header field contains the new revision of the document
+the `ETag` header field contains the new revision of the document
 and the `Location` header contains a complete URL under which the
 document can be queried.
 

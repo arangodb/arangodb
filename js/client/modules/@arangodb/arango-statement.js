@@ -179,8 +179,11 @@ ArangoStatement.prototype.execute = function () {
   if (!isStream && this._options && this._options.stream) {
     isStream = this._options.stream;
   }
-
-  return new ArangoQueryCursor(this._database, requestResult, isStream);
+  let allowRetry = false;
+  if (this._options && this._options.allowRetry) {
+    allowRetry = true;
+  }
+  return new ArangoQueryCursor(this._database, requestResult, isStream, allowRetry);
 };
 
 exports.ArangoStatement = ArangoStatement;

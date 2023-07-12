@@ -1,8 +1,7 @@
 
 @startDocuBlock patch_api_document_collection_key
-@brief updates a document
 
-@RESTHEADER{PATCH /_api/document/{collection}/{key},Update document,updateDocument}
+@RESTHEADER{PATCH /_api/document/{collection}/{key},Update a document,updateDocument}
 
 @RESTALLBODYPARAM{document,object,required}
 A JSON representation of a document update as an object.
@@ -19,10 +18,11 @@ The document key.
 
 @RESTQUERYPARAM{keepNull,boolean,optional}
 If the intention is to delete existing attributes with the patch
-command, the URL query parameter `keepNull` can be used with a value
-of `false`. This modifies the behavior of the patch command to
-remove any attributes from the existing document that are contained
-in the patch document with an attribute value of `null`.
+command, set the `keepNull` URL query parameter to `false`. This modifies the
+behavior of the patch command to remove top-level attributes and sub-attributes
+from the existing document that are contained in the patch document with an
+attribute value of `null` (but not attributes of objects that are nested inside
+of arrays).
 
 @RESTQUERYPARAM{mergeObjects,boolean,optional}
 Controls whether objects (not arrays) are merged if present in
@@ -93,7 +93,7 @@ If a precondition is violated, an *HTTP 412* is returned.
 
 If the document exists and can be updated, then an *HTTP 201* or
 an *HTTP 202* is returned (depending on `waitForSync`, see below),
-the `Etag` header field contains the new revision of the document
+the `ETag` header field contains the new revision of the document
 (in double quotes) and the `Location` header contains a complete URL
 under which the document can be queried.
 

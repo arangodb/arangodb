@@ -42,6 +42,7 @@
 #include "Aql/SkipResult.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
+#include "Containers/FlatHashMap.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
@@ -133,7 +134,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
                                      MapRemoteToSnippet const& queryIds) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 
-  std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
+  containers::FlatHashMap<ExecutionNode*, ExecutionBlock*> cache;
   RemoteNode* remoteNode = nullptr;
 
   // We need to traverse the nodes from back to front, the walker collects
@@ -148,15 +149,15 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
     }
 
     // for all node types but REMOTEs, we create blocks
-    auto uptrEb = en->createBlock(*this, cache);
+    auto block = en->createBlock(*this);
 
-    if (!uptrEb) {
+    if (!block) {
       return {TRI_ERROR_INTERNAL, "illegal node type"};
     }
 
     // transfers ownership
     // store the pointer to the block
-    auto eb = addBlock(std::move(uptrEb));
+    auto eb = addBlock(std::move(block));
 
     for (auto const& dep : en->getDependencies()) {
       auto d = cache.find(dep);
@@ -200,8 +201,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
             remoteNode->queryId(snippetId);
             remoteNode->server(serverID);
             remoteNode->setDistributeId({""});
-            std::unique_ptr<ExecutionBlock> r =
-                remoteNode->createBlock(*this, {});
+            std::unique_ptr<ExecutionBlock> r = remoteNode->createBlock(*this);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
             auto remoteBlock =
                 dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
@@ -263,7 +263,7 @@ struct SingleServerQueryInstanciator final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionEngine& engine;
   ExecutionBlock* root{};
-  std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
+  containers::FlatHashMap<ExecutionNode*, ExecutionBlock*> cache;
 
   explicit SingleServerQueryInstanciator(ExecutionEngine& engine) noexcept
       : engine(engine) {}
@@ -298,7 +298,7 @@ struct SingleServerQueryInstanciator final
     }
 
     if (block == nullptr) {
-      block = engine.addBlock(en->createBlock(engine, cache));
+      block = engine.addBlock(en->createBlock(engine));
       TRI_ASSERT(block != nullptr);
       // We have visited this node earlier, so we got its dependencies
       // Now add dependencies:
@@ -927,4 +927,8 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
 std::vector<arangodb::cluster::CallbackGuard>&
 ExecutionEngine::rebootTrackers() {
   return _rebootTrackers;
+}
+
+std::shared_ptr<SharedQueryState> const& ExecutionEngine::sharedState() const {
+  return _sharedState;
 }

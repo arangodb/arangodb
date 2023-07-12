@@ -1,7 +1,6 @@
 @startDocuBlock get_admin_log_structured
-@brief returns the current structured log settings
 
-@RESTHEADER{GET /_admin/log/structured, Return the current server log structured parameters, getStructuredLog}
+@RESTHEADER{GET /_admin/log/structured, Get the structured log settings, getStructuredLog}
 
 @RESTDESCRIPTION
 Returns the server's current structured log settings.

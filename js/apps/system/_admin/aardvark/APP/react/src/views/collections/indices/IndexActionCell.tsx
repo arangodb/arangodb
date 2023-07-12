@@ -9,14 +9,14 @@ export const IndexActionCell = ({ indexRow }: { indexRow: IndexRowType }) => {
   const { type } = indexRow;
   if (type === "primary" || type === "edge") {
     return (
-      <Box display="flex" justifyContent="center">
+      <Box display="flex" justifyContent="flex-end" marginRight="2">
         <LockIcon />
       </Box>
     );
   }
   if (type === "inverted") {
     return (
-      <HStack>
+      <HStack justifyContent="flex-end">
         <ViewIndexButton indexRow={indexRow} />
         <DeleteIndexButton indexRow={indexRow} />
       </HStack>

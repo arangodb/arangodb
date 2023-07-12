@@ -247,6 +247,10 @@ Result ClientManager::getHttpErrorMessage(
     }
   } catch (...) {
     // no need to recover, fallthrough for default error message
+    code = static_cast<ErrorCode>(result->getHttpReturnCode());
+    if (code == TRI_ERROR_NO_ERROR) {
+      code = TRI_ERROR_INTERNAL;
+    }
   }
   return {code, std::move(message)};
 }

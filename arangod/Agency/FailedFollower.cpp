@@ -230,7 +230,7 @@ bool FailedFollower::start(bool& aborts) {
     if (_jb == nullptr) {
       auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
       if (jobIdNode) {
-        jobIdNode->get().toBuilder(todo);
+        jobIdNode->toBuilder(todo);
       } else {
         LOG_TOPIC("4571c", INFO, Logger::SUPERVISION)
             << "Failed to get key " << toDoPrefix << _jobId

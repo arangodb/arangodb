@@ -349,8 +349,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto inputRegisters = _buildVariableInformation();
@@ -772,6 +771,8 @@ auto ShortestPathNode::options() const -> ShortestPathOptions* {
 #endif
   return opts;
 }
+
+size_t ShortestPathNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 // This constructor is only used from LocalTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.

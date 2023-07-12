@@ -37,6 +37,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
+#include "Aql/LimitExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ReturnExecutor.h"

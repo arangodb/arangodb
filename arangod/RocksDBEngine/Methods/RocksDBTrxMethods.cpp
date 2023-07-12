@@ -25,7 +25,6 @@
 
 #include "Aql/QueryCache.h"
 #include "Logger/LogMacros.h"
-#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"

@@ -1,10 +1,9 @@
 @startDocuBlock post_admin_backup_create
-@brief creates a local backup
 
-@RESTHEADER{POST /_admin/backup/create, Create backup, createBackup}
+@RESTHEADER{POST /_admin/backup/create, Create a backup, createBackup}
 
 @RESTDESCRIPTION
-Creates a consistent backup "as soon as possible", very much
+Creates a consistent local backup "as soon as possible", very much
 like a snapshot in time, with a given label. The ambiguity in the
 phrase "as soon as possible" refers to the next window during which a
 global write lock across all databases can be obtained in order to

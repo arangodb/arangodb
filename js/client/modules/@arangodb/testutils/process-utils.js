@@ -230,6 +230,17 @@ class ConfigBuilder {
       this.config['--envelope'] = true;
     }
   }
+  setUseExperimentalParallelDump() {
+    if (this.type === 'dump') {
+      this.config['use-experimental-dump'] = true;
+    }
+  }
+
+  setUseSplitFiles() {
+    if (this.type === 'dump') {
+      this.config['split-files'] = true;
+    }
+  }
   deactivateEnvelopes() {
     if (this.type === 'dump') {
       this.config['--envelope'] = false;
@@ -241,7 +252,7 @@ class ConfigBuilder {
       throw '"collection" is not supported for binary: ' + this.type;
     }
     this.config['collection'] = collection;
-  };
+  }
   setAllDatabases() {
     this.config['all-databases'] = 'true';
     delete this.config['server.database'];

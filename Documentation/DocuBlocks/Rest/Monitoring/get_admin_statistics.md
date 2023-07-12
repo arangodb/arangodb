@@ -1,8 +1,7 @@
 
 @startDocuBlock get_admin_statistics
-@brief return the statistics information
 
-@RESTHEADER{GET /_admin/statistics, Read the statistics, getStatistics}
+@RESTHEADER{GET /_admin/statistics, Get the statistics, getStatistics}
 
 @HINTS
 {% hint 'warning' %}
@@ -14,14 +13,14 @@ and a lot more.
 @RESTDESCRIPTION
 Returns the statistics information. The returned object contains the
 statistics figures grouped together according to the description returned by
-*_admin/statistics-description*. For instance, to access a figure *userTime*
-from the group *system*, you first select the sub-object describing the
-group stored in *system* and in that sub-object the value for *userTime* is
+`/_admin/statistics-description`. For instance, to access a figure `userTime`
+from the group `system`, you first select the sub-object describing the
+group stored in `system` and in that sub-object the value for `userTime` is
 stored in the attribute of the same name.
 
 In case of a distribution, the returned object contains the total count in
-*count* and the distribution list in *counts*. The sum (or total) of the
-individual values is returned in *sum*.
+`count` and the distribution list in `counts`. The sum (or total) of the
+individual values is returned in `sum`.
 
 The transaction statistics show the local started, committed and aborted
 transactions as well as intermediate commits done for the server queried. The
@@ -41,7 +40,7 @@ intermediate commits and will not increase the value.
 Statistics were returned successfully.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate whether an error occurred (*false* in this case)
+boolean flag to indicate whether an error occurred (`false` in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code - 200 in this case
@@ -53,7 +52,7 @@ the current server timestamp
 a descriptive error message
 
 @RESTREPLYBODY{enabled,boolean,required,}
-*true* if the server has the statistics module enabled. If not, don't expect any values.
+`true` if the server has the statistics module enabled. If not, don't expect any values.
 
 @RESTREPLYBODY{system,object,required,system_statistics_struct}
 metrics gathered from the system about this process; may depend on the host OS

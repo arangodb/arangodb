@@ -1,13 +1,12 @@
 @startDocuBlock get_api_foxx_dependencies
-@brief get dependency options
 
-@RESTHEADER{GET /_api/foxx/dependencies, Get dependency options, getFoxxDependencies}
+@RESTHEADER{GET /_api/foxx/dependencies, Get the dependency options, getFoxxDependencies}
 
 @RESTDESCRIPTION
 Fetches the current dependencies for service at the given mount path.
 
 Returns an object mapping the dependency names to their definitions
-including a human-friendly *title* and the *current* mount path (if any).
+including a human-friendly `title` and the `current` mount path (if any).
 
 @RESTQUERYPARAMETERS
 

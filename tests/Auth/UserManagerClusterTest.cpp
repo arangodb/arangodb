@@ -26,6 +26,8 @@
 
 #include "Agency/AgencyComm.h"
 #include "Auth/UserManager.h"
+#include "Basics/ScopeGuard.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 

@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_query_rules
-@brief Returns a list of all available optimizer rules for AQL queries.
 
-@RESTHEADER{GET /_api/query/rules, Return all AQL optimizer rules, getAqlQueryOptimizerRules}
+@RESTHEADER{GET /_api/query/rules, List all AQL optimizer rules, getAqlQueryOptimizerRules}
 
 @RESTDESCRIPTION
 A list of all optimizer rules and their properties.

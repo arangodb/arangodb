@@ -47,6 +47,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
 namespace {
@@ -156,7 +157,7 @@ class IResearchInvertedIndexIteratorTestBase
                                 arangodb::iresearch::
                                     IResearchInvertedIndexMetaIndexingContext>(
                            trx, doc->first, doc->second->slice(),
-                           *_index->meta()._indexingContext, nullptr)
+                           *_index->meta()._indexingContext)
                        .ok();
         EXPECT_TRUE(res);
         ++doc;
@@ -176,7 +177,7 @@ class IResearchInvertedIndexIteratorTestBase
                               arangodb::iresearch::
                                   IResearchInvertedIndexMetaIndexingContext>(
                          trx, doc->first, doc->second->slice(),
-                         *_index->meta()._indexingContext, nullptr)
+                         *_index->meta()._indexingContext)
                      .ok();
       EXPECT_TRUE(res);
       ++doc;

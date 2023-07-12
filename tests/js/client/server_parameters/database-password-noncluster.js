@@ -53,6 +53,26 @@ function OptionsTestSuite () {
       arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser(), "testi1234");
       assertTrue(arango.isConnected());
     },
+    
+    testConnectNoUserNoPassword: function () {
+      arango.setJwtSecret("haxxmann");
+      try {
+        arango.reconnect(arango.getEndpoint(), db._name());
+        assertTrue(arango.isConnected());
+      } finally {
+        arango.setJwtSecret("");
+      }
+    },
+    
+    testConnectNoPassword: function () {
+      arango.setJwtSecret("haxxmann");
+      try {
+        arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser());
+        assertTrue(arango.isConnected());
+      } finally {
+        arango.setJwtSecret("");
+      }
+    },
   
   };
 }

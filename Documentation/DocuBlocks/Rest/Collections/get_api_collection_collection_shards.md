@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_collection_collection_shards
-@brief Return the shard ids of a collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}/shards, Return the shard ids of a collection, getCollectionShards}
+@RESTHEADER{GET /_api/collection/{collection-name}/shards, Get the shard IDs of a collection, getCollectionShards}
 
 @RESTURLPARAMETERS
 
@@ -29,11 +28,11 @@ In the detailed response, the leader shards will be first in the arrays.
 Returns the collection's shards.
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then an *HTTP 404*
+If the `collection-name` is unknown, then an *HTTP 404*
 is returned.
 
 @RESTRETURNCODE{501}

@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { SelectControl } from "../../../../../components/form/SelectControl";
 import { OptionType } from "../../../../../components/select/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../../utils/arangoClient";
-import { IndexFormFieldProps } from "../IndexFormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexAnalyzerDropdown = ({
@@ -13,7 +13,7 @@ export const InvertedIndexAnalyzerDropdown = ({
   autoFocus,
   dependentFieldName = "features"
 }: {
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
   autoFocus: boolean;
   dependentFieldName?: string;
 }) => {
@@ -27,18 +27,30 @@ export const InvertedIndexAnalyzerDropdown = ({
   }[];
   const { setFieldValue } = useFormikContext<InvertedIndexValuesType>();
   const [formikField] = useField(field.name);
-  const fieldValue = formikField.value;
+  const analyzerName = formikField.value;
   React.useEffect(() => {
-    if (fieldValue) {
+    if (field.isDisabled) {
+      return;
+    }
+    if (analyzerName) {
       const features = analyzersList?.find(
-        analyzer => analyzer.name === fieldValue
+        analyzer => analyzer.name === analyzerName
       )?.features;
       setFieldValue(dependentFieldName, features);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analyzersList, fieldValue, dependentFieldName]);
+  }, [analyzersList, analyzerName, dependentFieldName]);
 
   useEffect(() => {
+    if (field.isDisabled) {
+      setOptions([
+        {
+          value: analyzerName,
+          label: analyzerName
+        }
+      ]);
+      return;
+    }
     if (analyzersList) {
       const tempOptions = analyzersList.map(option => {
         return {

@@ -54,7 +54,6 @@ const ArangoView = require('@arangodb/arango-view').ArangoView;
 const ArangoError = require('@arangodb').ArangoError;
 const ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
-const ArangoPrototypeState = require("@arangodb/arango-prototype-state").ArangoPrototypeState;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief index id regex
@@ -118,19 +117,6 @@ ArangoDatabase.prototype._replicatedlogurl = function (id) {
   }
 
   return '/_api/log/' + encodeURIComponent(id);
-};
-
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief return the base url for prototype state usage
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._prototypestateurl = function (id) {
-  if (id === undefined) {
-    return '/_api/prototype-state';
-  }
-
-  return '/_api/prototype-state/' + encodeURIComponent(id);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -414,26 +400,6 @@ ArangoDatabase.prototype._replicatedLog = function (id) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return a prototype state identified by its id
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._prototypeState = function (id) {
-  let requestResult = this._connection.GET(this._prototypestateurl(id));
-
-  // return null in case of not found
-  if (requestResult !== null
-      && requestResult.error === true
-      && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
-    return null;
-  }
-
-  // check all other errors and throw them
-  arangosh.checkRequestResult(requestResult);
-
-  return new ArangoPrototypeState(this, id);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a new collection
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -446,6 +412,15 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     'name': name,
     'type': ArangoCollection.TYPE_DOCUMENT
   });
+
+  // Convenience transformation.
+  // We have documented that the strings "edge" and "document" are allowed
+  // here, but not in the HTTP Api.
+  if (type === 'edge') {
+    type = ArangoCollection.TYPE_EDGE;
+  } else if (type === 'document') {
+    type = ArangoCollection.TYPE_DOCUMENT;
+  }
 
   if (typeof type === 'object') {
     options = type;
@@ -475,7 +450,9 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     urlAddon += '?' + urlAddons.join('&');
   }
 
-  if (type !== undefined) {
+  if (!isNaN(type)) {
+    // Only overwrite type with numeric values, otherwise
+    // use default value.
     body.type = type;
   }
 
@@ -502,17 +479,6 @@ ArangoDatabase.prototype._createReplicatedLog = function (spec) {
   let requestResult = this._connection.POST(this._replicatedlogurl(), spec);
   arangosh.checkRequestResult(requestResult);
   return new ArangoReplicatedLog(this, requestResult.result.id);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief creates a replicated state
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._createPrototypeState = function (spec) {
-  spec = spec || {};
-  let requestResult = this._connection.POST(this._prototypestateurl(), spec);
-  arangosh.checkRequestResult(requestResult);
-  return new ArangoPrototypeState(this, requestResult.result.id);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

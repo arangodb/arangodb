@@ -81,6 +81,7 @@ TransactionCollection* TransactionState::collection(
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
+  std::lock_guard lock(_collectionsLock);
   auto collectionOrPos = findCollectionOrPos(cid);
 
   return std::visit(
@@ -136,15 +137,15 @@ Result TransactionState::addCollection(DataSourceId cid,
                                        bool lockUsage) {
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && \
     defined(ARANGODB_ENABLE_FAILURE_TESTS)
-  TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
+  TRI_IF_FAILURE("WaitOnLock::" + cname) {
     auto& raceController = basics::DebugRaceController::sharedInstance();
-    auto didTrigger = raceController.waitForOthers(2, _id, vocbase().server());
-    if (didTrigger) {
+    if (auto data = raceController.waitForOthers(2, _id, vocbase().server());
+        data) {
+      TRI_ASSERT(data->size() == 2);
       // Slice out the first char, then we have a number
       uint32_t shardNum = basics::StringUtils::uint32(&cname.back(), 1);
-      std::vector<std::any> const data = raceController.data();
       if (shardNum % 2 == 0) {
-        auto min = *std::min_element(data.begin(), data.end(),
+        auto min = *std::min_element(data->begin(), data->end(),
                                      [](std::any const& a, std::any const& b) {
                                        return std::any_cast<TransactionId>(a) <
                                               std::any_cast<TransactionId>(b);
@@ -153,7 +154,7 @@ Result TransactionState::addCollection(DataSourceId cid,
           std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
       } else {
-        auto max = *std::max_element(data.begin(), data.end(),
+        auto max = *std::max_element(data->begin(), data->end(),
                                      [](std::any const& a, std::any const& b) {
                                        return std::any_cast<TransactionId>(a) <
                                               std::any_cast<TransactionId>(b);
@@ -201,6 +202,8 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
                                                AccessMode::Type accessType,
                                                bool lockUsage) {
   Result res;
+
+  std::lock_guard lock(_collectionsLock);
 
   // check if we already got this collection in the _collections vector
   auto colOrPos = findCollectionOrPos(cid);

@@ -68,7 +68,7 @@ const validatorJson = {
   }
 };
 
-function createCollectionFiles(path, cn) {
+function createCollectionStructureFile(path, cn) {
   let fn = fs.join(path, cn + ".structure.json");
   fs.write(fn, JSON.stringify({
     indexes: [],
@@ -78,14 +78,36 @@ function createCollectionFiles(path, cn) {
       type: 2
     }
   }));
+}
 
+function createCollectionDataFile(data, path, cn, split) {
+  const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+  let write = (data, fn) => {
+    fs.write(fs.join(path, fn), data.map((d) => JSON.stringify(d)).join('\n'));
+  };
+
+  if (split) {
+    const n = data.length;
+    let id = 0; // file number
+    let s = 0;
+    for (let i = 0; i <= n; ++i) {
+      if (i - s >= (n / 5) || i === n) {
+        write(data.slice(s, i), prefix + "." + (id++) + ".data.json");
+        s = i;
+      }
+    }
+  } else {
+    write(data, prefix + ".data.json");
+  }
+}
+
+function createCollectionFiles(path, cn, split) {
+  createCollectionStructureFile(path, cn);
   let data = [];
   for (let i = 0; i < 1000; ++i) {
     data.push({type: 2300, data: {_key: "test" + i, value: i}});
   }
-
-  fn = fs.join(path, cn + ".data.json");
-  fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+  createCollectionDataFile(data, path, cn, /*split*/ false);
   return data;
 }
 
@@ -236,8 +258,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + i, value1: i, value2: "abc"}});
       }
 
-      fn = fs.join(path, cn + ".data.json");
-      fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+      createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -276,8 +297,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + Math.floor(i / 2), value: i, overwrite: (i % 2 === 1)}});
       }
 
-      fn = fs.join(path, cn + ".data.json");
-      fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+      createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -317,8 +337,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + i, value: i * 2, overwrite: true}});
       }
 
-      fn = fs.join(path, cn + ".data.json");
-      fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+      createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true', '--overwrite', 'true'];
       runRestore(path, args, 0);
@@ -381,8 +400,7 @@ function restoreIntegrationSuite() {
         });
       }
 
-      fn = fs.join(path, cn + ".data.json");
-      fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+      createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -398,7 +416,6 @@ function restoreIntegrationSuite() {
       }
       fs.removeDirectoryRecursive(path, true);
     },
-
 
     testRestoreWithLineBreaksInData: function () {
       let path = fs.getTempFile();
@@ -419,8 +436,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + i, value: i}});
       }
 
-      fn = fs.join(path, cn + ".data.json");
-      fs.write(fn, data.map((d) => '\n' + JSON.stringify(d)).join('\n\n'));
+      createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -453,8 +469,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + i, value: i}});
       }
 
-      fn = fs.join(path, cn + ".data.json");
-      fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+      createCollectionDataFile(data, path, cn, /*split*/ false);
 
       fn = fs.join(path, "dump.json");
       fs.write(fn, JSON.stringify({
@@ -492,8 +507,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + i, value: i}});
       }
 
-      fn = fs.join(path, cn + ".data.json");
-      fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+      createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -642,6 +656,39 @@ function restoreIntegrationSuite() {
         db._useDatabase("_system");
       }
     },
+    
+    testRestoreSplitFiles: function () {
+      let path = fs.getTempFile();
+      fs.makeDirectory(path);
+      let fn = fs.join(path, cn + ".structure.json");
+
+      fs.write(fn, JSON.stringify({
+        indexes: [],
+        parameters: {
+          name: cn,
+          numberOfShards: 3,
+          type: 2
+        }
+      }));
+
+      let data = [];
+      for (let i = 0; i < 5000; ++i) {
+        data.push({_key: "test" + i, value: i});
+      }
+
+      createCollectionDataFile(data, path, cn, /*split*/ true);
+
+      let args = ['--collection', cn, '--import-data', 'true'];
+      runRestore(path, args, 0);
+
+      let c = db._collection(cn);
+      assertEqual(data.length, c.count());
+      for (let i = 0; i < data.length; ++i) {
+        let doc = c.document("test" + i);
+        assertEqual(i, doc.value);
+      }
+      fs.removeDirectoryRecursive(path, true);
+    },
 
     testRestoreWithoutEnvelopesWithDumpJsonFile: function () {
       let path = fs.getTempFile();
@@ -662,8 +709,7 @@ function restoreIntegrationSuite() {
         data.push({_key: "test" + i, value: i});
       }
 
-      fn = fs.join(path, cn + ".data.json");
-      fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+      createCollectionDataFile(data, path, cn, /*split*/ false);
 
       fn = fs.join(path, "dump.json");
       fs.write(fn, JSON.stringify({
@@ -701,8 +747,7 @@ function restoreIntegrationSuite() {
         data.push({_key: "test" + i, value: i});
       }
 
-      fn = fs.join(path, cn + ".data.json");
-      fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+      createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);

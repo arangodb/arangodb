@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_index_fulltext
-@brief creates a fulltext index
 
-@RESTHEADER{POST /_api/index#fulltext, Create fulltext index, createIndexFulltext}
+@RESTHEADER{POST /_api/index#fulltext, Create a full-text index, createIndexFulltext}
 
 @HINTS
 {% hint 'warning' %}
@@ -15,7 +14,7 @@ The fulltext index type is deprecated from version 3.10 onwards.
 The collection name.
 
 @RESTBODYPARAM{type,string,required,string}
-must be equal to *"fulltext"*.
+must be equal to `"fulltext"`.
 
 @RESTBODYPARAM{name,string,optional,string}
 An easy-to-remember name for the index to look it up or refer to it in index hints.
@@ -33,12 +32,12 @@ to a server-defined value if unspecified. It is thus recommended to set
 this value explicitly when creating the index.
 
 @RESTBODYPARAM{inBackground,boolean,optional,}
-The optional attribute **inBackground** can be set to *true* to create the index
+You can set this option to `true` to create the index
 in the background, which will not write-lock the underlying collection for
-as long as if the index is built in the foreground. The default value is *false*.
+as long as if the index is built in the foreground. The default value is `false`.
 
 @RESTDESCRIPTION
-Creates a fulltext index for the collection *collection-name*, if
+Creates a fulltext index for the collection `collection-name`, if
 it does not already exist. The call expects an object containing the index
 details.
 
@@ -53,7 +52,7 @@ If the index does not already exist and could be created, then a *HTTP 201*
 is returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404* is returned.
+If the `collection-name` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 

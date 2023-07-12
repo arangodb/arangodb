@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_transaction_transaction
-@brief Fetch status of a server-side transaction
 
-@RESTHEADER{GET /_api/transaction/{transaction-id}, Get transaction status, getStreamTransaction}
+@RESTHEADER{GET /_api/transaction/{transaction-id}, Get the status of a Stream Transaction, getStreamTransaction}
 
 @RESTURLPARAMETERS
 
@@ -13,9 +12,9 @@ The transaction identifier.
 The result is an object describing the status of the transaction.
 It has at least the following attributes:
 
-- *id*: the identifier of the transaction
+- `id`: the identifier of the transaction
 
-- *status*: the status of the transaction. One of "running", "committed" or "aborted".
+- `status`: the status of the transaction. One of "running", "committed" or "aborted".
 
 @RESTRETURNCODES
 

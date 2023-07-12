@@ -27,8 +27,10 @@
 #include "IResearch/IResearchInvertedIndexMeta.h"
 #include "Indexes/Index.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "VocBase/LogicalCollection.h"
 
+namespace arangodb {
+class LogicalCollection;
+}
 namespace arangodb::iresearch {
 
 class IResearchInvertedIndexMock final : public Index,
@@ -84,8 +86,6 @@ class IResearchInvertedIndexMock final : public Index,
   Result drop() final;
 
   void load() final;
-
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) final;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       ResourceMonitor& monitor, transaction::Methods* trx,

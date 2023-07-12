@@ -1,17 +1,16 @@
 
 @startDocuBlock get_api_wal_lastTick
-@brief Return last available tick value
 
-@RESTHEADER{GET /_api/wal/lastTick, Return last available tick value, getWalLastTick}
+@RESTHEADER{GET /_api/wal/lastTick, Get the last available tick value, getWalLastTick}
 
 @RESTDESCRIPTION
 Returns the last available tick value that can be served from the server's
 replication log. This corresponds to the tick of the latest successful operation.
 
-The result is a JSON object containing the attributes *tick*, *time* and *server*.
-* *tick*: contains the last available tick, *time*
-* *time*: the server time as string in format "YYYY-MM-DDTHH:MM:SSZ"
-* *server*: An object with fields *version* and *serverId*
+The result is a JSON object containing the attributes `tick`, `time` and `server`.
+- `tick`: contains the last available tick, `time`
+- `time`: the server time as string in format `YYYY-MM-DDTHH:MM:SSZ`
+- `server`: An object with fields `version` and `serverId`
 
 **Note**: this method is not supported on a Coordinator in a cluster.
 

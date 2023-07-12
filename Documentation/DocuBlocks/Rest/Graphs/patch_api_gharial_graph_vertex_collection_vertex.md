@@ -1,5 +1,4 @@
 @startDocuBlock patch_api_gharial_graph_vertex_collection_vertex
-@brief update an existing vertex
 
 @RESTHEADER{PATCH /_api/gharial/{graph}/vertex/{collection}/{vertex}, Update a vertex, updateVertex}
 
@@ -15,7 +14,7 @@ The name of the graph.
 The name of the vertex collection the vertex belongs to.
 
 @RESTURLPARAM{vertex,string,required}
-The *_key* attribute of the vertex.
+The `_key` attribute of the vertex.
 
 @RESTQUERYPARAMETERS
 
@@ -23,10 +22,11 @@ The *_key* attribute of the vertex.
 Define if the request should wait until synced to disk.
 
 @RESTQUERYPARAM{keepNull,boolean,optional}
-Define if values set to null should be stored.
-By default (true) the given documents attribute(s) will be set to null.
-If this parameter is false the attribute(s) will instead be delete from the
-document.
+Define if values set to `null` should be stored.
+By default (`true`), the given documents attribute(s) are set to `null`.
+If this parameter is set to `false`, top-level attribute and sub-attributes with
+a `null` value in the request are removed from the document (but not attributes
+of objects that are nested inside of arrays).
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
 Define if a presentation of the deleted document should
@@ -39,9 +39,9 @@ be returned within the response object.
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{if-match,string,optional}
-If the "If-Match" header is given, then it must contain exactly one Etag. The document is updated,
-if it has the same revision as the given Etag. Otherwise a HTTP 412 is returned. As an alternative
-you can supply the Etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one ETag. The document is updated,
+if it has the same revision as the given ETag. Otherwise a HTTP 412 is returned. As an alternative
+you can supply the ETag in an attribute rev in the URL.
 
 @RESTALLBODYPARAM{vertex,object,required}
 The body has to contain a JSON object containing exactly the attributes that should be overwritten, all other attributes remain unchanged.

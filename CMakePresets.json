@@ -7,17 +7,6 @@
   },
   "configurePresets": [
     {
-      "name": "community",
-      "displayName": "Build ArangoDB Community Edition",
-      "binaryDir": "${sourceDir}/build-presets/${presetName}",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "USE_ENTERPRISE": "Off",
-        "USE_JEMALLOC": "On",
-        "USE_IPO": "On"
-      }
-    },
-    {
       "hidden": true,
       "name": "pr-base",
       "binaryDir": "${sourceDir}/build",
@@ -29,6 +18,20 @@
         "USE_IPO": "Off",
         "USE_STRICT_OPENSSL_VERSION": "On",
         "USE_MINIMAL_DEBUGINFO": "On",
+        "STATIC_EXECUTABLES": "On"
+      }
+    },
+    {
+      "hidden": true,
+      "name": "release-base",
+      "binaryDir": "${sourceDir}/build-presets/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_ENTERPRISE": "Off",
+        "USE_JEMALLOC": "On",
+        "USE_IPO": "On",
+        "USE_GOOGLE_TESTS": "Off",
+        "USE_FAILURE_TESTS": "Off",
         "STATIC_EXECUTABLES": "On"
       }
     },
@@ -71,7 +74,8 @@
       "name": "tsan",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "-fsanitize=thread",
-        "CMAKE_C_FLAGS": "-fsanitize=thread"
+        "CMAKE_C_FLAGS": "-fsanitize=thread",
+        "USE_JEMALLOC": "Off"
       }
     },
     {
@@ -92,14 +96,19 @@
       }
     },
     {
-      "name": "enterprise",
-      "inherits": "community",
-      "displayName": "Build ArangoDB Enterprise Edition",
+      "name": "community",
+      "inherits": "release-base",
+      "displayName": "Build ArangoDB Community Edition (Release Build)",
+      "binaryDir": "${sourceDir}/build-presets/${presetName}",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "USE_ENTERPRISE": "On",
-        "USE_JEMALLOC": "On",
-        "USE_IPO": "On"
+      }
+    },
+    {
+      "name": "enterprise",
+      "inherits": "release-base",
+      "displayName": "Build ArangoDB Enterprise Edition (Release Build)",
+      "cacheVariables": {
+        "USE_ENTERPRISE": "On"
       }
     },
     {

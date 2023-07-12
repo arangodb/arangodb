@@ -70,7 +70,7 @@ SSSPAlgorithm::SSSPAlgorithm(VPackSlice userParams) {
     }
   }
 }
-uint32_t SSSPAlgorithm::messageBatchSize(
+size_t SSSPAlgorithm::messageBatchSize(
     std::shared_ptr<WorkerConfig const> config,
     MessageStats const& stats) const {
   if (config->localSuperstep() <= 1) {

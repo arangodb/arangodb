@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for AQL, persistent index
@@ -30,11 +30,51 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
-  
+
 const cn = "UnitTestsCollection";
-  
+const idxName = "testIdx";
+const query1 = `FOR d IN ${cn} FILTER d.value == 1 SORT d._key RETURN d`;
+const query2 = `FOR d IN ${cn} FILTER d.value == 2 SORT d._key RETURN d`;
+const tolerance = 0.03;
+
+
 let explain = function (query, params) {
   return helper.removeClusterNodes(helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; }));
+};
+
+let insertMoreDocs = function (numDocs, sameValue) {
+  let docs = [];
+  for (let i = 0; i < numDocs; ++i) {
+    docs.push({value: (sameValue ? 2 : i)});
+    if (docs.length >= numDocs / 10) {
+      internal.db[cn].insert(docs);
+      docs = [];
+    }
+  }
+};
+
+let testAndValidate = function (query, isUnique, moreDocs, numDocs, sameValue, isPrimary, selectivity) {
+  if (moreDocs) {
+    insertMoreDocs(numDocs, sameValue);
+  }
+  internal.db[cn].ensureIndex({type: "persistent", name: idxName, unique: isUnique, fields: ["value"]});
+
+  const nodes = AQL_EXPLAIN(query).plan.nodes;
+  let foundIdxNode = false;
+  for (const key in nodes) {
+    if (nodes[key].type === "IndexNode") {
+      foundIdxNode = true;
+      const indexNode = nodes[key];
+      assertEqual(indexNode.indexes.length, 1);
+      const usedIndex = indexNode.indexes[0];
+      assertEqual(usedIndex.type, (isPrimary ? "primary" : "persistent"));
+      assertEqual(usedIndex.name, (isPrimary ? "primary" : idxName));
+      assertEqual(usedIndex.fields.length, 1);
+      assertEqual(usedIndex.fields[0], (isPrimary ? "_key" : "value"));
+      assertTrue(Math.abs(usedIndex.selectivityEstimate - selectivity) < tolerance);
+    }
+  }
+  assertTrue(foundIdxNode);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,7 +83,7 @@ let explain = function (query, params) {
 
 function PersistentIndexTestSuite () {
   let collection;
-      
+
   return {
 
     setUp : function () {
@@ -72,10 +112,10 @@ function PersistentIndexTestSuite () {
     testEqSingleVoid1 : function () {
       var query = "FOR v IN " + collection.name() + " FILTER v.a == 99 RETURN v";
       var expected = [ ];
-      var actual = getQueryResults(query); 
+      var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
@@ -89,7 +129,7 @@ function PersistentIndexTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
@@ -103,7 +143,7 @@ function PersistentIndexTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -117,7 +157,7 @@ function PersistentIndexTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode","CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -131,7 +171,7 @@ function PersistentIndexTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -145,7 +185,7 @@ function PersistentIndexTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -159,7 +199,7 @@ function PersistentIndexTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -173,7 +213,7 @@ function PersistentIndexTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -187,7 +227,7 @@ function PersistentIndexTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -379,7 +419,7 @@ function PersistentIndexTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
@@ -393,7 +433,7 @@ function PersistentIndexTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
@@ -431,7 +471,7 @@ function PersistentIndexTestSuite () {
           var actual = getQueryResults(query, { "a": i, "b": j });
 
           assertEqual(expected, actual);
-      
+
           assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
         }
       }
@@ -1055,7 +1095,7 @@ function PersistentIndexTestSuite () {
 
       assertEqual(expected, actual);
     },
-     
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test ref access with filters on the same attribute
 ////////////////////////////////////////////////////////////////////////////////
@@ -1077,7 +1117,7 @@ function PersistentIndexTestSuite () {
       var query = "FOR a IN " + collection.name() + " FILTER a.c == a.d SORT a.c RETURN [ a.c, a.d ]";
       var expected = [ [ 1, 1 ], [ 2, 2 ], [ 3, 3 ], [ 4, 4 ], [ 5, 5 ] ];
       var actual = getQueryResults(query);
-     
+
       assertEqual(expected, actual);
 
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
@@ -1091,9 +1131,9 @@ function PersistentIndexTestSuite () {
       var query = "FOR a IN " + collection.name() + " FILTER a.e == a.f SORT a.a, a.b RETURN [ a.a, a.b ]";
       var expected = [ [ 1, 1 ], [ 1, 2 ], [ 1, 3 ], [ 1, 4 ], [ 1, 5 ], [ 2, 1 ], [ 2, 2 ], [ 2, 3 ], [ 2, 4 ], [ 2, 5 ], [ 3, 1 ], [ 3, 2 ], [ 3, 3 ], [ 3, 4 ], [ 3, 5 ], [ 4, 1 ], [ 4, 2 ], [ 4, 3 ], [ 4, 4 ], [ 4, 5 ], [ 5, 1 ], [ 5, 2 ], [ 5, 3 ], [ 5, 4 ], [ 5, 5 ] ];
       var actual = getQueryResults(query);
-      
+
       assertEqual(expected, actual);
-        
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -1106,54 +1146,54 @@ function PersistentIndexTestSuite () {
       collection.save({ "a": 20, "c": 2 });
       collection.save({ "a": 21, "c": 1 });
       collection.save({ "a": 21, "c": 2 });
- 
+
       // c is not indexed, but we still need to find the correct results
       var query = "FOR a IN " + collection.name() + " FILTER a.a == 20 && a.c == 1 RETURN [ a.a, a.c ]";
       var actual = getQueryResults(query);
       var expected = [ [ 20, 1 ] ];
-      
+
       assertEqual(expected, actual);
-        
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
-      
+
       query = "FOR a IN " + collection.name() + " FILTER a.a == 20 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
       expected = [ [ 20, 1 ], [ 20, 2 ] ];
-      
+
       assertEqual(expected, actual);
-        
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
-      
+
       query = "FOR a IN " + collection.name() + " FILTER a.a >= 20 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
       expected = [ [ 20, 1 ], [ 20, 2 ], [ 21, 1 ], [ 21, 2 ] ];
-      
+
       assertEqual(expected, actual);
-        
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
-      
+
       query = "FOR a IN " + collection.name() + " FILTER a.a >= 21 && a.a <= 21 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
       expected = [ [ 21, 1 ], [ 21, 2 ] ];
-      
+
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
-      
+
       query = "FOR a IN " + collection.name() + " FILTER a.a >= 20 && a.a <= 21 && a.c <= 2 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
       expected = [ [ 20, 1 ], [ 20, 2 ], [ 21, 1 ], [ 21, 2 ] ];
-      
+
       assertEqual(expected, actual);
-        
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
-      
+
       query = "FOR a IN " + collection.name() + " FILTER a.a == 20 && a.c >= 1 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
       expected = [ [ 20, 1 ], [ 20, 2 ] ];
-      
+
       assertEqual(expected, actual);
-        
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -1173,16 +1213,16 @@ function PersistentIndexTestSuite () {
       var query = "FOR a IN " + collection.name() + " SORT a.a DESC RETURN a.a";
       var actual = getQueryResults(query);
       assertEqual(expectedOne, actual);
-      
+
       // produces an empty range
       query = "FOR a IN " + collection.name() + " FILTER a.a >= 100 SORT a.a DESC RETURN a.a";
       actual = getQueryResults(query);
       assertEqual([ ], actual);
-      
+
       query = "FOR a IN " + collection.name() + " SORT a.a DESC, a.b DESC RETURN [ a.a, a.b ]";
       actual = getQueryResults(query);
       assertEqual(expectedTwo, actual);
-      
+
       // produces an empty range
       query = "FOR a IN " + collection.name() + " FILTER a.a >= 100 SORT a.a DESC, a.b DESC RETURN [ a.a, a.b ]";
       actual = getQueryResults(query);
@@ -1212,7 +1252,7 @@ function PersistentIndexTestSuite () {
 
 function PersistentIndexMultipleIndexesTestSuite () {
   let collection;
-  
+
   return {
 
     setUpAll : function () {
@@ -1246,7 +1286,7 @@ function PersistentIndexMultipleIndexesTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -1260,7 +1300,7 @@ function PersistentIndexMultipleIndexesTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -1298,7 +1338,7 @@ function PersistentIndexMultipleIndexesTestSuite () {
           var actual = getQueryResults(query, { "a": i, "b": j });
 
           assertEqual(expected, actual);
-      
+
           assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
         }
       }
@@ -1316,7 +1356,7 @@ function PersistentIndexMultipleIndexesTestSuite () {
           var actual = getQueryResults(query, { "a": i, "b": j });
 
           assertEqual(expected, actual);
-          
+
           assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
         }
       }
@@ -1332,7 +1372,7 @@ function PersistentIndexMultipleIndexesTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
+
       assertEqual([ "SingletonNode", "CalculationNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
@@ -1434,7 +1474,7 @@ function PersistentIndexMultipleIndexesTestSuite () {
       var query = "FOR a IN " + cn + " FILTER a.a == a.a SORT a.a RETURN a.a";
       var expected = [ 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5 ];
       var actual = getQueryResults(query);
-      
+
       assertEqual(expected, actual);
 
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
@@ -1448,7 +1488,7 @@ function PersistentIndexMultipleIndexesTestSuite () {
       var query = "FOR a IN " + cn + " FILTER a.a == a.c SORT a.a RETURN a.a";
       var expected = [ 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5 ];
       var actual = getQueryResults(query);
-      
+
       assertEqual(expected, actual);
 
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
@@ -1460,9 +1500,9 @@ function PersistentIndexMultipleIndexesTestSuite () {
 
     testMultiRefNon1 : function () {
       var query = "FOR a IN " + cn + " FILTER a.a == 1 RETURN a.a";
-      var expected = [ 1, 1, 1, 1, 1 ]; 
+      var expected = [ 1, 1, 1, 1, 1 ];
       var actual = getQueryResults(query);
-      
+
       assertEqual(expected, actual);
 
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
@@ -1476,7 +1516,7 @@ function PersistentIndexMultipleIndexesTestSuite () {
       var query = "FOR a IN " + cn + " FILTER a.d == a.a SORT a.a RETURN a.a";
       var expected = [ ];
       var actual = getQueryResults(query);
-      
+
       assertEqual(expected, actual);
 
       // RocksDB uses Index For sort
@@ -1491,7 +1531,7 @@ function PersistentIndexMultipleIndexesTestSuite () {
       var query = "FOR a IN " + cn + " FILTER a.d == 1 SORT a.a RETURN a.a";
       var expected = [ ];
       var actual = getQueryResults(query);
-      
+
       assertEqual(expected, actual);
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
@@ -1552,8 +1592,158 @@ function PersistentIndexOverlappingSuite () {
   };
 }
 
+function PersistentIndexSelectivityTestSuite () {
+  return {
+    setUp: function () {
+      internal.db._drop(cn);
+      let c = internal.db._create(cn);
+      c.insert({value: 100000});
+    },
+
+    tearDown: function () {
+      internal.db._drop(cn);
+    },
+
+    testUniqueSimple: function () {
+      testAndValidate(query1, true, false, 0, false, false, 1);
+    },
+
+    testUniqueSimple2: function () {
+      testAndValidate(query2, true, false, 0, false, false, 1);
+    },
+
+    testNonUniqueSimple: function () {
+      testAndValidate(query1, false, false, 0, false, false, 1);
+    },
+
+    testNonUniqueSimple2: function () {
+      testAndValidate(query2, false, false, 0, false, false, 1);
+    },
+
+    testUniqueSimpleManyDocs: function () {
+      testAndValidate(query1, true, true, 10000, false, false, 1);
+    },
+
+    testUniqueSimpleManyDocs2: function () {
+      testAndValidate(query2, true, true, 10000, false, false, 1);
+    },
+
+    testUniqueSimpleManyDocs3: function () {
+      testAndValidate(query1, true, true, 50, false, false, 1);
+    },
+
+    testUniqueSimpleManyDocs4: function () {
+      testAndValidate(query2, true, true, 50, false, false, 1);
+    },
+
+    testUniqueSimpleManyDocs5: function () {
+      testAndValidate(query1, true, true, 50000, false, false, 1);
+    },
+
+    testUniqueSimpleManyDocs6: function () {
+      testAndValidate(query2, true, true, 50000, false, false, 1);
+    },
+
+    testNonUniqueSimpleManyDocs: function () {
+      testAndValidate(query1, false, true, 10000, false, false, 1);
+    },
+
+    testNonUniqueSimpleManyDocs2: function () {
+      testAndValidate(query2, false, true, 10000, false, false, 1);
+    },
+
+    testNonUniqueSimpleManyDocs3: function () {
+      testAndValidate(query1, false, true, 50, false, false, 1);
+    },
+
+    testNonUniqueSimpleManyDocs4: function () {
+      testAndValidate(query2, false, true, 50, false, false, 1);
+    },
+
+    testNonUniqueSimpleManyDocs5: function () {
+      testAndValidate(query1, false, true, 50000, false, false, 1);
+    },
+
+    testNonUniqueSimpleManyDocs6: function () {
+      testAndValidate(query2, false, true, 50000, false, false, 1);
+    },
+
+    // in the tests below, even though the selectivity for the persistent index is very low, it would still be chosen, because
+    // the cost would still be smaller than the cost of the primary index because, as it doesn't cover the FILTER,
+    // it gets at least the default cost of the FILTER which will outnumber the cost for the persistent index
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent: function () {
+      insertMoreDocs(9, false);
+      const numDocs = 1000;
+      testAndValidate(query1, false, true, numDocs, true, false, (10/(numDocs + 10)));
+    },
+
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent2: function () {
+      insertMoreDocs(9, false);
+      const numDocs = 1000;
+      testAndValidate(query2, false, true, numDocs, true, false, (10/(numDocs + 10)));
+    },
+
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent3: function () {
+      insertMoreDocs(9, false);
+      const numDocs = 50;
+      testAndValidate(query1, false, true, numDocs, true, false, (10/(numDocs + 10)));
+    },
+
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent4: function () {
+      insertMoreDocs(9, false);
+      const numDocs = 50;
+      testAndValidate(query2, false, true, numDocs, true, false, (10/(numDocs + 10)));
+    },
+
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent5: function () {
+      insertMoreDocs(10000, false);
+      const numDocs = 50000;
+      testAndValidate(query1, false, true, numDocs, true, false, (10001/(numDocs + 10001)));
+    },
+
+    testNonUniqueManyDocsIndexLowerSelectivityChoosePersistent6: function () {
+      insertMoreDocs(10000, false);
+      const numDocs = 50000;
+      testAndValidate(query2, false, true, numDocs, true, false, (10001/(numDocs + 10001)));
+    },
+
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther: function () {
+      const numDocs = 10000;
+      testAndValidate(query1, false, true, numDocs, true, true, 1);
+    },
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther2: function () {
+      const numDocs = 10000;
+      testAndValidate(query2, false, true, numDocs, true, true, 1);
+    },
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther3: function () {
+      const numDocs = 50;
+      testAndValidate(query1, false, true, numDocs, true, true, 1);
+    },
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther4: function () {
+      const numDocs = 50;
+      testAndValidate(query2, false, true, numDocs, true, true, 1);
+    },
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther5: function () {
+      const numDocs = 50000;
+      testAndValidate(query1, false, true, numDocs, true, true, 1);
+    },
+
+    testNonUniqueManyDocsIndexLowSelectivityChooseOther6: function () {
+      const numDocs = 50000;
+      testAndValidate(query2, false, true, numDocs, true, true, 1);
+    },
+
+  };
+}
+
 jsunity.run(PersistentIndexTestSuite);
 jsunity.run(PersistentIndexMultipleIndexesTestSuite);
 jsunity.run(PersistentIndexOverlappingSuite);
+jsunity.run(PersistentIndexSelectivityTestSuite);
 
 return jsunity.done();

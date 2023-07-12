@@ -7,21 +7,12 @@
     model: window.queryManagementModel,
 
     url: function () {
-      var url = frontendConfig.basePath + '/_api/query/slow';
-
-      if (window.frontendConfig.db !== '_system') {
-        url = arangoHelper.databaseUrl('/_api/query/slow');
-      }
-
+      var url = arangoHelper.databaseUrl('/_api/query/slow');
       return url;
     },
 
     deleteSlowQueryHistory: function (callback) {
-      var url = frontendConfig.basePath + '/_api/query/slow';
-
-      if (window.frontendConfig.db !== '_system') {
-        url = arangoHelper.databaseUrl('/_api/query/slow');
-      }
+      var url = arangoHelper.databaseUrl('/_api/query/slow');
 
       $.ajax({
         url: url,

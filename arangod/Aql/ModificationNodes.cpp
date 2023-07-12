@@ -119,8 +119,7 @@ void RemoveNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
 
   TRI_ASSERT(previousNode != nullptr);
@@ -199,8 +198,7 @@ void InsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   using namespace arangodb::aql;
 
   ExecutionNode const* previousNode = getFirstDependency();
@@ -270,6 +268,8 @@ void InsertNode::replaceVariables(
   _inVariable = Variable::replace(_inVariable, replacements);
 }
 
+size_t InsertNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 ///////////////////////////////////////////////////////////////////////////////
 /// REMOVE
 ///
@@ -314,8 +314,7 @@ void UpdateReplaceNode::replaceVariables(
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   using namespace arangodb::aql;
 
   ExecutionNode const* previousNode = getFirstDependency();
@@ -362,6 +361,8 @@ void RemoveNode::replaceVariables(
   _inVariable = Variable::replace(_inVariable, replacements);
 }
 
+size_t RemoveNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
@@ -394,14 +395,15 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
+size_t UpdateNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
                          arangodb::velocypack::Slice const& base)
     : UpdateReplaceNode(plan, base) {}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -474,6 +476,8 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
+size_t ReplaceNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 ///////////////////////////////////////////////////////////////////////////////
 /// UPSERT
 ///
@@ -506,8 +510,7 @@ void UpsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   using namespace arangodb::aql;
 
   ExecutionNode const* previousNode = getFirstDependency();
@@ -590,5 +593,7 @@ void UpsertNode::replaceVariables(
     _updateVariable = Variable::replace(_updateVariable, replacements);
   }
 }
+
+size_t UpsertNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 }  // namespace arangodb::aql

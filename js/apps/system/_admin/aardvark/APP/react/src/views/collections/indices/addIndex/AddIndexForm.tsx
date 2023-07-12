@@ -32,7 +32,8 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
         columnGap="3"
         maxWidth="800px"
         marginTop="4"
-        paddingX="10"
+        paddingRight="8"
+        paddingLeft="10"
       >
         <FormLabel htmlFor="type">Type</FormLabel>
         <SingleSelect

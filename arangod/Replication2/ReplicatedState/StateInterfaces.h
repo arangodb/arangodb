@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/ReplicatedState/WaitForQueue.h"
@@ -144,8 +143,7 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
    * @return Future with Result value. If the result contains an error,
    *    the operation is eventually retried.
    */
-  virtual auto acquireSnapshot(ParticipantId const& leader,
-                               LogIndex localCommitIndex) noexcept
+  virtual auto acquireSnapshot(ParticipantId const& leader) noexcept
       -> futures::Future<Result> = 0;
 
   /**

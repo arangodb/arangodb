@@ -31,6 +31,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -141,6 +142,7 @@ void RocksDBBackgroundThread::run() {
 
       bool force = isStopping();
       _engine.replicationManager()->garbageCollect(force);
+      _engine.dumpManager()->garbageCollect(force);
 
       if (!force) {
         try {

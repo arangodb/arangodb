@@ -1,8 +1,7 @@
 
 @startDocuBlock get_admin_statistics_description
-@brief fetch descriptive info of statistics
 
-@RESTHEADER{GET /_admin/statistics-description, Statistics description, getStatisticsDescription}
+@RESTHEADER{GET /_admin/statistics-description, Get the statistics description, getStatisticsDescription}
 
 @HINTS
 {% hint 'warning' %}
@@ -12,25 +11,25 @@ statistics API and a lot more.
 {% endhint %}
 
 @RESTDESCRIPTION
-Returns a description of the statistics returned by */_admin/statistics*.
+Returns a description of the statistics returned by `/_admin/statistics`.
 The returned objects contains an array of statistics groups in the attribute
-*groups* and an array of statistics figures in the attribute *figures*.
+`groups` and an array of statistics figures in the attribute `figures`.
 
 A statistics group is described by
 
-- *group*: The identifier of the group.
-- *name*: The name of the group.
-- *description*: A description of the group.
+- `group`: The identifier of the group.
+- `name`: The name of the group.
+- `description`: A description of the group.
 
 A statistics figure is described by
 
-- *group*: The identifier of the group to which this figure belongs.
-- *identifier*: The identifier of the figure. It is unique within the group.
-- *name*: The name of the figure.
-- *description*: A description of the figure.
-- *type*: Either *current*, *accumulated*, or *distribution*.
-- *cuts*: The distribution vector.
-- *units*: Units in which the figure is measured.
+- `group`: The identifier of the group to which this figure belongs.
+- `identifier`: The identifier of the figure. It is unique within the group.
+- `name`: The name of the figure.
+- `description`: A description of the figure.
+- `type`: Either `current`, `accumulated`, or `distribution`.
+- `cuts`: The distribution vector.
+- `units`: Units in which the figure is measured.
 
 @RESTRETURNCODES
 
@@ -65,7 +64,7 @@ The name of the figure.
 A description of the figure.
 
 @RESTSTRUCT{type,admin_statistics_figures_struct,string,required,}
-Either *current*, *accumulated*, or *distribution*.
+Either `current`, `accumulated`, or `distribution`.
 
 @RESTSTRUCT{cuts,admin_statistics_figures_struct,string,required,}
 The distribution vector.
@@ -77,7 +76,7 @@ Units in which the figure is measured.
 the HTTP status code
 
 @RESTREPLYBODY{error,boolean,required,}
-the error, *false* in this case
+the error, `false` in this case
 
 @EXAMPLES
 

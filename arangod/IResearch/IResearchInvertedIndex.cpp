@@ -43,6 +43,7 @@
 #include "Logger/LogMacros.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
@@ -800,6 +801,10 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
     builder.add(StaticStrings::LinkError,
                 VPackValue(StaticStrings::LinkErrorOutOfSync));
   }
+}
+
+std::string const& IResearchInvertedIndex::getDbName() const noexcept {
+  return index().collection().vocbase().name();
 }
 
 std::vector<std::vector<basics::AttributeName>> IResearchInvertedIndex::fields(

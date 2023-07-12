@@ -29,7 +29,7 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallSet.h"
 #include "Aql/AqlCallStack.h"
-#include "Aql/ConstFetcher.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/Stats.h"
@@ -42,9 +42,10 @@
 
 namespace arangodb {
 class ExecContext;
-}
+}  // namespace arangodb
 
 namespace arangodb::aql {
+class ConstFetcher;
 
 template<BlockPassthrough passThrough>
 class SingleRowFetcher;

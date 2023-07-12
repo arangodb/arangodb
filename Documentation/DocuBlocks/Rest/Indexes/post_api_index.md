@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_index
-@brief creates an index
 
-@RESTHEADER{POST /_api/index, Create index, createIndex}
+@RESTHEADER{POST /_api/index, Create an index, createIndex}
 
 @RESTQUERYPARAMETERS
 
@@ -67,7 +66,7 @@ The `estimates` attribute is optional and defaults to `true` if not set. It will
 have no effect on indexes other than persistent indexes.
 
 The optional attribute **cacheEnabled** is supported by indexes of type
-*persistent*. This attribute controls whether an extra in-memory hash cache is
+`persistent`. This attribute controls whether an extra in-memory hash cache is
 created for the index. The hash cache can be used to speed up index lookups.
 The cache can only be used for queries that look up all index attributes via
 an equality lookup (`==`). The hash cache cannot be used for range scans,
@@ -101,5 +100,5 @@ If an invalid index description is posted or attributes are used that the
 target index will not support, then an *HTTP 400* is returned.
 
 @RESTRETURNCODE{404}
-If *collection* is unknown, then an *HTTP 404* is returned.
+If `collection` is unknown, then an *HTTP 404* is returned.
 @endDocuBlock

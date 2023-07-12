@@ -140,8 +140,7 @@ RemoteNode::RemoteNode(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   auto const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   auto const nrInRegs = nrOutRegs;
 
@@ -184,6 +183,8 @@ CostEstimate RemoteNode::estimateCost() const {
   return estimate;
 }
 
+size_t RemoteNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 /// @brief construct a scatter node
 ScatterNode::ScatterNode(ExecutionPlan* plan,
                          arangodb::velocypack::Slice const& base)
@@ -193,8 +194,7 @@ ScatterNode::ScatterNode(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -210,6 +210,8 @@ void ScatterNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // serialize clients
   writeClientsToVelocyPack(nodes);
 }
+
+size_t ScatterNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
   auto const clientsSlice = base.get("clients");
@@ -308,8 +310,7 @@ ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -379,6 +380,8 @@ void DistributeNode::addSatellite(aql::Collection* satellite) {
   TRI_ASSERT(satellite->isSatellite());
   _satellites.emplace_back(satellite);
 }
+
+size_t DistributeNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 /*static*/ Collection const* GatherNode::findCollection(
     GatherNode const& root) noexcept {
@@ -507,8 +510,7 @@ void GatherNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto registerInfos = createRegisterInfos({}, {});
@@ -597,6 +599,8 @@ void GatherNode::getVariablesUsedHere(VarSet& vars) const {
   }
 }
 
+size_t GatherNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 SingleRemoteOperationNode::SingleRemoteOperationNode(
     ExecutionPlan* plan, ExecutionNodeId id, NodeType mode,
     bool replaceIndexNode, std::string const& key, Collection const* collection,
@@ -631,8 +635,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(
 
 /// @brief creates corresponding SingleRemoteOperationNode
 std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
 
   TRI_ASSERT(previousNode != nullptr);
@@ -775,4 +778,8 @@ void SingleRemoteOperationNode::getVariablesUsedHere(VarSet& vars) const {
   if (_inVariable) {
     vars.emplace(_inVariable);
   }
+}
+
+size_t SingleRemoteOperationNode::getMemoryUsedBytes() const {
+  return sizeof(*this);
 }

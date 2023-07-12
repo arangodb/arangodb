@@ -2899,6 +2899,80 @@ function testSmallCircleKPathsOutbound(testGraph) {
   assertResIsEqualInPathList(necessaryPaths, foundPaths);
 }
 
+function testSmallCircleKPathsOutboundLimitAndFilter(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}
+        GRAPH ${testGraph.name()}
+        FILTER LENGTH(path.vertices[*]._key) ALL == 1 
+        LIMIT 1
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["A", "B", "C", "D"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testSmallCircleKPathsInboundMinZero(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR path IN 0..2 INBOUND K_PATHS ${testGraph.vertex('C')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["C", "B", "A"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testSmallCircleKPathsNoDepthDeclared(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR path IN INBOUND K_PATHS ${testGraph.vertex('C')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    []
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testSmallCircleKPathsSourceAndTargetIdentical(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR path IN INBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["A"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
 function testSmallCircleKPathsAny(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
@@ -6696,6 +6770,10 @@ const testsByGraph = {
     testSmallCircleBFSParallelismSubqueryOuterLoopSecondTraversal,
     testSmallCircleShortestPath,
     testSmallCircleKPathsOutbound,
+    testSmallCircleKPathsOutboundLimitAndFilter,
+    testSmallCircleKPathsInboundMinZero,
+    testSmallCircleKPathsNoDepthDeclared,
+    testSmallCircleKPathsSourceAndTargetIdentical,
     testSmallCircleKPathsAny,
     testSmallCircleKPathsInbound,
     testSmallCircleShortestPathEnabledWeightCheck,

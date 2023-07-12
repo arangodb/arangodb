@@ -1,14 +1,13 @@
 
 @startDocuBlock put_api_replication_applier_stop
-@brief stop the replication
 
-@RESTHEADER{PUT /_api/replication/applier-stop, Stop replication applier,stopReplicationApplier}
+@RESTHEADER{PUT /_api/replication/applier-stop, Stop the replication applier,stopReplicationApplier}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{global,boolean,optional}
-If set to *true*, stops the global replication applier for all
-databases. If set to *false*, stops the replication applier in the
+If set to `true`, stops the global replication applier for all
+databases. If set to `false`, stops the replication applier in the
 selected database.
 
 @RESTDESCRIPTION

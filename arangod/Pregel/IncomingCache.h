@@ -26,11 +26,13 @@
 #include <velocypack/Slice.h>
 
 #include <atomic>
-#include <map>
-#include <set>
 #include <string>
 
 #include "Basics/Common.h"
+
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
+#include "Containers/NodeHashMap.h"
 
 #include "Pregel/Iterators.h"
 #include "Pregel/MessageCombiner.h"
@@ -93,16 +95,16 @@ class InCache {
 /// containing all messages for this vertex
 template<typename M>
 class ArrayInCache : public InCache<M> {
-  typedef std::unordered_map<std::string, std::vector<M>> HMap;
-  std::map<PregelShard, HMap> _shardMap;
-  std::set<PregelShard> _localShards;
+  using HMap = containers::NodeHashMap<std::string, std::vector<M>>;
+  containers::FlatHashMap<PregelShard, HMap> _shardMap;
+  containers::FlatHashSet<PregelShard> _localShards;
 
  protected:
   void _set(PregelShard shard, std::string_view const& vertexId,
             M const& data) override;
 
  public:
-  ArrayInCache(std::set<PregelShard> localShards,
+  ArrayInCache(containers::FlatHashSet<PregelShard> localShards,
                MessageFormat<M> const* format);
 
   void mergeCache(InCache<M> const* otherCache) override;
@@ -118,18 +120,18 @@ class ArrayInCache : public InCache<M> {
 /// Cache which stores one value per vertex id
 template<typename M>
 class CombiningInCache : public InCache<M> {
-  typedef std::unordered_map<std::string, M> HMap;
+  using HMap = containers::NodeHashMap<std::string, M>;
 
   MessageCombiner<M> const* _combiner;
-  std::map<PregelShard, HMap> _shardMap;
-  std::set<PregelShard> _localShards;
+  containers::FlatHashMap<PregelShard, HMap> _shardMap;
+  containers::FlatHashSet<PregelShard> _localShards;
 
  protected:
   void _set(PregelShard shard, std::string_view const& vertexId,
             M const& data) override;
 
  public:
-  CombiningInCache(std::set<PregelShard> localShards,
+  CombiningInCache(containers::FlatHashSet<PregelShard> localShards,
                    MessageFormat<M> const* format,
                    MessageCombiner<M> const* combiner);
 

@@ -90,6 +90,12 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature,
 
 EnsureIndex::~EnsureIndex() = default;
 
+// For local book keeping and reporting on /_admin/actions
+arangodb::Result EnsureIndex::setProgress(double d) {
+  _progress = d;
+  return {};
+}
+
 bool EnsureIndex::first() {
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
@@ -150,8 +156,11 @@ bool EnsureIndex::first() {
       // continue with the job normally
     }
 
+    auto lambda = std::make_shared<std::function<arangodb::Result(double d)>>(
+        [this](double d) { return setProgress(d); });
     VPackBuilder index;
-    auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index);
+    auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index,
+                                             std::move(lambda));
     result(res);
 
     if (res.ok()) {

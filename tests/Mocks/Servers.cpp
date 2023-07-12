@@ -67,7 +67,9 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/PreparedResponseConnectionPool.h"
+#include "Mocks/StorageEngineMock.h"
 #include "Network/NetworkFeature.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Rest/Version.h"
@@ -94,6 +96,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "V8/V8SecurityFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
@@ -214,7 +217,8 @@ static void SetupAqlPhase(MockServer& server) {
 MockServer::MockServer(ServerState::RoleEnum myRole, bool injectClusterIndexes)
     : _server(std::make_shared<options::ProgramOptions>("", "", "", nullptr),
               nullptr),
-      _engine(_server, injectClusterIndexes),
+      _engine(
+          std::make_unique<StorageEngineMock>(_server, injectClusterIndexes)),
       _oldRebootId(0),
       _started(false) {
   _oldRole = ServerState::instance()->getRole();
@@ -259,7 +263,7 @@ void MockServer::startFeatures() {
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
 
-  _server.getFeature<EngineSelectorFeature>().setEngineTesting(&_engine);
+  _server.getFeature<EngineSelectorFeature>().setEngineTesting(_engine.get());
 
   if (_server.hasFeature<SchedulerFeature>()) {
     auto& sched = _server.getFeature<SchedulerFeature>();
@@ -431,6 +435,13 @@ std::shared_ptr<transaction::Methods> MockAqlServer::createFakeTransaction()
 std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
     bool activateTracing, std::string queryString,
     std::function<void(aql::Query&)> callback) const {
+  return createFakeQuery(SchedulerFeature::SCHEDULER, activateTracing,
+                         queryString, callback);
+}
+
+std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
+    Scheduler* scheduler, bool activateTracing, std::string queryString,
+    std::function<void(aql::Query&)> callback) const {
   VPackBuilder queryOptions;
   queryOptions.openObject();
   if (activateTracing) {
@@ -444,7 +455,7 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
   auto query = aql::Query::create(
       transaction::StandaloneContext::Create(getSystemDatabase()),
       aql::QueryString(queryString), nullptr,
-      aql::QueryOptions(queryOptions.slice()));
+      aql::QueryOptions(queryOptions.slice()), scheduler);
   callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 
@@ -563,7 +574,7 @@ void MockClusterServer::startFeatures() {
   ServerState::instance()->setRebootId(RebootId{1});
 
   // register factories & normalizers
-  auto& indexFactory = const_cast<IndexFactory&>(_engine.indexFactory());
+  auto& indexFactory = const_cast<IndexFactory&>(_engine->indexFactory());
   auto& factory =
       getFeature<iresearch::IResearchFeature>().factory<ClusterEngine>();
   indexFactory.emplace(

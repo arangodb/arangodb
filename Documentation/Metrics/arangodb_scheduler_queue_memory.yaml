@@ -1,0 +1,15 @@
+name: arangodb_scheduler_queue_memory
+introducedIn: "3.12.0"
+help: |
+  Number of bytes allocated for tasks in the scheduler queue.
+unit: bytes
+type: gauge
+category: Scheduler
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of bytes allocated for tasks in the scheduler queue.

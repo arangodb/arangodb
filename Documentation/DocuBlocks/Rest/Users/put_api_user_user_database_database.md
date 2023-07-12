@@ -1,7 +1,6 @@
 @startDocuBlock put_api_user_user_database_database
-@brief Set the database access level.
 
-@RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Set the database access level, setUserDatabasePermissions}
+@RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Set a user's database access level, setUserDatabasePermissions}
 
 @RESTBODYPARAM{grant,string,required,string}
 - Use "rw" to set the database access level to *Administrate*.
@@ -17,7 +16,7 @@ The name of the user.
 The name of the database.
 
 @RESTDESCRIPTION
-Sets the database access levels for the database *dbname* of user *user*. You
+Sets the database access levels for the database `dbname` of user `user`. You
 need the *Administrate* server access level in order to execute this REST
 call.
 
@@ -31,7 +30,7 @@ If the JSON representation is malformed or mandatory data is missing
 from the request.
 
 @RESTRETURNCODE{401}
-Returned if you have *No access* database access level to the *_system*
+Returned if you have *No access* database access level to the `_system`
 database.
 
 @RESTRETURNCODE{403}

@@ -42,7 +42,18 @@ class SharedQueryState;
 
 // The RemoteBlock is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.
-class AsyncExecutor final {};
+class AsyncExecutor final {
+ public:
+  struct Properties {
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Enable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
+  };
+  // using Fetcher = std::monostate;
+  using Infos = std::monostate;
+  // using Stats = NoStats;
+};
 
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
@@ -53,13 +64,22 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // nonstandard arguments (server, ownName and queryId) should probably be
   // moved into some AsyncExecutorInfos class.
-  ExecutionBlockImpl(ExecutionEngine* engine, AsyncNode const* node);
+  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node);
+
+  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
+                     RegisterInfos,        // ignored
+                     AsyncExecutor::Infos  // ignored
+  );
 
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
       AqlCallStack const& stack) override;
 
   std::pair<ExecutionState, Result> initializeCursor(
       InputAqlItemRow const& input) override;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setPostAsyncExecuteCallback(std::function<void()> cb);
+#endif
 
  private:
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
@@ -77,6 +97,10 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
 
   ExecutionState _returnState = ExecutionState::HASMORE;
   AsyncState _internalState = AsyncState::Empty;
+  int _numWakeupsQueued = 0;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  std::function<void()> _postAsyncExecuteCallback;
+#endif
 };
 
 }  // namespace aql

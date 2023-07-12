@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_database
-@brief creates a new database
 
-@RESTHEADER{POST /_api/database, Create database, createDatabase}
+@RESTHEADER{POST /_api/database, Create a database, createDatabase}
 
 @RESTBODYPARAM{name,string,required,string}
 Has to contain a valid database name. The name must conform to the selected
@@ -36,9 +35,9 @@ equal the number of DB-Servers and has a value of `0`. _(cluster only)_
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
 An array of user objects. The users will be granted *Administrate* permissions
 for the new database. Users that do not exist yet will be created.
-If *users* is not specified or does not contain any users, the default user
-*root* will be used to ensure that the new database will be accessible after it
-is created. The *root* user is created with an empty password should it not
+If `users` is not specified or does not contain any users, the default user
+`root` will be used to ensure that the new database will be accessible after it
+is created. The `root` user is created with an empty password should it not
 exist. Each user object can contain the following attributes:
 
 @RESTSTRUCT{username,get_api_database_new_USERS,string,required,}
@@ -50,8 +49,8 @@ string. The attribute is ignored for users that already exist.
 
 @RESTSTRUCT{active,get_api_database_new_USERS,boolean,optional,}
 A flag indicating whether the user account should be activated or not.
-The default value is *true*. If set to *false*, then the user won't be able to
-log into the database. The default is *true*. The attribute is ignored for users
+The default value is `true`. If set to `false`, then the user won't be able to
+log into the database. The default is `true`. The attribute is ignored for users
 that already exist.
 
 @RESTSTRUCT{extra,get_api_database_new_USERS,object,optional,}
@@ -60,11 +59,11 @@ to store graph viewer settings and saved queries. Should not be set or
 modified by end users, as custom attributes will not be preserved.
 
 @RESTDESCRIPTION
-Creates a new database
+Creates a new database.
 
-The response is a JSON object with the attribute *result* set to *true*.
+The response is a JSON object with the attribute `result` set to `true`.
 
-**Note**: creating a new database is only possible from within the *_system* database.
+**Note**: Creating a new database is only possible from within the `_system` database.
 
 @RESTRETURNCODES
 
@@ -76,14 +75,14 @@ is returned if the request parameters are invalid or if a database with the
 specified name already exists.
 
 @RESTRETURNCODE{403}
-is returned if the request was not executed in the *_system* database.
+is returned if the request was not executed in the `_system` database.
 
 @RESTRETURNCODE{409}
 is returned if a database with the specified name already exists.
 
 @EXAMPLES
 
-Creating a database named *example*.
+Creating a database named `example`.
 
 @EXAMPLE_ARANGOSH_RUN{RestDatabaseCreate}
     var url = "/_api/database";
@@ -109,7 +108,7 @@ Creating a database named *example*.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Creating a database named *mydb* with two users, flexible sharding and
+Creating a database named `mydb` with two users, flexible sharding and
 default replication factor of 3 for collections that will be part of
 the newly created database.
 

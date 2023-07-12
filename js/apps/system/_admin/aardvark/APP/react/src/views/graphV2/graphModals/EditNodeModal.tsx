@@ -1,6 +1,6 @@
-import { Button, Flex, HStack, Spinner, Stack } from "@chakra-ui/react";
+import { Button, Flex, HStack, Spinner } from "@chakra-ui/react";
 import { JsonEditor, ValidationError } from "jsoneditor-react";
-import { omit } from "lodash";
+import { omit, pick } from "lodash";
 import React, { useState } from "react";
 import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
 import {
@@ -64,6 +64,7 @@ export const EditNodeModal = () => {
       onFailure: onClearAction
     });
   const mutableNodeData = omit(nodeData, immutableIds);
+  const immutableNodeData = pick(nodeData, immutableIds);
   const [json, setJson] = useState(mutableNodeData);
   const [errors, setErrors] = useState<ValidationError[]>();
 
@@ -82,13 +83,13 @@ export const EditNodeModal = () => {
     <Modal isOpen onClose={onClearAction}>
       <ModalHeader>Edit Node: {nodeId}</ModalHeader>
       <ModalBody>
-        <Stack spacing="4">
-          <AttributesInfo attributes={nodeData} />
+        <AttributesInfo attributes={immutableNodeData} />
           <JsonEditor
             value={mutableNodeData}
             onChange={value => {
               setJson(value);
             }}
+            allowedModes={['tree', 'code']}
             mode={"code"}
             history={true}
             onValidationError={errors => {
@@ -96,7 +97,6 @@ export const EditNodeModal = () => {
             }}
           />
           <JSONErrors errors={errors} />
-        </Stack>
       </ModalBody>
       <ModalFooter>
         <HStack>

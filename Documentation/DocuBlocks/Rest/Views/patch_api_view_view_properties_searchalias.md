@@ -1,7 +1,6 @@
 @startDocuBlock patch_api_view_view_properties_searchalias
-@brief Partially changes properties of a `search-alias` View
 
-@RESTHEADER{PATCH /_api/view/{view-name}/properties#searchalias, Partially changes properties of a search-alias View, updateViewPropertiesSearchAlias}
+@RESTHEADER{PATCH /_api/view/{view-name}/properties#searchalias, Update the properties of a search-alias View, updateViewPropertiesSearchAlias}
 
 @RESTURLPARAMETERS
 
@@ -49,34 +48,28 @@ The name of a collection.
 The name of an inverted index of the `collection`.
 
 @RESTRETURNCODE{400}
-If the *view-name* is missing, then a *HTTP 400* is returned.
+If the `view-name` is missing, then a *HTTP 400* is returned.
 
 @RESTRETURNCODE{404}
-If the *view-name* is unknown, then a *HTTP 404* is returned.
+If the `view-name` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestViewPatchPropertiesSearchAlias}
-    var viewName = "products";
-    var viewType = "search-alias";
-    var indexName1 = "inv_title";
-    var indexName2 = "inv_descr";
-
     var coll = db._create("books");
-    coll.ensureIndex({ type: "inverted", name: indexName1, fields: ["title"] });
-    coll.ensureIndex({ type: "inverted", name: indexName2, fields: ["description"] });
+    coll.ensureIndex({ type: "inverted", name: "inv_title", fields: ["title"] });
+    coll.ensureIndex({ type: "inverted", name: "inv_descr", fields: ["description"] });
 
-    var view = db._createView(viewName, viewType, {
-      indexes: [ { collection: coll.name(), index: indexName1 } ] });
+    var view = db._createView("productsView", "search-alias", {
+      indexes: [ { collection: coll.name(), index: "inv_title" } ] });
 
     var url = "/_api/view/"+ view.name() + "/properties";
     var response = logCurlRequest('PATCH', url, {
-      "indexes": [ { collection: coll.name(), index: indexName2 } ] });
-
+      "indexes": [ { collection: coll.name(), index: "inv_descr" } ] });
     assert(response.code === 200);
-
     logJsonResponse(response);
-    db._dropView(viewName);
+
+    db._dropView(view.name());
     db._drop(coll.name());
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

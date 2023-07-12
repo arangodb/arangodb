@@ -64,7 +64,7 @@ const testPaths = {
 class permissionsRunner extends tu.runLocalInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
-    this.info = "runInDriverTest";
+    this.info = "permissionsRunner";
   }
   run(testList) {
     let tmpDir = fs.getTempPath();

@@ -1,6 +1,5 @@
 
 @startDocuBlock get_api_gharial_graph_edge
-@brief Lists all edge definitions
 
 @RESTHEADER{GET /_api/gharial/{graph}/edge, List edge definitions, listEdgeDefinitions}
 

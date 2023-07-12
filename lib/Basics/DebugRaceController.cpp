@@ -24,47 +24,59 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #include "DebugRaceController.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ScopeGuard.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 static DebugRaceController Instance{};
 
-DebugRaceController::DebugRaceController() {}
-
 DebugRaceController& DebugRaceController::sharedInstance() { return Instance; }
 
 void DebugRaceController::reset() {
-  std::unique_lock<std::mutex> guard(_mutex);
+  {
+    auto guard = std::scoped_lock<std::mutex>(_mutex);
+    _data.clear();
+  }
   _condVariable.notify_all();
-  _data.clear();
-  _didTrigger = false;
 }
 
-std::vector<std::any> DebugRaceController::data() const {
-  std::unique_lock<std::mutex> guard(_mutex);
-  return _data;
+bool DebugRaceController::didTrigger(
+    std::unique_lock<std::mutex> const& guard,
+    std::size_t numberOfThreadsToWaitFor) const {
+  TRI_ASSERT(guard.owns_lock());
+  TRI_ASSERT(_data.size() <= numberOfThreadsToWaitFor);
+  return numberOfThreadsToWaitFor == _data.size();
 }
 
 auto DebugRaceController::waitForOthers(
     size_t numberOfThreadsToWaitFor, std::any myData,
-    arangodb::application_features::ApplicationServer const& server) -> bool {
-  std::unique_lock<std::mutex> guard(_mutex);
-  if (!_didTrigger) {
+    application_features::ApplicationServer const& server)
+    -> std::optional<std::vector<std::any>> {
+  auto notifyGuard =
+      scopeGuard([this]() noexcept { _condVariable.notify_all(); });
+  {
+    std::unique_lock<std::mutex> guard(_mutex);
+
+    if (didTrigger(guard, numberOfThreadsToWaitFor)) {
+      return std::nullopt;
+    }
+
+    _data.reserve(numberOfThreadsToWaitFor);
     _data.emplace_back(std::move(myData));
     _condVariable.wait(guard, [&] {
-      // check emtpy to continue after beeing resetted
+      // check empty to continue after being reset
       return _data.empty() || _data.size() == numberOfThreadsToWaitFor ||
              server.isStopping();
     });
-    if (!_data.empty()) {
-      _didTrigger = true;
+
+    if (didTrigger(guard, numberOfThreadsToWaitFor)) {
+      return {_data};
+    } else {
+      return std::nullopt;
     }
-    _condVariable.notify_all();
-    return true;
-  } else {
-    return false;
   }
 }
 

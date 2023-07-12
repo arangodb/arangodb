@@ -577,7 +577,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
   pos = fallback.rfind(':');
   if (pos != std::string::npos) {
-    fallback = fallback.substr(0, pos);
+    fallback.resize(pos);
   }
   auto ss = ServerState::instance();
   ss->findHost(fallback);

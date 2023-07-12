@@ -42,10 +42,8 @@ namespace arangodb::inspection {
 template<class Context = NoContext>
 struct VPackSaveInspector
     : SaveInspectorBase<VPackSaveInspector<Context>, Context> {
- protected:
   using Base = SaveInspectorBase<VPackSaveInspector, Context>;
 
- public:
   explicit VPackSaveInspector(velocypack::Builder& builder) requires(
       !Base::hasContext)
       : _builder(builder) {}

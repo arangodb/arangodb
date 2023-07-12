@@ -85,7 +85,7 @@ class TransactionalCache final : public Cache {
   /// value if it fails to acquire a lock in a timely fashion. Should not block
   /// for long.
   //////////////////////////////////////////////////////////////////////////////
-  Result insert(CachedValue* value) override;
+  ::ErrorCode insert(CachedValue* value) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to remove the given key.
@@ -96,7 +96,7 @@ class TransactionalCache final : public Cache {
   /// before quitting, so may block for longer than find or insert. Client may
   /// re-try.
   //////////////////////////////////////////////////////////////////////////////
-  Result remove(void const* key, std::uint32_t keySize) override;
+  ::ErrorCode remove(void const* key, std::uint32_t keySize) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to banish the given key.
@@ -107,7 +107,7 @@ class TransactionalCache final : public Cache {
   /// before quitting, so may block for longer than find or insert. Client
   /// should re-try.
   //////////////////////////////////////////////////////////////////////////////
-  Result banish(void const* key, std::uint32_t keySize) override;
+  ::ErrorCode banish(void const* key, std::uint32_t keySize) override;
 
   /// @brief returns the name of the hasher
   std::string_view hasherName() const noexcept;
@@ -131,14 +131,14 @@ class TransactionalCache final : public Cache {
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
-  virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
-  virtual void migrateBucket(void* sourcePtr,
-                             std::unique_ptr<Table::Subtable> targets,
-                             Table& newTable) override;
+  bool freeMemoryWhile(std::function<bool(std::uint64_t)> const& cb) override;
+  void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
+                     Table& newTable) override;
 
   // helpers
   std::tuple<::ErrorCode, Table::BucketLocker> getBucket(
-      std::uint32_t hash, std::uint64_t maxTries, bool singleOperation = true);
+      Table::HashOrId bucket, std::uint64_t maxTries,
+      bool singleOperation = true);
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
 };

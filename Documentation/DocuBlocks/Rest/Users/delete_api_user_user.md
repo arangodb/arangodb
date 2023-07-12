@@ -1,7 +1,6 @@
 @startDocuBlock delete_api_user_user
-@brief delete a user permanently.
 
-@RESTHEADER{DELETE /_api/user/{user}, Remove User, deleteUser}
+@RESTHEADER{DELETE /_api/user/{user}, Remove a user, deleteUser}
 
 @RESTURLPARAMETERS
 
@@ -9,8 +8,10 @@
 The name of the user
 
 @RESTDESCRIPTION
-Removes an existing user, identified by *user*.  You need *Administrate* for
-the server access level in order to execute this REST call.
+Removes an existing user, identified by `user`. 
+
+You need *Administrate* permissions for the server access level in order to
+execute this REST call.
 
 @RESTRETURNCODES
 
@@ -18,7 +19,7 @@ the server access level in order to execute this REST call.
 Is returned if the user was removed by the server
 
 @RESTRETURNCODE{401}
-Returned if you have *No access* database access level to the *_system*
+Returned if you have *No access* database access level to the `_system`
 database.
 
 @RESTRETURNCODE{403}

@@ -258,7 +258,7 @@ TransactionalStore::Document TransactionalStore::lookup(
                                                   &result, sizeof(Document));
       if (value) {
         auto status = _cache->insert(value);
-        if (status.fail()) {
+        if (status != TRI_ERROR_NO_ERROR) {
           delete value;
         }
       }

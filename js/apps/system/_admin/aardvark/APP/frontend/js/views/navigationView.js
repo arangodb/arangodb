@@ -12,7 +12,6 @@
       'click .tab': 'navigateByTab',
       'click li': 'switchTab',
       'click .arangodbLogo': 'selectMenuItem',
-      'click .shortcut-icons p': 'showShortcutModal'
     },
 
     renderFirst: true,
@@ -326,7 +325,7 @@
       var navigateTo = tab.id;
       var dropdown = false;
 
-      if (navigateTo === 'enterprise') {
+      if (navigateTo === 'enterprise' || navigateTo === 'shortcuts') {
         return;
       }
 
@@ -463,10 +462,19 @@
     },
 
     switchTab: function (e) {
-      var id = $(e.currentTarget).children().first().attr('id');
+      var link = $(e.currentTarget).children().first();
+      var id = link.attr('id');
 
       if (id === 'enterprise') {
-        window.open('https://www.arangodb.com/download-arangodb-enterprise/', '_blank');
+        e.preventDefault();
+        window.open(link.attr('href'), '_blank');
+        return;
+      }
+
+      if (id === 'shortcuts') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.showShortcutModal();
         return;
       }
 

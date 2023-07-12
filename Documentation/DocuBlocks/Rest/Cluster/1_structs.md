@@ -14,7 +14,7 @@ Allow moving leaders. (Default: `false`)
 Allow moving followers. (Default: `false`)
 
 @RESTSTRUCT{excludeSystemCollections,rebalance_compute,boolean,optional,}
-Remove system collections from the rebalance plan. (Default: `false`)
+Ignore system collections in the rebalance plan. (Default: `false`)
 
 @RESTSTRUCT{piFactor,rebalance_compute,number,optional,}
 (Default: `256e6`)
@@ -66,6 +66,9 @@ The sum of the sizes.
 
 @RESTSTRUCT{totalShards,shard_imbalance_struct,integer,required,}
 The sum of shards, counting leader and follower shards.
+
+@RESTSTRUCT{totalShardsFromSystemCollections,shard_imbalance_struct,integer,required,}
+The sum of system collection shards, counting leader shards only.
 
 @RESTSTRUCT{imbalance,shard_imbalance_struct,integer,required,}
 The measure of the total imbalance. A high value indicates a high imbalance.

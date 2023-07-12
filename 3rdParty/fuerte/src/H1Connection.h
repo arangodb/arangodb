@@ -26,16 +26,14 @@
 #include <fuerte/helper.h>
 #include <fuerte/loop.h>
 #include <fuerte/message.h>
+#include <llhttp.h>
 
 #include <atomic>
 #include <chrono>
 #include <optional>
 
-#include <llhttp.h>
-
 #include "GeneralConnection.h"
 #include "http.h"
-
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
@@ -93,9 +91,9 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
       std::unique_ptr<Request>&& req, RequestCallback&& cb) override {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     if (req->getFuzzerReq()) {
-      return std::make_unique<RequestItem>(
-          std::move(req), std::move(cb), req->getFuzzReqHeader().value());
-    } 
+      return std::make_unique<RequestItem>(std::move(req), std::move(cb),
+                                           req->getFuzzReqHeader().value());
+    }
 #endif
     auto h = buildRequestHeader(*req);
     return std::make_unique<RequestItem>(std::move(req), std::move(cb),
@@ -115,19 +113,20 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
   fuerte::Error translateError(asio_ns::error_code const& e,
                                fuerte::Error c) const {
 #ifdef _WIN32
-    if (this->_timeoutOnReadWrite && (c == Error::ReadError ||
-                                      c == Error::WriteError)) {
+    if (this->_timeoutOnReadWrite &&
+        (c == Error::ReadError || c == Error::WriteError)) {
       return Error::RequestTimeout;
     }
 #endif
-    
+
     if (e == asio_ns::error::misc_errors::eof ||
-        e == asio_ns::error::connection_reset) {
+        e == asio_ns::error::connection_reset ||
+        e == asio_ns::error::connection_aborted) {
       return fuerte::Error::ConnectionClosed;
     } else if (e == asio_ns::error::operation_aborted) {
       // keepalive timeout may have expired
-      return this->_timeoutOnReadWrite ? fuerte::Error::RequestTimeout :
-                                         fuerte::Error::ConnectionCanceled;
+      return this->_timeoutOnReadWrite ? fuerte::Error::RequestTimeout
+                                       : fuerte::Error::ConnectionCanceled;
     }
     return c;
   }

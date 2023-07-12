@@ -33,7 +33,6 @@
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;
-class LogFollower;
 class LogLeader;
 }  // namespace arangodb::replication2::replicated_log
 
@@ -49,7 +48,7 @@ struct ReplicatedStateFeature {
    * i.e. ReplicatedStateTraits<S>::FactoryType.
    */
   template<typename S, typename... Args>
-  void registerStateType(std::string name, Args&&... args) {
+  void registerStateType(std::string const& name, Args&&... args) {
     using Factory = typename ReplicatedStateTraits<S>::FactoryType;
     static_assert(std::is_constructible_v<Factory, Args...>);
     auto factory = std::make_shared<InternalFactory<S, Factory>>(
@@ -69,13 +68,15 @@ struct ReplicatedStateFeature {
    */
   auto createReplicatedState(std::string_view name, std::string_view database,
                              LogId logId,
-                             std::shared_ptr<replicated_log::ReplicatedLog> log)
+                             std::shared_ptr<replicated_log::ReplicatedLog> log,
+                             std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<ReplicatedStateBase>;
 
   auto createReplicatedState(std::string_view name, std::string_view database,
                              LogId logId,
                              std::shared_ptr<replicated_log::ReplicatedLog> log,
-                             LoggerContext const& loggerContext)
+                             LoggerContext const& loggerContext,
+                             std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<ReplicatedStateBase>;
 
   virtual ~ReplicatedStateFeature() = default;
@@ -104,7 +105,8 @@ struct ReplicatedStateFeature {
     virtual ~InternalFactoryBase() = default;
     virtual auto createReplicatedState(
         GlobalLogIdentifier, std::shared_ptr<replicated_log::ReplicatedLog>,
-        LoggerContext, std::shared_ptr<ReplicatedStateMetrics>)
+        LoggerContext, std::shared_ptr<ReplicatedStateMetrics>,
+        std::shared_ptr<IScheduler>)
         -> std::shared_ptr<ReplicatedStateBase> = 0;
   };
 
@@ -130,11 +132,12 @@ struct ReplicatedStateFeature::InternalFactory : InternalFactoryBase,
   auto createReplicatedState(GlobalLogIdentifier gid,
                              std::shared_ptr<replicated_log::ReplicatedLog> log,
                              LoggerContext loggerContext,
-                             std::shared_ptr<ReplicatedStateMetrics> metrics)
+                             std::shared_ptr<ReplicatedStateMetrics> metrics,
+                             std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<ReplicatedStateBase> override {
     return std::make_shared<ReplicatedState<S>>(
         std::move(gid), std::move(log), getStateFactory(),
-        std::move(loggerContext), std::move(metrics));
+        std::move(loggerContext), std::move(metrics), std::move(scheduler));
   }
 
   auto getStateFactory() -> std::shared_ptr<Factory> {

@@ -1,8 +1,7 @@
 
 @startDocuBlock delete_api_collection_collection
-@brief drops a collection
 
-@RESTHEADER{DELETE /_api/collection/{collection-name}, Drops a collection, deleteCollection}
+@RESTHEADER{DELETE /_api/collection/{collection-name}, Drop a collection, deleteCollection}
 
 @HINTS
 {% hint 'warning' %}
@@ -19,26 +18,26 @@ The name of the collection to drop.
 
 @RESTQUERYPARAM{isSystem,boolean,optional}
 Whether or not the collection to drop is a system collection. This parameter
-must be set to *true* in order to drop a system collection.
+must be set to `true` in order to drop a system collection.
 
 @RESTDESCRIPTION
-Drops the collection identified by *collection-name*.
+Drops the collection identified by `collection-name`.
 
 If the collection was successfully dropped, an object is returned with
 the following attributes:
 
-- *error*: *false*
+- `error`: `false`
 
-- *id*: The identifier of the dropped collection.
+- `id`: The identifier of the dropped collection.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404* is returned.
+If the `collection-name` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 

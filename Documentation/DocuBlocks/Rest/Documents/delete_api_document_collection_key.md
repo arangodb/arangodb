@@ -1,7 +1,6 @@
 @startDocuBlock delete_api_document_collection_key
-@brief removes a document
 
-@RESTHEADER{DELETE /_api/document/{collection}/{key},Removes a document,deleteDocument}
+@RESTHEADER{DELETE /_api/document/{collection}/{key},Remove a document,deleteDocument}
 
 @RESTURLPARAMETERS
 

@@ -1583,9 +1583,9 @@ std::string TRI_GetAbsolutePath(std::string const& fileName,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TRI_BinaryName(char const* argv0) {
-  std::string result = TRI_Basename(argv0);
-  if (result.size() > 4 && result.substr(result.size() - 4, 4) == ".exe") {
-    result = result.substr(0, result.size() - 4);
+  auto result = TRI_Basename(argv0);
+  if (result.size() > 4 && result.ends_with(".exe")) {
+    result.resize(result.size() - 4);
   }
 
   return result;

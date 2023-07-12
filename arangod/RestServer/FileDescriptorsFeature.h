@@ -25,7 +25,11 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/operating-system.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
+
+#include <chrono>
+#include <mutex>
 
 #ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
@@ -42,10 +46,34 @@ class FileDescriptorsFeature : public ArangodFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
+  // count the number of open files, by scanning /proc/self/fd.
+  // note: this can be expensive
+  void countOpenFiles();
+
+  // same as countOpenFiles(), but prevents multiple threads from counting
+  // at the same time, and only recounts if at a last 30 seconds have
+  // passed since the last counting
+  void countOpenFilesIfNeeded();
+
  private:
   void adjustFileDescriptors();
 
   uint64_t _descriptorsMinimum;
+
+  uint64_t _countDescriptorsInterval;
+
+  metrics::Gauge<uint64_t>& _fileDescriptorsCurrent;
+  metrics::Gauge<uint64_t>& _fileDescriptorsLimit;
+
+  // mutex for counting open file in countOpenFilesIfNeeds.
+  // this mutex prevents multiple callers from entering the function at
+  // the same time, causing excessive IO for directory iteration.
+  // additionally, it protects _lastCountStamp, so that only one thread
+  // at a time wil do the counting and check/update _lastCountStamp.
+  // this also prevents overly eager re-counting in case we have counted
+  // only recented.
+  std::mutex _lastCountMutex;
+  std::chrono::steady_clock::time_point _lastCountStamp;
 };
 
 }  // namespace arangodb

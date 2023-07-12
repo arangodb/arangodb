@@ -30,7 +30,6 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewStoredValues.h"
 #include "IResearch/IResearchViewSort.h"
-#include "VocBase/LogicalCollection.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 
@@ -175,6 +174,8 @@ struct IResearchInvertedIndexMetaIndexingContext {
   }
 
   Features const& features() const noexcept { return _features; }
+
+  bool hasNested() const noexcept { return _hasNested; }
 
   absl::flat_hash_map<std::string_view,
                       IResearchInvertedIndexMetaIndexingContext>

@@ -21,6 +21,9 @@ export const ChakraCustomProvider = ({
         height: "auto",
         display: "flex",
         width: "100%"
+      },
+      ".centralRow": {
+        backgroundColor: "white !important"
       }
     };
   }

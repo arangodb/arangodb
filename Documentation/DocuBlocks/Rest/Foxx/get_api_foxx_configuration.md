@@ -1,13 +1,12 @@
 @startDocuBlock get_api_foxx_configuration
-@brief get configuration options
 
-@RESTHEADER{GET /_api/foxx/configuration, Get configuration options, getFoxxConfiguration}
+@RESTHEADER{GET /_api/foxx/configuration, Get the configuration options, getFoxxConfiguration}
 
 @RESTDESCRIPTION
 Fetches the current configuration for the service at the given mount path.
 
 Returns an object mapping the configuration option names to their definitions
-including a human-friendly *title* and the *current* value (if any).
+including a human-friendly `title` and the `current` value (if any).
 
 @RESTQUERYPARAMETERS
 

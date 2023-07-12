@@ -2650,18 +2650,17 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       VPackObjectBuilder ob(&body);
       body.add("collection", collectionName);
     }
-    try {
-      leaderState->replicateOperation(
-          body.sharedSlice(),
-          replication2::replicated_state::document::OperationType::kTruncate,
-          state()->id(),
-          replication2::replicated_state::document::ReplicationOptions{});
-    } catch (basics::Exception const& e) {
-      return OperationResult(Result{e.code(), e.what()}, options);
-    } catch (std::exception const& e) {
-      return OperationResult(Result{TRI_ERROR_INTERNAL, e.what()}, options);
-    }
-    return OperationResult{Result{}, options};
+    auto operation =
+        replication2::replicated_state::document::ReplicatedOperation::
+            buildTruncateOperation(state()->id(), trxColl->collectionName());
+    // Should finish immediately, because we are not waiting the operation to be
+    // committed in the replicated log
+    auto replicationFut = leaderState->replicateOperation(
+        std::move(operation),
+        replication2::replicated_state::document::ReplicationOptions{});
+    TRI_ASSERT(replicationFut.isReady());
+    auto replicationRes = replicationFut.get();
+    return OperationResult{replicationRes.result(), options};
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -3147,17 +3146,22 @@ Future<Result> Methods::replicateOperations(
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
         transactionCollection);
     auto leaderState = rtc.leaderState();
-    try {
-      leaderState->replicateOperation(
-          replicationData.sharedSlice(),
-          replication2::replicated_state::document::fromDocumentOperation(
-              operation),
-          state()->id(),
-          replication2::replicated_state::document::ReplicationOptions{});
-    } catch (basics::Exception const& e) {
-      return Result{e.code(), e.what()};
-    } catch (std::exception const& e) {
-      return Result{TRI_ERROR_INTERNAL, e.what()};
+    auto replicatedOp = replication2::replicated_state::document::
+        ReplicatedOperation::buildDocumentOperation(
+            operation, state()->id(), rtc.collectionName(),
+            replicationData.sharedSlice());
+    // Should finish immediately
+    auto replicationFut = leaderState->replicateOperation(
+        std::move(replicatedOp),
+        replication2::replicated_state::document::ReplicationOptions{});
+
+    // Should finish immediately, because we are not waiting the operation to be
+    // committed in the replicated log
+    TRI_ASSERT(replicationFut.isReady());
+
+    auto replicationRes = replicationFut.get();
+    if (replicationRes.fail()) {
+      return replicationRes.result();
     }
     return performIntermediateCommitIfRequired(collection->id());
   }
@@ -3358,6 +3362,23 @@ Future<Result> Methods::replicateOperations(
 
         } else {
           auto r = resp.combinedResult();
+
+          // Special case if the follower has already aborted the transaction.
+          // This can happen if a query fails and causes the leaders to abort
+          // the transaction on the followers. However, if the followers have
+          // transactions that are shared with leaders of other shards and one
+          // of those leaders has not yet seen the error, then it will happily
+          // continue to replicate to that follower. But if the follower has
+          // already aborted the transaction, then it will reject the
+          // replication request. In this case we do not want to drop the
+          // follower, but simply return the error and abort our local
+          // transaction.
+          if (r.is(TRI_ERROR_TRANSACTION_ABORTED) &&
+              this->state()->hasHint(
+                  transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
+            return r;
+          }
+
           bool followerRefused =
               (r.errorNumber() ==
                TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);

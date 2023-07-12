@@ -1,5 +1,4 @@
 @startDocuBlock post_admin_backup_download
-@brief download a specific local backup
 
 @RESTHEADER{POST /_admin/backup/download, Download a backup from a remote repository, downloadBackup}
 

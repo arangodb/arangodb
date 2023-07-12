@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_collection_collection_recalculateCount
-@brief recalculates the document count of a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/recalculateCount, Recalculate count of a collection, recalculateCollectionCount}
+@RESTHEADER{PUT /_api/collection/{collection-name}/recalculateCount, Recalculate the document count of a collection, recalculateCollectionCount}
 
 @RESTURLPARAMETERS
 
@@ -14,7 +13,7 @@ Recalculates the document count of a collection, if it ever becomes inconsistent
 
 It returns an object with the attributes
 
-- *result*: will be *true* if recalculating the document count succeeded.
+- `result`: will be `true` if recalculating the document count succeeded.
 
 @RESTRETURNCODES
 
@@ -22,6 +21,6 @@ It returns an object with the attributes
 If the document count was recalculated successfully, *HTTP 200* is returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404* is returned.
+If the `collection-name` is unknown, then a *HTTP 404* is returned.
 
 @endDocuBlock

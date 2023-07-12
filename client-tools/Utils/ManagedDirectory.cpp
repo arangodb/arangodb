@@ -431,8 +431,9 @@ void ManagedDirectory::spitFile(std::string const& filename,
     _status = ::genericError(filename, O_WRONLY);
   } else if (file->status().fail()) {
     _status = file->status();
+  } else {
+    file->spit(content);
   }
-  file->spit(content);
 }
 
 std::string ManagedDirectory::slurpFile(std::string const& filename) {

@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_index_index
-@brief returns an index
 
-@RESTHEADER{GET /_api/index/{index-id},Read index, getIndex}
+@RESTHEADER{GET /_api/index/{index-id},Get an index, getIndex}
 
 @RESTURLPARAMETERS
 
@@ -13,13 +12,13 @@ The index identifier.
 The result is an object describing the index. It has at least the following
 attributes:
 
-- *id*: the identifier of the index
+- `id`: the identifier of the index
 
-- *type*: the index type
+- `type`: the index type
 
 All other attributes are type-dependent. For example, some indexes provide
-*unique* or *sparse* flags, whereas others don't. Some indexes also provide
-a selectivity estimate in the *selectivityEstimate* attribute of the result.
+`unique` or `sparse` flags, whereas others don't. Some indexes also provide
+a selectivity estimate in the `selectivityEstimate` attribute of the result.
 
 @RESTRETURNCODES
 

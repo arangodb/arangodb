@@ -1,18 +1,18 @@
 
 @startDocuBlock get_api_aqlfunction
-@brief gets all registered AQL user functions
 
-@RESTHEADER{GET /_api/aqlfunction, Return registered AQL user functions, listAqlUserFunctions}
+@RESTHEADER{GET /_api/aqlfunction, List the registered user-defined AQL functions, listAqlUserFunctions}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{namespace,string,optional}
-Returns all registered AQL user functions from namespace *namespace* under *result*.
+Returns all registered AQL user functions from the specified namespace.
 
 @RESTDESCRIPTION
-Returns all registered AQL user functions.
+Returns all registered user-defined functions (UDFs) for the use in AQL of the
+current database.
 
-The call will return a JSON array with status codes and all user functions found under *result*.
+The call returns a JSON array with status codes and all user functions found under `result`.
 
 @RESTRETURNCODES
 
@@ -20,13 +20,13 @@ The call will return a JSON array with status codes and all user functions found
 on success *HTTP 200* is returned.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate whether an error occurred (*false* in this case)
+boolean flag to indicate whether an error occurred (`false` in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
 
 @RESTREPLYBODY{result,array,required,aql_userfunction_struct}
-All functions, or the ones matching the *namespace* parameter
+All functions, or the ones matching the `namespace` parameter
 
 @RESTSTRUCT{name,aql_userfunction_struct,string,required,}
 The fully qualified name of the user function
@@ -38,14 +38,14 @@ A string representation of the function body
 an optional boolean value to indicate whether the function
 results are fully deterministic (function return value solely depends on
 the input value and return value is the same for repeated calls with same
-input). The *isDeterministic* attribute is currently not used but may be
+input). The `isDeterministic` attribute is currently not used but may be
 used later for optimizations.
 
 @RESTRETURNCODE{400}
 If the user function name is malformed, the server will respond with *HTTP 400*.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate whether an error occurred (*true* in this case)
+boolean flag to indicate whether an error occurred (`true` in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code

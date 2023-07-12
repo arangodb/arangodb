@@ -22,13 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
-
-#include "Futures/Future.h"
-#include "RestServer/arangod.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
-#include "Transaction/Options.h"
-#include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <string>
@@ -38,13 +32,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class AgencyCache;
-class DatabaseFeature;
 class MaintenanceFeature;
-class TransactionState;
-
-template<typename T>
-class ResultT;
 
 namespace network {
 class ConnectionPool;
@@ -55,65 +43,66 @@ struct GlobalLogIdentifier;
 class LogId;
 }  // namespace replication2
 
-namespace velocypack {
-class Builder;
-}
 }  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
 
-struct IDocumentStateAgencyHandler;
 struct IDocumentStateNetworkHandler;
 struct IDocumentStateShardHandler;
 struct IDocumentStateSnapshotHandler;
 struct IDocumentStateTransactionHandler;
 struct IDocumentStateTransaction;
+struct IMaintenanceActionExecutor;
 
 struct IDocumentStateHandlersFactory {
   virtual ~IDocumentStateHandlersFactory() = default;
-  virtual auto createAgencyHandler(GlobalLogIdentifier gid)
-      -> std::shared_ptr<IDocumentStateAgencyHandler> = 0;
-  virtual auto createShardHandler(GlobalLogIdentifier gid)
+  virtual auto createShardHandler(TRI_vocbase_t& vocbase,
+                                  GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
-  virtual auto createSnapshotHandler(GlobalLogIdentifier const& gid)
-      -> std::unique_ptr<IDocumentStateSnapshotHandler> = 0;
-  virtual auto createTransactionHandler(GlobalLogIdentifier gid)
+  virtual auto createSnapshotHandler(TRI_vocbase_t& vocbase,
+                                     GlobalLogIdentifier const& gid)
+      -> std::shared_ptr<IDocumentStateSnapshotHandler> = 0;
+  virtual auto createTransactionHandler(
+      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
-  virtual auto createTransaction(DocumentLogEntry const& doc,
-                                 IDatabaseGuard const& dbGuard)
+  virtual auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
+                                 ShardID const& shard,
+                                 AccessMode::Type accessType)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> = 0;
+  virtual auto createMaintenanceActionExecutor(GlobalLogIdentifier gid,
+                                               ServerID server)
+      -> std::shared_ptr<IMaintenanceActionExecutor> = 0;
 };
 
 class DocumentStateHandlersFactory
     : public IDocumentStateHandlersFactory,
       public std::enable_shared_from_this<DocumentStateHandlersFactory> {
  public:
-  DocumentStateHandlersFactory(ArangodServer& server, AgencyCache& agencyCache,
-                               network::ConnectionPool* connectionPool,
-                               MaintenanceFeature& maintenaceFeature,
-                               DatabaseFeature& databaseFeature);
-  auto createAgencyHandler(GlobalLogIdentifier gid)
-      -> std::shared_ptr<IDocumentStateAgencyHandler> override;
-  auto createShardHandler(GlobalLogIdentifier gid)
+  DocumentStateHandlersFactory(network::ConnectionPool* connectionPool,
+                               MaintenanceFeature& maintenanceFeature);
+  auto createShardHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override;
-  auto createSnapshotHandler(GlobalLogIdentifier const& gid)
-      -> std::unique_ptr<IDocumentStateSnapshotHandler> override;
-  auto createTransactionHandler(GlobalLogIdentifier gid)
+  auto createSnapshotHandler(TRI_vocbase_t& vocbase,
+                             GlobalLogIdentifier const& gid)
+      -> std::shared_ptr<IDocumentStateSnapshotHandler> override;
+  auto createTransactionHandler(
+      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
-  auto createTransaction(DocumentLogEntry const& doc,
-                         IDatabaseGuard const& dbGuard)
+  auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
+                         ShardID const& shard, AccessMode::Type accessType)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;
+  auto createMaintenanceActionExecutor(GlobalLogIdentifier gid, ServerID server)
+      -> std::shared_ptr<IMaintenanceActionExecutor> override;
 
  private:
-  ArangodServer& _server;
-  AgencyCache& _agencyCache;
   network::ConnectionPool* _connectionPool;
   MaintenanceFeature& _maintenanceFeature;
-  DatabaseFeature& _databaseFeature;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

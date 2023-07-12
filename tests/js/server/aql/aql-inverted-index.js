@@ -44,7 +44,7 @@ function optimizerRuleInvertedIndexTestSuite() {
   return {
     setUpAll: function () {
       col = db._create(colName);
-      analyzers.save("my_geo", "geojson",{type: 'point'}, ["frequency", "norm", "position"]);
+      analyzers.save("my_geo", "geojson",{type: 'point'}, []);
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexUnsorted',
                        fields: ['data_field', {name:'norm_field', analyzer: 'text_en'},
@@ -169,7 +169,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       let executeRes = db._query(query.query, query.bindVars);
       assertEqual(docs/10, executeRes.toArray()[0]);
     },
-    testIndexGeoInRange: function () {
+    testIndexGeoInRange1: function () {
       const query = aql`
         FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
           FILTER GEO_IN_RANGE(d.geo_field, GEO_POINT(37.615895, 55.7039), 0.000001, 1000000)
@@ -180,7 +180,33 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexes));
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars);
-      assertEqual(docs/10, executeRes.toArray()[0]);
+      assertEqual(0, executeRes.toArray()[0]);
+    },
+    testIndexGeoInRange2: function () {
+        const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
+          FILTER GEO_IN_RANGE(d.geo_field, GEO_POINT(37.615895, 55.7039), 0.000001, 1000000000)
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs - docs/10, executeRes.toArray()[0]);
+    },
+    testIndexGeoInRange3: function () {
+        const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
+          FILTER GEO_IN_RANGE(d.geo_field, GEO_POINT(37.615895, 55.7039), 0, 1000000000)
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs, executeRes.toArray()[0]);
     },
     testIndexExists: function () {
       const query = aql`

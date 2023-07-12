@@ -31,7 +31,6 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterTransactionCollection.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -52,6 +51,7 @@ ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options)
     : TransactionState(vocbase, tid, options), _numIntermediateCommits(0) {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
   // we have to read revisions here as validateAndOptimize is executed before
   // transaction is started and during validateAndOptimize some simple
@@ -104,6 +104,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   setRegistered();
   if (AccessMode::isWriteOrExclusive(this->_type) &&
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    // cppcheck-suppress ignoredReturnValue
     TRI_ASSERT(isCoordinator());
 
     ClusterTrxMethods::SortedServersSet leaders{};

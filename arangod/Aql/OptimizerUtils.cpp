@@ -1142,31 +1142,32 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 
   // we might have an inverted index - it could cover whole condition at once.
   // Give it a try
-  for (auto& index : indexes) {
-    if (index.get()->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
-        ((hint.type() ==  // apply this index only if hinted
-              IndexHint::Simple &&
+  if (std::exchange(isAllCoveredByIndex, false)) {
+    for (auto& index : indexes) {
+      if (index.get()->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
+          // apply this index only if hinted
+          hint.type() == IndexHint::Simple &&
           std::find(hint.hint().begin(), hint.hint().end(), index->name()) !=
-              hint.hint().end()))) {
-      auto costs = index.get()->supportsFilterCondition(
-          trx, indexes, root, reference, itemsInCollection);
-      if (costs.supportsCondition) {
-        // we need to find 'root' in 'ast' and replace it with specialized
-        // version but for now we know that index will not alter the node, so
-        // just an assert
-        index.get()->specializeCondition(trx, root, reference);
-        usedIndexes.emplace_back(index);
-        isAllCoveredByIndex = true;
-        // FIXME: we should somehow consider other indices and calculate here
-        // "overall" score Also a question: if sort is covered but filter is not
-        // ? What is more optimal?
-        auto const sortSupport = index.get()->supportsSortCondition(
-            sortCondition, reference, itemsInCollection);
-        return std::make_pair(true, sortSupport.supportsCondition);
+              hint.hint().end()) {
+        auto costs = index.get()->supportsFilterCondition(
+            trx, indexes, root, reference, itemsInCollection);
+        if (costs.supportsCondition) {
+          // we need to find 'root' in 'ast' and replace it with specialized
+          // version but for now we know that index will not alter the node, so
+          // just an assert
+          index.get()->specializeCondition(trx, root, reference);
+          usedIndexes.emplace_back(index);
+          isAllCoveredByIndex = true;
+          // FIXME: we should somehow consider other indices and calculate here
+          // "overall" score Also a question: if sort is covered but filter is
+          // not ? What is more optimal?
+          auto const sortSupport = index.get()->supportsSortCondition(
+              sortCondition, reference, itemsInCollection);
+          return std::make_pair(true, sortSupport.supportsCondition);
+        }
       }
     }
   }
-  isAllCoveredByIndex = false;
   size_t const n = root->numMembers();
   for (size_t i = 0; i < n; ++i) {
     // BTS-398: if there are multiple OR-ed conditions, fail only for forced

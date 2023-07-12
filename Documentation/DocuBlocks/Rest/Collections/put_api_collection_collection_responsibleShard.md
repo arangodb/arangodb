@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_collection_collection_responsibleShard
-@brief Return the responsible shard for a document
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/responsibleShard, Return responsible shard for a document, getResponsibleShard}
+@RESTHEADER{PUT /_api/collection/{collection-name}/responsibleShard, Get the responsible shard for a document, getResponsibleShard}
 
 @RESTALLBODYPARAM{document,object,required}
 The request body must be a JSON object with at least the shard key
@@ -21,7 +20,7 @@ existed.
 The request must body must contain a JSON document with at least the
 collection's shard key attributes set to some values.
 
-The response is a JSON object with a *shardId* attribute, which will
+The response is a JSON object with a `shardId` attribute, which will
 contain the ID of the responsible shard.
 
 **Note** : This method is only available in a cluster Coordinator.
@@ -32,14 +31,14 @@ contain the ID of the responsible shard.
 Returns the ID of the responsible shard.
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 Additionally, if not all of the collection's shard key
 attributes are present in the input document, then a
 *HTTP 400* is returned as well.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then an *HTTP 404*
+If the `collection-name` is unknown, then an *HTTP 404*
 is returned.
 
 @RESTRETURNCODE{501}

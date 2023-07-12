@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_collection_collection_unload
-@brief unloads a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/unload, Unload collection, unloadCollection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/unload, Unload a collection, unloadCollection}
 
 @HINTS
 {% hint 'warning' %}
@@ -27,26 +26,26 @@ unload a collection from memory, while preserving all documents.
 When calling the API an object with the following attributes is
 returned for compatibility reasons:
 
-- *id*: The identifier of the collection.
+- `id`: The identifier of the collection.
 
-- *name*: The name of the collection.
+- `name`: The name of the collection.
 
-- *status*: The status of the collection as number.
+- `status`: The status of the collection as number.
 
-- *type*: The collection type. Valid types are:
+- `type`: The collection type. Valid types are:
   - 2: document collection
   - 3: edges collection
 
-- *isSystem*: If *true* then the collection is a system collection.
+- `isSystem`: If `true` then the collection is a system collection.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404* is returned.
+If the `collection-name` is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 

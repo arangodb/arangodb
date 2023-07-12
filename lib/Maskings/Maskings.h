@@ -70,22 +70,25 @@ class Maskings {
   bool shouldDumpStructure(std::string const& name);
   bool shouldDumpData(std::string const& name);
   void mask(std::string const& name, basics::StringBuffer const& data,
-            basics::StringBuffer& result);
+            basics::StringBuffer& result) const;
 
   uint64_t randomSeed() const noexcept { return _randomSeed; }
 
  private:
   ParseResult<Maskings> parse(VPackSlice const&);
-  VPackValue maskedItem(Collection& collection, std::vector<std::string>& path,
-                        std::string& buffer, VPackSlice const& data);
-  void addMaskedArray(Collection& collection, VPackBuilder& builder,
-                      std::vector<std::string>& path, VPackSlice const& data);
-  void addMaskedObject(Collection& collection, VPackBuilder& builder,
-                       std::vector<std::string>& path, VPackSlice const& data);
-  void addMasked(Collection& collection, VPackBuilder& builder,
-                 VPackSlice data);
-  void addMasked(Collection& collection, basics::StringBuffer& data,
-                 VPackSlice slice);
+  VPackValue maskedItem(Collection const& collection,
+                        std::vector<std::string>& path, std::string& buffer,
+                        VPackSlice const& data) const;
+  void addMaskedArray(Collection const& collection, VPackBuilder& builder,
+                      std::vector<std::string>& path,
+                      VPackSlice const& data) const;
+  void addMaskedObject(Collection const& collection, VPackBuilder& builder,
+                       std::vector<std::string>& path,
+                       VPackSlice const& data) const;
+  void addMasked(Collection const& collection, VPackBuilder& builder,
+                 VPackSlice data) const;
+  void addMasked(Collection const& collection, basics::StringBuffer& data,
+                 VPackSlice slice) const;
 
  private:
   std::map<std::string, Collection> _collections;

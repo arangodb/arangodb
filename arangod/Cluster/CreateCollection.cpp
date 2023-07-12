@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
@@ -38,6 +39,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -82,7 +85,8 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature,
     error << "properties slice must specify collection type. ";
   }
   TRI_ASSERT(properties().hasKey(StaticStrings::DataSourceType) &&
-             properties().get(StaticStrings::DataSourceType).isNumber());
+             properties().get(StaticStrings::DataSourceType).isNumber())
+      << properties().toJson() << desc;
 
   uint32_t const type =
       properties().get(StaticStrings::DataSourceType).getNumber<uint32_t>();
@@ -108,6 +112,9 @@ bool CreateCollection::first() {
   auto const& leader = _description.get(THE_LEADER);
   auto const& props = properties();
 
+  std::string from;
+  _description.get("from", from);
+
   LOG_TOPIC("21710", DEBUG, Logger::MAINTENANCE)
       << "CreateCollection: creating local shard '" << database << "/" << shard
       << "' for central '" << database << "/" << collection << "'";
@@ -118,6 +125,11 @@ bool CreateCollection::first() {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
+
+    if (vocbase.replicationVersion() == replication::Version::TWO &&
+        from == "maintenance") {
+      return createReplication2Shard(collection, shard, props, vocbase);
+    }
 
     auto& cluster = _feature.server().getFeature<ClusterFeature>();
 
@@ -149,6 +161,12 @@ bool CreateCollection::first() {
           continue;
         }
         docket.add(key, i.value);
+      }
+      if (_description.has(maintenance::REPLICATED_LOG_ID)) {
+        auto logId = replication2::LogId::fromString(
+            _description.get(maintenance::REPLICATED_LOG_ID));
+        TRI_ASSERT(logId.has_value());
+        docket.add("replicatedStateId", VPackValue(*logId));
       }
       docket.add("planId", VPackValue(collection));
     }
@@ -223,6 +241,56 @@ bool CreateCollection::first() {
 
   LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)
       << "Create collection done, notifying Maintenance";
+
+  return false;
+}
+
+bool CreateCollection::createReplication2Shard(CollectionID const& collection,
+                                               ShardID const& shard,
+                                               VPackSlice props,
+                                               TRI_vocbase_t& vocbase)
+    const {  // special case for replication 2 on the leader
+  auto logId = LogicalCollection::shardIdToStateId(shard);
+  if (auto gid = props.get("groupId"); gid.isNumber()) {
+    logId = replication2::LogId{gid.getUInt()};
+    // Now look up the collection group
+    auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
+    auto group = ci.getCollectionGroupById(
+        replication2::agency::CollectionGroupId{logId.id()});
+    if (group == nullptr) {
+      return false;  // retry later
+    }
+    // now find the index of the shard in the collection group
+    auto shardsR2 = props.get("shardsR2");
+    ADB_PROD_ASSERT(shardsR2.isArray());
+    bool found = false;
+    std::size_t index = 0;
+    for (auto x : VPackArrayIterator(shardsR2)) {
+      if (x.isEqualString(shard)) {
+        found = true;
+        break;
+      }
+      ++index;
+    }
+    ADB_PROD_ASSERT(found);
+    ADB_PROD_ASSERT(index < group->shardSheaves.size());
+    logId = group->shardSheaves[index].replicatedLog;
+  }
+  auto state = vocbase.getReplicatedStateById(logId);
+  if (state.ok()) {
+    auto leaderState = std::dynamic_pointer_cast<
+        replication2::replicated_state::document::DocumentLeaderState>(
+        state.get()->getLeader());
+    if (leaderState != nullptr) {
+      // It is necessary to block here to prevent creation of an additional
+      // action while we are waiting for the shard to be created.
+      leaderState->createShard(shard, collection, _description.properties())
+          .get();
+    } else {
+      // TODO prevent busy loop and wait for log to become ready.
+      std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    }
+  }
 
   return false;
 }

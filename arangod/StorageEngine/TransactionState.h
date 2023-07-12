@@ -388,6 +388,9 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// @brief current status
   transaction::Status _status = transaction::Status::CREATED;
 
+  // in case of read-only transactions collections can be added lazily.
+  // this can happen concurrently, so for this we need to protect the list
+  mutable std::mutex _collectionsLock;
   containers::SmallVector<TransactionCollection*, 8> _collections;
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0

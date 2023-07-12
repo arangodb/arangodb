@@ -29,6 +29,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -49,6 +50,7 @@ typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
+struct UserInputCollectionProperties;
 class ComputedValues;
 class FollowerInfo;
 class Index;
@@ -68,7 +70,6 @@ namespace replication {
 enum class Version;
 }
 namespace replication2 {
-class LogId;
 namespace replicated_state {
 template<typename S>
 struct ReplicatedState;
@@ -78,6 +79,9 @@ struct DocumentLeaderState;
 struct DocumentFollowerState;
 }  // namespace document
 }  // namespace replicated_state
+namespace agency {
+struct CollectionGroupId;
+}
 }  // namespace replication2
 
 /// please note that coordinator-based logical collections are frequently
@@ -117,7 +121,7 @@ class LogicalCollection : public LogicalDataSource {
    * add a new value make sure it is the next free 2^n value.
    * For Backwards Compatibility a value can never be reused.
    */
-  enum InternalValidatorType {
+  enum InternalValidatorType : std::uint64_t {
     None = 0,
     LogicalSmartEdge = 1,
     LocalSmartEdge = 2,
@@ -212,6 +216,8 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
+
+  UserInputCollectionProperties getCollectionProperties() const noexcept;
 
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const noexcept;
@@ -323,7 +329,9 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Indexes
 
   /// @brief Create a new Index based on VelocyPack description
-  virtual std::shared_ptr<Index> createIndex(velocypack::Slice, bool&);
+  virtual std::shared_ptr<Index> createIndex(
+      velocypack::Slice, bool&,
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice) const;
@@ -403,6 +411,10 @@ class LogicalCollection : public LogicalDataSource {
   static void addEnterpriseShardingStrategy(VPackBuilder& builder,
                                             VPackSlice collectionProperties);
 #endif
+
+  auto groupID() const noexcept
+      -> arangodb::replication2::agency::CollectionGroupId;
+  auto replicatedStateId() const noexcept -> arangodb::replication2::LogId;
 
  private:
   void initializeSmartAttributesBefore(velocypack::Slice info);
@@ -501,6 +513,12 @@ class LogicalCollection : public LogicalDataSource {
   uint64_t _internalValidatorTypes;
 
   std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
+
+  // Temporarily here, used for shards, only on DBServers
+  std::optional<arangodb::replication2::LogId> _replicatedStateId;
+
+  // TODO: Only quickly added
+  std::optional<uint64_t> _groupId;
 };
 
 }  // namespace arangodb

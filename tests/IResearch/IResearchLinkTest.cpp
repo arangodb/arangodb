@@ -27,11 +27,11 @@
 #include "store/fs_directory.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/log.hpp"
-#include <filesystem>
 
 #include <velocypack/Parser.h>
 
 #include <filesystem>
+#include <fstream>
 #include <regex>
 
 #include "Basics/files.h"
@@ -1051,9 +1051,7 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2),
-                           l->meta().hasNested(), nullptr)
-                     .ok()));
+    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2)).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
@@ -1088,6 +1086,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
@@ -1193,7 +1192,9 @@ TEST_F(IResearchLinkTest,
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
+    \"primarySortCompression\":\"test\",\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressedValues;
@@ -1303,6 +1304,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
                       {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
@@ -1412,6 +1414,7 @@ TEST_F(IResearchLinkTest,
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
@@ -1504,7 +1507,7 @@ TEST_F(
   auto linkCallbackRemover =
       arangodb::iresearch::IResearchLinkMock::setCallbackForScope([]() {
         return irs::directory_attributes{
-            0, std::make_unique<irs::mock::test_encryption>(kEncBlockSize)};
+            std::make_unique<irs::mock::test_encryption>(kEncBlockSize)};
       });
   static std::vector<std::string> const kEmpty;
   auto doc0 = arangodb::velocypack::Parser::fromJson(
@@ -1534,6 +1537,7 @@ TEST_F(
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
@@ -1568,8 +1572,8 @@ TEST_F(
                  .string();
   irs::FSDirectory directory(
       dataPath,
-      irs::directory_attributes(
-          0, std::make_unique<irs::mock::test_encryption>(kEncBlockSize)));
+      irs::directory_attributes{
+          std::make_unique<irs::mock::test_encryption>(kEncBlockSize)});
 
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -2339,9 +2343,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
-      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin),
-                            l->meta().hasNested(), nullptr)
-                      .ok());
+      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());
     }
 
     EXPECT_TRUE(trx.commit().ok());

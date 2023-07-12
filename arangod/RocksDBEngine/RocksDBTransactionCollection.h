@@ -54,7 +54,7 @@ class RocksDBTransactionCollection : public TransactionCollection {
 
   bool canAccess(AccessMode::Type accessType) const override;
   Result lockUsage() override;
-  void releaseUsage() override;
+  void releaseUsage() final;  // made final because it's called from destructor
 
   RevisionId revision() const { return _revision; }
   uint64_t numberDocuments() const {

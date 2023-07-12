@@ -305,6 +305,7 @@ void ReplicationApplier::doStart(
   {
     // steal thread
     std::unique_ptr<Thread> t = std::move(_thread);
+    // cppcheck-suppress accessMoved
     TRI_ASSERT(_thread == nullptr);
     // now _thread is empty
     // and release the write lock so when "thread" goes
@@ -324,15 +325,15 @@ void ReplicationApplier::doStart(
 
   // build a new instance in _thread
   cb();
-
+  // cppcheck-suppress accessMoved
   TRI_ASSERT(_thread != nullptr);
-
+  // cppcheck-suppress accessMoved
   if (!_thread->start()) {
     _thread.reset();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "could not start ApplyThread");
   }
-
+  // cppcheck-suppress nullPointer
   while (!_thread->hasStarted()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
@@ -786,6 +787,7 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
 
       // steal thread
       std::unique_ptr<Thread> t = std::move(_thread);
+      // cppcheck-suppress accessMoved
       TRI_ASSERT(_thread == nullptr);
       // now _thread is empty
       // and release the write lock so when "thread" goes

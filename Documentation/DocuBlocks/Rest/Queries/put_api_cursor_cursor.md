@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_cursor_cursor
-@brief return the next results from an existing cursor
 
-@RESTHEADER{PUT /_api/cursor/{cursor-identifier}, Read next batch from cursor (deprecated), getNextAqlQueryCursorBatchPut}
+@RESTHEADER{PUT /_api/cursor/{cursor-identifier}, Read the next batch from a cursor (deprecated), getNextAqlQueryCursorBatchPut}
 
 @HINTS
 {% hint 'warning' %}
@@ -18,22 +17,25 @@ The name of the cursor
 If the cursor is still alive, returns an object with the following
 attributes:
 
-- *id*: a *cursor-identifier*
-- *result*: a list of documents for the current batch
-- *hasMore*: *false* if this was the last batch
-- *count*: if present the total number of elements
-- *code*: an HTTP status code
-- *error*: a boolean flag to indicate whether an error occurred
-- *errorNum*: a server error number (if *error* is *true*)
-- *errorMessage*: a descriptive error message (if *error* is *true*)
-- *extra*: an object with additional information about the query result, with
-  the nested objects *stats* and *warnings*. Only delivered as part of the last
-  batch in case of a cursor with the *stream* option enabled.
+- `id`: a `cursor-identifier`
+- `result`: a list of documents for the current batch
+- `hasMore`: `false` if this was the last batch
+- `count`: if present the total number of elements
+- `code`: an HTTP status code
+- `error`: a boolean flag to indicate whether an error occurred
+- `errorNum`: a server error number (if `error` is `true`)
+- `errorMessage`: a descriptive error message (if `error` is `true`)
+- `extra`: an object with additional information about the query result, with
+  the nested objects `stats` and `warnings`. Only delivered as part of the last
+  batch in case of a cursor with the `stream` option enabled.
 
-Note that even if *hasMore* returns *true*, the next call might
-still return no documents. If, however, *hasMore* is *false*, then
-the cursor is exhausted.  Once the *hasMore* attribute has a value of
-*false*, the client can stop.
+Note that even if `hasMore` returns `true`, the next call might
+still return no documents. If, however, `hasMore` is `false`, then
+the cursor is exhausted.  Once the `hasMore` attribute has a value of
+`false`, the client can stop.
+
+If the cursor is not fully consumed, the time-to-live for the cursor
+is renewed by this API call.
 
 @RESTRETURNCODES
 

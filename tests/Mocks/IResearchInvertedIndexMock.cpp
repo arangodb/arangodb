@@ -23,6 +23,7 @@
 
 #include "IResearchInvertedIndexMock.h"
 #include "IResearch/IResearchDataStore.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb::iresearch {
 
@@ -96,11 +97,6 @@ Result IResearchInvertedIndexMock::drop() { return deleteDataStore(); }
 
 void IResearchInvertedIndexMock::load() {}
 
-void IResearchInvertedIndexMock::afterTruncate(TRI_voc_tick_t tick,
-                                               transaction::Methods* trx) {
-  return IResearchDataStore::afterTruncate(tick, trx);
-}
-
 std::unique_ptr<IndexIterator> IResearchInvertedIndexMock::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
@@ -138,8 +134,7 @@ Result IResearchInvertedIndexMock::insert(transaction::Methods& trx,
   IResearchInvertedIndexMetaIndexingContext ctx(&this->meta());
   return IResearchDataStore::insert<
       FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-      IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc, ctx,
-                                                 nullptr);
+      IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc, ctx);
 }
 
 AnalyzerPool::ptr IResearchInvertedIndexMock::findAnalyzer(

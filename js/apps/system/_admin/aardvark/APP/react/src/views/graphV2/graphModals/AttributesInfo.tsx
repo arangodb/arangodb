@@ -1,19 +1,19 @@
-import { Box, Tag } from "@chakra-ui/react";
+import { Tag, VStack } from "@chakra-ui/react";
 import React from "react";
 
 export const AttributesInfo = ({
   attributes
 }: {
-  attributes?: { [key: string]: string; };
+  attributes?: Partial<{ [key: string]: string }>;
 }) => {
   if (!attributes) {
     return null;
   }
   return (
-    <Box>
+    <VStack alignItems="start" spacing={2}>
       {Object.keys(attributes).map(key => (
-        <Tag key={key}>{`${key}: ${JSON.stringify(attributes[key])}`}</Tag>
+        <Tag key={key} wordBreak="break-all">{`${key}: ${JSON.stringify(attributes[key])}`}</Tag>
       ))}
-    </Box>
+    </VStack>
   );
 };

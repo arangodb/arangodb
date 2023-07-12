@@ -50,6 +50,8 @@ class CacheManagerFeature final : public ArangodFeature {
 
   std::unique_ptr<cache::Manager> _manager;
   std::unique_ptr<CacheRebalancerThread> _rebalancer;
+  double _idealLowerFillRatio;
+  double _idealUpperFillRatio;
   std::uint64_t _cacheSize;
   std::uint64_t _rebalancingInterval;
 };

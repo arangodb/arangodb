@@ -1384,13 +1384,18 @@ Result RestReplicationHandler::processRestoreCollection(
     // Remove ShadowCollections entry
     toMerge.add(StaticStrings::ShadowCollections,
                 arangodb::velocypack::Slice::nullSlice());
-    toMerge.close();  // TopLevel
 
     VPackSlice const type = parameters.get("type");
     if (!type.isNumber()) {
-      return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "collection type not given or wrong");
+      // Just ignore non numbers
+      toMerge.add(StaticStrings::DataSourceType,
+                  VPackValue(TRI_COL_TYPE_DOCUMENT));
+    } else if (type.getNumericValue<TRI_col_type_e>() !=
+                   TRI_COL_TYPE_DOCUMENT &&
+               type.getNumericValue<TRI_col_type_e>() != TRI_COL_TYPE_EDGE) {
+      return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID};
     }
+    toMerge.close();  // TopLevel
 
     VPackSlice const sliceToMerge = toMerge.slice();
     VPackBuilder mergedBuilder = VPackCollection::merge(
@@ -3710,8 +3715,13 @@ Result RestReplicationHandler::createBlockingTransaction(
     TRI_ASSERT(access == AccessMode::Type::EXCLUSIVE);
     exc.push_back(col.name());
   }
-
-  TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    auto const lockHeld = isLockHeld(id);
+    TRI_ASSERT(lockHeld.is(TRI_ERROR_HTTP_NOT_FOUND))
+        << "Unexpected error code " << lockHeld;
+  }
+#endif
 
   transaction::Options opts;
   opts.lockTimeout = ttl;  // not sure if appropriate ?

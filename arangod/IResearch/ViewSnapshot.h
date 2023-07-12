@@ -57,6 +57,8 @@ class ViewSnapshot : public irs::IndexReader {
   using ImmutablePartCache =
       std::map<aql::AstNode const*, irs::proxy_filter::cache_ptr>;
 
+  void CountMemory(const irs::MemoryStats& /*stats*/) const final {}
+
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
 

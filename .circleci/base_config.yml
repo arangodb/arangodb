@@ -4,6 +4,39 @@ parameters:
   enterprise-branch:
     type: string
     default: ""
+  default-enterprise-branch:
+    type: string
+    default: "devel"
+
+commands:
+  checkout-enterprise:
+    description: "Checkout enterprise code"
+    parameters:
+      destination:
+        type: string
+        default: ""
+    steps:
+       - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+       - run:
+          name: Checkout Enterprise
+          command: |
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            if ["<< pipeline.parameters.enterprise-branch >>" == ""]; then
+              set +e
+              git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
+              if [ "$?" == "0" ] ; then
+                ENTERPRISE_BRANCH=$CIRCLE_BRANCH
+              else
+                ENTERPRISE_BRANCH=devel
+              fi
+              set -e
+            else
+              ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
+            fi
+            echo "Using enterprise branch $ENTERPRISE_BRANCH"
+            git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "$ENTERPRISE_BRANCH" << parameters.destination >>
 
 jobs:
   minimal-checkout:
@@ -20,6 +53,8 @@ jobs:
             git remote add origin https://github.com/arangodb/arangodb.git
             git fetch --depth 1 origin $CIRCLE_SHA1
             git checkout $CIRCLE_SHA1
+      - checkout-enterprise:
+          destination: "/home/circleci/project/enterprise"
       - persist_to_workspace:
           root: .
           paths:
@@ -63,10 +98,21 @@ jobs:
       - run:
           name: Store diff
           command: |
-            git status
-            git diff --exit-code > /tmp/clang_format_outcome.txt
+            OUTCOME_BASE="/tmp/clang_format_outcome"
+            OUTCOME_COMMUNITY=$OUTCOME_BASE/community.diff
+            OUTCOME_ENTERPRISE=$OUTCOME_BASE/enterprise.diff
+            mkdir -p $OUTCOME_BASE
+            if [ -n "$(git status --porcelain)" ] ; then
+                git diff | tee $OUTCOME_COMMUNITY
+            fi
+            if [ -n "$(git -C enterprise status --porcelain)" ] ; then
+                git -C enterprise diff | tee $OUTCOME_ENTERPRISE
+            fi
+            if [ -f "$OUTCOME_COMMUNITY" ] || [ -f "$OUTCOME_ENTERPRISE" ]; then
+              exit 1
+            fi
       - store_artifacts:
-          path: /tmp/clang_format_outcome.txt
+          path: /tmp/clang_format_outcome
 
   eslint:
     docker:
@@ -94,16 +140,13 @@ jobs:
       enterprise:
         type: boolean
     docker:
-      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.0.8
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.1
     resource_class: xlarge
     environment:
       GIT_SSH_COMMAND: ssh
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
     steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - run:
           name: Checkout ArangoDB
           command: |
@@ -114,27 +157,11 @@ jobs:
             git checkout $CIRCLE_SHA1
             git submodule init
             git submodule update --recursive --depth 1 --jobs 8
-
-      - run:
-          name: Checkout Enterprise
-          command: |
-            if [ << parameters.enterprise >> == true ]; then
-              ssh-keyscan github.com >> ~/.ssh/known_hosts
-              if ["<< pipeline.parameters.enterprise-branch >>" == ""]; then
-                set +e
-                git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
-                if [ "$?" == "0" ] ; then
-                  ENTERPRISE_BRANCH=$CIRCLE_BRANCH
-                else
-                  ENTERPRISE_BRANCH=devel
-                fi
-                set -e
-              else
-                ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
-              fi
-              echo "Using enterprise branch $ENTERPRISE_BRANCH"
-              git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "$ENTERPRISE_BRANCH" /root/project/enterprise
-            fi
+      - when:
+          condition: << parameters.enterprise >>
+          steps:
+            - checkout-enterprise:
+                destination: "/root/project/enterprise"
       - run:
           name: Print SCCache Settings
           command: sccache -s
@@ -256,6 +283,8 @@ workflows:
   community-pr:
     jobs:
       - compile-linux:
+          context:
+          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ce
           preset: community-pr
           edition: x64-community
@@ -263,6 +292,8 @@ workflows:
   enterprise-pr:
     jobs:
       - compile-linux:
+          context:
+          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ee
           preset: enterprise-pr
           edition: x64-enterprise

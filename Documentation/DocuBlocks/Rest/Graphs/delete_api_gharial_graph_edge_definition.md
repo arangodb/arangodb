@@ -1,10 +1,9 @@
 @startDocuBlock delete_api_gharial_graph_edge_definition
-@brief Remove an edge definition form the graph
 
-@RESTHEADER{DELETE /_api/gharial/{graph}/edge/{collection}, Remove an edge definition from the graph, deleteEdgeDefinition}
+@RESTHEADER{DELETE /_api/gharial/{graph}/edge/{collection}, Remove an edge definition, deleteEdgeDefinition}
 
 @RESTDESCRIPTION
-Remove one edge definition from the graph.  This will only remove the
+Remove one edge definition from the graph. This will only remove the
 edge collection, the vertex collections remain untouched and can still
 be used in your queries.
 

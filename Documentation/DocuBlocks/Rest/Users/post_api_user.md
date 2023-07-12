@@ -1,7 +1,6 @@
 @startDocuBlock post_api_user
-@brief Create a new user.
 
-@RESTHEADER{POST /_api/user, Create User, createUser}
+@RESTHEADER{POST /_api/user, Create a user, createUser}
 
 @RESTBODYPARAM{user,string,required,string}
 The name of the user as a string. This is mandatory.
@@ -12,7 +11,7 @@ string.
 
 @RESTBODYPARAM{active,boolean,optional,}
 An optional flag that specifies whether the user is active. If not
-specified, this will default to *true*.
+specified, this will default to `true`.
 
 @RESTBODYPARAM{extra,object,optional,}
 A JSON object with extra user information. It is used by the web interface
@@ -33,7 +32,7 @@ If the JSON representation is malformed or mandatory data is missing
 from the request.
 
 @RESTRETURNCODE{401}
-Returned if you have *No access* database access level to the *_system*
+Returned if you have *No access* database access level to the `_system`
 database.
 
 @RESTRETURNCODE{403}

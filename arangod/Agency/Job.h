@@ -41,10 +41,6 @@ class Slice;
 }
 namespace replication2 {
 class LogId;
-namespace replicated_state::agency {
-struct Target;
-struct Plan;
-}  // namespace replicated_state::agency
 namespace agency {
 struct LogPlanSpecification;
 struct LogTarget;
@@ -156,6 +152,9 @@ struct Job {
   static std::string findOtherHealthyParticipant(
       Node const& snap, std::string const& db, replication2::LogId stateId,
       std::string const& serverToAvoid);
+  static std::string findOtherHealthyParticipant(
+      Node const& snap, arangodb::replication2::agency::LogTarget const& target,
+      std::string const& serverToAvoid);
 
   static bool isServerLeaderForState(Node const& snap, std::string const& db,
                                      replication2::LogId stateId,
@@ -170,6 +169,9 @@ struct Job {
                   replication2::LogId stateId);
   static std::optional<replication2::agency::LogPlanSpecification> readLogPlan(
       Node const& snap, std::string const& db, replication2::LogId logId);
+  static std::optional<replication2::LogId> getReplicatedStateId(
+      Node const& snap, std::string const& db, std::string const& collection,
+      std::string const& shard);
 
   /// @brief The shard must be one of a collection without
   /// `distributeShardsLike`. This returns all servers which

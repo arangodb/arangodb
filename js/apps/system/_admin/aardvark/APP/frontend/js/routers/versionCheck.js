@@ -44,16 +44,15 @@
         var currentVersion = window.versionHelper.fromString(data.version);
 
         $('.navbar #currentVersion').html(
-          data.version + '<i class="fa fa-check-circle"></i>'
+          data.version + '<i class="fa fa-exclamation-circle"></i>'
         );
 
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {
-            $('#currentVersion').addClass('up-to-date');
+            $('#currentVersion').removeClass('out-of-date');
             return; // no new version.
           }
           $('#currentVersion').addClass('out-of-date');
-          $('#currentVersion .fa').removeClass('fa-check-circle').addClass('fa-exclamation-circle');
           $('#currentVersion').click(function () {
             showInterface(currentVersion, json);
           });

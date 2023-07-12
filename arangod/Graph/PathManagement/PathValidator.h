@@ -68,7 +68,7 @@ class PathValidator {
                 PathValidatorOptions opts);
   ~PathValidator();
 
-  auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
+  auto validatePath(typename PathStore::Step& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
                     PathValidator<Provider, PathStore, vertexUniqueness,
                                   edgeUniqueness> const& otherValidator)
@@ -116,6 +116,9 @@ class PathValidator {
   arangodb::velocypack::Builder _tmpObjectBuilder;
 
  private:
+  [[nodiscard]] auto handleValidationResult(ValidationResult validationResult,
+                                            typename PathStore::Step& step)
+      -> ValidationResult;
   auto evaluateVertexCondition(typename PathStore::Step const&)
       -> ValidationResult;
   auto evaluateVertexRestriction(typename PathStore::Step const& step) -> bool;

@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_collection_collection_checksum
-@brief returns a checksum for the specified collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}/checksum, Return checksum for the collection, getCollectionChecksum}
+@RESTHEADER{GET /_api/collection/{collection-name}/checksum, Get the collection checksum, getCollectionChecksum}
 
 @HINTS
 {% hint 'warning' %}
@@ -32,31 +31,31 @@ instances contain the same contents. The current revision of the collection is
 returned too so one can make sure the checksums are calculated for the same
 state of data.
 
-By default, the checksum will only be calculated on the *_key* system attribute
+By default, the checksum will only be calculated on the `_key` system attribute
 of the documents contained in the collection. For edge collections, the system
-attributes *_from* and *_to* will also be included in the calculation.
+attributes `_from` and `_to` will also be included in the calculation.
 
-By setting the optional query parameter *withRevisions* to *true*, then revision
-ids (*_rev* system attributes) are included in the checksumming.
+By setting the optional query parameter `withRevisions` to `true`, then revision
+ids (`_rev` system attributes) are included in the checksumming.
 
-By providing the optional query parameter *withData* with a value of *true*,
+By providing the optional query parameter `withData` with a value of `true`,
 the user-defined document attributes will be included in the calculation too.
 **Note**: Including user-defined attributes will make the checksumming slower.
 
 The response is a JSON object with the following attributes:
 
-- *checksum*: The calculated checksum as a number.
+- `checksum`: The calculated checksum as a number.
 
-- *revision*: The collection revision id as a string.
+- `revision`: The collection revision id as a string.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404*
+If the `collection-name` is unknown, then a *HTTP 404*
 is returned.
 
 @EXAMPLES

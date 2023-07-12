@@ -1,7 +1,6 @@
 @startDocuBlock post_api_analyzer
-@brief creates a new Analyzer based on the provided definition
 
-@RESTHEADER{POST /_api/analyzer, Create an Analyzer with the supplied definition, createAnalyzer}
+@RESTHEADER{POST /_api/analyzer, Create an Analyzer, createAnalyzer}
 
 @RESTBODYPARAM{name,string,required,string}
 The Analyzer name.

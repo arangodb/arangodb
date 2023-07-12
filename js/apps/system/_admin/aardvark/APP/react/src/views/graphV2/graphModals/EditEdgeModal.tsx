@@ -1,6 +1,6 @@
 import { Button, Flex, HStack, Spinner, Stack } from "@chakra-ui/react";
 import { JsonEditor, ValidationError } from "jsoneditor-react";
-import { omit } from "lodash";
+import { omit, pick } from "lodash";
 import React, { useState } from "react";
 import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
 import {
@@ -63,6 +63,7 @@ export const EditEdgeModal = () => {
       onFailure: onClearAction
     });
   const mutableEdgeData = omit(edgeData, immutableIds);
+  const immutableEdgeData = pick(edgeData, immutableIds);
   const [json, setJson] = useState(mutableEdgeData);
   const [errors, setErrors] = useState<ValidationError[]>();
 
@@ -82,12 +83,13 @@ export const EditEdgeModal = () => {
       <ModalHeader>Edit Edge: {edgeId}</ModalHeader>
       <ModalBody>
         <Stack spacing="4">
-          <AttributesInfo attributes={edgeData} />
+          <AttributesInfo attributes={immutableEdgeData} />
           <JsonEditor
             value={mutableEdgeData}
             onChange={value => {
               setJson(value);
             }}
+            allowedModes={['tree', 'code']}
             mode={"code"}
             history={true}
             onValidationError={errors => {

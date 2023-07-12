@@ -390,8 +390,25 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
       return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX,
                              options);
     }
+    // TODO: Check if this is now actually duplicate.
+    // The ensureAllCollections above fouls handle the validation, or should not
+    // be called if invalid, as it has side-effects.
+    CollectionNameResolver resolver(_vocbase);
+    auto getLeaderName = [&](LogicalCollection const& col) -> std::string {
+      auto const& distLike = col.distributeShardsLike();
+      if (distLike.empty()) {
+        return col.name();
+      }
+      if (ServerState::instance()->isRunningInCluster()) {
+        return resolver.getCollectionNameCluster(
+            DataSourceId{basics::StringUtils::uint64(distLike)});
+      }
+      return col.distributeShardsLike();
+    };
 
-    res = _graph.validateCollection(*(def.get()));
+    auto [leading, unused] =
+        _graph.getLeadingCollection({}, {}, {}, nullptr, getLeaderName);
+    res = _graph.validateCollection(*(def.get()), leading, getLeaderName);
     if (res.fail()) {
       return OperationResult{std::move(res), options};
     }

@@ -26,8 +26,7 @@
 #include <atomic>
 #include <cstdint>
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief This is the beginning of a cache data entry.
@@ -81,9 +80,7 @@ struct CachedValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the allocated size of bytes including the key and value
   //////////////////////////////////////////////////////////////////////////////
-  inline std::size_t size() const noexcept {
-    return _headerAllocSize + keySize() + valueSize();
-  }
+  std::size_t size() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Increase reference count
@@ -116,12 +113,12 @@ struct CachedValue {
   //////////////////////////////////////////////////////////////////////////////
   static void operator delete(void* ptr);
 
- private:
-  static constexpr std::size_t _padding =
+  static constexpr std::size_t padding =
       alignof(std::atomic<std::uint32_t>) - 1;
-  static const std::size_t _headerAllocSize;
-  static constexpr std::size_t _headerAllocMask = ~_padding;
-  static constexpr std::size_t _headerAllocOffset = _padding;
+
+ private:
+  static constexpr std::size_t _headerAllocMask = ~padding;
+  static constexpr std::size_t _headerAllocOffset = padding;
   static constexpr std::uint32_t _keyMask = 0x00FFFFFF;
   static constexpr std::uint32_t _offsetMask = 0xFF000000;
   static constexpr std::size_t _offsetShift = 24;
@@ -130,7 +127,6 @@ struct CachedValue {
   std::uint32_t _keySize;
   std::uint32_t _valueSize;
 
- private:
   CachedValue(std::size_t off, void const* k, std::size_t kSize, void const* v,
               std::size_t vSize) noexcept;
   CachedValue(CachedValue const& other) noexcept;
@@ -140,5 +136,7 @@ struct CachedValue {
   }
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+constexpr std::size_t kCachedValueHeaderSize =
+    sizeof(CachedValue) + CachedValue::padding;
+
+};  // end namespace arangodb::cache

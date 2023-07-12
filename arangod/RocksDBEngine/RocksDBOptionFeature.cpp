@@ -1281,7 +1281,7 @@ version.)");
 #ifdef ARANGODB_ROCKSDB8
   options
       ->addOption("--rocksdb.prepopulate-blob-cache",
-                  "Prepopulate the blob cache on flushes.",
+                  "Pre-populate the blob cache on flushes.",
                   new BooleanParameter(&_prepopulateBlobCache),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Experimental,
@@ -1800,11 +1800,10 @@ rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
     result.db_write_buffer_size = _totalWriteBufferSize;
   }
 
-  // WAL_ttl_seconds needs to be bigger than the sync interval of the count
-  // manager. Should be several times bigger counter_sync_seconds
-  result.WAL_ttl_seconds = 60 * 60 * 24 * 30;  // we manage WAL file deletion
-  // ourselves, don't let RocksDB
-  // garbage collect them
+  // we manage WAL file deletion ourselves, don't let RocksDB garbage-collect
+  // obsolete files.
+  result.WAL_ttl_seconds =
+      933120000;  // ~30 years (60 * 60 * 24 * 30 * 12 * 30)
   result.WAL_size_limit_MB = 0;
   result.memtable_prefix_bloom_size_ratio = 0.2;  // TODO: pick better value?
   // TODO: enable memtable_insert_with_hint_prefix_extractor?

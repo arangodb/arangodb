@@ -23,8 +23,8 @@
 
 #pragma once
 
+#include "Basics/ErrorCode.h"
 #include "Basics/ReadWriteSpinLock.h"
-#include "Basics/Result.h"
 #include "Basics/SharedCounter.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -36,6 +36,7 @@
 #include "Cache/Table.h"
 
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <memory>
 
@@ -86,9 +87,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   // primary functionality; documented in derived classes
   virtual Finding find(void const* key, std::uint32_t keySize) = 0;
-  virtual Result insert(CachedValue* value) = 0;
-  virtual Result remove(void const* key, std::uint32_t keySize) = 0;
-  virtual Result banish(void const* key, std::uint32_t keySize) = 0;
+  virtual ::ErrorCode insert(CachedValue* value) = 0;
+  virtual ::ErrorCode remove(void const* key, std::uint32_t keySize) = 0;
+  virtual ::ErrorCode banish(void const* key, std::uint32_t keySize) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ID for this cache.
@@ -180,18 +181,18 @@ class Cache : public std::enable_shared_from_this<Cache> {
           CachedValue::construct(key, keySize, value, valueSize)};
       if (ADB_LIKELY(cv)) {
         status = cache.insert(cv.get());
-        if (status.ok()) {
+        if (status == TRI_ERROR_NO_ERROR) {
           cv.release();
         }
       } else {
-        status.reset(TRI_ERROR_OUT_OF_MEMORY);
+        status = TRI_ERROR_OUT_OF_MEMORY;
       }
     }
 
     Inserter(Inserter const& other) = delete;
     Inserter& operator=(Inserter const& other) = delete;
 
-    Result status;
+    ::ErrorCode status = TRI_ERROR_NO_ERROR;
   };
 
   // same as Cache::Inserter, but more lightweight. Does not provide
@@ -202,7 +203,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
                    void const* value, std::size_t valueSize) {
       std::unique_ptr<CachedValue> cv{
           CachedValue::construct(key, keySize, value, valueSize)};
-      if (ADB_LIKELY(cv) && cache.insert(cv.get()).ok()) {
+      if (ADB_LIKELY(cv) && cache.insert(cv.get()) == TRI_ERROR_NO_ERROR) {
         cv.release();
       }
     }
@@ -241,7 +242,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // postcondition: metadata's isMigrating() flag is not set
   bool migrate(std::shared_ptr<Table> newTable);
 
-  virtual std::uint64_t freeMemoryFrom(std::uint32_t hash) = 0;
+  // free memory while callback returns true
+  virtual bool freeMemoryWhile(
+      std::function<bool(std::uint64_t)> const& cb) = 0;
+
   virtual void migrateBucket(void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
                              Table& newTable) = 0;

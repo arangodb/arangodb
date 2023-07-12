@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_index
-@brief returns all indexes of a collection
 
-@RESTHEADER{GET /_api/index, Read all indexes of a collection, listIndexes}
+@RESTHEADER{GET /_api/index, List all indexes of a collection, listIndexes}
 
 @RESTQUERYPARAMETERS
 
@@ -16,10 +15,10 @@ Whether to include figures and estimates in the result.
 Whether to include hidden indexes in the result.
 
 @RESTDESCRIPTION
-Returns an object with an attribute *indexes* containing an array of all
+Returns an object with an `indexes` attribute containing an array of all
 index descriptions for the given collection. The same information is also
-available in the *identifiers* as an object with the index handles as
-keys.
+available in the `identifiers` attribute as an object with the index identifiers
+as object keys.
 
 @RESTRETURNCODES
 

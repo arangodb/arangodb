@@ -1,6 +1,5 @@
 
 @startDocuBlock get_api_gharial
-@brief Lists all graphs known to the graph module.
 
 @RESTHEADER{GET /_api/gharial, List all graphs, listGraphs}
 

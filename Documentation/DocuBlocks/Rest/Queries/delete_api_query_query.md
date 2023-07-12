@@ -1,8 +1,7 @@
 
 @startDocuBlock delete_api_query_query
-@brief kills an AQL query
 
-@RESTHEADER{DELETE /_api/query/{query-id}, Kills a running AQL query, deleteAqlQuery}
+@RESTHEADER{DELETE /_api/query/{query-id}, Kill a running AQL query, deleteAqlQuery}
 
 @RESTURLPARAMETERS
 
@@ -16,7 +15,7 @@ terminated at the next cancelation point.
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{all,boolean,optional}
-If set to *true*, will attempt to kill the specified query in all databases, 
+If set to `true`, will attempt to kill the specified query in all databases, 
 not just the selected one.
 Using the parameter is only allowed in the system database and with superuser
 privileges.

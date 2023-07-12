@@ -61,6 +61,17 @@ std::ostream& operator<<(std::ostream& o, ServerHealthState const& r) {
   return o << "RebootId: " << r.rebootId << " Status: " << r.status;
 }
 
+auto to_string(PeerState const& peerState) -> std::string {
+  VPackBuilder builder;
+  velocypack::serialize(builder, peerState);
+  return builder.slice().toJson();
+}
+
+auto operator<<(std::ostream& ostream, PeerState const& peerState)
+    -> std::ostream& {
+  return ostream << to_string(peerState);
+}
+
 void QueryAnalyzerRevisions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder scope(&builder,
                            StaticStrings::ArangoSearchAnalyzersRevision);

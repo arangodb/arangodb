@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_collection_collection
-@brief returns a collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}, Return information about a collection, getCollection}
+@RESTHEADER{GET /_api/collection/{collection-name}, Get the collection information, getCollection}
 
 @HINTS
 {% hint 'warning' %}
@@ -19,25 +18,25 @@ The name of the collection.
 The result is an object describing the collection with the following
 attributes:
 
-- *id*: The identifier of the collection.
+- `id`: The identifier of the collection.
 
-- *name*: The name of the collection.
+- `name`: The name of the collection.
 
-- *status*: The status of the collection as number.
+- `status`: The status of the collection as number.
   - 3: loaded
   - 5: deleted
 
 Every other status indicates a corrupted collection.
 
-- *type*: The type of the collection as number.
+- `type`: The type of the collection as number.
   - 2: document collection (normal case)
   - 3: edge collection
 
-- *isSystem*: If *true* then the collection is a system collection.
+- `isSystem`: If `true` then the collection is a system collection.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404* is
+If the `collection-name` is unknown, then a *HTTP 404* is
 returned.
 @endDocuBlock

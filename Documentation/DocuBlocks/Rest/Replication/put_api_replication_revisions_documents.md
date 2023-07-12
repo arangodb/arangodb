@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_replication_revisions_documents
-@brief retrieves documents by revision
 
-@RESTHEADER{PUT /_api/replication/revisions/documents, Return documents by revision,listReplicationRevisionDocuments}
+@RESTHEADER{PUT /_api/replication/revisions/documents, Get documents by revision,listReplicationRevisionDocuments}
 
 @HINTS
 {% hint 'warning' %}
@@ -19,7 +18,7 @@ The name or id of the collection to query.
 The id of the snapshot to use
 
 @RESTDESCRIPTION
-Returns documents by revision
+Returns documents by revision for replication.
 
 The body of the request should be JSON/VelocyPack and should consist of an
 array of string-encoded revision IDs:

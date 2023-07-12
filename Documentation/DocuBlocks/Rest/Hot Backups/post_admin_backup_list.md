@@ -1,7 +1,6 @@
 @startDocuBlock post_admin_backup_list
-@brief list all local backups
 
-@RESTHEADER{POST /_admin/backup/list, List backups, listBackups}
+@RESTHEADER{POST /_admin/backup/list, List all backups, listBackups}
 
 @RESTDESCRIPTION
 Lists all locally found backups.
@@ -23,11 +22,11 @@ is returned.
 
 @RESTRETURNCODE{404}
 If an `id` or a list of ids was given and the given ids were not found
-as identifiers of a backup, an *HTTP 404 NOT FOUND* is returned.
+as identifiers of a backup, an *HTTP 404 Not Found* is returned.
 
 @RESTRETURNCODE{405}
 If the list command is invoked with any HTTP
-method other than `POST`, then an *HTTP 405 METHOD NOT ALLOWED* is returned.
+method other than `POST`, then an *HTTP 405 Method Not Allowed* is returned.
 
 @EXAMPLES
 

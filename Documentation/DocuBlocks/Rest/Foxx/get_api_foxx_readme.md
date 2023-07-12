@@ -1,7 +1,6 @@
 @startDocuBlock get_api_foxx_readme
-@brief service README
 
-@RESTHEADER{GET /_api/foxx/readme, Service README, getFoxxReadme}
+@RESTHEADER{GET /_api/foxx/readme, Get the service README, getFoxxReadme}
 
 @RESTDESCRIPTION
 Fetches the service's README or README.md file's contents if any.

@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_tasks
-@brief Retrieves all currently active server tasks
 
-@RESTHEADER{GET /_api/tasks/, Fetch all tasks or one task, listTasks}
+@RESTHEADER{GET /_api/tasks/, List all tasks, listTasks}
 
 @RESTDESCRIPTION
 fetches all existing tasks on the server

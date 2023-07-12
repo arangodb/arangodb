@@ -209,8 +209,8 @@ Result RocksDBIndex::drop() {
   bool const prefixSameAsStart = type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
   bool const useRangeDelete = coll->meta().numberDocuments() >= 32 * 1024;
 
-  arangodb::Result r = rocksutils::removeLargeRange(
-      _engine.db(), getBounds(), prefixSameAsStart, useRangeDelete);
+  Result r = rocksutils::removeLargeRange(_engine.db(), getBounds(),
+                                          prefixSameAsStart, useRangeDelete);
 
   // Try to drop the cache as well.
   if (_cache) {
@@ -239,8 +239,20 @@ Result RocksDBIndex::drop() {
   return r;
 }
 
-void RocksDBIndex::afterTruncate(TRI_voc_tick_t,
-                                 arangodb::transaction::Methods*) {
+ResultT<TruncateGuard> RocksDBIndex::truncateBegin(rocksdb::WriteBatch& batch) {
+  auto bounds = getBounds();
+  auto s =
+      batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+  auto r = rocksutils::convertStatus(s);
+  if (!r.ok()) {
+    return r;
+  }
+  return {};
+}
+
+void RocksDBIndex::truncateCommit(TruncateGuard&& guard,
+                                  TRI_voc_tick_t /*tick*/,
+                                  transaction::Methods* /*trx*/) {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();
@@ -339,10 +351,10 @@ void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
     TRI_ASSERT(_cache != nullptr);
     do {
       auto status = _cache->banish(data, static_cast<uint32_t>(len));
-      if (status.ok()) {
+      if (status == TRI_ERROR_NO_ERROR) {
         break;
       }
-      if (ADB_UNLIKELY(status.errorNumber() == TRI_ERROR_SHUTTING_DOWN)) {
+      if (ADB_UNLIKELY(status == TRI_ERROR_SHUTTING_DOWN)) {
         destroyCache();
         break;
       }

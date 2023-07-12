@@ -385,29 +385,28 @@ Node& Node::getOrCreate(std::vector<std::string> const& pv) {
 }
 
 /// @brief rh-value at path vector. Check if TTL has expired.
-std::optional<std::reference_wrapper<Node const>> Node::get(
-    std::vector<std::string> const& pv) const {
+Node const* Node::get(std::vector<std::string> const& pv) const {
   Node const* current = this;
 
   for (std::string const& key : pv) {
     if (current->_children == nullptr) {
-      return std::nullopt;
+      return nullptr;
     }
 
     auto const& children = *current->_children;
     auto const child = children.find(key);
 
     if (child == children.end() || child->second->lifetimeExpired()) {
-      return std::nullopt;
+      return nullptr;
     } else {
       current = child->second.get();
     }
   }
 
-  return *current;
+  return current;
 }
 
-std::optional<std::reference_wrapper<Node const>> Node::get(
+Node const* Node::get(
     std::shared_ptr<cluster::paths::Path const> const& path) const {
   return get(path->vec(cluster::paths::SkipComponents{1}));
 }
@@ -418,10 +417,7 @@ Node& Node::getOrCreate(std::string_view path) {
 }
 
 /// @brief rh-value at path
-std::optional<std::reference_wrapper<Node const>> Node::get(
-    std::string_view path) const {
-  return get(split(path));
-}
+Node const* Node::get(std::string_view path) const { return get(split(path)); }
 
 // lh-store
 Node const& Node::root() const {
@@ -1213,8 +1209,7 @@ std::optional<double> Node::getDouble() const noexcept {
   return slice().getNumber<double>();
 }
 
-std::optional<std::reference_wrapper<Node const>> Node::hasAsNode(
-    std::string const& url) const noexcept {
+Node const* Node::hasAsNode(std::string const& url) const noexcept {
   // retrieve node, throws if does not exist
   return get(url);
 }  // hasAsNode
@@ -1226,7 +1221,7 @@ Node& Node::hasAsWritableNode(std::string const& url) {
 
 std::optional<NodeType> Node::hasAsType(std::string const& url) const noexcept {
   if (auto node = get(url); node) {
-    return node->get().type();
+    return node->type();
   }
 
   return std::nullopt;
@@ -1234,7 +1229,7 @@ std::optional<NodeType> Node::hasAsType(std::string const& url) const noexcept {
 
 std::optional<Slice> Node::hasAsSlice(std::string const& url) const noexcept {
   if (auto node = get(url); node) {
-    return node->get().slice();
+    return node->slice();
   }
 
   return std::nullopt;
@@ -1242,7 +1237,7 @@ std::optional<Slice> Node::hasAsSlice(std::string const& url) const noexcept {
 
 std::optional<uint64_t> Node::hasAsUInt(std::string const& url) const noexcept {
   if (auto node = get(url); node) {
-    return node->get().getUInt();
+    return node->getUInt();
   }
 
   return std::nullopt;
@@ -1250,7 +1245,7 @@ std::optional<uint64_t> Node::hasAsUInt(std::string const& url) const noexcept {
 
 std::optional<bool> Node::hasAsBool(std::string const& url) const noexcept {
   if (auto node = get(url); node) {
-    return node->get().getBool();
+    return node->getBool();
   }
 
   return std::nullopt;
@@ -1258,25 +1253,24 @@ std::optional<bool> Node::hasAsBool(std::string const& url) const noexcept {
 
 std::optional<std::string> Node::hasAsString(std::string const& url) const {
   if (auto node = get(url); node) {
-    return node->get().getString();
+    return node->getString();
   }
 
   return std::nullopt;
 }  // hasAsString
 
-std::optional<std::reference_wrapper<Node::Children const>> Node::hasAsChildren(
-    std::string const& url) const {
+Node::Children const* Node::hasAsChildren(std::string const& url) const {
   if (auto node = get(url); node) {
-    return node->get().children();
+    return &node->children();
   }
 
-  return std::nullopt;
+  return nullptr;
 }  // hasAsChildren
 
 bool Node::hasAsBuilder(std::string const& url, Builder& builder,
                         bool showHidden) const {
   if (auto node = get(url); node) {
-    node->get().toBuilder(builder, showHidden);
+    node->toBuilder(builder, showHidden);
     return true;
   }
 
@@ -1286,7 +1280,7 @@ bool Node::hasAsBuilder(std::string const& url, Builder& builder,
 std::optional<Builder> Node::hasAsBuilder(std::string const& url) const {
   if (auto node = get(url); node) {
     Builder builder;
-    node->get().toBuilder(builder);
+    node->toBuilder(builder);
     return builder;
   }
 
@@ -1295,7 +1289,7 @@ std::optional<Builder> Node::hasAsBuilder(std::string const& url) const {
 
 std::optional<Slice> Node::hasAsArray(std::string const& url) const {
   if (auto node = get(url); node) {
-    return node->get().getArray();
+    return node->getArray();
   }
 
   return std::nullopt;

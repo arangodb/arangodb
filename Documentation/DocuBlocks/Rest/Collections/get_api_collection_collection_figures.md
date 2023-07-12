@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_collection_collection_figures
-@brief Fetch the statistics of a collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}/figures, Return statistics for a collection, getCollectionFigures}
+@RESTHEADER{GET /_api/collection/{collection-name}/figures, Get the collection statistics, getCollectionFigures}
 
 @HINTS
 {% hint 'warning' %}
@@ -52,11 +51,11 @@ indexes (e.g. primary index).
 The total memory allocated for indexes in bytes.
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404*
+If the `collection-name` is unknown, then a *HTTP 404*
 is returned.
 
 @EXAMPLES

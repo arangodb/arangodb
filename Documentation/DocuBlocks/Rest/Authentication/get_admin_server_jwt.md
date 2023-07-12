@@ -1,7 +1,6 @@
 @startDocuBlock get_admin_server_jwt
-@brief Retrieve JWT secrets info
 
-@RESTHEADER{GET /_admin/server/jwt, Fetch information about the currently loaded secrets, getServerJwtSecrets}
+@RESTHEADER{GET /_admin/server/jwt, Get information about the loaded JWT secrets, getServerJwtSecrets}
 
 @RESTDESCRIPTION
 Get information about the currently loaded secrets.

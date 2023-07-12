@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_replication_logger_tick_ranges
-@brief returns the tick value ranges available in the logfiles
 
-@RESTHEADER{GET /_api/replication/logger-tick-ranges, Return the tick ranges available in the WAL logfiles, getReplicationLoggerTickRanges}
+@RESTHEADER{GET /_api/replication/logger-tick-ranges, Get the tick ranges available in the WAL logfiles, getReplicationLoggerTickRanges}
 
 @RESTDESCRIPTION
 Returns the currently available ranges of tick values for all currently
@@ -13,13 +12,13 @@ The body of the response contains a JSON array. Each array member is an
 object
 that describes a single logfile. Each object has the following attributes:
 
-* *datafile*: name of the logfile
+- `datafile`: name of the logfile
 
-* *status*: status of the datafile, in textual form (e.g. "sealed", "open")
+- `status`: status of the datafile, in textual form (e.g. "sealed", "open")
 
-* *tickMin*: minimum tick value contained in logfile
+- `tickMin`: minimum tick value contained in logfile
 
-* *tickMax*: maximum tick value contained in logfile
+- `tickMax`: maximum tick value contained in logfile
 
 @RESTRETURNCODES
 

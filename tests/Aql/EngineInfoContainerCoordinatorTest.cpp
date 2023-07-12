@@ -35,6 +35,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/RebootTracker.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Methods.h"

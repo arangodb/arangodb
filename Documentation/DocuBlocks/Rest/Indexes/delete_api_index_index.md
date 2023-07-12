@@ -1,8 +1,7 @@
 
 @startDocuBlock delete_api_index_index
-@brief deletes an index
 
-@RESTHEADER{DELETE /_api/index/{index-id}, Delete index, deleteIndex}
+@RESTHEADER{DELETE /_api/index/{index-id}, Delete an index, deleteIndex}
 
 @RESTURLPARAMETERS
 
@@ -10,7 +9,7 @@
 The index id.
 
 @RESTDESCRIPTION
-Deletes an index with *index-id*.
+Deletes an index with `index-id`.
 
 @RESTRETURNCODES
 
@@ -19,7 +18,7 @@ If the index could be deleted, then an *HTTP 200* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *index-id* is unknown, then an *HTTP 404* is returned.
+If the `index-id` is unknown, then an *HTTP 404* is returned.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestIndexDeleteUniquePersistent}

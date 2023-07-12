@@ -45,6 +45,12 @@ auto inspect(Inspector& f, ConductorStart& x) {
   return f.object(x).fields();
 }
 
+struct WorkerFailed {};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerFailed& x) {
+  return f.object(x).fields();
+}
+
 struct WorkerCreated {};
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerCreated& x) {
@@ -145,19 +151,21 @@ auto inspect(Inspector& f, Cancel& x) {
 }
 
 struct ConductorMessages
-    : std::variant<ConductorStart, ResultT<WorkerCreated>, ResultT<GraphLoaded>,
+    : std::variant<ConductorStart, ResultT<WorkerCreated>,
+                   ResultT<WorkerFailed>, ResultT<GraphLoaded>,
                    ResultT<GlobalSuperStepFinished>, ResultT<Stored>,
                    ResultCreated, StatusUpdate, CleanupFinished, Cancel> {
-  using std::variant<ConductorStart, ResultT<WorkerCreated>,
-                     ResultT<GraphLoaded>, ResultT<GlobalSuperStepFinished>,
-                     ResultT<Stored>, ResultCreated, StatusUpdate,
-                     CleanupFinished, Cancel>::variant;
+  using std::variant<
+      ConductorStart, ResultT<WorkerCreated>, ResultT<WorkerFailed>,
+      ResultT<GraphLoaded>, ResultT<GlobalSuperStepFinished>, ResultT<Stored>,
+      ResultCreated, StatusUpdate, CleanupFinished, Cancel>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<ConductorStart>("Start"),
       arangodb::inspection::type<ResultT<WorkerCreated>>("WorkerCreated"),
+      arangodb::inspection::type<ResultT<WorkerFailed>>("WorkerFailed"),
       arangodb::inspection::type<ResultT<GraphLoaded>>("GraphLoaded"),
       arangodb::inspection::type<ResultT<GlobalSuperStepFinished>>(
           "GlobalSuperStepFinished"),

@@ -30,6 +30,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 #include "Futures/Unit.h"
+#include "Metrics/GaugeCounterGuard.h"
 
 #include <atomic>
 #include <memory>
@@ -97,6 +98,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
   RequestStatistics::Item&& stealStatistics();
   void setStatistics(RequestStatistics::Item&& stat);
+
+  void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
 
   /// Execute the rest handler state machine
   void runHandler(std::function<void(rest::RestHandler*)> cb) {
@@ -214,12 +217,18 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // low priority tasks
   bool _trackedAsOngoingLowPrio;
 
+  // whether or not the handler handles a request for the async
+  // job api (/_api/job) or the batch API (/_api/batch)
+  bool _isAsyncRequest = false;
+
   RequestLane _lane;
 
   std::shared_ptr<LogContext::Values> _logContextScopeValues;
   LogContext::EntryPtr _logContextEntry;
 
  protected:
+  metrics::GaugeCounterGuard<std::uint64_t> _requestBodySizeTracker;
+
   std::atomic<bool> _canceled;
 };
 

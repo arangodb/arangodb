@@ -1,18 +1,17 @@
 
 @startDocuBlock put_api_replication_applier_start
-@brief start the replication applier
 
-@RESTHEADER{PUT /_api/replication/applier-start, Start replication applier,startReplicationApplier}
+@RESTHEADER{PUT /_api/replication/applier-start, Start the replication applier,startReplicationApplier}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{global,boolean,optional}
-If set to *true*, starts the global replication applier for all
-databases. If set to *false*, starts the replication applier in the
+If set to `true`, starts the global replication applier for all
+databases. If set to `false`, starts the replication applier in the
 selected database.
 
 @RESTQUERYPARAM{from,string,optional}
-The remote *lastLogTick* value from which to start applying. If not specified,
+The remote `lastLogTick` value from which to start applying. If not specified,
 the last saved tick from the previous applier run is used. If there is no
 previous applier state saved, the applier will start at the beginning of the
 logger server's log.
@@ -28,7 +27,7 @@ errors while running, they will not be reported in the response to this
 method.
 
 To detect replication applier errors after the applier was started, use the
-*/_api/replication/applier-state* API instead.
+`/_api/replication/applier-state` API instead.
 
 @RESTRETURNCODES
 

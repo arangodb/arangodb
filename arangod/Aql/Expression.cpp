@@ -353,12 +353,19 @@ void Expression::initAccessor() {
     member = member->getMemberUnchecked(0);
   }
 
-  TRI_ASSERT(member->type == NODE_TYPE_REFERENCE);
-  auto v = static_cast<Variable const*>(member->getData());
+  if (member->type != NODE_TYPE_REFERENCE) {
+    // the accessor accesses something else than a variable/reference.
+    // this is something we are not prepared for. so fall back to a
+    // simple expression instead
+    _type = SIMPLE;
+  } else {
+    TRI_ASSERT(member->type == NODE_TYPE_REFERENCE);
+    auto v = static_cast<Variable const*>(member->getData());
 
-  // specialize the simple expression into an attribute accessor
-  _accessor = AttributeAccessor::create(std::move(parts), v);
-  TRI_ASSERT(_accessor != nullptr);
+    // specialize the simple expression into an attribute accessor
+    _accessor = AttributeAccessor::create(std::move(parts), v);
+    TRI_ASSERT(_accessor != nullptr);
+  }
 }
 
 /// @brief prepare the expression for execution, without an

@@ -1,6 +1,5 @@
 
 @startDocuBlock post_api_explain
-@brief explain an AQL query and return information about it
 
 @RESTHEADER{POST /_api/explain, Explain an AQL query, explainAqlQuery}
 
@@ -8,8 +7,8 @@ A JSON object describing the query and query parameters.
 
 @RESTBODYPARAM{query,string,required,string}
 the query which you want explained; If the query references any bind variables,
-these must also be passed in the attribute *bindVars*. Additional
-options for the query can be passed in the *options* attribute.
+these must also be passed in the attribute `bindVars`. Additional
+options for the query can be passed in the `options` attribute.
 
 @RESTBODYPARAM{bindVars,object,optional,}
 An object with key/value pairs representing the bind parameters.
@@ -21,8 +20,8 @@ attribute name. For example: `"bindVars": { "var": 42, "@coll": "products" }`.
 Options for the query
 
 @RESTSTRUCT{allPlans,explain_options,boolean,optional,}
-if set to *true*, all possible execution plans will be returned.
-The default is *false*, meaning only the optimal plan will be returned.
+if set to `true`, all possible execution plans will be returned.
+The default is `false`, meaning only the optimal plan will be returned.
 
 @RESTSTRUCT{maxNumberOfPlans,explain_options,integer,optional,int64}
 an optional maximum number of plans that the optimizer is
@@ -52,39 +51,39 @@ the query.
 
 By default, the explain operation will return the optimal plan as chosen by
 the query optimizer The optimal plan is the plan with the lowest total estimated
-cost. The plan will be returned in the attribute *plan* of the response object.
-If the option *allPlans* is specified in the request, the result will contain
+cost. The plan will be returned in the attribute `plan` of the response object.
+If the option `allPlans` is specified in the request, the result will contain
 all plans created by the optimizer. The plans will then be returned in the
-attribute *plans*.
+attribute `plans`.
 
-The result will also contain an attribute *warnings*, which is an array of
+The result will also contain an attribute `warnings`, which is an array of
 warnings that occurred during optimization or execution plan creation. Additionally,
-a *stats* attribute is contained in the result with some optimizer statistics.
-If *allPlans* is set to *false*, the result will contain an attribute *cacheable*
+a `stats` attribute is contained in the result with some optimizer statistics.
+If `allPlans` is set to `false`, the result will contain an attribute `cacheable`
 that states whether the query results can be cached on the server if the query
-result cache were used. The *cacheable* attribute is not present when *allPlans*
-is set to *true*.
+result cache were used. The `cacheable` attribute is not present when `allPlans`
+is set to `true`.
 
 Each plan in the result is a JSON object with the following attributes:
-- *nodes*: the array of execution nodes of the plan.
+- `nodes`: the array of execution nodes of the plan.
 
-- *estimatedCost*: the total estimated cost for the plan. If there are multiple
+- `estimatedCost`: the total estimated cost for the plan. If there are multiple
   plans, the optimizer will choose the plan with the lowest total cost.
 
-- *collections*: an array of collections used in the query
+- `collections`: an array of collections used in the query
 
-- *rules*: an array of rules the optimizer applied.
+- `rules`: an array of rules the optimizer applied.
 
-- *variables*: array of variables used in the query (note: this may contain
+- `variables`: array of variables used in the query (note: this may contain
   internal variables created by the optimizer)
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
 If the query is valid, the server will respond with *HTTP 200* and
-return the optimal execution plan in the *plan* attribute of the response.
-If option *allPlans* was set in the request, an array of plans will be returned
-in the *allPlans* attribute instead.
+return the optimal execution plan in the `plan` attribute of the response.
+If option `allPlans` was set in the request, an array of plans will be returned
+in the `allPlans` attribute instead.
 
 @RESTRETURNCODE{400}
 The server will respond with *HTTP 400* in case of a malformed request,

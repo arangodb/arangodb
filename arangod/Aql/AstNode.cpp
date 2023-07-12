@@ -2691,7 +2691,7 @@ bool AstNode::stringEquals(std::string const& other) const {
           memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
 }
 
-void* AstNode::getData() const { return value.value._data; }
+void* AstNode::getData() const noexcept { return value.value._data; }
 
 void AstNode::setData(void* v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));

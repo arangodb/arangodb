@@ -1,8 +1,7 @@
 
 @startDocuBlock put_admin_compact
-@brief compact all databases
 
-@RESTHEADER{PUT /_admin/compact, Compact the entire database system data, compactAllDatabases}
+@RESTHEADER{PUT /_admin/compact, Compact all databases, compactAllDatabases}
 
 @HINTS
 {% hint 'warning' %}
@@ -13,15 +12,17 @@ only when additional I/O load can be tolerated for a prolonged time.
 
 @RESTDESCRIPTION
 This endpoint can be used to reclaim disk space after substantial data
-deletions have taken place. It requires superuser access.
+deletions have taken place, by compacting the entire database system data.
+
+The endpoint requires superuser access.
 
 @RESTBODYPARAM{changeLevel,boolean,optional,}
 whether or not compacted data should be moved to the minimum possible level.
-The default value is *false*.
+The default value is `false`.
 
 @RESTBODYPARAM{compactBottomMostLevel,boolean,optional,}
 Whether or not to compact the bottommost level of data.
-The default value is *false*.
+The default value is `false`.
 
 @RESTRETURNCODES
 

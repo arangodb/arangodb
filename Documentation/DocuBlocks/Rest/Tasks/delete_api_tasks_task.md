@@ -1,13 +1,12 @@
 @startDocuBlock delete_api_tasks_task
-@brief deletes one currently active server task
 
-@RESTHEADER{DELETE /_api/tasks/{id}, deletes the task with id, deleteTask}
+@RESTHEADER{DELETE /_api/tasks/{id}, Delete a task, deleteTask}
 
 @RESTURLPARAM{id,string,required}
 The id of the task to delete.
 
 @RESTDESCRIPTION
-Deletes the task identified by *id* on the server.
+Deletes the task identified by `id` on the server.
 
 @RESTRETURNCODES
 
@@ -18,16 +17,16 @@ If the task was deleted, *HTTP 200* is returned.
 The status code, 200 in this case.
 
 @RESTREPLYBODY{error,boolean,required,}
-*false* in this case
+`false` in this case
 
 @RESTRETURNCODE{404}
-If the task *id* is unknown, then an *HTTP 404* is returned.
+If the task `id` is unknown, then an *HTTP 404* is returned.
 
 @RESTREPLYBODY{code,number,required,}
 The status code, 404 in this case.
 
 @RESTREPLYBODY{error,boolean,required,}
-*true* in this case
+`true` in this case
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A plain text message stating what went wrong.

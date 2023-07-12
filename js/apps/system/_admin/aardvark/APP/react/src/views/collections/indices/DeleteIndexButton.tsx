@@ -20,7 +20,7 @@ export const DeleteIndexButton = ({ indexRow }: { indexRow: IndexRowType }) => {
   const { onOpen, onClose, isOpen } = useDisclosure();
   const { readOnly } = useCollectionIndicesContext();
   return (
-    <Box display="flex" justifyContent="center">
+    <Box display="flex" justifyContent="flex-end">
       <IconButton
         isDisabled={readOnly}
         colorScheme="red"

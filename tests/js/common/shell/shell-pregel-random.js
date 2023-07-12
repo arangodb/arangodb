@@ -87,7 +87,6 @@ function randomTestSuite() {
       graph._addVertexCollection(vColl);
       db._createEdgeCollection(eColl, {
         numberOfShards: 4,
-        replicationFactor: 1,
         shardKeys: ["vertex"],
         distributeShardsLike: vColl
       });
@@ -204,7 +203,7 @@ function randomTestSuite() {
       stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
       assertTrue(stats.hasOwnProperty('expires'));
       assertTrue(stats.expires > stats.created);
-      pregelTestHelpers.waitForResultsBeeingGarbageCollected(pid, ttl);
+      pregelTestHelpers.waitForResultsBeeingGarbageCollected(pid, 2 * ttl);
     }
   };
 }

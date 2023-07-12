@@ -42,3 +42,14 @@ class ExecutionNodeId : public basics::Identifier {
 }  // namespace arangodb::aql
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::aql::ExecutionNodeId)
+
+template<>
+struct fmt::formatter<::arangodb::aql::ExecutionNodeId>
+    : fmt::formatter<::arangodb::basics::Identifier> {
+  template<class FormatContext>
+  auto format(::arangodb::aql::ExecutionNodeId nodeId,
+              FormatContext& fc) const {
+    return ::fmt::formatter<typename ::arangodb::basics::Identifier>::format(
+        nodeId, fc);
+  }
+};

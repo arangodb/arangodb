@@ -100,8 +100,15 @@ bool copyDirectoryRecursive(
     std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
     std::string& error);
 
-// returns list of files
+// returns list of files / subdirectories / links in a directory.
+// does not recurse into subdirectories. will throw an exception in
+// case the directory cannot be opened for iteration.
 std::vector<std::string> listFiles(std::string const& directory);
+
+// returns the number of files / subdirectories / links in a directory.
+// does not recurse into subdirectories. will throw an exception in
+// case the directory cannot be opened for iteration.
+size_t countFiles(std::string const& directory);
 
 // checks if path is a directory
 bool isDirectory(std::string const& path);

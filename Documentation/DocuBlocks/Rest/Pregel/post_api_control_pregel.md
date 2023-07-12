@@ -1,7 +1,6 @@
 @startDocuBlock post_api_control_pregel
-@brief Start the execution of a Pregel algorithm
 
-@RESTHEADER{POST /_api/control_pregel, Start Pregel job execution, createPregelJob}
+@RESTHEADER{POST /_api/control_pregel, Start a Pregel job execution, createPregelJob}
 
 @RESTBODYPARAM{algorithm,string,required,string}
 Name of the algorithm. One of:

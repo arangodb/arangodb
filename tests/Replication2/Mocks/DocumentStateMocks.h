@@ -20,13 +20,11 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
 #include "Replication2/StateMachines/Document/CollectionReader.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
@@ -34,17 +32,17 @@
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Replication2/StateMachines/Document/ShardProperties.h"
+#include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
 
+#include "Cluster/ClusterTypes.h"
 #include "Transaction/Manager.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/vocbase.h"
 
-namespace arangodb::replication2::test {
+namespace arangodb::replication2::tests {
 struct MockDocumentStateTransactionHandler;
 struct MockDocumentStateSnapshotHandler;
-
-struct MockDatabaseGuard : IDatabaseGuard {
-  MOCK_METHOD(TRI_vocbase_t&, database, (), (const, noexcept, override));
-};
 
 struct MockTransactionManager : transaction::IManager {
   MOCK_METHOD(Result, abortManagedTrx,
@@ -90,81 +88,116 @@ struct MockCollectionReaderDelegator
   std::shared_ptr<ICollectionReader> _reader;
 };
 
-struct MockCollectionReaderFactory
-    : replicated_state::document::ICollectionReaderFactory {
-  explicit MockCollectionReaderFactory(
+struct MockDatabaseSnapshot : replicated_state::document::IDatabaseSnapshot {
+  explicit MockDatabaseSnapshot(
       std::shared_ptr<replicated_state::document::ICollectionReader> reader);
 
-  MOCK_METHOD(
-      ResultT<std::unique_ptr<replicated_state::document::ICollectionReader>>,
-      createCollectionReader, (std::string_view collectionName), (override));
+  MOCK_METHOD(std::unique_ptr<replicated_state::document::ICollectionReader>,
+              createCollectionReader, (std::string_view collectionName),
+              (override));
+
+  MOCK_METHOD(Result, resetTransaction, (), (override));
 
  private:
   std::shared_ptr<replicated_state::document::ICollectionReader> _reader;
 };
 
-struct MockCollectionReaderFactoryDelegator
-    : replicated_state::document::ICollectionReaderFactory {
-  explicit MockCollectionReaderFactoryDelegator(
-      std::shared_ptr<replicated_state::document::ICollectionReaderFactory>
-          factory)
-      : _factory(std::move(factory)) {}
+struct MockDatabaseSnapshotDelegator
+    : replicated_state::document::IDatabaseSnapshot {
+  explicit MockDatabaseSnapshotDelegator(
+      std::shared_ptr<replicated_state::document::IDatabaseSnapshot> snapshot)
+      : _snapshot(std::move(snapshot)) {}
 
-  ResultT<std::unique_ptr<replicated_state::document::ICollectionReader>>
+  std::unique_ptr<replicated_state::document::ICollectionReader>
   createCollectionReader(std::string_view collectionName) override {
-    return _factory->createCollectionReader(collectionName);
+    return _snapshot->createCollectionReader(collectionName);
+  }
+
+  auto resetTransaction() -> Result override {
+    return _snapshot->resetTransaction();
   }
 
  private:
-  std::shared_ptr<ICollectionReaderFactory> _factory;
+  std::shared_ptr<replicated_state::document::IDatabaseSnapshot> _snapshot;
+};
+
+struct MockDatabaseSnapshotFactory
+    : replicated_state::document::IDatabaseSnapshotFactory {
+  MOCK_METHOD(std::unique_ptr<replicated_state::document::IDatabaseSnapshot>,
+              createSnapshot, (), (override));
+};
+
+struct MockDatabaseSnapshotFactoryDelegator
+    : replicated_state::document::IDatabaseSnapshotFactory {
+  explicit MockDatabaseSnapshotFactoryDelegator(
+      std::shared_ptr<replicated_state::document::IDatabaseSnapshotFactory>
+          factory)
+      : _factory(std::move(factory)) {}
+
+  std::unique_ptr<replicated_state::document::IDatabaseSnapshot>
+  createSnapshot() override {
+    return _factory->createSnapshot();
+  }
+
+ private:
+  std::shared_ptr<IDatabaseSnapshotFactory> _factory;
 };
 
 struct MockDocumentStateHandlersFactory
     : replicated_state::document::IDocumentStateHandlersFactory,
       std::enable_shared_from_this<MockDocumentStateHandlersFactory> {
   explicit MockDocumentStateHandlersFactory(
-      std::shared_ptr<MockCollectionReaderFactory> readerFactory);
+      std::shared_ptr<MockDatabaseSnapshotFactory> snapshotFactory);
 
   MOCK_METHOD(
-      std::shared_ptr<replicated_state::document::IDocumentStateAgencyHandler>,
-      createAgencyHandler, (GlobalLogIdentifier), (override));
-  MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>,
-      createShardHandler, (GlobalLogIdentifier), (override));
-  MOCK_METHOD(std::unique_ptr<
+      createShardHandler, (TRI_vocbase_t&, GlobalLogIdentifier), (override));
+  MOCK_METHOD(std::shared_ptr<
                   replicated_state::document::IDocumentStateSnapshotHandler>,
-              createSnapshotHandler, (GlobalLogIdentifier const&), (override));
-  MOCK_METHOD(std::unique_ptr<
-                  replicated_state::document::IDocumentStateTransactionHandler>,
-              createTransactionHandler, (GlobalLogIdentifier), (override));
+              createSnapshotHandler,
+              (TRI_vocbase_t&, GlobalLogIdentifier const&), (override));
+  MOCK_METHOD(
+      std::unique_ptr<
+          replicated_state::document::IDocumentStateTransactionHandler>,
+      createTransactionHandler,
+      (TRI_vocbase_t & vocbase, GlobalLogIdentifier,
+       std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>),
+      (override));
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateTransaction>,
       createTransaction,
-      (replicated_state::document::DocumentLogEntry const&,
-       IDatabaseGuard const&),
+      (TRI_vocbase_t&, TransactionId, ShardID const&, AccessMode::Type),
       (override));
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateNetworkHandler>,
       createNetworkHandler, (GlobalLogIdentifier), (override));
+  MOCK_METHOD(
+      std::shared_ptr<replicated_state::document::IMaintenanceActionExecutor>,
+      createMaintenanceActionExecutor, (GlobalLogIdentifier, ServerID),
+      (override));
 
-  auto makeUniqueCollectionReaderFactory()
-      -> std::unique_ptr<replicated_state::document::ICollectionReaderFactory>;
-  auto makeRealSnapshotHandler()
+  auto makeUniqueDatabaseSnapshotFactory()
+      -> std::unique_ptr<replicated_state::document::IDatabaseSnapshotFactory>;
+  auto makeRealSnapshotHandler(cluster::RebootTracker* rebootTracker = nullptr)
       -> std::shared_ptr<MockDocumentStateSnapshotHandler>;
-  auto makeRealTransactionHandler(GlobalLogIdentifier const&)
+  auto makeRealTransactionHandler(
+      TRI_vocbase_t* vocbase, GlobalLogIdentifier const&,
+      std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>)
       -> std::shared_ptr<MockDocumentStateTransactionHandler>;
 
-  std::shared_ptr<MockCollectionReaderFactory> collectionReaderFactory;
+  std::shared_ptr<MockDatabaseSnapshotFactory> databaseSnapshotFactory;
 };
 
 struct MockDocumentStateTransaction
     : replicated_state::document::IDocumentStateTransaction {
-  MOCK_METHOD(OperationResult, apply,
-              (replicated_state::document::DocumentLogEntry const&),
-              (override));
+  MOCK_METHOD(
+      OperationResult, apply,
+      (replicated_state::document::ReplicatedOperation::OperationType const&),
+      (override));
   MOCK_METHOD(Result, intermediateCommit, (), (override));
   MOCK_METHOD(Result, commit, (), (override));
   MOCK_METHOD(Result, abort, (), (override));
+  MOCK_METHOD(bool, containsShard, (ShardID const&), (override));
 };
 
 struct MockDocumentStateTransactionHandler
@@ -179,36 +212,46 @@ struct MockDocumentStateTransactionHandler
           real);
 
   MOCK_METHOD(Result, applyEntry,
-              (replicated_state::document::DocumentLogEntry doc), (override));
+              (replicated_state::document::ReplicatedOperation), (override));
   MOCK_METHOD(
-      std::shared_ptr<replicated_state::document::IDocumentStateTransaction>,
-      ensureTransaction,
-      (replicated_state::document::DocumentLogEntry const& doc), (override));
+      Result, applyEntry,
+      (replicated_state::document::ReplicatedOperation::OperationType const&),
+      (override));
   MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
+  MOCK_METHOD(std::vector<TransactionId>, getTransactionsForShard,
+              (ShardID const&), (override));
   MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
               (const, override));
+  MOCK_METHOD(
+      Result, validate,
+      (replicated_state::document::ReplicatedOperation::OperationType const&),
+      (const, override));
 
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateTransactionHandler>
       _real;
 };
 
-struct MockDocumentStateAgencyHandler
-    : replicated_state::document::IDocumentStateAgencyHandler {
-  MOCK_METHOD(std::shared_ptr<velocypack::Builder>, getCollectionPlan,
-              (std::string const&), (override));
-  MOCK_METHOD(Result, reportShardInCurrent,
-              (std::string const&, std::string const&,
-               std::shared_ptr<velocypack::Builder> const&),
+struct MockMaintenanceActionExecutor
+    : replicated_state::document::IMaintenanceActionExecutor {
+  MOCK_METHOD(Result, executeCreateCollectionAction,
+              (ShardID, CollectionID, std::shared_ptr<VPackBuilder>),
               (override));
+  MOCK_METHOD(Result, executeDropCollectionAction, (ShardID, CollectionID),
+              (override));
+  MOCK_METHOD(void, addDirty, (), (override));
 };
 
 struct MockDocumentStateShardHandler
     : replicated_state::document::IDocumentStateShardHandler {
-  MOCK_METHOD(ResultT<std::string>, createLocalShard,
-              (std::string const&, std::shared_ptr<velocypack::Builder> const&),
+  MOCK_METHOD(ResultT<bool>, ensureShard,
+              (ShardID, CollectionID, std::shared_ptr<VPackBuilder>),
               (override));
-  MOCK_METHOD(Result, dropLocalShard, (std::string const&), (override));
+  MOCK_METHOD(ResultT<bool>, dropShard, (ShardID const&), (override));
+  MOCK_METHOD(Result, dropAllShards, (), (override));
+  MOCK_METHOD(bool, isShardAvailable, (ShardID const&), (override));
+  MOCK_METHOD(replicated_state::document::ShardMap, getShardMap, (),
+              (override));
 };
 
 struct MockDocumentStateSnapshotHandler
@@ -222,14 +265,23 @@ struct MockDocumentStateSnapshotHandler
           real);
 
   MOCK_METHOD(ResultT<std::weak_ptr<replicated_state::document::Snapshot>>,
-              create, (std::string_view), (override));
+              create,
+              (replicated_state::document::ShardMap,
+               replicated_state::document::SnapshotParams::Start const& params),
+              (override));
   MOCK_METHOD(ResultT<std::weak_ptr<replicated_state::document::Snapshot>>,
               find, (replicated_state::document::SnapshotId const&),
-              (override));
+              (override, noexcept));
   MOCK_METHOD(replicated_state::document::AllSnapshotsStatus, status, (),
               (const, override));
+  MOCK_METHOD(Result, abort, (replicated_state::document::SnapshotId const& id),
+              (override));
+  MOCK_METHOD(Result, finish,
+              (replicated_state::document::SnapshotId const& id), (override));
   MOCK_METHOD(void, clear, (), (override));
-  MOCK_METHOD(void, clearInactiveSnapshots, (), (override));
+  MOCK_METHOD(void, giveUpOnShard, (ShardID const& shardId), (override));
+
+  static cluster::RebootTracker rebootTracker;
 
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateSnapshotHandler>
@@ -239,8 +291,8 @@ struct MockDocumentStateSnapshotHandler
 struct MockDocumentStateLeaderInterface
     : replicated_state::document::IDocumentStateLeaderInterface {
   MOCK_METHOD(
-      futures::Future<ResultT<replicated_state::document::SnapshotBatch>>,
-      startSnapshot, (LogIndex), (override));
+      futures::Future<ResultT<replicated_state::document::SnapshotConfig>>,
+      startSnapshot, (), (override));
   MOCK_METHOD(
       futures::Future<ResultT<replicated_state::document::SnapshotBatch>>,
       nextSnapshotBatch, (replicated_state::document::SnapshotId), (override));
@@ -272,10 +324,9 @@ struct DocumentFollowerStateWrapper
     return std::move(*this).DocumentFollowerState::resign();
   }
 
-  auto acquireSnapshot(ParticipantId const& destination,
-                       LogIndex waitForIndex) noexcept
+  auto acquireSnapshot(ParticipantId const& destination) noexcept
       -> futures::Future<Result> override {
-    return DocumentFollowerState::acquireSnapshot(destination, waitForIndex);
+    return DocumentFollowerState::acquireSnapshot(destination);
   }
 
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
@@ -319,9 +370,6 @@ struct MockProducerStream
   MOCK_METHOD(LogIndex, insert,
               (replicated_state::document::DocumentLogEntry const&),
               (override));
-  MOCK_METHOD((std::pair<LogIndex, DeferredAction>), insertDeferred,
-              (replicated_state::document::DocumentLogEntry const&),
-              (override));
 
   MockProducerStream() {
     ON_CALL(*this, insert)
@@ -341,7 +389,7 @@ struct MockProducerStream
 struct DocumentLogEntryIterator
     : TypedLogRangeIterator<streams::StreamEntryView<
           replicated_state::document::DocumentLogEntry>> {
-  DocumentLogEntryIterator(
+  explicit DocumentLogEntryIterator(
       std::vector<replicated_state::document::DocumentLogEntry> entries);
 
   auto next() -> std::optional<streams::StreamEntryView<
@@ -353,4 +401,4 @@ struct DocumentLogEntryIterator
   decltype(entries)::iterator iter;
 };
 
-}  // namespace arangodb::replication2::test
+}  // namespace arangodb::replication2::tests

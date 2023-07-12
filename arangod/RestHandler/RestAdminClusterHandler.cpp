@@ -47,7 +47,6 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
-#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -294,7 +293,6 @@ std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 std::string const RestAdminClusterHandler::Rebalance = "rebalance";
 std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
-std::string const RestAdminClusterHandler::FailureOracle = "failureOracle";
 
 RestStatus RestAdminClusterHandler::execute() {
   // here we first do a glboal check, which is based on the setting in startup
@@ -377,16 +375,14 @@ RestStatus RestAdminClusterHandler::execute() {
     }
   } else if (len == 2) {
     std::string const& command = suffixes.at(0);
-    if (command == FailureOracle) {
-      return handleFailureOracle();
-    } else if (command == Rebalance) {
+    if (command == Rebalance) {
       return handleRebalance();
     } else if (command == Maintenance) {
       return handleDBServerMaintenance(suffixes.at(1));
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command +
-                        "', expecting 'failureOracle'");
+                        "', expecting 'rebalance' or 'maintenance'");
       return RestStatus::DONE;
     }
   }
@@ -2851,121 +2847,4 @@ RestAdminClusterHandler::collectRebalanceInformation(
   }
 
   return p;
-}
-
-RestStatus RestAdminClusterHandler::handleFailureOracle() {
-  if (!server().hasFeature<cluster::FailureOracleFeature>() ||
-      !server().isEnabled<cluster::FailureOracleFeature>()) {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
-                  "FailureOracleFeature is unavailable");
-    return RestStatus::DONE;
-  }
-
-  std::vector<std::string> const& suffixes = request()->suffixes();
-  if (suffixes.size() != 2) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected /_admin/cluster/failureOracle/[verb]");
-    return RestStatus::DONE;
-  }
-
-  if (auto const& command = suffixes[1]; command == "status") {
-    handleFailureOracleStatus();
-  } else if (command == "flush") {
-    return handleFailureOracleFlush();
-  } else {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "expecting one of the resources 'status', 'flush'");
-  }
-  return RestStatus::DONE;
-}
-
-RestStatus RestAdminClusterHandler::handleFailureOracleStatus() {
-  if (request()->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
-  }
-
-  auto& failureOracle = server().getFeature<cluster::FailureOracleFeature>();
-  auto status = failureOracle.status();
-  VPackBuilder response;
-  status.toVelocyPack(response);
-  generateOk(rest::ResponseCode::OK, response.slice());
-  return RestStatus::DONE;
-}
-
-RestStatus RestAdminClusterHandler::handleFailureOracleFlush() {
-  if (request()->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
-  }
-
-  auto& failureOracle = server().getFeature<cluster::FailureOracleFeature>();
-  auto global = _request->parsedValue("global", false);
-
-  if (ServerState::instance()->isDBServer() && global) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "global=true is only allowed on coordinators");
-    return RestStatus::DONE;
-  }
-
-  if (ServerState::instance()->isCoordinator() && global) {
-    auto* pool = server().getFeature<NetworkFeature>().pool();
-
-    // Locally flush the cache for this coordinator
-    auto status = failureOracle.status();
-    auto isFailed = std::move(status.isFailed);
-    auto id = ServerState::instance()->getId();
-    isFailed.erase(id);
-    failureOracle.flush();
-
-    // Send flush requests to all servers
-    auto fut = std::invoke([isFailed = std::move(isFailed), id = std::move(id),
-                            pool = pool]() mutable {
-      std::vector<futures::Future<fuerte::StatusCode>> flushDbs;
-      for (auto const& [pid, pf] : isFailed) {
-        auto path = basics::StringUtils::joinT("/", "_admin/cluster",
-                                               "failureOracle", "flush");
-        network::RequestOptions opts;
-        opts.timeout = std::chrono::seconds{5};
-        opts.parameters["global"] = "false";
-        flushDbs.emplace_back(
-            network::sendRequest(pool, "server:" + pid, fuerte::RestVerb::Post,
-                                 std::move(path), {}, opts)
-                .then([](futures::Try<network::Response>&& tryResult) {
-                  auto result = basics::catchToResultT(
-                      [&] { return std::move(tryResult.get()); });
-                  return result.ok() ? result->statusCode()
-                                     : fuerte::StatusUndefined;
-                }));
-      }
-      return futures::collectAll(std::move(flushDbs))
-          .thenValue([status = std::move(isFailed),
-                      id = std::move(id)](auto&& statusCodes) {
-            VPackBuilder response;
-            {
-              VPackObjectBuilder participantsFlushStatus(&response);
-              std::size_t idx = 0;
-              for (auto const& [pid, pf] : status) {
-                auto& result = statusCodes.at(idx++);
-                response.add(pid, VPackValue(std::move(result.get())));
-              }
-              response.add(id, VPackValue(fuerte::StatusAccepted));
-            }
-            return response;
-          });
-    });
-
-    return waitForFuture(std::move(fut).thenValue(
-        [self = std::static_pointer_cast<RestAdminClusterHandler>(
-             shared_from_this())](auto builder) mutable {
-          self->generateOk(rest::ResponseCode::OK, std::move(builder.slice()));
-        }));
-  }
-
-  failureOracle.flush();
-  generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
-  return RestStatus::DONE;
 }

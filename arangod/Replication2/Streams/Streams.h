@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/TypedLogIterator.h"
 #include "Replication2/Streams/StreamSpecification.h"
 
 namespace arangodb {
@@ -75,8 +75,6 @@ struct Stream {
 template<typename T>
 struct ProducerStream : Stream<T> {
   virtual auto insert(T const&) -> LogIndex = 0;
-  virtual auto insertDeferred(T const&)
-      -> std::pair<LogIndex, DeferredAction> = 0;
 };
 
 /**

@@ -128,7 +128,7 @@ function import_self_contained_documentsSuite () {
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
     },
 
     test_JSONA_empty_body: function() {

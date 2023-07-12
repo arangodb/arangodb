@@ -176,12 +176,6 @@ class GraphManager {
       std::function<Result(std::unique_ptr<Graph>)> const& callback) const;
 
  private:
-#ifdef USE_ENTERPRISE
-  std::pair<Result, std::string> ensureEnterpriseCollectionSharding(
-      Graph const* graph, bool waitForSync, bool waitForSyncReplication,
-      std::unordered_set<std::string>& documentCollections) const;
-#endif
-
   Result ensureCollections(
       Graph& graph,
       std::unordered_set<std::string>& documentCollectionsToCreate,
@@ -213,13 +207,6 @@ class GraphManager {
       Graph const& graph,
       std::unordered_set<std::string> const& followersToBeRemoved,
       std::unordered_set<std::string> const& leadersToBeRemoved);
-
-  ResultT<std::vector<CollectionCreationInfo>> prepareCollectionsToCreate(
-      Graph const* graph, bool waitForSync,
-      std::unordered_set<std::string> const& documentsCollectionNames,
-      std::unordered_set<std::string> const& edgeCollectionNames,
-      std::unordered_set<std::string> const& satellites,
-      std::vector<std::shared_ptr<VPackBuffer<uint8_t>>>& vpackLake) const;
 
   Result ensureVertexShardingMatches(
       Graph const& graph, LogicalCollection& edgeColl,
