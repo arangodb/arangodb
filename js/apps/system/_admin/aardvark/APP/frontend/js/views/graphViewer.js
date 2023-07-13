@@ -53,8 +53,6 @@
     activeNodes: [],
     selectedNodes: {},
 
-    aqlMode: false,
-
     events: {
       'click #downloadPNG': 'downloadPNG',
       'click #switchToVisGraphViewer': 'switchToVisGraphViewer',
@@ -348,7 +346,7 @@
       };
 
       this.killCurrentGraph();
-      this.renderGraph(data, null, false, layout);
+      this.renderGraph(data, null, layout);
 
       if ($('#g_nodeColorByCollection').val() === 'true') {
         this.switchNodeColorByCollection(true);
@@ -1705,7 +1703,7 @@
       s.refresh();
     },
 
-    renderGraph: function (graph, toFocus, aqlMode, layout, renderer, edgeType) {
+    renderGraph: function (graph, toFocus, layout, renderer, edgeType) {
       var self = this;
       this.graphSettings = graph.settings;
 
@@ -1729,14 +1727,12 @@
           }
 
           var style = 'position: absolute; left: 25px; bottom: 50px;';
-          if (!this.aqlMode) {
-            $('#graph-container').append(
-              '<div id="objectCount" style="' + style + ' animated fadeIn">' +
-                '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
-                '<span class="arangoState"><span id="edgesCount">' + graph.edges.length + '</span> edges</span>' +
-              '</div>'
-            );
-          }
+          $('#graph-container').append(
+            '<div id="objectCount" style="' + style + ' animated fadeIn">' +
+              '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
+              '<span class="arangoState"><span id="edgesCount">' + graph.edges.length + '</span> edges</span>' +
+            '</div>'
+          );
         }
       }
       this.Sigma = sigma;
@@ -1836,21 +1832,6 @@
         settings.minArrowSize = 7;
       }
 
-      if (aqlMode) {
-        // aql editor settings
-        self.renderer = 'canvas';
-
-        if (graph.nodes.length < 500) {
-          self.algorithm = 'fruchtermann';
-        } else {
-          settings.scalingMode = 'outside';
-        }
-
-        settings.drawEdgeLabels = false;
-        settings.minNodeSize = 2;
-        settings.maxNodeSize = 8;
-      }
-
       // adjust display settings for webgl renderer
       if (self.renderer === 'webgl') {
         settings.enableEdgeHovering = false;
@@ -1868,12 +1849,10 @@
       });
       this.currentGraph = s;
 
-      if (!this.aqlMode) {
-        sigma.plugins.fullScreen({
-          container: 'graph-container',
-          btnId: 'graph-fullscreen-btn'
-        });
-      }
+      sigma.plugins.fullScreen({
+        container: 'graph-container',
+        btnId: 'graph-fullscreen-btn'
+      });
 
       s.graph.nodes().forEach(function (n) {
         n.originalColor = n.color;
@@ -1908,134 +1887,132 @@
       }
 
       // for canvas renderer allow graph editing
-      if (!self.aqlMode) {
-        var showAttributes = function (e, node) {
-          $('.nodeInfoDiv').remove();
+      var showAttributes = function (e, node) {
+        $('.nodeInfoDiv').remove();
 
-          if (self.contextState.createEdge === false) {
-            if (window.location.hash.indexOf('graph') > -1) {
-              var callback = function (error, data, id) {
-                if (!error) {
-                  var attributes = '';
-                  attributes += '<span class="title">ID </span> <span class="nodeId">' + data.documents[0]._id + '</span>';
-                  if (Object.keys(data.documents[0]).length > 3) {
-                    attributes += '<span class="title">ATTRIBUTES </span>';
-                  }
-                  _.each(data.documents[0], function (value, key) {
-                    if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
-                      attributes += '<span class="nodeAttribute" title="' + arangoHelper.escapeHtml(value, false) + '">' + arangoHelper.escapeHtml(key, false) + '</span>';
-                    }
-                  });
-                  var string = '<div id="nodeInfoDiv" class="nodeInfoDiv" style="display: none;">' + attributes + '</div>';
-
-                  $('#graph-container').append(string);
-                  arangoHelper.fixTooltips('.nodeAttribute', 'top');
-                  if (self.isFullscreen) {
-                    $('.nodeInfoDiv').css('top', '10px');
-                    $('.nodeInfoDiv').css('left', '10px');
-                  }
-                  $('#nodeInfoDiv').fadeIn('slow');
-                } else {
-                  // node not available any more
-                  self.currentGraph.graph.dropNode(id);
-                  // rerender graph
-                  self.currentGraph.refresh();
+        if (self.contextState.createEdge === false) {
+          if (window.location.hash.indexOf('graph') > -1) {
+            var callback = function (error, data, id) {
+              if (!error) {
+                var attributes = '';
+                attributes += '<span class="title">ID </span> <span class="nodeId">' + data.documents[0]._id + '</span>';
+                if (Object.keys(data.documents[0]).length > 3) {
+                  attributes += '<span class="title">ATTRIBUTES </span>';
                 }
-              };
+                _.each(data.documents[0], function (value, key) {
+                  if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
+                    attributes += '<span class="nodeAttribute" title="' + arangoHelper.escapeHtml(value, false) + '">' + arangoHelper.escapeHtml(key, false) + '</span>';
+                  }
+                });
+                var string = '<div id="nodeInfoDiv" class="nodeInfoDiv" style="display: none;">' + attributes + '</div>';
 
-              if (node) {
-                self.documentStore.getDocument(e.data.node.id.split('/')[0], e.data.node.id.split('/')[1], callback);
+                $('#graph-container').append(string);
+                arangoHelper.fixTooltips('.nodeAttribute', 'top');
+                if (self.isFullscreen) {
+                  $('.nodeInfoDiv').css('top', '10px');
+                  $('.nodeInfoDiv').css('left', '10px');
+                }
+                $('#nodeInfoDiv').fadeIn('slow');
               } else {
-                self.documentStore.getDocument(e.data.edge.id.split('/')[0], e.data.edge.id.split('/')[1], callback);
+                // node not available any more
+                self.currentGraph.graph.dropNode(id);
+                // rerender graph
+                self.currentGraph.refresh();
               }
-            }
-          }
-        };
+            };
 
-        s.bind('clickNode', function (e) {
-          if (self.contextState.createEdge === true) {
-            self.clearMouseCanvas();
-            self.removeHelp();
-
-            // create the edge
-            self.contextState._to = e.data.node.id;
-            var fromCollection = self.contextState._from.split('/')[0];
-            var toCollection = self.contextState._to.split('/')[0];
-
-            // validate edgeDefinitions
-            var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
-            if (foundEdgeDefinitions.length === 0) {
-              arangoHelper.arangoNotification('Graph', 'No valid edge definition found.');
+            if (node) {
+              self.documentStore.getDocument(e.data.node.id.split('/')[0], e.data.node.id.split('/')[1], callback);
             } else {
-              self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
-              self.clearOldContextMenu(false);
-            }
-          } else {
-            if (!self.dragging) {
-              if (self.contextState.createEdge === true) {
-                self.newEdgeColor = '#ff0000';
-              } else {
-                self.newEdgeColor = '#000000';
-              }
-
-              // halo on active nodes:
-              if (self.renderer === 'canvas') {
-                self.currentGraph.renderers[0].halo({
-                  nodes: self.currentGraph.graph.nodes(),
-                  nodeHaloColor: '#DF0101',
-                  nodeHaloSize: 100
-                });
-              }
-
-              showAttributes(e, true);
-              self.activeNodes = [e.data.node];
-
-              if (self.renderer === 'canvas') {
-                s.renderers[0].halo({
-                  nodes: [e.data.node]
-                });
-              }
-
-              self.createNodeContextMenu(e.data.node.id, e);
+              self.documentStore.getDocument(e.data.edge.id.split('/')[0], e.data.edge.id.split('/')[1], callback);
             }
           }
-        });
+        }
+      };
 
-        s.bind('clickStage', function (e) {
-          if (e.data.captor.isDragging) {
+      s.bind('clickNode', function (e) {
+        if (self.contextState.createEdge === true) {
+          self.clearMouseCanvas();
+          self.removeHelp();
+
+          // create the edge
+          self.contextState._to = e.data.node.id;
+          var fromCollection = self.contextState._from.split('/')[0];
+          var toCollection = self.contextState._to.split('/')[0];
+
+          // validate edgeDefinitions
+          var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
+          if (foundEdgeDefinitions.length === 0) {
+            arangoHelper.arangoNotification('Graph', 'No valid edge definition found.');
+          } else {
+            self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
+            self.clearOldContextMenu(false);
+          }
+        } else {
+          if (!self.dragging) {
+            if (self.contextState.createEdge === true) {
+              self.newEdgeColor = '#ff0000';
+            } else {
+              self.newEdgeColor = '#000000';
+            }
+
+            // halo on active nodes:
+            if (self.renderer === 'canvas') {
+              self.currentGraph.renderers[0].halo({
+                nodes: self.currentGraph.graph.nodes(),
+                nodeHaloColor: '#DF0101',
+                nodeHaloSize: 100
+              });
+            }
+
+            showAttributes(e, true);
+            self.activeNodes = [e.data.node];
+
+            if (self.renderer === 'canvas') {
+              s.renderers[0].halo({
+                nodes: [e.data.node]
+              });
+            }
+
+            self.createNodeContextMenu(e.data.node.id, e);
+          }
+        }
+      });
+
+      s.bind('clickStage', function (e) {
+        if (e.data.captor.isDragging) {
+          self.clearOldContextMenu(true);
+          self.clearMouseCanvas();
+        } else if (self.contextState.createEdge === true) {
+          self.clearOldContextMenu(true);
+          self.clearMouseCanvas();
+          self.removeHelp();
+        } else {
+          // stage menu
+          if (!$('#nodeContextMenu').is(':visible')) {
+            // var offset = $('#graph-container').offset();
+            self.addNodeX = e.data.captor.x;
+            self.addNodeY = e.data.captor.y;
+            // self.calculateAddNodePosition(self.cursorX, self.cursorY);
+            // self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
+            // self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
+            // self.addNodeX = e.data.captor.x;
+            // self.addNodeY = e.data.captor.y;
+            self.createContextMenu(e);
+            self.clearMouseCanvas();
+          } else {
+            // cleanup
             self.clearOldContextMenu(true);
             self.clearMouseCanvas();
-          } else if (self.contextState.createEdge === true) {
-            self.clearOldContextMenu(true);
-            self.clearMouseCanvas();
-            self.removeHelp();
-          } else {
-            // stage menu
-            if (!$('#nodeContextMenu').is(':visible')) {
-              // var offset = $('#graph-container').offset();
-              self.addNodeX = e.data.captor.x;
-              self.addNodeY = e.data.captor.y;
-              // self.calculateAddNodePosition(self.cursorX, self.cursorY);
-              // self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
-              // self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
-              // self.addNodeX = e.data.captor.x;
-              // self.addNodeY = e.data.captor.y;
-              self.createContextMenu(e);
-              self.clearMouseCanvas();
-            } else {
-              // cleanup
-              self.clearOldContextMenu(true);
-              self.clearMouseCanvas();
-              self.removeOldContextMenu();
-            }
-
-            // remember halo
-            s.renderers[0].halo({
-              nodes: self.activeNodes
-            });
+            self.removeOldContextMenu();
           }
-        });
-      }
+
+          // remember halo
+          s.renderers[0].halo({
+            nodes: self.activeNodes
+          });
+        }
+      });
 
       if (self.renderer === 'canvas') {
         // render parallel edges
@@ -2123,10 +2100,6 @@
         // add buttons for start/stopping calculation
         var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px; z-index: 9999;';
 
-        if (self.aqlMode) {
-          style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: 10px; margin-right: -15px';
-        }
-
         $('#graph-container').after(
           '<div id="toggleForce" style="' + style2 + '">' +
             '<i style="margin-right: 5px;" class="fa fa-pause"></i><span> Stop layout</span>' +
@@ -2139,18 +2112,10 @@
         var adjust = 500;
         if (graph.nodes) {
           duration = graph.nodes.length;
-          if (aqlMode) {
-            if (duration < 250) {
-              duration = 250;
-            } else {
-              duration += adjust;
-            }
-          } else {
-            if (duration <= 250) {
-              duration = 500;
-            }
-            duration += adjust;
+          if (duration <= 250) {
+            duration = 500;
           }
+          duration += adjust;
         }
 
         if (graph.empty) {
@@ -2270,15 +2235,9 @@
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
       $('#toggleForce span').html('Stop layout');
       this.layouting = true;
-      if (this.aqlMode) {
-        this.currentGraph.startForceAtlas2({
-          worker: true
-        });
-      } else {
-        this.currentGraph.startForceAtlas2({
-          worker: true
-        });
-      }
+      this.currentGraph.startForceAtlas2({
+        worker: true
+      });
       // sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
     },
 
