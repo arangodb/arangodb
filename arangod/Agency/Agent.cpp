@@ -2467,6 +2467,7 @@ void Agent::syncActiveAndAcknowledged() {
 
 std::shared_ptr<Node const> Agent::IntermediateStateStore::commitIndex(
     index_t idx) {
+  LOG_DEVEL << "calling commitIndex(" << idx << ")";
   ADB_PROD_ASSERT(_first <= idx)
       << "first index is " << _first << " but commit index is " << idx;
   auto delta = idx - _first;
@@ -2480,6 +2481,10 @@ std::shared_ptr<Node const> Agent::IntermediateStateStore::commitIndex(
 
 void Agent::IntermediateStateStore::emplace(index_t idx,
                                             std::shared_ptr<const Node> state) {
+  LOG_DEVEL << "calling emplace(" << idx << ")";
+  if (_deque.empty()) {
+    _first = idx;
+  }
   auto next = _deque.size() + _first;
   ADB_PROD_ASSERT(next == idx)
       << "next index is " << next << " but insert index is " << idx;
