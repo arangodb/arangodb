@@ -15,5 +15,6 @@ RUN VERSION=$(curl -Ls https://api.github.com/repos/prometheus/prometheus/releas
     strip -s promtool && \
     mv promtool /usr/local/bin/promtool
 RUN pip install psutil py7zr
+ENV PROMTOOL_PATH=/usr/local/bin/
 
 CMD [ "bash" ]
