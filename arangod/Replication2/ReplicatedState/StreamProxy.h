@@ -102,8 +102,7 @@ struct ProducerStreamProxy
   explicit ProducerStreamProxy(
       std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods);
 
-  // TODO waitForSync parameter is missing
-  auto insert(EntryType const& v) -> LogIndex override;
+  auto insert(EntryType const& v, bool waitForSync) -> LogIndex override;
 
  private:
   auto serialize(EntryType const& v) -> LogPayload;

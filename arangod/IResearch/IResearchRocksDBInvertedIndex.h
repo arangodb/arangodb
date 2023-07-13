@@ -119,6 +119,7 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
   void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                       transaction::Methods* trx) final {
     IResearchDataStore::truncateCommit(std::move(guard), tick, trx);
+    guard = {};
   }
 
   bool matchesDefinition(velocypack::Slice const& other) const final;

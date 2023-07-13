@@ -30,6 +30,7 @@
 
 #include "Basics/Result.h"
 #include "Basics/RebootId.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
 
 namespace arangodb {

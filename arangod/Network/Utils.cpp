@@ -75,8 +75,7 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
   if (dest.starts_with("shard:")) {
     spec.shardId = dest.substr(6);
     {
-      std::shared_ptr<std::vector<ServerID> const> resp =
-          ci.getResponsibleServer(spec.shardId);
+      auto resp = ci.getResponsibleServer(spec.shardId);
       if (!resp->empty()) {
         spec.serverId = (*resp)[0];
       } else {

@@ -19,6 +19,26 @@ signal:crashHandlerSignalHandler
 # https://github.com/google/sanitizers/issues/1398
 race:VersionSet::SetLastSequence
 
+# The following scenario is flagged by TSAN: T1(M0 -> M1), T2(M1 -> M2), T3(M2 -> M0)
+# T1 establishes leadership
+#   - calls `LogLeader::executeAppendEntriesRequests` and acquires M0 (LogLeader::_guardedLeaderData)
+#   - calls `ReplicatedStateManager::leadershipEstablished` and acquires M1 (ReplicatedStateManager::_guarded)
+# T2 creates the shard
+#   - calls `ReplicatedStateManager::getLeader` and acquires M1 (ReplicatedStateManager::_guarded)
+#   - calls `LeaderStateManager::getStateMachine` and acquires M2 (LeaderStateManager::_guardedData)
+# T3 does recovery
+#   - calls `LeaderStateManager::recoverEntries` and acquires M2 (LeaderStateManager::_guardedData)
+#   - calls `LogLeader::triggerAsyncReplication` and acquires M0 (LogLeader::_guardedLeaderData)
+# It is a false positive because:
+# * T3 (recovery) is spawned due to T1 (leadership established) and it is guaranteed that T1 already holds M0 and
+#   M1 before T3 is started. T1 will definitely finish and release its locks, regardless of what other threads are
+#   doing.
+# * T2 (shard creation) may only do significant work if T3 (recovery) has already finished
+#   (see `LeaderStateManager<S>::getStateMachine()`). Therefore, if T2 acquires M2 before T3 has started,
+#   it will release its locks and try again later, because the leader state is unusable unless recovery is completed.
+deadlock:replication2::replicated_log::LogLeader::triggerAsyncReplication
+deadlock:replication2::replicated_state::ReplicatedStateManager
+
 # TODO - this should be removed once BTS-685 is fixed
 race:AllowImplicitCollectionsSwitcher
 race:graph::RefactoredTraverserCache::appendVertex
@@ -30,9 +50,6 @@ thread:DatabaseFeature::start
 
 # TODO Fix lock order inversion
 deadlock:consensus::Agent::setPersistedState
-# TODO BTS-1503: should be fixed or explained here why it's false positive
-deadlock:replication2::replicated_log::LogLeader::triggerAsyncReplication
-deadlock:replication2::replicated_state::ReplicatedStateManager
 
 # TODO Fix data race in arangodbtests
 race:DummyConnection::sendRequest
