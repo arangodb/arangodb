@@ -1,28 +1,14 @@
-import { CreateDatabaseUser } from "arangojs/database";
 import React, { createContext, ReactNode, useContext } from "react";
-//import { useFetchGraphs } from "./useFetchGraphs";
+import { DatabaseUserValues } from "./addUser/CreateUser.types";
+import { useFetchUsers } from "./useFetchUsers";
 
 type UsersContextType = {
-  users: CreateDatabaseUser[] | undefined;
+  users: DatabaseUserValues[] | undefined;
 };
 const UsersContext = createContext<UsersContextType>({} as UsersContextType);
 
 export const UsersProvider = ({ children }: { children: ReactNode }) => {
-  //const { graphs } = useFetchGraphs();
-  const users = [
-    {
-      username: "andreas",
-      passwd: "password",
-      active: true,
-      extra: undefined
-    },
-    {
-      username: "palash",
-      passwd: "password",
-      active: true,
-      extra: undefined
-    }
-  ];
+  const { users } = useFetchUsers();
   return (
     <UsersContext.Provider
       value={{
