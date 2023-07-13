@@ -291,47 +291,71 @@ configure_file(
 
 find_program (GIT_EXE git)
 if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
-  execute_process(
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  if (NOT DEFINED BUILD_REPO_INFO OR BUILD_REPO_INFO STREQUAL "default")
+    execute_process(
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 
-    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
-    OUTPUT_VARIABLE GIT_OUTPUT)
+      COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
+      OUTPUT_VARIABLE GIT_OUTPUT)
 
-  # this may fail on shallow clones that only knows about a limited number of commits.
-  # if there is an older merged revision the head, it may not be available to git.
-  if (NOT GIT_OUTPUT)
-      set(ARANGODB_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
-      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
-    else()
-      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-      set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
-      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+    # this may fail on shallow clones that only knows about a limited number of commits.
+    # if there is an older merged revision the head, it may not be available to git.
+    if (NOT GIT_OUTPUT)
+        set(ARANGODB_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
+        set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+      else()
+        string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
+        set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
+        set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
     endif()
+  endif()
 else ()
   set(ARANGODB_BUILD_REPOSITORY "")
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
 
+if (DEFINED BUILD_REPO_INFO)
+  if (BUILD_REPO_INFO STREQUAL "release" OR BUILD_REPO_INFO STREQUAL "nightly")
+    set(ARANGODB_BUILD_REPOSITORY ARANGODB_VERSION)
+    set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+  else()
+    set(ARANGODB_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - UNSUPPORTED BUILD MODE")
+    set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+  endif()
+endif()
+
 if (DEFINED GIT_EXE AND USE_ENTERPRISE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
-  execute_process(
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/enterprise
+  if (NOT DEFINED BUILD_REPO_INFO OR BUILD_REPO_INFO STREQUAL "default")
+    execute_process(
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/enterprise
 
-    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
-    OUTPUT_VARIABLE GIT_OUTPUT)
+      COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
+      OUTPUT_VARIABLE GIT_OUTPUT)
 
-  # this may fail on shallow clones that only knows about a limited number of commits.
-  # if there is an older merged revision the head, it may not be available to git.
-  if (NOT GIT_OUTPUT)
-      set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
-      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
-    else()
-      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-      set(ENTERPRISE_BUILD_REPOSITORY ${REPOSITORY_VERSION})
-      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
-    endif()
+    # this may fail on shallow clones that only knows about a limited number of commits.
+    # if there is an older merged revision the head, it may not be available to git.
+    if (NOT GIT_OUTPUT)
+        set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
+        set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+      else()
+        string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
+        set(ENTERPRISE_BUILD_REPOSITORY ${REPOSITORY_VERSION})
+        set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+      endif()
+  endif()    
 else ()
   set(ENTERPRISE_BUILD_REPOSITORY "")
   set(HAVE_ENTERPRISE_BUILD_REPOSITORY "0")
+endif()
+
+if (DEFINED BUILD_REPO_INFO AND USE_ENTERPRISE)
+  if (BUILD_REPO_INFO STREQUAL "release" OR BUILD_REPO_INFO STREQUAL "nightly")
+    set(ENTERPRISE_BUILD_REPOSITORY ARANGODB_VERSION)
+    set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+  else()
+    set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - UNSUPPORTED BUILD MODE")
+    set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+  endif()
 endif()
 
 if (DEFINED OSKAR_BUILD_REPOSITITORY)
