@@ -80,7 +80,7 @@ struct NodeLoadInspectorImpl
       v = *s;
       return {};
     }
-    return {"not an floating point value or not representable"};
+    return {"not a floating point value or not representable"};
   }
 
   [[nodiscard]] Status value(std::string& v) {
