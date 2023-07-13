@@ -9,7 +9,7 @@ export const QueryEditorTopBar = () => {
   const {
     setCurrentView,
     onQueryChange,
-    queryName,
+    currentQueryName,
     queryValue,
     queryBindParams,
     resetEditor,
@@ -17,7 +17,7 @@ export const QueryEditorTopBar = () => {
     onOpenSpotlight
   } = useQueryContext();
   const showNewButton =
-    queryName !== "" ||
+    currentQueryName !== "" ||
     queryValue !== "" ||
     JSON.stringify(queryBindParams) !== "{}";
   return (

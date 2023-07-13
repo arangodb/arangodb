@@ -14,7 +14,7 @@ export const useQueryEditorHandlers = () => {
     initialQuery?.query || ""
   );
 
-  const [queryName, setQueryName] = React.useState<string>("");
+  const [currentQueryName, setCurrentQueryName] = React.useState<string>("");
   const [queryBindParams, setQueryBindParams] = React.useState<{
     [key: string]: string;
   }>(initialQuery?.parameter || {});
@@ -66,16 +66,16 @@ export const useQueryEditorHandlers = () => {
     );
     setQueryValue(value);
     setQueryBindParams(parameter);
-    setQueryName(name || "");
+    setCurrentQueryName(name || "");
   };
   return {
     onQueryChange,
     onQueryValueChange,
     onBindParamsChange,
     queryValue,
-    queryName,
+    currentQueryName,
     queryBindParams,
     setQueryBindParams,
-    setQueryName
+    setCurrentQueryName
   };
 };

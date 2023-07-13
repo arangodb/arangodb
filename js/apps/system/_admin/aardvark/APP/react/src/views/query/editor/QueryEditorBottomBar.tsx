@@ -27,13 +27,13 @@ export const QueryEditorBottomBar = () => {
     queryBindParams,
     queryResults,
     setQueryResults,
-    queryName,
+    currentQueryName,
     onOpenSaveAsModal,
     onSave,
     savedQueries
   } = useQueryContext();
-  const existingQuery = queryName
-    ? savedQueries?.find(query => query.name === queryName)
+  const existingQuery = currentQueryName
+    ? savedQueries?.find(query => query.name === currentQueryName)
     : null;
   const hasQueryChanged =
     existingQuery?.value !== queryValue ||
@@ -59,15 +59,16 @@ export const QueryEditorBottomBar = () => {
         onCloseDebugPackageModal={onCloseDebugPackageModal}
       />
       <Text fontWeight="medium">
-        Query name: {existingQuery && queryName ? queryName : "Untitled"}
+        Query name:{" "}
+        {existingQuery && currentQueryName ? currentQueryName : "Untitled"}
       </Text>
-      {existingQuery && queryName && (
+      {existingQuery && currentQueryName && (
         <Button
           marginLeft="2"
           size="sm"
           colorScheme="gray"
           isDisabled={!hasQueryChanged}
-          onClick={() => onSave(queryName)}
+          onClick={() => onSave(currentQueryName)}
         >
           Save
         </Button>

@@ -31,8 +31,8 @@ type QueryContextType = {
   setQueryResults: React.Dispatch<React.SetStateAction<QueryResultType[]>>;
   queryBindParams: { [key: string]: string };
   onRemoveResult: (index: number) => void;
-  queryName?: string;
-  setQueryName: (value: string) => void;
+  currentQueryName?: string;
+  setCurrentQueryName: (value: string) => void;
   onSaveAs: (queryName: string) => Promise<void>;
   savedQueries?: QueryType[];
   isFetchingQueries?: boolean;
@@ -85,9 +85,9 @@ export const QueryContextProvider = ({
 
   const {
     queryValue,
-    queryName,
+    currentQueryName,
     queryBindParams,
-    setQueryName,
+    setCurrentQueryName,
     onQueryChange,
     onQueryValueChange,
     onBindParamsChange
@@ -143,8 +143,8 @@ export const QueryContextProvider = ({
         onRemoveResult,
         onProfile,
         onExplain,
-        queryName,
-        setQueryName,
+        currentQueryName,
+        setCurrentQueryName,
         onSaveAs,
         savedQueries,
         isFetchingQueries,

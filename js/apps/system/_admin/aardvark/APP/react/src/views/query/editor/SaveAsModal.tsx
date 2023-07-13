@@ -13,7 +13,7 @@ export const SaveAsModal = () => {
   const {
     onSaveAs,
     onSave,
-    setQueryName,
+    setCurrentQueryName,
     savedQueries,
     isSaveAsModalOpen,
     onCloseSaveAsModal
@@ -44,12 +44,12 @@ export const SaveAsModal = () => {
             onClick={async () => {
               if (queryExists) {
                 await onSave(newQueryName);
-                setQueryName(newQueryName);
+                setCurrentQueryName(newQueryName);
                 onCloseSaveAsModal();
                 return;
               }
               await onSaveAs(newQueryName);
-              setQueryName(newQueryName);
+              setCurrentQueryName(newQueryName);
               onCloseSaveAsModal();
             }}
           >
