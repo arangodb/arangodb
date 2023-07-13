@@ -1,16 +1,13 @@
 import { useDisclosure } from "@chakra-ui/react";
 import React, { useState } from "react";
 import { QueryResultType } from "./ArangoQuery.types";
-import {
-  QueryType,
-  useFetchUserSavedQueries
-} from "./editor/useFetchUserSavedQueries";
+import { QueryType } from "./editor/useFetchUserSavedQueries";
 import { QueryKeyboardShortcutProvider } from "./QueryKeyboardShortcutProvider";
 import { QueryNavigationPrompt } from "./QueryNavigationPrompt";
 import { useQueryExecutors } from "./useQueryExecutors";
 import { useQueryResultHandlers } from "./useQueryResultHandlers";
-import { useQueryUpdaters } from "./useQueryUpdaters";
 import { useQueryValueModifiers } from "./useQueryValueModifiers";
+import { useSavedQueriesHandlers } from "./useSavedQueriesHandlers";
 
 export type QueryExecutionOptions = {
   queryValue: string;
@@ -85,10 +82,7 @@ export const QueryContextProvider = ({
   children: React.ReactNode;
 }) => {
   const storageKey = getStorageKey();
-  const { savedQueries, isLoading: isFetchingQueries } =
-    useFetchUserSavedQueries({
-      storageKey
-    });
+
   const {
     queryValue,
     queryName,
@@ -98,39 +92,40 @@ export const QueryContextProvider = ({
     onQueryValueChange,
     onBindParamsChange
   } = useQueryValueModifiers();
-  const [resetEditor, setResetEditor] = React.useState<boolean>(false);
-  const {
-    isOpen: isSaveAsModalOpen,
-    onOpen: onOpenSaveAsModal,
-    onClose: onCloseSaveAsModal
-  } = useDisclosure();
-  const { onSave, onSaveAs, onDelete } = useQueryUpdaters({
-    queryValue,
-    queryBindParams,
-    savedQueries,
-    storageKey
-  });
+
+  const { onSave, onSaveAs, onDelete, savedQueries, isFetchingQueries } =
+    useSavedQueriesHandlers({
+      queryValue,
+      queryBindParams,
+      storageKey
+    });
   const {
     queryResults,
     setQueryResults,
     setQueryResultById,
     appendQueryResultById
   } = useQueryResultHandlers();
-  const [queryLimit, setQueryLimit] = useState<number | "all">(1000);
   const { onExecute, onProfile, onExplain, onRemoveResult } = useQueryExecutors(
     { setQueryResults, setQueryResultById }
   );
+  const aqlJsonEditorRef = React.useRef(null);
+  const bindVariablesJsonEditorRef = React.useRef(null);
+  const [queryLimit, setQueryLimit] = useState<number | "all">(1000);
   const [queryGraphResult, setQueryGraphResult] =
     React.useState<QueryResultType>({} as QueryResultType);
   const [currentView, setCurrentView] = React.useState<"saved" | "editor">(
     "editor"
   );
-  const aqlJsonEditorRef = React.useRef(null);
-  const bindVariablesJsonEditorRef = React.useRef(null);
+  const [resetEditor, setResetEditor] = React.useState<boolean>(false);
   const {
     isOpen: isSpotlightOpen,
     onOpen: onOpenSpotlight,
     onClose: onCloseSpotlight
+  } = useDisclosure();
+  const {
+    isOpen: isSaveAsModalOpen,
+    onOpen: onOpenSaveAsModal,
+    onClose: onCloseSaveAsModal
   } = useDisclosure();
   return (
     <QueryContext.Provider

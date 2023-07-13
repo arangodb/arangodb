@@ -1,19 +1,24 @@
 import { mutate } from "swr";
 import { getCurrentDB } from "../../utils/arangoClient";
-import { QueryType } from "./editor/useFetchUserSavedQueries";
+import {
+  QueryType,
+  useFetchUserSavedQueries
+} from "./editor/useFetchUserSavedQueries";
 
-export const useQueryUpdaters = ({
+export const useSavedQueriesHandlers = ({
   queryValue,
   queryBindParams,
-  savedQueries,
   storageKey
 }: {
   queryValue: string;
   queryBindParams: { [key: string]: string };
   queryName?: string;
-  savedQueries?: QueryType[];
   storageKey: string;
 }) => {
+  const { savedQueries, isLoading: isFetchingQueries } =
+    useFetchUserSavedQueries({
+      storageKey
+    });
   const onSaveAs = async (queryName: string) => {
     const newQueries = [
       ...(savedQueries || []),
@@ -64,7 +69,7 @@ export const useQueryUpdaters = ({
     });
     mutate("/savedQueries");
   };
-  return { onSaveAs, onSave, onDelete };
+  return { onSaveAs, onSave, onDelete, savedQueries, isFetchingQueries };
 };
 
 const patchQueries = async ({
