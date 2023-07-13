@@ -636,6 +636,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     } else {
       node = node->applies(abskeys.at(i.first), value);
       TRI_ASSERT(node != nullptr);
+      callTriggers(abskeys.at(i.first), "set", value);
     }
   }
 
