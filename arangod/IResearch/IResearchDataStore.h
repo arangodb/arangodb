@@ -25,6 +25,7 @@
 
 #include "IResearchDataStoreMeta.h"
 #include "Containers.h"
+#include "IResearch/ResourceManager.hpp"
 #include "IResearchCommon.h"
 #include "IResearchVPackComparer.h"
 #include "IResearchPrimaryKeyFilter.h"
@@ -71,10 +72,10 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   std::shared_ptr<PrimaryKeysFilterBase> _removals;
 
   IResearchTrxState(LinkLock&& linkLock, irs::IndexWriter& writer,
-                    bool nested) noexcept
+                    std::shared_ptr<PrimaryKeysFilterBase>&& removals) noexcept
       : _linkLock{std::move(linkLock)},
         _ctx{writer.GetBatch()},
-        _removals{makePrimaryKeysFilter(nested)} {}
+        _removals{std::move(removals)} {}
 
   ~IResearchTrxState() final {
     // TODO(MBkkt) Make Abort in ~Transaction()
@@ -407,7 +408,7 @@ class IResearchDataStore {
       bool sorted, bool nested,
       std::span<const IResearchViewStoredValues::StoredColumn> storedColumns,
       irs::type_info::type_id primarySortCompression,
-      irs::IndexReaderOptions const& readerOptions);
+      irs::IndexReaderOptions& readerOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job
@@ -460,7 +461,7 @@ class IResearchDataStore {
   /// @brief Update index stats for current snapshot
   /// @note Unsafe, can only be called is _asyncSelf is locked
   ////////////////////////////////////////////////////////////////////////////////
-  Stats updateStatsUnsafe() const;
+  Stats updateStatsUnsafe(DataSnapshotPtr data) const;
 
   void initClusterMetrics() const;
 
@@ -520,6 +521,13 @@ class IResearchDataStore {
   std::shared_ptr<PrimaryKeysFilterBase> _recoveryRemoves;
   TransactionState::BeforeCommitCallback _beforeCommitCallback;
   TransactionState::AfterCommitCallback _afterCommitCallback;
+
+  irs::IResourceManager* _writersMemory{&irs::IResourceManager::kNoop};
+  irs::IResourceManager* _readersMemory{&irs::IResourceManager::kNoop};
+  irs::IResourceManager* _consolidationsMemory{&irs::IResourceManager::kNoop};
+  irs::IResourceManager* _fileDescriptorsCount{&irs::IResourceManager::kNoop};
+
+  metrics::Gauge<uint64_t>* _mappedMemory{nullptr};
 
   metrics::Gauge<uint64_t>* _numFailedCommits{nullptr};
   metrics::Gauge<uint64_t>* _numFailedCleanups{nullptr};

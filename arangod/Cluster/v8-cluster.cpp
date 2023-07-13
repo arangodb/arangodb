@@ -961,7 +961,8 @@ static void JS_GetResponsibleServerClusterInfo(
   v8::Handle<v8::Array> list = v8::Array::New(isolate, (int)result->size());
   uint32_t count = 0;
   for (auto const& s : *result) {
-    list->Set(context, count++, TRI_V8_STD_STRING(isolate, s)).FromMaybe(true);
+    list->Set(context, count++, TRI_V8_STD_STRING(isolate, s.c_str()))
+        .FromMaybe(true);
   }
 
   TRI_V8_RETURN(list);
