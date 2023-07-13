@@ -1,6 +1,9 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* FE-304, FE-305: use navigator.onLine for checking internet connection, correct
+  path for running/slow queries.
+
 * Enforce that server always returns an empty body if the return code is 204.
 
 * Arangodump retries dump requests in more cases: read, write and connection
