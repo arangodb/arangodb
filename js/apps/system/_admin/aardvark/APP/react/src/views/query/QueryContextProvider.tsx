@@ -72,13 +72,10 @@ const QueryContext = React.createContext<QueryContextType>(
 
 export const useQueryContext = () => React.useContext(QueryContext);
 
-const getStorageKey = ({
-  currentUser,
-  currentDbName
-}: {
-  currentUser?: string;
-  currentDbName?: string;
-}) => {
+const getStorageKey = () => {
+  const currentUser = window.App.currentUser || "root";
+  const currentDbName = window.frontendConfig.db;
+
   return `${currentDbName}-${currentUser}-savedQueries`;
 };
 export const QueryContextProvider = ({
@@ -86,17 +83,11 @@ export const QueryContextProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const currentUser = window.App.currentUser || "root";
-  const currentDbName = window.frontendConfig.db;
-  const storageKey = getStorageKey({
-    currentUser,
-    currentDbName
-  });
+  const storageKey = getStorageKey();
   const { savedQueries, isLoading: isFetchingQueries } =
     useFetchUserSavedQueries({
       storageKey
     });
-
   const {
     queryValue,
     queryName,
