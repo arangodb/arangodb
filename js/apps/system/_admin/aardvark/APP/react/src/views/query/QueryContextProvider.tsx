@@ -4,9 +4,9 @@ import { QueryResultType } from "./ArangoQuery.types";
 import { QueryType } from "./editor/useFetchUserSavedQueries";
 import { QueryKeyboardShortcutProvider } from "./QueryKeyboardShortcutProvider";
 import { QueryNavigationPrompt } from "./QueryNavigationPrompt";
+import { useQueryEditorHandlers } from "./useQueryEditorHandlers";
 import { useQueryExecutors } from "./useQueryExecutors";
 import { useQueryResultHandlers } from "./useQueryResultHandlers";
-import { useQueryValueModifiers } from "./useQueryValueModifiers";
 import { useSavedQueriesHandlers } from "./useSavedQueriesHandlers";
 
 export type QueryExecutionOptions = {
@@ -91,7 +91,7 @@ export const QueryContextProvider = ({
     onQueryChange,
     onQueryValueChange,
     onBindParamsChange
-  } = useQueryValueModifiers();
+  } = useQueryEditorHandlers();
 
   const { onSave, onSaveAs, onDelete, savedQueries, isFetchingQueries } =
     useSavedQueriesHandlers({

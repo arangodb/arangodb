@@ -5,7 +5,7 @@ type CachedQuery = {
   parameter: { [key: string]: string };
 };
 
-export const useQueryValueModifiers = () => {
+export const useQueryEditorHandlers = () => {
   const initialQueryString = window.sessionStorage.getItem("cachedQuery");
   const initialQuery = initialQueryString
     ? JSON.parse(initialQueryString)
