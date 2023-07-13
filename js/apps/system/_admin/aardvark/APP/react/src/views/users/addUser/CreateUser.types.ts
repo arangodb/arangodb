@@ -1,10 +1,11 @@
 export type CreateDatabaseUserValues = {
+  name: string;
   extra: {
-    img: string
+    img: string;
+    name: string;
   };
   active: boolean;
-  username: string;
-  name: string;
+  user: string;
   gravatar: string;
   passwd: string;
 };

@@ -14,10 +14,12 @@ import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
 import { useUsersModeContext } from "../UsersModeContext";
 import { CreateDatabaseUserValues } from "./CreateUser.types";
+import _ from "lodash";
+import CryptoJS from "crypto-js";
 
 const addUserFields = {
-  username: {
-    name: "username",
+  user: {
+    name: "user",
     type: "text",
     label: "Username",
     isRequired: true
@@ -57,11 +59,24 @@ const addUserFields = {
 };
 
 const INITIAL_VALUES: CreateDatabaseUserValues = {
-  name: "",
   active: true,
-  username: "",
+  user: "",
   gravatar: "",
-  passwd: ""
+  passwd: "",
+  name: "",
+  extra: {
+    img: "",
+    name: ""
+  }
+};
+
+const parseImgString = (img: string) => {
+  // if already md5
+  if (img.indexOf("@") === -1) {
+    return img;
+  }
+  // else generate md5
+  return CryptoJS.MD5(img).toString();
 };
 
 export const AddUserModal = ({
@@ -72,32 +87,37 @@ export const AddUserModal = ({
   onClose: () => void;
 }) => {
   const initialFocusRef = React.useRef<HTMLInputElement>(null);
-  const { initialUser, mode } = useUsersModeContext();
-  console.log("initialUser: ", initialUser);
+  const { mode } = useUsersModeContext();
   const handleSubmit = async (values: CreateDatabaseUserValues) => {
-    const currentDB = getCurrentDB();
-
-    const graph = currentDB.graph(values.name);
-    console.log("graph: ", graph);
+    const profileImg = parseImgString(values.gravatar);
+    if (!_.isEmpty(profileImg)) {
+      values.extra.img = profileImg;
+    }
+    values.extra.name = values.name;
 
     try {
-      // Here goes the API call to create the new user
-      /*
-      const info = await graph.create(values.edgeDefinitions, {
-        orphanCollections: values.orphanCollections
-      });
-      */
-      const info = "API feedback";
+      const currentDB = getCurrentDB();
+      const route = currentDB.route("_api/user");
+      const userOptions = {
+        user: values.user,
+        active: values.active,
+        extra: {
+          name: values.name,
+          img: values.extra.img
+        },
+        passwd: values.passwd
+      };
+      const info = await route.post(userOptions);
       window.arangoHelper.arangoNotification(
         "User",
-        `Successfully created the user: ${values.username}`
+        `Successfully created the user: ${values.user}`
       );
       mutate("/users");
       onClose();
       return info;
     } catch (e: any) {
       const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError("Could not add graph", errorMessage);
+      window.arangoHelper.arangoError("Could not create user", errorMessage);
     }
   };
   return (
@@ -119,7 +139,7 @@ export const AddUserModal = ({
           //initialValues={initialUser || INITIAL_VALUES}
           initialValues={INITIAL_VALUES}
           validationSchema={Yup.object({
-            username: Yup.string().required("Username is required")
+            user: Yup.string().required("Username is required")
           })}
           onSubmit={handleSubmit}
         >
@@ -129,7 +149,7 @@ export const AddUserModal = ({
                 <FieldsGrid maxWidth="full">
                   <FormField
                     field={{
-                      ...addUserFields.username
+                      ...addUserFields.user
                     }}
                   />
                   <FormField
@@ -147,11 +167,13 @@ export const AddUserModal = ({
                       ...addUserFields.passwd
                     }}
                   />
-                  {window.frontendConfig.isEnterprise && <FormField
-                    field={{
-                      ...addUserFields.role
-                    }}
-                  />}
+                  {window.frontendConfig.isEnterprise && (
+                    <FormField
+                      field={{
+                        ...addUserFields.role
+                      }}
+                    />
+                  )}
                   <FormField
                     field={{
                       ...addUserFields.active
