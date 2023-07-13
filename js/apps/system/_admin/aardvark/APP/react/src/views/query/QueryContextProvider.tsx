@@ -1,12 +1,11 @@
-import { useDisclosure, usePrevious } from "@chakra-ui/react";
-import hotkeys from "hotkeys-js";
-import { isEqual } from "lodash";
+import { useDisclosure } from "@chakra-ui/react";
 import React, { useState } from "react";
 import { QueryResultType } from "./ArangoQuery.types";
 import {
   QueryType,
   useFetchUserSavedQueries
 } from "./editor/useFetchUserSavedQueries";
+import { QueryKeyboardShortcutProvider } from "./QueryKeyboardShortcutProvider";
 import { QueryNavigationPrompt } from "./QueryNavigationPrompt";
 import { useQueryExecutors } from "./useQueryExecutors";
 import { useQueryResultHandlers } from "./useQueryResultHandlers";
@@ -196,55 +195,10 @@ export const QueryContextProvider = ({
         setQueryLimit
       }}
     >
-      <KeyboardShortcutProvider>
+      <QueryKeyboardShortcutProvider>
         <QueryNavigationPrompt queryResults={queryResults} />
         {children}
-      </KeyboardShortcutProvider>
+      </QueryKeyboardShortcutProvider>
     </QueryContext.Provider>
   );
-};
-
-const KeyboardShortcutProvider = ({
-  children
-}: {
-  children: React.ReactNode;
-}) => {
-  const {
-    onExecute,
-    onExplain,
-    setIsSpotlightOpen,
-    queryValue,
-    queryBindParams
-  } = useQueryContext();
-  const prevQueryBindParams = usePrevious(queryBindParams);
-  const areParamsEqual = prevQueryBindParams
-    ? isEqual(queryBindParams, prevQueryBindParams)
-    : true;
-  React.useEffect(() => {
-    hotkeys.filter = function (event) {
-      var target = event.target;
-      var tagName = (target as any)?.tagName;
-      return tagName === "INPUT" || tagName === "TEXTAREA";
-    };
-
-    hotkeys("ctrl+enter,command+enter", () => {
-      onExecute({ queryValue, queryBindParams });
-    });
-
-    hotkeys("ctrl+space", () => {
-      setIsSpotlightOpen(true);
-    });
-
-    hotkeys("ctrl+shift+enter,command+shift+enter", () => {
-      onExplain({
-        queryValue,
-        queryBindParams
-      });
-    });
-    return () => {
-      hotkeys.unbind();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onExecute, queryValue, areParamsEqual]);
-  return <>{children}</>;
 };
