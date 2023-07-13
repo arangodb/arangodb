@@ -87,8 +87,6 @@ class IResearchInvertedIndexMock final : public Index,
 
   void load() final;
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) final;
-
   std::unique_ptr<IndexIterator> iteratorForCondition(
       ResourceMonitor& monitor, transaction::Methods* trx,
       aql::AstNode const* node, aql::Variable const* reference,

@@ -248,7 +248,7 @@ auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
   // markAsActive on a log index that is lower than the latest inserted one.
   auto&& insertionRes = basics::catchToResultT([&] {
     return _activeTransactions.doUnderLock([&](auto& activeTransactions) {
-      auto idx = stream->insert(entry);
+      auto idx = stream->insert(entry, opts.waitForSync);
 
       std::visit(overload{
                      [&](UserTransaction auto& op) {
@@ -287,10 +287,11 @@ auto DocumentLeaderState::replicateOperation(ReplicatedOperation op,
 auto DocumentLeaderState::release(LogIndex index) -> Result {
   auto const& stream = getStream();
   return basics::catchToResult([&]() -> Result {
-    _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+    auto idx = _activeTransactions.doUnderLock([&](auto& activeTransactions) {
       activeTransactions.markAsInactive(index);
-      stream->release(activeTransactions.getReleaseIndex().value_or(index));
+      return activeTransactions.getReleaseIndex().value_or(index);
     });
+    stream->release(idx);
     return {TRI_ERROR_NO_ERROR};
   });
 }
@@ -298,10 +299,11 @@ auto DocumentLeaderState::release(LogIndex index) -> Result {
 auto DocumentLeaderState::release(TransactionId tid, LogIndex index) -> Result {
   auto const& stream = getStream();
   return basics::catchToResult([&]() -> Result {
-    _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+    auto idx = _activeTransactions.doUnderLock([&](auto& activeTransactions) {
       activeTransactions.markAsInactive(tid);
-      stream->release(activeTransactions.getReleaseIndex().value_or(index));
+      return activeTransactions.getReleaseIndex().value_or(index);
     });
+    stream->release(idx);
     return {TRI_ERROR_NO_ERROR};
   });
 }
@@ -387,7 +389,8 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
 
-    return replicateOperation(op, ReplicationOptions{.waitForCommit = true});
+    return replicateOperation(
+        op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
   });
 
   return std::move(fut).thenValue([self = shared_from_this(),
@@ -430,7 +433,8 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
 
-    return replicateOperation(op, ReplicationOptions{.waitForCommit = true});
+    return replicateOperation(
+        op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
   });
 
   return std::move(fut).thenValue([self = shared_from_this(),
@@ -504,4 +508,4 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
 
 }  // namespace arangodb::replication2::replicated_state::document
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"

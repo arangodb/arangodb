@@ -50,7 +50,7 @@ struct FollowerMethodsImpl : IReplicatedLogFollowerMethods {
   }
 
   auto getCommittedLogIterator(std::optional<LogRange> range)
-      -> std::unique_ptr<LogRangeIterator> override {
+      -> std::unique_ptr<LogViewRangeIterator> override {
     return storage->getCommittedLogIterator(range);
   }
 

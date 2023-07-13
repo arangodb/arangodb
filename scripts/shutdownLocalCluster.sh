@@ -42,8 +42,8 @@ else
   SE_BASE=$(( PORT_OFFSET + 8530 + NRCOORDINATORS + NRDBSERVERS + NRAGENTS ))
 fi
 
-LOCALHOST="[::1]"
-ANY="[::]"
+LOCALHOST="localhost"
+ANY="localhost"
 
 if [ "$TRANSPORT" == "ssl" ]; then
   CURL="curl -skfX"

@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "velocypack/Builder.h"
 #include <iosfwd>
 #include <limits>
 #include <memory>
@@ -31,6 +30,7 @@
 
 #include "Basics/Result.h"
 #include "Basics/RebootId.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
 
 namespace arangodb {

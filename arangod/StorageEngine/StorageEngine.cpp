@@ -28,7 +28,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -136,8 +136,7 @@ void StorageEngine::registerView(
 
 void StorageEngine::registerReplicatedState(
     TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    std::unique_ptr<
-        arangodb::replication2::replicated_state::IStorageEngineMethods>
+    std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
         methods) {
   vocbase.registerReplicatedState(id, std::move(methods));
 }

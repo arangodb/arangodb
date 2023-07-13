@@ -182,7 +182,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       _logFailedQueries(false),
       _maxQueryStringLength(4096),
       _maxCollectionsPerQuery(2048),
-      _peakMemoryUsageThreshold(4294967296),  // 4GB
+      _peakMemoryUsageThreshold(1073741824),  // 1GB
       _queryGlobalMemoryLimit(
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
       _queryMemoryLimit(

@@ -23,12 +23,22 @@
 #include <gtest/gtest.h>
 
 #include "Replication2/ReplicatedLog/Algorithms.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::algorithms;
+
+namespace {
+void insertMapping(TermIndexMapping& log, LogIndex start, LogIndex end,
+                   LogTerm term) {
+  log.insert({start, end}, storage::IteratorPosition::fromLogIndex(start),
+             term);
+}
+}  // namespace
 
 struct DetectConflictTest : ::testing::Test {};
 
@@ -44,8 +54,8 @@ TEST_F(DetectConflictTest, log_empty) {
 
 TEST_F(DetectConflictTest, log_skip_term) {
   auto log = TermIndexMapping{};
-  log.insert({LogIndex{1}, LogIndex{4}}, LogTerm{1});
-  log.insert({LogIndex{4}, LogIndex{7}}, LogTerm{3});
+  insertMapping(log, LogIndex{1}, LogIndex{4}, LogTerm{1});
+  insertMapping(log, LogIndex{4}, LogIndex{7}, LogTerm{3});
   auto res =
       algorithms::detectConflict(log, TermIndexPair{LogTerm{4}, LogIndex{6}});
   ASSERT_TRUE(res.has_value());
@@ -56,7 +66,7 @@ TEST_F(DetectConflictTest, log_skip_term) {
 
 TEST_F(DetectConflictTest, log_missing_after) {
   auto log = TermIndexMapping{};
-  log.insert({LogIndex{1}, LogIndex{4}}, LogTerm{1});
+  insertMapping(log, LogIndex{1}, LogIndex{4}, LogTerm{1});
   auto res =
       algorithms::detectConflict(log, TermIndexPair{LogTerm{4}, LogIndex{6}});
   ASSERT_TRUE(res.has_value());
@@ -67,7 +77,7 @@ TEST_F(DetectConflictTest, log_missing_after) {
 
 TEST_F(DetectConflictTest, log_missing_before) {
   auto log = TermIndexMapping{};
-  log.insert({LogIndex{11}, LogIndex{14}}, LogTerm{4});
+  insertMapping(log, LogIndex{11}, LogIndex{14}, LogTerm{4});
   auto res =
       algorithms::detectConflict(log, TermIndexPair{LogTerm{4}, LogIndex{6}});
   ASSERT_TRUE(res.has_value());
@@ -78,7 +88,7 @@ TEST_F(DetectConflictTest, log_missing_before) {
 
 TEST_F(DetectConflictTest, log_missing_before_wrong_term) {
   auto log = TermIndexMapping{};
-  log.insert({LogIndex{11}, LogIndex{14}}, LogTerm{4});
+  insertMapping(log, LogIndex{11}, LogIndex{14}, LogTerm{4});
   auto res =
       algorithms::detectConflict(log, TermIndexPair{LogTerm{5}, LogIndex{12}});
   ASSERT_TRUE(res.has_value());

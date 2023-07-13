@@ -173,8 +173,8 @@ struct PlainBucket {
 #endif
 };
 
-// ensure that PlainBucket is exactly BUCKET_SIZE
-static_assert(sizeof(PlainBucket) == BUCKET_SIZE,
-              "Expected sizeof(PlainBucket) == BUCKET_SIZE.");
+// ensure that PlainBucket is exactly kBucketSizeInBytes
+static_assert(sizeof(PlainBucket) == kBucketSizeInBytes,
+              "Expected sizeof(PlainBucket) == kBucketSizeInBytes.");
 
 }  // end namespace arangodb::cache

@@ -34,20 +34,19 @@
 #include <vector>
 
 namespace arangodb::cache {
+class Manager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Class to manage operations on a table of buckets.
 ////////////////////////////////////////////////////////////////////////////////
 class Table : public std::enable_shared_from_this<Table> {
  public:
-  static constexpr double idealLowerRatio = 0.04;
-  static constexpr double idealUpperRatio = 0.25;
   static constexpr std::uint32_t kMinLogSize = 8;
   static constexpr std::uint32_t kMaxLogSize = 32;
   static constexpr std::uint32_t standardLogSizeAdjustment = 6;
   static constexpr std::uint64_t triesGuarantee =
       std::numeric_limits<std::uint64_t>::max();
-  static constexpr std::uint64_t padding = BUCKET_SIZE;
+  static constexpr std::uint64_t padding = kBucketSizeInBytes;
 
   typedef std::function<void(void*)> BucketClearer;
 
@@ -55,7 +54,7 @@ class Table : public std::enable_shared_from_this<Table> {
   struct GenericBucket {
     BucketState _state;
     static constexpr std::size_t paddingSize =
-        BUCKET_SIZE - sizeof(BucketState);
+        kBucketSizeInBytes - sizeof(BucketState);
     std::uint8_t _padding[paddingSize];
     GenericBucket() noexcept;
     bool lock(std::uint64_t maxTries) noexcept;
@@ -63,8 +62,8 @@ class Table : public std::enable_shared_from_this<Table> {
     void clear();
     bool isMigrated() const noexcept;
   };
-  static_assert(sizeof(GenericBucket) == BUCKET_SIZE,
-                "Expected sizeof(GenericBucket) == BUCKET_SIZE.");
+  static_assert(sizeof(GenericBucket) == kBucketSizeInBytes,
+                "Expected sizeof(GenericBucket) == kBucketSizeInBytes.");
 
  public:
   struct BucketHash {
@@ -131,7 +130,7 @@ class Table : public std::enable_shared_from_this<Table> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Construct a new table of size 2^(logSize) in disabled state.
   //////////////////////////////////////////////////////////////////////////////
-  explicit Table(std::uint32_t logSize);
+  explicit Table(std::uint32_t logSize, Manager* manager);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destroy the table
@@ -143,7 +142,8 @@ class Table : public std::enable_shared_from_this<Table> {
   //////////////////////////////////////////////////////////////////////////////
   static constexpr std::uint64_t allocationSize(std::uint32_t logSize) {
     return sizeof(Table) +
-           (BUCKET_SIZE * (static_cast<std::uint64_t>(1) << logSize)) + padding;
+           (kBucketSizeInBytes * (static_cast<std::uint64_t>(1) << logSize)) +
+           padding;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -268,12 +268,13 @@ class Table : public std::enable_shared_from_this<Table> {
   std::uint32_t const _mask;
   std::unique_ptr<std::uint8_t[]> _buffer;
   GenericBucket* _buckets;
+  Manager* _manager;
 
   std::shared_ptr<Table> _auxiliary;
 
   BucketClearer _bucketClearer;
 
-  uint64_t _slotsTotal;
+  std::uint64_t _slotsTotal;
   std::atomic<std::uint64_t> _slotsUsed;
 };
 

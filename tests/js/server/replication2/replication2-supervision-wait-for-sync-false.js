@@ -47,7 +47,7 @@ const {
   tearDown,
   stopServer,
   continueServer,
-  stopServersWait,
+  stopServerWait,
   continueServerWait,
 } = lh.testHelperFunctions(database);
 
@@ -102,7 +102,22 @@ const replicatedLogWaitForSyncFalseSupervisionSuite = function () {
       const servers = Object.keys(plan.participantsConfig.participants);
       const followers = _.without(servers, leader);
 
-      stopServersWait(followers);
+      /*
+        NOTE: The order of stops here is important.
+        While one of the two servers is down, we are allowed
+        to Increase this servers safeRebootID as long as we get
+        a roundtrip with the other server. This means we
+        can form a quorum with leader and the first stopped follower,
+        in the case we do this update quick enough before the other server
+        stops.
+        This test continues follower[0] first. This server is clear
+        to not be able to form a quorum with the leader. (It is required
+        to have a dirty rebootId). If we would continue follower[1] first,
+        we are depending on above race for the following test, we could
+        commit with only leader and follower[1] while follower[0] is still down.
+       */
+      stopServerWait(followers[1]);
+      stopServerWait(followers[0]);
       const logIndex = log.insert({'I will': 'be missed'}, {dontWaitForCommit: true}).index;
       lh.waitFor(() => {
           // As both followers are stopped and writeConcern=2, the log cannot currently commit.
@@ -114,10 +129,23 @@ const replicatedLogWaitForSyncFalseSupervisionSuite = function () {
             return new Error(`Commit index is ${status.local.commitIndex}, but should be lower than ${JSON.stringify(logIndex)}.`);
           }
           return true;
-        },
+        }
       );
       const {participants: {[leader]: {response: status}}} = log.status();
-      assertEqual(status.local.spearhead.index, logIndex);
+      // There is actually a race on the indexes in the log here, that has the same reason
+      // why we need to be careful with stop / continue ordering of servers.
+      // The leader will try to send a message as soon as it gets aware of a stopped server.
+      // That is after the server is stopped, and agency times out on the servers heartbeat.
+      // This message can be either before the expected logindex or after.
+      // As we are shutting down 2 servers, we will have up to 2 messages in this race.
+      // (Where the message of the first one only is highly unlikely)
+
+      // We can be up to 2 entries further than the expected logIndex
+      assertTrue(status.local.spearhead.index < logIndex + 2, `Log Content: ${JSON.stringify(log.tail())}`);
+      // We need to be at least on the expected logIndex
+      assertTrue(status.local.spearhead.index >= logIndex, `Log Content: ${JSON.stringify(log.tail())}`);
+
+      // We are unable to commit the insert while all servers are down
       assertTrue(status.local.commitIndex < logIndex);
 
       lh.triggerLeaderElection(database, log.id());
@@ -129,26 +157,26 @@ const replicatedLogWaitForSyncFalseSupervisionSuite = function () {
         }
         const type = StatusReport[StatusReport.length - 1].type;
         if (type !== 'LeaderElectionQuorumNotReached') {
-          return Error('Expected LeaderElectionQuorumNotReached, but got ' + StatusReport.type);
+          return Error('Expected LeaderElectionQuorumNotReached, but got ' + type);
         }
         return true;
       });
 
       continueServerWait(followers[0]);
 
+
       // Give the Supervision a little time. The result should *still* be
       // LeaderElectionQuorumNotReached, even with 2 servers online, as one of
       // them doesn't have a safe RebootId.
       internal.sleep(2);
       lh.waitFor(() => {
-        let foo;
-        const {supervision: {response: {StatusReport}}} = foo = log.status();
-        if (!StatusReport instanceof Array || StatusReport.length < 1) {
+        const {supervision: {response: {StatusReport}}} = log.status();
+        if (!(StatusReport instanceof Array) || StatusReport.length < 1) {
           return Error('Still waiting for StatusReport to appear');
         }
         const type = StatusReport[StatusReport.length - 1].type;
         if (type !== 'LeaderElectionQuorumNotReached') {
-          return Error('Expected LeaderElectionQuorumNotReached, but got ' + StatusReport.type);
+          return Error('Expected LeaderElectionQuorumNotReached, but got ' + type);
         }
         return true;
       });
