@@ -33,7 +33,6 @@ type QueryContextType = {
   queryResults: QueryResultType[];
   setQueryResults: React.Dispatch<React.SetStateAction<QueryResultType[]>>;
   queryBindParams: { [key: string]: string };
-  setQueryBindParams: (value: { [key: string]: string }) => void;
   onRemoveResult: (index: number) => void;
   queryName?: string;
   setQueryName: (value: string) => void;
@@ -99,14 +98,13 @@ export const QueryContextProvider = ({
     });
 
   const {
-    onQueryChange,
-    onQueryValueChange,
-    onBindParamsChange,
     queryValue,
     queryName,
     queryBindParams,
-    setQueryBindParams,
-    setQueryName
+    setQueryName,
+    onQueryChange,
+    onQueryValueChange,
+    onBindParamsChange
   } = useQueryValueModifiers();
   const [resetEditor, setResetEditor] = React.useState<boolean>(false);
   const {
@@ -152,7 +150,6 @@ export const QueryContextProvider = ({
         queryResults,
         setQueryResults,
         queryBindParams,
-        setQueryBindParams,
         onRemoveResult,
         onProfile,
         onExplain,
