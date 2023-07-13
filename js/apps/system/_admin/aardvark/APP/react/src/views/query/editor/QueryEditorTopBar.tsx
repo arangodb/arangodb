@@ -14,7 +14,7 @@ export const QueryEditorTopBar = () => {
     queryBindParams,
     resetEditor,
     setResetEditor,
-    setIsSpotlightOpen
+    onOpenSpotlight
   } = useQueryContext();
   const showNewButton =
     queryName !== "" ||
@@ -55,9 +55,7 @@ export const QueryEditorTopBar = () => {
       )}
       <Flex marginLeft="auto" gap="2">
         <IconButton
-          onClick={() => {
-            setIsSpotlightOpen(true);
-          }}
+          onClick={onOpenSpotlight}
           icon={<Icon as={MagicWand} />}
           aria-label={"Spotlight"}
         />

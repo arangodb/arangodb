@@ -9,9 +9,8 @@ export const QueryKeyboardShortcutProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const {
-    onExecute, onExplain, setIsSpotlightOpen, queryValue, queryBindParams
-  } = useQueryContext();
+  const { onExecute, onExplain, onOpenSpotlight, queryValue, queryBindParams } =
+    useQueryContext();
   const prevQueryBindParams = usePrevious(queryBindParams);
   const areParamsEqual = prevQueryBindParams
     ? isEqual(queryBindParams, prevQueryBindParams)
@@ -27,9 +26,7 @@ export const QueryKeyboardShortcutProvider = ({
       onExecute({ queryValue, queryBindParams });
     });
 
-    hotkeys("ctrl+space", () => {
-      setIsSpotlightOpen(true);
-    });
+    hotkeys("ctrl+space", onOpenSpotlight);
 
     hotkeys("ctrl+shift+enter,command+shift+enter", () => {
       onExplain({

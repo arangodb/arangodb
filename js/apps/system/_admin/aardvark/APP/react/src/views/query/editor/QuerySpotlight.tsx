@@ -8,13 +8,11 @@ import { useQueryContext } from "../QueryContextProvider";
 import { useQuerySpotlightOptions } from "./useQuerySpotlightOptions";
 
 export const QuerySpotlight = () => {
-  const { isSpotlightOpen, setIsSpotlightOpen } = useQueryContext();
+  const { isSpotlightOpen, onCloseSpotlight } = useQueryContext();
   return (
     <Modal
       size="2xl"
-      onClose={() => {
-        setIsSpotlightOpen(false);
-      }}
+      onClose={onCloseSpotlight}
       isOpen={isSpotlightOpen}
       modalContentProps={{
         backgroundColor: "transparent",
@@ -30,7 +28,7 @@ export const QuerySpotlight = () => {
 
 const SpotlightSelect = () => {
   const { groupedOptions, isLoading } = useQuerySpotlightOptions();
-  const { aqlJsonEditorRef, setIsSpotlightOpen } = useQueryContext();
+  const { aqlJsonEditorRef, onCloseSpotlight } = useQueryContext();
   const filterOption = (
     { label, value }: FilterOptionOption<OptionType>,
     searchString: string
@@ -74,7 +72,7 @@ const SpotlightSelect = () => {
         const aceEditor = editor.aceEditor;
         aceEditor.insert(newValue?.value);
         aceEditor.focus();
-        setIsSpotlightOpen(false);
+        onCloseSpotlight();
       }}
       components={{
         IndicatorsContainer: () => null

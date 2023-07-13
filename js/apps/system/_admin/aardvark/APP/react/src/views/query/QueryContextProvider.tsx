@@ -47,7 +47,8 @@ type QueryContextType = {
   setResetEditor: (value: boolean) => void;
   onDelete: (queryName: string) => Promise<void>;
   isSpotlightOpen: boolean;
-  setIsSpotlightOpen: (value: boolean) => void;
+  onOpenSpotlight: () => void;
+  onCloseSpotlight: () => void;
   aqlJsonEditorRef: React.MutableRefObject<any>;
   bindVariablesJsonEditorRef: React.MutableRefObject<any>;
   setQueryResultById: (queryResult: QueryResultType) => void;
@@ -126,8 +127,11 @@ export const QueryContextProvider = ({
   );
   const aqlJsonEditorRef = React.useRef(null);
   const bindVariablesJsonEditorRef = React.useRef(null);
-  const [isSpotlightOpen, setIsSpotlightOpen] = React.useState<boolean>(false);
-
+  const {
+    isOpen: isSpotlightOpen,
+    onOpen: onOpenSpotlight,
+    onClose: onCloseSpotlight
+  } = useDisclosure();
   return (
     <QueryContext.Provider
       value={{
@@ -156,8 +160,9 @@ export const QueryContextProvider = ({
         resetEditor,
         setResetEditor,
         onDelete,
-        setIsSpotlightOpen,
         isSpotlightOpen,
+        onOpenSpotlight,
+        onCloseSpotlight,
         aqlJsonEditorRef,
         bindVariablesJsonEditorRef,
         setQueryResultById,
