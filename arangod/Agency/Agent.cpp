@@ -959,7 +959,10 @@ void Agent::advanceCommitIndex() {
           << " to read db";
 
       // Change _readDB and _commitIndex atomically together:
-      auto state = _inflightStates.commitIndex(index);
+      auto state = [&] {
+        std::unique_lock guard(_logAndIntermediateStateMutex);
+        return _inflightStates.commitIndex(index);
+      }();
       _readDB.setRootNode(std::move(state));
 
       LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
@@ -1286,6 +1289,7 @@ trans_ret_t Agent::transact(velocypack::Slice qs) {
       if (query[0].isObject()) {
         check_ret_t res = _spearhead.applyTransaction(query);
         if (res.successful()) {
+          std::unique_lock guard(_logAndIntermediateStateMutex);
           maxind = (query.length() == 3 && query[2].isString())
                        ? _state.logLeaderSingle(query[0], currentTerm,
                                                 query[2].copyString())
@@ -1484,17 +1488,22 @@ write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
 
       std::vector<std::shared_ptr<Node const>> states;
       applied = _spearhead.applyTransactions(chunk.slice(), wmode, &states);
-      auto indexes = _state.logLeaderMulti(chunk.slice(), applied, currentTerm);
-      ADB_PROD_ASSERT(states.size() == indexes.size())
-          << "produced " << states.size() << " states, but got "
-          << indices.size() << " indexes.";
-      for (std::size_t k = 0; k < states.size(); k++) {
-        if (indexes[k] == 0) {
-          continue;
+      {
+        std::unique_lock guard(_logAndIntermediateStateMutex);
+        auto indexes =
+            _state.logLeaderMulti(chunk.slice(), applied, currentTerm);
+        ADB_PROD_ASSERT(states.size() == indexes.size())
+            << "produced " << states.size() << " states, but got "
+            << indices.size() << " indexes.";
+        for (std::size_t k = 0; k < states.size(); k++) {
+          if (indexes[k] == 0) {
+            continue;
+          }
+          _inflightStates.emplace(indexes[k], std::move(states[k]));
         }
-        _inflightStates.emplace(indexes[k], std::move(states[k]));
+        guard.unlock();
+        indices.insert(indices.end(), indexes.begin(), indexes.end());
       }
-      indices.insert(indices.end(), indexes.begin(), indexes.end());
     }
     _write_hist_msec.count(
         duration<float, std::milli>(high_resolution_clock::now() - start)

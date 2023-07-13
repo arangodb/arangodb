@@ -428,6 +428,12 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief Stores intermediate states
   IntermediateStateStore _inflightStates;
 
+  /// @brief This mutex guard against the race of inserting transactions into
+  ///     the log and placing the modified state in the IntermediateStateStore.
+  ///     When we advance the commit index, it could otherwise happen, that
+  ///     the new state was not yet inserted.
+  std::mutex _logAndIntermediateStateMutex;
+
   /// @brief Committed (read) kv-store for transient data. This is
   /// protected by the _transientLock mutex.
   Store _transient;
