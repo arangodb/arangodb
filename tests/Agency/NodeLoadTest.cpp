@@ -436,7 +436,7 @@ TEST_F(NodeLoadInspectorTest, error_expecting_double) {
   double d{};
   auto result = inspector.apply(d);
   ASSERT_FALSE(result.ok());
-  EXPECT_EQ("not an floating point value or not representable", result.error());
+  EXPECT_EQ("not a floating point value or not representable", result.error());
 }
 
 TEST_F(NodeLoadInspectorTest, error_expecting_bool) {
