@@ -732,21 +732,9 @@
     collections: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        const self = this;
-        if (this.collectionsView) {
-          this.collectionsView.remove();
-        }
-        this.collectionsView = new window.CollectionsView({
-          collection: this.arangoCollectionsStore
-        });
-        this.arangoCollectionsStore.fetch({
-          cache: false,
-          success: function () {
-            self.collectionsView.render();
-          }
-        });
-      });
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.CollectionsReactView),
+          document.getElementById('content-react')));
     },
 
     cIndices: function (colname) {

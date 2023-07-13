@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-248: Improve collections list UI.
+
 * Added new startup options `--cache.ideal-lower-fill-ratio` and 
   `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
   ratios for cache tables that trigger shrinking and growing of the table
