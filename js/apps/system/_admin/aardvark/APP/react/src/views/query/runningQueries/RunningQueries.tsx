@@ -1,9 +1,10 @@
+import { DeleteIcon } from "@chakra-ui/icons";
 import {
   Button,
+  IconButton,
   ModalFooter,
   ModalHeader,
   Table,
-  TableCaption,
   TableContainer,
   Tbody,
   Td,
@@ -13,10 +14,10 @@ import {
 } from "@chakra-ui/react";
 import { QueryInfo } from "arangojs/database";
 import React from "react";
-import moment from "../../../../frontend/js/lib/moment.min";
-import { Modal } from "../../components/modal";
-import { getCurrentDB } from "../../utils/arangoClient";
-import { useFetchSlowQueries } from "./useFetchSlowQueries";
+import moment from "../../../../../frontend/js/lib/moment.min";
+import { Modal } from "../../../components/modal";
+import { getCurrentDB } from "../../../utils/arangoClient";
+import { useFetchRunningQueries } from "./useFetchRunningQueries";
 
 const TABLE_COLUMNS = [
   {
@@ -57,9 +58,14 @@ const TABLE_COLUMNS = [
     }
   }
 ];
-export const SlowQueryHistory = () => {
-  const { runningQueries, refetchQueries } = useFetchSlowQueries();
+export const RunningQueries = () => {
+  const { runningQueries, refetchQueries } = useFetchRunningQueries();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [queryToDelete, setQueryToDelete] = React.useState<string | null>(null);
+  const onDeleteClick = (queryId: string) => {
+    setShowDeleteModal(true);
+    setQueryToDelete(queryId);
+  };
   return (
     <>
       <TableContainer backgroundColor="white">
@@ -72,11 +78,14 @@ export const SlowQueryHistory = () => {
                 </Th>
               );
             })}
+            <Th width="100px" whiteSpace="normal">
+              Actions
+            </Th>
           </Thead>
           <Tbody>
             {runningQueries.map(query => {
               return (
-                <Tr key={query.id}>
+                <Tr>
                   {TABLE_COLUMNS.map(column => {
                     return (
                       <Td whiteSpace="normal" key={column.accessor}>
@@ -86,68 +95,69 @@ export const SlowQueryHistory = () => {
                       </Td>
                     );
                   })}
+                  <Td>
+                    <IconButton
+                      aria-label="Kill Query"
+                      icon={<DeleteIcon />}
+                      colorScheme="red"
+                      variant="ghost"
+                      onClick={() => onDeleteClick(query.id)}
+                    />
+                  </Td>
                 </Tr>
               );
             })}
             {runningQueries.length === 0 && (
               <Tr>
-                <Td colSpan={TABLE_COLUMNS.length}>No slow queries.</Td>
+                <Td colSpan={TABLE_COLUMNS.length}>No running queries.</Td>
               </Tr>
             )}
           </Tbody>
-          <TableCaption marginBottom="2" textAlign="right">
-            <Button
-              size="sm"
-              onClick={() => {
-                setShowDeleteModal(true);
-              }}
-              colorScheme="red"
-            >
-              Delete History
-            </Button>
-          </TableCaption>
         </Table>
       </TableContainer>
-      <DeleteSlowQueryHistoryModal
+      <DeleteQueryModal
         isOpen={showDeleteModal}
         onClose={() => {
           setShowDeleteModal(false);
+          setQueryToDelete(null);
         }}
+        queryToDelete={queryToDelete}
         refetchQueries={refetchQueries}
       />
     </>
   );
 };
 
-const DeleteSlowQueryHistoryModal = ({
+const DeleteQueryModal = ({
   isOpen,
   onClose,
-  refetchQueries
+  refetchQueries,
+  queryToDelete
 }: {
   isOpen: boolean;
+  queryToDelete: string | null;
   onClose: () => void;
   refetchQueries: () => Promise<void>;
 }) => {
   const [isLoading, setIsLoading] = React.useState(false);
   const onDeleteQuery = async () => {
+    if (!queryToDelete) return;
     setIsLoading(true);
     const currentDb = getCurrentDB();
     try {
-      await currentDb.clearSlowQueries();
-      await refetchQueries();
-      onClose();
-      setIsLoading(false);
-      window.arangoHelper.arangoNotification("Deleted slow queries history");
+      await currentDb.killQuery(queryToDelete);
+      window.arangoHelper.arangoNotification(`Deleted query: ${queryToDelete}`);
     } catch (e) {
-      window.arangoHelper.arangoError("Failed to delete slow queries history");
-      onClose();
-      setIsLoading(false);
+      window.arangoHelper.arangoError("Failed to kill query");
     }
+    await refetchQueries();
+    onClose();
+    setIsLoading(false);
   };
   return (
-    <Modal onClose={onClose} isOpen={isOpen}>
+    <Modal onClose={onClose} isOpen={isOpen && !!queryToDelete}>
       <ModalHeader>
-        Are you sure you want to delete the slow query log entries?
+        Are you sure you want to kill the query: {queryToDelete}?
       </ModalHeader>
       <ModalFooter>
         <Button

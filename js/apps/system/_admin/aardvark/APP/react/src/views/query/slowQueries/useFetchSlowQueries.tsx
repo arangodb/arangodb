@@ -1,6 +1,6 @@
 import { QueryInfo } from "arangojs/database";
 import React, { useEffect } from "react";
-import { getCurrentDB } from "../../utils/arangoClient";
+import { getCurrentDB } from "../../../utils/arangoClient";
 
 export const useFetchSlowQueries = () => {
   const [runningQueries, setSlowQueries] = React.useState<QueryInfo[]>([]);

@@ -7,8 +7,8 @@ import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
 import { QueryEditorPane } from "./editor/QueryEditorPane";
 import { QueryContextProvider, useQueryContext } from "./QueryContextProvider";
 import { QueryFullGraphView } from "./queryGraph/QueryFullGraphView";
-import { RunningQueries } from "./RunningQueries";
-import { SlowQueryHistory } from "./SlowQueryHistory";
+import { RunningQueries } from "./runningQueries/RunningQueries";
+import { SlowQueryHistory } from "./slowQueries/SlowQueryHistory";
 
 export const QueryViewWrap = () => {
   useDisableNavBar();
