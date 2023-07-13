@@ -140,8 +140,8 @@ jobs:
       enterprise:
         type: boolean
     docker:
-      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.1
-    resource_class: xlarge
+      - image: cimg/base:2023.06
+    resource_class: arm.xlarge
     environment:
       GIT_SSH_COMMAND: ssh
       SCCACHE_ERROR_LOG: /tmp/sccache.log
