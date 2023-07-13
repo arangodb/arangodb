@@ -340,32 +340,6 @@
       }
     },
 
-    switchNodeSizeByCollection: function (boolean) {
-      var self = this;
-      if (boolean) {
-        self.buildCollectionSizes();
-        self.currentGraph.graph.nodes().forEach(function (n) {
-          n.size = self.nodeEdgesCount[n.id];
-        });
-      } else {
-        self.currentGraph.graph.nodes().forEach(function (n) {
-          n.size = 15;
-        });
-      }
-      self.currentGraph.refresh();
-    },
-
-    switchEdgeType: function (edgeType) {
-      var data = {
-        nodes: this.currentGraph.graph.nodes(),
-        edges: this.currentGraph.graph.edges(),
-        settings: {}
-      };
-
-      this.killCurrentGraph();
-      this.renderGraph(data, null, false, null, null, edgeType);
-    },
-
     switchLayout: function (layout) {
       var data = {
         nodes: this.currentGraph.graph.nodes(),
