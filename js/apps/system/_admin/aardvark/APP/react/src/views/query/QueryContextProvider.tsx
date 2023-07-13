@@ -2,13 +2,14 @@ import { useDisclosure, usePrevious } from "@chakra-ui/react";
 import hotkeys from "hotkeys-js";
 import { isEqual } from "lodash";
 import React, { useState } from "react";
+import { QueryResultType } from "./ArangoQuery.types";
 import {
   QueryType,
   useFetchUserSavedQueries
 } from "./editor/useFetchUserSavedQueries";
 import { QueryNavigationPrompt } from "./QueryNavigationPrompt";
-import { QueryResultType } from "./ArangoQuery.types";
 import { useQueryExecutors } from "./useQueryExecutors";
+import { useQueryResultHandlers } from "./useQueryResultHandlers";
 import { useQueryUpdaters } from "./useQueryUpdaters";
 import { useQueryValueModifiers } from "./useQueryValueModifiers";
 
