@@ -465,8 +465,16 @@ function setupBinaries (builddir, buildType, configDir) {
 function killRemainingProcesses(results) {
   let running = internal.getExternalSpawned();
   results.status = results.status && (running.length === 0);
-  let i = 0;
-  for (i = 0; i < running.length; i++) {
+  for (let i = 0; i < running.length; i++) {
+    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
+    if (timeoutReached) {
+      print(RED + Date() + ' external deadline reached!' + RESET);
+    }
+    internal.removePidFromMonitor(running[i].pid);
+  }
+  sleep(1);
+  for (let i = 0; i < running.length; i++) {
     let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
     print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
     if (timeoutReached) {

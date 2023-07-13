@@ -480,7 +480,7 @@ function authenticationLdapSecondLdap(options) {
   return new ldapTestRunner(options, 'ldap', conf).run(testCases);
 }
 
-exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function(testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   // just a convenience wrapper for the regular tests
   testFns['ldap'] = ['ldaprole', 'ldapsearch', 'ldapsearchplaceholder', 'ldaprolesimple', 'ldapsearchsimple'];
