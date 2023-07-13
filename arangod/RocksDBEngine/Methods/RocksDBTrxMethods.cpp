@@ -203,8 +203,6 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
   LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "executing intermediate commit";
 #endif
 
-  // We have to make sure that no intermediate commit happens while we
-  // create a hotbackup.
   Result res = doCommit();
   if (res.fail()) {
     // FIXME: do we abort the transaction ?

@@ -119,14 +119,6 @@ void Manager::unregisterTransaction(TransactionId transactionId,
                                     bool isReadOnlyTransaction,
                                     bool isFollowerTransaction) {
   // always perform an unlock when we leave this function
-  auto guard = scopeGuard([transactionId, &isReadOnlyTransaction,
-                           &isFollowerTransaction]() noexcept {
-    if (!isReadOnlyTransaction && !isFollowerTransaction) {
-      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS)
-          << "Released lock for tid " << transactionId.id();
-    }
-  });
-
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 }
