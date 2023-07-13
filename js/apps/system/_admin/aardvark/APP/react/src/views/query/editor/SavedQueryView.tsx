@@ -274,9 +274,6 @@ const SavedQueryBottomBar = () => {
         onClose={onCloseImportModal}
       />
       <Stack
-        border="1px solid"
-        borderTop="0"
-        borderColor="gray.400"
         padding="2"
         direction="row"
         justifyContent="flex-end"
