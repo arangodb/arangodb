@@ -73,10 +73,6 @@ const QueryContext = React.createContext<QueryContextType>(
 
 export const useQueryContext = () => React.useContext(QueryContext);
 
-type CachedQuery = {
-  query: string;
-  parameter: { [key: string]: string };
-};
 const getStorageKey = ({
   currentUser,
   currentDbName
@@ -102,26 +98,16 @@ export const QueryContextProvider = ({
       storageKey
     });
 
-  const initialQueryString = window.sessionStorage.getItem("cachedQuery");
-  const initialQuery = initialQueryString
-    ? JSON.parse(initialQueryString)
-    : ({} as CachedQuery);
-  const [queryValue, setQueryValue] = React.useState<string>(
-    initialQuery?.query || ""
-  );
-
-  const [queryName, setQueryName] = React.useState<string>("");
-  const [queryBindParams, setQueryBindParams] = React.useState<{
-    [key: string]: string;
-  }>(initialQuery?.parameter || {});
-
-  const { onQueryChange, onQueryValueChange, onBindParamsChange } =
-    useQueryValueModifiers({
-      setQueryValue,
-      setQueryBindParams,
-      queryValue,
-      setQueryName
-    });
+  const {
+    onQueryChange,
+    onQueryValueChange,
+    onBindParamsChange,
+    queryValue,
+    queryName,
+    queryBindParams,
+    setQueryBindParams,
+    setQueryName
+  } = useQueryValueModifiers();
   const [resetEditor, setResetEditor] = React.useState<boolean>(false);
   const {
     isOpen: isSaveAsModalOpen,
@@ -134,7 +120,6 @@ export const QueryContextProvider = ({
     savedQueries,
     storageKey
   });
-
   const {
     queryResults,
     setQueryResults,

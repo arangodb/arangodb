@@ -1,19 +1,24 @@
 import React from "react";
 import { parseQuery } from "./queryHelper";
+type CachedQuery = {
+  query: string;
+  parameter: { [key: string]: string };
+};
 
-export const useQueryValueModifiers = ({
-  setQueryValue,
-  setQueryBindParams,
-  queryValue,
-  setQueryName
-}: {
-  setQueryValue: (value: string) => void;
-  setQueryBindParams: React.Dispatch<
-    React.SetStateAction<{ [key: string]: string }>
-  >;
-  setQueryName: (name: string) => void;
-  queryValue: string;
-}) => {
+export const useQueryValueModifiers = () => {
+  const initialQueryString = window.sessionStorage.getItem("cachedQuery");
+  const initialQuery = initialQueryString
+    ? JSON.parse(initialQueryString)
+    : ({} as CachedQuery);
+  const [queryValue, setQueryValue] = React.useState<string>(
+    initialQuery?.query || ""
+  );
+
+  const [queryName, setQueryName] = React.useState<string>("");
+  const [queryBindParams, setQueryBindParams] = React.useState<{
+    [key: string]: string;
+  }>(initialQuery?.parameter || {});
+
   /**
    * Called when the query value is changed by the user
    */
@@ -63,5 +68,14 @@ export const useQueryValueModifiers = ({
     setQueryBindParams(parameter);
     setQueryName(name || "");
   };
-  return { onQueryChange, onQueryValueChange, onBindParamsChange };
+  return {
+    onQueryChange,
+    onQueryValueChange,
+    onBindParamsChange,
+    queryValue,
+    queryName,
+    queryBindParams,
+    setQueryBindParams,
+    setQueryName
+  };
 };
