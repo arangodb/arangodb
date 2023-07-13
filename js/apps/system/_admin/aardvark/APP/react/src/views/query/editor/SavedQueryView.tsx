@@ -201,7 +201,12 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
       height="full"
     >
       <Stack height="full" overflow="auto">
-        <FiltersList<QueryType> columns={TABLE_COLUMNS} table={tableInstance} />
+        <Box paddingLeft="2" paddingTop="1">
+          <FiltersList<QueryType>
+            columns={TABLE_COLUMNS}
+            table={tableInstance}
+          />
+        </Box>
         <ReactTable<QueryType>
           table={tableInstance}
           onRowSelect={row => {
