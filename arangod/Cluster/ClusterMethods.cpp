@@ -3791,7 +3791,7 @@ std::vector<std::string> lockPath =
 
 arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
                                       std::string const& backupId,
-                                      std::vector<ServerID> const& dbServers,
+                                      std::vector<ServerID> const& servers,
                                       double const& lockWait,
                                       std::vector<ServerID>& lockedServers) {
   using namespace std::chrono;
@@ -3818,9 +3818,9 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
 
   std::vector<Future<network::Response>> futures;
-  futures.reserve(dbServers.size());
+  futures.reserve(servers.size());
 
-  for (auto const& dbServer : dbServers) {
+  for (auto const& dbServer : servers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                                    fuerte::RestVerb::Post, url,
                                                    body, reqOpts));
@@ -3955,7 +3955,7 @@ std::vector<std::string> idPath{"result", "id"};
 arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
                                     std::string const& backupId,
                                     std::string const& timeStamp,
-                                    std::vector<ServerID> dbServers,
+                                    std::vector<ServerID> servers,
                                     VPackSlice agencyDump, bool force,
                                     BackupMeta& meta) {
   VPackBufferUInt8 body;
@@ -3966,7 +3966,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
     builder.add("agency-dump", agencyDump);
     builder.add("timestamp", VPackValue(timeStamp));
     builder.add("allowInconsistent", VPackValue(force));
-    builder.add("nrDBServers", VPackValue(dbServers.size()));
+    builder.add("nrDBServers", VPackValue(servers.size()));
   }
 
   std::string const url = apiStr + "create";
@@ -3975,9 +3975,9 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
   reqOpts.skipScheduler = true;
 
   std::vector<Future<network::Response>> futures;
-  futures.reserve(dbServers.size());
+  futures.reserve(servers.size());
 
-  for (auto const& dbServer : dbServers) {
+  for (auto const& dbServer : servers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                                    fuerte::RestVerb::Post, url,
                                                    body, reqOpts));
@@ -4062,11 +4062,11 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
 
   if (sizeValid) {
     meta = BackupMeta(backupId, version, timeStamp, secretHashes, totalSize,
-                      totalFiles, static_cast<unsigned int>(dbServers.size()),
-                      "", force);
+                      totalFiles, static_cast<unsigned int>(servers.size()), "",
+                      force);
   } else {
     meta = BackupMeta(backupId, version, timeStamp, secretHashes, 0, 0,
-                      static_cast<unsigned int>(dbServers.size()), "", force);
+                      static_cast<unsigned int>(servers.size()), "", force);
     LOG_TOPIC("54265", WARN, Logger::BACKUP)
         << "Could not determine total size of backup with id '" << backupId
         << "'!";
@@ -4082,7 +4082,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
  */
 arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
                                     std::string const& backupId,
-                                    std::vector<ServerID> const& dbServers,
+                                    std::vector<ServerID> const& servers,
                                     std::vector<std::string>& deleted) {
   VPackBufferUInt8 body;
   VPackBuilder builder(body);
@@ -4097,9 +4097,9 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
   reqOpts.skipScheduler = true;
 
   std::vector<Future<network::Response>> futures;
-  futures.reserve(dbServers.size());
+  futures.reserve(servers.size());
 
-  for (auto const& dbServer : dbServers) {
+  for (auto const& dbServer : servers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                                    fuerte::RestVerb::Post, url,
                                                    body, reqOpts));
@@ -4152,9 +4152,9 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
 
   LOG_TOPIC("1b318", DEBUG, Logger::BACKUP)
       << "removeLocalBackups: notFoundCount = " << notFoundCount << " "
-      << dbServers.size();
+      << servers.size();
 
-  if (notFoundCount == dbServers.size()) {
+  if (notFoundCount == servers.size()) {
     return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,
                             "Backup " + backupId + " not found.");
   }
@@ -4172,7 +4172,7 @@ std::vector<std::string> const versionPath =
 arangodb::Result hotbackupAsyncLockDBServersTransactions(
     network::ConnectionPool* pool, std::string const& backupId,
     std::vector<ServerID> const& dbServers, double const& lockWait,
-    std::unordered_map<std::string, std::string>& dbserverLockIds) {
+    std::unordered_map<std::string, std::string>& serverLockIds) {
   std::string const url = apiStr + "lock";
 
   VPackBufferUInt8 body;
@@ -4231,7 +4231,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(
               " when trying to check for lockId for hot backup " + backupId);
     }
 
-    dbserverLockIds[r.serverId()] = jobId;
+    serverLockIds[r.serverId()] = jobId;
   }
 
   return arangodb::Result();
@@ -4239,7 +4239,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(
 
 arangodb::Result hotbackupWaitForLockDBServersTransactions(
     network::ConnectionPool* pool, std::string const& backupId,
-    std::unordered_map<std::string, std::string>& dbserverLockIds,
+    std::unordered_map<std::string, std::string>& serverLockIds,
     std::vector<ServerID>& lockedServers, double const& lockWait) {
   // query all remaining jobs here
 
@@ -4248,10 +4248,10 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
 
   std::vector<Future<network::Response>> futures;
-  futures.reserve(dbserverLockIds.size());
+  futures.reserve(serverLockIds.size());
 
   VPackBufferUInt8 body;  // empty body
-  for (auto const& lock : dbserverLockIds) {
+  for (auto const& lock : serverLockIds) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + lock.first, fuerte::RestVerb::Put,
         "/_api/job/" + lock.second, body, reqOpts));
@@ -4324,7 +4324,7 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
     }
 
     lockedServers.push_back(r.serverId());
-    dbserverLockIds.erase(r.serverId());
+    serverLockIds.erase(r.serverId());
   }
 
   return arangodb::Result();
