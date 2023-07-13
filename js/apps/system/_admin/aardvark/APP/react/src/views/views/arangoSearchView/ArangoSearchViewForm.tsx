@@ -5,7 +5,8 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  FormLabel, Spacer,
+  FormLabel,
+  Spacer,
   Stack,
   Tag
 } from "@chakra-ui/react";
@@ -104,6 +105,7 @@ const GeneralAccordionItem = () => {
     </AccordionItem>
   );
 };
+
 const ConsolidationPolicyAccordionItem = () => {
   const { tierConsolidationPolicyFields, bytesAccumConsolidationPolicyFields } =
     useArangoSearchFieldsData();
