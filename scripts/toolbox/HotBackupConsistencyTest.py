@@ -376,11 +376,11 @@ def main():
 
     for idx, test in enumerate(tests):
         print(f"running test {test.__name__}")
-        workdir = ensure_workdir(os.path.join(workdir, test.__name__))
-        print(f"working directory is {workdir}")
+        test_workdir = ensure_workdir(os.path.join(workdir, test.__name__))
+        print(f"working directory is {test_workdir}")
 
         # give each env a different port range because of lingering
-        environment = start_cluster(args.arangod, args.topdir, workdir, 8500 + idx * 100)
+        environment = start_cluster(args.arangod, args.topdir, test_workdir, 8500 + idx * 100)
 
         client = ArangoClient(environment.get_coordinator_http_endpoint())
         wait_for_cluster(client)
