@@ -4,7 +4,7 @@ import {
   Text
 } from "@chakra-ui/react";
 import React from "react";
-import { QueryResultType } from "../QueryContextProvider";
+import { QueryResultType } from "../ArangoQuery.types";
 import { RemoveResultButton } from "./RemoveResultButton";
 import { ResultTypeBox } from "./ResultTypeBox";
 

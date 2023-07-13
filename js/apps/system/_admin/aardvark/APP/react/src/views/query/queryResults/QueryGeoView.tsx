@@ -6,7 +6,7 @@ import "leaflet-gesture-handling/dist/leaflet-gesture-handling.css";
 import { GeodesicLine } from "leaflet.geodesic";
 import React from "react";
 import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
-import { QueryResultType } from "../QueryContextProvider";
+import { QueryResultType } from "../ArangoQuery.types";
 
 type NestedGeometryType = {
   geometry: GeoJSONUnionType;

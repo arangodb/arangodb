@@ -1,6 +1,6 @@
 import { Box, Flex } from "@chakra-ui/react";
 import React from "react";
-import { QueryResultType } from "../QueryContextProvider";
+import { QueryResultType } from "../ArangoQuery.types";
 import { ProfileResultDisplayJSON } from "./ProfileResultDisplayJSON";
 import { RemoveResultButton } from "./RemoveResultButton";
 import { ResultTypeBox } from "./ResultTypeBox";

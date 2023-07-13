@@ -1,6 +1,6 @@
 import { Box } from "@chakra-ui/react";
 import React from "react";
-import { QueryResultType } from "../QueryContextProvider";
+import { QueryResultType } from "../ArangoQuery.types";
 
 export const ResultTypeBox = ({
   queryResult

@@ -1,7 +1,7 @@
 import { Button, ModalHeader, Stack } from "@chakra-ui/react";
 import React, { useEffect, useRef } from "react";
 import { Modal, ModalBody, ModalFooter } from "../../components/modal";
-import { QueryResultType } from "./QueryContextProvider";
+import { QueryResultType } from "./ArangoQuery.types";
 
 /**
  * Prevents navigation by patching Backbone's execute method.

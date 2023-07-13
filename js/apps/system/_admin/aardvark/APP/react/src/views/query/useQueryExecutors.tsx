@@ -4,7 +4,8 @@ import {
   getApiRouteForCurrentDB,
   getCurrentDB
 } from "../../utils/arangoClient";
-import { QueryExecutionOptions, QueryResultType } from "./QueryContextProvider";
+import { QueryExecutionOptions } from "./QueryContextProvider";
+import { QueryResultType } from "./ArangoQuery.types";
 
 export const useQueryExecutors = ({
   setQueryResults,

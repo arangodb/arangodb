@@ -1,7 +1,7 @@
 import L from "leaflet";
 import { GeodesicLine } from "leaflet.geodesic";
 import React from "react";
-import { QueryResultType } from "../QueryContextProvider";
+import { QueryResultType } from "../ArangoQuery.types";
 
 export type DisplayType = "json" | "graph" | "table" | "geo";
 type GraphDataType = "graphObject" | "edgeArray";

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
-import { QueryResultType, useQueryContext } from "../QueryContextProvider";
+import { useQueryContext } from "../QueryContextProvider";
+import { QueryResultType } from "../ArangoQuery.types";
 
 export const useSyncQueryExecuteJob = ({
   queryResult,

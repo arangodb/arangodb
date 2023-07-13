@@ -1,5 +1,4 @@
 import { useDisclosure, usePrevious } from "@chakra-ui/react";
-import { CursorExtras } from "arangojs/cursor";
 import hotkeys from "hotkeys-js";
 import { isEqual } from "lodash";
 import React, { useState } from "react";
@@ -8,6 +7,7 @@ import {
   useFetchUserSavedQueries
 } from "./editor/useFetchUserSavedQueries";
 import { QueryNavigationPrompt } from "./QueryNavigationPrompt";
+import { QueryResultType } from "./ArangoQuery.types";
 import { useQueryExecutors } from "./useQueryExecutors";
 import { useQueryUpdaters } from "./useQueryUpdaters";
 import { useQueryValueModifiers } from "./useQueryValueModifiers";
@@ -73,26 +73,18 @@ const QueryContext = React.createContext<QueryContextType>(
 
 export const useQueryContext = () => React.useContext(QueryContext);
 
-export type QueryResultType<ResultType extends any = any> = {
-  type: "query" | "profile" | "explain";
-  queryValue: string;
-  queryBindParams?: { [key: string]: string };
-  result?: ResultType;
-  extra?: CursorExtras;
-  status: "success" | "error" | "loading";
-  asyncJobId?: string;
-  profile?: any;
-  stats?: any;
-  warnings?: {
-    code: number;
-    message: string;
-  }[];
-  errorMessage?: string;
-  queryLimit?: number | "all";
-};
 type CachedQuery = {
   query: string;
   parameter: { [key: string]: string };
+};
+const getStorageKey = ({
+  currentUser,
+  currentDbName
+}: {
+  currentUser?: string;
+  currentDbName?: string;
+}) => {
+  return `${currentDbName}-${currentUser}-savedQueries`;
 };
 export const QueryContextProvider = ({
   children
@@ -101,22 +93,23 @@ export const QueryContextProvider = ({
 }) => {
   const currentUser = window.App.currentUser || "root";
   const currentDbName = window.frontendConfig.db;
-  const storageKey = `${currentDbName}-${currentUser}-savedQueries`;
-  const initialQueryString = window.sessionStorage.getItem("cachedQuery");
-  const initialQuery = initialQueryString
-    ? JSON.parse(initialQueryString)
-    : ({} as CachedQuery);
+  const storageKey = getStorageKey({
+    currentUser,
+    currentDbName
+  });
   const { savedQueries, isLoading: isFetchingQueries } =
     useFetchUserSavedQueries({
       storageKey
     });
-  const [currentView, setCurrentView] = React.useState<"saved" | "editor">(
-    "editor"
-  );
+
+  const initialQueryString = window.sessionStorage.getItem("cachedQuery");
+  const initialQuery = initialQueryString
+    ? JSON.parse(initialQueryString)
+    : ({} as CachedQuery);
   const [queryValue, setQueryValue] = React.useState<string>(
     initialQuery?.query || ""
   );
-  const [queryResults, setQueryResults] = React.useState<QueryResultType[]>([]);
+
   const [queryName, setQueryName] = React.useState<string>("");
   const [queryBindParams, setQueryBindParams] = React.useState<{
     [key: string]: string;
@@ -141,49 +134,26 @@ export const QueryContextProvider = ({
     savedQueries,
     storageKey
   });
-  const [isSpotlightOpen, setIsSpotlightOpen] = React.useState<boolean>(false);
-  const aqlJsonEditorRef = React.useRef(null);
-  const bindVariablesJsonEditorRef = React.useRef(null);
-  const setQueryResultById = (queryResult: QueryResultType) => {
-    setQueryResults(prev => {
-      const newResults = prev.map(prevQueryResult => {
-        if (prevQueryResult.asyncJobId === queryResult.asyncJobId) {
-          return queryResult;
-        }
-        return prevQueryResult;
-      });
-      return newResults;
-    });
-  };
-  const appendQueryResultById = ({
-    asyncJobId,
-    result,
-    status
-  }: {
-    asyncJobId?: string;
-    result: any;
-    status: "success" | "error" | "loading";
-  }) => {
-    setQueryResults(prev => {
-      const newResults = prev.map(prevQueryResult => {
-        if (asyncJobId === prevQueryResult.asyncJobId) {
-          return {
-            ...prevQueryResult,
-            result: [...prevQueryResult.result, ...result],
-            status
-          };
-        }
-        return prevQueryResult;
-      });
-      return newResults;
-    });
-  };
+
+  const {
+    queryResults,
+    setQueryResults,
+    setQueryResultById,
+    appendQueryResultById
+  } = useQueryResultHandlers();
   const [queryLimit, setQueryLimit] = useState<number | "all">(1000);
   const { onExecute, onProfile, onExplain, onRemoveResult } = useQueryExecutors(
     { setQueryResults, setQueryResultById }
   );
   const [queryGraphResult, setQueryGraphResult] =
     React.useState<QueryResultType>({} as QueryResultType);
+  const [currentView, setCurrentView] = React.useState<"saved" | "editor">(
+    "editor"
+  );
+  const aqlJsonEditorRef = React.useRef(null);
+  const bindVariablesJsonEditorRef = React.useRef(null);
+  const [isSpotlightOpen, setIsSpotlightOpen] = React.useState<boolean>(false);
+
   return (
     <QueryContext.Provider
       value={{

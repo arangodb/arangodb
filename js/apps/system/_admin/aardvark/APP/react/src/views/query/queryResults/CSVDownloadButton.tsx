@@ -2,7 +2,7 @@ import { Button } from "@chakra-ui/react";
 import Papa from "papaparse";
 import React from "react";
 import { downloadBlob } from "../../../utils/downloadHelper";
-import { QueryResultType } from "../QueryContextProvider";
+import { QueryResultType } from "../ArangoQuery.types";
 import { getAllowCSVDownload } from "./QueryExecuteResult";
 
 export const CSVDownloadButton = ({

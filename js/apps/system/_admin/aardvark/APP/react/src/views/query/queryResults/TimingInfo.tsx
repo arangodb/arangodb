@@ -24,7 +24,7 @@ import {
 import { round } from "lodash";
 import React from "react";
 import { Table } from "styled-icons/boxicons-regular";
-import { QueryResultType } from "../QueryContextProvider";
+import { QueryResultType } from "../ArangoQuery.types";
 
 type ProfileKey =
   | "initializing"

@@ -3,7 +3,7 @@ import {
   Spinner, Text
 } from "@chakra-ui/react";
 import React from "react";
-import { QueryResultType } from "../QueryContextProvider";
+import { QueryResultType } from "../ArangoQuery.types";
 import { CancelQueryButton } from "./CancelQueryButton";
 import { ResultTypeBox } from "./ResultTypeBox";
 

@@ -11,7 +11,8 @@ import {
 import React, { useMemo } from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { downloadPost } from "../../../utils/downloadHelper";
-import { QueryResultType, useQueryContext } from "../QueryContextProvider";
+import { useQueryContext } from "../QueryContextProvider";
+import { QueryResultType } from "../ArangoQuery.types";
 import { CSVDownloadButton } from "./CSVDownloadButton";
 import { QueryGeoView } from "./QueryGeoView";
 import { QueryGraphView } from "./QueryGraphView";
