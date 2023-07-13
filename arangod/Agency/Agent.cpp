@@ -948,10 +948,7 @@ void Agent::advanceCommitIndex() {
   std::sort(temp.begin(), temp.end());
   index_t index = temp[temp.size() - quorum];
 
-  term_t t = _constituent.term();
-
   auto ci = _commitIndex.load(std::memory_order_relaxed);
-  auto slices = _state.slices(ci + 1, index);
   {
     WRITE_LOCKER(oLocker, _outputLock);
 
@@ -962,7 +959,8 @@ void Agent::advanceCommitIndex() {
           << " to read db";
 
       // Change _readDB and _commitIndex atomically together:
-      _readDB.applyLogEntries(slices, ci, t);
+      auto state = _inflightStates.commitIndex(index);
+      _readDB.setRootNode(std::move(state));
 
       LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << ci + 1 << " through " << index
@@ -1125,9 +1123,8 @@ void Agent::load() {
   if (_inception != nullptr) {  // resilient agency only
     _inception->start();
   } else {
-    std::lock_guard guard{_ioLock};  // need this for callback to set _spearhead
+    std::lock_guard guard{_ioLock};
     READ_LOCKER(guard2, _outputLock);
-    _spearhead = _readDB;
     activateAgency();
   }
 
@@ -1293,6 +1290,7 @@ trans_ret_t Agent::transact(velocypack::Slice qs) {
                        ? _state.logLeaderSingle(query[0], currentTerm,
                                                 query[2].copyString())
                        : _state.logLeaderSingle(query[0], currentTerm);
+          _inflightStates.emplace(maxind, _spearhead.nodePtr());
           ret->add(VPackValue(maxind));
         } else {
           _spearhead.read(res.failed->slice(), *ret);
@@ -1484,9 +1482,19 @@ write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
 
       std::lock_guard ioLocker{_ioLock};
 
-      applied = _spearhead.applyTransactions(chunk.slice(), wmode);
-      auto tmp = _state.logLeaderMulti(chunk.slice(), applied, currentTerm);
-      indices.insert(indices.end(), tmp.begin(), tmp.end());
+      std::vector<std::shared_ptr<Node const>> states;
+      applied = _spearhead.applyTransactions(chunk.slice(), wmode, &states);
+      auto indexes = _state.logLeaderMulti(chunk.slice(), applied, currentTerm);
+      ADB_PROD_ASSERT(states.size() == indexes.size())
+          << "produced " << states.size() << " states, but got "
+          << indices.size() << " indexes.";
+      for (std::size_t k = 0; k < states.size(); k++) {
+        if (indexes[k] == 0) {
+          continue;
+        }
+        _inflightStates.emplace(indexes[k], std::move(states[k]));
+      }
+      indices.insert(indices.end(), indexes.begin(), indexes.end());
     }
     _write_hist_msec.count(
         duration<float, std::milli>(high_resolution_clock::now() - start)

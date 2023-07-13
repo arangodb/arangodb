@@ -75,22 +75,17 @@ Store& Store::operator=(Store&& rhs) {
 /// Default dtor
 Store::~Store() = default;
 
-index_t Store::applyTransactions(std::vector<log_t> const& queries) {
-  std::lock_guard storeLocker{_storeLock};
-
-  for (auto const& query : queries) {
-    applies(Slice(query.entry->data()));
-  }
-  return queries.empty() ? 0 : queries.back().index;
-}
-
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
 std::vector<apply_ret_t> Store::applyTransactions(
-    VPackSlice query, Agent::WriteMode const& wmode) {
+    VPackSlice query, Agent::WriteMode const& wmode,
+    std::vector<std::shared_ptr<Node const>>* states) {
   std::vector<apply_ret_t> success;
 
   if (query.isArray()) {
+    if (states) {
+      states->reserve(query.length());
+    }
     try {
       for (auto const& i : VPackArrayIterator(query)) {
         if (!wmode.privileged()) {
@@ -108,15 +103,27 @@ std::vector<apply_ret_t> Store::applyTransactions(
           }
         }
 
+        bool ok;
         std::lock_guard storeLocker{_storeLock};
+        if (states) {
+          states->emplace_back(nullptr);
+        }
         switch (i.length()) {
           case 1:  // No precondition
-            success.push_back(applies(i[0]) ? APPLIED : UNKNOWN_ERROR);
+            ok = applies(i[0]);
+            success.push_back(ok ? APPLIED : UNKNOWN_ERROR);
+            if (states) {
+              states->back() = _node;
+            }
             break;
           case 2:  // precondition + uuid
           case 3:
             if (check(i[1]).successful()) {
-              success.push_back(applies(i[0]) ? APPLIED : UNKNOWN_ERROR);
+              ok = applies(i[0]);
+              success.push_back(ok ? APPLIED : UNKNOWN_ERROR);
+              if (states) {
+                states->back() = _node;
+              }
             } else {  // precondition failed
               LOG_TOPIC("f6873", TRACE, Logger::AGENCY)
                   << "Precondition failed!";
@@ -762,4 +769,8 @@ void Store::registerPrefixTrigger(std::string const& prefix,
 
 std::vector<std::string> Store::split(std::string_view str) {
   return Node::split(str);
+}
+
+void Store::setRootNode(std::shared_ptr<const Node> node) noexcept {
+  _node = std::move(node);
 }

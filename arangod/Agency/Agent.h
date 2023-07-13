@@ -416,6 +416,34 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief Committed (read) kv-store
   Store _readDB;
 
+  // TODO replace this implementation with something faster. For now we try
+  //   to get the logic of everything else right.
+  struct IntermediateStateStore {
+    void emplace(index_t idx, std::shared_ptr<Node const> state) {
+      ADB_PROD_ASSERT(_map.empty() || _map.rbegin()->first < idx)
+          << "inserted inflight state with index " << idx
+          << " but we are already at "
+          << (_map.empty() ? 0 : _map.rbegin()->first);
+      auto [it, inserted] = _map.emplace(idx, std::move(state));
+      TRI_ASSERT(inserted);
+    }
+
+    std::shared_ptr<Node const> commitIndex(index_t idx) {
+      auto it = _map.find(idx);
+      ADB_PROD_ASSERT(it != _map.end())
+          << "inflight did not contain index " << idx;
+
+      auto node = std::move(it->second);
+      _map.erase(_map.begin(), std::next(it));
+      return node;
+    }
+
+    std::map<index_t, std::shared_ptr<Node const>> _map;
+  };
+
+  /// @brief Stores intermediate states
+  IntermediateStateStore _inflightStates;
+
   /// @brief Committed (read) kv-store for transient data. This is
   /// protected by the _transientLock mutex.
   Store _transient;
