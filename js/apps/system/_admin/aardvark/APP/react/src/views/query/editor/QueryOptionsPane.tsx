@@ -17,7 +17,6 @@ export const QueryOptionsPane = () => {
       <Tabs height="full" size="sm">
         <TabList alignItems="center" paddingRight="2">
           <Tab>Bind Variables</Tab>
-          {/* <Tab>Options</Tab> */}
           <Button
             marginLeft="auto"
             size="xs"
