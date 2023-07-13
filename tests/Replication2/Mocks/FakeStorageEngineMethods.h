@@ -22,44 +22,42 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
-#include "RocksDBEngine/RocksDBPersistedLog.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
+#include "Replication2/Storage/IteratorPosition.h"
+#include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
 
-namespace arangodb::replication2::test {
+namespace arangodb::replication2::storage::test {
 
 struct FakeStorageEngineMethodsContext {
-  using LogContainerType = std::map<LogIndex, PersistingLogEntry>;
-  using SequenceNumber =
-      replicated_state::IStorageEngineMethods::SequenceNumber;
+  using LogContainerType = std::map<LogIndex, LogEntry>;
+  using SequenceNumber = IStorageEngineMethods::SequenceNumber;
 
   FakeStorageEngineMethodsContext(
       std::uint64_t objectId, LogId logId,
-      std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor,
-      LogRange range = {},
-      std::optional<replicated_state::PersistedStateInfo> = {});
+      std::shared_ptr<rocksdb::AsyncLogWriteBatcher::IAsyncExecutor> executor,
+      LogRange range = {}, std::optional<storage::PersistedStateInfo> = {});
 
-  auto getMethods() -> std::unique_ptr<replicated_state::IStorageEngineMethods>;
+  auto getMethods() -> std::unique_ptr<IStorageEngineMethods>;
   void emplaceLogRange(LogRange, LogTerm term = LogTerm{1});
 
   std::uint64_t const objectId;
   LogId const logId;
-  std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> const executor;
-  std::optional<replicated_state::PersistedStateInfo> meta;
+  std::shared_ptr<rocksdb::AsyncLogWriteBatcher::IAsyncExecutor> const executor;
+  std::optional<storage::PersistedStateInfo> meta;
   LogContainerType log;
   std::unordered_set<LogIndex> writtenWithWaitForSync;
   SequenceNumber lastSequenceNumber{0};
 };
 
-struct FakeStorageEngineMethods : replicated_state::IStorageEngineMethods {
-  auto updateMetadata(replicated_state::PersistedStateInfo info)
-      -> Result override;
+struct FakeStorageEngineMethods : IStorageEngineMethods {
+  auto updateMetadata(storage::PersistedStateInfo info) -> Result override;
 
-  auto readMetadata() -> ResultT<replicated_state::PersistedStateInfo> override;
+  auto readMetadata() -> ResultT<storage::PersistedStateInfo> override;
 
-  auto read(LogIndex first) -> std::unique_ptr<PersistedLogIterator> override;
+  auto getIterator(IteratorPosition position)
+      -> std::unique_ptr<PersistedLogIterator> override;
 
-  auto insert(std::unique_ptr<PersistedLogIterator> ptr,
-              const WriteOptions& options)
+  auto insert(std::unique_ptr<LogIterator> ptr, const WriteOptions& options)
       -> futures::Future<ResultT<SequenceNumber>> override;
 
   auto removeFront(LogIndex stop, const WriteOptions& options)
@@ -74,9 +72,12 @@ struct FakeStorageEngineMethods : replicated_state::IStorageEngineMethods {
   auto waitForSync(SequenceNumber number) -> futures::Future<Result> override;
   void waitForCompletion() noexcept override;
 
+  auto compact() -> Result override;
+  auto drop() -> Result override;
+
   FakeStorageEngineMethods(FakeStorageEngineMethodsContext& self);
 
   FakeStorageEngineMethodsContext& _self;
 };
 
-}  // namespace arangodb::replication2::test
+}  // namespace arangodb::replication2::storage::test

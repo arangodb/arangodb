@@ -104,7 +104,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
     {
       // check the leader log, there should be two entries written
-      auto entry = std::optional<PersistingLogEntry>{};
+      auto entry = std::optional<LogEntry>{};
       auto followerLog = getPersistedLogById(LogId{1});
       auto iter = followerLog->read(LogIndex{1});
 
@@ -148,7 +148,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
     {
       // check the follower log, there should be two entries written
-      auto entry = std::optional<PersistingLogEntry>{};
+      auto entry = std::optional<LogEntry>{};
       auto followerLog = getPersistedLogById(LogId{2});
       auto iter = followerLog->read(LogIndex{1});
 
@@ -216,14 +216,12 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
 TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   auto const entries = {
-      replication2::PersistingLogEntry(
-          LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::PersistingLogEntry(
-          LogTerm{1}, LogIndex{2},
-          LogPayload::createFromString("second entry")),
-      replication2::PersistingLogEntry(
-          LogTerm{2}, LogIndex{3},
-          LogPayload::createFromString("third entry"))};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1},
+                             LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -460,14 +458,12 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
 TEST_F(ReplicatedLogTest,
        write_concern_one_immediate_leader_commit_on_startup) {
   auto const entries = {
-      replication2::PersistingLogEntry(
-          LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::PersistingLogEntry(
-          LogTerm{1}, LogIndex{2},
-          LogPayload::createFromString("second entry")),
-      replication2::PersistingLogEntry(
-          LogTerm{2}, LogIndex{3},
-          LogPayload::createFromString("third entry"))};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1},
+                             LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {

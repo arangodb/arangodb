@@ -43,7 +43,7 @@
 #include "Replication2/ReplicatedLog/DefaultRebootIdCache.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/IScheduler.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
 #include "Replication2/Mocks/RebootIdCacheMock.h"
@@ -199,15 +199,16 @@ struct StateManagerTest : testing::Test {
   replication2::tests::MockVocbase vocbaseMock =
       replication2::tests::MockVocbase(mockServer.server(),
                                        "documentStateMachineTestDb", 2);
-  std::shared_ptr<test::DelayedExecutor> executor =
-      std::make_shared<test::DelayedExecutor>();
+  std::shared_ptr<storage::rocksdb::test::DelayedExecutor> executor =
+      std::make_shared<storage::rocksdb::test::DelayedExecutor>();
   // Note that this purposefully does not initialize the PersistedStateInfo that
   // is returned by the StorageEngineMethods. readMetadata() will return a
   // document not found error unless you initialize it in your test.
-  std::shared_ptr<test::FakeStorageEngineMethodsContext> storageContext =
-      std::make_shared<test::FakeStorageEngineMethodsContext>(
-          12, gid.id, executor, LogRange{});
-  replicated_state::IStorageEngineMethods* methodsPtr =
+  std::shared_ptr<storage::test::FakeStorageEngineMethodsContext>
+      storageContext =
+          std::make_shared<storage::test::FakeStorageEngineMethodsContext>(
+              12, gid.id, executor, LogRange{});
+  storage::IStorageEngineMethods* methodsPtr =
       storageContext->getMethods().release();
   std::shared_ptr<test::ReplicatedLogMetricsMock> logMetricsMock =
       std::make_shared<test::ReplicatedLogMetricsMock>();
@@ -235,7 +236,7 @@ struct StateManagerTest : testing::Test {
 
   std::shared_ptr<ReplicatedLog> log =
       std::make_shared<replicated_log::ReplicatedLog>(
-          std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
+          std::unique_ptr<storage::IStorageEngineMethods>{methodsPtr},
           logMetricsMock, optionsMock, participantsFactory, loggerContext,
           myself);
 
@@ -262,7 +263,7 @@ TEST_F(StateManagerTest_EmptyState, get_leader_state_machine_early) {
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
 
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
 
   auto const term = agency::LogPlanTermSpecification{LogTerm{1}, myself};
@@ -353,7 +354,7 @@ TEST_F(StateManagerTest_EmptyState,
   //  - send successful append entries request
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
 
   auto const term = LogTerm{1};
@@ -388,7 +389,7 @@ TEST_F(StateManagerTest_EmptyState,
     auto payload = LogMetaPayload{std::move(meta)};
     auto const termIndexPair = TermIndexPair(term, LogIndex(1));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
@@ -454,7 +455,7 @@ TEST_F(
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
 
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
   auto const leaderComm =
       std::make_shared<replication2::tests::LeaderCommunicatorMock>();
@@ -493,7 +494,7 @@ TEST_F(
     // This should result in a truncate
     auto const termIndexPair = TermIndexPair(term, LogIndex(2));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
@@ -579,7 +580,7 @@ TEST_F(
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
 
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kCompleted}};
   auto const leaderComm =
       std::make_shared<replication2::tests::LeaderCommunicatorMock>();
@@ -618,7 +619,7 @@ TEST_F(
     // This should result in a truncate
     auto const termIndexPair = TermIndexPair(term, LogIndex(2));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
@@ -699,7 +700,7 @@ TEST_F(
   //  - let the state machine acquire a snapshot
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kFailed}};
   auto const leaderComm =
       std::make_shared<replication2::tests::LeaderCommunicatorMock>();
@@ -740,7 +741,7 @@ TEST_F(
     auto payload = LogMetaPayload{std::move(meta)};
     auto const termIndexPair = TermIndexPair(term, LogIndex(1));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
@@ -815,7 +816,7 @@ TEST_F(
   //  - send successful append entries request
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id, .snapshot = {.status = SnapshotStatus::kFailed}};
   auto const leaderComm =
       std::make_shared<replication2::tests::LeaderCommunicatorMock>();
@@ -881,7 +882,7 @@ TEST_F(
     auto payload = LogMetaPayload{std::move(meta)};
     auto const termIndexPair = TermIndexPair(term, LogIndex(1));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,
@@ -937,7 +938,7 @@ TEST_F(StateManagerTest_FakeState, follower_acquire_snapshot) {
   // Meanwhile check that the follower state machine is inaccessible until the
   // end.
 
-  storageContext->meta = replicated_state::PersistedStateInfo{
+  storageContext->meta = storage::PersistedStateInfo{
       .stateId = gid.id,
       .snapshot = {.status = SnapshotStatus::kUninitialized}};
   auto const leaderComm =
@@ -970,7 +971,7 @@ TEST_F(StateManagerTest_FakeState, follower_acquire_snapshot) {
     auto payload = LogMetaPayload{std::move(meta)};
     auto const termIndexPair = TermIndexPair(term, LogIndex(1));
     auto logEntry = InMemoryLogEntry(
-        PersistingLogEntry(termIndexPair, std::move(payload)), waitForSync);
+        LogEntry(termIndexPair, std::move(payload)), waitForSync);
     auto request = AppendEntriesRequest(
         term, leaderId, TermIndexPair(LogTerm(0), LogIndex(0)), LogIndex(1),
         LogIndex(0), MessageId(1), waitForSync,

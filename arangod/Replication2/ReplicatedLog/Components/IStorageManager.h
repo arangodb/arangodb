@@ -26,7 +26,7 @@
 #include <memory>
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 namespace arangodb {
 namespace futures {
@@ -38,7 +38,7 @@ namespace replication2 {
 struct LogRange;
 struct LogIndex;
 class LogEntryView;
-struct PersistedLogIterator;
+struct LogIterator;
 template<typename T>
 struct TypedLogRangeIterator;
 namespace replicated_log {
@@ -55,15 +55,14 @@ struct IStorageTransaction {
   virtual auto removeBack(LogIndex start) noexcept
       -> futures::Future<Result> = 0;
   virtual auto appendEntries(
-      InMemoryLog,
-      replicated_state::IStorageEngineMethods::WriteOptions) noexcept
+      InMemoryLog, storage::IStorageEngineMethods::WriteOptions) noexcept
       -> futures::Future<Result> = 0;
 };
 
 struct IStorageManager;
 
 struct IStateInfoTransaction {
-  using InfoType = replicated_state::PersistedStateInfo;
+  using InfoType = storage::PersistedStateInfo;
   virtual ~IStateInfoTransaction() = default;
   virtual auto get() noexcept -> InfoType& = 0;
 };
@@ -77,9 +76,9 @@ struct IStorageManager {
       std::optional<LogRange> range = std::nullopt) const
       -> std::unique_ptr<TypedLogRangeIterator<LogEntryView>> = 0;
   [[nodiscard]] virtual auto getCommittedMetaInfo() const
-      -> replicated_state::PersistedStateInfo = 0;
-  [[nodiscard]] virtual auto getPersistedLogIterator(LogIndex first) const
-      -> std::unique_ptr<PersistedLogIterator> = 0;
+      -> storage::PersistedStateInfo = 0;
+  [[nodiscard]] virtual auto getLogIterator(LogIndex first) const
+      -> std::unique_ptr<LogIterator> = 0;
   [[nodiscard]] virtual auto getSyncIndex() const -> LogIndex = 0;
 
   virtual auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> = 0;

@@ -11,15 +11,6 @@ race:SharedAqlItemBlockPtr::operator->
 signal:lib/Basics/CrashHandler.cpp
 signal:crashHandlerSignalHandler
 
-# accesses to the function pointers can be racy
-# this is most likely benign, but strictly speaking it is still UB so should be
-# addressed eventually
-race:3rdParty/velocypack/src/asm-functions.cpp
-race:doInitCopy
-race:doInitCopyCheckUtf8
-race:doInitSkip
-race:doInitValidateUtf8String
-
 # A compiler optimization in DBImpl::ReleaseSnapshot() produces code where a
 # register is populated with different addresses based on some condition, and
 # this register is later read to populate the variable `oldest_snapshot`.
@@ -27,6 +18,26 @@ race:doInitValidateUtf8String
 # a false positive race warning. I have created an according GitHub issue:
 # https://github.com/google/sanitizers/issues/1398
 race:VersionSet::SetLastSequence
+
+# The following scenario is flagged by TSAN: T1(M0 -> M1), T2(M1 -> M2), T3(M2 -> M0)
+# T1 establishes leadership
+#   - calls `LogLeader::executeAppendEntriesRequests` and acquires M0 (LogLeader::_guardedLeaderData)
+#   - calls `ReplicatedStateManager::leadershipEstablished` and acquires M1 (ReplicatedStateManager::_guarded)
+# T2 creates the shard
+#   - calls `ReplicatedStateManager::getLeader` and acquires M1 (ReplicatedStateManager::_guarded)
+#   - calls `LeaderStateManager::getStateMachine` and acquires M2 (LeaderStateManager::_guardedData)
+# T3 does recovery
+#   - calls `LeaderStateManager::recoverEntries` and acquires M2 (LeaderStateManager::_guardedData)
+#   - calls `LogLeader::triggerAsyncReplication` and acquires M0 (LogLeader::_guardedLeaderData)
+# It is a false positive because:
+# * T3 (recovery) is spawned due to T1 (leadership established) and it is guaranteed that T1 already holds M0 and
+#   M1 before T3 is started. T1 will definitely finish and release its locks, regardless of what other threads are
+#   doing.
+# * T2 (shard creation) may only do significant work if T3 (recovery) has already finished
+#   (see `LeaderStateManager<S>::getStateMachine()`). Therefore, if T2 acquires M2 before T3 has started,
+#   it will release its locks and try again later, because the leader state is unusable unless recovery is completed.
+deadlock:replication2::replicated_log::LogLeader::triggerAsyncReplication
+deadlock:replication2::replicated_state::ReplicatedStateManager
 
 # TODO - this should be removed once BTS-685 is fixed
 race:AllowImplicitCollectionsSwitcher
@@ -43,11 +54,5 @@ deadlock:consensus::Agent::setPersistedState
 # TODO Fix data race in arangodbtests
 race:DummyConnection::sendRequest
 
-# TODO It's "false positive" caused by code:
-# 1. ctx_lock lock
-# 2. ctx_lock unlock; wait_for on ctx_lock; ctx_lock lock
-# 3. s[i].flush_mutex lock
-# 4. ctx_lock unlock; wait_for on ctx_lock; ctx_lock lock
-# 5. s[i + 1].flush_mutex lock
-# It should be fixed in future, because current code doing a lot unnecessary stuff
-deadlock:irs::IndexWriter::FlushPending
+# TODO BTS-1502: should be fixed 
+race:setCacheEnabled

@@ -34,9 +34,13 @@
 #include <rocksdb/status.h>
 #include <rocksdb/slice.h>
 
+#include <memory>
+#include <mutex>
+
 namespace rocksdb {
 class Comparator;
 class ColumnFamilyHandle;
+class WriteBatch;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -49,6 +53,15 @@ class LogicalCollection;
 class RocksDBEngine;
 class RocksDBMethods;
 struct OperationOptions;
+
+// TODO could be interface if it will be necessary
+struct TruncateGuard {
+  struct UnlockDeleter {
+    void operator()(std::mutex* mutex) { mutex->unlock(); }
+  };
+  using Ptr = std::unique_ptr<std::mutex, UnlockDeleter>;
+  Ptr mutex;
+};
 
 class RocksDBIndex : public Index {
  protected:
@@ -79,8 +92,9 @@ class RocksDBIndex : public Index {
 
   Result drop() override;
 
-  virtual void afterTruncate(TRI_voc_tick_t tick,
-                             transaction::Methods* trx) override;
+  virtual ResultT<TruncateGuard> truncateBegin(rocksdb::WriteBatch& batch);
+  virtual void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                              transaction::Methods* trx);
 
   void load() override;
   void unload() override;
