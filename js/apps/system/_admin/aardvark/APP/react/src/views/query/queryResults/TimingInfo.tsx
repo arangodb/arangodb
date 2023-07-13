@@ -26,27 +26,6 @@ import React from "react";
 import { Table } from "styled-icons/boxicons-regular";
 import { QueryResultType } from "../ArangoQuery.types";
 
-type ProfileKey =
-  | "initializing"
-  | "parsing"
-  | "optimizing ast"
-  | "loading collections"
-  | "instantiating plan"
-  | "optimizing plan"
-  | "instantiating executors"
-  | "executing"
-  | "finalizing";
-const PROFILE_ORDER = [
-  "initializing",
-  "parsing",
-  "optimizing ast",
-  "loading collections",
-  "instantiating plan",
-  "optimizing plan",
-  "instantiating executors",
-  "executing",
-  "finalizing"
-];
 const profileInfoMap = {
   initializing: {
     color: "rgb(48, 125, 153)",
@@ -94,6 +73,19 @@ const profileInfoMap = {
     label: "I"
   }
 };
+
+const PROFILE_ORDER: (keyof typeof profileInfoMap)[] = [
+  "initializing",
+  "parsing",
+  "optimizing ast",
+  "loading collections",
+  "instantiating plan",
+  "optimizing plan",
+  "instantiating executors",
+  "executing",
+  "finalizing"
+];
+
 export const TimingInfo = ({
   queryResult
 }: {
@@ -111,7 +103,7 @@ export const TimingInfo = ({
   }
   // timing chart to show times as a chart, with total width fixed to 504px
   const timingChartInfo = PROFILE_ORDER.map(key => {
-    const { label, color } = profileInfoMap[key as ProfileKey];
+    const { label, color } = profileInfoMap[key];
     const time = profile?.[key];
     if (!time) {
       return null;
@@ -158,7 +150,7 @@ export const TimingInfo = ({
                 Profiling Information
               </Text>
               {PROFILE_ORDER.map(key => {
-                const profileInfo = profileInfoMap[key as ProfileKey];
+                const profileInfo = profileInfoMap[key];
                 const time = profile?.[key];
                 if (!time) {
                   return null;
