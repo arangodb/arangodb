@@ -1,22 +1,21 @@
-import { Link, Stack } from "@chakra-ui/react";
+import { Avatar, Link, Stack, Tag } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
-import { CreateDatabaseUser } from "arangojs/database";
+import _ from "lodash";
 import React from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
+import { DatabaseUserValues } from "../addUser/CreateUser.types";
 import { useUsersContext } from "../UsersContext";
-//import { detectType } from "../GraphsHelpers";
-//import { UsersModeProvider } from "../UsersModeContext";
-//import { EditUserModal } from "./EditUserModal";
+import { AccountCircle } from "styled-icons/material";
 
-const columnHelper = createColumnHelper<CreateDatabaseUser>();
+const columnHelper = createColumnHelper<DatabaseUserValues>();
 
 const TABLE_COLUMNS = [
-  columnHelper.accessor("username", {
+  columnHelper.accessor("user", {
     header: "Username",
-    id: "username",
+    id: "user",
     cell: info => {
       const cellValue = info.cell.getValue();
       return (
@@ -36,80 +35,62 @@ const TABLE_COLUMNS = [
     meta: {
       filterType: "text"
     }
-  })
-  /*
-  columnHelper.accessor(row => getGraphTypeString(row), {
-    header: "Type",
-    id: "type",
-    filterFn: "equals"
   }),
-  columnHelper.accessor("actions" as any, {
-    header: "Actions",
-    id: "actions",
+  columnHelper.accessor("extra.name", {
+    header: "Name",
+    id: "extra.name",
+    cell: info => {
+      const cellValue = info.cell.getValue();
+      return <>{cellValue}</>;
+    },
+    meta: {
+      filterType: "text"
+    }
+  }),
+  columnHelper.accessor("extra.img", {
+    header: "Gravatar",
+    id: "extra.img",
     enableColumnFilter: false,
     enableSorting: false,
     cell: info => {
-      return <ActionCell info={info} />;
+      const cellValue = info.cell.getValue();
+      if (!_.isEmpty(cellValue)) {
+        return (
+          <Avatar
+            size="xs"
+            src={`https://s.gravatar.com/avatar/${cellValue}`}
+          />
+        );
+      }
+      return <Avatar size="xs" icon={<AccountCircle />} />;
+    }
+  }),
+  columnHelper.accessor("active", {
+    header: "Active",
+    id: "active",
+    cell: info => {
+      const cellValue = info.cell.getValue();
+      return (
+        <>
+          {cellValue ? (
+            <Tag background="green.400" color="white">
+              Active
+            </Tag>
+          ) : (
+            <Tag>Inactive</Tag>
+          )}
+        </>
+      );
+    },
+    meta: {
+      filterType: "single-select"
     }
   })
-  */
 ];
-
-/*
-const ActionCell = ({ info }: { info: CellContext<GraphInfo, any> }) => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  console.log("info in ActionCell: ", info);
-
-  return (
-    <>
-      <GraphsModeProvider mode="edit">
-        <EditGraphModal
-          isOpen={isOpen}
-          onClose={onClose}
-          graph={info.cell.row.original}
-        />
-      </GraphsModeProvider>
-      <Button onClick={onOpen} size="xs">
-        <EditIcon />
-      </Button>
-    </>
-  );
-};
-*/
-
-/*
-const getGraphTypeString = (graph: GraphInfo) => {
-  const { type, isDisjoint } = detectType(graph);
-
-  if (type === "satellite") {
-    if (isDisjoint) {
-      return "Disjoint Sattelite";
-    }
-    return "Satellite";
-  }
-
-  if (type === "smart") {
-    if (isDisjoint) {
-      return "Disjoint Smart";
-    }
-    return "Smart";
-  }
-
-  if (type === "enterprise") {
-    if (isDisjoint) {
-      return "Disjoint Enterprise";
-    }
-    return "Enterprise";
-  }
-
-  return "General";
-};
-*/
 
 export const UsersTable = () => {
   const { users } = useUsersContext();
-  console.log("users: ", users);
-  const tableInstance = useSortableReactTable<CreateDatabaseUser>({
+  const tableInstance = useSortableReactTable<DatabaseUserValues>({
     data: users || [],
     columns: TABLE_COLUMNS,
     initialSorting: [
@@ -123,11 +104,11 @@ export const UsersTable = () => {
   return (
     <>
       <Stack>
-        <FiltersList<CreateDatabaseUser>
+        <FiltersList<DatabaseUserValues>
           columns={TABLE_COLUMNS}
           table={tableInstance}
         />
-        <ReactTable<CreateDatabaseUser>
+        <ReactTable<DatabaseUserValues>
           table={tableInstance}
           emptyStateMessage="No users found"
         />
