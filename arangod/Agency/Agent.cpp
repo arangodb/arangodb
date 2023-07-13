@@ -2468,20 +2468,27 @@ void Agent::syncActiveAndAcknowledged() {
 std::shared_ptr<Node const> Agent::IntermediateStateStore::commitIndex(
     index_t idx) {
   LOG_DEVEL << "calling commitIndex(" << idx << ")";
+  LOG_DEVEL << "_first        = " << _first;
+  LOG_DEVEL << "_deque.size() = " << _deque.size();
   ADB_PROD_ASSERT(_first <= idx)
       << "first index is " << _first << " but commit index is " << idx;
   auto delta = idx - _first;
   ADB_PROD_ASSERT(delta < _deque.size())
       << "delta is " << delta << " but queue size is only " << _deque.size();
+  LOG_DEVEL << "delta         = " << delta;
   auto node = _deque.at(delta);
   _deque.erase(_deque.begin(), _deque.begin() + delta + 1);
   _first = idx + 1;
+  LOG_DEVEL << "_first        = " << _first;
+  LOG_DEVEL << "_deque.size() = " << _deque.size();
   return node;
 }
 
 void Agent::IntermediateStateStore::emplace(index_t idx,
                                             std::shared_ptr<const Node> state) {
   LOG_DEVEL << "calling emplace(" << idx << ")";
+  LOG_DEVEL << "_first        = " << _first;
+  LOG_DEVEL << "_deque.size() = " << _deque.size();
   if (_deque.empty()) {
     _first = idx;
   }
@@ -2489,6 +2496,8 @@ void Agent::IntermediateStateStore::emplace(index_t idx,
   ADB_PROD_ASSERT(next == idx)
       << "next index is " << next << " but insert index is " << idx;
   _deque.emplace_back(std::move(state));
+  LOG_DEVEL << "_first        = " << _first;
+  LOG_DEVEL << "_deque.size() = " << _deque.size();
 }
 
 Agent::IntermediateStateStore::IntermediateStateStore() : _first{1} {}
