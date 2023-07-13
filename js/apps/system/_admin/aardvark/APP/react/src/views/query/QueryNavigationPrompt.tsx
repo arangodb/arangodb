@@ -52,7 +52,6 @@ export const QueryNavigationPrompt = ({
               onClick={() => {
                 setShowPrompt(false);
                 allowLeave.current = true;
-                console.log("navigate to", fragment);
                 window.App.navigate(fragment, { trigger: true });
               }}
               colorScheme="red"
