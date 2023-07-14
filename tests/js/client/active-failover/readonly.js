@@ -40,9 +40,6 @@ const compareTicks = require("@arangodb/replication").compareTicks;
 const wait = internal.wait;
 const db = internal.db;
 
-const suspendExternal = internal.suspendExternal;
-const continueExternal = internal.continueExternal;
-
 const jwtSecret = 'haxxmann';
 const jwtSuperuser = crypto.jwtEncode(jwtSecret, {
   "server_id": "test",
@@ -54,11 +51,6 @@ const jwtRoot = crypto.jwtEncode(jwtSecret, {
   "iss": "arangodb",
   "exp": Math.floor(Date.now() / 1000) + 3600
 }, 'HS256');
-
-if (!internal.env.hasOwnProperty('INSTANCEINFO')) {
-  throw new Error('env.INSTANCEINFO was not set by caller!');
-}
-const instanceinfo = JSON.parse(internal.env.INSTANCEINFO);
 
 const cname = "UnitTestActiveFailover";
 
@@ -81,7 +73,7 @@ function baseUrl() {
 function connectToServer(leader) {
   arango.reconnect(leader, "_system", "root", "");
   db._flushCache();
-};
+}
 
 // getEndponts works with any server
 function getClusterEndpoints() {
@@ -135,7 +127,7 @@ function getApplierState(endpoint) {
 
 // check the servers are in sync with the leader
 function checkInSync(leader, servers, ignore) {
-  print("Checking in-sync state with lead: ", leader);
+  print(Date() + "Checking in-sync state with lead: ", leader);
   let check = (endpoint) => {
     if (endpoint === leader || endpoint === ignore) {
       return true;
@@ -143,7 +135,7 @@ function checkInSync(leader, servers, ignore) {
 
     let applier = getApplierState(endpoint);
 
-    print("Checking endpoint ", endpoint, " applier.state.running=", applier.state.running, " applier.endpoint=", applier.endpoint);
+    print(Date() + "Checking endpoint ", endpoint, " applier.state.running=", applier.state.running, " applier.endpoint=", applier.endpoint);
     return applier.state.running && applier.endpoint === leader &&
       (compareTicks(applier.state.lastAppliedContinuousTick, leaderTick) >= 0 ||
         compareTicks(applier.state.lastProcessedContinuousTick, leaderTick) >= 0);
@@ -154,17 +146,17 @@ function checkInSync(leader, servers, ignore) {
   let loop = 100;
   while (loop-- > 0) {
     if (servers.every(check)) {
-      print("All followers are in sync with lead: ", leader);
+      print(Date() + "All followers are in sync with lead: ", leader);
       return true;
     }
     wait(1.0);
   }
-  print("Timeout waiting for followers of: ", leader);
+  print(Date() + "Timeout waiting for followers of: ", leader);
   return false;
 }
 
 function checkData(server) {
-  print("Checking data of ", server);
+  print(Date() + "Checking data of ", server);
   let res = request.get({
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
@@ -180,9 +172,9 @@ function checkData(server) {
 }
 
 function readAgencyValue(path) {
-  let agents = instanceinfo.arangods.filter(arangod => arangod.instanceRole === "agent");
+  let agents = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "agent");
   assertTrue(agents.length > 0, "No agents present");
-  print("Querying agency... (", path, ")");
+  print(Date() + "Querying agency... (", path, ")");
   var res = request.post({
     url: agents[0].url + "/_api/agency/read",
     auth: {
@@ -195,7 +187,7 @@ function readAgencyValue(path) {
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
   assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
-  //print("Agency response ", res.json);
+  //print(Date() + "Agency response ", res.json);
   return arangosh.checkRequestResult(res.json);
 }
 
@@ -215,7 +207,7 @@ function leaderInAgency() {
 }
 
 function checkForFailover(leader) {
-  print("Waiting for failover of ", leader);
+  print(Date() + "Waiting for failover of ", leader);
 
   let oldLeaderUUID = "";
   let i = 24; // 24 * 5s == 120s
@@ -225,7 +217,7 @@ function checkForFailover(leader) {
     Object.keys(srvHealth).forEach(key => {
       let srv = srvHealth[key];
       if (srv['Endpoint'] === leader && srv.Status === 'FAILED') {
-        print("Server ", key, "( ", leader, " ) is marked FAILED");
+        print(Date() + "Server ", key, "( ", leader, " ) is marked FAILED");
         oldLeaderUUID = key;
       }
     });
@@ -246,12 +238,12 @@ function checkForFailover(leader) {
     }
     internal.wait(5.0);
   } while (i-- > 0);
-  print("Timing out, current leader value: ", nextLeaderUUID);
+  print(Date() + "Timing out, current leader value: ", nextLeaderUUID);
   throw "No failover occured";
 }
 
 function setReadOnly(endpoint, ro) {
-  print("Setting read-only ", ro);
+  print(Date() + "Setting read-only ", ro);
 
   let str = (ro === true ? "readonly" : "default");
   var res = request.put({
@@ -277,20 +269,23 @@ function setReadOnly(endpoint, ro) {
 // Testsuite that checks the read-only mode in the context
 // of the active-failover setup
 function ActiveFailoverSuite() {
-  let servers = getClusterEndpoints();
-  assertTrue(servers.length >= 4, "This test expects four single instances");
-  let firstLeader = servers[0];
+  let servers;
+  let firstLeader;
   let suspended = [];
-  let currentLead = leaderInAgency();
+  let currentLead;
 
   return {
     setUpAll: function () {
+      servers = getClusterEndpoints();
+      assertTrue(servers.length >= 4, "This test expects four single instances " + JSON.stringify(servers));
+      firstLeader = servers[0];
+      currentLead = leaderInAgency();
       db._create(cname);
     },
 
     setUp: function () {
       currentLead = leaderInAgency();
-      print("connecting shell to leader ", currentLead);
+      print(Date() + "connecting shell to leader ", currentLead);
       connectToServer(currentLead);
 
       assertTrue(checkInSync(currentLead, servers));
@@ -306,12 +301,12 @@ function ActiveFailoverSuite() {
       //serverTeardown();
 
       suspended.forEach(arangod => {
-        print("Resuming: ", arangod.endpoint);
-        assertTrue(continueExternal(arangod.pid));
+        print(`${Date()} Resuming: ${arangod.name} ${arangod.pid}`);
+        assertTrue(arangod.resume());
       });
 
       currentLead = leaderInAgency();
-      print("connecting shell to leader ", currentLead);
+      print(Date() + "connecting shell to leader ", currentLead);
       connectToServer(currentLead);
 
       /*setReadOnly(currentLead, false);
@@ -329,12 +324,12 @@ function ActiveFailoverSuite() {
           db._collection(cname).truncate({ compact: false });
           return ;
         }
-        print("cluster endpoints not as expected: found =", endpoints, " expected =", servers);
+        print(Date() + "cluster endpoints not as expected: found =", endpoints, " expected =", servers);
         internal.wait(1); // settle down
       } while(i --> 0);
 
       let endpoints = getClusterEndpoints();
-      print("endpoints: ", endpoints, " servers: ", servers);
+      print(Date() + "endpoints: ", endpoints, " servers: ", servers);
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
       db._collection(cname).truncate({ compact: false });
@@ -393,10 +388,10 @@ function ActiveFailoverSuite() {
       // set it read-only
       setReadOnly(currentLead, true);
 
-      suspended = instanceinfo.arangods.filter(arangod => arangod.endpoint === currentLead);
+      suspended = global.instanceManager.arangods.filter(arangod => arangod.endpoint === currentLead);
       suspended.forEach(arangod => {
-        print("Suspending Leader: ", arangod.endpoint);
-        assertTrue(suspendExternal(arangod.pid));
+        print(`${Date()} Suspending Leader: ${arangod.name} ${arangod.pid}`);
+        assertTrue(arangod.suspend());
       });
 
       let oldLead = currentLead;
@@ -404,16 +399,16 @@ function ActiveFailoverSuite() {
       currentLead = checkForFailover(currentLead);
       //return;
       assertTrue(currentLead !== oldLead);
-      print("Failover to new leader : ", currentLead);
+      print(Date() + "Failover to new leader : ", currentLead);
 
       internal.wait(5); // settle down, heartbeat interval is 1s
       assertEqual(checkData(currentLead), 10000);
-      print("New leader has correct data");
+      print(Date() + "New leader has correct data");
 
       // check the remaining followers get in sync
       assertTrue(checkInSync(currentLead, servers, oldLead));
 
-      print("connecting shell to leader ", currentLead);
+      print(Date() + "connecting shell to leader ", currentLead);
       connectToServer(currentLead);
 
       let col = db._collection(cname);
@@ -444,12 +439,12 @@ function ActiveFailoverSuite() {
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
 
-      print("Suspending followers, except original leader");
-      suspended = instanceinfo.arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
+      print(Date() + "Suspending followers, except original leader");
+      suspended = global.instanceManager.arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
         arangod.endpoint !== firstLeader);
       suspended.forEach(arangod => {
-        print("Suspending: ", arangod.endpoint);
-        assertTrue(suspendExternal(arangod.pid));
+        print(`${Date()} Suspending: ${arangod.name} ${arangod.pid}`);
+        assertTrue(arangod.suspend());
       });
 
       // await failover and check that follower get in sync
@@ -459,15 +454,15 @@ function ActiveFailoverSuite() {
       assertEqual(currentLead, firstLeader, "Did not fail to original leader");
 
       suspended.forEach(arangod => {
-        print("Resuming: ", arangod.endpoint);
-        assertTrue(continueExternal(arangod.pid));
+        print(`${Date()} Resuming: ${arangod.name} ${arangod.pid}`);
+        assertTrue(arangod.resume());
       });
       suspended = [];
 
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
 
-      print("connecting shell to leader ", currentLead);
+      print(Date() + "connecting shell to leader ", currentLead);
       connectToServer(currentLead);
 
       let col = db._collection(cname);

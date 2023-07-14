@@ -31,8 +31,7 @@ const internal = require("internal");
 
 const dbservers = (function() {
   const isType = (d) => (d.instanceRole.toLowerCase() === "dbserver");
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType).map((x) => x.id);
+  return global.instanceManager.arangods.filter(isType).map((x) => x.id);
 })();
 
 function clusterRebalanceSuite() {
@@ -40,7 +39,7 @@ function clusterRebalanceSuite() {
     testAddRemoveServerToMaintenance: function () {
       const server = dbservers[0];
       let result = arango.PUT(`/_admin/cluster/maintenance/${server}`, {mode: "maintenance"});
-      assertTrue(!result.error);
+      assertTrue(!result.error, JSON.stringify(result));
       assertEqual(result.code, 200);
 
       result = arango.GET(`/_admin/cluster/maintenance/${server}`);

@@ -254,7 +254,7 @@ function shellClientTransaction(options) {
   return rc;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_api'] = shellApiClient;
   testFns['shell_client'] = shellClient;
@@ -264,14 +264,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['shell_server_only'] = shellServerOnly;
   testFns['shell_client_transaction'] = shellClientTransaction;
   testFns['shell_client_traffic'] = shellClientTraffic;
-
-  defaultFns.push('shell_api');
-  defaultFns.push('shell_client');
-  defaultFns.push('shell_server');
-  defaultFns.push('shell_client_aql');
-  defaultFns.push('shell_server_aql');
-  defaultFns.push('shell_client_transaction');
-  defaultFns.push('shell_client_traffic');
 
   opts['skipAql'] = false;
   opts['skipRanges'] = true;

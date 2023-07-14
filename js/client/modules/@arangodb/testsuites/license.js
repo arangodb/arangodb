@@ -53,7 +53,7 @@ const testPaths = {
 // / @brief Shared conf
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function(testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   // just a convenience wrapper for the regular tests
   testFns['license'] = ['license-api'];

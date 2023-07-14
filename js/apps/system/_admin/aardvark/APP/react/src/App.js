@@ -45,7 +45,7 @@ require('../../frontend/css/highlightjs.css');
 require('../../frontend/css/jsoneditor.css');
 require('../../frontend/css/tippy.css');
 require('../../frontend/css/dygraph.css');
-require('../../frontend/css/leaflet.css');
+require('leaflet/dist/leaflet.css');
 require('../../frontend/css/nv.d3.css');
 require('../../frontend/css/grids-responsive-min.css');
 
