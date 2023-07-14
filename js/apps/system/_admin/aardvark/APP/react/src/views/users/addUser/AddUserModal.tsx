@@ -31,7 +31,7 @@ const addUserFields = {
     isRequired: false
   },
   gravatar: {
-    name: "gravatar",
+    name: "extra.img",
     type: "text",
     label: "Gravatar account (Mail)",
     tooltip:
@@ -59,9 +59,9 @@ const addUserFields = {
 };
 
 const INITIAL_VALUES: CreateDatabaseUserValues = {
+  role: "",
   active: true,
   user: "",
-  gravatar: "",
   passwd: "",
   name: "",
   extra: {
@@ -89,28 +89,32 @@ export const AddUserModal = ({
   const initialFocusRef = React.useRef<HTMLInputElement>(null);
   const { mode } = useUsersModeContext();
   const handleSubmit = async (values: CreateDatabaseUserValues) => {
-    const profileImg = parseImgString(values.gravatar);
+    const userOptions = {
+      user: values.user,
+      active: values.active,
+      extra: {
+        name: values.name,
+        img: values.extra.img
+      },
+      passwd: values.passwd
+    };
+    const profileImg = parseImgString(values.extra.img);
     if (!_.isEmpty(profileImg)) {
-      values.extra.img = profileImg;
+      userOptions.extra.img = profileImg;
     }
-    values.extra.name = values.name;
+
+    if (window.frontendConfig.isEnterprise && values.role) {
+      userOptions.user = ':role:' + values.user;
+      delete userOptions.passwd;
+    }
 
     try {
       const currentDB = getCurrentDB();
       const route = currentDB.route("_api/user");
-      const userOptions = {
-        user: values.user,
-        active: values.active,
-        extra: {
-          name: values.name,
-          img: values.extra.img
-        },
-        passwd: values.passwd
-      };
       const info = await route.post(userOptions);
       window.arangoHelper.arangoNotification(
         "User",
-        `Successfully created the user: ${values.user}`
+        `Successfully created the user: ${userOptions.user}`
       );
       mutate("/users");
       onClose();
