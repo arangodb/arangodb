@@ -1,6 +1,9 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
+* Use libunwind in jemalloc profiling to make it available with libmusl
+  and static binaries.
+
 * FE-287: fix number validation for replicationFactor and writeConcern.
 
 * FE-162: Fix display of geodesic lines.
