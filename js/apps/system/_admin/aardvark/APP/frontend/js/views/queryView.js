@@ -2667,7 +2667,7 @@
       }
 
       if (toReturn.defaultType === 'geo' || toReturn.defaultType === 'geotable') {
-        if (!window.activeInternetConnection) {
+        if (!window.navigator.onLine) {
           // mark the type we wanted to render
           toReturn.fallback = toReturn.defaultType;
 

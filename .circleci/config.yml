@@ -1,18 +1,17 @@
 version: 2.1
 
-# NOTE:
-#
-# This file has been added to 3.10, 3.9, and 3.8 stable branches to prevent
-# CircleCI's Github integration from spamming PRs that are opened from these
-# branches with failures.
-#
-# For CircleCI to run successful testing on this branch the test setup from
-# the devel branch will have to be ported.
-#
 setup: true
 
 orbs:
   continuation: circleci/continuation@0.3.1
+
+parameters:
+  enterprise-branch:
+    type: string
+    # we use an empty string as default. In this case we check if the enterprise repo
+    # contains a branch with the same name as the arangodb repo. If this is the case
+    # we use it, otherwise we fall back to "devel".
+    default: ""
 
 # our defined job, and its steps
 jobs:
@@ -42,7 +41,7 @@ workflows:
   setup:
     when:
       or:
-        - equal: [ devel, << pipeline.git.branch >> ]
         - equal: [ api, << pipeline.trigger_source >> ]
+        - equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
     jobs:
       - setup

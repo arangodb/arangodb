@@ -1,8 +1,7 @@
 
 @startDocuBlock get_api_shutdown
-@brief query progress of soft shutdown process
 
-@RESTHEADER{GET /_admin/shutdown, Query progress of soft shutdown process, getShutdownProgress}
+@RESTHEADER{GET /_admin/shutdown, Query the soft shutdown progress, getShutdownProgress}
 
 @RESTDESCRIPTION
 <small>Introduced in: v3.7.12, v3.8.1, v3.9.0</small>
@@ -14,7 +13,7 @@ In this case, the following types of operations are tracked:
  - AQL cursors (in particular streaming cursors)
  - Transactions (in particular stream transactions)
  - Pregel runs (conducted by this Coordinator)
- - Ongoing asynchronous requests (using the `x-arango-async: store` HTTP header
+ - Ongoing asynchronous requests (using the `x-arango-async: store` HTTP header)
  - Finished asynchronous requests, whose result has not yet been
    collected
  - Queued low priority requests (most normal requests)

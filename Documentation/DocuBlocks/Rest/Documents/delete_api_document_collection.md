@@ -1,7 +1,6 @@
 @startDocuBlock delete_api_document_collection
-@brief removes multiple document
 
-@RESTHEADER{DELETE /_api/document/{collection},Removes multiple documents,deleteDocuments}
+@RESTHEADER{DELETE /_api/document/{collection},Remove multiple documents,deleteDocuments}
 
 @RESTALLBODYPARAM{documents,json,required}
 A JSON array of strings or documents.

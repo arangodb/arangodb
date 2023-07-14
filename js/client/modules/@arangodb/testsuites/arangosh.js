@@ -67,6 +67,7 @@ const testPaths = {
 function arangosh (options) {
   let ret = { failed: 0 };
   [
+    'testArangoshExitVersion',
     'testArangoshExitCodeConnectAny',
     'testArangoshExitCodeConnectAnyIp6',
     'testArangoshExitCodeNoConnect',
@@ -185,6 +186,13 @@ function arangosh (options) {
     tmpMgr.destructor(ret[section]['status'] && options.cleanup);
   }
 
+  runTest('testArangoshExitVersion',
+          'Starting arangosh printing the version:',
+          '',
+          0,
+          {'version': 'true'});
+  print();
+  
   runTest('testArangoshExitCodeConnectAny',
           'Starting arangosh with failing connect:',
           'db._databases();',
@@ -389,10 +397,9 @@ function arangosh (options) {
   return ret;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['arangosh'] = arangosh;
-  defaultFns.push('arangosh');
   opts['skipShebang'] = false;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

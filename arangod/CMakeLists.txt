@@ -756,6 +756,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
   RestHandler/RestDocumentHandler.cpp
+  RestHandler/RestDumpHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
@@ -1202,6 +1203,7 @@ endif ()
 
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc_build)
+  target_link_libraries(arangod ${JEMALLOC_LIB})
 endif ()
 
 foreach(TARGET

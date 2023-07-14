@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_replication_batch
-@brief handle a dump batch command
 
-@RESTHEADER{POST /_api/replication/batch, Create new dump batch, createReplicationBatch}
+@RESTHEADER{POST /_api/replication/batch, Create a new dump batch, createReplicationBatch}
 
 @HINTS
 {% hint 'info' %}
@@ -25,9 +24,9 @@ Creates a new dump batch and returns the batch's id.
 
 The response is a JSON object with the following attributes:
 
-- *id*: the id of the batch
-- *lastTick*: snapshot tick value using when creating the batch
-- *state*: additional leader state information (only present if the
+- `id`: the id of the batch
+- `lastTick`: snapshot tick value using when creating the batch
+- `state`: additional leader state information (only present if the
   `state` URL parameter was set to `true` in the request)
 
 **Note**: on a Coordinator, this request must have a `DBserver`
