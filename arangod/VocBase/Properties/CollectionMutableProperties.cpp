@@ -30,7 +30,7 @@
 using namespace arangodb;
 
 [[nodiscard]] auto CollectionMutableProperties::Invariants::isJsonSchema(
-    inspection::NonNullOptional<arangodb::velocypack::Builder> const& value)
+    std::optional<arangodb::velocypack::Builder> const& value)
     -> inspection::Status {
   if (value.has_value()) {
     auto const& v = value->slice();

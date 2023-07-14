@@ -33,7 +33,7 @@ namespace arangodb {
 struct CollectionMutableProperties {
   struct Invariants {
     [[nodiscard]] static auto isJsonSchema(
-        inspection::NonNullOptional<arangodb::velocypack::Builder> const& value)
+        std::optional<arangodb::velocypack::Builder> const& value)
         -> inspection::Status;
   };
   std::string name = StaticStrings::Empty;
@@ -44,8 +44,7 @@ struct CollectionMutableProperties {
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
-  inspection::NonNullOptional<arangodb::velocypack::Builder> schema{
-      std::nullopt};
+  std::optional<arangodb::velocypack::Builder> schema{std::nullopt};
 
   bool operator==(CollectionMutableProperties const&) const;
 };
