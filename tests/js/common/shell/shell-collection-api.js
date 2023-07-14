@@ -240,7 +240,7 @@ const validateDeprecationLogEntryWritten = () => {
     let res = arango.GET("/_admin/log/entries?upto=warning&size=2");
     assertEqual(res.total, 1, `Expecting exactly one message, instead found ${JSON.stringify(res)}.`);
     assertEqual(res.messages[0].topic, expectedTopic, `Expecting specific log topic, instead found ${JSON.stringify(res)}.`);
-    assertTrue(res.messages[0].message.startsWith(`[${expectedLogId}]`), `Expected specific logID, instead found ${JSON.stringify(res)}.`)
+    assertTrue(res.messages[0].message.startsWith(`[${expectedLogId}]`), `Expected specific logID, instead found ${JSON.stringify(res)}.`);
   } finally {
     // Erase the log we have just read, so the next test is clean.
     clearLogs();
