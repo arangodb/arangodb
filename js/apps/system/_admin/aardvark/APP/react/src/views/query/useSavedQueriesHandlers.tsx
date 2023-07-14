@@ -1,3 +1,4 @@
+import { useDisclosure } from "@chakra-ui/react";
 import { mutate } from "swr";
 import { getCurrentDB } from "../../utils/arangoClient";
 import {
@@ -69,7 +70,21 @@ export const useSavedQueriesHandlers = ({
     });
     mutate("/savedQueries");
   };
-  return { onSaveAs, onSave, onDelete, savedQueries, isFetchingQueries };
+  const {
+    isOpen: isSaveAsModalOpen,
+    onOpen: onOpenSaveAsModal,
+    onClose: onCloseSaveAsModal
+  } = useDisclosure();
+  return {
+    onSaveAs,
+    onSave,
+    onDelete,
+    savedQueries,
+    isFetchingQueries,
+    isSaveAsModalOpen,
+    onOpenSaveAsModal,
+    onCloseSaveAsModal
+  };
 };
 
 const patchQueries = async ({

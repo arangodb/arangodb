@@ -4,8 +4,8 @@ import {
   getApiRouteForCurrentDB,
   getCurrentDB
 } from "../../utils/arangoClient";
-import { QueryExecutionOptions } from "./QueryContextProvider";
 import { QueryResultType } from "./ArangoQuery.types";
+import { QueryExecutionOptions } from "./QueryContextProvider";
 
 export const useQueryExecutors = ({
   setQueryResults,
@@ -14,13 +14,6 @@ export const useQueryExecutors = ({
   setQueryResults: React.Dispatch<React.SetStateAction<QueryResultType[]>>;
   setQueryResultById: (queryResult: QueryResultType) => void;
 }) => {
-  const onRemoveResult = (index: number) => {
-    setQueryResults(queryResults => {
-      const newResults = [...queryResults];
-      newResults.splice(index, 1);
-      return newResults;
-    });
-  };
   const onExecute = useCallback(
     async ({ queryValue, queryBindParams }: QueryExecutionOptions) => {
       const route = getApiRouteForCurrentDB();
@@ -150,5 +143,5 @@ export const useQueryExecutors = ({
     },
     [setQueryResultById, setQueryResults]
   );
-  return { onExecute, onProfile, onExplain, onRemoveResult };
+  return { onExecute, onProfile, onExplain };
 };

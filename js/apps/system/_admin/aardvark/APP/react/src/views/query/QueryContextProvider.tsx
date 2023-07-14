@@ -14,12 +14,8 @@ export type QueryExecutionOptions = {
   queryBindParams?: { [key: string]: string };
 };
 type QueryContextType = {
-  currentView?: "saved" | "editor";
-  setCurrentView: (view: "saved" | "editor") => void;
-  onExecute: (options: QueryExecutionOptions) => void;
-  onProfile: (options: QueryExecutionOptions) => void;
-  onExplain: (options: QueryExecutionOptions) => void;
   queryValue: string;
+  queryBindParams: { [key: string]: string };
   onQueryValueChange: (value: string) => void;
   onBindParamsChange: (value: { [key: string]: string }) => void;
   onQueryChange: (data: {
@@ -27,22 +23,26 @@ type QueryContextType = {
     parameter: { [key: string]: string };
     name?: string;
   }) => void;
+  onExecute: (options: QueryExecutionOptions) => void;
+  onProfile: (options: QueryExecutionOptions) => void;
+  onExplain: (options: QueryExecutionOptions) => void;
   queryResults: QueryResultType[];
-  setQueryResults: React.Dispatch<React.SetStateAction<QueryResultType[]>>;
-  queryBindParams: { [key: string]: string };
   onRemoveResult: (index: number) => void;
+  onRemoveAllResults: () => void;
+  currentView?: "saved" | "editor";
+  setCurrentView: (view: "saved" | "editor") => void;
   currentQueryName?: string;
   setCurrentQueryName: (value: string) => void;
+  onSave: (queryName: string) => Promise<void>;
+  onDelete: (queryName: string) => Promise<void>;
   onSaveAs: (queryName: string) => Promise<void>;
-  savedQueries?: QueryType[];
-  isFetchingQueries?: boolean;
   isSaveAsModalOpen: boolean;
   onOpenSaveAsModal: () => void;
   onCloseSaveAsModal: () => void;
-  onSave: (queryName: string) => Promise<void>;
+  savedQueries?: QueryType[];
+  isFetchingQueries?: boolean;
   resetEditor: boolean;
   setResetEditor: (value: boolean) => void;
-  onDelete: (queryName: string) => Promise<void>;
   isSpotlightOpen: boolean;
   onOpenSpotlight: () => void;
   onCloseSpotlight: () => void;
@@ -63,7 +63,7 @@ type QueryContextType = {
   queryLimit: number | "all";
   setQueryLimit: (value: number | "all") => void;
 };
-// const defaultValue = 'FOR v,e,p IN 1..3 ANY "place/0" GRAPH "ldbc" LIMIT 100 return p'
+
 const QueryContext = React.createContext<QueryContextType>(
   {} as QueryContextType
 );
@@ -93,21 +93,32 @@ export const QueryContextProvider = ({
     onBindParamsChange
   } = useQueryEditorHandlers();
 
-  const { onSave, onSaveAs, onDelete, savedQueries, isFetchingQueries } =
-    useSavedQueriesHandlers({
-      queryValue,
-      queryBindParams,
-      storageKey
-    });
+  const {
+    onSave,
+    onDelete,
+    onSaveAs,
+    savedQueries,
+    isFetchingQueries,
+    isSaveAsModalOpen,
+    onOpenSaveAsModal,
+    onCloseSaveAsModal
+  } = useSavedQueriesHandlers({
+    queryValue,
+    queryBindParams,
+    storageKey
+  });
   const {
     queryResults,
     setQueryResults,
     setQueryResultById,
-    appendQueryResultById
+    appendQueryResultById,
+    onRemoveResult,
+    onRemoveAllResults
   } = useQueryResultHandlers();
-  const { onExecute, onProfile, onExplain, onRemoveResult } = useQueryExecutors(
-    { setQueryResults, setQueryResultById }
-  );
+  const { onExecute, onProfile, onExplain } = useQueryExecutors({
+    setQueryResults,
+    setQueryResultById
+  });
   const aqlJsonEditorRef = React.useRef(null);
   const bindVariablesJsonEditorRef = React.useRef(null);
   const [queryLimit, setQueryLimit] = useState<number | "all">(1000);
@@ -122,11 +133,6 @@ export const QueryContextProvider = ({
     onOpen: onOpenSpotlight,
     onClose: onCloseSpotlight
   } = useDisclosure();
-  const {
-    isOpen: isSaveAsModalOpen,
-    onOpen: onOpenSaveAsModal,
-    onClose: onCloseSaveAsModal
-  } = useDisclosure();
   return (
     <QueryContext.Provider
       value={{
@@ -138,7 +144,6 @@ export const QueryContextProvider = ({
         onQueryValueChange,
         onBindParamsChange,
         queryResults,
-        setQueryResults,
         queryBindParams,
         onRemoveResult,
         onProfile,
@@ -165,7 +170,8 @@ export const QueryContextProvider = ({
         queryGraphResult,
         setQueryGraphResult,
         queryLimit,
-        setQueryLimit
+        setQueryLimit,
+        onRemoveAllResults
       }}
     >
       <QueryKeyboardShortcutProvider>

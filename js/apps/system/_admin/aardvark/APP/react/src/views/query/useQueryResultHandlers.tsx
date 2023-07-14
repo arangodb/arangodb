@@ -1,4 +1,5 @@
 import React from "react";
+import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { QueryResultType } from "./ArangoQuery.types";
 
 export const useQueryResultHandlers = () => {
@@ -37,10 +38,37 @@ export const useQueryResultHandlers = () => {
       return newResults;
     });
   };
+  const onRemoveResult = (index: number) => {
+    setQueryResults(queryResults => {
+      const newResults = [...queryResults];
+      newResults.splice(index, 1);
+      return newResults;
+    });
+  };
+  const onRemoveAllResults = async () => {
+    const queriesToCancel = queryResults
+      .map(queryResult => {
+        return queryResult.status === "loading" ? queryResult.asyncJobId : "";
+      })
+      .filter(id => id);
+    const route = getApiRouteForCurrentDB();
+    const promises = queriesToCancel.map(async asyncJobId => {
+      if (asyncJobId) {
+        return route.request({
+          method: "PUT",
+          path: `/job/${asyncJobId}/cancel`
+        });
+      }
+    });
+    await Promise.all(promises);
+    setQueryResults([]);
+  };
   return {
     queryResults,
     setQueryResults,
     setQueryResultById,
-    appendQueryResultById
+    appendQueryResultById,
+    onRemoveAllResults,
+    onRemoveResult
   };
 };

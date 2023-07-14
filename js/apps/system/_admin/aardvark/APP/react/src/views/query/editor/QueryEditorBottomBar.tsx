@@ -13,7 +13,6 @@ import {
   useDisclosure
 } from "@chakra-ui/react";
 import React from "react";
-import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { useQueryContext } from "../QueryContextProvider";
 import { DebugPackageModal } from "./DebugPackageModal";
 import { SaveAsModal } from "./SaveAsModal";
@@ -26,7 +25,7 @@ export const QueryEditorBottomBar = () => {
     queryValue,
     queryBindParams,
     queryResults,
-    setQueryResults,
+    onRemoveAllResults,
     currentQueryName,
     onOpenSaveAsModal,
     onSave,
@@ -83,30 +82,7 @@ export const QueryEditorBottomBar = () => {
       </Button>
       <Stack direction={"row"} marginLeft="auto">
         {queryResults.length > 0 ? (
-          <Button
-            size="sm"
-            colorScheme="gray"
-            onClick={async () => {
-              const queriesToCancel = queryResults
-                .map(queryResult => {
-                  return queryResult.status === "loading"
-                    ? queryResult.asyncJobId
-                    : "";
-                })
-                .filter(id => id);
-              const route = getApiRouteForCurrentDB();
-              const promises = queriesToCancel.map(async asyncJobId => {
-                if (asyncJobId) {
-                  return route.request({
-                    method: "PUT",
-                    path: `/job/${asyncJobId}/cancel`
-                  });
-                }
-              });
-              await Promise.all(promises);
-              setQueryResults([]);
-            }}
-          >
+          <Button size="sm" colorScheme="gray" onClick={onRemoveAllResults}>
             Remove all results
           </Button>
         ) : null}
