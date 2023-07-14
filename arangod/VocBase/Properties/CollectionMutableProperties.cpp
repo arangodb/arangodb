@@ -24,7 +24,6 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "VocBase/Validators.h"
-#include "Logger/LogMacros.h"
 
 #include <absl/strings/str_cat.h>
 

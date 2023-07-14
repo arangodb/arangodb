@@ -212,17 +212,6 @@ auto handleShardKeys(std::string_view key, VPackSlice value,
                      VPackSlice fullBody, DatabaseConfiguration const& config,
                      VPackBuilder& result) {
   if (!isSingleServer() || !config.isOneShardDB) {
-    /*
-#ifndef USE_ENTERPRISE
-    // In Community variant we do not allow shardKeys _key: or :_key.
-    if (value.isArray() && value.length() == 1) {
-      if (value.at(0).isEqualString(StaticStrings::PrefixOfKeyString) ||
-          value.at(0).isEqualString(StaticStrings::PostfixOfKeyString)) {
-        return;
-      }
-    }
-#endif
-     */
     justKeep(key, value, fullBody, config, result);
   }
   // In oneShardDB shardKeys are ignored
