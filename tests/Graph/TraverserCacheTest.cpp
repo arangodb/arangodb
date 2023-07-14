@@ -28,6 +28,7 @@
 #include "Graph/Cache/RefactoredTraverserCache.h"
 #include "Graph/GraphTestTools.h"
 #include "Graph/TraverserOptions.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Graph/EdgeDocumentToken.h"
 

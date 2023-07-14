@@ -55,7 +55,7 @@ auto DocumentStateSnapshotHandler::create(ShardMap shards,
     auto& guardRef = emplacement.first->second;
     auto res = ResultT<std::weak_ptr<Snapshot>>::success(guardRef.snapshot);
     guardRef.cbGuard = _rebootTracker.callMeOnChange(
-        cluster::RebootTracker::PeerState{params.serverId, params.rebootId},
+        PeerState{params.serverId, params.rebootId},
         [id, params, weak = weak_from_this()]() {
           if (auto self = weak.lock(); self != nullptr) {
             self->abort(id);

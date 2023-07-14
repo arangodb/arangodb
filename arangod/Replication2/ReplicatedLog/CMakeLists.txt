@@ -7,26 +7,32 @@ target_sources(arango_replication2 PRIVATE
   ReplicatedLog.cpp
   SupervisionAgencyTrx.cpp
   ReplicatedLogFeature.cpp
-  ReplicatedLogMetrics.tpp)
+  ReplicatedLogMetrics.tpp
+  DefaultRebootIdCache.cpp DefaultRebootIdCache.h
+  )
 
 target_sources(arango_replication2_pure PRIVATE
-  LogCommon.cpp
-  LogLeader.cpp
-  LogStatus.cpp
-  types.cpp
-  InMemoryLog.cpp
-  WaitForBag.cpp
-  LogEntries.cpp
-  ReplicatedLog.cpp
-  Supervision.cpp
-  SupervisionAction.cpp
-
   AgencyLogSpecification.cpp
   Algorithms.cpp
   ILogInterfaces.cpp
+  InMemoryLog.cpp
+  InMemoryLogEntry.cpp
+  IRebootIdCache.h
+  LogCommon.cpp
+  LogEntry.cpp
+  LogEntryView.cpp
+  LogLeader.cpp
+  LogMetaPayload.cpp
+  LogPayload.cpp
+  LogStatus.cpp
   NetworkMessages.cpp
+  ReplicatedLog.cpp
   ReplicatedLogMetrics.tpp
+  Supervision.cpp
+  SupervisionAction.cpp
   TermIndexMapping.cpp
+  types.cpp
+  WaitForBag.cpp
   Components/AppendEntriesManager.cpp Components/AppendEntriesManager.h
   Components/CompactionManager.cpp Components/CompactionManager.h
   Components/ExclusiveBool.h

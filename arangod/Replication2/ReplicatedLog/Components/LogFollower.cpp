@@ -35,6 +35,7 @@
 #include "Replication2/ReplicatedLog/Components/StateHandleManager.h"
 #include "Replication2/ReplicatedLog/Components/MethodsProvider.h"
 #include "Replication2/ReplicatedLog/Components/MessageIdManager.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -54,7 +55,7 @@ auto deriveLoggerContext(FollowerTermInformation const& info,
 }  // namespace
 
 FollowerManager::FollowerManager(
-    std::unique_ptr<replicated_state::IStorageEngineMethods> storageMethods,
+    std::unique_ptr<storage::IStorageEngineMethods> storageMethods,
     std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
     std::shared_ptr<FollowerTermInformation const> termInfo,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
@@ -103,6 +104,7 @@ FollowerManager::~FollowerManager() {
 auto FollowerManager::getStatus() const -> LogStatus {
   auto commitIndex = commit->getCommitIndex();
   auto mapping = storage->getTermIndexMapping();
+  auto syncIndex = storage->getSyncIndex();
   auto [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
   return LogStatus{FollowerStatus{
       .local =
@@ -112,6 +114,7 @@ auto FollowerManager::getStatus() const -> LogStatus {
               .firstIndex =
                   mapping.getFirstIndex().value_or(TermIndexPair{}).index,
               .releaseIndex = releaseIndex,
+              .syncIndex = syncIndex,
           },
       .leader = termInfo->leader,
       .term = termInfo->term,
@@ -174,6 +177,7 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
   // toggled to missing, and then the commit index that was just increased.
   auto const commitIndex = commit->getCommitIndex();
   auto const mapping = storage->getTermIndexMapping();
+  auto const syncIndex = storage->getSyncIndex();
   auto const [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
   bool const snapshotAvailable =
       snapshot->checkSnapshotState() == SnapshotState::AVAILABLE;
@@ -193,14 +197,14 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
               .firstIndex =
                   mapping.getFirstIndex().value_or(TermIndexPair{}).index,
               .releaseIndex = releaseIndex,
-          },
+              .syncIndex = syncIndex},
       .leadershipEstablished = commitIndex.value > 0,
       .snapshotAvailable = snapshotAvailable,
   };
 }
 
 auto FollowerManager::resign()
-    -> std::tuple<std::unique_ptr<replicated_state::IStorageEngineMethods>,
+    -> std::tuple<std::unique_ptr<storage::IStorageEngineMethods>,
                   std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
   // 1. resign the state and receive its handle
   auto handle = stateHandle->resign();
@@ -229,7 +233,7 @@ auto LogFollowerImpl::getStatus() const -> LogStatus {
 }
 
 auto LogFollowerImpl::resign() && -> std::tuple<
-    std::unique_ptr<replicated_state::IStorageEngineMethods>,
+    std::unique_ptr<storage::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
   return guarded.getLockedGuard()->resign();
 }
@@ -244,9 +248,9 @@ auto LogFollowerImpl::waitForIterator(LogIndex index)
   return guarded.getLockedGuard()->commit->waitForIterator(index);
 }
 
-auto LogFollowerImpl::getInternalLogIterator(std::optional<LogRange> bounds)
-    const -> std::unique_ptr<PersistedLogIterator> {
-  return guarded.getLockedGuard()->storage->getPersistedLogIterator(bounds);
+auto LogFollowerImpl::getInternalLogIterator(
+    std::optional<LogRange> bounds) const -> std::unique_ptr<LogIterator> {
+  return guarded.getLockedGuard()->storage->getLogIterator(bounds);
 }
 
 auto LogFollowerImpl::release(LogIndex doneWithIdx) -> Result {
@@ -278,7 +282,7 @@ auto LogFollowerImpl::appendEntries(AppendEntriesRequest request)
 
 LogFollowerImpl::LogFollowerImpl(
     ParticipantId myself,
-    std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+    std::unique_ptr<storage::IStorageEngineMethods> methods,
     std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
     std::shared_ptr<const FollowerTermInformation> termInfo,
     std::shared_ptr<const ReplicatedLogGlobalSettings> options,

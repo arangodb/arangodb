@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 #include "Basics/Guarded.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
@@ -38,7 +38,7 @@ struct StorageManagerTransaction;
 struct StateInfoTransaction;
 struct StorageManager : IStorageManager,
                         std::enable_shared_from_this<StorageManager> {
-  using IStorageEngineMethods = replicated_state::IStorageEngineMethods;
+  using IStorageEngineMethods = storage::IStorageEngineMethods;
 
   StorageManager(std::unique_ptr<IStorageEngineMethods> core,
                  LoggerContext const& loggerContext,
@@ -46,17 +46,17 @@ struct StorageManager : IStorageManager,
   auto resign() noexcept -> std::unique_ptr<IStorageEngineMethods>;
   auto transaction() -> std::unique_ptr<IStorageTransaction> override;
   auto getCommittedLogIterator(std::optional<LogRange> range) const
-      -> std::unique_ptr<LogRangeIterator> override;
-  auto getPersistedLogIterator(LogIndex first) const
-      -> std::unique_ptr<PersistedLogIterator> override;
-  auto getPersistedLogIterator(std::optional<LogRange> range) const
-      -> std::unique_ptr<PersistedLogIterator>;
+      -> std::unique_ptr<LogViewRangeIterator> override;
+  auto getLogIterator(LogIndex first) const
+      -> std::unique_ptr<LogIterator> override;
+  auto getLogIterator(std::optional<LogRange> range) const
+      -> std::unique_ptr<LogIterator>;
   auto getTermIndexMapping() const -> TermIndexMapping override;
   auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
   auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction> ptr)
       -> Result override;
-  auto getCommittedMetaInfo() const
-      -> replicated_state::PersistedStateInfo override;
+  auto getCommittedMetaInfo() const -> storage::PersistedStateInfo override;
+  auto getSyncIndex() const -> LogIndex override;
 
  private:
   friend struct StorageManagerTransaction;
@@ -83,13 +83,19 @@ struct StorageManager : IStorageManager,
     TermIndexMapping onDiskMapping, spearheadMapping;
     std::unique_ptr<IStorageEngineMethods> methods;
     std::deque<StorageRequest> queue;
-    replicated_state::PersistedStateInfo info;
+    storage::PersistedStateInfo info;
     bool workerActive{false};
+
+    auto computeTermIndexMap() const -> TermIndexMapping;
   };
   Guarded<GuardedData> guardedData;
   using GuardType = Guarded<GuardedData>::mutex_guard_type;
   LoggerContext const loggerContext;
   std::shared_ptr<IScheduler> const scheduler;
+
+  // The syncIndex is initially 0 and will be updated to its real value when the
+  // first append-entries is synced.
+  Guarded<LogIndex> syncIndex;
 
   auto scheduleOperation(GuardType&&, TermIndexMapping mapResult,
                          std::unique_ptr<StorageOperation>)
@@ -98,6 +104,7 @@ struct StorageManager : IStorageManager,
   auto scheduleOperationLambda(GuardType&&, TermIndexMapping mapResult, F&&)
       -> futures::Future<Result>;
   void triggerQueueWorker(GuardType) noexcept;
+  void updateSyncIndex(LogIndex index);
 };
 
 }  // namespace comp

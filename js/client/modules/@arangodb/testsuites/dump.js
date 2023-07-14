@@ -38,6 +38,8 @@ const functionsDocumentation = {
   'dump_multiple': 'restore multiple DBs at once',
   'dump_no_envelope': 'dump without data envelopes',
   'dump_with_crashes': 'restore and crash the client multiple times',
+  'dump_with_crashes_parallel': 'restore and crash the client multiple times - parallel version',
+  'dump_parallel': 'use experimental parallel dump',
   'hot_backup': 'hotbackup tests'
 };
 
@@ -84,6 +86,8 @@ const testPaths = {
   'dump_multiple': [tu.pathForTesting('server/dump')],
   'dump_no_envelope': [tu.pathForTesting('server/dump')],
   'dump_with_crashes': [tu.pathForTesting('server/dump')],
+  'dump_with_crashes_parallel': [tu.pathForTesting('server/dump')],
+  'dump_parallel': [tu.pathForTesting('server/dump')],
   'hot_backup': [tu.pathForTesting('server/dump')]
 };
 
@@ -189,6 +193,12 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
     if (this.dumpOptions.hasOwnProperty("threads")) {
       this.dumpConfig.setThreads(this.dumpOptions.threads);
+    }
+    if (this.dumpOptions.useParallelDump) {
+      this.dumpConfig.setUseExperimentalParallelDump();
+    }
+    if (this.dumpOptions.splitFiles) {
+      this.dumpConfig.setUseSplitFiles();
     }
     if (this.dumpOptions.jwtSecret) {
       this.keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
@@ -803,6 +813,29 @@ function dumpWithCrashes (options) {
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){});
 }
 
+function dumpWithCrashesParallel (options) {
+  let c = getClusterStrings(options);
+  let tstFiles = {
+    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
+    dumpCleanup: 'cleanup-multiple.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
+    dumpCheckGraph: 'check-graph-multiple.js'
+  };
+
+  let dumpOptions = {
+    allDatabases: true,
+    deactivateCompression: true,
+    activateFailurePoint: true,
+    threads: 1,
+    useParallelDump: true,
+    splitFiles: true,
+  };
+  _.defaults(dumpOptions, options);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){});
+}
+
 function dumpAuthentication (options) {
   const clientAuth = {
     'server.authentication': 'true'
@@ -899,6 +932,26 @@ function dumpEncrypted (options) {
   };
 
   return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
+}
+
+function dumpParallel (options) {
+  let c = getClusterStrings(options);
+
+  let dumpOptions = _.clone(options);
+  dumpOptions.useParallelDump = true;
+  dumpOptions.splitFiles = true;
+
+  let tstFiles = {
+    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
+    dumpCleanup: 'cleanup-nothing.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
+    dumpCheckGraph: 'check-graph.js',
+    foxxTest: 'check-foxx.js'
+  };
+
+  return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){});
 }
 
 function dumpMaskings (options) {
@@ -1055,6 +1108,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['dump_multiple'] = dumpMultiple;
   testFns['dump_no_envelope'] = dumpNoEnvelope;
   testFns['dump_with_crashes'] = dumpWithCrashes;
+  testFns['dump_with_crashes_parallel'] = dumpWithCrashesParallel;
+  testFns['dump_parallel'] = dumpParallel;
   testFns['hot_backup'] = hotBackup;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
