@@ -1084,8 +1084,9 @@ function CreateCollectionsSuite() {
                   delete edge.isDisjoint;
                 }
                 delete edge.shardingStrategy;
-                if (isServer) {
-                  // On Server the initial request is dissallowed.
+
+                if (!isEnterprise || isServer) {
+                  // The initial request is disallowed.
                   // Which will trigger removal of distributeShardsLike
                   delete edge.distributeShardsLike;
                 }
