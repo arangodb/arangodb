@@ -72,7 +72,7 @@ rta_makedata single suffix=afo -- --activeFailover true
 
 arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
 chaos cluster !mac !coverage !full -- --dumpAgencyOnError true parallelity=8
-restart !mac priority=1000 size=small sniff cluster -- --dumpAgencyOnError true --forceJson true
+restart !mac priority=1000 size=small cluster -- --dumpAgencyOnError true --forceJson true
 
 load_balancing priority=500 size=small cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
@@ -94,7 +94,7 @@ shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
-shell_server_aql priority=1000 size=medium+ cluster sniff buckets=16 -- --dumpAgencyOnError true --sniffFilter graph
+shell_server_aql priority=1000 size=medium+ cluster buckets=16 -- --dumpAgencyOnError true
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
@@ -113,11 +113,12 @@ server_parameters priority=1000 parallelity=5 buckets=6 size=small cluster -- --
 server_permissions,server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 
 # Dump Tests
-dump,dump_authentication,dump_jwt,dump_multiple,dump_no_envelope name=dump -- --dumpAgencyOnError true
+dump,dump_authentication,dump_jwt,dump_multiple,dump_no_envelope,dump_parallel name=dump -- --dumpAgencyOnError true
 dump_maskings,dump_encrypted enterprise -- --dumpAgencyOnError true
 dump_mixed_cluster_single,dump_mixed_single_cluster name=dump_mixed -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes !mac parallelity=1 priority=2000 -- --dumpAgencyOnError true 
+dump_with_crashes_parallel !mac parallelity=1 priority=2000 cluster -- --dumpAgencyOnError true 
 
 # Audit Tests
 audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true

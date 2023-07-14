@@ -50,6 +50,9 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Pregel/REST/RestControlPregelHandler.h"
 #include "Pregel/REST/RestPregelHandler.h"
 #include "ProgramOptions/Parameters.h"
@@ -75,6 +78,7 @@
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestDocumentStateHandler.h"
+#include "RestHandler/RestDumpHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
@@ -110,9 +114,6 @@
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
-#include "Metrics/HistogramBuilder.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -754,6 +755,10 @@ void GeneralServerFeature::defineRemainingHandlers(
         "/_api/aqlfunction",
         RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
   }
+
+  f.addPrefixHandler(
+      "/_api/dump",
+      RestHandlerCreator<arangodb::RestDumpHandler>::createNoData);
 
   f.addPrefixHandler("/_api/explain",
                      RestHandlerCreator<RestExplainHandler>::createNoData);
