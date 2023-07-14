@@ -398,7 +398,8 @@ ResultT<CreateCollectionBody> parseAndValidate(
 }
 
 ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
-    VPackSlice input, DatabaseConfiguration const& config) {
+    VPackSlice input, DatabaseConfiguration const& config,
+    bool activateBackwardsCompatibility) {
   if (!input.isObject()) {
     // Special handling to be backwards compatible error reporting
     // on "name"
@@ -407,7 +408,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
   auto res = ::parseAndValidate(
       config, input, [](CreateCollectionBody& col) {},
       [](CreateCollectionBody& col) {});
-  if (res.fail()) {
+  if (activateBackwardsCompatibility && res.fail()) {
     auto newBody =
         transformFromBackwardsCompatibleBody(input, config, res.result());
     if (newBody.fail()) {

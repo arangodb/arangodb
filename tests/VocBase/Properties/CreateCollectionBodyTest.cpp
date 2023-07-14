@@ -95,12 +95,12 @@ class CreateCollectionBodyTest : public ::testing::Test {
   static ResultT<CreateCollectionBody> parse(
       VPackSlice body,
       DatabaseConfiguration const& config = defaultDBConfig()) {
-    return CreateCollectionBody::fromCreateAPIBody(body, config);
+    return CreateCollectionBody::fromCreateAPIBody(body, config, false);
   }
 
   static void assertParsingThrows(VPackBuilder const& body) {
     auto p = CreateCollectionBody::fromCreateAPIBody(body.slice(),
-                                                     defaultDBConfig());
+                                                     defaultDBConfig(), false);
     EXPECT_TRUE(p.fail()) << " On body " << body.toJson();
   }
 
@@ -129,8 +129,8 @@ TEST_F(CreateCollectionBodyTest, test_minimal_user_input) {
     VPackObjectBuilder guard(&body);
     body.add("name", VPackValue(colName));
   }
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
+  auto testee = CreateCollectionBody::fromCreateAPIBody(
+      body.slice(), defaultDBConfig(), false);
 
   ASSERT_TRUE(testee.ok()) << testee.errorMessage();
   // Test Default values
@@ -155,8 +155,8 @@ TEST_F(CreateCollectionBodyTest,
       body.add("replicationFactor", VPackValue(4));
     }
 
-    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
-                                                          defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(
+        body.slice(), defaultDBConfig(), false);
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
     ASSERT_TRUE(testee->writeConcern.has_value());
@@ -175,8 +175,8 @@ TEST_F(CreateCollectionBodyTest,
       body.add("writeConcern", VPackValue(3));
     }
 
-    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
-                                                          defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(
+        body.slice(), defaultDBConfig(), false);
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
     ASSERT_TRUE(testee->writeConcern.has_value());
@@ -186,8 +186,8 @@ TEST_F(CreateCollectionBodyTest,
 
 TEST_F(CreateCollectionBodyTest, test_satelliteReplicationFactor) {
   auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, uint64_t number) {
-    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
-                                                          defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(
+        body.slice(), defaultDBConfig(), false);
     ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
     ASSERT_TRUE(testee->replicationFactor.has_value());
     EXPECT_EQ(testee->replicationFactor.value(), number)
@@ -213,7 +213,7 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
     for (uint32_t maxShards : std::vector<uint32_t>{0, 16, 1023, 1024, 1025}) {
       config.maxNumberOfShards = maxShards;
       auto testee =
-          CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+          CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
       ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
       ASSERT_TRUE(testee->numberOfShards.has_value());
       EXPECT_EQ(testee->numberOfShards, 1024ul)
@@ -231,7 +231,7 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
     for (uint32_t maxShards : std::vector<uint32_t>{0, 1024, 1025}) {
       config.maxNumberOfShards = maxShards;
       auto testee =
-          CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+          CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
       ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
       ASSERT_TRUE(testee->numberOfShards.has_value());
       EXPECT_EQ(testee->numberOfShards, 1024ul)
@@ -241,7 +241,7 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
       // 16 < 1024 should fail
       config.maxNumberOfShards = 16;
       auto testee =
-          CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+          CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
       EXPECT_FALSE(testee.ok())
           << "Configured " << config.maxNumberOfShards << " but "
           << testee->numberOfShards.value() << "passed.";
@@ -260,8 +260,8 @@ TEST_F(CreateCollectionBodyTest, test_isSmartCannotBeSatellite) {
   }
 
   // Note: We can also make this parsing fail in the first place.
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
+  auto testee = CreateCollectionBody::fromCreateAPIBody(
+      body.slice(), defaultDBConfig(), false);
   EXPECT_FALSE(testee.ok()) << "Configured smartCollection as 'satellite'.";
 }
 
@@ -392,8 +392,8 @@ TEST_F(CreateCollectionBodyTest, test_isSmartChildCannotBeSatellite) {
   }
 
   // Note: We can also make this parsing fail in the first place.
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
+  auto testee = CreateCollectionBody::fromCreateAPIBody(
+      body.slice(), defaultDBConfig(), false);
   EXPECT_FALSE(testee.ok())
       << "Configured smartChild collection as 'satellite'.";
 }
@@ -404,7 +404,8 @@ TEST_F(CreateCollectionBodyTest, test_smartJoinAttribute_cannot_be_empty) {
   // Specific shardKey is disallowed
   auto body =
       createMinimumBodyWithOneValue(StaticStrings::SmartJoinAttribute, "");
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto testee =
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
   // This could already fail, as soon as we have a context
   EXPECT_FALSE(testee.ok()) << "Let an empty smartJoinAttribute through";
 }
@@ -475,8 +476,7 @@ INSTANTIATE_TEST_CASE_P(
 
         CollectionNameTestParam{"Десятую", AllowedFlags::WithExtension,
                                 "non-ascii characters"},
-        CollectionNameTestParam{"💩🍺🌧t⛈c🌩_⚡🔥💥🌨",
-                                AllowedFlags::WithExtension,
+        CollectionNameTestParam{"💩🍺🌧t⛈c🌩_⚡🔥💥🌨", AllowedFlags::WithExtension,
                                 "non-ascii characters"},
         CollectionNameTestParam{
             "_💩🍺🌧t⛈c🌩_⚡🔥💥🌨",
@@ -492,7 +492,8 @@ TEST_P(PlanCollectionNamesTest, test_allowed_without_flags) {
   auto config = defaultDBConfig();
   EXPECT_EQ(config.allowExtendedNames, false);
 
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto testee =
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
   auto result = testee.result();
   bool isAllowed =
       !isDisAllowedInGeneral() && !requiresSystem() && !requiresExtendedNames();
@@ -515,7 +516,8 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_isSystem_flag) {
   auto config = defaultDBConfig();
   EXPECT_EQ(config.allowExtendedNames, false);
 
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto testee =
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
   auto result = testee.result();
   bool isAllowed = !isDisAllowedInGeneral() && !requiresExtendedNames();
 
@@ -536,7 +538,8 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_extendendNames_flag) {
   auto config = defaultDBConfig();
   config.allowExtendedNames = true;
 
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto testee =
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
   auto result = testee.result();
   bool isAllowed = !isDisAllowedInGeneral() && !requiresSystem();
 
@@ -559,7 +562,8 @@ TEST_P(PlanCollectionNamesTest,
   auto config = defaultDBConfig();
   config.allowExtendedNames = true;
 
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto testee =
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
   auto result = testee.result();
   bool isAllowed = !isDisAllowedInGeneral();
 
@@ -616,7 +620,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
 
   config.enforceReplicationFactor = true;
 
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto testee =
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
   auto result = testee.result();
 
   // We only check if writeConcern is okay there is no upper bound
@@ -642,7 +647,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
   config.enforceReplicationFactor = true;
   config.maxReplicationFactor = 5;
 
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto testee =
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
   auto result = testee.result();
 
   // We only check if writeConcern is okay there is no upper bound
@@ -668,7 +674,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
   config.enforceReplicationFactor = true;
   config.minReplicationFactor = 5;
 
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto testee =
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
   auto result = testee.result();
 
   // We only check if writeConcern is okay there is no upper bound
@@ -695,7 +702,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   config.minReplicationFactor = 2;
   config.maxReplicationFactor = 5;
 
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto testee =
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), config, false);
   auto result = testee.result();
 
   // Without enforcing you can do what you want, including illegal combinations
