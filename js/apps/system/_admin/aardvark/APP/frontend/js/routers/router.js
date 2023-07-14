@@ -1338,20 +1338,6 @@
     },
 
     userManagement: function () {
-      /*
-      this.checkUser();
-
-      this.init.then(() => {
-        if (this.userManagementView) {
-          this.userManagementView.remove();
-        }
-
-        this.userManagementView = new window.UserManagementView({
-          collection: this.userCollection
-        });
-        this.userManagementView.render();
-      });
-      */
       this.checkUser();
 
       this.init.then(() => ReactDOM.render(React.createElement(window.UsersReactView),
