@@ -270,7 +270,7 @@ void DatabaseFeature::collectOptions(
 
   options
       ->addOption("--database.default-replication-version",
-                  "default replication version, can be overwritten "
+                  "The default replication version, can be overwritten "
                   "when creating a new database, possible values: 1, 2",
                   new DiscreteValuesParameter<StringParameter>(
                       &_defaultReplicationVersion, allowedReplicationVersions),
@@ -318,6 +318,15 @@ void DatabaseFeature::collectOptions(
                   options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30807)
       .setIntroducedIn(30902);
+
+  options
+      ->addOption("--database.max-databases",
+                  "The maximum number of databases that can exist in parallel.",
+                  new options::SizeTParameter(&_maxDatabases))
+      .setLongDescription(R"(If the maximum number of databases is reached, no
+additional databases can be created in the deployment. In order to create additional
+databases, other databases need to be removed first.")")
+      .setIntroducedIn(31200);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
@@ -690,6 +699,18 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
         // name already in use
         return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                       std::string("duplicate database name '") + name + "'");
+      }
+
+      if (ServerState::instance()->isSingleServerOrCoordinator() &&
+          databases->size() >= maxDatabases()) {
+        // intentionally do not validate number of databases on DB servers,
+        // because they only carry out operations that are initiated by
+        // coordinators
+        return {TRI_ERROR_RESOURCE_LIMIT,
+                absl::StrCat(
+                    "unable to create additional database because it would "
+                    "exceed the configured maximum number of databases (",
+                    maxDatabases(), ")")};
       }
     }
 

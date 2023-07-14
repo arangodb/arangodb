@@ -2661,7 +2661,8 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
     EXPECT_TRUE(pkField);
     EXPECT_EQ(size, pkField->docs_count());
 
-    arangodb::iresearch::PrimaryKeysFilter<false> filters;
+    arangodb::iresearch::PrimaryKeysFilter<false> filters{
+        irs::IResourceManager::kNoop};
     EXPECT_TRUE(filters.empty());
     filters.emplace(arangodb::LocalDocumentId(rid));
     EXPECT_FALSE(filters.empty());
@@ -2833,7 +2834,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       EXPECT_TRUE(ridSlice.isNumber<uint64_t>());
 
       auto rid = ridSlice.getNumber<uint64_t>();
-      arangodb::iresearch::PrimaryKeysFilter<false> filters;
+      arangodb::iresearch::PrimaryKeysFilter<false> filters{
+          irs::IResourceManager::kNoop};
       EXPECT_TRUE(filters.empty());
       filters.emplace(arangodb::LocalDocumentId(rid));
       EXPECT_FALSE(filters.empty());

@@ -2668,7 +2668,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(
     // committed in the replicated log
     auto replicationFut = leaderState->replicateOperation(
         std::move(operation),
-        replication2::replicated_state::document::ReplicationOptions{});
+        replication2::replicated_state::document::ReplicationOptions{
+            .waitForSync = options.waitForSync});
     TRI_ASSERT(replicationFut.isReady());
     auto replicationRes = replicationFut.get();
     return OperationResult{replicationRes.result(), options};
@@ -3164,7 +3165,8 @@ Future<Result> Methods::replicateOperations(
     // Should finish immediately
     auto replicationFut = leaderState->replicateOperation(
         std::move(replicatedOp),
-        replication2::replicated_state::document::ReplicationOptions{});
+        replication2::replicated_state::document::ReplicationOptions{
+            .waitForSync = options.waitForSync});
 
     // Should finish immediately, because we are not waiting the operation to be
     // committed in the replicated log

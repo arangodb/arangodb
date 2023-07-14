@@ -210,7 +210,7 @@ jobs:
 
   run-tests:
     docker:
-      - image: cimg/python:3.11.1
+      - image: arangodb/test-ubuntu-x86-64:22.04
     parameters:
       suiteName:
         type: string
@@ -235,13 +235,6 @@ jobs:
           name: Enabled coredumps
           command: ulimit -c unlimited
       - run:
-          name: Install dependencies
-          command: |
-            pip install psutil py7zr
-            sudo apt update
-            sudo apt install 7zip
-            sudo apt install gdb
-      - run:
           name: Run << parameters.suiteName >> tests
           command: |
             mkdir work
@@ -262,6 +255,37 @@ jobs:
           path: ./work/
       - store_test_results:
           path: ./test-results/
+  run-hotbackup-tests:
+    docker:
+      - image: cimg/python:3.11.1
+    resource_class: medium
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Install dependencies
+          command: |
+            pip install -r scripts/toolbox/requirements.txt
+            sudo apt update
+            sudo apt install 7zip
+            sudo apt install gdb
+      - run:
+          name: Run HotBackup tests
+          command: |
+            python3 scripts/toolbox/HotBackupConsistencyTest.py \
+              --arangod $PWD/build/bin/arangod \
+              --topdir $PWD \
+              --workdir /tmp/test-workdir
+      - run:
+          name: Cleanup
+          command: |
+            rm -rf /tmp/test-workdir
+      - store_artifacts:
+          destination: hotbackup-test
+          path: /tmp/test-workdir
 
 workflows:
   lint:
@@ -298,3 +322,7 @@ workflows:
           preset: enterprise-pr
           edition: x64-enterprise
           enterprise: true
+      - run-hotbackup-tests:
+          name: run-hotbackup-tests
+          requires:
+            - build-ee
