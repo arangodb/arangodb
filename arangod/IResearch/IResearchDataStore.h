@@ -31,6 +31,8 @@
 #include "IResearchPrimaryKeyFilter.h"
 #include "Indexes/Index.h"
 #include "Metrics/Fwd.h"
+
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 
@@ -107,6 +109,11 @@ class IResearchDataStore {
       // for now we require that each index has its own snapshot
       TRI_ASSERT(_snapshot);
     }
+
+    [[nodiscard]] TRI_voc_tick_t tick() const noexcept {
+      return _snapshot->tick();
+    }
+
     irs::DirectoryReader _reader;
     std::shared_ptr<StorageSnapshot> _snapshot;
   };
@@ -133,6 +140,10 @@ class IResearchDataStore {
 
     [[nodiscard]] auto const& getDirectoryReader() const noexcept {
       return _snapshot->_reader;
+    }
+
+    [[nodiscard]] TRI_voc_tick_t tick() const noexcept {
+      return _snapshot->tick();
     }
 
    private:
