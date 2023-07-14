@@ -756,6 +756,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
   RestHandler/RestDocumentHandler.cpp
+  RestHandler/RestDumpHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp

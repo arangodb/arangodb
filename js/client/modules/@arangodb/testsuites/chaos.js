@@ -99,13 +99,9 @@ function chaos (options) {
   return new chaosRunner(options, 'chaos', {}).run(testCases);
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['chaos'] = chaos;
-  
-  // intentionally not turned on by default, as the suite may take a lot of time
-  // defaultFns.push('chaos');
-
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };
