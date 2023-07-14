@@ -167,7 +167,7 @@ class IResearchLinkMetaTest
     analyzers.emplace(
         result, "testVocbase::empty", "empty",
         VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL,
+        arangodb::transaction::TrxType::kInternal,
         arangodb::iresearch::Features(
             irs::IndexFeatures::FREQ));  // cache the 'empty' analyzer for
                                          // 'testVocbase'
@@ -717,17 +717,17 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   analyzers.emplace(
       emplaceResult, arangodb::StaticStrings::SystemDatabase + "::empty",
       "empty", VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
-      arangodb::transaction::Hints::TrxType::INTERNAL,
+      arangodb::transaction::TrxType::kInternal,
       {{}, irs::IndexFeatures::FREQ});
 
   auto identity =
       analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   ASSERT_NE(nullptr, identity);
   auto empty =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   ASSERT_NE(nullptr, empty);
 
   meta._includeAllFields = true;
@@ -777,7 +777,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
       arangodb::iresearch::IResearchLinkMeta::Analyzer(
           analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
                         arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                        arangodb::transaction::Hints::TrxType::INTERNAL),
+                        arangodb::transaction::TrxType::kInternal),
           "empty"));
 
   // do not inherit fields to match jSon inheritance
@@ -2630,9 +2630,9 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
   irs::Finally testCleanup = [&analyzerCustomInSystem, &analyzers,
                               &analyzerCustomInTestVocbase]() noexcept {
     analyzers.remove(analyzerCustomInSystem,
-                     arangodb::transaction::Hints::TrxType::INTERNAL);
+                     arangodb::transaction::TrxType::kInternal);
     analyzers.remove(analyzerCustomInTestVocbase,
-                     arangodb::transaction::Hints::TrxType::INTERNAL);
+                     arangodb::transaction::TrxType::kInternal);
   };
 
   {
@@ -2641,7 +2641,7 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     // testVocbase with same name (it is ok to add both!).
     analyzers.emplace(emplaceResult, analyzerCustomInSystem, "identity",
                       VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
-                      arangodb::transaction::Hints::TrxType::INTERNAL,
+                      arangodb::transaction::TrxType::kInternal,
                       {{}, irs::IndexFeatures::FREQ});
   }
 
@@ -2649,7 +2649,7 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
     analyzers.emplace(emplaceResult, analyzerCustomInTestVocbase, "identity",
                       VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
-                      arangodb::transaction::Hints::TrxType::INTERNAL,
+                      arangodb::transaction::TrxType::kInternal,
                       {{}, irs::IndexFeatures::FREQ});
   }
 
@@ -2676,19 +2676,19 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     expectedAnalyzers.insert(
         analyzers
             .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                 arangodb::transaction::Hints::TrxType::INTERNAL)
+                 arangodb::transaction::TrxType::kInternal)
             ->name());
     expectedAnalyzers.insert(
         analyzers
             .get(analyzerCustomInTestVocbase,
                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                 arangodb::transaction::Hints::TrxType::INTERNAL)
+                 arangodb::transaction::TrxType::kInternal)
             ->name());
     expectedAnalyzers.insert(
         analyzers
             .get(analyzerCustomInSystem,
                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                 arangodb::transaction::Hints::TrxType::INTERNAL)
+                 arangodb::transaction::TrxType::kInternal)
             ->name());
 
     arangodb::iresearch::IResearchLinkMeta::Mask mask(false);
@@ -2751,7 +2751,7 @@ class IResearchLinkMetaTestNoSystem
     analyzers.emplace(
         result, "testVocbase::empty", "empty",
         VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL,
+        arangodb::transaction::TrxType::kInternal,
         arangodb::iresearch::Features(
             irs::IndexFeatures::FREQ));  // cache the 'empty' analyzer for
                                          // 'testVocbase'

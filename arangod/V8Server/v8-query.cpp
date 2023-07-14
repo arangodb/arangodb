@@ -66,8 +66,7 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate,
 
   auto query = arangodb::aql::Query::create(
       transaction::V8Context::Create(col->vocbase(), true),
-      arangodb::aql::QueryString(aql), bindVars,
-      transaction::Hints::TrxType::REST);
+      arangodb::aql::QueryString(aql), bindVars, transaction::TrxType::kREST);
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
   if (queryResult.result.fail()) {
@@ -218,7 +217,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
       transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, *collection,
                                   AccessMode::Type::READ,
-                                  transaction::Hints::TrxType::REST);
+                                  transaction::TrxType::kREST);
 
   Result res = trx.begin();
 
@@ -306,7 +305,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
       transaction::V8Context::Create(col->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, *col,
                                   AccessMode::Type::READ,
-                                  transaction::Hints::TrxType::REST);
+                                  transaction::TrxType::kREST);
 
   Result res = trx.begin();
 

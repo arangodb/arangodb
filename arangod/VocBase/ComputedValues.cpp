@@ -162,12 +162,13 @@ void ComputedValuesExpressionContext::clearVariable(
   _variables.erase(variable);
 }
 
-ComputedValues::ComputedValue::ComputedValue(
-    TRI_vocbase_t& vocbase, std::string_view name,
-    std::string_view expressionString,
-    transaction::Hints::TrxType const& trxTypeHint,
-    ComputeValuesOn mustComputeOn, bool overwrite, bool failOnWarning,
-    bool keepNull)
+ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
+                                             std::string_view name,
+                                             std::string_view expressionString,
+                                             transaction::TrxType trxTypeHint,
+                                             ComputeValuesOn mustComputeOn,
+                                             bool overwrite, bool failOnWarning,
+                                             bool keepNull)
     : _vocbase(vocbase),
       _name(name),
       _expressionString(expressionString),
@@ -314,7 +315,7 @@ void ComputedValues::ComputedValue::computeAttribute(
 ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
                                std::span<std::string const> shardKeys,
                                velocypack::Slice params,
-                               transaction::Hints::TrxType const& trxTypeHint) {
+                               transaction::TrxType trxTypeHint) {
   Result res = buildDefinitions(vocbase, shardKeys, params, trxTypeHint);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -411,9 +412,10 @@ void ComputedValues::mergeComputedAttributes(
   output.close();
 }
 
-Result ComputedValues::buildDefinitions(
-    TRI_vocbase_t& vocbase, std::span<std::string const> shardKeys,
-    velocypack::Slice params, transaction::Hints::TrxType const& trxTypeHint) {
+Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
+                                        std::span<std::string const> shardKeys,
+                                        velocypack::Slice params,
+                                        transaction::TrxType trxTypeHint) {
   if (params.isNone() || params.isNull()) {
     return {};
   }
@@ -559,8 +561,7 @@ Result ComputedValues::buildDefinitions(
 
 ResultT<std::shared_ptr<ComputedValues>> ComputedValues::buildInstance(
     TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
-    velocypack::Slice computedValues,
-    transaction::Hints::TrxType const& trxTypeHint) {
+    velocypack::Slice computedValues, transaction::TrxType trxTypeHint) {
   if (!computedValues.isNone()) {
     if (computedValues.isNull()) {
       computedValues = VPackSlice::emptyArraySlice();

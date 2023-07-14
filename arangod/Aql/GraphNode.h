@@ -242,7 +242,7 @@ class GraphNode : public ExecutionNode {
   Collection const* getShardingPrototype() const;
 
   void determineEnterpriseFlags(AstNode const* edgeCollectionList,
-                                transaction::Hints::TrxType const& trxTypeHint);
+                                transaction::TrxType trxTypeHint);
 
  protected:
   /// @brief the database

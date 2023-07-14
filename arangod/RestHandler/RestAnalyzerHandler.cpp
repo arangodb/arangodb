@@ -171,7 +171,7 @@ void RestAnalyzerHandler::createAnalyzer(  // create
 
   IResearchAnalyzerFeature::EmplaceResult result;
   auto res = analyzers.emplace(result, name, type, properties,
-                               transaction::Hints::TrxType::REST, features);
+                               transaction::TrxType::kREST, features);
 
   if (res.fail()) {
     generateError(res);
@@ -287,7 +287,7 @@ void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
 
   auto pool =
       analyzers.get(normalizedName, QueryAnalyzerRevisions::QUERY_LATEST,
-                    transaction::Hints::TrxType::REST);
+                    transaction::TrxType::kREST);
   if (!pool) {
     generateError(arangodb::Result(
         TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
@@ -321,12 +321,11 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
   };
 
   builder.openArray();
-  analyzers.visit(
-      visitor, nullptr,
-      transaction::Hints::TrxType::REST);  // include static analyzers
+  analyzers.visit(visitor, nullptr,
+                  transaction::TrxType::kREST);  // include static analyzers
 
   if (IResearchAnalyzerFeature::canUse(_vocbase, auth::Level::RO)) {
-    analyzers.visit(visitor, &_vocbase, transaction::Hints::TrxType::REST);
+    analyzers.visit(visitor, &_vocbase, transaction::TrxType::kREST);
   }
 
   // include analyzers from the system vocbase if possible
@@ -337,8 +336,7 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
     if (sysVocbase                                // have system vocbase
         && sysVocbase->name() != _vocbase.name()  // not same vocbase as current
         && IResearchAnalyzerFeature::canUse(*sysVocbase, auth::Level::RO)) {
-      analyzers.visit(visitor, sysVocbase.get(),
-                      transaction::Hints::TrxType::REST);
+      analyzers.visit(visitor, sysVocbase.get(), transaction::TrxType::kREST);
     }
   }
 
@@ -385,8 +383,8 @@ void RestAnalyzerHandler::removeAnalyzer(IResearchAnalyzerFeature& analyzers,
     return;
   }
 
-  auto res = analyzers.remove(normalizedName, transaction::Hints::TrxType::REST,
-                              force);
+  auto res =
+      analyzers.remove(normalizedName, transaction::TrxType::kREST, force);
   if (!res.ok()) {
     generateError(res);
     return;

@@ -305,7 +305,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
   auto updateStatusDocument() {
     statuswriter::CollectionStatusWriter cWriter{
         this->state->vocbaseGuard.database(), this->state->status->id.number,
-        transaction::Hints::TrxType::INTERNAL};
+        transaction::TrxType::kInternal};
     auto serializedStatus =
         inspection::serializeWithErrorT(this->state->status);
     if (serializedStatus.ok()) {
@@ -324,7 +324,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
   auto createStatusDocument() {
     statuswriter::CollectionStatusWriter cWriter{
         this->state->vocbaseGuard.database(), this->state->status->id.number,
-        transaction::Hints::TrxType::INTERNAL};
+        transaction::TrxType::kInternal};
     auto serializedStatus =
         inspection::serializeWithErrorT(this->state->status);
     if (serializedStatus.ok()) {

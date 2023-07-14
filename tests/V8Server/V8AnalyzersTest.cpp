@@ -202,12 +202,12 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
           .emplace(result,
                    arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                    "identity", VPackSlice::noneSlice(),
-                   arangodb::transaction::Hints::TrxType::INTERNAL)
+                   arangodb::transaction::TrxType::kInternal)
           .ok());
   auto analyzer =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   ASSERT_FALSE(!analyzer);
 
   struct ExecContext : public arangodb::ExecContext {
@@ -519,7 +519,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
     ASSERT_TRUE(analyzers
                     .emplace(result, name, "identity", VPackSlice::noneSlice(),
-                             arangodb::transaction::Hints::TrxType::INTERNAL)
+                             arangodb::transaction::TrxType::kInternal)
                     .ok());
   }
 
@@ -530,7 +530,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         analyzers
             .emplace(result, name, "v8-analyzer-empty",
                      VPackParser::fromJson("{\"args\":\"12312\"}")->slice(),
-                     arangodb::transaction::Hints::TrxType::INTERNAL,
+                     arangodb::transaction::TrxType::kInternal,
                      arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
   }
@@ -840,7 +840,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     auto analyzer = analyzers.get(
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
         arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -919,7 +919,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     auto analyzer = analyzers.get(
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
         arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_FALSE(!analyzer);
   }
   // successful creation with DB name prefix
@@ -959,7 +959,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     auto analyzer =
         analyzers.get(vocbase.name() + "::testAnalyzer3",
                       arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                      arangodb::transaction::Hints::TrxType::INTERNAL);
+                      arangodb::transaction::TrxType::kInternal);
     EXPECT_FALSE(!analyzer);
   }
   // successful creation in system db by :: prefix
@@ -999,7 +999,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     auto analyzer =
         analyzers.get(vocbase.name() + "::testAnalyzer4",
                       arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                      arangodb::transaction::Hints::TrxType::INTERNAL);
+                      arangodb::transaction::TrxType::kInternal);
     EXPECT_NE(nullptr, analyzer);
   }
 }
@@ -1036,12 +1036,12 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
            .emplace(result,
                     arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                     "identity", VPackSlice::noneSlice(),
-                    arangodb::transaction::Hints::TrxType::INTERNAL)
+                    arangodb::transaction::TrxType::kInternal)
            .ok()));
   ASSERT_TRUE((analyzers
                    .emplace(result, "testVocbase::testAnalyzer1", "identity",
                             VPackSlice::noneSlice(),
-                            arangodb::transaction::Hints::TrxType::INTERNAL)
+                            arangodb::transaction::TrxType::kInternal)
                    .ok()));
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
@@ -1493,11 +1493,11 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   auto res = analyzers.emplace(
       result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
       "identity", VPackSlice::noneSlice(),
-      arangodb::transaction::Hints::TrxType::INTERNAL);
+      arangodb::transaction::TrxType::kInternal);
   ASSERT_TRUE(res.ok());
   res = analyzers.emplace(result, "testVocbase::testAnalyzer2", "identity",
                           VPackSlice::noneSlice(),
-                          arangodb::transaction::Hints::TrxType::INTERNAL);
+                          arangodb::transaction::TrxType::kInternal);
   ASSERT_TRUE(res.ok());
 
   struct ExecContext : public arangodb::ExecContext {
@@ -1878,36 +1878,36 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                               arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer1",
                               "identity", VPackSlice::noneSlice(),
-                              arangodb::transaction::Hints::TrxType::INTERNAL)
+                              arangodb::transaction::TrxType::kInternal)
                      .ok()));
     ASSERT_TRUE((analyzers
                      .emplace(result,
                               arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer2",
                               "identity", VPackSlice::noneSlice(),
-                              arangodb::transaction::Hints::TrxType::INTERNAL)
+                              arangodb::transaction::TrxType::kInternal)
                      .ok()));
     ASSERT_TRUE((analyzers
                      .emplace(result,
                               arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer3",
                               "identity", VPackSlice::noneSlice(),
-                              arangodb::transaction::Hints::TrxType::INTERNAL)
+                              arangodb::transaction::TrxType::kInternal)
                      .ok()));
     ASSERT_TRUE((analyzers
                      .emplace(result, "testVocbase::testAnalyzer1", "identity",
                               VPackSlice::noneSlice(),
-                              arangodb::transaction::Hints::TrxType::INTERNAL)
+                              arangodb::transaction::TrxType::kInternal)
                      .ok()));
     ASSERT_TRUE((analyzers
                      .emplace(result, "testVocbase::testAnalyzer2", "identity",
                               VPackSlice::noneSlice(),
-                              arangodb::transaction::Hints::TrxType::INTERNAL)
+                              arangodb::transaction::TrxType::kInternal)
                      .ok()));
     ASSERT_TRUE((analyzers
                      .emplace(result, "testVocbase::testAnalyzer3", "identity",
                               VPackSlice::noneSlice(),
-                              arangodb::transaction::Hints::TrxType::INTERNAL)
+                              arangodb::transaction::TrxType::kInternal)
                      .ok()));
   }
   struct ExecContext : public arangodb::ExecContext {
@@ -2064,7 +2064,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     auto analyzer = analyzers.get(
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
         arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -2078,8 +2078,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     auto inUseAnalyzer = analyzers.get(
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
         arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-        arangodb::transaction::Hints::TrxType::INTERNAL);  // hold ref to mark
-                                                           // in-use
+        arangodb::transaction::TrxType::kInternal);  // hold ref to mark
+                                                     // in-use
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2114,7 +2114,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     auto analyzer = analyzers.get(
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
         arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -2128,8 +2128,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     auto inUseAnalyzer = analyzers.get(
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
         arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-        arangodb::transaction::Hints::TrxType::INTERNAL);  // hold ref to mark
-                                                           // in-use
+        arangodb::transaction::TrxType::kInternal);  // hold ref to mark
+                                                     // in-use
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2154,7 +2154,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     auto analyzer = analyzers.get(
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
         arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_FALSE(analyzer);
   }
 
@@ -2187,7 +2187,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     auto analyzer = analyzers.get(
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
         arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_FALSE(analyzer);
   }
   // removal by system db name with ::
@@ -2222,7 +2222,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     auto analyzer = analyzers.get(
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer3",
         arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_EQ(nullptr, analyzer);
   }
   //  removal from wrong db
@@ -2270,7 +2270,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     auto analyzer =
         analyzers.get("testVocbase::testAnalyzer1",
                       arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                      arangodb::transaction::Hints::TrxType::INTERNAL);
+                      arangodb::transaction::TrxType::kInternal);
     EXPECT_NE(nullptr, analyzer);
   }
   // success removal from non-system db
@@ -2302,7 +2302,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     auto analyzer =
         analyzers.get("testVocbase::testAnalyzer2",
                       arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                      arangodb::transaction::Hints::TrxType::INTERNAL);
+                      arangodb::transaction::TrxType::kInternal);
     EXPECT_EQ(nullptr, analyzer);
   }
   // success removal with db name prefix
@@ -2334,7 +2334,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     auto analyzer =
         analyzers.get("testVocbase::testAnalyzer3",
                       arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                      arangodb::transaction::Hints::TrxType::INTERNAL);
+                      arangodb::transaction::TrxType::kInternal);
     EXPECT_EQ(nullptr, analyzer);
   }
 }

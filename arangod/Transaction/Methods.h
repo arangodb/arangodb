@@ -31,10 +31,12 @@
 #include "Transaction/MethodsApi.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
+#include "Transaction/TrxType.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -69,12 +71,6 @@ struct AstNode;
 struct Variable;
 }  // namespace aql
 
-namespace transaction {
-struct BatchOptions;
-class Context;
-struct Options;
-}  // namespace transaction
-
 class CollectionNameResolver;
 class DataSourceId;
 class Index;
@@ -92,6 +88,9 @@ class TransactionState;
 class TransactionCollection;
 
 namespace transaction {
+struct BatchOptions;
+class Context;
+struct Options;
 
 class Methods {
  public:
@@ -109,14 +108,14 @@ class Methods {
   /// @brief create the transaction
   explicit Methods(
       std::shared_ptr<transaction::Context> const& ctx,
-      transaction::Hints::TrxType const& trxTypeHint,
+      transaction::TrxType trxTypeHint,
       transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, and add a collection to it.
   /// use on followers only!
   Methods(std::shared_ptr<transaction::Context> ctx,
           std::string const& collectionName, AccessMode::Type type,
-          transaction::Hints::TrxType const& trxTypeHint);
+          transaction::TrxType trxTypeHint);
 
   /// @brief create the transaction, used to be UserTransaction
   Methods(std::shared_ptr<transaction::Context> const& ctx,
@@ -124,7 +123,7 @@ class Methods {
           std::vector<std::string> const& writeCollections,
           std::vector<std::string> const& exclusiveCollections,
           transaction::Options const& options,
-          transaction::Hints::TrxType const& trxTypeHint);
+          transaction::TrxType trxTypeHint);
 
   /// @brief destroy the transaction
   virtual ~Methods();
@@ -198,11 +197,9 @@ class Methods {
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
 
-  void addTrxTypeHint(transaction::Hints::TrxType const& hint) {
-    _trxTypeHint = hint;
-  }
+  void addTrxTypeHint(transaction::TrxType hint) { _trxTypeHint = hint; }
 
-  transaction::Hints::TrxType const& getTrxTypeHint() { return _trxTypeHint; }
+  transaction::TrxType getTrxTypeHint() { return _trxTypeHint; }
 
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
@@ -573,7 +570,7 @@ class Methods {
   /// @brief the transaction context
   std::shared_ptr<transaction::Context> _transactionContext;
 
-  transaction::Hints::TrxType _trxTypeHint;
+  transaction::TrxType _trxTypeHint;
 
   bool _mainTransaction;
 

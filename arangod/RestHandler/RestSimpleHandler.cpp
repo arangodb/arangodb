@@ -159,7 +159,7 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice(), transaction::Hints::TrxType::REST);
+  return registerQueryOrCursor(data.slice(), transaction::TrxType::kREST);
 }
 
 RestStatus RestSimpleHandler::handleQueryResult() {
@@ -303,5 +303,5 @@ RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice(), transaction::Hints::TrxType::REST);
+  return registerQueryOrCursor(data.slice(), transaction::TrxType::kREST);
 }

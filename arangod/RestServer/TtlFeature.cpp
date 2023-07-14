@@ -340,7 +340,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
           auto query = aql::Query::create(
               transaction::StandaloneContext::Create(*vocbase),
               aql::QueryString(::removeQuery), std::move(bindVars),
-              transaction::Hints::TrxType::INTERNAL);
+              transaction::TrxType::kInternal);
           query->collections().add(collection->name(), AccessMode::Type::WRITE,
                                    aql::Collection::Hint::Shard);
           aql::QueryResult queryResult = query->executeSync();

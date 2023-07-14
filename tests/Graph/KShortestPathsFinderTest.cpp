@@ -126,7 +126,7 @@ class KShortestPathsFinderTest : public ::testing::Test {
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
 
   arangodb::transaction::Methods _trx{_query->newTrxContext(),
-                                      transaction::Hints::TrxType::INTERNAL};
+                                      transaction::TrxType::kInternal};
   arangodb::aql::FixedVarExpressionContext _expressionContext{
       _trx, *_query.get(), _functionsCache};
 
@@ -413,7 +413,7 @@ class WeightedKShortestPathsFinderTest : public ::testing::Test {
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
 
   arangodb::transaction::Methods _trx{_query->newTrxContext(),
-                                      transaction::Hints::TrxType::INTERNAL};
+                                      transaction::TrxType::kInternal};
   arangodb::aql::FixedVarExpressionContext _expressionContext{
       _trx, *_query.get(), _functionsCache};
 

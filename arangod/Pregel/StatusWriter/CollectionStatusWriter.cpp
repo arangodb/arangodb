@@ -39,9 +39,9 @@ struct ExecutionNumber;
 
 namespace arangodb::pregel::statuswriter {
 
-CollectionStatusWriter::CollectionStatusWriter(
-    TRI_vocbase_t& vocbase, ExecutionNumber& executionNumber,
-    transaction::Hints::TrxType const& trxTypeHint)
+CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase,
+                                               ExecutionNumber& executionNumber,
+                                               transaction::TrxType trxTypeHint)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _trxTypeHint(trxTypeHint) {
@@ -58,8 +58,8 @@ CollectionStatusWriter::CollectionStatusWriter(
   }
 };
 
-CollectionStatusWriter::CollectionStatusWriter(
-    TRI_vocbase_t& vocbase, transaction::Hints::TrxType const& trxTypeHint)
+CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase,
+                                               transaction::TrxType trxTypeHint)
     : _vocbaseGuard(vocbase), _trxTypeHint(trxTypeHint) {
   CollectionNameResolver resolver(_vocbaseGuard.database());
   auto logicalCollection =

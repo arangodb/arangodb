@@ -88,7 +88,7 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
           "{ \"id\":102, \"name\": \"foo\" }");
       EXPECT_NE(nullptr, vocbase->createCollection(
                              collectionJson->slice(),
-                             arangodb::transaction::Hints::TrxType::INTERNAL));
+                             arangodb::transaction::TrxType::kInternal));
     }
   }
 
@@ -321,7 +321,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_validate_cross_db_analyzer) {
                     .emplace(emplaceResult,
                              "testVocbaseWithAnalyzer::myIdentity", "identity",
                              VPackParser::fromJson("{ }")->slice(),
-                             arangodb::transaction::Hints::TrxType::INTERNAL)
+                             arangodb::transaction::TrxType::kInternal)
                     .ok());
   }
 
@@ -367,7 +367,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -409,7 +409,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -440,7 +440,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
   }
 
   // analyzer single-server, for creation, missing "testAanalyzer0"
@@ -460,7 +460,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
   }
 
   // analyzer single-server (inRecovery), for creation
@@ -488,7 +488,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -536,7 +536,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -576,7 +576,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
 
     auto expected_json =
         arangodb::velocypack::Parser::fromJson(R"({
@@ -628,7 +628,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -681,7 +681,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -736,7 +736,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -790,7 +790,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -874,7 +874,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                  arangodb::transaction::Hints::TrxType::INTERNAL));
+                  arangodb::transaction::TrxType::kInternal));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({

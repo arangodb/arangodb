@@ -676,7 +676,7 @@ bool InvertedIndexField::init(
           // issues analyzer should have been populated via
           // 'analyzerDefinitions' above
           analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST,
-                                   transaction::Hints::TrxType::INTERNAL,
+                                   transaction::TrxType::kInternal,
                                    ServerState::instance()->isClusterRole());
           if (analyzer) {
             // Remap analyzer features to match version.

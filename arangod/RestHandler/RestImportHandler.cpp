@@ -357,7 +357,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE,
-                                  transaction::Hints::TrxType::REST);
+                                  transaction::TrxType::kREST);
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
   // .............................................................................
@@ -552,7 +552,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE,
-                                  transaction::Hints::TrxType::REST);
+                                  transaction::TrxType::kREST);
 
   // .............................................................................
   // inside write transaction
@@ -742,7 +742,7 @@ bool RestImportHandler::createFromKeyValueList() {
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE,
-                                  transaction::Hints::TrxType::REST);
+                                  transaction::TrxType::kREST);
 
   // .............................................................................
   // inside write transaction

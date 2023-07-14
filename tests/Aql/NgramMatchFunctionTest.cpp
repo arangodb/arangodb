@@ -68,7 +68,7 @@ class NgramMatchFunctionTest : public ::testing::Test {
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
-        transaction::Hints::TrxType::INTERNAL,
+        transaction::TrxType::kInternal,
         arangodb::iresearch::Features(irs::IndexFeatures::FREQ |
                                       irs::IndexFeatures::POS));
     EXPECT_TRUE(res.ok());

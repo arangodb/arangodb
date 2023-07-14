@@ -384,9 +384,9 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    auto res = analyzers.emplace(result, name, type, propertiesSlice,
-                                 arangodb::transaction::Hints::TrxType::REST,
-                                 features);
+    auto res =
+        analyzers.emplace(result, name, type, propertiesSlice,
+                          arangodb::transaction::TrxType::kREST, features);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -473,7 +473,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   try {
     auto analyzer =
         analyzers.get(name, arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                      arangodb::transaction::Hints::TrxType::REST);
+                      arangodb::transaction::TrxType::kREST);
 
     if (!analyzer) {
       TRI_V8_RETURN_NULL();
@@ -530,15 +530,13 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   };
 
   try {
-    analyzers.visit(
-        visitor, nullptr,
-        arangodb::transaction::Hints::TrxType::REST);  // include static
-                                                       // analyzers
+    analyzers.visit(visitor, nullptr,
+                    arangodb::transaction::TrxType::kREST);  // include static
+                                                             // analyzers
 
     if (arangodb::iresearch::IResearchAnalyzerFeature::canUse(
             vocbase, arangodb::auth::Level::RO)) {
-      analyzers.visit(visitor, &vocbase,
-                      arangodb::transaction::Hints::TrxType::REST);
+      analyzers.visit(visitor, &vocbase, arangodb::transaction::TrxType::kREST);
     }
 
     // include analyzers from the system vocbase if possible
@@ -547,7 +545,7 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
         && arangodb::iresearch::IResearchAnalyzerFeature::canUse(
                *sysVocbase, arangodb::auth::Level::RO)) {
       analyzers.visit(visitor, sysVocbase.get(),
-                      arangodb::transaction::Hints::TrxType::REST);
+                      arangodb::transaction::TrxType::kREST);
     }
 
     auto v8Result = v8::Array::New(isolate);
@@ -648,8 +646,8 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto res = analyzers.remove(
-        name, arangodb::transaction::Hints::TrxType::REST, force);
+    auto res =
+        analyzers.remove(name, arangodb::transaction::TrxType::kREST, force);
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
     }

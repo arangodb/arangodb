@@ -136,7 +136,7 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
   }
 
   auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
   auto view = vocbase.createView(viewJson->slice(), false);
 
   EXPECT_FALSE(collection->deleted());

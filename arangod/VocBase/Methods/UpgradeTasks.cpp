@@ -224,7 +224,7 @@ Result createSystemCollections(
 
     auto cols = methods::Collections::create(
         vocbase, options, testSystemCollectionsToCreate,
-        transaction::Hints::TrxType::INTERNAL, true, true, true,
+        transaction::TrxType::kInternal, true, true, true,
 
         false /* allow system collection creation */);
     if (cols.fail()) {
@@ -290,7 +290,7 @@ Result createSystemCollections(
   if (!systemCollectionsToCreate.empty()) {
     auto cols = methods::Collections::create(
         vocbase, options, systemCollectionsToCreate,
-        transaction::Hints::TrxType::INTERNAL, true, true, true,
+        transaction::TrxType::kInternal, true, true, true,
 
         false /* allow system collection creation */);
     if (cols.fail()) {
@@ -345,8 +345,8 @@ Result createSystemStatisticsCollections(
       OperationOptions options(ExecContext::current());
       res = methods::Collections::create(
           vocbase, options, systemCollectionsToCreate,
-          transaction::Hints::TrxType::INTERNAL, true, false, false, nullptr,
-          cols, true /* allow system collection creation */);
+          transaction::TrxType::kInternal, true, false, false, nullptr, cols,
+          true /* allow system collection creation */);
       if (res.fail()) {
         return res;
       }
@@ -374,8 +374,8 @@ Result createSystemPregelCollection(TRI_vocbase_t& vocbase) {
 
     OperationOptions operationOptions(ExecContext::current());
     return methods::Collections::create(
-        vocbase, operationOptions, {info},
-        transaction::Hints::TrxType::INTERNAL, true, true, true,
+        vocbase, operationOptions, {info}, transaction::TrxType::kInternal,
+        true, true, true,
         nullptr /*nullptr on purpose, distributeShardsLike is defined by
                    createSystemCollectionProperties */
         ,

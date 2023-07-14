@@ -139,7 +139,7 @@ Result extractIndexHandle(velocypack::Slice arg, bool extendedNames,
 
 Result Indexes::getIndex(LogicalCollection const& collection,
                          VPackSlice indexId, VPackBuilder& out,
-                         transaction::Hints::TrxType const& trxTypeHint,
+                         transaction::TrxType trxTypeHint,
                          transaction::Methods* trx) {
   // do some magic to parse the iid
   std::string
@@ -203,7 +203,7 @@ Result Indexes::getIndex(LogicalCollection const& collection,
 arangodb::Result Indexes::getAll(
     LogicalCollection const& collection,
     std::underlying_type<Index::Serialize>::type flags, bool withHidden,
-    VPackBuilder& result, transaction::Hints::TrxType const& trxTypeHint,
+    VPackBuilder& result, transaction::TrxType trxTypeHint,
     transaction::Methods* inputTrx) {
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
@@ -687,7 +687,7 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const& collection,
 }
 
 Result Indexes::drop(LogicalCollection& collection, velocypack::Slice indexArg,
-                     transaction::Hints::TrxType const& trxTypeHint) {
+                     transaction::TrxType trxTypeHint) {
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
     if (exec.databaseAuthLevel() != auth::Level::RW ||

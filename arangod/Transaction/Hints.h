@@ -29,7 +29,7 @@ namespace arangodb::transaction {
 
 class Hints {
  public:
-  typedef std::uint32_t ValueType;
+  using ValueType = std::uint32_t;
 
   /// @brief individual hint flags that can be used for transactions
   enum class Hint : ValueType {
@@ -52,33 +52,25 @@ class Hints {
               // DBServers), and if that fails revert to slow-lock path
   };
 
-  enum class TrxType : ValueType {
-    REST = 0,
-    AQL = 1,
-    INTERNAL = 2,
-  };
+  Hints() noexcept : _value(0) {}
+  explicit Hints(Hint value) noexcept : _value(static_cast<ValueType>(value)) {}
+  explicit Hints(ValueType value) noexcept : _value(value) {}
 
-  Hints() : _value(0) {}
-  explicit Hints(Hint value) : _value(static_cast<ValueType>(value)) {}
-  explicit Hints(ValueType value) : _value(value) {}
+  bool has(ValueType value) const noexcept { return (_value & value) != 0; }
 
-  inline bool has(ValueType value) const noexcept {
-    return (_value & value) != 0;
-  }
-
-  inline bool has(Hint value) const noexcept {
+  bool has(Hint value) const noexcept {
     return has(static_cast<ValueType>(value));
   }
 
-  inline void set(ValueType value) { _value |= value; }
+  void set(ValueType value) noexcept { _value |= value; }
 
-  inline void set(Hint value) { set(static_cast<ValueType>(value)); }
+  void set(Hint value) noexcept { set(static_cast<ValueType>(value)); }
 
-  inline void unset(ValueType value) { _value &= ~value; }
+  void unset(ValueType value) noexcept { _value &= ~value; }
 
-  inline void unset(Hint value) { unset(static_cast<ValueType>(value)); }
+  void unset(Hint value) noexcept { unset(static_cast<ValueType>(value)); }
 
-  inline ValueType toInt() const { return static_cast<ValueType>(_value); }
+  ValueType toInt() const noexcept { return static_cast<ValueType>(_value); }
 
  private:
   ValueType _value;

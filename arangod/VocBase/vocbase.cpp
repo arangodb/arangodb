@@ -361,8 +361,7 @@ bool TRI_vocbase_t::dropCollectionCallback(LogicalCollection& collection) {
 
 #ifndef USE_ENTERPRISE
 std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollectionObject(
-    velocypack::Slice data, transaction::Hints::TrxType const& trxTypeHint,
-    bool isAStub) {
+    velocypack::Slice data, transaction::TrxType trxTypeHint, bool isAStub) {
   // every collection object on coordinators must be a stub
   TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
   // collection objects on single servers must not be stubs
@@ -765,8 +764,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
 
 std::shared_ptr<LogicalCollection>
 TRI_vocbase_t::createCollectionObjectForStorage(
-    velocypack::Slice parameters,
-    transaction::Hints::TrxType const& trxTypeHint) {
+    velocypack::Slice parameters, transaction::TrxType trxTypeHint) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // augment collection parameters with storage-engine specific data
@@ -787,8 +785,7 @@ TRI_vocbase_t::createCollectionObjectForStorage(
 }
 
 std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollection(
-    velocypack::Slice parameters,
-    transaction::Hints::TrxType const& trxTypeHint) {
+    velocypack::Slice parameters, transaction::TrxType trxTypeHint) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   auto const& dbName = _info.getName();
@@ -831,7 +828,7 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollection(
 ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
 TRI_vocbase_t::createCollections(
     std::vector<arangodb::CreateCollectionBody> const& collections,
-    transaction::Hints::TrxType const& trxTypeHint,
+    transaction::TrxType trxTypeHint,
     bool allowEnterpriseCollectionsOnSingleServer) {
   // TODO: Need to get rid of this collection. Distribute Shards like
   // is now denoted inside the CreateCollectionBody
@@ -864,7 +861,7 @@ TRI_vocbase_t::createCollections(
 
 std::vector<std::shared_ptr<LogicalCollection>>
 TRI_vocbase_t::createCollections(
-    velocypack::Slice infoSlice, transaction::Hints::TrxType const& trxTypeHint,
+    velocypack::Slice infoSlice, transaction::TrxType trxTypeHint,
     bool allowEnterpriseCollectionsOnSingleServer) {
   TRI_ASSERT(!allowEnterpriseCollectionsOnSingleServer ||
              ServerState::instance()->isSingleServer());

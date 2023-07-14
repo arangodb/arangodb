@@ -486,7 +486,7 @@ void TransactionState::updateStatus(transaction::Status status) noexcept {
 /// - follower
 /// - coordinator
 /// - single
-char const* TransactionState::actorName() const noexcept {
+std::string_view TransactionState::actorName() const noexcept {
   if (isDBServer()) {
     return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX) ? "follower"
                                                               : "leader";

@@ -118,9 +118,9 @@ std::string readGloballyUniqueId(velocypack::Slice info) {
 
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(
-    TRI_vocbase_t& vocbase, VPackSlice info,
-    transaction::Hints::TrxType const& trxTypeHint, bool isAStub)
+LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
+                                     transaction::TrxType trxTypeHint,
+                                     bool isAStub)
     : LogicalDataSource(
           *this, vocbase, DataSourceId{Helper::extractIdValue(info)},
           ::readGloballyUniqueId(info),

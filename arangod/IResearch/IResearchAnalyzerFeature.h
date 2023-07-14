@@ -50,9 +50,9 @@
 #include "IResearch/IResearchCommon.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
-#include "Transaction/Hints.h"
+#include "Transaction/TrxType.h"
 
-struct TRI_vocbase_t;  // forward declaration
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace application_features {
@@ -370,7 +370,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @return overall load result
   //////////////////////////////////////////////////////////////////////////////
   Result loadAvailableAnalyzers(std::string_view dbName,
-                                transaction::Hints::TrxType const& trxTypeHint);
+                                transaction::TrxType trxTypeHint);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Checks if analyzer db (identified by db name prefix extracted from
@@ -413,8 +413,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   using EmplaceResult = std::pair<AnalyzerPool::ptr, bool>;
   Result emplace(EmplaceResult& result, std::string_view name,
                  std::string_view type, VPackSlice const properties,
-                 transaction::Hints::TrxType const& trxTypeHint,
-                 Features features = {});
+                 transaction::TrxType trxTypeHint, Features features = {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Emplaces batch of analyzers within single analyzers revision.
@@ -427,7 +426,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @note should not be used while inRecovery()
   //////////////////////////////////////////////////////////////////////////////
   Result bulkEmplace(TRI_vocbase_t& vocbase, VPackSlice const dumpedAnalyzers,
-                     transaction::Hints::TrxType const& trxTypeHint);
+                     transaction::TrxType trxTypeHint);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief removes all analyzers from database in single revision
@@ -436,7 +435,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @note should not be used while inRecovery()
   //////////////////////////////////////////////////////////////////////////////
   Result removeAllAnalyzers(TRI_vocbase_t& vocbase,
-                            transaction::Hints::TrxType const& trxTypeHint);
+                            transaction::TrxType trxTypeHint);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find analyzer
@@ -446,7 +445,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(std::string_view name,
                         QueryAnalyzerRevisions const& revision,
-                        transaction::Hints::TrxType const& trxTypeHint,
+                        transaction::TrxType trxTypeHint,
                         bool onlyCached = false) const noexcept {
     auto splittedName = splitAnalyzerName(name);
     TRI_ASSERT(irs::IsNull(splittedName.first) || !splittedName.first.empty());
@@ -468,7 +467,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   AnalyzerPool::ptr get(std::string_view name,
                         TRI_vocbase_t const& activeVocbase,
                         QueryAnalyzerRevisions const& revision,
-                        transaction::Hints::TrxType const& trxTypeHint,
+                        transaction::TrxType trxTypeHint,
                         bool onlyCached = false) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -476,8 +475,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @param name analyzer name (already normalized)
   /// @param force remove even if the analyzer is actively referenced
   //////////////////////////////////////////////////////////////////////////////
-  Result remove(std::string_view name,
-                transaction::Hints::TrxType const& trxTypeHint,
+  Result remove(std::string_view name, transaction::TrxType trxTypeHint,
                 bool force = false);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -489,14 +487,14 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
       std::function<bool(AnalyzerPool::ptr const&)> const& visitor) const;
   bool visit(std::function<bool(AnalyzerPool::ptr const&)> const& visitor,
              TRI_vocbase_t const* vocbase,
-             transaction::Hints::TrxType const& trxTypeHint) const;
+             transaction::TrxType trxTypeHint) const;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief removes analyzers for specified database from cache
   /// @param vocbase  database to invalidate analyzers
   ///////////////////////////////////////////////////////////////////////////////
   void invalidate(const TRI_vocbase_t& vocbase,
-                  transaction::Hints::TrxType const& trxTypeHint);
+                  transaction::TrxType trxTypeHint);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief return current known analyzers revision
@@ -541,13 +539,13 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   static Analyzers const& getStaticAnalyzers();
 
   Result removeFromCollection(std::string_view name, std::string_view vocbase,
-                              transaction::Hints::TrxType const& trxTypeHint);
+                              transaction::TrxType trxTypeHint);
   Result cleanupAnalyzersCollection(
       std::string_view const& database,
       AnalyzersRevision::Revision buildingRevision,
-      transaction::Hints::TrxType const& trxTypeHint);
+      transaction::TrxType trxTypeHint);
   Result finalizeRemove(std::string_view name, std::string_view vocbase,
-                        transaction::Hints::TrxType const& trxTypeHint);
+                        transaction::TrxType trxTypeHint);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate analyzer parameters and emplace into map
@@ -557,13 +555,12 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
       iresearch::IResearchAnalyzerFeature::Analyzers& analyzers,
       std::string_view const name, std::string_view const type,
       VPackSlice const properties, Features const& features,
-      AnalyzersRevision::Revision revision,
-      transaction::Hints::TrxType const& trxTypeHint);
+      AnalyzersRevision::Revision revision, transaction::TrxType trxTypeHint);
 
   AnalyzerPool::ptr get(std::string_view normalizedName,
                         AnalyzerName const& name,
                         AnalyzersRevision::Revision const revision,
-                        transaction::Hints::TrxType const& trxTypeHint,
+                        transaction::TrxType trxTypeHint,
                         bool onlyCached) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -573,7 +570,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @note on coordinator and db-server reload is also done if the database has
   ///       changed analyzers revision in agency
   //////////////////////////////////////////////////////////////////////////////
-  Result loadAnalyzers(transaction::Hints::TrxType const& trxTypeHint,
+  Result loadAnalyzers(transaction::TrxType trxTypeHint,
                        std::string_view database = std::string_view{});
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -587,8 +584,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   ///        vocbase
   /// @note on success will modify the '_key' of the pool
   //////////////////////////////////////////////////////////////////////////////
-  Result storeAnalyzer(AnalyzerPool& pool,
-                       transaction::Hints::TrxType const& trxTypeHint);
+  Result storeAnalyzer(AnalyzerPool& pool, transaction::TrxType trxTypeHint);
 
   /// @brief dangling analyzer revisions collector
   std::function<void(bool)> _gcfunc;

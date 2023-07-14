@@ -109,7 +109,7 @@ bool isSystemName(CollectionCreationInfo const& info) {
 
 Result validateCreationInfo(CollectionCreationInfo const& info,
                             TRI_vocbase_t& vocbase,
-                            transaction::Hints::TrxType const& trxTypeHint,
+                            transaction::TrxType trxTypeHint,
                             bool isSingleServerSmartGraph,
                             bool enforceReplicationFactor,
                             bool isLocalCollection, bool isSystemName,
@@ -213,7 +213,7 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
 // validate collection parameters. if the validation fails, it will audit-log
 // the failure.
 Result validateAllCollectionsInfo(
-    TRI_vocbase_t& vocbase, transaction::Hints::TrxType const& trxTypeHint,
+    TRI_vocbase_t& vocbase, transaction::TrxType trxTypeHint,
     std::vector<CollectionCreationInfo> const& infos, bool allowSystem,
     bool allowEnterpriseCollectionsOnSingleServer,
     bool enforceReplicationFactor) {
@@ -424,7 +424,7 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
     auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(),
                                                           embeddable);
     auto trx = std::make_unique<SingleCollectionTransaction>(
-        ctx, *_coll, type, transaction::Hints::TrxType::REST);
+        ctx, *_coll, type, transaction::TrxType::kREST);
 
     Result res = trx->begin();
 
@@ -597,7 +597,7 @@ Collections::create(         // create collection
     TRI_vocbase_t& vocbase,  // collection vocbase
     OperationOptions const& options,
     std::vector<CreateCollectionBody> collections,  // Collections to create
-    transaction::Hints::TrxType const& trxTypeHint,
+    transaction::TrxType trxTypeHint,
     bool createWaitsForSyncReplication,  // replication wait flag
     bool enforceReplicationFactor,       // replication factor flag
     bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
@@ -774,7 +774,7 @@ Collections::create(         // create collection
     std::string const& name,                 // collection name
     TRI_col_type_e collectionType,           // collection type
     arangodb::velocypack::Slice properties,  // collection properties
-    transaction::Hints::TrxType const& trxTypeHint,
+    transaction::TrxType trxTypeHint,
     bool createWaitsForSyncReplication,  // replication wait flag
     bool enforceReplicationFactor,       // replication factor flag
     bool isNewDatabase,
@@ -806,9 +806,8 @@ Collections::create(         // create collection
 Result Collections::create(
     TRI_vocbase_t& vocbase, OperationOptions const& options,
     std::vector<CollectionCreationInfo> const& infos,
-    transaction::Hints::TrxType const& trxTypeHint,
-    bool createWaitsForSyncReplication, bool enforceReplicationFactor,
-    bool isNewDatabase,
+    transaction::TrxType trxTypeHint, bool createWaitsForSyncReplication,
+    bool enforceReplicationFactor, bool isNewDatabase,
     std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
     std::vector<std::shared_ptr<LogicalCollection>>& ret, bool allowSystem,
     bool allowEnterpriseCollectionsOnSingleServer, bool isRestore) {
@@ -1039,7 +1038,7 @@ void Collections::createSystemCollectionProperties(
                             name,  // collection name top create
                             TRI_COL_TYPE_DOCUMENT,  // collection type to create
                             bb.slice(),  // collection definition to create
-                            transaction::Hints::TrxType::INTERNAL,
+                            transaction::TrxType::kInternal,
                             true,  // waitsForSyncReplication
                             true,  // enforceReplicationFactor
                             isNewDatabase, createdCollection,
@@ -1103,10 +1102,10 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   return TRI_ERROR_NO_ERROR;
 }
 
-Result Collections::updateProperties(
-    LogicalCollection& collection, velocypack::Slice props,
-    OperationOptions const& options,
-    transaction::Hints::TrxType const& trxTypeHint) {
+Result Collections::updateProperties(LogicalCollection& collection,
+                                     velocypack::Slice props,
+                                     OperationOptions const& options,
+                                     transaction::TrxType trxTypeHint) {
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
 
@@ -1188,10 +1187,10 @@ Result Collections::updateProperties(
 /// @brief helper function to rename collections in _graphs as well
 ////////////////////////////////////////////////////////////////////////////////
 
-static ErrorCode RenameGraphCollections(
-    TRI_vocbase_t& vocbase, std::string const& oldName,
-    std::string const& newName,
-    transaction::Hints::TrxType const& trxTypeHint) {
+static ErrorCode RenameGraphCollections(TRI_vocbase_t& vocbase,
+                                        std::string const& oldName,
+                                        std::string const& newName,
+                                        transaction::TrxType trxTypeHint) {
   ExecContextSuperuserScope exscope;
 
   graph::GraphManager gmngr{vocbase, trxTypeHint};
@@ -1204,7 +1203,7 @@ static ErrorCode RenameGraphCollections(
 
 Result Collections::rename(LogicalCollection& collection,
                            std::string const& newName, bool doOverride,
-                           transaction::Hints::TrxType const& trxTypeHint) {
+                           transaction::TrxType trxTypeHint) {
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     return {TRI_ERROR_CLUSTER_UNSUPPORTED};
@@ -1415,7 +1414,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   auto ctx =
       transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ,
-                                  transaction::Hints::TrxType::REST);
+                                  transaction::TrxType::kREST);
   Result res = trx.begin();
 
   if (res.fail()) {

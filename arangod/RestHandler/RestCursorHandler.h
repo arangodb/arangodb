@@ -71,9 +71,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief register the query either as streaming cursor or in _query
   /// the query is not executed here.
   /// this method is also used by derived classes
-  RestStatus registerQueryOrCursor(
-      arangodb::velocypack::Slice const& body,
-      transaction::Hints::TrxType const& trxTypeHint);
+  RestStatus registerQueryOrCursor(arangodb::velocypack::Slice const& body,
+                                   transaction::TrxType trxTypeHint);
 
   /// @brief Process the query registered in _query.
   /// The function is repeatable, so whenever we need to WAIT

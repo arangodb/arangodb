@@ -317,7 +317,7 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
                              collections,  // readCollections
                              EMPTY,        // writeCollections
                              EMPTY,        // exclusiveCollections
-                             options, transaction::Hints::TrxType::INTERNAL);
+                             options, transaction::TrxType::kInternal);
     auto r = trx.begin();
     if (!r.ok()) {
       return r;

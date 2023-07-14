@@ -158,19 +158,19 @@ class RestAnalyzerHandlerTest
     ASSERT_ARANGO_OK(
         analyzers.emplace(result, name, "identity"s,
                           VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice(),
-                          arangodb::transaction::Hints::TrxType::INTERNAL));
+                          arangodb::transaction::TrxType::kInternal));
 
     name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2";
     ASSERT_ARANGO_OK(
         analyzers.emplace(result, name, "identity"s,
                           VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice(),
-                          arangodb::transaction::Hints::TrxType::INTERNAL));
+                          arangodb::transaction::TrxType::kInternal));
 
     name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer"s;
     ASSERT_ARANGO_OK(analyzers.emplace(
         result, name, "rest-analyzer-empty"s,
         VPackParser::fromJson("{\"args\":\"en\"}"s)->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL,
+        arangodb::transaction::TrxType::kInternal,
         arangodb::iresearch::Features(irs::IndexFeatures::FREQ)));
   };
 
@@ -196,10 +196,10 @@ class RestAnalyzerHandlerTest
 
     ASSERT_ARANGO_OK(analyzers.emplace(
         result, name + "::testAnalyzer1", "identity"s, VPackSlice::noneSlice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL));
+        arangodb::transaction::TrxType::kInternal));
     ASSERT_ARANGO_OK(analyzers.emplace(
         result, name + "::testAnalyzer2", "identity"s, VPackSlice::noneSlice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL));
+        arangodb::transaction::TrxType::kInternal));
   }
 
   // Grant permissions on one DB
@@ -502,7 +502,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_duplicate_matching) {
   auto analyzer =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   EXPECT_NE(nullptr, analyzer);
 }
 
@@ -575,7 +575,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_success) {
   auto analyzer =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   EXPECT_NE(nullptr, analyzer);
 }
 
@@ -1399,7 +1399,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_not_authorized) {
   auto analyzer =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   ASSERT_NE(analyzer, nullptr);
 }
 
@@ -1421,7 +1421,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use) {
   auto inUseAnalyzer =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   ASSERT_NE(nullptr, inUseAnalyzer);
 
   auto status = handler.execute();
@@ -1446,7 +1446,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use) {
   auto analyzer =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   // Check it's not gone
   ASSERT_NE(analyzer, nullptr);
 }
@@ -1469,7 +1469,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use_force) {
   auto inUseAnalyzer =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   ASSERT_NE(nullptr, inUseAnalyzer);
 
   auto status = handler.execute();
@@ -1492,7 +1492,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use_force) {
   auto analyzer =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   ASSERT_EQ(nullptr, analyzer);
 }
 
@@ -1516,7 +1516,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_with_db_name) {
   auto analyzer =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   EXPECT_EQ(nullptr, analyzer);
 }
 
@@ -1552,6 +1552,6 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_success) {
   auto analyzer =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-                    arangodb::transaction::Hints::TrxType::INTERNAL);
+                    arangodb::transaction::TrxType::kInternal);
   ASSERT_EQ(nullptr, analyzer);
 }

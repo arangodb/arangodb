@@ -33,8 +33,9 @@
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
-#include "Transaction/Hints.h"
+#include "Transaction/TrxType.h"
 #include "VocBase/voc-types.h"
+
 #include <velocypack/Builder.h>
 
 struct TRI_vocbase_t;
@@ -68,8 +69,7 @@ class QueryContext {
 
  public:
   explicit QueryContext(TRI_vocbase_t& vocbase,
-                        transaction::Hints::TrxType const& trxTypeHint,
-                        QueryId id = 0);
+                        transaction::TrxType trxTypeHint, QueryId id = 0);
 
   virtual ~QueryContext();
 
@@ -85,7 +85,7 @@ class QueryContext {
   Collections& collections();
   Collections const& collections() const;
 
-  transaction::Hints::TrxType const& getTrxTypeHint() { return _trxTypeHint; }
+  transaction::TrxType getTrxTypeHint() { return _trxTypeHint; }
 
   /// @brief return the names of collections used in the query
   std::vector<std::string> collectionNames() const;
@@ -163,7 +163,7 @@ class QueryContext {
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;
 
-  transaction::Hints::TrxType _trxTypeHint;
+  transaction::TrxType _trxTypeHint;
 
   TRI_voc_tick_t const _queryId;
 

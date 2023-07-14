@@ -38,7 +38,6 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Hints.h"
 #include "V8Server/V8Context.h"
 
 #include <velocypack/Builder.h>
@@ -81,8 +80,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
         QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
         QueryOptions options, std::shared_ptr<SharedQueryState> sharedState,
-        transaction::Hints::TrxType const& trxTypeHint =
-            transaction::Hints::TrxType::INTERNAL);
+        transaction::TrxType trxTypeHint = transaction::TrxType::kInternal);
 
   /// Used to construct a full query. the constructor is protected to ensure
   /// that call sites only create Query objects using the `create` factory
@@ -90,8 +88,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
         QueryOptions options, Scheduler* scheduler,
-        transaction::Hints::TrxType const& trxTypeHint =
-            transaction::Hints::TrxType::INTERNAL);
+        transaction::TrxType trxTypeHint = transaction::TrxType::kInternal);
 
   ~Query() override;
 
@@ -106,7 +103,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   static std::shared_ptr<Query> create(
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
-      transaction::Hints::TrxType const& trxTypeHint, QueryOptions options = {},
+      transaction::TrxType trxTypeHint, QueryOptions options = {},
       Scheduler* scheduler = SchedulerFeature::SCHEDULER);
 
   constexpr static uint64_t DontCache = 0;
@@ -245,10 +242,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// returns "<hidden>" regardless of maxLength
   std::string extractQueryString(size_t maxLength, bool show) const;
 
-  transaction::Hints::TrxType const& getTrxTypeHint() const noexcept {
-    return _trxTypeHint;
-  }
-
  protected:
   /// @brief initializes the query
   void init(bool createProfile);
@@ -373,8 +366,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief user that started the query
   std::string _user;
-
-  transaction::Hints::TrxType _trxTypeHint;
 
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;

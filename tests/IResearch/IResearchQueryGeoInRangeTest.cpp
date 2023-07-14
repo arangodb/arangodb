@@ -95,7 +95,7 @@ class QueryGeoInRange : public QueryTest {
   void createCollections() {
     auto createJson = VPackParser::fromJson(R"({ "name": "testCollection0" })");
     auto collection = _vocbase.createCollection(
-        createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+        createJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_TRUE(collection);
   }
 
@@ -139,8 +139,7 @@ class QueryGeoInRange : public QueryTest {
       options.returnNew = true;
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          AccessMode::Type::WRITE, arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -232,8 +231,7 @@ class QueryGeoInRange : public QueryTest {
       };
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::READ,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          AccessMode::Type::READ, arangodb::transaction::TrxType::kInternal);
       ASSERT_TRUE(trx.begin().ok());
       ASSERT_TRUE(trx.state());
       auto* snapshot =
@@ -457,8 +455,7 @@ class QueryGeoInRange : public QueryTest {
       options.returnNew = true;
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          AccessMode::Type::WRITE, arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -490,8 +487,7 @@ class QueryGeoInRange : public QueryTest {
     {
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::READ,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          AccessMode::Type::READ, arangodb::transaction::TrxType::kInternal);
       ASSERT_TRUE(trx.begin().ok());
       ASSERT_TRUE(trx.state());
       auto* snapshot =
@@ -762,8 +758,7 @@ class QueryGeoInRange : public QueryTest {
       options.returnNew = true;
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          AccessMode::Type::WRITE, arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -795,8 +790,7 @@ class QueryGeoInRange : public QueryTest {
     {
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::READ,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          AccessMode::Type::READ, arangodb::transaction::TrxType::kInternal);
       ASSERT_TRUE(trx.begin().ok());
       ASSERT_TRUE(trx.state());
       auto* snapshot =

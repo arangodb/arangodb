@@ -455,7 +455,7 @@ bool equalAnalyzer(AnalyzerPool const& pool, std::string_view type,
 ////////////////////////////////////////////////////////////////////////////////
 Result visitAnalyzers(TRI_vocbase_t& vocbase,
                       std::function<Result(VPackSlice)> const& visitor,
-                      transaction::Hints::TrxType const& trxTypeHint) {
+                      transaction::TrxType trxTypeHint) {
   auto const resultVisitor =
       [](std::function<Result(VPackSlice)> const& visitor,
          TRI_vocbase_t const& vocbase, VPackSlice slice) -> Result {
@@ -1236,8 +1236,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     EmplaceAnalyzerResult& result, Analyzers& analyzers,
     std::string_view const name, std::string_view const type,
     VPackSlice const properties, Features const& features,
-    AnalyzersRevision::Revision revision,
-    transaction::Hints::TrxType const& trxTypeHint) {
+    AnalyzersRevision::Revision revision, transaction::TrxType trxTypeHint) {
   // check type available
   if (!irs::analysis::analyzers::exists(
           type, irs::type<irs::text_format::vpack>::get(), false)) {
@@ -1356,10 +1355,12 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   return {};
 }
 
-Result IResearchAnalyzerFeature::emplace(
-    EmplaceResult& result, std::string_view name, std::string_view type,
-    VPackSlice const properties, transaction::Hints::TrxType const& trxTypeHint,
-    Features features /* = {} */) {
+Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
+                                         std::string_view name,
+                                         std::string_view type,
+                                         VPackSlice const properties,
+                                         transaction::TrxType trxTypeHint,
+                                         Features features /* = {} */) {
   auto const split = splitAnalyzerName(name);
 
   auto transaction =
@@ -1473,7 +1474,7 @@ Result IResearchAnalyzerFeature::emplace(
 }
 
 Result IResearchAnalyzerFeature::removeAllAnalyzers(
-    TRI_vocbase_t& vocbase, transaction::Hints::TrxType const& trxTypeHint) {
+    TRI_vocbase_t& vocbase, transaction::TrxType trxTypeHint) {
   auto analyzerModificationTrx =
       createAnalyzerModificationTransaction(server(), vocbase.name());
   if (analyzerModificationTrx) {
@@ -1575,9 +1576,9 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
   }
 }
 
-Result IResearchAnalyzerFeature::bulkEmplace(
-    TRI_vocbase_t& vocbase, VPackSlice const dumpedAnalyzers,
-    transaction::Hints::TrxType const& trxTypeHint) {
+Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
+                                             VPackSlice const dumpedAnalyzers,
+                                             transaction::TrxType trxTypeHint) {
   TRI_ASSERT(dumpedAnalyzers.isArray());
   TRI_ASSERT(!dumpedAnalyzers.isEmptyArray());
   auto transaction =
@@ -1724,8 +1725,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(
 AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     std::string_view normalizedName, AnalyzerName const& name,
     AnalyzersRevision::Revision const revision,
-    transaction::Hints::TrxType const& trxTypeHint,
-    bool onlyCached) const noexcept {
+    transaction::TrxType trxTypeHint, bool onlyCached) const noexcept {
   try {
     if (!irs::IsNull(name.first)) {  // check if analyzer is static
       if (!onlyCached) {
@@ -1819,8 +1819,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
 AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     std::string_view name, TRI_vocbase_t const& activeVocbase,
-    QueryAnalyzerRevisions const& revision,
-    transaction::Hints::TrxType const& trxTypeHint,
+    QueryAnalyzerRevisions const& revision, transaction::TrxType trxTypeHint,
     bool onlyCached /*= false*/) const {
   auto const normalizedName = normalize(name, activeVocbase.name(), true);
 
@@ -1960,7 +1959,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::identity() noexcept {
 Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
     std::string_view const& database,
     AnalyzersRevision::Revision buildingRevision,
-    transaction::Hints::TrxType const& trxTypeHint) {
+    transaction::TrxType trxTypeHint) {
   if (ServerState::instance()->isCoordinator()) {
     if (!server().hasFeature<DatabaseFeature>()) {
       return {
@@ -2042,7 +2041,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
 }
 
 Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
-    std::string_view dbName, transaction::Hints::TrxType const& trxTypeHint) {
+    std::string_view dbName, transaction::TrxType trxTypeHint) {
   if (!ServerState::instance()->isCoordinator()) {
     // Single-servers will load analyzers they need in regular get call.
     // DbServer receives analyzers definitions from coordinators in ddl requests
@@ -2065,7 +2064,7 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
 }
 
 Result IResearchAnalyzerFeature::loadAnalyzers(
-    transaction::Hints::TrxType const& trxTypeHint,
+    transaction::TrxType trxTypeHint,
     std::string_view database /*= std::string_view{}*/) {
   if (!server().hasFeature<DatabaseFeature>()) {
     return {TRI_ERROR_INTERNAL,
@@ -2493,7 +2492,7 @@ void IResearchAnalyzerFeature::prepare() {
 
 Result IResearchAnalyzerFeature::removeFromCollection(
     std::string_view name, std::string_view vocbase,
-    transaction::Hints::TrxType const& trxTypeHint) {
+    transaction::TrxType trxTypeHint) {
   auto& dbFeature = server().getFeature<DatabaseFeature>();
   auto voc = dbFeature.useDatabase(vocbase);
   if (!voc) {
@@ -2533,7 +2532,7 @@ Result IResearchAnalyzerFeature::removeFromCollection(
 
 Result IResearchAnalyzerFeature::finalizeRemove(
     std::string_view name, std::string_view vocbase,
-    transaction::Hints::TrxType const& trxTypeHint) {
+    transaction::TrxType trxTypeHint) {
   TRI_IF_FAILURE("FinalizeAnalyzerRemove") { return {TRI_ERROR_DEBUG}; }
 
   try {
@@ -2557,9 +2556,9 @@ Result IResearchAnalyzerFeature::finalizeRemove(
   return {};
 }
 
-Result IResearchAnalyzerFeature::remove(
-    std::string_view name, transaction::Hints::TrxType const& trxTypeHint,
-    bool force /*= false*/) {
+Result IResearchAnalyzerFeature::remove(std::string_view name,
+                                        transaction::TrxType trxTypeHint,
+                                        bool force /*= false*/) {
   try {
     auto split = splitAnalyzerName(name);
 
@@ -2815,7 +2814,7 @@ void IResearchAnalyzerFeature::stop() {
 }
 
 Result IResearchAnalyzerFeature::storeAnalyzer(
-    AnalyzerPool& pool, transaction::Hints::TrxType const& trxTypeHint) {
+    AnalyzerPool& pool, transaction::TrxType trxTypeHint) {
   TRI_IF_FAILURE("FailStoreAnalyzer") { return {TRI_ERROR_DEBUG}; }
 
   try {
@@ -2942,8 +2941,7 @@ bool IResearchAnalyzerFeature::visit(
 
 bool IResearchAnalyzerFeature::visit(
     std::function<bool(AnalyzerPool::ptr const&)> const& visitor,
-    TRI_vocbase_t const* vocbase,
-    transaction::Hints::TrxType const& trxTypeHint) const {
+    TRI_vocbase_t const* vocbase, transaction::TrxType trxTypeHint) const {
   // static analyzer visitation
   if (!vocbase) {
     for (auto& entry : getStaticAnalyzers()) {
@@ -3004,9 +3002,8 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(std::string_view database) {
   }
 }
 
-void IResearchAnalyzerFeature::invalidate(
-    const TRI_vocbase_t& vocbase,
-    transaction::Hints::TrxType const& trxTypeHint) {
+void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase,
+                                          transaction::TrxType trxTypeHint) {
   std::string_view const database{vocbase.name()};
   size_t const databaseHash{_lastLoad.hash_ref()(database)};
 

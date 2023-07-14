@@ -165,7 +165,7 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(_vocbase),
       arangodb::aql::QueryString(::garbageCollectionQuery), _bindVars,
-      transaction::Hints::TrxType::INTERNAL);
+      transaction::TrxType::kInternal);
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -185,7 +185,7 @@ void StatisticsWorker::collectGarbage(std::string const& name,
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, name, AccessMode::Type::WRITE,
-                                  transaction::Hints::TrxType::REST);
+                                  transaction::TrxType::kREST);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -296,7 +296,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
       transaction::StandaloneContext::Create(_vocbase),
       arangodb::aql::QueryString(_clusterId.empty() ? ::lastEntryQuery
                                                     : ::filteredLastEntryQuery),
-      _bindVars, transaction::Hints::TrxType::INTERNAL);
+      _bindVars, transaction::TrxType::kInternal);
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -328,7 +328,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       arangodb::aql::QueryString(_clusterId.empty()
                                      ? ::fifteenMinuteQuery
                                      : ::filteredFifteenMinuteQuery),
-      _bindVars, transaction::Hints::TrxType::INTERNAL);
+      _bindVars, transaction::TrxType::kInternal);
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -1072,7 +1072,7 @@ void StatisticsWorker::saveSlice(VPackSlice slice,
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::WRITE,
-                                  transaction::Hints::TrxType::REST);
+                                  transaction::TrxType::kREST);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 

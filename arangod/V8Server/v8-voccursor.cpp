@@ -339,8 +339,7 @@ struct V8Cursor final {
     auto q = aql::Query::create(
         transaction::V8Context::CreateWhenRequired(*vocbase, true),
         aql::QueryString(queryString), std::move(bindVars),
-        transaction::Hints::TrxType::INTERNAL,
-        aql::QueryOptions(options.slice()));
+        transaction::TrxType::kInternal, aql::QueryOptions(options.slice()));
 
     // specify ID 0 so it uses the external V8 context
     Cursor* cc =

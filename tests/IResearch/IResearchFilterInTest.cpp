@@ -147,7 +147,7 @@ class IResearchFilterInTest
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);  // cache analyzer
+        arangodb::transaction::TrxType::kInternal);  // cache analyzer
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }
@@ -998,7 +998,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1052,7 +1052,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -1125,7 +1125,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1179,7 +1179,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -1253,7 +1253,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1307,7 +1307,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -1381,7 +1381,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1435,7 +1435,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -1509,7 +1509,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1563,7 +1563,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -1623,7 +1623,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1677,7 +1677,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4154,7 +4154,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4208,7 +4208,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4289,7 +4289,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4343,7 +4343,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4424,7 +4424,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4478,7 +4478,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4559,7 +4559,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4613,7 +4613,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4695,7 +4695,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4749,7 +4749,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4830,7 +4830,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4884,7 +4884,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
@@ -4948,7 +4948,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -5002,7 +5002,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);

@@ -128,7 +128,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 }
 
 static std::shared_ptr<VPackBuilder> QueryAllUsers(
-    ArangodServer& server, transaction::Hints::TrxType const& trxTypeHint) {
+    ArangodServer& server, transaction::TrxType trxTypeHint) {
   TRI_IF_FAILURE("QueryAllUsers") {
     // simulates the case that the _users collection is not yet available
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -150,7 +150,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*vocbase),
       arangodb::aql::QueryString(queryStr), nullptr,
-      transaction::Hints::TrxType::REST);
+      transaction::TrxType::kREST);
 
   query->queryOptions().cache = false;
   query->queryOptions().ttl = 30;
@@ -224,7 +224,7 @@ void auth::UserManager::loadFromDB() {
 
   try {
     std::shared_ptr<VPackBuilder> builder =
-        QueryAllUsers(_server, transaction::Hints::TrxType::REST);
+        QueryAllUsers(_server, transaction::TrxType::kREST);
     if (builder) {
       VPackSlice usersSlice = builder->slice();
       if (usersSlice.length() != 0) {
@@ -299,7 +299,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
                                   AccessMode::Type::WRITE,
-                                  transaction::Hints::TrxType::INTERNAL);
+                                  transaction::TrxType::kInternal);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -410,7 +410,7 @@ void auth::UserManager::createRootUser() {
 VPackBuilder auth::UserManager::allUsers() {
   // will query db directly, no need for _userCacheLock
   std::shared_ptr<VPackBuilder> users =
-      QueryAllUsers(_server, transaction::Hints::TrxType::REST);
+      QueryAllUsers(_server, transaction::TrxType::kREST);
 
   VPackBuilder result;
   {
@@ -686,7 +686,7 @@ static Result RemoveUserInternal(ArangodServer& server,
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
                                   AccessMode::Type::WRITE,
-                                  transaction::Hints::TrxType::INTERNAL);
+                                  transaction::TrxType::kInternal);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 

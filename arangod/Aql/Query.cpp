@@ -96,7 +96,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
              QueryString queryString,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
              std::shared_ptr<SharedQueryState> sharedState,
-             transaction::Hints::TrxType const& trxTypeHint)
+             transaction::TrxType trxTypeHint)
     : QueryContext(ctx->vocbase(), trxTypeHint, id),
       _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(std::move(queryString)),
@@ -113,7 +113,6 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
       _resultCode(std::nullopt),
-      _trxTypeHint(trxTypeHint),
       _contextOwnedByExterior(_transactionContext->isV8Context() &&
                               v8::Isolate::GetCurrent() != nullptr),
       _embeddedQuery(_transactionContext->isV8Context() &&
@@ -179,8 +178,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 /// method
 Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
-             Scheduler* scheduler,
-             transaction::Hints::TrxType const& trxTypeHint)
+             Scheduler* scheduler, transaction::TrxType trxTypeHint)
     : Query(0, ctx, std::move(queryString), std::move(bindParameters),
             std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server(),
@@ -253,7 +251,7 @@ void Query::destroy() {
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters,
-    transaction::Hints::TrxType const& trxTypeHint, QueryOptions options,
+    transaction::TrxType trxTypeHint, QueryOptions options,
     Scheduler* scheduler) {
   TRI_ASSERT(ctx != nullptr);
   // workaround to enable make_shared on a class with a protected constructor
@@ -261,8 +259,8 @@ std::shared_ptr<Query> Query::create(
     MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
                     QueryString queryString,
                     std::shared_ptr<velocypack::Builder> bindParameters,
-                    transaction::Hints::TrxType const& trxTypeHint,
-                    QueryOptions options, Scheduler* scheduler)
+                    transaction::TrxType trxTypeHint, QueryOptions options,
+                    Scheduler* scheduler)
         : Query{std::move(ctx),
                 std::move(queryString),
                 std::move(bindParameters),
@@ -435,7 +433,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
                                 _queryOptions.transactionOptions, _trxTypeHint,
                                 std::move(inaccessibleCollections));
 
-  if (_trxTypeHint == transaction::Hints::TrxType::AQL) {
+  if (_trxTypeHint == transaction::TrxType::kAQL) {
     _trx->state()->setResourceMonitor(_resourceMonitor);
   }
 
@@ -1027,7 +1025,7 @@ QueryResult Query::explain() {
         AqlTransaction::create(_transactionContext, _collections,
                                _queryOptions.transactionOptions, _trxTypeHint);
 
-    if (_trxTypeHint == transaction::Hints::TrxType::AQL) {
+    if (_trxTypeHint == transaction::TrxType::kAQL) {
       _trx->state()->setResourceMonitor(_resourceMonitor);
     }
 

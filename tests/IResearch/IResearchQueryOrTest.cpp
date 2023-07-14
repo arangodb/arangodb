@@ -70,8 +70,7 @@ class QueryOr : public QueryTest {
       auto collectionJson =
           VPackParser::fromJson("{ \"name\": \"collection_1\" }");
       auto logicalCollection1 = _vocbase.createCollection(
-          collectionJson->slice(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
       ASSERT_NE(nullptr, logicalCollection1);
     }
     // add collection_2
@@ -79,8 +78,7 @@ class QueryOr : public QueryTest {
       auto collectionJson =
           VPackParser::fromJson("{ \"name\": \"collection_2\" }");
       auto logicalCollection2 = _vocbase.createCollection(
-          collectionJson->slice(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
       ASSERT_NE(nullptr, logicalCollection2);
     }
   }
@@ -98,8 +96,7 @@ class QueryOr : public QueryTest {
       transaction::Methods trx(
           transaction::StandaloneContext::Create(_vocbase), kEmpty,
           {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          transaction::Options(), arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections

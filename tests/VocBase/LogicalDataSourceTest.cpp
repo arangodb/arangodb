@@ -132,7 +132,7 @@ TEST_F(LogicalDataSourceTest, test_category) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(
-        vocbase, json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL,
+        vocbase, json->slice(), arangodb::transaction::TrxType::kInternal,
         true);
 
     EXPECT_EQ(arangodb::LogicalDataSource::Category::kCollection,
@@ -159,7 +159,7 @@ TEST_F(LogicalDataSourceTest, test_construct) {
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testCollection\" }");
     arangodb::LogicalCollection instance(
-        vocbase, json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL,
+        vocbase, json->slice(), arangodb::transaction::TrxType::kInternal,
         true);
 
     EXPECT_EQ(1, instance.id().id());
@@ -188,7 +188,7 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(
-        vocbase, json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL,
+        vocbase, json->slice(), arangodb::transaction::TrxType::kInternal,
         true);
 
     EXPECT_TRUE(instance.id().isSet());

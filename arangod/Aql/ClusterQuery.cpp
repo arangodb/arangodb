@@ -48,7 +48,7 @@ using namespace arangodb::aql;
 ClusterQuery::ClusterQuery(QueryId id,
                            std::shared_ptr<transaction::Context> ctx,
                            QueryOptions options,
-                           transaction::Hints::TrxType const& trxTypeHint)
+                           transaction::TrxType trxTypeHint)
     : Query{id,
             ctx,
             {},
@@ -73,12 +73,11 @@ ClusterQuery::~ClusterQuery() {
 /// ensure that ClusterQuery objects are always created using shared_ptrs.
 std::shared_ptr<ClusterQuery> ClusterQuery::create(
     QueryId id, std::shared_ptr<transaction::Context> ctx, QueryOptions options,
-    transaction::Hints::TrxType const& trxTypeHint) {
+    transaction::TrxType trxTypeHint) {
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : ClusterQuery {
     MakeSharedQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
-                    QueryOptions options,
-                    transaction::Hints::TrxType const& trxTypeHint)
+                    QueryOptions options, transaction::TrxType trxTypeHint)
         : ClusterQuery{id, std::move(ctx), std::move(options), trxTypeHint} {}
 
     ~MakeSharedQuery() final {
@@ -143,7 +142,7 @@ void ClusterQuery::prepareClusterQuery(
   _trx = AqlTransaction::create(
       _transactionContext, _collections, _queryOptions.transactionOptions,
       this->_trxTypeHint, std::move(inaccessibleCollections));
-  if (_trxTypeHint == transaction::Hints::TrxType::AQL) {
+  if (_trxTypeHint == transaction::TrxType::kAQL) {
     _trx->state()->setResourceMonitor(_resourceMonitor);
   }
   // create the transaction object, but do not start it yet

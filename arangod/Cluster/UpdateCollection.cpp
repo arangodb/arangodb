@@ -118,8 +118,8 @@ bool UpdateCollection::first() {
         }
       }
       OperationOptions options(ExecContext::current());
-      res.reset(Collections::updateProperties(
-          *coll, props, options, transaction::Hints::TrxType::INTERNAL));
+      res.reset(Collections::updateProperties(*coll, props, options,
+                                              transaction::TrxType::kInternal));
       result(res);
 
       if (!res.ok()) {

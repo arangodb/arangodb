@@ -87,7 +87,7 @@ namespace {
 struct MGMethods final : arangodb::transaction::Methods {
   MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
             arangodb::transaction::Options const& opts)
-      : Methods(ctx, Hints::TrxType::REST, opts) {}
+      : Methods(ctx, TrxType::kREST, opts) {}
 };
 }  // namespace
 
@@ -420,7 +420,7 @@ Result Manager::beginTransaction(transaction::Hints hints,
                                  std::shared_ptr<TransactionState>& state) {
   Result res;
   try {
-    state->setTrxTypeHint(transaction::Hints::TrxType::REST);
+    state->setTrxTypeHint(transaction::TrxType::kREST);
     res = state->beginTransaction(hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {
     res.reset(ex.code(), ex.what());

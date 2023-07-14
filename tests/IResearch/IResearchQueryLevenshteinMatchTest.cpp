@@ -51,7 +51,7 @@ class QueryLevenhsteinMatch : public QueryTest {
       auto collection =
           _vocbase
               .createCollection(createJson->slice(),
-                                arangodb::transaction::Hints::TrxType::INTERNAL)
+                                arangodb::transaction::TrxType::kInternal)
               .get();
       ASSERT_NE(nullptr, collection);
     }
@@ -76,7 +76,7 @@ class QueryLevenhsteinMatch : public QueryTest {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {

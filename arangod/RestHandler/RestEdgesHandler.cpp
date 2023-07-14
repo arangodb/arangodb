@@ -123,7 +123,7 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
   }
   auto query = arangodb::aql::Query::create(
       ctx, aql::QueryString(queryString(dir)), std::move(bindParameters),
-      transaction::Hints::TrxType::REST, std::move(options));
+      transaction::TrxType::kREST, std::move(options));
   return query->executeSync();
 }
 }  // namespace

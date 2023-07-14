@@ -446,7 +446,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -492,7 +492,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     ;
 
@@ -527,7 +527,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -573,7 +573,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -605,7 +605,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -651,7 +651,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -705,7 +705,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -751,7 +751,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -805,7 +805,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -851,7 +851,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -904,7 +904,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -950,7 +950,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -984,7 +984,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1030,7 +1030,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1064,7 +1064,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1105,7 +1105,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1209,7 +1209,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1250,7 +1250,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1339,7 +1339,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         arangodb::aql::QueryString(queryString), bindVars,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1380,7 +1380,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);

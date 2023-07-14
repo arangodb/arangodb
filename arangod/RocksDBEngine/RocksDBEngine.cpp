@@ -3195,7 +3195,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       TRI_ASSERT(!it.get("deleted").isTrue());
 
       auto collection =
-          vocbase->createCollectionObject(it, transaction::Hints::TrxType::REST,
+          vocbase->createCollectionObject(it, transaction::TrxType::kREST,
                                           /*isAStub*/ false);
       TRI_ASSERT(collection != nullptr);
 

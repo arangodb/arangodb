@@ -125,8 +125,7 @@ arangodb::Result arangodb::maintenance::collectionCount(
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
-      collectionName, AccessMode::Type::READ,
-      transaction::Hints::TrxType::INTERNAL);
+      collectionName, AccessMode::Type::READ, transaction::TrxType::kInternal);
 
   Result res = trx.begin();
   if (res.fail()) {

@@ -141,9 +141,10 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // QueryStreamCursor class
 // .............................................................................
 
-QueryStreamCursor::QueryStreamCursor(
-    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
-    bool isRetriable, transaction::Hints::TrxType const& trxTypeHint)
+QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
+                                     size_t batchSize, double ttl,
+                                     bool isRetriable,
+                                     transaction::TrxType trxTypeHint)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false,
              isRetriable),
       _query(std::move(q)),
@@ -533,7 +534,7 @@ ExecutionState QueryStreamCursor::finalization() {
 
 void QueryStreamCursor::cleanupStateCallback() {
   TRI_ASSERT(_query);
-  transaction::Methods trx(_ctx, transaction::Hints::TrxType::INTERNAL);
+  transaction::Methods trx(_ctx, transaction::TrxType::kInternal);
   if (_stateChangeCb && trx.status() == transaction::Status::RUNNING) {
     trx.removeStatusChangeCallback(&_stateChangeCb);
     _stateChangeCb = nullptr;

@@ -129,8 +129,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
         ci.uniqid() +
         1);  // +1 because LogicalView creation will generate a new ID
     auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
@@ -174,8 +173,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
         ci.uniqid() +
         1);  // +1 because LogicalView creation will generate a new ID
     auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -225,7 +223,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalCollection = vocbase->createCollection(
-      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
   ASSERT_FALSE(!logicalCollection);
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
@@ -276,7 +274,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
   createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
 
   auto logicalCollection = vocbase->createCollection(
-      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
   ASSERT_FALSE(!logicalCollection);
   EXPECT_TRUE(
       (ci.createViewCoordinator(vocbase->name(), "42", viewCreateJson->slice())
@@ -309,7 +307,7 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": "
       "[ 3, 4, 5 ] }");
   auto logicalCollection = vocbase->createCollection(
-      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
   ASSERT_FALSE(!logicalCollection);
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
@@ -400,8 +398,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -452,8 +449,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase0");
     auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_NE(nullptr, logicalCollection);
     arangodb::LogicalView::ptr logicalview;
     ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
@@ -476,7 +472,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links;
@@ -501,8 +497,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase1");
     auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_NE(nullptr, logicalCollection);
     arangodb::LogicalView::ptr logicalview;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -530,7 +525,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
           arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
           std::vector<std::string>{logicalCollection->name()}, EMPTY,
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       for (size_t i = 0; i < 12; ++i) {
@@ -547,7 +542,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links;
@@ -574,8 +569,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     std::vector<std::string> collections{logicalCollection->name()};
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", createJson->slice())
@@ -596,7 +590,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
           collections, EMPTY, arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       arangodb::OperationOptions options;
@@ -614,8 +608,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 
     arangodb::transaction::Methods trx0(
         arangodb::transaction::StandaloneContext::Create(*vocbase), collections,
-        EMPTY, EMPTY, trxOptions,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        EMPTY, EMPTY, trxOptions, arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(trx0.begin().ok());
     auto const cid0 = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links01, links02, links03;
@@ -645,7 +638,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
           collections, EMPTY, arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       arangodb::OperationOptions options;
@@ -665,8 +658,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     // new reader sees new data
     arangodb::transaction::Methods trx1(
         arangodb::transaction::StandaloneContext::Create(*vocbase), collections,
-        EMPTY, EMPTY, trxOptions,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        EMPTY, EMPTY, trxOptions, arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(trx1.begin().ok());
     auto const cid1 = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links1;
@@ -695,8 +687,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", createJson->slice())
              .ok()));
@@ -725,7 +716,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         arangodb::transaction::Methods trx(
             arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
             std::vector<std::string>{logicalCollection->name()}, EMPTY, options,
-            arangodb::transaction::Hints::TrxType::INTERNAL);
+            arangodb::transaction::TrxType::kInternal);
 
         EXPECT_TRUE(trx.begin().ok());
         EXPECT_TRUE((trx.insert(logicalCollection->name(), doc->slice(),
@@ -740,7 +731,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
             arangodb::transaction::StandaloneContext::Create(*vocbase),
             std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
             arangodb::transaction::Options{},
-            arangodb::transaction::Hints::TrxType::INTERNAL);
+            arangodb::transaction::TrxType::kInternal);
         EXPECT_TRUE(trx.begin().ok());
         auto const cid = logicalCollection->id();
         arangodb::iresearch::ViewSnapshot::Links links;
@@ -770,8 +761,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -829,8 +819,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -1044,7 +1033,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
   auto logicalCollection = vocbase->createCollection(
-      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
   ASSERT_NE(nullptr, logicalCollection);
   arangodb::LogicalView::ptr logicalview;
   ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -1071,7 +1060,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
         std::vector<std::string>{logicalCollection->name()}, EMPTY,
         arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
         (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -1084,7 +1073,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links;
@@ -1105,7 +1094,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links1, links2;
@@ -1133,7 +1122,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY, opts,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links;
@@ -1154,7 +1143,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY, opts,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(trx.begin().ok());
     auto const cid = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links1, links2, links3, links4;
@@ -1200,8 +1189,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     EXPECT_NE(nullptr, logicalCollection);
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice())
@@ -1343,8 +1331,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     EXPECT_NE(nullptr, logicalCollection);
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice())
@@ -1489,8 +1476,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     EXPECT_NE(nullptr, logicalCollection);
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice())
@@ -1642,12 +1628,10 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection0 = vocbase->createCollection(
-        collection0Json->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collection0Json->slice(), arangodb::transaction::TrxType::kInternal);
     EXPECT_NE(nullptr, logicalCollection0);
     auto logicalCollection1 = vocbase->createCollection(
-        collection1Json->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collection1Json->slice(), arangodb::transaction::TrxType::kInternal);
     EXPECT_NE(nullptr, logicalCollection1);
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice())
@@ -1818,8 +1802,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(
-        collectionJson->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()

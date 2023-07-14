@@ -481,7 +481,7 @@ TEST(ProjectionsTest, toVelocyPackFromIndexSimple) {
   auto& vocbase = server.getSystemDatabase();
   auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
   auto logicalCollection = vocbase.createCollection(
-      collectionJson->slice(), transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), transaction::TrxType::kInternal);
 
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
@@ -530,7 +530,7 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex1) {
   auto& vocbase = server.getSystemDatabase();
   auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
   auto logicalCollection = vocbase.createCollection(
-      collectionJson->slice(), transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), transaction::TrxType::kInternal);
 
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
@@ -574,7 +574,7 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex2) {
   auto& vocbase = server.getSystemDatabase();
   auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
   auto logicalCollection = vocbase.createCollection(
-      collectionJson->slice(), transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), transaction::TrxType::kInternal);
 
   bool created;
   auto indexJson = velocypack::Parser::fromJson(

@@ -3354,7 +3354,7 @@ TEST_F(IResearchViewNodeTest, collections) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
     collection0 = vocbase.createCollection(
-        createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+        createJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_NE(nullptr, collection0);
   }
 
@@ -3363,7 +3363,7 @@ TEST_F(IResearchViewNodeTest, collections) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection1\", \"id\" : \"4242\"  }");
     collection1 = vocbase.createCollection(
-        createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+        createJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_NE(nullptr, collection1);
   }
 
@@ -3373,7 +3373,7 @@ TEST_F(IResearchViewNodeTest, collections) {
         "{ \"name\": \"testCollection2\" , \"id\" : \"424242\" }");
     ASSERT_NE(nullptr, vocbase.createCollection(
                            createJson->slice(),
-                           arangodb::transaction::Hints::TrxType::INTERNAL));
+                           arangodb::transaction::TrxType::kInternal));
   }
 
   // create view
@@ -3449,7 +3449,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
     collection0 = vocbase.createCollection(
-        createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+        createJson->slice(), arangodb::transaction::TrxType::kInternal);
     ASSERT_NE(nullptr, collection0);
   }
 
@@ -3470,7 +3470,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
         {collection0->name()}, EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(trx.begin().ok());
 
     auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -3535,7 +3535,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     }
 
     arangodb::transaction::Methods trx(
-        ctx, arangodb::transaction::Hints::TrxType::INTERNAL);
+        ctx, arangodb::transaction::TrxType::kInternal);
     ASSERT_TRUE(trx.state());
 
     // start transaction (put snapshot into)
@@ -3717,7 +3717,7 @@ class IResearchViewVolatitlityTest
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
       collection0 = vocbase->createCollection(
-          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+          createJson->slice(), arangodb::transaction::TrxType::kInternal);
       EXPECT_NE(nullptr, collection0);
     }
     std::shared_ptr<arangodb::LogicalCollection> collection1;
@@ -3725,7 +3725,7 @@ class IResearchViewVolatitlityTest
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection1\", \"id\" : \"43\" }");
       collection1 = vocbase->createCollection(
-          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+          createJson->slice(), arangodb::transaction::TrxType::kInternal);
       EXPECT_NE(nullptr, collection1);
     }
     arangodb::LogicalView::ptr logicalView0;
@@ -3763,7 +3763,7 @@ class IResearchViewVolatitlityTest
         EMPTY_VECTOR,
         std::vector<std::string>{collection0->name(), collection1->name()},
         EMPTY_VECTOR, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     EXPECT_TRUE(trx->begin().ok());
     // in collection only one alive doc
@@ -4136,7 +4136,7 @@ class IResearchViewBlockTest
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
       collection0 = vocbase->createCollection(
-          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+          createJson->slice(), arangodb::transaction::TrxType::kInternal);
       EXPECT_NE(nullptr, collection0);
     }
     auto createJson = arangodb::velocypack::Parser::fromJson(
@@ -4154,7 +4154,7 @@ class IResearchViewBlockTest
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         EMPTY_VECTOR, std::vector<std::string>{collection0->name()},
         EMPTY_VECTOR, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     EXPECT_TRUE(trx->begin().ok());
     // Fill dummy data in index only (to simulate some documents where already

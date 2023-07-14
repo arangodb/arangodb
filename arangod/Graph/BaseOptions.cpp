@@ -266,7 +266,7 @@ std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
 }
 
 BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
-    : _trx(query.newTrxContext(), transaction::Hints::TrxType::INTERNAL),
+    : _trx(query.newTrxContext(), transaction::TrxType::kInternal),
       _expressionCtx(_trx, query, _aqlFunctionsInternalCache),
       _query(query),
       _tmpVar(nullptr),
@@ -277,7 +277,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _edgeProjections{} {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
-    : _trx(other._query.newTrxContext(), transaction::Hints::TrxType::INTERNAL),
+    : _trx(other._query.newTrxContext(), transaction::TrxType::kInternal),
       _expressionCtx(_trx, other._query, _aqlFunctionsInternalCache),
       _query(other._query),
       _tmpVar(nullptr),

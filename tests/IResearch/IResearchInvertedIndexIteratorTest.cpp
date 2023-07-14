@@ -127,8 +127,7 @@ class IResearchInvertedIndexIteratorTestBase
     auto createCollection = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\" }");
     _collection = vocbase().createCollection(
-        createCollection->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        createCollection->slice(), arangodb::transaction::TrxType::kInternal);
     EXPECT_TRUE(_collection);
     arangodb::IndexId id(1);
     auto storedFields = Provider::storedFields();
@@ -151,7 +150,7 @@ class IResearchInvertedIndexIteratorTestBase
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
           collections, EMPTY, arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       trx.begin();
       for (size_t i = 0; i < _docs.size() / 2; ++i) {
         // MSVC fails to compile if EXPECT_TRUE  is called directly
@@ -172,7 +171,7 @@ class IResearchInvertedIndexIteratorTestBase
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
         collections, EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     trx.begin();
     while (doc != _docs.end()) {
       // MSVC fails to compile if EXPECT_TRUE  is called directly
@@ -211,7 +210,7 @@ class IResearchInvertedIndexIteratorTestBase
     auto query = arangodb::aql::Query::create(
         ctx,
         arangodb::aql::QueryString(queryString.data(), queryString.length()),
-        bindVars, arangodb::transaction::Hints::TrxType::INTERNAL);
+        bindVars, arangodb::transaction::TrxType::kInternal);
     ASSERT_NE(query.get(), nullptr);
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -251,7 +250,7 @@ class IResearchInvertedIndexIteratorTestBase
     opts.forLateMaterialization = forLateMaterialization;
     arangodb::SingleCollectionTransaction trx(
         ctx, collection(), arangodb::AccessMode::Type::READ,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
     auto iterator = index().iteratorForCondition(monitor, &collection(), &trx,
                                                  filterNode->getMember(0), ref,
                                                  opts, mutableConditionIdx);

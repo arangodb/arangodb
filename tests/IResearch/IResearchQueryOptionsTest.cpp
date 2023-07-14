@@ -58,8 +58,7 @@ class QueryOptions : public QueryTest {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_1\" }");
       auto logicalCollection1 = _vocbase.createCollection(
-          collectionJson->slice(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
       ASSERT_NE(nullptr, logicalCollection1);
     }
 
@@ -68,8 +67,7 @@ class QueryOptions : public QueryTest {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_2\" }");
       auto logicalCollection2 = _vocbase.createCollection(
-          collectionJson->slice(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
       ASSERT_NE(nullptr, logicalCollection2);
     }
 
@@ -78,8 +76,7 @@ class QueryOptions : public QueryTest {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_3\" }");
       auto logicalCollection3 = _vocbase.createCollection(
-          collectionJson->slice(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
       ASSERT_NE(nullptr, logicalCollection3);
     }
   }
@@ -98,7 +95,7 @@ class QueryOptions : public QueryTest {
           arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
           {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -157,7 +154,7 @@ class QueryOptions : public QueryTest {
           arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
           {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -204,7 +201,7 @@ class QueryOptions : public QueryTest {
           arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
           {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -1064,7 +1061,7 @@ class QueryOptions : public QueryTest {
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           arangodb::aql::QueryString(queryString), nullptr,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       auto const res = query->explain();
       ASSERT_TRUE(res.data);
       auto const explanation = res.data->slice();
@@ -1107,7 +1104,7 @@ class QueryOptions : public QueryTest {
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           arangodb::aql::QueryString(queryString), nullptr,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       auto const res = query->explain();
       ASSERT_TRUE(res.data);
       auto const explanation = res.data->slice();

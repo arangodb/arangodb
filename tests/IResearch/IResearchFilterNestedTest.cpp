@@ -101,7 +101,7 @@ class IResearchFilterNestedTest
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice(),
-        arangodb::transaction::Hints::TrxType::INTERNAL);  // cache analyzer
+        arangodb::transaction::TrxType::kInternal);  // cache analyzer
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }

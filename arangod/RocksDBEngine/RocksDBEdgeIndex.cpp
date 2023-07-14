@@ -969,7 +969,7 @@ Result RocksDBEdgeIndex::warmup() {
 
   auto ctx = transaction::StandaloneContext::Create(_collection.vocbase());
   SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ,
-                                  transaction::Hints::TrxType::INTERNAL);
+                                  transaction::TrxType::kInternal);
   Result res = trx.begin();
 
   if (res.fail()) {

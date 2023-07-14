@@ -45,6 +45,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 
 RocksDBTransactionCollection::RocksDBTransactionCollection(
@@ -368,13 +370,12 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
     // acquired the lock ourselves
     res.reset(TRI_ERROR_LOCKED);
   } else if (res.is(TRI_ERROR_LOCK_TIMEOUT) && timeout >= 0.1) {
-    char const* actor = _transaction->actorName();
-    TRI_ASSERT(actor != nullptr);
-    std::string message = "timed out after " + std::to_string(timeout) +
-                          " s waiting for " + AccessMode::typeString(type) +
-                          "-lock on collection " +
-                          _transaction->vocbase().name() + "/" +
-                          _collection->name() + " on " + actor;
+    auto actor = _transaction->actorName();
+    std::string message =
+        absl::StrCat("timed out after ", timeout, " s waiting for ",
+                     AccessMode::typeString(type), "-lock on collection ",
+                     _transaction->vocbase().name(), "/", _collection->name(),
+                     " on ", actor);
     LOG_TOPIC("4512c", WARN, Logger::QUERIES) << message;
     res.reset(TRI_ERROR_LOCK_TIMEOUT, std::move(message));
 

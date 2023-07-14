@@ -231,7 +231,7 @@ Result dropLink<IResearchViewCoordinator>(LogicalCollection& collection,
   builder.close();
 
   return methods::Indexes::drop(collection, builder.slice(),
-                                transaction::Hints::TrxType::INTERNAL);
+                                transaction::TrxType::kInternal);
 }
 
 struct State {

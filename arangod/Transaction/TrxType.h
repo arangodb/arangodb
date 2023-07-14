@@ -18,33 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/Result.h"
-#include "Transaction/TrxType.h"
+#include <cstdint>
 
-#include <memory>
-#include <string_view>
+namespace arangodb::transaction {
 
-struct TRI_vocbase_t;
-
-namespace arangodb::aql {
-class QueryContext;
-
-class StandaloneCalculation {
- public:
-  static std::unique_ptr<QueryContext> buildQueryContext(
-      TRI_vocbase_t& vocbase, transaction::TrxType trxTypeHint);
-
-  static arangodb::Result validateQuery(TRI_vocbase_t& vocbase,
-                                        std::string_view queryString,
-                                        std::string_view parameterName,
-                                        std::string_view errorContext,
-                                        transaction::TrxType trxTypeHint,
-                                        bool isComputedValue);
+// type of transaction
+enum class TrxType : std::uint8_t {
+  // initiated by user via REST call/JavaScript console/Foxx action
+  kREST = 0,
+  // initiated by user via top-level AQL query
+  kAQL = 1,
+  // internal operation (statistics etc.)
+  kInternal = 2,
 };
 
-}  // namespace arangodb::aql
+}  // namespace arangodb::transaction

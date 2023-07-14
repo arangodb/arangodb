@@ -153,7 +153,7 @@ void RestCursorHandler::cancel() {
 /// return If true, we need to continue processing,
 ///        If false we are done (error or stream)
 RestStatus RestCursorHandler::registerQueryOrCursor(
-    VPackSlice const& slice, transaction::Hints::TrxType const& trxTypeHint) {
+    VPackSlice const& slice, transaction::TrxType trxTypeHint) {
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {
@@ -640,7 +640,7 @@ RestStatus RestCursorHandler::createQueryCursor() {
   }
 
   TRI_ASSERT(_query == nullptr);
-  return registerQueryOrCursor(body, transaction::Hints::TrxType::AQL);
+  return registerQueryOrCursor(body, transaction::TrxType::kAQL);
 }
 
 /// @brief shows the batch given by <batch-id> if it's the last cached batch

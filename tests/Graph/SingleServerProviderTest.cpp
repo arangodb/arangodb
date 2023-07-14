@@ -91,7 +91,7 @@ class SingleServerProviderTest : public ::testing::Test {
     // We now have collections "v" and "e"
     query = singleServer->getQuery("RETURN 1", {"v", "e"});
     _trx = std::make_unique<arangodb::transaction::Methods>(
-        query->newTrxContext(), transaction::Hints::TrxType::INTERNAL);
+        query->newTrxContext(), transaction::TrxType::kInternal);
 
     auto edgeIndexHandle = singleServer->getEdgeIndexHandle("e");
     _tmpVar = singleServer->generateTempVar(query.get());

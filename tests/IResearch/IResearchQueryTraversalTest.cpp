@@ -48,7 +48,7 @@ class QueryTraversal : public QueryTest {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection0\" }");
       auto collection = _vocbase.createCollection(
-          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+          createJson->slice(), arangodb::transaction::TrxType::kInternal);
       ASSERT_NE(nullptr, collection);
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -80,7 +80,7 @@ class QueryTraversal : public QueryTest {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -96,7 +96,7 @@ class QueryTraversal : public QueryTest {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection1\" }");
       auto collection = _vocbase.createCollection(
-          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+          createJson->slice(), arangodb::transaction::TrxType::kInternal);
       ASSERT_NE(nullptr, collection);
 
       std::filesystem::path resource;
@@ -113,7 +113,7 @@ class QueryTraversal : public QueryTest {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -129,7 +129,7 @@ class QueryTraversal : public QueryTest {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"edges\", \"type\": 3 }");
       auto collection = _vocbase.createCollection(
-          createJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+          createJson->slice(), arangodb::transaction::TrxType::kInternal);
       ASSERT_NE(nullptr, collection);
 
       auto createIndexJson =
@@ -142,7 +142,7 @@ class QueryTraversal : public QueryTest {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{

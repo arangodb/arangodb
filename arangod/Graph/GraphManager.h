@@ -46,7 +46,7 @@ namespace graph {
 class GraphManager {
  private:
   TRI_vocbase_t& _vocbase;
-  transaction::Hints::TrxType _trxTypeHint;
+  transaction::TrxType _trxTypeHint;
 
   std::shared_ptr<transaction::Context> ctx() const;
 
@@ -58,7 +58,7 @@ class GraphManager {
 
  public:
   explicit GraphManager(TRI_vocbase_t& vocbase,
-                        transaction::Hints::TrxType const& trxTypeHint)
+                        transaction::TrxType trxTypeHint)
       : _vocbase(vocbase), _trxTypeHint(trxTypeHint) {}
 
   Result readGraphs(velocypack::Builder& builder) const;

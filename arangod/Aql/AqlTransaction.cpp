@@ -40,7 +40,7 @@ using namespace arangodb::aql;
 std::unique_ptr<AqlTransaction> AqlTransaction::create(
     std::shared_ptr<transaction::Context> transactionContext,
     aql::Collections const& collections, transaction::Options const& options,
-    transaction::Hints::TrxType const& trxTypeHint,
+    transaction::TrxType trxTypeHint,
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (!inaccessibleCollections.empty()) {
@@ -55,8 +55,7 @@ std::unique_ptr<AqlTransaction> AqlTransaction::create(
 
 AqlTransaction::AqlTransaction(
     std::shared_ptr<transaction::Context> transactionContext,
-    transaction::Options const& options,
-    transaction::Hints::TrxType const& trxTypeHint)
+    transaction::Options const& options, transaction::TrxType trxTypeHint)
     : transaction::Methods(std::move(transactionContext), trxTypeHint,
                            options) {
   if (options.isIntermediateCommitEnabled()) {
@@ -68,7 +67,7 @@ AqlTransaction::AqlTransaction(
 AqlTransaction::AqlTransaction(
     std::shared_ptr<transaction::Context> transactionContext,
     aql::Collections const& collections, transaction::Options const& options,
-    transaction::Hints::TrxType const& trxTypeHint)
+    transaction::TrxType trxTypeHint)
     : transaction::Methods(std::move(transactionContext), trxTypeHint,
                            options) {
   TRI_ASSERT(state() != nullptr);

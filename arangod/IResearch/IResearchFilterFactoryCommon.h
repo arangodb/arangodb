@@ -317,7 +317,7 @@ inline Result getAnalyzerByName(FieldMeta::Analyzer& out,
 
   analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
                                  ctx.trx->state()->analyzersRevision(),
-                                 transaction::Hints::TrxType::INTERNAL);
+                                 transaction::TrxType::kInternal);
   if (!analyzer) {
     return {TRI_ERROR_BAD_PARAMETER,
             absl::StrCat("'", funcName,

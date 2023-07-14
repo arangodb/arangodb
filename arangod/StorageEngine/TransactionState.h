@@ -35,11 +35,14 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
+#include "Transaction/TrxType.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
+#include <cstdint>
+#include <string>
 #include <string_view>
 #include <variant>
 
@@ -137,25 +140,29 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// - follower
   /// - coordinator
   /// - single
-  [[nodiscard]] char const* actorName() const noexcept;
+  [[nodiscard]] std::string_view actorName() const noexcept;
 
   /// @brief return a reference to the global transaction statistics/counters
   TransactionStatistics& statistics() const noexcept;
 
-  [[nodiscard]] double lockTimeout() const { return _options.lockTimeout; }
-  void lockTimeout(double value) {
+  [[nodiscard]] double lockTimeout() const noexcept {
+    return _options.lockTimeout;
+  }
+  void lockTimeout(double value) noexcept {
     if (value > 0.0) {
       _options.lockTimeout = value;
     }
   }
 
-  [[nodiscard]] bool waitForSync() const { return _options.waitForSync; }
-  void waitForSync(bool value) { _options.waitForSync = value; }
+  [[nodiscard]] bool waitForSync() const noexcept {
+    return _options.waitForSync;
+  }
+  void waitForSync(bool value) noexcept { _options.waitForSync = value; }
 
-  [[nodiscard]] bool allowImplicitCollectionsForRead() const {
+  [[nodiscard]] bool allowImplicitCollectionsForRead() const noexcept {
     return _options.allowImplicitCollectionsForRead;
   }
-  void allowImplicitCollectionsForRead(bool value) {
+  void allowImplicitCollectionsForRead(bool value) noexcept {
     _options.allowImplicitCollectionsForRead = value;
   }
 
@@ -187,10 +194,12 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   }
 
   /// @brief return the number of collections in the transaction
-  [[nodiscard]] size_t numCollections() const { return _collections.size(); }
+  [[nodiscard]] size_t numCollections() const noexcept {
+    return _collections.size();
+  }
 
   /// @brief whether or not a transaction consists of a single operation
-  [[nodiscard]] bool isSingleOperation() const {
+  [[nodiscard]] bool isSingleOperation() const noexcept {
     return hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
@@ -198,11 +207,11 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void updateStatus(transaction::Status status) noexcept;
 
   /// @brief whether or not a specific hint is set for the transaction
-  [[nodiscard]] bool hasHint(transaction::Hints::Hint hint) const {
+  [[nodiscard]] bool hasHint(transaction::Hints::Hint hint) const noexcept {
     return _hints.has(hint);
   }
 
-  [[nodiscard]] transaction::Hints::TrxType const& getTrxTypeHint() const {
+  [[nodiscard]] transaction::TrxType getTrxTypeHint() const noexcept {
     return _trxTypeHint;
   }
 
@@ -280,7 +289,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   }
 
   /// @brief whether or not a transaction is a follower transaction
-  [[nodiscard]] bool isFollowerTransaction() const {
+  [[nodiscard]] bool isFollowerTransaction() const noexcept {
     return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
@@ -347,7 +356,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void acceptAnalyzersRevision(
       QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
-  void setTrxTypeHint(transaction::Hints::TrxType const& trxTypeHint) {
+  void setTrxTypeHint(transaction::TrxType trxTypeHint) {
     _trxTypeHint = trxTypeHint;
   }
 
@@ -416,8 +425,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
 
-  transaction::Hints::TrxType _trxTypeHint =
-      transaction::Hints::TrxType::INTERNAL;
+  transaction::TrxType _trxTypeHint = transaction::TrxType::kInternal;
 
   ServerState::RoleEnum const _serverRole;  /// role of the server
 

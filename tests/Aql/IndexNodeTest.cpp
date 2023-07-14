@@ -73,7 +73,7 @@ arangodb::aql::QueryResult executeQuery(
     std::string const& optionsString = "{}") {
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
-      arangodb::transaction::Hints::TrxType::INTERNAL,
+      arangodb::transaction::TrxType::kInternal,
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -95,7 +95,7 @@ TEST_F(IndexNodeTest, objectQuery) {
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
   auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"obj.a\", \"obj.b\", \"obj.c\"]}");
@@ -108,7 +108,7 @@ TEST_F(IndexNodeTest, objectQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::Hints::TrxType::INTERNAL);
+      arangodb::transaction::TrxType::kInternal);
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -176,7 +176,7 @@ TEST_F(IndexNodeTest, expansionQuery) {
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
   auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
@@ -190,7 +190,7 @@ TEST_F(IndexNodeTest, expansionQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::Hints::TrxType::INTERNAL);
+      arangodb::transaction::TrxType::kInternal);
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -231,7 +231,7 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
   auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
@@ -245,7 +245,7 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::Hints::TrxType::INTERNAL);
+      arangodb::transaction::TrxType::kInternal);
 
   EXPECT_TRUE(trx.begin().ok());
 
@@ -275,7 +275,7 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
   auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags[*]\"]}");
@@ -288,7 +288,7 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::Hints::TrxType::INTERNAL);
+      arangodb::transaction::TrxType::kInternal);
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -336,7 +336,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
   auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
   ASSERT_FALSE(!collection);
   // create an index node
   auto indexJson = arangodb::velocypack::Parser::fromJson(
@@ -524,7 +524,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       arangodb::aql::QueryString(
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
-      nullptr, arangodb::transaction::Hints::TrxType::INTERNAL);
+      nullptr, arangodb::transaction::TrxType::kInternal);
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   {
@@ -584,7 +584,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
             std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
         auto queryClone = arangodb::aql::Query::create(
             ctx, arangodb::aql::QueryString(std::string_view("RETURN 1")),
-            nullptr, arangodb::transaction::Hints::TrxType::INTERNAL);
+            nullptr, arangodb::transaction::TrxType::kInternal);
         queryClone->prepareQuery(
             arangodb::aql::SerializationFormat::SHADOWROWS);
         indNode.invalidateVarUsage();
@@ -619,7 +619,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
   auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
   ASSERT_FALSE(!collection);
 
   auto ctx =
@@ -629,7 +629,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       arangodb::aql::QueryString(
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
-      nullptr, arangodb::transaction::Hints::TrxType::INTERNAL);
+      nullptr, arangodb::transaction::TrxType::kInternal);
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   auto vars = query->plan()->getAst()->variables();

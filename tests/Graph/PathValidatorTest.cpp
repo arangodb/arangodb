@@ -96,7 +96,7 @@ class PathValidatorTest : public ::testing::Test {
 
   // Expression Parts
   arangodb::transaction::Methods _trx{_query->newTrxContext(),
-                                      transaction::Hints::TrxType::INTERNAL};
+                                      transaction::TrxType::kInternal};
   aql::Ast* _ast{_query->ast()};
   aql::Variable _tmpVar{"tmp", 0, false};
   aql::AstNode* _varNode{::InitializeReference(*_ast, _tmpVar)};

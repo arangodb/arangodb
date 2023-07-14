@@ -322,7 +322,7 @@ void RestQueryHandler::parseQuery() {
 
   auto query = Query::create(transaction::StandaloneContext::Create(_vocbase),
                              QueryString(queryString), nullptr,
-                             transaction::Hints::TrxType::AQL);
+                             transaction::TrxType::kAQL);
   auto parseResult = query->parse();
 
   if (parseResult.result.fail()) {

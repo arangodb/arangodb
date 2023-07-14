@@ -49,19 +49,19 @@ class AqlTransaction : public transaction::Methods {
   static std::unique_ptr<AqlTransaction> create(
       std::shared_ptr<transaction::Context> transactionContext,
       aql::Collections const& collections, transaction::Options const& options,
-      transaction::Hints::TrxType const& trxTypeHint,
+      transaction::TrxType trxTypeHint,
       std::unordered_set<std::string> inaccessibleCollections =
           std::unordered_set<std::string>());
 
   AqlTransaction(std::shared_ptr<transaction::Context> transactionContext,
                  transaction::Options const& options,
-                 transaction::Hints::TrxType const& trxTypeHint);
+                 transaction::TrxType trxTypeHint);
 
   /// protected so we can create different subclasses
   AqlTransaction(std::shared_ptr<transaction::Context> transactionContext,
                  aql::Collections const& collections,
                  transaction::Options const& options,
-                 transaction::Hints::TrxType const& trxTypeHint);
+                 transaction::TrxType trxTypeHint);
 
  protected:
   /// @brief add a collection to the transaction

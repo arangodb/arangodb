@@ -130,7 +130,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
     TRI_ASSERT(_vocbase != nullptr);
     auto ctx = transaction::StandaloneContext::Create(*_vocbase);
     SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE,
-                                    transaction::Hints::TrxType::INTERNAL);
+                                    transaction::TrxType::kInternal);
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -606,7 +606,7 @@ void Constituent::run() {
     auto query = arangodb::aql::Query::create(
         transaction::StandaloneContext::Create(*_vocbase),
         arangodb::aql::QueryString(aql), nullptr,
-        transaction::Hints::TrxType::INTERNAL);
+        transaction::TrxType::kInternal);
 
     aql::QueryResult queryResult = query->executeSync();
 

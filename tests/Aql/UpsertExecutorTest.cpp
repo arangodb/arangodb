@@ -49,8 +49,8 @@ class UpsertExecutorTest : public ::testing::TestWithParam<UpsertType> {
   void SetUp() override {
     SCOPED_TRACE("Setup");
     auto info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
-    auto collection = vocbase.createCollection(
-        info->slice(), transaction::Hints::TrxType::INTERNAL);
+    auto collection = vocbase.createCollection(info->slice(),
+                                               transaction::TrxType::kInternal);
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
     // Insert Documents
     std::string insertQuery =
@@ -355,8 +355,8 @@ class UpsertExecutorIntegrationTest
     ExecutionBlock::setDefaultBatchSize(100);
 
     auto info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
-    auto collection = vocbase.createCollection(
-        info->slice(), transaction::Hints::TrxType::INTERNAL);
+    auto collection = vocbase.createCollection(info->slice(),
+                                               transaction::TrxType::kInternal);
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
     // Insert Documents
     std::string insertQuery =

@@ -68,8 +68,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
       auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
                                                   collectionName1 + "\"}");
       logicalCollection1 = vocbase().createCollection(
-          collectionJson->slice(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
       EXPECT_NE(nullptr, logicalCollection1);
     }
 
@@ -79,8 +78,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
       auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
                                                   collectionName2 + "\"}");
       logicalCollection2 = vocbase().createCollection(
-          collectionJson->slice(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
       EXPECT_NE(nullptr, logicalCollection2);
     }
     // create view
@@ -110,7 +108,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
           arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
           {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -173,7 +171,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
           arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
           {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
           arangodb::transaction::Options(),
-          arangodb::transaction::Hints::TrxType::INTERNAL);
+          arangodb::transaction::TrxType::kInternal);
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -298,7 +296,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(vocbase()),
         arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::Hints::TrxType::INTERNAL);
+        arangodb::transaction::TrxType::kInternal);
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase(), queryString, nullptr,
@@ -524,7 +522,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase()),
       arangodb::aql::QueryString(queryString), nullptr,
-      arangodb::transaction::Hints::TrxType::INTERNAL);
+      arangodb::transaction::TrxType::kInternal);
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   ASSERT_TRUE(query->ast());
   auto plan =
@@ -547,7 +545,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY, EMPTY,
       EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::Hints::TrxType::INTERNAL);
+      arangodb::transaction::TrxType::kInternal);
   ASSERT_TRUE(trx.state());
   auto snapshot =
       makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -610,7 +608,7 @@ TEST_F(IResearchViewCountApproximateTest,
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase()),
       arangodb::aql::QueryString(queryString), nullptr,
-      arangodb::transaction::Hints::TrxType::INTERNAL);
+      arangodb::transaction::TrxType::kInternal);
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   ASSERT_TRUE(query->ast());
   auto plan =
@@ -633,7 +631,7 @@ TEST_F(IResearchViewCountApproximateTest,
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY, EMPTY,
       EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::Hints::TrxType::INTERNAL);
+      arangodb::transaction::TrxType::kInternal);
   auto snapshot =
       makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
                        _view->getLinks(nullptr), _view.get(), _view->name());
@@ -697,7 +695,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase()),
       arangodb::aql::QueryString(queryString), nullptr,
-      arangodb::transaction::Hints::TrxType::INTERNAL);
+      arangodb::transaction::TrxType::kInternal);
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   ASSERT_TRUE(query->ast());
   auto plan =
@@ -720,7 +718,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY, EMPTY,
       EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::Hints::TrxType::INTERNAL);
+      arangodb::transaction::TrxType::kInternal);
   auto snapshot =
       makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
                        _view->getLinks(nullptr), _view.get(), _view->name());

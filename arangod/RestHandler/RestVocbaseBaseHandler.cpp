@@ -584,7 +584,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     }
     auto tmp = std::make_unique<SingleCollectionTransaction>(
         transaction::StandaloneContext::Create(_vocbase), collectionName, type,
-        transaction::Hints::TrxType::REST, std::move(trxOpts));
+        transaction::TrxType::kREST, std::move(trxOpts));
     if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
@@ -652,8 +652,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     // inject at least the required collection name
     trx = std::make_unique<transaction::Methods>(
-        std::move(ctx), collectionName, type,
-        transaction::Hints::TrxType::REST);
+        std::move(ctx), collectionName, type, transaction::TrxType::kREST);
   } else {
     if (isSideUser) {
       // this is a call from the DOCUMENT() AQL function into an existing AQL
@@ -663,8 +662,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
                              "invalid access mode for request", ADB_HERE);
       }
     }
-    trx = std::make_unique<transaction::Methods>(
-        std::move(ctx), transaction::Hints::TrxType::REST);
+    trx = std::make_unique<transaction::Methods>(std::move(ctx),
+                                                 transaction::TrxType::kREST);
   }
   return trx;
 }

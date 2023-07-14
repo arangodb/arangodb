@@ -114,7 +114,7 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
 
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(
-      json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      json->slice(), arangodb::transaction::TrxType::kInternal);
 
   auto physical = engine.createPhysicalCollection(*collection, json->slice());
 
@@ -130,7 +130,7 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   arangodb::transaction::BatchOptions batchOptions;
   auto trx = std::make_shared<arangodb::transaction::Methods>(
       arangodb::transaction::StandaloneContext::Create(vocbase),
-      arangodb::transaction::Hints::TrxType::INTERNAL,
+      arangodb::transaction::TrxType::kInternal,
       arangodb::transaction::Options());
   Result res = transaction::helpers::newObjectForInsert(
       *trx, *collection, "dummy", doc->slice(), revisionId, builder, options,
@@ -248,7 +248,7 @@ TEST_F(PhysicalCollectionTest, test_index_ordeing) {
   TRI_vocbase_t vocbase(testDBInfo(server));
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(
-      json->slice(), arangodb::transaction::Hints::TrxType::INTERNAL);
+      json->slice(), arangodb::transaction::TrxType::kInternal);
   std::vector<std::vector<arangodb::basics::AttributeName>> dummyFields;
   PhysicalCollection::IndexContainerType test_container;
   // also regular index but no need to be reversed

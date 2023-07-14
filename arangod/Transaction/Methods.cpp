@@ -1677,7 +1677,7 @@ static bool findRefusal(
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
-                              transaction::Hints::TrxType const& trxTypeHint,
+                              transaction::TrxType trxTypeHint,
                               transaction::Options const& options)
     : _state(nullptr), _transactionContext(ctx), _mainTransaction(false) {
   TRI_ASSERT(_transactionContext != nullptr);
@@ -1697,7 +1697,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
                               std::string const& collectionName,
                               AccessMode::Type type,
-                              transaction::Hints::TrxType const& trxTypeHint)
+                              transaction::TrxType trxTypeHint)
     : transaction::Methods(std::move(ctx), trxTypeHint,
                            transaction::Options{}) {
   TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
@@ -1713,8 +1713,7 @@ transaction::Methods::Methods(
     std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections,
-    transaction::Options const& options,
-    transaction::Hints::TrxType const& trxTypeHint)
+    transaction::Options const& options, transaction::TrxType trxTypeHint)
     : transaction::Methods(ctx, trxTypeHint, options) {
   Result res;
   for (auto const& it : exclusiveCollections) {

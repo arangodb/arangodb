@@ -224,7 +224,7 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
     auto validationRes = arangodb::aql::StandaloneCalculation::validateQuery(
         arangodb::DatabaseFeature::getCalculationVocbase(), options.queryString,
         CALCULATION_PARAMETER_NAME, " in aql analyzer",
-        arangodb::transaction::Hints::TrxType::INTERNAL,
+        arangodb::transaction::TrxType::kInternal,
         /*isComputedValue*/ false);
     if (validationRes.ok()) {
       return std::make_unique<arangodb::iresearch::AqlAnalyzer>(options);
@@ -347,7 +347,7 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     : _options(options),
       _query(arangodb::aql::StandaloneCalculation::buildQueryContext(
           arangodb::DatabaseFeature::getCalculationVocbase(),
-          transaction::Hints::TrxType::INTERNAL)),
+          transaction::TrxType::kInternal)),
       _itemBlockManager(_query->resourceMonitor(),
                         SerializationFormat::SHADOWROWS),
       _engine(0, *_query, _itemBlockManager, SerializationFormat::SHADOWROWS,
@@ -358,7 +358,7 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
   TRI_ASSERT(arangodb::aql::StandaloneCalculation::validateQuery(
                  arangodb::DatabaseFeature::getCalculationVocbase(),
                  _options.queryString, CALCULATION_PARAMETER_NAME,
-                 " in aql analyzer", transaction::Hints::TrxType::INTERNAL,
+                 " in aql analyzer", transaction::TrxType::kInternal,
                  /*isComputedValue*/ false)
                  .ok());
 }

@@ -57,8 +57,8 @@ class UpdateExecutorTest : public testing::Test {
   void SetUp() override {
     SCOPED_TRACE("Setup");
     auto info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
-    auto collection = vocbase.createCollection(
-        info->slice(), transaction::Hints::TrxType::INTERNAL);
+    auto collection = vocbase.createCollection(info->slice(),
+                                               transaction::TrxType::kInternal);
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
     // Insert Documents
     std::string insertQuery =
@@ -202,8 +202,8 @@ class UpdateExecutorIntegrationTest : public testing::TestWithParam<size_t> {
   void SetUp() override {
     SCOPED_TRACE("Setup");
     auto info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
-    auto collection = vocbase.createCollection(
-        info->slice(), transaction::Hints::TrxType::INTERNAL);
+    auto collection = vocbase.createCollection(info->slice(),
+                                               transaction::TrxType::kInternal);
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
     size_t numDocs = GetParam();
     // Insert Documents

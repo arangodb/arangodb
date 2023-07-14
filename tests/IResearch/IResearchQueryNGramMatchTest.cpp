@@ -80,7 +80,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
-            arangodb::transaction::Hints::TrxType::INTERNAL,
+            arangodb::transaction::TrxType::kInternal,
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS)  // required for PHRASE
@@ -92,8 +92,7 @@ class QueryNGramMatch : public QueryTest {
         auto createJson = arangodb::velocypack::Parser::fromJson(
             "{ \"name\": \"testCollection0\" }");
         auto collection = vocbase.createCollection(
-            createJson->slice(),
-            arangodb::transaction::Hints::TrxType::INTERNAL);
+            createJson->slice(), arangodb::transaction::TrxType::kInternal);
         ASSERT_NE(nullptr, collection);
 
         std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -116,7 +115,7 @@ class QueryNGramMatch : public QueryTest {
         arangodb::SingleCollectionTransaction trx(
             arangodb::transaction::StandaloneContext::Create(vocbase),
             *collection, arangodb::AccessMode::Type::WRITE,
-            arangodb::transaction::Hints::TrxType::INTERNAL);
+            arangodb::transaction::TrxType::kInternal);
         EXPECT_TRUE(trx.begin().ok());
 
         for (auto& entry : docs) {
@@ -141,7 +140,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
-            arangodb::transaction::Hints::TrxType::INTERNAL,
+            arangodb::transaction::TrxType::kInternal,
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS)  // required for PHRASE
@@ -171,7 +170,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
-            arangodb::transaction::Hints::TrxType::INTERNAL,
+            arangodb::transaction::TrxType::kInternal,
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS));  // cache analyzer
@@ -182,8 +181,7 @@ class QueryNGramMatch : public QueryTest {
         auto createJson = arangodb::velocypack::Parser::fromJson(
             "{ \"name\": \"testCollection0\" }");
         auto collection = vocbase.createCollection(
-            createJson->slice(),
-            arangodb::transaction::Hints::TrxType::INTERNAL);
+            createJson->slice(), arangodb::transaction::TrxType::kInternal);
         ASSERT_NE(nullptr, collection);
 
         std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -206,7 +204,7 @@ class QueryNGramMatch : public QueryTest {
         arangodb::SingleCollectionTransaction trx(
             arangodb::transaction::StandaloneContext::Create(vocbase),
             *collection, arangodb::AccessMode::Type::WRITE,
-            arangodb::transaction::Hints::TrxType::INTERNAL);
+            arangodb::transaction::TrxType::kInternal);
         EXPECT_TRUE(trx.begin().ok());
 
         for (auto& entry : docs) {

@@ -50,8 +50,7 @@ using namespace arangodb::aql;
 
 /// @brief creates a query
 QueryContext::QueryContext(TRI_vocbase_t& vocbase,
-                           transaction::Hints::TrxType const& trxTypeHint,
-                           QueryId id)
+                           transaction::TrxType trxTypeHint, QueryId id)
     : _resourceMonitor(GlobalResourceMonitor::instance()),
       _queryId(id ? id : TRI_NewServerSpecificTick()),
       _collections(&vocbase),
