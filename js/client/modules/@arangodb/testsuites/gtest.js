@@ -111,10 +111,6 @@ function gtestRunner (testfilename, name, opts, testoptions) {
         argv.push('--gtest_filter='+options.testCase);
       } else {
         argv.push('--gtest_filter=-*_LongRunning');
-        /*let greylist =   readGreylist();
-        greylist.forEach(function(greyItem) {
-          argv.push('--gtest_filter=-'+greyItem);
-        });*/
       }
       // all non gtest args have to come last
       argv.push('--log.line-number');
@@ -138,7 +134,7 @@ function gtestRunner (testfilename, name, opts, testoptions) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['skipGtest'] = false;
 
   Object.assign(allTestPaths, testPaths);

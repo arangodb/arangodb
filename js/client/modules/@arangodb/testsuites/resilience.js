@@ -62,13 +62,15 @@ const testPaths = {
 // / @brief TEST: resilience*
 // //////////////////////////////////////////////////////////////////////////////
 
-var _resilience = function(path) {
+var _resilience = function(path, enableAliveMonitor) {
   this.func = function resilience (options) {
     let suiteName = path;
     let localOptions = _.clone(options);
     localOptions.cluster = true;
     localOptions.propagateInstanceInfo = true;
     localOptions.oneTestTimeout = 1800;
+    // several suites don't comply not to mess with server instances:
+    localOptions.enableAliveMonitor = enableAliveMonitor;
     if (localOptions.test !== undefined) {
       // remove non ascii characters from our working directory:
       //                                       < A                           > Z && < a                   > z
@@ -78,6 +80,7 @@ var _resilience = function(path) {
       localOptions.dbServers = 5;
     }
     let testCases = tu.scanTestPaths(testPaths[path], localOptions);
+    testCases = tu.splitBuckets(options, testCases);
     let rc = new tu.runOnArangodRunner(localOptions, suiteName, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
@@ -88,15 +91,15 @@ var _resilience = function(path) {
   };
 };
 
-const resilienceMove = (new _resilience('resilience_move')).func;
-const resilienceMoveView = (new _resilience('resilience_move_view')).func;
-const resilienceRepair = (new _resilience('resilience_repair')).func;
-const resilienceFailover = (new _resilience('resilience_failover')).func;
-const resilienceFailoverFailure = (new _resilience('resilience_failover_failure')).func;
-const resilienceFailoverView = (new _resilience('resilience_failover_view')).func;
-const resilienceTransactions = (new _resilience('resilience_transactions')).func;
-const resilienceSharddist = (new _resilience('resilience_sharddist')).func;
-const resilienceAnalyzers = (new _resilience('resilience_analyzers')).func;
+const resilienceMove = (new _resilience('resilience_move', false)).func;
+const resilienceMoveView = (new _resilience('resilience_move_view', true)).func;
+const resilienceRepair = (new _resilience('resilience_repair', true)).func;
+const resilienceFailover = (new _resilience('resilience_failover', false)).func;
+const resilienceFailoverFailure = (new _resilience('resilience_failover_failure', false)).func;
+const resilienceFailoverView = (new _resilience('resilience_failover_view', false)).func;
+const resilienceTransactions = (new _resilience('resilience_transactions', false)).func;
+const resilienceSharddist = (new _resilience('resilience_sharddist', true)).func;
+const resilienceAnalyzers = (new _resilience('resilience_analyzers', true)).func;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: client resilience
@@ -110,6 +113,7 @@ function clientResilience (options) {
   }
 
   let testCases = tu.scanTestPaths(testPaths.client_resilience, localOptions);
+  testCases = tu.splitBuckets(options, testCases);
   let rc = new tu.runInArangoshRunner(localOptions, 'client_resilience', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
@@ -139,7 +143,7 @@ function activeFailover (options) {
   localOptions.disableMonitor = true;
   localOptions.Agency = true;
   let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
-  let rc = new tu.runInArangoshRunner(localOptions, 'active_failover', Object.assign({}, {
+  let rc = new tu.runLocalInArangoshRunner(localOptions, 'active_failover',  Object.assign({}, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',
@@ -148,7 +152,7 @@ function activeFailover (options) {
   return rc;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['resilience_move'] = resilienceMove;
   testFns['resilience_move_view'] = resilienceMoveView;
