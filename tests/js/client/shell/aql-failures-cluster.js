@@ -49,8 +49,7 @@ const endpointToURL = (endpoint) => {
 
 const getEndpointById = (id) => {
   const toEndpoint = (d) => (d.endpoint);
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter((d) => (d.id === id))
+  return global.instanceManager.arangods.filter((d) => (d.id === id))
     .map(toEndpoint)
     .map(endpointToURL)[0];
 };

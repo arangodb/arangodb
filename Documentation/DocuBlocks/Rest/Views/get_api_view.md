@@ -19,12 +19,15 @@ The list of Views
 Return information about all Views:
 
 @EXAMPLE_ARANGOSH_RUN{RestViewGetAllViews}
+    var viewSearchAlias = db._createView("productsView", "search-alias");
+    var viewArangoSearch = db._createView("reviewsView", "arangosearch");
+
     var url = "/_api/view";
-
     var response = logCurlRequest('GET', url);
-
     assert(response.code === 200);
-
     logJsonResponse(response);
+
+    db._dropView("productsView");
+    db._dropView("reviewsView");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

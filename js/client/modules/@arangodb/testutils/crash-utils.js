@@ -79,7 +79,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
     'set pagination off\\n' +
     'set confirm off\\n' +
     'set logging file ' + gdbOutputFile + '\\n' +
-    'set logging on\\n' +
+    'set logging enabled\\n' +
     'bt\\n' +
     'thread apply all bt\\n'+
     'bt full\\n' +
@@ -88,7 +88,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   command += 'sleep 10;';
   command += 'echo quit;';
   command += 'sleep 2';
-  command += ') | gdb ' + storeArangodPath + ' ';
+  command += ') | nice -17 gdb ' + storeArangodPath + ' ';
 
   if (options.coreDirectory === '') {
     command += 'core';
@@ -97,8 +97,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   }
 
   const args = ['-c', command];
-  print(JSON.stringify(args));
-  
+  print("launching GDB in foreground: " + JSON.stringify(args));
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
@@ -126,45 +125,30 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
 
 function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, generateCoreDump) {
   let gdbOutputFile = fs.getTempFile();
-  let gcore = '';
+  let gcore = [];
   if (generateCoreDump) {
     if (options.coreDirectory === '') {
-      gcore = `generate-core-file core.${instanceInfo.pid}\\n`;
+      gcore = ['-ex', `generate-core-file core.${instanceInfo.pid}`];
     } else {
-      gcore = `generate-core-file ${options.coreDirectory}\\n`;
+      gcore = ['-ex', `generate-core-file ${options.coreDirectory}`];
     }
   }
-  let command = 'ulimit -c 0; sleep 10;(';
-  // send some line breaks in case of gdb wanting to paginate...
-  command += 'printf \'\\n\\n\\n\\n' +
-    'set pagination off\\n' +
-    'set confirm off\\n' +
-    'set logging file ' + gdbOutputFile + '\\n' +
-    'set logging on\\n' +
-    'bt\\n' +
-    'thread apply all bt\\n'+
-    'bt full\\n' +
-    gcore +
-    'kill \\n' +
-    '\';';
-
-  command += 'sleep 10;';
-  command += 'echo quit;';
-  command += 'sleep 2';
-  command += ') | gdb ' + storeArangodPath + ' -p ' + instanceInfo.pid;
-
-
-  const args = ['-c', command];
-  print(JSON.stringify(args));
-  command = 'gdb ' + storeArangodPath + ' ';
-
-  if (options.coreDirectory === '') {
-    command += 'core';
-  } else {
-    command += options.coreDirectory;
-  }
+  let command = [
+    '--batch',
+    '-ex', 'set pagination off',
+    '-ex', 'set confirm off',
+    '-ex', `set logging file ${gdbOutputFile}`,
+    '-ex', 'set logging enabled',
+    '-ex', 'bt',
+    '-ex', 'thread apply all bt',
+    '-ex', 'bt full'].concat(gcore).concat([
+      '-ex', 'kill',
+      storeArangodPath,
+      '-p', instanceInfo.pid
+    ]);
+  print("launching GDB in background: " + JSON.stringify(command));
   return {
-    pid: executeExternal('/bin/bash', args),
+    pid: executeExternal('gdb', command),
     file: gdbOutputFile,
     hint: command,
     verbosePrint: true
@@ -196,7 +180,7 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   command += ' -c /cores/core.' + pid;
   command += ' > ' + lldbOutputFile + ' 2>&1';
   const args = ['-c', command];
-  print(JSON.stringify(args));
+  print("launching LLDB in foreground: " + JSON.stringify(args));
 
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
@@ -246,7 +230,7 @@ function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid, gene
   command += storeArangodPath;
   command += ' > ' + lldbOutputFile + ' 2>&1';
   const args = ['-c', command];
-  print(JSON.stringify(args));
+  print("launching LLDB in background: " + JSON.stringify(command));
   return {
     pid: executeExternal('/bin/bash', args),
     file: lldbOutputFile,
@@ -402,7 +386,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
   ];
 
   sleep(5);
-  print('running cdb ' + JSON.stringify(args));
+  print('running cdb in foreground: ' + JSON.stringify(args));
   process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
   executeExternalAndWait('cdb', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
@@ -434,7 +418,7 @@ function generateCoreDumpWindows (instanceInfo) {
     dbgCmds.join('; ')
   ];
 
-  print('running cdb ' + JSON.stringify(args));
+  print('running cdb in background: ' + JSON.stringify(args));
   process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
   return {
     pid: executeExternal('cdb', args),
@@ -482,6 +466,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     print(RESET);
     return;
   }
+  GDB_OUTPUT += `Analyzing crash of ${instanceInfo.name} PID[${instanceInfo.pid}]: ${checkStr}\n`;
   let message = 'during: ' + checkStr + ': Core dump written; ' +
       /*
         'copying ' + binary + ' to ' +
@@ -565,7 +550,12 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 }
 
 function generateCrashDump (binary, instanceInfo, options, checkStr) {
-  GDB_OUTPUT += `${instanceInfo.pid}: ${checkStr}\n`;
+  if (!options.coreCheck && !options.setInterruptable) {
+    print(`coreCheck = ${options.coreCheck}; setInterruptable = ${options.setInterruptable}; forcing fatal exit of arangod! Bye!`);
+    pu.killRemainingProcesses({status: false});
+    process.exit();
+  }
+  GDB_OUTPUT += `Forced shutdown of ${instanceInfo.name} PID[${instanceInfo.pid}]: ${checkStr}\n`;
   if (instanceInfo.hasOwnProperty('debuggerInfo')) {
     throw new Error("this process is already debugged: " + JSON.stringify(instanceInfo.getStructure()));
   }
@@ -591,6 +581,12 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
     instanceInfo.debuggerInfo = generateCoreDumpGDB(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
   }
+  // renice debugger to lowest prio so it doesn't steal test resources
+  try {
+    internal.setPriorityExternal(instanceInfo.debuggerInfo.pid.pid, 20);
+  } catch (ex) {
+    print(`${RED} renicing of debugger ${instanceInfo.debuggerInfo.pid.pid} failed: ${ex} ${RESET}`);
+  }
 }
 
 function aggregateDebugger(instanceInfo, options) {
@@ -599,11 +595,10 @@ function aggregateDebugger(instanceInfo, options) {
     print("No debugger info persisted to " + JSON.stringify(instanceInfo.getStructure()));
     return false;
   }
-  print("waiting for debugger to terminate: " + JSON.stringify(instanceInfo.debuggerInfo));
+  print(`waiting for debugger of ${instanceInfo.pid} to terminate: ${JSON.stringify(instanceInfo.debuggerInfo)}`);
   let tearDownTimeout = 180; // s
   while (tearDownTimeout > 0) {
     let ret = statusExternal(instanceInfo.debuggerInfo.pid.pid, false);
-    print(ret);
     if (ret.status === "RUNNING") {
       sleep(1);
       tearDownTimeout -= 1;

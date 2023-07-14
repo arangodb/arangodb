@@ -116,7 +116,7 @@ function TLSRotation() {
 
       // Exchange server key on disk:
       fs.remove(keyfileName);
-      fs.copyFile("./UnitTests/server2.pem", keyfileName);
+      fs.copyFile("./etc/testing/server2.pem", keyfileName);
       keyfileDisk = fs.readFileSync(keyfileName).toString();
       keyfileDiskSHA = sha256(keyfileDisk);
 

@@ -166,9 +166,14 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     whichFilter.filter = 'graph';
     return false;
   }
-  
+
   if (testname.indexOf('-nonwindows') !== -1 && platform.substr(0, 3) === 'win') {
     whichFilter.filter = 'non-windows';
+    return false;
+  }
+
+  if (testname.indexOf('-nonmac') !== -1 && platform.substr(0, 6) === 'darwin') {
+    whichFilter.filter = 'non-mac';
     return false;
   }
 
@@ -193,8 +198,18 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf('-noinstr') !== -1) && (options.isInstrumented)) {
+    whichFilter.filter = 'skip when built with an instrumented build';
+    return false;
+  }
+
   if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
     whichFilter.filter = 'skip when built with asan or tsan';
+    return false;
+  }
+
+  if ((testname.indexOf('-nocov') !== -1) && (options.isCov)) {
+    whichFilter.filter = 'skip when built with coverage';
     return false;
   }
 
@@ -232,6 +247,10 @@ function splitBuckets (options, cases) {
   let n = options.testBuckets.split('/');
   let r = parseInt(n[0]);
   let s = parseInt(n[1]);
+
+  if (cases.length < r) {
+    throw `We only have ${m} test cases, cannot split them into ${r} buckets`;
+  }
 
   if (r < 1) {
     r = 1;
@@ -327,8 +346,11 @@ function getTestCode(file, options, instanceManager) {
     filter = filter || '';
     runTest = 'const runTest = require("@arangodb/mocha-runner");\n';
   }
-  return 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n' + runTest +
-         'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
+  let ret = '';
+  if (instanceManager != null) {
+    ret = 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n';
+  }
+  return ret + runTest + 'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a remote unittest file using /_admin/execute
@@ -482,7 +504,9 @@ class runInArangoshRunner extends testRunnerBase{
     if (!this.options.verbose) {
       args['log.level'] = 'warning';
     }
-
+    if (this.options.extremeVerbosity === true) {
+      args['log.level'] = 'v8=debug';
+    }
     if (this.addArgs !== undefined) {
       args = Object.assign(args, this.addArgs);
     }
@@ -512,8 +536,8 @@ class runLocalInArangoshRunner extends testRunnerBase{
       }
     }
 
-    let testCode = getTestCode(file, this.options, this.instanceManager);
-    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
+    let testCode = getTestCode(file, this.options, null);
+    global.instanceManager = this.instanceManager;
     let testFunc;
     try {
       eval('testFunc = function () {\n' + testCode + "}");
@@ -537,7 +561,7 @@ class runLocalInArangoshRunner extends testRunnerBase{
           timeout: true,
           forceTerminate: true,
           status: false,
-          message: "test ran into timeout. Original test status: " + JSON.stringify(result),
+          message: `test aborted due to ${require('internal').getDeadlineReasonString()}. Original test status: ${JSON.stringify(result)}`,
         };
       }
       if (result === undefined) {
