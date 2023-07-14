@@ -77,29 +77,26 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
     }
   });
 
-  return f.object(props)
-      .fields(
-          f.field(StaticStrings::DataSourceSystem, props.isSystem)
-              .fallback(f.keep()),
-          f.field(StaticStrings::IsSmart, props.isSmart).fallback(f.keep()),
-          f.field(StaticStrings::IsDisjoint, props.isDisjoint)
-              .fallback(f.keep()),
-          f.field(StaticStrings::CacheEnabled, props.cacheEnabled)
-              .fallback(f.keep()),
-          f.field(StaticStrings::GraphSmartGraphAttribute,
-                  props.smartGraphAttribute)
-              .invariant(UtilityInvariants::isNonEmptyIfPresent),
-          f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
-              .invariant(UtilityInvariants::isNonEmptyIfPresent),
-          f.field(StaticStrings::DataSourceType, props.type)
-              .fallback(f.keep())
-              .invariant(UtilityInvariants::isValidCollectionType),
-          f.field(StaticStrings::KeyOptions, props.keyOptions)
-              .fallback(f.keep()),
-          /* Backwards compatibility, fields are allowed (MMFILES) but have no
-             relevance anymore */
-          f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
-          std::move(shadowCollectionsField));
+  return f.object(props).fields(
+      f.field(StaticStrings::DataSourceSystem, props.isSystem)
+          .fallback(f.keep()),
+      f.field(StaticStrings::IsSmart, props.isSmart).fallback(f.keep()),
+      f.field(StaticStrings::IsDisjoint, props.isDisjoint).fallback(f.keep()),
+      f.field(StaticStrings::CacheEnabled, props.cacheEnabled)
+          .fallback(f.keep()),
+      f.field(StaticStrings::GraphSmartGraphAttribute,
+              props.smartGraphAttribute)
+          .invariant(UtilityInvariants::isNonEmptyIfPresent),
+      f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
+          .invariant(UtilityInvariants::isNonEmptyIfPresent),
+      f.field(StaticStrings::DataSourceType, props.type)
+          .fallback(f.keep())
+          .invariant(UtilityInvariants::isValidCollectionType),
+      f.field(StaticStrings::KeyOptions, props.keyOptions).fallback(f.keep()),
+      /* Backwards compatibility, fields are allowed (MMFILES) but have no
+         relevance anymore */
+      f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
+      std::move(shadowCollectionsField));
 }
 
 }  // namespace arangodb

@@ -30,9 +30,9 @@
 
 using namespace arangodb;
 
-
 [[nodiscard]] auto CollectionMutableProperties::Invariants::isJsonSchema(
-    inspection::NonNullOptional<arangodb::velocypack::Builder> const& value) -> inspection::Status {
+    inspection::NonNullOptional<arangodb::velocypack::Builder> const& value)
+    -> inspection::Status {
   if (value.has_value()) {
     auto const& v = value->slice();
     if (!v.isObject()) {
@@ -42,7 +42,8 @@ using namespace arangodb;
       // Empty object is allowed, but needs no further testing
       // For an object try to generate a validator
       // NOTE: This could be more efficient if the Schema is made inspectable.
-      // However, this is a non-performance critical API, and it is not extraordinary expensive.
+      // However, this is a non-performance critical API, and it is not
+      // extraordinary expensive.
       try {
         // Not needed, just try to generate it.
         ValidatorJsonSchema unused{v};

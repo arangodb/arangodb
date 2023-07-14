@@ -56,7 +56,8 @@ auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
         return {};
       }
     } catch (...) {
-      // intentionally fall through. We got disallowed number type (e.g. negative value)
+      // intentionally fall through. We got disallowed number type (e.g.
+      // negative value)
     }
   }
   return {"Only an integer number or 'satellite' is allowed"};
