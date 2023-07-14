@@ -109,3 +109,10 @@ export const parseQuery = (query: string) => {
     bindParams: bindParams
   };
 };
+
+export const getQueryStorageKey = () => {
+  const currentUser = window.App.currentUser || "root";
+  const currentDbName = window.frontendConfig.db;
+
+  return `${currentDbName}-${currentUser}-savedQueries`;
+};

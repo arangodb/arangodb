@@ -56,3 +56,33 @@ export const downloadBlob = (blobUrl: string, filename?: string) => {
     document.body.removeChild(a);
   }, 500);
 };
+
+const typeToBlobType = (type?: "csv" | "json" | "text") => {
+  switch (type) {
+    case "csv":
+      return "text/csv";
+    case "json":
+      return "application/json";
+    case "text":
+      return "text/plain";
+    default:
+      return "application/octet-stream";
+  }
+};
+export const downloadLocalData = ({
+  data,
+  fileName,
+  type
+}: {
+  data: any;
+  fileName?: string;
+  type?: "csv" | "json" | "text";
+}) => {
+  const blobType = typeToBlobType(type);
+  if (!blobType) {
+    throw new Error(`Unknown blob type: ${type}`);
+  }
+  const blob = new Blob([data], { type: blobType });
+  const blobUrl = window.URL.createObjectURL(blob);
+  downloadBlob(blobUrl, fileName);
+};

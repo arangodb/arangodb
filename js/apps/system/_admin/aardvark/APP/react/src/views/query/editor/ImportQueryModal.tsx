@@ -8,6 +8,7 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { getAardvarkRouteForCurrentDb } from "../../../utils/arangoClient";
+import { useQueryContext } from "../QueryContextProvider";
 
 export const ImportQueryModal = ({
   isOpen,
@@ -16,6 +17,7 @@ export const ImportQueryModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
+  const { onSaveQueryList } = useQueryContext();
   const formatText = `JSON documents embedded into a list:
       [{
         "name": "Query Name",
@@ -32,6 +34,21 @@ export const ImportQueryModal = ({
   };
   const onUpload = () => {
     if (!file) return;
+    if (window.frontendConfig.ldapEnabled) {
+      setIsUploading(true);
+      const reader = new FileReader();
+      reader.readAsText(file);
+      reader.onload = async () => {
+        const data = reader.result;
+        if (typeof data !== "string") return;
+        const queries = JSON.parse(data);
+        await onSaveQueryList(queries);
+        await mutate("/savedQueries");
+        setIsUploading(false);
+        onClose();
+      };
+      return;
+    }
     const route = getAardvarkRouteForCurrentDb(
       `query/upload/${window.App.currentUser}`
     );

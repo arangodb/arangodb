@@ -36,6 +36,7 @@ type QueryContextType = {
   onSave: (queryName: string) => Promise<void>;
   onDelete: (queryName: string) => Promise<void>;
   onSaveAs: (queryName: string) => Promise<void>;
+  onSaveQueryList: (queries: QueryType[]) => Promise<void>;
   isSaveAsModalOpen: boolean;
   onOpenSaveAsModal: () => void;
   onCloseSaveAsModal: () => void;
@@ -70,19 +71,11 @@ const QueryContext = React.createContext<QueryContextType>(
 
 export const useQueryContext = () => React.useContext(QueryContext);
 
-const getStorageKey = () => {
-  const currentUser = window.App.currentUser || "root";
-  const currentDbName = window.frontendConfig.db;
-
-  return `${currentDbName}-${currentUser}-savedQueries`;
-};
 export const QueryContextProvider = ({
   children
 }: {
   children: React.ReactNode;
 }) => {
-  const storageKey = getStorageKey();
-
   const {
     queryValue,
     currentQueryName,
@@ -101,11 +94,11 @@ export const QueryContextProvider = ({
     isFetchingQueries,
     isSaveAsModalOpen,
     onOpenSaveAsModal,
-    onCloseSaveAsModal
+    onCloseSaveAsModal,
+    onSaveQueryList
   } = useSavedQueriesHandlers({
     queryValue,
-    queryBindParams,
-    storageKey
+    queryBindParams
   });
   const {
     queryResults,
@@ -171,7 +164,8 @@ export const QueryContextProvider = ({
         setQueryGraphResult,
         queryLimit,
         setQueryLimit,
-        onRemoveAllResults
+        onRemoveAllResults,
+        onSaveQueryList
       }}
     >
       <QueryKeyboardShortcutProvider>

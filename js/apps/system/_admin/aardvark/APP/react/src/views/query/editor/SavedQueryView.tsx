@@ -13,17 +13,18 @@ import React, { useMemo } from "react";
 import { InfoCircle } from "styled-icons/boxicons-solid";
 import { PlayArrow } from "styled-icons/material";
 import momentMin from "../../../../../frontend/js/lib/moment.min";
+import aqlTemplates from "../../../../public/assets/aqltemplates.json";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { download } from "../../../utils/downloadHelper";
+import { download, downloadLocalData } from "../../../utils/downloadHelper";
 import { useQueryContext } from "../QueryContextProvider";
+import { getQueryStorageKey } from "../queryHelper";
 import { AQLEditor } from "./AQLEditor";
 import { DeleteQueryModal } from "./DeleteQueryModal";
 import { ImportQueryModal } from "./ImportQueryModal";
 import { QueryType } from "./useFetchUserSavedQueries";
-import aqlTemplates from "../../../../public/assets/aqltemplates.json";
 
 export const SavedQueryView = () => {
   const { savedQueries, isFetchingQueries } = useQueryContext();
@@ -265,7 +266,17 @@ const SavedQueryBottomBar = () => {
     onClose: onCloseImportModal
   } = useDisclosure();
   const onDownload = () => {
-    download(`query/download/${window.App.currentUser}`);
+    const storageKey = getQueryStorageKey();
+    if (window.frontendConfig.ldapEnabled) {
+      const data = localStorage.getItem(storageKey) || "[]";
+      downloadLocalData({
+        data,
+        fileName: `savedQueries-${window.frontendConfig.db}.json`,
+        type: "json"
+      });
+      return;
+    }
+    download(`query/download/${window.App.currentUser || "root"}`);
   };
   return (
     <>

@@ -5,21 +5,18 @@ import {
   QueryType,
   useFetchUserSavedQueries
 } from "./editor/useFetchUserSavedQueries";
+import { getQueryStorageKey } from "./queryHelper";
 
 export const useSavedQueriesHandlers = ({
   queryValue,
-  queryBindParams,
-  storageKey
+  queryBindParams
 }: {
   queryValue: string;
   queryBindParams: { [key: string]: string };
   queryName?: string;
-  storageKey: string;
 }) => {
   const { savedQueries, isLoading: isFetchingQueries } =
-    useFetchUserSavedQueries({
-      storageKey
-    });
+    useFetchUserSavedQueries();
   const onSaveAs = async (queryName: string) => {
     const newQueries = [
       ...(savedQueries || []),
@@ -29,8 +26,7 @@ export const useSavedQueriesHandlers = ({
       queries: newQueries,
       onSuccess: () => {
         window.arangoHelper.arangoNotification(`Saved query: ${queryName}`);
-      },
-      storageKey
+      }
     });
     mutate("/savedQueries");
   };
@@ -52,8 +48,7 @@ export const useSavedQueriesHandlers = ({
         queries: newQueries || [],
         onSuccess: () => {
           window.arangoHelper.arangoNotification(`Updated query: ${queryName}`);
-        },
-        storageKey
+        }
       });
       mutate("/savedQueries");
     }
@@ -65,10 +60,26 @@ export const useSavedQueriesHandlers = ({
       queries: newQueries || [],
       onSuccess: () => {
         window.arangoHelper.arangoNotification(`Deleted query: ${queryName}`);
-      },
-      storageKey
+      }
     });
     mutate("/savedQueries");
+  };
+
+  const onSaveQueryList = async (queries: QueryType[]) => {
+    // add queries to savedQueries and dedupe
+    const newQueries = [
+      ...(savedQueries || []),
+      ...queries.filter(
+        query =>
+          !savedQueries?.find(savedQuery => savedQuery.name === query.name)
+      )
+    ];
+    await patchQueries({
+      queries: newQueries,
+      onSuccess: () => {
+        window.arangoHelper.arangoNotification(`Saved queries`);
+      }
+    });
   };
   const {
     isOpen: isSaveAsModalOpen,
@@ -78,6 +89,7 @@ export const useSavedQueriesHandlers = ({
   return {
     onSaveAs,
     onSave,
+    onSaveQueryList,
     onDelete,
     savedQueries,
     isFetchingQueries,
@@ -89,13 +101,12 @@ export const useSavedQueriesHandlers = ({
 
 const patchQueries = async ({
   queries,
-  onSuccess,
-  storageKey
+  onSuccess
 }: {
   queries: QueryType[];
   onSuccess: () => void;
-  storageKey: string;
 }) => {
+  const storageKey = getQueryStorageKey();
   if (window.frontendConfig.ldapEnabled) {
     localStorage.setItem(storageKey, JSON.stringify(queries));
     onSuccess();
