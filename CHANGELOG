@@ -3,6 +3,8 @@ v3.10.10 (XXXX-XX-XX)
 
 * FE-287: fix number validation for replicationFactor and writeConcern.
 
+* FE-162: Fix display of geodesic lines.
+
 * Upgraded OpenSSL to 3.0.9.
 
 * Enforce that server always returns an empty body if the return code is 204.
