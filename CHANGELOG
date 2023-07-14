@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-301: Unify Users View UI.
+
 * FE-240: disable JSON editor when viewing inverted index.
 
 * FE-262: Improve Analyzer table UI.
