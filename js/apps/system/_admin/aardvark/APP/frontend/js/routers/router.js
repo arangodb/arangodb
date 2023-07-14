@@ -34,6 +34,7 @@
       'collection/:colid/:docid': 'document',
       'queries': 'query',
       'databases': 'databases',
+      'databases/:name': 'databases',
       'settings': 'databases',
       'services': 'applications',
       'services/install': 'installService',
@@ -964,28 +965,8 @@
     databases: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        const callback = function (error) {
-          if (error) {
-            arangoHelper.arangoError('DB', 'Could not get list of allowed databases');
-            this.navigate('#', { trigger: true });
-            $('#databaseNavi').css('display', 'none');
-            $('#databaseNaviSelect').css('display', 'none');
-          } else {
-            if (this.databaseView) {
-              // cleanup events and view
-              this.databaseView.remove();
-            }
-            this.databaseView = new window.DatabaseView({
-              users: this.userCollection,
-              collection: this.arangoDatabase
-            });
-            this.databaseView.render();
-          }
-        }.bind(this);
-
-        arangoHelper.databaseAllowed(callback);
-      });
+      this.init.then(() => ReactDOM.render(React.createElement(window.DatabasesReactView),
+        document.getElementById('content-react')));
     },
 
     dashboard: function () {
