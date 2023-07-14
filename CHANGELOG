@@ -1,6 +1,9 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
+* FE-304, FE-305: use navigator.onLine for checking internet connection, correct
+  path for running/slow queries.
+
 * FE-303: fix geo map doesn't show up in query UI.
 
 * Use libunwind in jemalloc profiling to make it available with libmusl
