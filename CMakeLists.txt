@@ -101,7 +101,7 @@ set(ARANGODB_VERSION_MINOR "10")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "7")
+  set(ARANGODB_VERSION_PATCH "10")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -1160,7 +1160,7 @@ else ()
   if (USE_STRICT_OPENSSL_VERSION)
     set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"]*).*")
   else ()
-    set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"a-z]*).*")
+    set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([0-9]\.[0-9]\.[^0-9\"]*).*")
   endif ()
   string(REGEX MATCH
             "${OPENSSL_VERSION_PATTERN}"
@@ -1185,7 +1185,7 @@ if (NOT DEFINED OPENSSL_ROOT_DIR OR "${OPENSSL_ROOT_DIR}" STREQUAL "")
     set (OPENSSL_ROOT_DIR "$ENV{OPENSSL_ROOT_DIR}")
   endif ()
 else ()
-  set(ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
+  set (ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
 endif ()
 
 unset (OPENSSL_FOUND CACHE)
@@ -1201,7 +1201,9 @@ endif ()
 
 if (WIN32)
   # Attempt to find ArangoDB CI compiled OpenSSL
-  message ("Attempt to find ArangoDB CI compiled OpenSSL:")
+  message ("Attempt to find ArangoDB CI compiled OpenSSL at ${OPENSSL_ROOT_DIR}:")
+  set (OPENSSL_USE_STATIC_LIBS TRUE)
+  set (OPENSSL_MSVC_STATIC_RT TRUE)
   include ("${CMAKE_CURRENT_LIST_DIR}/cmake/custom/ArangoDB_FindOpenSSL_WIN32.cmake")
   if (NOT OPENSSL_FOUND)
     message ("System-wide attempt to find OpenSSL:")
@@ -1220,8 +1222,8 @@ endif ()
 message(${OPENSSL_INCLUDE_DIR})
 
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
-add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
-add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
+add_definitions(-DARANGODB_OPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
+add_definitions(-DARANGODB_OPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
 
 if (OPENSSL_VERSION)
   string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})

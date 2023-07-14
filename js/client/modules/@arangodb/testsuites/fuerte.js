@@ -83,7 +83,10 @@ function gtestRunner(options) {
   // start server
   print('Starting server...');
 
-  let instanceManager = new im.instanceManager('tcp', options, {"http.keep-alive-timeout" : "10"}, 'fuerte');
+  let instanceManager = new im.instanceManager('tcp', options, {
+    "http.keep-alive-timeout": "10",
+    "log.level": "requests=TRACE"
+  }, 'fuerte');
   instanceManager.prepareInstance();
   instanceManager.launchTcpDump("");
   if (!instanceManager.launchInstance()) {
@@ -122,18 +125,16 @@ function gtestRunner(options) {
   print('Shutting down...');
 
   results['shutdown'] = instanceManager.shutdownInstance(false);
-  instanceManager.destructor(results.status);
+  instanceManager.destructor(!results.status);
 
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['fuerte'] = gtestRunner;
 
   opts['skipFuerte'] = false;
-
-  defaultFns.push('fuerte');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

@@ -91,7 +91,7 @@ class ExecutionEngine {
   /// @brief get the query
   QueryContext& getQuery() const;
 
-  std::shared_ptr<SharedQueryState> sharedState() const { return _sharedState; }
+  std::shared_ptr<SharedQueryState> const& sharedState() const;
 
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(

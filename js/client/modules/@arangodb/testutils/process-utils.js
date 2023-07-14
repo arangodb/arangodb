@@ -230,6 +230,16 @@ class ConfigBuilder {
       this.config['--envelope'] = true;
     }
   }
+  setUseExperimentalParallelDump() {
+    if (this.type === 'dump') {
+      this.config['use-experimental-dump'] = true;
+    }
+  }
+  setUseSplitFiles() {
+    if (this.type === 'dump') {
+      this.config['split-files'] = true;
+    }
+  }
   deactivateEnvelopes() {
     if (this.type === 'dump') {
       this.config['--envelope'] = false;
@@ -241,7 +251,7 @@ class ConfigBuilder {
       throw '"collection" is not supported for binary: ' + this.type;
     }
     this.config['collection'] = collection;
-  };
+  }
   setAllDatabases() {
     this.config['all-databases'] = 'true';
     delete this.config['server.database'];
@@ -455,8 +465,16 @@ function setupBinaries (builddir, buildType, configDir) {
 function killRemainingProcesses(results) {
   let running = internal.getExternalSpawned();
   results.status = results.status && (running.length === 0);
-  let i = 0;
-  for (i = 0; i < running.length; i++) {
+  for (let i = 0; i < running.length; i++) {
+    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
+    if (timeoutReached) {
+      print(RED + Date() + ' external deadline reached!' + RESET);
+    }
+    internal.removePidFromMonitor(running[i].pid);
+  }
+  sleep(1);
+  for (let i = 0; i < running.length; i++) {
     let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
     print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
     if (timeoutReached) {

@@ -111,9 +111,12 @@ bool SenderThread::isDone() {
 }
 
 void SenderThread::run() {
-  while (!isStopping() && !_hasError) {
+  while (!isStopping()) {
     {
       CONDITION_LOCKER(guard, _condition);
+      if (_hasError) {
+        break;
+      }
       _ready = true;
       if (_idle) {
         guard.wait();
