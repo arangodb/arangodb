@@ -636,7 +636,7 @@
                 false,
                 [
                   {
-                    rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                    rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                     msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
                   }
                 ]
