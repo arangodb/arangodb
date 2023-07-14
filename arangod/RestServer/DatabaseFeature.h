@@ -111,10 +111,10 @@ class DatabaseFeature final : public ArangodFeature {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  ///   if StorageEngine.inRecovery() -> 
+  ///   if StorageEngine.inRecovery() ->
   ///     call at start of recoveryDone() in parallel with other callbacks
   ///     and fail recovery if callback !ok()
-  ///   else -> 
+  ///   else ->
   ///     call immediately and return result
   //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
