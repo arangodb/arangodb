@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 export PID=$$
-export GLIBCXX_FORCE_NEW=1
 
 SED=sed
 isMac=0
@@ -97,7 +96,7 @@ fi
        --log.level warning \
        --server.endpoint none \
        --javascript.allow-external-process-control true \
-       --javascript.execute UnitTests${PS}unittest.js \
+       --javascript.execute js${PS}client${PS}modules${PS}\@arangodb${PS}testutils${PS}unittest.js \
        -- \
        "$@" "${EXTRA_ARGS[@]}"
 )

@@ -1,6 +1,6 @@
 @startDocuBlock get_api_control_pregel_pregel
 
-@RESTHEADER{GET /_api/control_pregel/{id}, Get the Pregel job execution status, getPregelJob}
+@RESTHEADER{GET /_api/control_pregel/{id}, Get a Pregel job execution status, getPregelJob}
 
 @RESTURLPARAMETERS
 
