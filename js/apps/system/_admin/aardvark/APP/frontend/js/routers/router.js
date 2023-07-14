@@ -961,20 +961,6 @@
       });
     },
 
-    queryManagement: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (this.queryManagementView) {
-          this.queryManagementView.remove();
-        }
-        this.queryManagementView = new window.QueryManagementView({
-          collection: undefined
-        });
-        this.queryManagementView.render();
-      });
-    },
-
     databases: function () {
       this.checkUser();
 
