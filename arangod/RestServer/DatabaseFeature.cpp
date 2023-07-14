@@ -606,7 +606,8 @@ void DatabaseFeature::recoveryDone() {
         RequestLane::CLIENT_SLOW, std::move(entry)));
   }
   _pendingRecoveryCallbacks.clear();
-  // TODO(MBkkt) use single wait when we start to using normal futures library
+  // TODO(MBkkt) use single wait with early termination
+  // when it would be available
   for (auto& future : futures) {
     auto result = std::move(future).get();
     if (!result.ok()) {

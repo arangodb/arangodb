@@ -40,6 +40,7 @@
 #include "store/directory.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <filesystem>
 
 namespace arangodb {
@@ -447,6 +448,12 @@ class IResearchDataStore {
 
   void recoveryCommit(uint64_t tick);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief report progress during recovery phase
+  //////////////////////////////////////////////////////////////////////////////
+  void reportRecoveryProgress(std::string_view phase, size_t current,
+                              size_t total);
+
  protected:
   enum class DataStoreError : uint8_t {
     // data store has no issues
@@ -543,6 +550,10 @@ class IResearchDataStore {
   metrics::Gauge<uint64_t>* _avgConsolidationTimeMs{nullptr};
 
   metrics::Guard<Stats>* _metricStats{nullptr};
+
+ private:
+  std::chrono::time_point<std::chrono::steady_clock>
+      _lastRecoveryProgressReportTime{};
 };
 
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,

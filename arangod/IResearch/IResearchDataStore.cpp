@@ -1437,11 +1437,9 @@ Result IResearchDataStore::initDataStore(
           linkLock->finishCreation();
         }
 
-        auto progress = [id = index.id(), asyncFeature](std::string_view phase,
-                                                        size_t current,
-                                                        size_t total) {
-          // forward progress reporting to asyncFeature
-          asyncFeature->reportRecoveryProgress(id, phase, current, total);
+        auto progress = [index = linkLock.get()](std::string_view phase,
+                                                 size_t current, size_t total) {
+          index->reportRecoveryProgress(phase, current, total);
         };
 
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
@@ -1465,6 +1463,24 @@ Result IResearchDataStore::initDataStore(
 
         return res;
       });
+}
+
+void IResearchDataStore::reportRecoveryProgress(std::string_view phase,
+                                                size_t current, size_t total) {
+  TRI_ASSERT(total != 0);
+  auto now = std::chrono::steady_clock::now();
+
+  if (now - _lastRecoveryProgressReportTime >= std::chrono::minutes(1)) {
+    // report progress only when index/link id changes or one minute has
+    // passed
+
+    auto progress = static_cast<size_t>(100.0 * current / total);
+    LOG_TOPIC("d1f18", INFO, TOPIC)
+        << "recovering arangosearch index " << index().id() << ", " << phase
+        << ": operation " << (current + 1) << "/" << total << " (" << progress
+        << "%)...";
+    _lastRecoveryProgressReportTime = now;
+  }
 }
 
 Result IResearchDataStore::properties(IResearchDataStoreMeta const& meta) {
