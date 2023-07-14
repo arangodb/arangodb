@@ -26,6 +26,7 @@
 #include "Cluster/ServerState.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Collection.h>
@@ -35,9 +36,22 @@ using namespace arangodb;
 
 namespace {
 
+auto isSingleServer() -> bool {
+  return ServerState::instance()->isSingleServer();
+}
+
+bool isSmart(VPackSlice fullBody) {
+#ifdef USE_ENTERPRISE
+  return basics::VelocyPackHelper::getBooleanValue(fullBody, StaticStrings::IsSmart, false);
+#else
+  return false;
+#endif
+}
+
 bool hasDistributeShardsLike(VPackSlice fullBody,
                              DatabaseConfiguration const& config) {
   // Only true if we have a non-empty string as DistributeShardsLike
+  // Always false on SingleServer.
   return config.isOneShardDB ||
          (fullBody.hasKey(StaticStrings::DistributeShardsLike) &&
           fullBody.get(StaticStrings::DistributeShardsLike).isString() &&
@@ -46,8 +60,17 @@ bool hasDistributeShardsLike(VPackSlice fullBody,
                .empty());
 }
 
-auto isSingleServer() -> bool {
-  return ServerState::instance()->isSingleServer();
+bool shouldConsiderClusterAttribute(VPackSlice fullBody,
+                                    DatabaseConfiguration const& config) {
+
+  if (isSingleServer()) {
+    // To simulate smart collections on SingleServer we need to consider cluster attributes
+    // distributeShardsLike will be ignored anyway
+    return isSmart(fullBody);
+  } else {
+    // DistributeShardsLike does superseed cluster attributes
+    return !hasDistributeShardsLike(fullBody, config);
+  }
 }
 
 #ifdef USE_ENTERPRISE
@@ -82,7 +105,7 @@ auto handleReplicationFactor(std::string_view key, VPackSlice value,
                              VPackSlice fullBody,
                              DatabaseConfiguration const& config,
                              VPackBuilder& result) {
-  if (!hasDistributeShardsLike(fullBody, config) && !isSingleServer()) {
+  if (shouldConsiderClusterAttribute(fullBody, config)) {
     if (value.isNumber() && value.getNumericValue<int64_t>() == 0) {
       // Translate 0 to satellite
       result.add(key, VPackValue(StaticStrings::Satellite));
@@ -102,14 +125,14 @@ auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice, Database
 }
 
 auto handleWriteConcern(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
-  if (!hasDistributeShardsLike(fullBody, config) && !isSingleServer()) {
+  if (shouldConsiderClusterAttribute(fullBody, config)) {
     result.add(key, value);
   }
   // Just ignore if we have distributeShardsLike or are on SingleServer or do not get a number
 }
 
 auto handleNumberOfShards(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
-  if (!hasDistributeShardsLike(fullBody, config)) {
+  if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
     justKeep(key, value, fullBody, config, result);
   }
   // Just ignore if we have distributeShardsLike
@@ -130,7 +153,11 @@ auto handleStringsOnly(std::string_view key, VPackSlice value, VPackSlice, Datab
 }
 
 auto handleDistributeShardsLike(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
-  if (!config.isOneShardDB && !isSingleServer()) {
+  if (!config.isOneShardDB) {
+    if (isSingleServer()) {
+      // Community can not use distributeShardsLike on SingleServer
+      return;
+    }
     justKeep(key, value, fullBody, config, result);
   }
   // In oneShardDb distributeShardsLike is forced.
@@ -184,18 +211,21 @@ auto handleIsSmart(std::string_view key, VPackSlice value, VPackSlice fullBody, 
 
 auto handleShardingStrategy(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
   if (!isSingleServer()) {
-#ifndef USE_ENTERPRISE
-    if (value.isString()) {
-      if (value.isEqualString())
-    }
-#endif
     handleStringsOnly(key, value, fullBody, config, result);
   }
   // Just ignore on SingleServer
 }
 
-auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(std::string_view key, VPackSlice value, VPackSlice original, DatabaseConfiguration const& config, VPackBuilder& result)>> {
-  return {// CollectionConstantProperties
+auto logDeprecationMessage(Result const& res) -> void {
+  LOG_TOPIC("ee638", ERR, arangodb::Logger::DEPRECATION)
+      << "The createCollection request contains an illegal combination "
+         "and "
+         "will be rejected in the future: "
+      << res;
+}
+
+auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(std::string_view key, VPackSlice value, VPackSlice original, DatabaseConfiguration const& config, VPackBuilder& result)>> const& {
+  static std::unordered_map<std::string_view, std::function<void(std::string_view key, VPackSlice value, VPackSlice original, DatabaseConfiguration const& config, VPackBuilder& result)>> allowListInstance{// CollectionConstantProperties
           {StaticStrings::DataSourceSystem, handleBoolOnly},
           {StaticStrings::IsSmart, handleIsSmart},
           {StaticStrings::IsDisjoint, handleBoolOnly},
@@ -232,6 +262,7 @@ auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(
 
           // Collection Create Options
           {"avoidServers", justKeep}};
+  return allowListInstance;
 }
 
 /**
@@ -281,20 +312,22 @@ CreateCollectionBody::CreateCollectionBody() {}
 
 ResultT<CreateCollectionBody> parseAndValidate(
     DatabaseConfiguration const& config, VPackSlice input,
-    std::function<void(CreateCollectionBody&)> applyDefaults) {
+    std::function<void(CreateCollectionBody&)> applyDefaults,
+    std::function<void(CreateCollectionBody&)> applyCompatibilityHacks) {
   try {
     CreateCollectionBody res;
     applyDefaults(res);
     auto status =
         velocypack::deserializeWithStatus(input, res, {}, InspectUserContext{});
     if (status.ok()) {
+      applyCompatibilityHacks(res);
       // Inject default values, and finally check if collection is allowed
       auto result = res.applyDefaultsAndValidateDatabaseConfiguration(config);
       if (result.fail()) {
         return result;
       }
 #ifndef USE_ENTERPRISE
-      result =validateEnterpriseFeaturesNotUsed(res);
+      result = validateEnterpriseFeaturesNotUsed(res);
       if (result.fail()) {
         return result;
       }
@@ -339,18 +372,15 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
   auto res =
-      ::parseAndValidate(config, input, [](CreateCollectionBody& col) {});
+      ::parseAndValidate(config, input, [](CreateCollectionBody& col) {}, [](CreateCollectionBody& col) {});
   if (res.fail()) {
     auto newBody = transformFromBackwardsCompatibleBody(input, config, res.result());
     if (newBody.fail()) {
       return newBody.result();
     }
-    auto compatibleRes = ::parseAndValidate(config, newBody->slice(), [](CreateCollectionBody& col) {});
+    auto compatibleRes = ::parseAndValidate(config, newBody->slice(), [](CreateCollectionBody& col) {}, [](CreateCollectionBody& col) {});
     if (compatibleRes.ok()) {
-        LOG_TOPIC("ee638", ERR, arangodb::Logger::DEPRECATION)
-            << "The createCollection request contains an illegal combination and "
-               "will be rejected in the future: "
-            << res.result();
+      logDeprecationMessage(res.result());
     }
     return compatibleRes;
   }
@@ -365,13 +395,50 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return ::parseAndValidate(config, properties,
-                            [&name, &type](CreateCollectionBody& col) {
-                              // Inject the default values given by V8 in a
-                              // separate parameter
-                              col.type = type;
-                              col.name = name;
-                            });
+  auto res = ::parseAndValidate(config, properties,
+                                [&name, &type](CreateCollectionBody& col) {
+                                  // Inject the default values given by V8 in a
+                                  // separate parameter
+                                  col.type = type;
+                                  col.name = name;
+                                },
+      [](CreateCollectionBody& col) {
+#ifdef USE_ENTERPRISE
+        if (col.isDisjoint) {
+          // We don't support disjoint collection creation for enterprise
+          // over V8API
+          col.isDisjoint = false;
+        }
+#endif
+      });
+  if (res.fail()) {
+    auto newBody =
+        transformFromBackwardsCompatibleBody(properties, config, res.result());
+    if (newBody.fail()) {
+        return newBody.result();
+    }
+    auto compatibleRes = ::parseAndValidate(
+        config, newBody->slice(), [&name, &type](CreateCollectionBody& col) {
+          // Inject the default values given by V8 in a
+          // separate parameter
+          col.type = type;
+          col.name = name;
+        },
+        [](CreateCollectionBody& col) {
+#ifdef USE_ENTERPRISE
+          if (col.isDisjoint) {
+            // We don't support disjoint collection creation for enterprise
+            // over V8API
+            col.isDisjoint = false;
+          }
+#endif
+        });
+    if (compatibleRes.ok()) {
+        logDeprecationMessage(res.result());
+    }
+    return compatibleRes;
+  }
+  return res;
 }
 
 arangodb::velocypack::Builder

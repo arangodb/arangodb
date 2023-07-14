@@ -322,12 +322,7 @@ function CreateCollectionsSuite() {
       const res = tryCreate({name: collname, type: 3});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        if (isServer) {
-          // Type in options is ignored, need third parameter
-          validateProperties({}, collname, 2);
-        } else {
-          validateProperties({}, collname, 3);
-        }
+        validateProperties({}, collname, 3);
       } finally {
         db._drop(collname);
       }
@@ -405,13 +400,7 @@ function CreateCollectionsSuite() {
         const res = tryCreate({name: collname, type});
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          if (isServer) {
-            // V8 API does not floor, only if we use exactly 3 we get edge
-            validateProperties({}, collname, 2);
-          } else {
-            // JS Api does floor, if we use a number starting with 3 we get an edge collection
-            validateProperties({}, collname, 3);
-          }
+          validateProperties({}, collname, 3);
         } finally {
           db._drop(collname);
         }
@@ -923,7 +912,7 @@ function CreateCollectionsSuite() {
             validateDeprecationLogEntryWritten();
           }
           validateProperties(vertex, vertexName, 2, shouldKeepClusterSpecificAttributes);
-          const resEdge = tryCreate({...edge, type: "edge", name: edgeName});
+          const resEdge = tryCreate({...edge, type: 3, name: edgeName});
           try {
             if (isCluster && !isEnterprise) {
               // Sharding strategy cannot match on Community Cluster
@@ -1088,8 +1077,9 @@ function CreateCollectionsSuite() {
                   delete edge.isDisjoint;
                 }
                 delete edge.shardingStrategy;
-                if (!isEnterprise) {
-                  // And also erases distributeShardsLike
+                if (isServer) {
+                  // On Server the initial request is dissallowed.
+                  // Which will trigger removal of distributeShardsLike
                   delete edge.distributeShardsLike;
                 }
               } else {
@@ -1234,8 +1224,10 @@ function CreateCollectionsSuite() {
                   delete edge.isDisjoint;
                 }
                 delete edge.shardingStrategy;
-                if (!isEnterprise) {
-                  // And also erases distributeShardsLike
+                if (!isEnterprise || isServer) {
+                  // Comunity does not support it and on
+                  // EE Server the initial request is disallowed.
+                  // Both will trigger removal of distributeShardsLike
                   delete edge.distributeShardsLike;
                 }
               } else {
