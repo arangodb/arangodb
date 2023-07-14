@@ -42,7 +42,6 @@
 #include "store/directory.hpp"
 
 #include <atomic>
-#include <chrono>
 #include <filesystem>
 
 namespace arangodb {
