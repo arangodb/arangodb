@@ -30,6 +30,7 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/AgentCallback.h"
+#include "Agency/Node.h"
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
@@ -958,12 +959,21 @@ void Agent::advanceCommitIndex() {
           << "Critical mass for commiting " << ci + 1 << " through " << index
           << " to read db";
 
-      // Change _readDB and _commitIndex atomically together:
-      auto state = [&] {
-        std::unique_lock guard(_logAndIntermediateStateMutex);
-        return _inflightStates.commitIndex(index);
-      }();
-      _readDB.setRootNode(std::move(state));
+      // when we prepare leader ship there are no trx in flight, thus
+      // apply the log directly to readDB. Spearhead will be updated once
+      // service commences.
+      if (_leaderSince == 0) {
+        term_t t = _constituent.term();
+        auto slices = _state.slices(ci + 1, index);
+        _readDB.applyLogEntries(slices, ci, t);
+      } else {
+        // Change _readDB and _commitIndex atomically together:
+        auto state = [&] {
+          std::unique_lock guard(_logAndIntermediateStateMutex);
+          return _inflightStates.commitIndex(index);
+        }();
+        _readDB.setRootNode(std::move(state));
+      }
 
       LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << ci + 1 << " through " << index
@@ -1128,6 +1138,7 @@ void Agent::load() {
   } else {
     std::lock_guard guard{_ioLock};
     READ_LOCKER(guard2, _outputLock);
+    _spearhead = _readDB;
     activateAgency();
   }
 
@@ -1494,7 +1505,7 @@ write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
             _state.logLeaderMulti(chunk.slice(), applied, currentTerm);
         ADB_PROD_ASSERT(states.size() == indexes.size())
             << "produced " << states.size() << " states, but got "
-            << indices.size() << " indexes.";
+            << indexes.size() << " indexes.";
         for (std::size_t k = 0; k < states.size(); k++) {
           if (indexes[k] == 0) {
             continue;
@@ -1691,6 +1702,7 @@ void Agent::run() {
             std::lock_guard ioLocker{_ioLock};
             READ_LOCKER(oLocker, _outputLock);
             _spearhead = _readDB;
+            _inflightStates.clear();
             endPrepareLeadership();  // finally service can commence
           }
 
@@ -1952,6 +1964,7 @@ void Agent::rebuildDBs() {
   // We must go back to clean sheet
   _readDB.clear();
   _spearhead.clear();
+  _inflightStates.clear();
 
   if (!_state.loadLastCompactedSnapshot(_readDB, lastCompactionIndex, term)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS);
@@ -2084,7 +2097,7 @@ void Agent::setPersistedState(VPackSlice compaction) {
   try {
     WRITE_LOCKER(oLocker, _outputLock);
     std::lock_guard guard{_waitForCV.mutex};
-    _readDB.setNodeValue(compaction);
+    _readDB = _spearhead;
     _commitIndex = arangodb::basics::StringUtils::uint64(
         compaction.get(StaticStrings::KeyString).copyString());
     _local_index = _commitIndex.load(std::memory_order_relaxed);
@@ -2476,28 +2489,19 @@ void Agent::syncActiveAndAcknowledged() {
 
 std::shared_ptr<Node const> Agent::IntermediateStateStore::commitIndex(
     index_t idx) {
-  LOG_DEVEL << "calling commitIndex(" << idx << ")";
-  LOG_DEVEL << "_first        = " << _first;
-  LOG_DEVEL << "_deque.size() = " << _deque.size();
   ADB_PROD_ASSERT(_first <= idx)
       << "first index is " << _first << " but commit index is " << idx;
   auto delta = idx - _first;
   ADB_PROD_ASSERT(delta < _deque.size())
       << "delta is " << delta << " but queue size is only " << _deque.size();
-  LOG_DEVEL << "delta         = " << delta;
   auto node = _deque.at(delta);
   _deque.erase(_deque.begin(), _deque.begin() + delta + 1);
   _first = idx + 1;
-  LOG_DEVEL << "_first        = " << _first;
-  LOG_DEVEL << "_deque.size() = " << _deque.size();
   return node;
 }
 
 void Agent::IntermediateStateStore::emplace(index_t idx,
                                             std::shared_ptr<const Node> state) {
-  LOG_DEVEL << "calling emplace(" << idx << ")";
-  LOG_DEVEL << "_first        = " << _first;
-  LOG_DEVEL << "_deque.size() = " << _deque.size();
   if (_deque.empty()) {
     _first = idx;
   }
@@ -2505,10 +2509,13 @@ void Agent::IntermediateStateStore::emplace(index_t idx,
   ADB_PROD_ASSERT(next == idx)
       << "next index is " << next << " but insert index is " << idx;
   _deque.emplace_back(std::move(state));
-  LOG_DEVEL << "_first        = " << _first;
-  LOG_DEVEL << "_deque.size() = " << _deque.size();
 }
 
 Agent::IntermediateStateStore::IntermediateStateStore() : _first{1} {}
+
+void Agent::IntermediateStateStore::clear() noexcept {
+  _deque.clear();
+  _first = 0;
+}
 }  // namespace consensus
 }  // namespace arangodb

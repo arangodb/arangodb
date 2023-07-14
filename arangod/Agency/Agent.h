@@ -420,6 +420,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
     IntermediateStateStore();
     void emplace(index_t idx, std::shared_ptr<Node const> state);
     std::shared_ptr<Node const> commitIndex(index_t idx);
+    void clear() noexcept;
 
     index_t _first;
     std::deque<std::shared_ptr<Node const>> _deque;

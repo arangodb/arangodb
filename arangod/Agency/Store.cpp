@@ -88,6 +88,9 @@ std::vector<apply_ret_t> Store::applyTransactions(
     }
     try {
       for (auto const& i : VPackArrayIterator(query)) {
+        if (states) {
+          states->emplace_back(nullptr);
+        }
         if (!wmode.privileged()) {
           bool found = false;
           for (auto const& o : VPackObjectIterator(i[0])) {
@@ -105,9 +108,7 @@ std::vector<apply_ret_t> Store::applyTransactions(
 
         bool ok;
         std::lock_guard storeLocker{_storeLock};
-        if (states) {
-          states->emplace_back(nullptr);
-        }
+
         switch (i.length()) {
           case 1:  // No precondition
             ok = applies(i[0]);
