@@ -42,7 +42,8 @@ auto isSingleServer() -> bool {
 
 bool isSmart(VPackSlice fullBody) {
 #ifdef USE_ENTERPRISE
-  return basics::VelocyPackHelper::getBooleanValue(fullBody, StaticStrings::IsSmart, false);
+  return basics::VelocyPackHelper::getBooleanValue(
+      fullBody, StaticStrings::IsSmart, false);
 #else
   return false;
 #endif
@@ -62,10 +63,9 @@ bool hasDistributeShardsLike(VPackSlice fullBody,
 
 bool shouldConsiderClusterAttribute(VPackSlice fullBody,
                                     DatabaseConfiguration const& config) {
-
   if (isSingleServer()) {
-    // To simulate smart collections on SingleServer we need to consider cluster attributes
-    // distributeShardsLike will be ignored anyway
+    // To simulate smart collections on SingleServer we need to consider cluster
+    // attributes distributeShardsLike will be ignored anyway
     return isSmart(fullBody);
   } else {
     // DistributeShardsLike does superseed cluster attributes
@@ -80,19 +80,23 @@ bool shouldConsiderClusterAttribute(VPackSlice fullBody,
 bool isEdgeCollection(VPackSlice fullBody) {
   // Only true if we have a non-empty string as DistributeShardsLike
   auto type = fullBody.get(StaticStrings::DataSourceType);
-  return type.isNumber() && type.getNumericValue<TRI_col_type_e>() == TRI_col_type_e::TRI_COL_TYPE_EDGE;
+  return type.isNumber() && type.getNumericValue<TRI_col_type_e>() ==
+                                TRI_col_type_e::TRI_COL_TYPE_EDGE;
 }
 #endif
 
-auto justKeep(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto justKeep(std::string_view key, VPackSlice value, VPackSlice,
+              DatabaseConfiguration const& config, VPackBuilder& result) {
   result.add(key, value);
 }
 
-auto handleType(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleType(std::string_view key, VPackSlice value, VPackSlice,
+                DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isString() && value.isEqualString("edge")) {
     // String edge translates to edge type
     result.add(key, VPackValue(TRI_COL_TYPE_EDGE));
-  } else if (value.isNumber() && value.getNumericValue<TRI_col_type_e>() == TRI_COL_TYPE_EDGE) {
+  } else if (value.isNumber() &&
+             value.getNumericValue<TRI_col_type_e>() == TRI_COL_TYPE_EDGE) {
     // Transform correct value for Edge to edge type
     result.add(key, VPackValue(TRI_COL_TYPE_EDGE));
   } else {
@@ -117,42 +121,57 @@ auto handleReplicationFactor(std::string_view key, VPackSlice value,
   // Ignore if we have distributeShardsLike
 }
 
-auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice,
+                    DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isBoolean()) {
     result.add(key, value);
   }
   // Ignore anything else
 }
 
-auto handleWriteConcern(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleWriteConcern(std::string_view key, VPackSlice value,
+                        VPackSlice fullBody,
+                        DatabaseConfiguration const& config,
+                        VPackBuilder& result) {
   if (shouldConsiderClusterAttribute(fullBody, config)) {
     result.add(key, value);
   }
-  // Just ignore if we have distributeShardsLike or are on SingleServer or do not get a number
+  // Just ignore if we have distributeShardsLike or are on SingleServer or do
+  // not get a number
 }
 
-auto handleNumberOfShards(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleNumberOfShards(std::string_view key, VPackSlice value,
+                          VPackSlice fullBody,
+                          DatabaseConfiguration const& config,
+                          VPackBuilder& result) {
   if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
     justKeep(key, value, fullBody, config, result);
   }
   // Just ignore if we have distributeShardsLike
 }
 
-auto handleOnlyObjects(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleOnlyObjects(std::string_view key, VPackSlice value, VPackSlice,
+                       DatabaseConfiguration const& config,
+                       VPackBuilder& result) {
   if (value.isObject()) {
     result.add(key, value);
   }
   // Ignore anything else
 }
 
-auto handleStringsOnly(std::string_view key, VPackSlice value, VPackSlice, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleStringsOnly(std::string_view key, VPackSlice value, VPackSlice,
+                       DatabaseConfiguration const& config,
+                       VPackBuilder& result) {
   if (value.isString()) {
     result.add(key, value);
   }
   // Ignore anything else
 }
 
-auto handleDistributeShardsLike(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleDistributeShardsLike(std::string_view key, VPackSlice value,
+                                VPackSlice fullBody,
+                                DatabaseConfiguration const& config,
+                                VPackBuilder& result) {
   if (!config.isOneShardDB) {
     if (isSingleServer()) {
       // Community can not use distributeShardsLike on SingleServer
@@ -163,8 +182,10 @@ auto handleDistributeShardsLike(std::string_view key, VPackSlice value, VPackSli
   // In oneShardDb distributeShardsLike is forced.
 }
 
-
-auto handleSmartGraphAttribute(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleSmartGraphAttribute(std::string_view key, VPackSlice value,
+                               VPackSlice fullBody,
+                               DatabaseConfiguration const& config,
+                               VPackBuilder& result) {
 #ifdef USE_ENTERPRISE
   if (!isEdgeCollection(fullBody)) {
     // Only allow smartGraphAttribute if we do not have an edge collection
@@ -174,7 +195,10 @@ auto handleSmartGraphAttribute(std::string_view key, VPackSlice value, VPackSlic
   // Ignore anything else
 }
 
-auto handleSmartJoinAttribute(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleSmartJoinAttribute(std::string_view key, VPackSlice value,
+                              VPackSlice fullBody,
+                              DatabaseConfiguration const& config,
+                              VPackBuilder& result) {
 #ifdef USE_ENTERPRISE
   if (!isSingleServer()) {
     // Only allow smartJoinAttribute if we are no single server
@@ -184,7 +208,9 @@ auto handleSmartJoinAttribute(std::string_view key, VPackSlice value, VPackSlice
   // Ignore anything else
 }
 
-auto handleShardKeys(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleShardKeys(std::string_view key, VPackSlice value,
+                     VPackSlice fullBody, DatabaseConfiguration const& config,
+                     VPackBuilder& result) {
   if (!isSingleServer() || !config.isOneShardDB) {
     /*
 #ifndef USE_ENTERPRISE
@@ -202,14 +228,18 @@ auto handleShardKeys(std::string_view key, VPackSlice value, VPackSlice fullBody
   // In oneShardDB shardKeys are ignored
 }
 
-auto handleIsSmart(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleIsSmart(std::string_view key, VPackSlice value, VPackSlice fullBody,
+                   DatabaseConfiguration const& config, VPackBuilder& result) {
 #ifdef USE_ENTERPRISE
   handleBoolOnly(key, value, fullBody, config, result);
 #endif
   // Just ignore isSmart on community
 }
 
-auto handleShardingStrategy(std::string_view key, VPackSlice value, VPackSlice fullBody, DatabaseConfiguration const& config, VPackBuilder& result) {
+auto handleShardingStrategy(std::string_view key, VPackSlice value,
+                            VPackSlice fullBody,
+                            DatabaseConfiguration const& config,
+                            VPackBuilder& result) {
   if (!isSingleServer()) {
     handleStringsOnly(key, value, fullBody, config, result);
   }
@@ -224,8 +254,18 @@ auto logDeprecationMessage(Result const& res) -> void {
       << res;
 }
 
-auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(std::string_view key, VPackSlice value, VPackSlice original, DatabaseConfiguration const& config, VPackBuilder& result)>> const& {
-  static std::unordered_map<std::string_view, std::function<void(std::string_view key, VPackSlice value, VPackSlice original, DatabaseConfiguration const& config, VPackBuilder& result)>> allowListInstance{// CollectionConstantProperties
+auto makeAllowList() -> std::unordered_map<
+    std::string_view,
+    std::function<void(std::string_view key, VPackSlice value,
+                       VPackSlice original, DatabaseConfiguration const& config,
+                       VPackBuilder& result)>> const& {
+  static std::unordered_map<
+      std::string_view,
+      std::function<void(
+          std::string_view key, VPackSlice value, VPackSlice original,
+          DatabaseConfiguration const& config, VPackBuilder& result)>>
+      allowListInstance{
+          // CollectionConstantProperties
           {StaticStrings::DataSourceSystem, handleBoolOnly},
           {StaticStrings::IsSmart, handleIsSmart},
           {StaticStrings::IsDisjoint, handleBoolOnly},
@@ -266,16 +306,18 @@ auto makeAllowList() -> std::unordered_map<std::string_view, std::function<void(
 }
 
 /**
- * Transform an illegal inbound body into a legal one, honoring the exact behaviour
- * of 3.11 version.
+ * Transform an illegal inbound body into a legal one, honoring the exact
+ * behaviour of 3.11 version.
  *
  * @param body The original body
  * @param parsingResult The error result returned by
  * @return
  */
-auto transformFromBackwardsCompatibleBody(VPackSlice body, DatabaseConfiguration const& config, Result parsingResult) -> ResultT<VPackBuilder> {
+auto transformFromBackwardsCompatibleBody(VPackSlice body,
+                                          DatabaseConfiguration const& config,
+                                          Result parsingResult)
+    -> ResultT<VPackBuilder> {
   TRI_ASSERT(parsingResult.fail());
-//  LOG_DEVEL << "Start tranforming body " << body.toJson() << " into a legal one";
   VPackBuilder result;
   {
     VPackObjectBuilder objectGuard(&result);
@@ -291,22 +333,24 @@ auto transformFromBackwardsCompatibleBody(VPackSlice body, DatabaseConfiguration
       }
     }
   }
-//  LOG_DEVEL << "Transformed body " << body.toJson() << " into" << result.slice().toJson();
   return result;
 }
 
 #ifndef USE_ENTERPRISE
 Result validateEnterpriseFeaturesNotUsed(CreateCollectionBody const& body) {
   if (body.isSatellite()) {
-    return Result{TRI_ERROR_ONLY_ENTERPRISE, "satellite collections or only available in enterprise version"};
+    return Result{
+        TRI_ERROR_ONLY_ENTERPRISE,
+        "satellite collections or only available in enterprise version"};
   }
   if (body.isSmart || body.isSmartChild) {
-    return Result{TRI_ERROR_ONLY_ENTERPRISE, "SmartGraphs or only available in enterprise version"};
+    return Result{TRI_ERROR_ONLY_ENTERPRISE,
+                  "SmartGraphs or only available in enterprise version"};
   }
   return {TRI_ERROR_NO_ERROR};
 }
 #endif
-}
+}  // namespace
 
 CreateCollectionBody::CreateCollectionBody() {}
 
@@ -371,14 +415,18 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  auto res =
-      ::parseAndValidate(config, input, [](CreateCollectionBody& col) {}, [](CreateCollectionBody& col) {});
+  auto res = ::parseAndValidate(
+      config, input, [](CreateCollectionBody& col) {},
+      [](CreateCollectionBody& col) {});
   if (res.fail()) {
-    auto newBody = transformFromBackwardsCompatibleBody(input, config, res.result());
+    auto newBody =
+        transformFromBackwardsCompatibleBody(input, config, res.result());
     if (newBody.fail()) {
       return newBody.result();
     }
-    auto compatibleRes = ::parseAndValidate(config, newBody->slice(), [](CreateCollectionBody& col) {}, [](CreateCollectionBody& col) {});
+    auto compatibleRes = ::parseAndValidate(
+        config, newBody->slice(), [](CreateCollectionBody& col) {},
+        [](CreateCollectionBody& col) {});
     if (compatibleRes.ok()) {
       logDeprecationMessage(res.result());
     }
@@ -395,13 +443,14 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  auto res = ::parseAndValidate(config, properties,
-                                [&name, &type](CreateCollectionBody& col) {
-                                  // Inject the default values given by V8 in a
-                                  // separate parameter
-                                  col.type = type;
-                                  col.name = name;
-                                },
+  auto res = ::parseAndValidate(
+      config, properties,
+      [&name, &type](CreateCollectionBody& col) {
+        // Inject the default values given by V8 in a
+        // separate parameter
+        col.type = type;
+        col.name = name;
+      },
       [](CreateCollectionBody& col) {
 #ifdef USE_ENTERPRISE
         if (col.isDisjoint) {
@@ -415,10 +464,11 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
     auto newBody =
         transformFromBackwardsCompatibleBody(properties, config, res.result());
     if (newBody.fail()) {
-        return newBody.result();
+      return newBody.result();
     }
     auto compatibleRes = ::parseAndValidate(
-        config, newBody->slice(), [&name, &type](CreateCollectionBody& col) {
+        config, newBody->slice(),
+        [&name, &type](CreateCollectionBody& col) {
           // Inject the default values given by V8 in a
           // separate parameter
           col.type = type;
@@ -434,7 +484,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
 #endif
         });
     if (compatibleRes.ok()) {
-        logDeprecationMessage(res.result());
+      logDeprecationMessage(res.result());
     }
     return compatibleRes;
   }

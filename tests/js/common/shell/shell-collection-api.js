@@ -951,7 +951,14 @@ function CreateCollectionsSuite() {
                 }
                 if (isCluster) {
                   // SmartEdge Leader
-                  edge.internalValidatorType = 0;
+                  if (isEnterprise) {
+                    // isDisjoint should be 2
+                    // But we cannot actually create it.
+                    edge.internalValidatorType = 1;
+                  } else {
+                    // Community does not support this
+                    edge.internalValidatorType = 0;
+                  }
                 }
               }
               if (isEnterprise && isCluster) {
@@ -1100,7 +1107,14 @@ function CreateCollectionsSuite() {
                 }
                 if (isCluster) {
                   // SmartEdge Leader
-                  edge.internalValidatorType = 0;
+                  if (isEnterprise) {
+                    // isDisjoint should be 2
+                    // But we cannot actually create it.
+                    edge.internalValidatorType = 1;
+                  } else {
+                    // Community does not support this
+                    edge.internalValidatorType = 0;
+                  }
                 }
               }
               if (isEnterprise && isCluster) {
@@ -1248,7 +1262,14 @@ function CreateCollectionsSuite() {
                 }
                 if (isCluster) {
                   // SmartEdge Leader
-                  edge.internalValidatorType = 0;
+                  if (isEnterprise) {
+                    // isDisjoint should be 2
+                    // But we cannot actually create it.
+                    edge.internalValidatorType = 1;
+                  } else {
+                    // Community does not support this
+                    edge.internalValidatorType = 0;
+                  }
                 }
               }
               if (isEnterprise && isCluster) {

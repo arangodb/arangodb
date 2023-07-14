@@ -41,11 +41,14 @@ UserInputCollectionProperties::Invariants::isSmartConfiguration(
           "A smart vertex collection needs to be "
           "marked with \"isSmart: true\"."};
     }
-    if (props.shardKeys->size() != 1 || props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
-      return {R"(A smart vertex collection needs to have "shardKeys": ["_key:"].)"};
+    if (props.shardKeys->size() != 1 ||
+        props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
+      return {
+          R"(A smart vertex collection needs to have "shardKeys": ["_key:"].)"};
     }
   } else if (props.isSmart) {
-    if (props.shardKeys->size() != 1 || props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
+    if (props.shardKeys->size() != 1 ||
+        props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
       return {R"(A smart collection needs to have "shardKeys": ["_key:"].)"};
     }
   }
@@ -224,6 +227,14 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
               "supported for collections with more than one shard"};
     }
   }
+
+#ifdef USE_ENTERPRISE
+  res = validateOrSetSmartEdgeValidators();
+  if (res.fail()) {
+    return res;
+  }
+#endif
+
   return {TRI_ERROR_NO_ERROR};
 }
 

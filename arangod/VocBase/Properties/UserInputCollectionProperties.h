@@ -49,6 +49,8 @@ struct UserInputCollectionProperties : public CollectionConstantProperties,
 
 #ifdef USE_ENTERPRISE
   Result validateOrSetDefaultShardingStrategyEE();
+
+  Result validateOrSetSmartEdgeValidators();
 #endif
 
   void setDefaultShardKeys();
