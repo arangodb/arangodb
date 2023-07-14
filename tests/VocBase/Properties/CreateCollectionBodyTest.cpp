@@ -476,7 +476,8 @@ INSTANTIATE_TEST_CASE_P(
 
         CollectionNameTestParam{"Десятую", AllowedFlags::WithExtension,
                                 "non-ascii characters"},
-        CollectionNameTestParam{"💩🍺🌧t⛈c🌩_⚡🔥💥🌨", AllowedFlags::WithExtension,
+        CollectionNameTestParam{"💩🍺🌧t⛈c🌩_⚡🔥💥🌨",
+                                AllowedFlags::WithExtension,
                                 "non-ascii characters"},
         CollectionNameTestParam{
             "_💩🍺🌧t⛈c🌩_⚡🔥💥🌨",
