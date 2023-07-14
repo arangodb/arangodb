@@ -18,34 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Metrics/Builder.h"
 #include "Metrics/Gauge.h"
+#include "Metrics/Metric.h"
+
+#include <cstdint>
 
 namespace arangodb::metrics {
 
-template<typename Derived, typename T>
-class GaugeBuilder : public GenericBuilder<Derived> {
- public:
-  using MetricT = std::conditional_t<std::is_base_of_v<Metric, T>, T, Gauge<T>>;
-  using MetricV = typename MetricT::Value;
+template<typename Gauge>
+class GaugeResourceMonitor {
+  GaugeResourceMonitor(GaugeResourceMonitor const& other) = delete;
+  GaugeResourceMonitor& operator=(GaugeResourceMonitor const& other) = delete;
 
-  [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
-  [[nodiscard]] std::shared_ptr<Metric> build() const final {
-    return std::make_shared<MetricT>(MetricV{}, this->_name, this->_help,
-                                     this->_labels);
+ public:
+  explicit GaugeResourceMonitor(Gauge& m) noexcept : _metric(m) {}
+
+  /// @brief increase memory usage by <value> bytes. may throw!
+  void increaseMemoryUsage(std::uint64_t value) { _metric.fetch_add(value); }
+
+  /// @brief decrease memory usage by <value> bytes. will not throw
+  void decreaseMemoryUsage(std::uint64_t value) noexcept {
+    _metric.fetch_sub(value);
   }
+
+ private:
+  Gauge& _metric;
 };
 
 }  // namespace arangodb::metrics
-
-#define DECLARE_GAUGE(x, type, help)                    \
-  struct x : arangodb::metrics::GaugeBuilder<x, type> { \
-    x() {                                               \
-      _name = #x;                                       \
-      _help = help;                                     \
-    }                                                   \
-  }

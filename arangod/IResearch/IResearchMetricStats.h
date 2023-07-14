@@ -32,6 +32,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/Guard.h"
 #include "Metrics/MetricsFeature.h"
+#include "IResearch/ResourceManager.hpp"
 
 namespace arangodb::iresearch {
 
@@ -62,7 +63,7 @@ class MetricStats : public metrics::Guard<IResearchDataStore::Stats> {
     if (r->empty()) {
       return true;  // TODO(MBkkt) We should fix cluster info :(
     }
-    if ((*r)[0] != ServerState::instance()->getId()) {
+    if (std::string_view{(*r)[0]} != ServerState::instance()->getId()) {
       // We want collect only leader shards stats
       return true;
     }
@@ -134,6 +135,16 @@ DECLARE_GAUGE(arangodb_search_num_segments, uint64_t, "Number of segments");
 DECLARE_GAUGE(arangodb_search_num_files, uint64_t, "Number of files");
 DECLARE_GAUGE(arangodb_search_index_size, uint64_t,
               "Size of the index in bytes");
+DECLARE_GAUGE(arangodb_search_writers_memory, ResourceManager,
+              "Count of memory for writers");
+DECLARE_GAUGE(arangodb_search_readers_memory, ResourceManager,
+              "Count of memory for readers");
+DECLARE_GAUGE(arangodb_search_consolidations_memory, ResourceManager,
+              "Count of memory for consolidations");
+DECLARE_GAUGE(arangodb_search_file_descriptors, ResourceManager,
+              "Count of open file descriptors");
+DECLARE_GAUGE(arangodb_search_mapped_memory, uint64_t,
+              "Count of mapped memory");
 DECLARE_GAUGE(arangodb_search_num_failed_commits, uint64_t,
               "Number of failed commits");
 DECLARE_GAUGE(arangodb_search_num_failed_cleanups, uint64_t,
