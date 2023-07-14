@@ -8,7 +8,7 @@ import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { DatabaseUserValues } from "../addUser/CreateUser.types";
 import { useUsersContext } from "../UsersContext";
-import { AccountCircle } from "styled-icons/material";
+import { AccountCircle, Group } from "styled-icons/material";
 
 const columnHelper = createColumnHelper<DatabaseUserValues>();
 
@@ -53,31 +53,36 @@ const TABLE_COLUMNS = [
     enableColumnFilter: false,
     enableSorting: false,
     cell: info => {
-      const cellValue = info.cell.getValue();
-      if (!_.isEmpty(cellValue)) {
+      if (info.row.original.user?.substring(0, 6) === ":role:") {
+        return <Avatar size="xs" icon={<Group />} />;
+      }
+
+      if (!_.isEmpty(info.row.original.extra.img)) {
         return (
           <Avatar
             size="xs"
-            src={`https://s.gravatar.com/avatar/${cellValue}`}
+            src={`https://s.gravatar.com/avatar/${info.row.original.extra.img}`}
           />
         );
       }
+
       return <Avatar size="xs" icon={<AccountCircle />} />;
     }
   }),
-  columnHelper.accessor("active", {
+  columnHelper.accessor(row => (row.active ? "Active" : "Inactive"), {
     header: "Active",
     id: "active",
+    filterFn: "equals",
     cell: info => {
       const cellValue = info.cell.getValue();
       return (
         <>
-          {cellValue ? (
+          {cellValue === "Active" ? (
             <Tag background="green.400" color="white">
-              Active
+              {cellValue}
             </Tag>
           ) : (
-            <Tag>Inactive</Tag>
+            <Tag>{cellValue}</Tag>
           )}
         </>
       );
@@ -95,7 +100,7 @@ export const UsersTable = () => {
     columns: TABLE_COLUMNS,
     initialSorting: [
       {
-        id: "username",
+        id: "user",
         desc: false
       }
     ]
