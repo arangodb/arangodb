@@ -27,6 +27,9 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   Mocks/RebootIdCacheMock.h
   Mocks/StorageManagerMock.h
   Mocks/StateHandleManagerMock.h
+  Mocks/LogLeaderMock.h
+  Mocks/LogFollowerMock.h
+  Mocks/ReplicatedStateHandleMock.h
   )
 
 

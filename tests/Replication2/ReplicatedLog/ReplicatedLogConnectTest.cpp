@@ -35,6 +35,9 @@
 
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
+#include "Replication2/Mocks/LogLeaderMock.h"
+#include "Replication2/Mocks/LogFollowerMock.h"
+#include "Replication2/Mocks/ReplicatedStateHandleMock.h"
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/Mocks/ParticipantsFactoryMock.h"
 
@@ -97,68 +100,6 @@ struct ParticipantsConfigBuilder {
 
 }  // namespace arangodb::replication2::test
 
-namespace {
-
-struct LogLeaderMock : replicated_log::ILogLeader {
-  MOCK_METHOD(LogStatus, getStatus, (), (const, override));
-  MOCK_METHOD(QuickLogStatus, getQuickStatus, (), (const, override));
-  MOCK_METHOD(
-      (std::tuple<std::unique_ptr<storage::IStorageEngineMethods>,
-                  std::unique_ptr<IReplicatedStateHandle>, DeferredAction>),
-      resign, (), (override, ref(&&)));
-
-  MOCK_METHOD(WaitForFuture, waitForLeadership, (), (override));
-  MOCK_METHOD(WaitForFuture, waitFor, (LogIndex), (override));
-  MOCK_METHOD(WaitForIteratorFuture, waitForIterator, (LogIndex), (override));
-  MOCK_METHOD(std::unique_ptr<LogIterator>, getInternalLogIterator,
-              (std::optional<LogRange> bounds), (const, override));
-  MOCK_METHOD(Result, release, (LogIndex), (override));
-  MOCK_METHOD(ResultT<arangodb::replication2::replicated_log::CompactionResult>,
-              compact, (), (override));
-  MOCK_METHOD(LogIndex, ping, (std::optional<std::string>), (override));
-  MOCK_METHOD(LogIndex, insert, (LogPayload, bool), ());
-  MOCK_METHOD(LogIndex, updateParticipantsConfig,
-              (const std::shared_ptr<const agency::ParticipantsConfig>& config),
-              (override));
-};
-
-struct LogFollowerMock : replicated_log::ILogFollower {
-  MOCK_METHOD(LogStatus, getStatus, (), (const, override));
-  MOCK_METHOD(QuickLogStatus, getQuickStatus, (), (const, override));
-  MOCK_METHOD(
-      (std::tuple<std::unique_ptr<storage::IStorageEngineMethods>,
-                  std::unique_ptr<IReplicatedStateHandle>, DeferredAction>),
-      resign, (), (override, ref(&&)));
-
-  MOCK_METHOD(WaitForFuture, waitFor, (LogIndex), (override));
-  MOCK_METHOD(WaitForIteratorFuture, waitForIterator, (LogIndex), (override));
-  MOCK_METHOD(std::unique_ptr<LogIterator>, getInternalLogIterator,
-              (std::optional<LogRange> bounds), (const, override));
-  MOCK_METHOD(Result, release, (LogIndex), (override));
-  MOCK_METHOD(ResultT<arangodb::replication2::replicated_log::CompactionResult>,
-              compact, (), (override));
-
-  MOCK_METHOD(ParticipantId const&, getParticipantId, (),
-              (const, noexcept, override));
-  MOCK_METHOD(futures::Future<AppendEntriesResult>, appendEntries,
-              (AppendEntriesRequest), (override));
-};
-
-struct ReplicatedStateHandleMock : IReplicatedStateHandle {
-  MOCK_METHOD(std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>,
-              resignCurrentState, (), (noexcept, override));
-  MOCK_METHOD(void, leadershipEstablished,
-              (std::unique_ptr<IReplicatedLogLeaderMethods>), (override));
-  MOCK_METHOD(void, becomeFollower,
-              (std::unique_ptr<IReplicatedLogFollowerMethods>), (override));
-  MOCK_METHOD(void, acquireSnapshot, (ServerID leader, LogIndex, std::uint64_t),
-              (noexcept, override));
-  MOCK_METHOD(replicated_state::Status, getInternalStatus, (),
-              (const, override));
-  MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
-};
-}  // namespace
-
 struct ReplicatedLogConnectTest : ::testing::Test {
   std::shared_ptr<storage::test::FakeStorageEngineMethodsContext>
       storageContext =
@@ -176,9 +117,10 @@ struct ReplicatedLogConnectTest : ::testing::Test {
 
   std::shared_ptr<test::ParticipantsFactoryMock> participantsFactoryMock =
       std::make_shared<test::ParticipantsFactoryMock>();
-  std::shared_ptr<LogLeaderMock> leaderMock;
-  std::shared_ptr<LogFollowerMock> followerMock;
-  ReplicatedStateHandleMock* stateHandlePtr = new ReplicatedStateHandleMock();
+  std::shared_ptr<test::LogLeaderMock> leaderMock;
+  std::shared_ptr<test::LogFollowerMock> followerMock;
+  test::ReplicatedStateHandleMock* stateHandlePtr =
+      new test::ReplicatedStateHandleMock();
 };
 
 TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
@@ -204,7 +146,7 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
         EXPECT_EQ(info.myself, myself.serverId);
         EXPECT_EQ(info.term, LogTerm{1});
         EXPECT_EQ(*info.initialConfig, config.get());
-        leaderMock = std::make_shared<LogLeaderMock>();
+        leaderMock = std::make_shared<test::LogLeaderMock>();
         EXPECT_CALL(*leaderMock, waitForLeadership)
             .WillOnce([]() -> futures::Future<WaitForResult> {
               return WaitForResult{};
@@ -251,7 +193,7 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
         EXPECT_EQ(info.myself, myself.serverId);
         EXPECT_EQ(info.term, LogTerm{1});
         EXPECT_EQ(*info.initialConfig, config.get());
-        leaderMock = std::make_shared<LogLeaderMock>();
+        leaderMock = std::make_shared<test::LogLeaderMock>();
         EXPECT_CALL(*leaderMock, waitForLeadership)
             .WillOnce([]() -> futures::Future<WaitForResult> {
               return WaitForResult{};
@@ -293,7 +235,7 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
         EXPECT_EQ(info.myself, myself.serverId);
         EXPECT_EQ(info.term, LogTerm{1});
         EXPECT_EQ(*info.initialConfig, config.get());
-        leaderMock = std::make_shared<LogLeaderMock>();
+        leaderMock = std::make_shared<test::LogLeaderMock>();
         EXPECT_CALL(*leaderMock, waitForLeadership)
             .WillOnce([]() -> futures::Future<WaitForResult> {
               return WaitForResult{};
@@ -316,7 +258,7 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
         EXPECT_EQ(info.myself, myself.serverId);
         EXPECT_EQ(info.leader, "A");
         EXPECT_EQ(info.term, LogTerm{2});
-        return followerMock = std::make_shared<LogFollowerMock>();
+        return followerMock = std::make_shared<test::LogFollowerMock>();
       });
 
   EXPECT_CALL(std::move(*leaderMock), resign).WillOnce([&] {
@@ -360,7 +302,7 @@ TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
         EXPECT_EQ(info.myself, myself.serverId);
         EXPECT_EQ(info.leader, "B");
         EXPECT_EQ(info.term, LogTerm{1});
-        return followerMock = std::make_shared<LogFollowerMock>();
+        return followerMock = std::make_shared<test::LogFollowerMock>();
       });
   // create initial state and connection
   auto connection =
@@ -375,7 +317,7 @@ TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
         EXPECT_EQ(info.myself, myself.serverId);
         EXPECT_EQ(info.term, LogTerm{2});
         EXPECT_EQ(*info.initialConfig, config.get());
-        leaderMock = std::make_shared<LogLeaderMock>();
+        leaderMock = std::make_shared<test::LogLeaderMock>();
         EXPECT_CALL(*leaderMock, waitForLeadership)
             .WillOnce([]() -> futures::Future<WaitForResult> {
               return WaitForResult{};
@@ -421,7 +363,8 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
                     LeaderTermInfo info, ParticipantContext context) {
         EXPECT_EQ(methods.release(), methodsPtr);
         EXPECT_EQ(context.stateHandle.release(), stateHandlePtr);
-        leaderMock = std::make_shared<testing::StrictMock<LogLeaderMock>>();
+        leaderMock =
+            std::make_shared<testing::StrictMock<test::LogLeaderMock>>();
         EXPECT_CALL(*leaderMock, waitForLeadership)
             .WillOnce([]() -> futures::Future<WaitForResult> {
               return WaitForResult{};
