@@ -1968,7 +1968,14 @@ Result TailingSyncer::processLeaderLog(
     lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
 
     TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >=
-               _applier->_state._lastAppliedContinuousTick);
+               _applier->_state._lastAppliedContinuousTick)
+        << ", lastAvailable: " << _applier->_state._lastAvailableContinuousTick
+        << ", lastContinuous: " << _applier->_state._lastAppliedContinuousTick
+        << ", checkMore: " << checkMore
+        << ", lastIncludedTick: " << lastIncludedTick
+        << ", fetchTick: " << fetchTick
+        << ", lastScannedTick: " << lastScannedTick
+        << ", bumpTick: " << bumpTick;
 
     _applier->_state._totalFetchTime += sharedStatus->time();
     _applier->_state._totalFetchInstances++;

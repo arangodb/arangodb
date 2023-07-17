@@ -264,6 +264,9 @@ struct Job {
   static void addPreconditionUnchanged(velocypack::Builder& pre,
                                        std::string_view key,
                                        velocypack::Slice value);
+  static void addPreconditionUnchanged(velocypack::Builder& pre,
+                                       std::string_view key,
+                                       velocypack::Value value);
   static void addPreconditionJobStillInPending(velocypack::Builder& pre,
                                                std::string const& jobId);
   static std::string checkServerHealth(Node const& snapshot,
