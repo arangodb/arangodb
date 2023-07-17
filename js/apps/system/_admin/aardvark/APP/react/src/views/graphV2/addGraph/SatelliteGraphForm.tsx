@@ -1,4 +1,4 @@
-import { Alert, AlertIcon, VStack } from "@chakra-ui/react";
+import { VStack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { mutate } from "swr";
@@ -7,6 +7,7 @@ import { FormField } from "../../../components/form/FormField";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
 import { useGraphsModeContext } from "../GraphsModeContext";
+import { CollectionNameInfo } from "./CollectionNameInfo";
 import { SatelliteGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 import { GraphModalFooter } from "./GraphModalFooter";
@@ -77,11 +78,7 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
       {() => (
         <Form>
           <VStack spacing={4} align="stretch">
-            <Alert status="info">
-              <AlertIcon />
-              Only use non-existent collection names. They are automatically
-              created during the graph setup.
-            </Alert>
+            <CollectionNameInfo />
             <FieldsGrid maxWidth="full">
               <FormField
                 field={{
@@ -109,3 +106,4 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
     </Formik>
   );
 };
+

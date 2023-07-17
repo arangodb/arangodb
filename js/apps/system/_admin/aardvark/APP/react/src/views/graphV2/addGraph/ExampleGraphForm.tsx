@@ -1,6 +1,8 @@
+import { ExternalLinkIcon } from "@chakra-ui/icons";
 import {
   Box,
   Button,
+  Flex,
   HStack,
   Link,
   Stack,
@@ -96,12 +98,22 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
           </HStack>
         );
       })}
-        <Text textAlign="center">
-          Need help? Visit our{" "}
-          <Link href="https://chakra-ui.com" isExternal textDecoration="underline">
-            Graph Documentation
-          </Link>
-        </Text>
+      <Flex gap="1" justifyContent="center">
+        Need help? Visit our
+        <Link
+          target="_blank"
+          textDecoration="underline"
+          color="blue.600"
+          _hover={{
+            color: "blue.800"
+          }}
+          href="https://www.arangodb.com/docs/stable/graphs.html#example-graphs"
+        >
+          <Flex gap="1" alignItems="center">
+            <Text>Graph Documentation</Text> <ExternalLinkIcon />
+          </Flex>
+        </Link>
+      </Flex>
       <ModalFooter>
         <VStack>
           <Stack direction="row" spacing={4} align="center">

@@ -25,6 +25,8 @@ export const AddGraphModal = ({
 }) => {
   const initialFocusRef = React.useRef<HTMLInputElement>(null);
   const { mode } = useGraphsModeContext();
+  const defaultIndex = window.frontendConfig.isEnterprise ? 4 : 1;
+
   return (
     <Modal
       initialFocusRef={initialFocusRef}
@@ -39,7 +41,15 @@ export const AddGraphModal = ({
           </Heading>
         </Flex>
       </ModalHeader>
-      <AddGraphModalInner onClose={onClose} />
+      <ModalBody>
+        <Tabs size="md" variant="enclosed-colored" defaultIndex={defaultIndex}>
+          {window.frontendConfig.isEnterprise ? (
+            <EnterpriseTabs onClose={onClose} />
+          ) : (
+            <CommunityTabs onClose={onClose} />
+          )}
+        </Tabs>
+      </ModalBody>
     </Modal>
   );
 };
@@ -93,17 +103,3 @@ const CommunityTabs = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-const AddGraphModalInner = ({ onClose }: { onClose: () => void }) => {
-  const defaultIndex = window.frontendConfig.isEnterprise ? 4 : 1;
-  return (
-    <ModalBody>
-      <Tabs size="md" variant="enclosed-colored" defaultIndex={defaultIndex}>
-        {window.frontendConfig.isEnterprise ? (
-          <EnterpriseTabs onClose={onClose} />
-        ) : (
-          <CommunityTabs onClose={onClose} />
-        )}
-      </Tabs>
-    </ModalBody>
-  );
-};
