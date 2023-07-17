@@ -8,6 +8,7 @@ import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
 import { GENERAL_GRAPH_FIELDS_MAP } from "../GraphsHelpers";
 import { useGraphsModeContext } from "../GraphsModeContext";
+import { ClusterFields } from "./ClusterFields";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 import { GraphModalFooter } from "./GraphModalFooter";
@@ -70,6 +71,9 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
                   isDisabled: mode === "edit"
                 }}
               />
+              {window.frontendConfig.isCluster && (
+                <ClusterFields isShardsRequired={false} />
+              )}
               <EdgeDefinitionsField
                 noOptionsMessage={() => "No collections found"}
               />

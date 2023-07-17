@@ -7,11 +7,11 @@ import { FormField } from "../../../components/form/FormField";
 import { FieldsGrid } from "../FieldsGrid";
 import {
   createGraph,
-  CLUSTER_GRAPH_FIELDS_MAP,
   GENERAL_GRAPH_FIELDS_MAP,
   SMART_GRAPH_FIELDS_MAP
 } from "../GraphsHelpers";
 import { useGraphsModeContext } from "../GraphsModeContext";
+import { ClusterFields } from "./ClusterFields";
 import { SmartGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 import { GraphModalFooter } from "./GraphModalFooter";
@@ -19,9 +19,6 @@ import { GraphWarnings } from "./GraphWarnings";
 
 const smartGraphFieldsMap = {
   name: GENERAL_GRAPH_FIELDS_MAP.name,
-  numberOfShards: CLUSTER_GRAPH_FIELDS_MAP.numberOfShards,
-  replicationFactor: CLUSTER_GRAPH_FIELDS_MAP.replicationFactor,
-  minReplicationFactor: CLUSTER_GRAPH_FIELDS_MAP.minReplicationFactor,
   isDisjoint: SMART_GRAPH_FIELDS_MAP.isDisjoint,
   smartGraphAttribute: SMART_GRAPH_FIELDS_MAP.smartGraphAttribute,
   orphanCollections: GENERAL_GRAPH_FIELDS_MAP.orphanCollections
@@ -88,24 +85,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
                   isDisabled
                 }}
               />
-              <FormField
-                field={{
-                  ...smartGraphFieldsMap.numberOfShards,
-                  isDisabled
-                }}
-              />
-              <FormField
-                field={{
-                  ...smartGraphFieldsMap.replicationFactor,
-                  isDisabled
-                }}
-              />
-              <FormField
-                field={{
-                  ...smartGraphFieldsMap.minReplicationFactor,
-                  isDisabled
-                }}
-              />
+              <ClusterFields isShardsRequired />
               <FormField
                 field={{
                   ...smartGraphFieldsMap.isDisjoint,

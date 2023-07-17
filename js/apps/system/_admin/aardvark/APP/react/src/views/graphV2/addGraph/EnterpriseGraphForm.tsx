@@ -7,10 +7,10 @@ import { FormField } from "../../../components/form/FormField";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
 import {
-  CLUSTER_GRAPH_FIELDS_MAP,
   GENERAL_GRAPH_FIELDS_MAP
 } from "../GraphsHelpers";
 import { useGraphsModeContext } from "../GraphsModeContext";
+import { ClusterFields } from "./ClusterFields";
 import { EnterpriseGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 import { GraphModalFooter } from "./GraphModalFooter";
@@ -18,9 +18,6 @@ import { GraphWarnings } from "./GraphWarnings";
 
 const enterpriseGraphFieldsMap = {
   name: GENERAL_GRAPH_FIELDS_MAP.name,
-  numberOfShards: CLUSTER_GRAPH_FIELDS_MAP.numberOfShards,
-  replicationFactor: CLUSTER_GRAPH_FIELDS_MAP.replicationFactor,
-  minReplicationFactor: CLUSTER_GRAPH_FIELDS_MAP.minReplicationFactor,
   orphanCollections: GENERAL_GRAPH_FIELDS_MAP.orphanCollections
 };
 
@@ -83,24 +80,7 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
                   isDisabled: mode === "edit"
                 }}
               />
-              <FormField
-                field={{
-                  ...enterpriseGraphFieldsMap.numberOfShards,
-                  isDisabled: mode === "edit"
-                }}
-              />
-              <FormField
-                field={{
-                  ...enterpriseGraphFieldsMap.replicationFactor,
-                  isDisabled: mode === "edit"
-                }}
-              />
-              <FormField
-                field={{
-                  ...enterpriseGraphFieldsMap.minReplicationFactor,
-                  isDisabled: mode === "edit"
-                }}
-              />
+              <ClusterFields isShardsRequired />
               <EdgeDefinitionsField
                 noOptionsMessage={() =>
                   "Please enter a new and valid collection name"
