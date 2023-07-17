@@ -78,7 +78,7 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
       {() => (
         <Form>
           <VStack spacing={4} align="stretch">
-            <GraphWarnings />
+            <GraphWarnings showOneShardWarning={false} />
             <FieldsGrid maxWidth="full">
               <FormField
                 field={{

@@ -2,7 +2,11 @@ import { Alert, AlertIcon, Stack } from "@chakra-ui/react";
 import React from "react";
 import { useGraphsListContext } from "../GraphsListContext";
 
-export const GraphWarnings = () => {
+export const GraphWarnings = ({
+  showOneShardWarning = true
+}: {
+  showOneShardWarning?: boolean;
+}) => {
   const { isOneShardDb } = useGraphsListContext();
   return (
     <Stack>
@@ -11,7 +15,7 @@ export const GraphWarnings = () => {
         Only use non-existent collection names. They are automatically created
         during the graph setup.
       </Alert>
-      {isOneShardDb && (
+      {isOneShardDb && showOneShardWarning && (
         <Alert status="warning">
           <AlertIcon />
           Creating SmartGraphs in a OneShard database is discouraged.
