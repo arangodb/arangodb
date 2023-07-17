@@ -23,16 +23,23 @@
 
 #pragma once
 
-#include "AgencyCommon.h"
 #include "Basics/ResultT.h"
-
-#include <velocypack/Buffer.h>
+#include "Agency/AgencyCommon.h"
 
 #include <cstdint>
 #include <string>
 #include <string_view>
-#include <type_traits>
-#include <utility>
+#include <cstring>
+#include <chrono>
+
+#include <vector>
+#include <unordered_map>
+
+#include <velocypack/Slice.h>
+
+namespace arangodb::velocypack {
+class Slice;
+}
 
 namespace arangodb::cluster::paths {
 class Path;
@@ -49,8 +56,6 @@ enum Operation {
   POP,
   PREPEND,
   SHIFT,
-  OBSERVE,
-  UNOBSERVE,
   ERASE,
   REPLACE,
   READ_LOCK,
@@ -59,11 +64,6 @@ enum Operation {
   WRITE_UNLOCK,
   PUSH_QUEUE,
 };
-
-using namespace arangodb::velocypack;
-
-typedef std::chrono::system_clock::time_point TimePoint;
-typedef std::chrono::steady_clock::time_point SteadyTimePoint;
 
 class Store;
 
@@ -80,13 +80,13 @@ class SmallBuffer {
     }
   }
   explicit SmallBuffer(uint8_t const* data, size_t size) : SmallBuffer(size) {
-    memcpy(_start, data, size);
+    std::memcpy(_start, data, size);
   }
   SmallBuffer(SmallBuffer const& other) : SmallBuffer() {
     if (!other.empty()) {
       _start = new uint8_t[other._size];
       _size = other._size;
-      memcpy(_start, other._start, other._size);
+      std::memcpy(_start, other._start, other._size);
     }
   }
   SmallBuffer(SmallBuffer&& other) noexcept
@@ -142,10 +142,10 @@ class Node final {
 
  public:
   /// @brief Slash-segmented path
-  typedef std::vector<std::string> PathType;
+  using PathType = std::vector<std::string>;
 
   /// @brief Child nodes
-  typedef std::unordered_map<std::string, std::shared_ptr<Node>> Children;
+  using Children = std::unordered_map<std::string, std::shared_ptr<Node>>;
 
   /// @brief Split strings by forward slashes, omitting empty strings,
   /// and ignoring multiple subsequent forward slashes
@@ -228,10 +228,10 @@ class Node final {
       arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
-  void toBuilder(Builder&, bool showHidden = false) const;
+  void toBuilder(velocypack::Builder&, bool showHidden = false) const;
 
   /// @brief Create Builder representing this store
-  VPackBuilder toBuilder() const;
+  velocypack::Builder toBuilder() const;
 
   /// @brief Access children
 
@@ -242,10 +242,7 @@ class Node final {
   Children const& children() const;
 
   /// @brief Create slice from value
-  Slice slice() const;
-
-  /// @brief Get value type
-  ValueType valueType() const;
+  velocypack::Slice slice() const;
 
   /// @brief Create JSON representation of this node and below
   std::string toJson() const;
@@ -308,7 +305,8 @@ class Node final {
 
   /// @brief accessor to Node's Slice value
   /// @return  returns nullopt if not found or type doesn't match
-  std::optional<Slice> hasAsSlice(std::string const&) const noexcept;
+  std::optional<velocypack::Slice> hasAsSlice(
+      std::string const&) const noexcept;
 
   /// @brief accessor to Node's uint64_t value
   /// @return  returns nullopt if not found or type doesn't match
@@ -328,16 +326,16 @@ class Node final {
 
   /// @brief accessor to Node then write to builder
   /// @return  returns true if url exists
-  [[nodiscard]] bool hasAsBuilder(std::string const&, Builder&,
+  [[nodiscard]] bool hasAsBuilder(std::string const&, velocypack::Builder&,
                                   bool showHidden = false) const;
 
   /// @brief accessor to Node's value as a Builder object
   /// @return  returns nullopt if not found or type doesn't match
-  std::optional<Builder> hasAsBuilder(std::string const&) const;
+  std::optional<velocypack::Builder> hasAsBuilder(std::string const&) const;
 
   /// @brief accessor to Node's Array
   /// @return  returns nullopt if not found or type doesn't match
-  std::optional<Slice> hasAsArray(std::string const&) const;
+  std::optional<velocypack::Slice> hasAsArray(std::string const&) const;
 
   // These two operator() functions could be "protected" once
   //  unit tests updated.
@@ -355,7 +353,7 @@ class Node final {
   std::optional<std::string_view> getStringView() const;
 
   /// @brief Get array value
-  std::optional<Slice> getArray() const;
+  std::optional<velocypack::Slice> getArray() const;
 
   /// @brief Get unsigned value (throws if type NODE or if conversion fails)
   std::optional<uint64_t> getUInt() const noexcept;
@@ -371,17 +369,14 @@ class Node final {
 
   template<typename T>
   auto getNumberUnlessExpiredWithDefault() -> T {
-    if (ADB_LIKELY(!lifetimeExpired())) {
-      try {
-        return this->slice().getNumber<T>();
-      } catch (...) {
-      }
+    try {
+      return this->slice().getNumber<T>();
+    } catch (...) {
+      return T{0};
     }
-
-    return T{0};
   }
 
-  static auto getIntWithDefault(Slice slice, std::string_view key,
+  static auto getIntWithDefault(velocypack::Slice slice, std::string_view key,
                                 std::int64_t def) -> std::int64_t;
 
   bool isReadLockable(std::string_view by) const;
@@ -401,31 +396,16 @@ class Node final {
   /// @return shared pointer to removed child
   arangodb::ResultT<std::shared_ptr<Node>> removeChild(std::string const& key);
 
-  /// @brief Get root store if it exists:
-  Store* getRootStore() const;
-
   /// @brief Remove me from tree, if not root node, clear else.
   /// @return If not root node, shared pointer copy to this node is returned
   ///         to control life time by caller; else nullptr.
   arangodb::ResultT<std::shared_ptr<Node>> deleteMe();
 
-  // @brief check lifetime expiry
-  bool lifetimeExpired() const;
-
-  /// @brief Add time to live entry
-  bool addTimeToLive(
-      std::chrono::time_point<std::chrono::system_clock> const& tp);
-
-  /// @brief Remove time to live entry
-  bool removeTimeToLive();
-
   void rebuildVecBuf() const;
 
   std::string _nodeName;                             ///< @brief my name
   Node* _parent;                                     ///< @brief parent
-  Store* _store;                                     ///< @brief Store
   mutable std::unique_ptr<Children> _children;       ///< @brief child nodes
-  TimePoint _ttl;                                    ///< @brief my expiry
   std::unique_ptr<std::vector<SmallBuffer>> _value;  ///< @brief my value
   mutable std::unique_ptr<SmallBuffer> _vecBuf;
   mutable bool _vecBufDirty;

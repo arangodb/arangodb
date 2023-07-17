@@ -100,9 +100,6 @@ Agent::Agent(ArangodServer& server, config_t const& config)
       _state(server),
       _config(config),
       _commitIndex(0),
-      _spearhead(server, this),
-      _readDB(server, this),
-      _transient(server, this),
       _agentNeedsWakeup(false),
       _compactor(this),
       _ready(false),
@@ -717,7 +714,7 @@ void Agent::sendAppendEntriesRPC() {
       }
       index_t lowest = unconfirmed.front().index;
 
-      Store snapshot(server(), this, "snapshot");
+      Store snapshot("snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
 
@@ -965,7 +962,7 @@ void Agent::advanceCommitIndex() {
           << " to read db";
 
       // Change _readDB and _commitIndex atomically together:
-      _readDB.applyLogEntries(slices, ci, t, true);
+      _readDB.applyLogEntries(slices, ci, t);
 
       LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << ci + 1 << " through " << index
@@ -1599,8 +1596,6 @@ void Agent::run() {
       try {
         // Clear expired long polls
         clearExpiredPolls();
-        // Empty store callback trash bin
-        emptyCbTrashBin();
         std::this_thread::sleep_for(std::chrono::seconds(1));
       } catch (std::exception const& e) {
         LOG_TOPIC("a0ef7", WARN, Logger::AGENCY)
@@ -1664,9 +1659,6 @@ void Agent::run() {
 
           // Check whether we can advance _commitIndex
           advanceCommitIndex();
-
-          // Empty store callback trash bin
-          emptyCbTrashBin();
 
           bool commenceService = false;
           {
@@ -1962,7 +1954,7 @@ void Agent::rebuildDBs() {
     auto logs = _state.slices(lastCompactionIndex + 1,
                               _commitIndex.load(std::memory_order_relaxed));
     _readDB.applyLogEntries(logs, _commitIndex.load(std::memory_order_relaxed),
-                            term, false /* do not send callbacks */);
+                            term);
   }
   _spearhead = _readDB;
 
@@ -2013,13 +2005,6 @@ Store const& Agent::spearhead() const { return _spearhead; }
 /// Get _readDB reference with intentionally no lock acquired here.
 ///   Safe ONLY IF via executeLock() (see example Supervisor.cpp)
 Store const& Agent::readDB() const { return _readDB; }
-
-/// Get readdb
-arangodb::consensus::index_t Agent::readDB(Node& node) const {
-  READ_LOCKER(oLocker, _outputLock);
-  node = _readDB.get();
-  return _commitIndex.load(std::memory_order_relaxed);
-}
 
 /// Get readdb
 arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
@@ -2076,13 +2061,13 @@ Store const& Agent::transient() const { return _transient; }
 /// Rebuild from persisted state
 void Agent::setPersistedState(VPackSlice compaction) {
   // Catch up with compacted state, this is only called at startup
-  _spearhead = compaction;
+  _spearhead.loadFromVelocyPack(compaction);
 
   // Catch up with commit
   try {
     WRITE_LOCKER(oLocker, _outputLock);
     std::lock_guard guard{_waitForCV.mutex};
-    _readDB = compaction;
+    _readDB.loadFromVelocyPack(compaction);
     _commitIndex = arangodb::basics::StringUtils::uint64(
         compaction.get(StaticStrings::KeyString).copyString());
     _local_index = _commitIndex.load(std::memory_order_relaxed);
@@ -2322,79 +2307,8 @@ bool Agent::ready() const {
   return _ready;
 }
 
-void Agent::trashStoreCallback(std::string const& url, VPackSlice slice) {
-  TRI_ASSERT(slice.isObject());
-
-  // body consists of object holding keys index, term and the observed keys
-  // we'll remove observation on every key and according observer url
-  for (auto const& i : VPackObjectIterator(slice)) {
-    if (!i.key.isEqualString("term") && !i.key.isEqualString("index")) {
-      std::lock_guard lock{_cbtLock};
-      _callbackTrashBin[i.key.copyString()].emplace(url);
-    }
-  }
-}
-
-void Agent::emptyCbTrashBin() {
-  using clock = std::chrono::steady_clock;
-
-  auto envelope = std::make_shared<VPackBuilder>();
-  {
-    std::lock_guard lock{_cbtLock};
-
-    auto early = std::chrono::duration_cast<std::chrono::seconds>(
-                     clock::now() - _callbackLastPurged)
-                     .count() < 10;
-
-    if (early || _callbackTrashBin.empty()) {
-      return;
-    }
-
-    {
-      VPackArrayBuilder trxs(envelope.get());
-      for (auto const& i : _callbackTrashBin) {
-        for (auto const& j : i.second) {
-          {
-            VPackArrayBuilder trx(envelope.get());
-            {
-              VPackObjectBuilder ak(envelope.get());
-              envelope->add(VPackValue(i.first));
-              {
-                VPackObjectBuilder oper(envelope.get());
-                envelope->add("op", VPackValue("unobserve"));
-                envelope->add("url", VPackValue(j));
-              }
-            }
-          }
-        }
-      }
-    }
-    _callbackTrashBin.clear();
-    _callbackLastPurged = std::chrono::steady_clock::now();
-  }
-
-  LOG_TOPIC("12ad3", DEBUG, Logger::AGENCY)
-      << "unobserving: " << envelope->toJson();
-
-  // This is a best effort attempt. If either the queueing or the write fail,
-  // while above _callbackTrashBin has been cleaned, entries will repopulate
-  // with future 404 errors, when they are triggered again. So either way these
-  // attempts are repeated until such time, when the callbacks are gone
-  // successfully through queue + write.
-  auto* scheduler = SchedulerFeature::SCHEDULER;
-  if (scheduler != nullptr) {
-    scheduler->queue(RequestLane::INTERNAL_LOW,
-                     [&server = server(), envelope = std::move(envelope)] {
-                       auto* agent = server.getFeature<AgencyFeature>().agent();
-                       if (!server.isStopping() && agent) {
-                         agent->write(envelope->slice());
-                       }
-                     });
-  }
-}
-
 query_t Agent::buildDB(arangodb::consensus::index_t index) {
-  Store store(server(), this);
+  Store store;
   index_t oldIndex;
   term_t term;
   if (!_state.loadLastCompactedSnapshot(store, oldIndex, term)) {
@@ -2418,14 +2332,12 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
   {
     if (index > oldIndex) {
       auto logs = _state.slices(oldIndex + 1, index);
-      store.applyLogEntries(logs, index, term,
-                            false /* do not perform callbacks */);
+      store.applyLogEntries(logs, index, term);
     } else {
       VPackBuilder logs;
       logs.openArray();
       logs.close();
-      store.applyLogEntries(logs, index, term,
-                            false /* do not perform callbacks */);
+      store.applyLogEntries(logs, index, term);
     }
   }
 

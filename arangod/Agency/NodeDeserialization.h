@@ -24,6 +24,7 @@
 #pragma once
 
 #include "NodeLoadInspector.h"
+#include "Basics/Exceptions.h"
 
 namespace arangodb::consensus {
 

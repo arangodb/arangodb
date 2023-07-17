@@ -25,12 +25,14 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          std::string const& jobId, std::string const& creator,

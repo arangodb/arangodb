@@ -430,8 +430,8 @@ index_t State::logFollower(VPackSlice transactions) {
     if (useSnapshot) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
-      Store snapshot(_agent->server(), _agent, "snapshot");
-      snapshot = transactions[0];
+      Store snapshot("snapshot");
+      snapshot.loadFromVelocyPack(transactions[0]);
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
             << "Could not restore received log snapshot.";
@@ -984,7 +984,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
 
     VPackSlice ii = result[0];
     try {
-      store = ii;
+      store.loadFromVelocyPack(ii);
       index = extractIndexFromKey(ii);
       term = ii.get("term").getNumber<uint64_t>();
     } catch (std::exception const& e) {
@@ -1311,7 +1311,7 @@ bool State::compact(index_t cind, index_t keep) {
       (std::max)(_nextCompactionAfter.load(),
                  cind + _agent->config().compactionStepSize());
 
-  Store snapshot(_agent->server(), _agent, "snapshot");
+  Store snapshot("snapshot");
   index_t index;
   term_t term;
   if (!loadLastCompactedSnapshot(snapshot, index, term)) {
@@ -1328,8 +1328,7 @@ bool State::compact(index_t cind, index_t keep) {
     // Apply log entries to snapshot up to and including index cind:
     auto logs = slices(index + 1, cind);
     log_t last = at(cind);
-    snapshot.applyLogEntries(logs, cind, last.term,
-                             false /* do not perform callbacks */);
+    snapshot.applyLogEntries(logs, cind, last.term);
 
     if (!persistCompactionSnapshot(cind, last.term, snapshot)) {
       LOG_TOPIC("3b34a", ERR, Logger::AGENCY)
@@ -1733,13 +1732,13 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   VPackSlice result = queryResult.data->slice();
   TRI_ASSERT(result.isArray());
 
-  Store store(vocbase.server(), nullptr);
+  Store store;
   index = 0;
   term = 0;
   if (result.length() == 1) {
     // Result can only have length 0 or 1.
     VPackSlice s = result[0];
-    store = s;
+    store.loadFromVelocyPack(s);
     index = extractIndexFromKey(s);
     term = s.get("term").getNumber<uint64_t>();
     LOG_TOPIC("d838b", INFO, Logger::AGENCY)
@@ -1801,7 +1800,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
         }
       }
     }
-    store.applyLogEntries(b, index, term, false);
+    store.applyLogEntries(b, index, term);
   }
 
   auto builder = std::make_shared<VPackBuilder>();

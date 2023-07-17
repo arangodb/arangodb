@@ -22,8 +22,8 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Agency/Node.h"
 #include "Agency/Supervision.h"
 #include "Mocks/Servers.h"
 
@@ -37,6 +37,7 @@
 
 using namespace arangodb;
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 std::vector<std::string> servers{"XXX-XXX-XXX", "XXX-XXX-XXY"};
 

@@ -29,11 +29,13 @@
 #include "Agency/FailedLeader.h"
 #include "Agency/Helpers.h"
 #include "Agency/Job.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,

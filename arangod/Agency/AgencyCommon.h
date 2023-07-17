@@ -43,6 +43,9 @@ enum role_t { FOLLOWER, CANDIDATE, LEADER };
 
 enum apply_ret_t { APPLIED, PRECONDITION_FAILED, FORBIDDEN, UNKNOWN_ERROR };
 
+using TimePoint = std::chrono::system_clock::time_point;
+using SteadyTimePoint = std::chrono::steady_clock::time_point;
+
 typedef std::chrono::duration<long, std::ratio<1, 1000>> duration_t;
 typedef uint64_t index_t;
 typedef uint64_t term_t;

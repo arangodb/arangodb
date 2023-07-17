@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Logger/LogMacros.h"
@@ -34,6 +35,7 @@
 #include <vector>
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,

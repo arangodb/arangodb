@@ -270,6 +270,8 @@ devel
   `--rclone.argument=--log-level=DEBUG`
   `--rclone.argument=-log-file=/tmp/rclone.log`
 
+* Remove ttl and observe/unobserve from agency api.
+
 * Fix issue #18982: query editor null/undefined check filters out bindParams
   with value 0.
 

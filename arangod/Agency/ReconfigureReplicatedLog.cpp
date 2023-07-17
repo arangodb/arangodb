@@ -29,6 +29,7 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 namespace arangodb::consensus {
 template<typename Inspector>

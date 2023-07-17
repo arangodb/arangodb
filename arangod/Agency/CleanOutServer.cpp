@@ -40,6 +40,7 @@
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
                                std::string const& jobId,

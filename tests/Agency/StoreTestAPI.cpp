@@ -41,7 +41,7 @@ namespace store_test_api {
 
 class StoreTestAPI : public ::testing::Test {
  public:
-  StoreTestAPI() : _server("CRDN_0001"), _store(_server.server(), nullptr) {}
+  StoreTestAPI() : _server("CRDN_0001"), _store() {}
 
  protected:
   arangodb::tests::mocks::MockCoordinator _server;
@@ -506,28 +506,12 @@ TEST_F(StoreTestAPI, transaction) {
 TEST_F(StoreTestAPI, op_set_new) {
   writeAndCheck(R"([[{"a/z":{"op":"set","new":12}}]])");
   assertEqual(read(R"([["/a/z"]])"), R"([{"a":{"z":12}}])");
-  writeAndCheck(R"([[{"a/y":{"op":"set","new":12, "ttl": 1}}]])");
-  assertEqual(read(R"([["/a/y"]])"), R"([{"a":{"y":12}}])");
-  std::this_thread::sleep_for(std::chrono::milliseconds{1100});
-  assertEqual(read(R"([["/a/y"]])"), R"([{"a":{}}])");
-  writeAndCheck(R"([[{"/a/y":{"op":"set","new":12, "ttl": 3}}]])");
-  assertEqual(read(R"([["a/y"]])"), R"([{"a":{"y":12}}])");
-  std::this_thread::sleep_for(std::chrono::milliseconds{3100});
-  assertEqual(read(R"([["/a/y"]])"), R"([{"a":{}}])");
   writeAndCheck(R"([[{"foo/bar":{"op":"set","new":{"baz":12}}}]])");
   assertEqual(read(R"([["/foo/bar/baz"]])"), R"([{"foo":{"bar":{"baz":12}}}])");
   assertEqual(read(R"([["/foo/bar"]])"), R"([{"foo":{"bar":{"baz":12}}}])");
   assertEqual(read(R"([["/foo"]])"), R"([{"foo":{"bar":{"baz":12}}}])");
-  writeAndCheck(R"([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":3}}]])");
-  std::this_thread::sleep_for(std::chrono::milliseconds{3100});
-  assertEqual(read(R"([["/foo"]])"), R"([{"foo":{}}])");
-  assertEqual(read(R"([["/foo/bar"]])"), R"([{"foo":{}}])");
-  assertEqual(read(R"([["/foo/bar/baz"]])"), R"([{"foo":{}}])");
-  writeAndCheck(R"([[{"a/u":{"op":"set","new":25, "ttl": 3}}]])");
-  assertEqual(read(R"([["/a/u"]])"), R"([{"a":{"u":25}}])");
   writeAndCheck(R"([[{"a/u":{"op":"set","new":26}}]])");
   assertEqual(read(R"([["/a/u"]])"), R"([{"a":{"u":26}}])");
-  std::this_thread::sleep_for(std::chrono::milliseconds{3000});
   assertEqual(read(R"([["/a/u"]])"), R"([{"a":{"u":26}}])");
 }
 
@@ -551,19 +535,6 @@ TEST_F(StoreTestAPI, op_push) {
       R"([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]])");
   assertEqual(read(R"([["/a/euler"]])"),
               R"([{"a":{"euler":[2.71828182845904523536]}}])");
-
-  writeAndCheck(
-      R"([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]])");
-  assertEqual(read(R"([["version"]])"), R"([{"version":{"c":["hello"]}}])");
-  writeAndCheck(
-      R"([[{"/version/c":{"op":"push", "new":"world"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"),
-              R"([{"version":{"c":["hello","world"]}}])");
-  std::this_thread::sleep_for(std::chrono::milliseconds{3100});
-  assertEqual(read(R"([["version"]])"), "[{}]");
-  writeAndCheck(
-      R"([[{"/version/c":{"op":"push", "new":"hello"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"), R"([{"version":{"c":["hello"]}}])");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -600,19 +571,6 @@ TEST_F(StoreTestAPI, op_prepend) {
   writeAndCheck(R"([[{"/a/euler":{"op":"prepend","new":1.25}}]])");
   assertEqual(read(R"([["/a/euler"]])"),
               R"([{"a":{"euler":[1.25,2.71828182845904523536]}}])");
-
-  writeAndCheck(
-      R"([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]])");
-  assertEqual(read(R"([["version"]])"), R"([{"version":{"c":["hello"]}}])");
-  writeAndCheck(
-      R"([[{"/version/c":{"op":"prepend", "new":"world"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"),
-              R"([{"version":{"c":["world","hello"]}}])");
-  std::this_thread::sleep_for(std::chrono::milliseconds{3100});
-  assertEqual(read(R"([["version"]])"), "[{}]");
-  writeAndCheck(
-      R"([[{"/version/c":{"op":"prepend", "new":"hello"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"), R"([{"version":{"c":["hello"]}}])");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -629,17 +587,6 @@ TEST_F(StoreTestAPI, op_shift) {
   assertEqual(read(R"([["/a/b/c"]])"), R"([{"a":{"b":{"c":[1,2,3,"max"]}}}])");
   writeAndCheck(R"([[{"/a/b/d":{"op":"shift"}}]])");  // on existing scalar
   assertEqual(read(R"([["/a/b/d"]])"), R"([{"a":{"b":{"d":[]}}}])");
-
-  writeAndCheck(
-      R"([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]])");
-  assertEqual(read(R"([["version"]])"),
-              R"([{"version":{"c":["hello","world"]}}])");
-  writeAndCheck(R"([[{"/version/c":{"op":"shift"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"), R"([{"version":{"c":["world"]}}])");
-  std::this_thread::sleep_for(std::chrono::milliseconds{3100});
-  assertEqual(read(R"([["version"]])"), "[{}]");
-  writeAndCheck(R"([[{"/version/c":{"op":"shift"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"), R"([{"version":{"c":[]}}])");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -657,17 +604,6 @@ TEST_F(StoreTestAPI, op_pop) {
   writeAndCheck(R"([[{"a/b/d":1}]])");              // on existing scalar
   writeAndCheck(R"([[{"/a/b/d":{"op":"pop"}}]])");  // on existing scalar
   assertEqual(read(R"([["/a/b/d"]])"), R"( [{"a":{"b":{"d":[]}}}])");
-
-  writeAndCheck(
-      R"([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]])");
-  assertEqual(read(R"([["version"]])"),
-              R"( [{"version":{"c":["hello","world"]}}])");
-  writeAndCheck(R"([[{"/version/c":{"op":"pop"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"), R"([{"version":{"c":["hello"]}}])");
-  std::this_thread::sleep_for(std::chrono::milliseconds{3100});
-  assertEqual(read(R"([["version"]])"), R"([{}])");
-  writeAndCheck(R"([[{"/version/c":{"op":"pop"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"), R"( [{"version":{"c":[]}}])");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -769,16 +705,6 @@ TEST_F(StoreTestAPI, op_increment) {
   assertEqual(read(R"([["version"]])"), R"( [{"version":1}])");
   writeAndCheck(R"([[{"/version":{"op":"increment"}}]])");  // int before
   assertEqual(read(R"([["version"]])"), R"( [{"version":2}])");
-  writeAndCheck(
-      R"([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]])");  // int
-                                                                      // before
-  assertEqual(read(R"([["version"]])"), R"( [{"version":{"c":12}}])");
-  writeAndCheck(R"([[{"/version/c":{"op":"increment"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"), R"( [{"version":{"c":13}}])");
-  std::this_thread::sleep_for(std::chrono::milliseconds{3100});
-  assertEqual(read(R"([["version"]])"), R"( [{}])");
-  writeAndCheck(R"([[{"/version/c":{"op":"increment"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"), R"( [{"version":{"c":1}}])");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -791,16 +717,6 @@ TEST_F(StoreTestAPI, op_decrement) {
   assertEqual(read(R"([["version"]])"), R"( [{"version":-1}])");
   writeAndCheck(R"([[{"/version":{"op":"decrement"}}]])");  // int before
   assertEqual(read(R"([["version"]])"), R"( [{"version":-2}])");
-  writeAndCheck(
-      R"([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]])");  // int
-                                                                      // before
-  assertEqual(read(R"([["version"]])"), R"( [{"version":{"c":12}}])");
-  writeAndCheck(R"([[{"/version/c":{"op":"decrement"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"), R"( [{"version":{"c":11}}])");
-  std::this_thread::sleep_for(std::chrono::milliseconds{3100});
-  assertEqual(read(R"([["version"]])"), R"( [{}])");
-  writeAndCheck(R"([[{"/version/c":{"op":"decrement"}}]])");  // int before
-  assertEqual(read(R"([["version"]])"), R"( [{"version":{"c":-1}}])");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

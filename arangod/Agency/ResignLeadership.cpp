@@ -29,6 +29,7 @@
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
+#include "Agency/Node.h"
 #include "Agency/NodeDeserialization.h"
 #include "Agency/ReconfigureReplicatedLog.h"
 #include "Basics/TimeString.h"
@@ -38,6 +39,7 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
                                    std::string const& jobId,

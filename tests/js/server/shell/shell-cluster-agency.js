@@ -101,21 +101,6 @@ function AgencySuite () {
       assertTrue(values.arango.hasOwnProperty("UnitTestsAgency"));
       assertTrue(values.arango.UnitTestsAgency.hasOwnProperty("foo"));
       assertEqual(values.arango.UnitTestsAgency.foo, "test3");
-
-      // update with ttl
-      agency.set("UnitTestsAgency/foo", "test4", 2);
-      values = agency.get("UnitTestsAgency/foo");
-      assertTrue(values.hasOwnProperty("arango"));
-      assertTrue(values.arango.hasOwnProperty("UnitTestsAgency"));
-      assertTrue(values.arango.UnitTestsAgency.hasOwnProperty("foo"));
-      assertEqual(values.arango.UnitTestsAgency.foo, "test4");
-
-      require("internal").wait(3);
-      
-      values = agency.get("UnitTestsAgency/foo");
-      assertTrue(values.hasOwnProperty("arango"));
-      assertTrue(values.arango.hasOwnProperty("UnitTestsAgency"));
-      assertFalse(values.arango.UnitTestsAgency.hasOwnProperty("foo"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -454,4 +439,3 @@ if (ArangoAgency.isEnabled()) {
 }
 
 return jsunity.done();
-

@@ -49,7 +49,7 @@ AgencyCache::AgencyCache(ArangodServer& server,
                          ErrorCode shutdownCode)
     : ServerThread(server, "AgencyCache"),
       _commitIndex(0),
-      _readDB(server, nullptr, "readDB"),
+      _readDB("readDB"),
       _shutdownCode(shutdownCode),
       _initialized(false),
       _callbackRegistry(callbackRegistry),
@@ -459,7 +459,7 @@ void AgencyCache::run() {
             std::lock_guard g(_storeLock);
             LOG_TOPIC("4579f", TRACE, Logger::CLUSTER)
                 << "Fresh start: overwriting agency cache with " << rs.toJson();
-            _readDB = rs;  // overwrite
+            _readDB.loadFromVelocyPack(rs);  // overwrite
             std::unordered_set<std::string> pc = reInitPlan();
             for (auto const& i : pc) {
               _planChanges.emplace(_commitIndex, i);

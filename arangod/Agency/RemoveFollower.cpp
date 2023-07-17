@@ -25,6 +25,7 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
@@ -32,6 +33,7 @@
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
                                std::string const& jobId,

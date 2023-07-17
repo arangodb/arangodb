@@ -306,7 +306,7 @@ class Supervision : public arangodb::Thread {
   Agent* _agent;     /**< @brief My agent */
   Store _spearhead;
   mutable Node const* _snapshot;
-  Node _transient;
+  std::shared_ptr<Node const> _transient;
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
                                               should run */
