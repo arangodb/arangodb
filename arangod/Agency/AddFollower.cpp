@@ -147,7 +147,7 @@ bool AddFollower::start(bool&) {
     return false;
   }
   Node const& collection =
-      *_snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
+      *_snapshot.get(planColPrefix + _database + "/" + _collection);
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
@@ -158,8 +158,8 @@ bool AddFollower::start(bool&) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.hasAsSlice(planPath).value();
-
+  auto plannedBuilder = _snapshot.get(planPath)->toBuilder();
+  auto planned = plannedBuilder.slice();
   TRI_ASSERT(planned.isArray());
 
   // First check that we still have too few followers for the current
@@ -350,9 +350,9 @@ bool AddFollower::start(bool&) {
             // "failoverCandidates":
             std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
             foCandsPath += StaticStrings::FailoverCandidates;
-            auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+            auto foCands = this->_snapshot.hasAsBuilder(foCandsPath);
             if (foCands) {
-              addPreconditionUnchanged(trx, foCandsPath, foCands.value());
+              addPreconditionUnchanged(trx, foCandsPath, foCands->slice());
             }
           });
       addPreconditionShardNotBlocked(trx, _shard);

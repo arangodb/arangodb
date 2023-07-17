@@ -69,16 +69,8 @@ const char* agency =
 #include "FailedServerTest.json"
     ;
 
-Node createNodeFromBuilder(VPackBuilder const& builder) {
-  VPackBuilder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-
-  Node node("");
-  node.handle<SET>(opBuilder.slice());
-  return node;
+NodePtr createNodeFromBuilder(VPackBuilder const& builder) {
+  return Node::create(builder.slice());
 }
 
 Builder createBuilder(char const* c) {
@@ -92,11 +84,11 @@ Builder createBuilder(char const* c) {
   return builder;
 }
 
-Node createNode(char const* c) {
+NodePtr createNode(char const* c) {
   return createNodeFromBuilder(createBuilder(c));
 }
 
-Node createRootNode() { return createNode(agency); }
+NodePtr createRootNode() { return createNode(agency); }
 
 inline std::string typeName(Slice const& slice) {
   return std::string(slice.typeName());
@@ -109,7 +101,7 @@ class FailedServerTest
  protected:
   std::string const jobId = "1";
   std::shared_ptr<Builder> transBuilder;
-  Node agency;
+  NodePtr agency;
   write_ret_t fakeWriteResult;
   trans_ret_t fakeTransResult;
 
@@ -157,9 +149,9 @@ TEST_F(FailedServerTest, creating_a_job_should_create_a_job_in_todo) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  auto builder = agency.toBuilder();
-  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest",
-               SHARD_LEADER, "2022-01-01T00:00:00Z", true)
+  auto builder = agency->toBuilder();
+  FailedServer(*agency->get(PREFIX), &agent, jobId, "unittest", SHARD_LEADER,
+               "2022-01-01T00:00:00Z", true)
       .create();
   Verify(Method(mockAgent, write));
 }
@@ -197,9 +189,9 @@ TEST_F(FailedServerTest,
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  auto builder = agency.toBuilder();
-  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest",
-               SHARD_LEADER, "2022-01-01T00:00:00Z", false)
+  auto builder = agency->toBuilder();
+  FailedServer(*agency->get(PREFIX), &agent, jobId, "unittest", SHARD_LEADER,
+               "2022-01-01T00:00:00Z", false)
       .create();
   Verify(Method(mockAgent, write));
 }
@@ -224,9 +216,6 @@ TEST_F(
           builder->add(it.key.copyString(), childBuilder->slice());
         }
       }
-      if (path == "/arango/Supervision/Health/leader") {
-        builder->add("Status", VPackValue("GOOD"));
-      }
     } else {
       builder->add(s);
     }
@@ -234,9 +223,10 @@ TEST_F(
     return builder;
   };
 
-  auto builder = createTestStructure(agency.toBuilder().slice(), "");
+  auto builder = createTestStructure(agency->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
+  agency = agency->placeAt("/arango/Supervision/Health/leader/Status", "GOOD");
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -273,8 +263,7 @@ TEST_F(
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest",
-               SHARD_LEADER)
+  FailedServer(*agency->get(PREFIX), &agent, jobId, "unittest", SHARD_LEADER)
       .create();
 
   Verify(Method(mockAgent, write));
@@ -300,9 +289,6 @@ TEST_F(
           builder->add(it.key.copyString(), childBuilder->slice());
         }
       }
-      if (path == "/arango/Supervision/Health/leader") {
-        builder->add("Status", VPackValue("FAILED"));
-      }
     } else {
       builder->add(s);
     }
@@ -310,9 +296,11 @@ TEST_F(
     return builder;
   };
 
-  auto builder = createTestStructure(agency.toBuilder().slice(), "");
+  auto builder = createTestStructure(agency->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
+  agency =
+      agency->placeAt("/arango/Supervision/Health/leader/Status", "FAILED");
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -349,8 +337,7 @@ TEST_F(
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest",
-               SHARD_LEADER)
+  FailedServer(*agency->get(PREFIX), &agent, jobId, "unittest", SHARD_LEADER)
       .create();
 }
 
@@ -386,9 +373,9 @@ TEST_F(FailedServerTest,
     return builder;
   };
 
-  auto builder = createTestStructure(agency.toBuilder().slice(), "");
+  auto builder = createTestStructure(agency->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -415,7 +402,7 @@ TEST_F(FailedServerTest,
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  FailedServer(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 
   Verify(Method(mockAgent, write));
@@ -458,9 +445,9 @@ TEST_F(FailedServerTest,
     return builder;
   };
 
-  auto builder = createTestStructure(agency.toBuilder().slice(), "");
+  auto builder = createTestStructure(agency->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -487,7 +474,7 @@ TEST_F(FailedServerTest,
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  FailedServer(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 
   Verify(Method(mockAgent, write));
@@ -528,9 +515,9 @@ TEST_F(FailedServerTest, a_failed_server_test_starts_and_is_moved_to_pending) {
     return builder;
   };
 
-  auto builder = createTestStructure(agency.toBuilder().slice(), "");
+  auto builder = createTestStructure(agency->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -564,7 +551,7 @@ TEST_F(FailedServerTest, a_failed_server_test_starts_and_is_moved_to_pending) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  FailedServer(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 
   Verify(Method(mockAgent, write));
@@ -606,9 +593,9 @@ TEST_F(FailedServerTest,
     return builder;
   };
 
-  auto builder = createTestStructure(agency.toBuilder().slice(), "");
+  auto builder = createTestStructure(agency->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -642,7 +629,7 @@ TEST_F(FailedServerTest,
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  FailedServer(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 
   Verify(Method(mockAgent, write));
@@ -684,9 +671,9 @@ TEST_F(FailedServerTest, a_failed_server_job_is_finished) {
     return builder;
   };
 
-  auto builder = createTestStructure(agency.toBuilder().slice(), "");
+  auto builder = createTestStructure(agency->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -714,7 +701,7 @@ TEST_F(FailedServerTest, a_failed_server_job_is_finished) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::PENDING, jobId)
+  FailedServer(*agency->get("arango"), &agent, JOB_STATUS::PENDING, jobId)
       .status();
 
   Verify(Method(mockAgent, write));

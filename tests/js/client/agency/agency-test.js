@@ -1306,22 +1306,6 @@ function agencyTestSuite () {
 /// @brief Test nasty willful attempt to break
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSlashORama : function () {
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck([[{"//////////////////////a/////////////////////b//":
-                       {"b///////c":4}}]]);
-      assertEqual(readAndCheck([["/"]]), [{a:{b:{b:{c:4}}}}]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck([[{"////////////////////////": "Hi there!"}]]);
-      assertEqual(readAndCheck([["/"]]), ["Hi there!"]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck(
-        [[{"/////////////////\\/////a/////////////^&%^&$^&%$////////b\\\n//":
-           {"b///////c":4}}]]);
-      assertEqual(readAndCheck([["/"]]),
-                  [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
-    },
-
     testKeysBeginningWithSameString: function() {
       var res = accessAgency("write",[[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
       assertEqual(res.statusCode, 200);

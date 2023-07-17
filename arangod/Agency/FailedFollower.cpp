@@ -153,13 +153,14 @@ bool FailedFollower::start(bool& aborts) {
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto plannedPair = _snapshot.hasAsSlice(planPath);
+  auto plannedPair = _snapshot.get(planPath);
   if (!plannedPair) {
     finish("", _shard, true,
            "Plan entry for collection " + _collection + " gone");
     return false;
   }
-  Slice const& planned = plannedPair.value();
+  auto builder = plannedPair->toBuilder();
+  Slice planned = builder.slice();
 
   // Now check if _server is still in this plan, note that it could have
   // been removed by RemoveFollower already, in which case we simply stop:
@@ -230,7 +231,7 @@ bool FailedFollower::start(bool& aborts) {
   {
     VPackArrayBuilder a(&todo);
     if (_jb == nullptr) {
-      auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& jobIdNode = _snapshot.get(toDoPrefix + _jobId);
       if (jobIdNode) {
         jobIdNode->toBuilder(todo);
       } else {
@@ -310,9 +311,9 @@ bool FailedFollower::start(bool& aborts) {
               // "failoverCandidates":
               std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
               foCandsPath += StaticStrings::FailoverCandidates;
-              auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+              auto foCands = this->_snapshot.hasAsBuilder(foCandsPath);
               if (foCands) {
-                addPreconditionUnchanged(job, foCandsPath, foCands.value());
+                addPreconditionUnchanged(job, foCandsPath, foCands->slice());
               }
             });
         // toServer not blocked

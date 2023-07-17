@@ -28,29 +28,23 @@
 
 #include "Agency/Node.h"
 #include "Agency/Store.h"
+#include "Basics/VelocyPackHelper.h"
 using namespace arangodb::velocypack;
 
 TEST(StoreTest, store_preconditions) {
   using namespace arangodb::consensus;
 
-  Node node("node");
-  VPackBuilder foo, baz, pi;
-  foo.add(VPackValue("bar"));
-  baz.add(VPackValue(13));
-  pi.add(VPackValue(3.14159265359));
-  auto fooNode = std::make_shared<Node>("foo");
-  auto bazNode = std::make_shared<Node>("baz");
-  auto piNode = std::make_shared<Node>("pi");
-  *fooNode = foo.slice();
-  *bazNode = baz.slice();
-  *piNode = pi.slice();
+  auto node = Node::create();
+  auto fooNode = Node::create("bar");
+  auto bazNode = Node::create(13);
+  auto piNode = Node::create(3.14159265359);
 
-  node.addChild("foo", fooNode);
-  node.addChild("baz", bazNode);
-  node.addChild("pi", piNode);
-  node.addChild("foo1", fooNode);
-  node.addChild("baz1", bazNode);
-  node.addChild("pi1", piNode);
+  node = node->placeAt("foo", fooNode);
+  node = node->placeAt("baz", bazNode);
+  node = node->placeAt("pi", piNode);
+  node = node->placeAt("foo1", fooNode);
+  node = node->placeAt("baz1", bazNode);
+  node = node->placeAt("pi1", piNode);
 
   VPackOptions opts;
   opts.buildUnindexedObjects = true;
@@ -65,7 +59,8 @@ TEST(StoreTest, store_preconditions) {
     other.add("baz", VPackValue(13));
   }
 
-  ASSERT_EQ(node, other.slice());
+  ASSERT_TRUE(arangodb::basics::VelocyPackHelper::equal(
+      node->toBuilder().slice(), other.slice(), false));
 }
 
 TEST(StoreTest, store_split) {

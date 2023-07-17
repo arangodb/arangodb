@@ -39,6 +39,7 @@
 #include "Agency/Node.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
@@ -92,16 +93,8 @@ VPackBuilder createJob(uint64_t delay = 0) {
   return builder;
 }
 
-Node createNodeFromBuilder(VPackBuilder const& builder) {
-  VPackBuilder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-
-  Node node("");
-  node.handle<SET>(opBuilder.slice());
-  return node;
+NodePtr createNodeFromBuilder(VPackBuilder const& builder) {
+  return Node::create(builder.slice());
 }
 
 Builder createBuilder(char const* c) {
@@ -115,11 +108,11 @@ Builder createBuilder(char const* c) {
   return builder;
 }
 
-Node createNode(char const* c) {
+NodePtr createNode(char const* c) {
   return createNodeFromBuilder(createBuilder(c));
 }
 
-Node createRootNode() { return createNode(agency); }
+NodePtr createRootNode() { return createNode(agency); }
 
 class FailedFollowerTest
     : public ::testing::Test,
@@ -127,7 +120,7 @@ class FailedFollowerTest
                                             arangodb::LogLevel::ERR> {
  protected:
   std::shared_ptr<Builder> transBuilder;
-  Node baseStructure;
+  NodePtr baseStructure;
   write_ret_t fakeWriteResult;
   trans_ret_t fakeTransResult;
 
@@ -184,7 +177,7 @@ TEST_F(FailedFollowerTest, creating_a_job_should_create_a_job_in_todo) {
   AgentInterface& agent = mockAgent.get();
 
   auto failedFollower =
-      FailedFollower(baseStructure, &agent, jobId, "unittest", DATABASE,
+      FailedFollower(*baseStructure, &agent, jobId, "unittest", DATABASE,
                      COLLECTION, SHARD, SHARD_FOLLOWER1);
   failedFollower.create();
   Verify(Method(mockAgent, write));
@@ -221,9 +214,9 @@ TEST_F(FailedFollowerTest, if_collection_is_missing_job_should_just_finish) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -255,8 +248,8 @@ TEST_F(FailedFollowerTest, if_collection_is_missing_job_should_just_finish) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
-                                       JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.start(aborts);
 }
 
@@ -291,9 +284,9 @@ TEST_F(FailedFollowerTest, distributeshardslike_should_fail_immediately) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -325,8 +318,8 @@ TEST_F(FailedFollowerTest, distributeshardslike_should_fail_immediately) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
-                                       JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.start(aborts);
 }
 
@@ -347,13 +340,6 @@ TEST_F(FailedFollowerTest, if_follower_is_healthy_again_we_fail_the_job) {
         }
       }
 
-      if (path == "/arango/Supervision/Health/" + SHARD_FOLLOWER1) {
-        builder->add("Status", VPackValue("GOOD"));
-      }
-
-      if (path == "/arango/Target/ToDo") {
-        builder->add("1", createJob().slice());
-      }
       builder->close();
     } else {
       builder->add(s);
@@ -361,9 +347,12 @@ TEST_F(FailedFollowerTest, if_follower_is_healthy_again_we_fail_the_job) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
+  agency = agency->placeAt(
+      "/arango/Supervision/Health/" + SHARD_FOLLOWER1 + "/Status", "GOOD");
+  agency = agency->placeAt("/arango/Target/ToDo/1", createJob().slice());
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact)).Do([&](velocypack::Slice q) -> trans_ret_t {
@@ -395,8 +384,8 @@ TEST_F(FailedFollowerTest, if_follower_is_healthy_again_we_fail_the_job) {
       });
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
-                                       JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
   Verify(Method(mockAgent, transact));
   Verify(Method(mockAgent, write));
@@ -436,9 +425,9 @@ TEST_F(FailedFollowerTest,
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -458,8 +447,8 @@ TEST_F(FailedFollowerTest,
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
-                                       JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
 }
 
@@ -500,9 +489,9 @@ TEST_F(FailedFollowerTest,
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -522,8 +511,8 @@ TEST_F(FailedFollowerTest,
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
-                                       JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
 }
 
@@ -546,8 +535,8 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
       });
   When(Method(moveShardMockAgent, waitFor)).Return();
   AgentInterface& moveShardAgent = moveShardMockAgent.get();
-  auto moveShard = MoveShard(baseStructure.getOrCreate(PREFIX), &moveShardAgent,
-                             "2", "strunz", DATABASE, COLLECTION, SHARD,
+  auto moveShard = MoveShard(*baseStructure->get(PREFIX), &moveShardAgent, "2",
+                             "strunz", DATABASE, COLLECTION, SHARD,
                              SHARD_LEADER, FREE_SERVER, true, true);
   moveShard.create();
   std::string jobId = "1";
@@ -586,9 +575,9 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
     }
     return builder;
   };
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
   // nothing should happen
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -607,8 +596,8 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
       });
 
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
-                                       JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
 }
 
@@ -643,9 +632,9 @@ TEST_F(FailedFollowerTest, successfully_started_job_should_finish_immediately) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact)).Do([&](velocypack::Slice q) -> trans_ret_t {
@@ -699,8 +688,8 @@ TEST_F(FailedFollowerTest, successfully_started_job_should_finish_immediately) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
-                                       JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.start(aborts);
   Verify(Method(mockAgent, transact));
 }
@@ -736,16 +725,16 @@ TEST_F(FailedFollowerTest, delayed_job_should_wait) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
-                                       JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   aborts = false;
   bool res = failedFollower.start(aborts);
   EXPECT_FALSE(res);
@@ -796,9 +785,9 @@ TEST_F(FailedFollowerTest, job_should_handle_distributeshardslike) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact)).Do([&](velocypack::Slice q) -> trans_ret_t {
@@ -902,8 +891,8 @@ TEST_F(FailedFollowerTest, job_should_handle_distributeshardslike) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
-                                       JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.start(aborts);
   Verify(Method(mockAgent, transact));
 }
@@ -952,9 +941,9 @@ TEST_F(FailedFollowerTest, job_should_timeout_after_a_while) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -971,8 +960,8 @@ TEST_F(FailedFollowerTest, job_should_timeout_after_a_while) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
-                                       JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1008,9 +997,9 @@ TEST_F(FailedFollowerTest, job_should_be_abortable_in_todo) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -1027,8 +1016,8 @@ TEST_F(FailedFollowerTest, job_should_be_abortable_in_todo) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
-                                       JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.abort("test abort");
   Verify(Method(mockAgent, write));
 }
