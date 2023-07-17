@@ -34,12 +34,26 @@
 
 #include <vector>
 #include <unordered_map>
+#include <span>
 
+#include <velocypack/String.h>
 #include <velocypack/Slice.h>
 
-namespace arangodb::velocypack {
-class Slice;
-}
+#if (_MSC_VER >= 1)
+// suppress warnings:
+#pragma warning(push)
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
+// data
+#pragma warning(disable : 4267)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
+// intended?)
+#pragma warning(disable : 4334)
+#endif
+#include <immer/flex_vector.hpp>
+#include <immer/map.hpp>
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 
 namespace arangodb::cluster::paths {
 class Path;
@@ -47,7 +61,6 @@ class Path;
 
 namespace arangodb::consensus {
 
-enum NodeType { NODE, LEAF };
 enum Operation {
   SET,
   INCREMENT,
@@ -67,68 +80,10 @@ enum Operation {
 
 class Store;
 
-class SmallBuffer {
-  uint8_t* _start;
-  size_t _size;
-
- public:
-  SmallBuffer() noexcept : _start(nullptr), _size(0) {}
-  explicit SmallBuffer(size_t size) : SmallBuffer() {
-    if (size > 0) {
-      _start = new uint8_t[size];
-      _size = size;
-    }
-  }
-  explicit SmallBuffer(uint8_t const* data, size_t size) : SmallBuffer(size) {
-    std::memcpy(_start, data, size);
-  }
-  SmallBuffer(SmallBuffer const& other) : SmallBuffer() {
-    if (!other.empty()) {
-      _start = new uint8_t[other._size];
-      _size = other._size;
-      std::memcpy(_start, other._start, other._size);
-    }
-  }
-  SmallBuffer(SmallBuffer&& other) noexcept
-      : _start(other._start), _size(other._size) {
-    other._start = nullptr;
-    other._size = 0;
-  }
-  SmallBuffer& operator=(SmallBuffer const& other) {
-    if (this != &other) {
-      if (!empty()) {
-        delete[] _start;
-      }
-      if (other.empty()) {
-        _start = nullptr;
-        _size = 0;
-      } else {
-        _start = new uint8_t[other._size];
-        _size = other._size;
-        memcpy(_start, other._start, other._size);
-      }
-    }
-    return *this;
-  }
-  SmallBuffer& operator=(SmallBuffer&& other) noexcept {
-    if (this != &other) {
-      if (!empty()) {
-        delete[] _start;
-      }
-      _start = other._start;
-      other._start = nullptr;
-      _size = other._size;
-      other._size = 0;
-    }
-    return *this;
-  }
-  ~SmallBuffer() { delete[] _start; }
-  uint8_t* data() const { return _start; }
-  size_t size() const { return _size; }
-  bool empty() const { return _start == nullptr || _size == 0; }
-};
+class Node;
 
 /// @brief Simple tree implementation
+using NodePtr = std::shared_ptr<Node const>;
 
 /// Any node may either be a branch or a leaf.
 /// Any leaf either represents an array or an element (_isArray variable).
@@ -136,96 +91,42 @@ class SmallBuffer {
 /// assignment operator.
 /// toBuilder(Builder&) will create a _vecBuf, when needed as a means to
 /// optimization by avoiding to build it before necessary.
-class Node final {
-  /// @brief Access private methods
-  friend class Store;
-
+class Node : public std::enable_shared_from_this<Node> {
  public:
   /// @brief Slash-segmented path
   using PathType = std::vector<std::string>;
+  using PathTypeView = std::span<std::string const>;
 
   /// @brief Child nodes
-  using Children = std::unordered_map<std::string, std::shared_ptr<Node>>;
+  using Children = ::immer::map<std::string, NodePtr>;
+
+  using Array = ::immer::flex_vector<velocypack::String>;
+
+  using VariantType = std::variant<Children, Array, velocypack::String>;
 
   /// @brief Split strings by forward slashes, omitting empty strings,
   /// and ignoring multiple subsequent forward slashes
   static std::vector<std::string> split(std::string_view str);
 
-  /// @brief Construct with name
-  explicit Node(std::string const& name);
-
-  /// @brief Copy constructor
-  Node(Node const& other);
-
-  /// @brief Move constructor
-  Node(Node&& other) noexcept;
-
-  /// @brief Construct with name and introduce to tree under parent
-  Node(std::string const& name, Node* parent);
-
-  /// @brief Construct with name and introduce to tree under parent
-  Node(std::string const& name, Store* store);
-
   /// @brief Default dtor
-  ~Node();
-
-  /// @brief Get name
-  std::string const& name() const;
-
-  /// @brief Get full path
-  std::string uri() const;
-
-  /// @brief Assignment operator
-  Node& operator=(Node const& node);
-
-  /// @brief Move operator
-  Node& operator=(Node&& node) noexcept;
-
-  /// @brief Apply value slice to this node
-  Node& operator=(arangodb::velocypack::Slice const&);
+  ~Node() = default;
 
   /// @brief Check equality with slice
   bool operator==(arangodb::velocypack::Slice const&) const;
 
-  /// @brief Check equality with slice
-  bool operator!=(arangodb::velocypack::Slice const&) const;
-
-  /// @brief Type of this node (LEAF / NODE)
-  NodeType type() const;
-
-  /// @brief Get node specified by path vector
-  Node& getOrCreate(std::vector<std::string> const& pv);
-
-  /// @brief Get node specified by path vector
-  Node const* get(std::vector<std::string> const& pv) const;
-
-  /// @brief Get node specified by path
-  Node const* get(
-      std::shared_ptr<cluster::paths::Path const> const& path) const;
-
-  /// @brief Get root node
-  Node const& root() const;
-
-  /// @brief Get root node
-  Node& root();
+  /// @brief Get node specified by path vector. Returns nullptr if the node does
+  /// not exist.
+  NodePtr get(PathTypeView pv) const;
+  NodePtr get(std::initializer_list<std::string> const& pv) const;
+  NodePtr get(std::string_view path) const;
+  NodePtr get(std::shared_ptr<cluster::paths::Path const> const& path) const;
 
   /// @brief Dump to ostream
   std::ostream& print(std::ostream&) const;
 
-  /// @brief Apply single operation as defined by "op"
-  ResultT<std::shared_ptr<Node>> applyOp(arangodb::velocypack::Slice);
-
-  /// @brief Apply single slice
-  bool applies(arangodb::velocypack::Slice);
-
   /// @brief Return all keys of an object node. Result will be empty for
   /// non-objects.
   std::vector<std::string> keys() const;
-
-  /// @brief handle "op" keys in write json
-  template<Operation Oper>
-  arangodb::ResultT<std::shared_ptr<Node>> handle(
-      arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
   void toBuilder(velocypack::Builder&, bool showHidden = false) const;
@@ -234,21 +135,10 @@ class Node final {
   velocypack::Builder toBuilder() const;
 
   /// @brief Access children
-
-  /// @brief Access for unit tests:
-  void addChild(std::string const& name, std::shared_ptr<Node>& node);
-
-  /// @brief Access children
   Children const& children() const;
-
-  /// @brief Create slice from value
-  velocypack::Slice slice() const;
 
   /// @brief Create JSON representation of this node and below
   std::string toJson() const;
-
-  /// @brief Parent node
-  Node const* parent() const;
 
   /// @brief Part of relative path vector which exists
   std::vector<std::string> exists(std::vector<std::string> const& rel) const;
@@ -286,27 +176,8 @@ class Node final {
   /// @brief Is object
   bool isObject() const;
 
-  /**
-   * @brief Set expiry for this node
-   * @param Time point of expiry
-   */
-  void timeToLive(TimePoint const& ttl);
-
-  /// @brief accessor to Node object
-  /// @return  returns nullptr if not found or type doesn't match
-  Node const* hasAsNode(std::string const&) const noexcept;
-
-  /// @brief accessor to Node object
-  Node& hasAsWritableNode(std::string const&);
-
-  /// @brief accessor to Node's type
-  /// @return  returns nullopt if not found or type doesn't match
-  std::optional<NodeType> hasAsType(std::string const&) const noexcept;
-
-  /// @brief accessor to Node's Slice value
-  /// @return  returns nullopt if not found or type doesn't match
-  std::optional<velocypack::Slice> hasAsSlice(
-      std::string const&) const noexcept;
+  /// @brief Is null
+  bool isNull() const;
 
   /// @brief accessor to Node's uint64_t value
   /// @return  returns nullopt if not found or type doesn't match
@@ -319,6 +190,10 @@ class Node final {
   /// @brief accessor to Node's std::string value
   /// @return  returns nullopt if not found or type doesn't match
   std::optional<std::string> hasAsString(std::string const&) const;
+
+  /// @brief accessor to Node's std::string value
+  /// @return  returns nullopt if not found or type doesn't match
+  std::optional<std::string_view> hasAsStringView(std::string const&) const;
 
   /// @brief accessor to Node's _children
   /// @return  returns nullptr if not found or type doesn't match
@@ -335,83 +210,147 @@ class Node final {
 
   /// @brief accessor to Node's Array
   /// @return  returns nullopt if not found or type doesn't match
-  std::optional<velocypack::Slice> hasAsArray(std::string const&) const;
+  Array const* hasAsArray(std::string const&) const;
 
-  // These two operator() functions could be "protected" once
-  //  unit tests updated.
-  //
-  /// @brief Get node specified by path string
-  Node& getOrCreate(std::string_view path);
-
-  /// @brief Get node specified by path string
-  Node const* get(std::string_view path) const;
-
-  /// @brief Get string value (throws if type NODE or if conversion fails)
+  /// @brief Get string value
+  /// @return  returns nullopt if not found or type doesn't match
   std::optional<std::string> getString() const;
 
-  /// @brief Get string value (throws if type NODE or if conversion fails)
+  /// @brief Get string value
+  /// @return  returns nullopt if not found or type doesn't match
   std::optional<std::string_view> getStringView() const;
 
-  /// @brief Get array value
-  std::optional<velocypack::Slice> getArray() const;
+  /// @brief Get array value, or nullopt if wrong type
+  Node::Array const* getArray() const;
 
-  /// @brief Get unsigned value (throws if type NODE or if conversion fails)
+  /// @brief Get unsigned value, or nullopt if wrong type
   std::optional<uint64_t> getUInt() const noexcept;
 
-  /// @brief Get integer value (throws if type NODE or if conversion fails)
+  /// @brief Get integer value, or nullopt if wrong type
   std::optional<int64_t> getInt() const noexcept;
 
-  /// @brief Get bool value (throws if type NODE or if conversion fails)
+  /// @brief Get bool value, or nullopt if wrong type
   std::optional<bool> getBool() const noexcept;
 
-  /// @brief Get double value (throws if type NODE or if conversion fails)
+  /// @brief Get double value, or nullopt if wrong type
   std::optional<double> getDouble() const noexcept;
 
+  /// @brief Get numeric value, or nullopt if wrong type
   template<typename T>
-  auto getNumberUnlessExpiredWithDefault() -> T {
+  std::optional<T> getNumber() const noexcept {
     try {
-      return this->slice().getNumber<T>();
+      return slice().getNumber<T>();
     } catch (...) {
-      return T{0};
+      return std::nullopt;
     }
   }
 
-  static auto getIntWithDefault(velocypack::Slice slice, std::string_view key,
-                                std::int64_t def) -> std::int64_t;
+  velocypack::ValueType getVelocyPackValueType() const noexcept;
+
+  bool isLeaveNode() const noexcept { return !isObject(); }
+  bool isPrimitiveValue() const noexcept { return !isObject() && !isArray(); }
 
   bool isReadLockable(std::string_view by) const;
   bool isWriteLockable(std::string_view by) const;
-
-  /// @brief Clear key value store
-  void clear();
-
-  // @brief Helper function to return static instance of dummy node below
-  static Node const& dummyNode() { return _dummyNode; }
-
- private:
+  bool isWriteLocked(std::string_view by) const {
+    return isWriteUnlockable(by);
+  }
+  bool isReadLocked(std::string_view by) const { return isReadUnlockable(by); }
   bool isReadUnlockable(std::string_view by) const;
   bool isWriteUnlockable(std::string_view by) const;
 
-  /// @brief  Remove child by name
-  /// @return shared pointer to removed child
-  arangodb::ResultT<std::shared_ptr<Node>> removeChild(std::string const& key);
+  [[nodiscard]] static ResultT<NodePtr> applyOp(Node const* target,
+                                                VPackSlice slice);
+  [[nodiscard]] ResultT<NodePtr> applyOp(std::string_view path,
+                                         VPackSlice slice) const;
+  [[nodiscard]] NodePtr placeAt(std::string_view path, NodePtr) const;
+  [[nodiscard]] NodePtr placeAt(PathTypeView path, NodePtr) const;
+  [[nodiscard]] NodePtr placeAt(std::initializer_list<std::string> const& path,
+                                NodePtr) const;
 
-  /// @brief Remove me from tree, if not root node, clear else.
-  /// @return If not root node, shared pointer copy to this node is returned
-  ///         to control life time by caller; else nullptr.
-  arangodb::ResultT<std::shared_ptr<Node>> deleteMe();
+  template<Operation Op>
+  [[nodiscard]] NodePtr perform(std::string_view path,
+                                velocypack::Slice op) const {
+    auto res = Node::handle<Op>(get(path).get(), op);
+    if (res.fail()) {
+      return res;
+    }
+    return placeAt(path, res.get());
+  }
+  template<Operation Op>
+  [[nodiscard]] ResultT<NodePtr> perform(PathTypeView path,
+                                         velocypack::Slice op) const {
+    auto res = Node::handle<Op>(get(path).get(), op);
+    if (res.fail()) {
+      return res;
+    }
+    return placeAt(path, res.get());
+  }
+  template<Operation Op>
+  [[nodiscard]] ResultT<NodePtr> perform(
+      std::initializer_list<std::string> const& path,
+      velocypack::Slice op) const {
+    return perform<Op>(PathTypeView{path.begin(), path.end()}, op);
+  }
 
-  void rebuildVecBuf() const;
+  template<typename T>
+  [[nodiscard]] NodePtr placeAt(std::string_view path, T&& value) const {
+    return placeAt(path, Node::create(std::forward<T>(value)));
+  }
+  template<typename T>
+  [[nodiscard]] NodePtr placeAt(PathTypeView path, T&& value) const {
+    return placeAt(path, Node::create(std::forward<T>(value)));
+  }
+  template<typename T>
+  [[nodiscard]] NodePtr placeAt(std::initializer_list<std::string> const& path,
+                                T&& value) const {
+    return placeAt(path, Node::create(std::forward<T>(value)));
+  }
 
-  std::string _nodeName;                             ///< @brief my name
-  Node* _parent;                                     ///< @brief parent
-  mutable std::unique_ptr<Children> _children;       ///< @brief child nodes
-  std::unique_ptr<std::vector<SmallBuffer>> _value;  ///< @brief my value
-  mutable std::unique_ptr<SmallBuffer> _vecBuf;
-  mutable bool _vecBufDirty;
-  bool _isArray;
+  [[nodiscard]] NodePtr applies(std::string_view path, VPackSlice) const;
+
+  // Get rid of this constructor mess
+  [[nodiscard]] static NodePtr create(VPackSlice);
+  [[nodiscard]] static NodePtr create();
+  [[nodiscard]] static NodePtr create(VariantType);
+  [[nodiscard]] static NodePtr create(Array);
+  [[nodiscard]] static NodePtr create(Children);
+  template<typename T>
+  [[nodiscard]] static NodePtr create(T&& value) {
+    velocypack::Builder builder;
+    builder.add(velocypack::Value(value));
+    return Node::create(builder.slice());
+  }
+
+  /// @brief handle "op" keys in write json
+  template<Operation Oper>
+  [[nodiscard]] static arangodb::ResultT<NodePtr> handle(
+      Node const* target, arangodb::velocypack::Slice const&);
+
+  static NodePtr trueValue();
+  static NodePtr falseValue();
+  static NodePtr nullValue();
+  static NodePtr emptyObjectValue();
+  static NodePtr emptyArrayValue();
+
+  Node(Node const& other) = delete;
+  Node(Node&& other) noexcept = delete;
+  Node& operator=(Node const& node) = delete;
+  Node& operator=(Node&& node) noexcept = delete;
+
+ private:
+  VPackSlice slice() const noexcept;
+
+  struct NodeWrapper;
+  friend struct NodeWrapper;
+
+  Node() = default;
+  template<typename... Args>
+  explicit Node(Args&&... args) : _value(std::forward<Args>(args)...) {}
+
+  VariantType _value;
+
   static Children const dummyChildren;
-  static Node const _dummyNode;
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {

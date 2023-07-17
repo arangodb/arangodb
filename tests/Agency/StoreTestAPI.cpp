@@ -41,10 +41,9 @@ namespace store_test_api {
 
 class StoreTestAPI : public ::testing::Test {
  public:
-  StoreTestAPI() : _server("CRDN_0001"), _store() {}
+  StoreTestAPI() : _store() {}
 
  protected:
-  arangodb::tests::mocks::MockCoordinator _server;
   arangodb::consensus::Store _store;
 
   std::shared_ptr<VPackBuilder> read(std::string const& json) {
@@ -796,9 +795,7 @@ TEST_F(StoreTestAPI, operators_on_root_node) {
   writeAndCheck(R"([[{"/":{"op":"pop"}}]])");
   assertEqual(read(R"([["/"]])"), R"( [[]])");
   writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  assertEqual(read(R"([["/"]])"), R"( [[]])");
-  writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  assertEqual(read(R"([["/"]])"), R"( [[]])");
+  assertEqual(read(R"([["/"]])"), R"( [{}])");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -844,22 +841,6 @@ TEST_F(StoreTestAPI, order_evil) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test nasty willful attempt to break
 ////////////////////////////////////////////////////////////////////////////////
-
-TEST_F(StoreTestAPI, slash_o_rama) {
-  writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  writeAndCheck(R"([[{"//////////////////////a/////////////////////b//":
-                    {"b///////c":4}}]])");
-  assertEqual(read(R"([["/"]])"), R"( [{"a":{"b":{"b":{"c":4}}}}])");
-  writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  writeAndCheck(R"([[{"////////////////////////": "Hi there!"}]])");
-  assertEqual(read(R"([["/"]])"), R"(["Hi there!"])");
-  writeAndCheck(R"([[{"/":{"op":"delete"}}]])");
-  writeAndCheck(
-      R"([[{"/////////////////\\/////a/////////////^&%^&$^&%$////////b\\\n//":
-        {"b///////c":4}}]])");
-  assertEqual(read(R"([["/"]])"),
-              R"([{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}])");
-}
 
 TEST_F(StoreTestAPI, keys_beginning_with_same_string) {
   writeAndCheck(

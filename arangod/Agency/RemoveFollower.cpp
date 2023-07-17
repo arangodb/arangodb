@@ -140,7 +140,7 @@ bool RemoveFollower::start(bool&) {
     return false;
   }
   Node const& collection =
-      *_snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
+      *_snapshot.get(planColPrefix + _database + "/" + _collection);
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
@@ -151,7 +151,8 @@ bool RemoveFollower::start(bool&) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.hasAsSlice(planPath).value();
+  auto plannedBuilder = _snapshot.get(planPath)->toBuilder();
+  Slice planned = plannedBuilder.slice();
 
   TRI_ASSERT(planned.isArray());
 

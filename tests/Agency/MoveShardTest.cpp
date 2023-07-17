@@ -33,6 +33,7 @@
 #include "Agency/MoveShard.h"
 #include "Agency/Node.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -65,17 +66,8 @@ const char* agency =
 #include "MoveShardTest.json"
     ;
 
-Node createAgencyFromBuilder(VPackBuilder const& builder) {
-  Node node("");
-
-  VPackBuilder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-
-  node.handle<SET>(opBuilder.slice());
-  return node.getOrCreate(PREFIX);
+NodePtr createAgencyFromBuilder(VPackBuilder const& builder) {
+  return Node::create(builder.slice())->get(PREFIX);
 }
 
 #define CHECK_FAILURE(source, query)                                           \
@@ -95,21 +87,13 @@ Node createAgencyFromBuilder(VPackBuilder const& builder) {
   EXPECT_TRUE(std::string(writes.get("/arango/Target/Failed/1").typeName()) == \
               "object");
 
-Node createRootNode() {
+NodePtr createRootNode() {
   VPackOptions options;
   options.checkAttributeUniqueness = true;
   VPackParser parser(&options);
   parser.parse(agency);
 
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder a(&builder);
-    builder.add("new", parser.steal()->slice());
-  }
-
-  Node root("ROOT");
-  root.handle<SET>(builder.slice());
-  return root;
+  return Node::create(parser.steal()->slice());
 }
 
 VPackBuilder createJob(std::string const& collection, std::string const& from,
@@ -135,7 +119,7 @@ class MoveShardTest
     : public ::testing::Test,
       public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
-  Node baseStructure;
+  NodePtr baseStructure;
   write_ret_t fakeWriteResult;
   std::string const jobId;
 
@@ -181,11 +165,11 @@ TEST_F(MoveShardTest, the_job_should_fail_if_toserver_does_not_exist) {
         return fakeWriteResult;
       });
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -226,11 +210,11 @@ TEST_F(MoveShardTest, the_job_should_fail_if_servers_are_planned_followers) {
         return fakeWriteResult;
       });
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -263,11 +247,11 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist) {
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, finish));
 
@@ -317,11 +301,11 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_is_not_in_plan) {
         return fakeWriteResult;
       });
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -381,11 +365,11 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist_2) {
         return fakeWriteResult;
       });
   When(Method(mockAgent, waitFor)).AlwaysReturn();
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -423,11 +407,11 @@ TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_shard_is_locked) {
   // nothing should be called (job remains in ToDo)
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
 }
 
@@ -464,11 +448,11 @@ TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_server_is_locked) {
   // nothing should be called (job remains in ToDo)
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
 }
 
@@ -515,11 +499,11 @@ TEST_F(MoveShardTest, the_job_should_fail_if_target_server_was_cleaned_out) {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -565,11 +549,11 @@ TEST_F(MoveShardTest, the_job_should_fail_if_the_target_server_is_failed) {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -615,11 +599,11 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_target_server_is_good) {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
 }
 
@@ -664,11 +648,11 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_from_server_is_in_current) {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
 }
 
@@ -712,11 +696,11 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_to_server_is_in_sync) {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
 }
 
@@ -762,11 +746,11 @@ TEST_F(
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -885,11 +869,11 @@ TEST_F(MoveShardTest,
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1011,11 +995,11 @@ TEST_F(
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1077,11 +1061,11 @@ TEST_F(MoveShardTest, moving_from_a_follower_should_be_possible) {
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1229,11 +1213,11 @@ TEST_F(
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1288,13 +1272,13 @@ TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
         return builder;
       };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-  Node agency = createAgencyFromBuilder(*builder);
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
+  auto agency = createAgencyFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, abort));
 
@@ -1341,13 +1325,13 @@ TEST_F(MoveShardTest,
         return builder;
       };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-  Node agency = createAgencyFromBuilder(*builder);
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
+  auto agency = createAgencyFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, finish));
 
@@ -1401,13 +1385,13 @@ TEST_F(
         return builder;
       };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-  Node agency = createAgencyFromBuilder(*builder);
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
+  auto agency = createAgencyFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, finish));
 
@@ -1468,14 +1452,14 @@ TEST_F(
         return builder;
       };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-  Node agency = createAgencyFromBuilder(*builder);
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
+  auto agency = createAgencyFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   // should not write anything because we are not yet in sync
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
 }
 
@@ -1532,8 +1516,8 @@ TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
         return builder;
       };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-  Node agency = createAgencyFromBuilder(*builder);
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
+  auto agency = createAgencyFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
@@ -1569,7 +1553,7 @@ TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
       });
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1626,8 +1610,8 @@ TEST_F(MoveShardTest,
         return builder;
       };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-  Node agency = createAgencyFromBuilder(*builder);
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
+  auto agency = createAgencyFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
@@ -1666,7 +1650,7 @@ TEST_F(MoveShardTest,
       });
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1728,8 +1712,8 @@ TEST_F(
         return builder;
       };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-  Node agency = createAgencyFromBuilder(*builder);
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
+  auto agency = createAgencyFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
@@ -1772,7 +1756,7 @@ TEST_F(
       });
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1899,11 +1883,11 @@ TEST_F(
   // nothing should happen...child shards not yet in sync
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
 }
 
@@ -2116,11 +2100,11 @@ TEST_F(
       });
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -2176,11 +2160,11 @@ TEST_F(MoveShardTest,
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
@@ -2278,11 +2262,11 @@ TEST_F(
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
@@ -2410,11 +2394,11 @@ TEST_F(MoveShardTest,
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -2475,11 +2459,11 @@ TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
   // nothing should happen so nothing should be called
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
 }
 
@@ -2544,11 +2528,11 @@ TEST_F(MoveShardTest,
   // nothing should happen so nothing should be called
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
 }
 
@@ -2653,11 +2637,11 @@ TEST_F(
       });
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
@@ -2743,11 +2727,11 @@ TEST_F(
       });
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   EXPECT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
@@ -2872,11 +2856,11 @@ TEST_F(
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -2989,11 +2973,11 @@ TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -3002,9 +2986,9 @@ TEST_F(MoveShardTest,
        calling_an_unknown_job_should_be_possible_without_throwing_exceptions) {
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  Node agency = createAgencyFromBuilder(baseStructure.toBuilder());
+  auto agency = createAgencyFromBuilder(baseStructure->toBuilder());
 
-  EXPECT_NO_THROW(MoveShard(agency, &agent, PENDING, "666"));
+  EXPECT_NO_THROW(MoveShard(*agency, &agent, PENDING, "666"));
 }
 
 TEST_F(MoveShardTest, it_should_be_possible_to_create_a_new_moveshard_job) {
@@ -3042,10 +3026,10 @@ TEST_F(MoveShardTest, it_should_be_possible_to_create_a_new_moveshard_job) {
       });
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgencyFromBuilder(baseStructure.toBuilder());
+  auto agency = createAgencyFromBuilder(baseStructure->toBuilder());
 
   auto moveShard =
-      MoveShard(agency, &agent, jobId, "hans", DATABASE, COLLECTION, SHARD,
+      MoveShard(*agency, &agent, jobId, "hans", DATABASE, COLLECTION, SHARD,
                 SHARD_LEADER, SHARD_FOLLOWER1, true);
   moveShard.create(nullptr);
   Verify(Method(mockAgent, write));
@@ -3056,10 +3040,10 @@ TEST_F(MoveShardTest,
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgencyFromBuilder(baseStructure.toBuilder());
+  auto agency = createAgencyFromBuilder(baseStructure->toBuilder());
 
   auto moveShard =
-      MoveShard(agency, &agent, jobId, "hans", DATABASE, COLLECTION, SHARD,
+      MoveShard(*agency, &agent, jobId, "hans", DATABASE, COLLECTION, SHARD,
                 SHARD_LEADER, SHARD_FOLLOWER1, true);
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -3077,10 +3061,10 @@ TEST_F(
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgencyFromBuilder(baseStructure.toBuilder());
+  auto agency = createAgencyFromBuilder(baseStructure->toBuilder());
 
   auto moveShard =
-      MoveShard(agency, &agent, jobId, "hans", DATABASE, COLLECTION, SHARD,
+      MoveShard(*agency, &agent, jobId, "hans", DATABASE, COLLECTION, SHARD,
                 SHARD_LEADER, SHARD_LEADER, true);
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
@@ -3190,11 +3174,11 @@ TEST_F(
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
@@ -3256,11 +3240,11 @@ TEST_F(MoveShardTest, if_aborting_failed_report_it_back_properly) {
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
@@ -3324,11 +3308,11 @@ TEST_F(MoveShardTest,
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
@@ -3391,11 +3375,11 @@ TEST_F(MoveShardTest, trying_to_abort_a_finished_should_result_in_failure) {
 
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, FINISHED, jobId);
+  auto moveShard = MoveShard(*agency, &agent, FINISHED, jobId);
   auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
@@ -3443,13 +3427,13 @@ TEST_F(MoveShardTest, test_cancel_pending_job) {
         return builder;
       };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-  Node agency = createAgencyFromBuilder(*builder);
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
+  auto agency = createAgencyFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, abort));
 
@@ -3501,13 +3485,13 @@ TEST_F(MoveShardTest, test_cancel_todo_job) {
         return builder;
       };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
-  Node agency = createAgencyFromBuilder(*builder);
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
+  auto agency = createAgencyFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(*agency, &agent, TODO, jobId);
   Mock<MoveShard> spy(moveShard);
   Fake(Method(spy, abort));
 
@@ -3638,11 +3622,11 @@ TEST_F(
   // nothing should happen so nothing should be called
   AgentInterface& agent = mockAgent.get();
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createAgencyFromBuilder(*builder);
+  auto agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }

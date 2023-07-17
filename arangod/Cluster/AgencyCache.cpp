@@ -459,7 +459,7 @@ void AgencyCache::run() {
             std::lock_guard g(_storeLock);
             LOG_TOPIC("4579f", TRACE, Logger::CLUSTER)
                 << "Fresh start: overwriting agency cache with " << rs.toJson();
-            _readDB.loadFromVelocyPack(rs);  // overwrite
+            _readDB.setNodeValue(rs);  // overwrite
             std::unordered_set<std::string> pc = reInitPlan();
             for (auto const& i : pc) {
               _planChanges.emplace(_commitIndex, i);

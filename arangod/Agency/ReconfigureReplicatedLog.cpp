@@ -67,7 +67,7 @@ ReconfigureReplicatedLog::ReconfigureReplicatedLog(Node const& snapshot,
   std::string path = pos[status] + _jobId + "/";
   auto tmp_database = _snapshot.hasAsString(path + "database");
   auto tmp_logId = _snapshot.hasAsUInt(path + "logId");
-  auto tmp_operations = _snapshot.hasAsNode(path + "operations");
+  auto tmp_operations = _snapshot.get(path + "operations");
   auto tmp_expectedVersion = _snapshot.hasAsUInt(path + "expectedVersion");
   auto tmp_undoSetLeader = _snapshot.hasAsString(path + "undoSetLeader");
 
@@ -75,7 +75,7 @@ ReconfigureReplicatedLog::ReconfigureReplicatedLog(Node const& snapshot,
     _database = tmp_database.value();
     _logId = replication2::LogId{tmp_logId.value()};
     _operations =
-        deserialize<std::vector<ReconfigureOperation>>(*tmp_operations);
+        deserialize<std::vector<ReconfigureOperation>>(tmp_operations);
     _expectedVersion = tmp_expectedVersion.value_or(0);
     _undoSetLeader = tmp_undoSetLeader;
   } else {
@@ -96,8 +96,7 @@ JOB_STATUS ReconfigureReplicatedLog::status() {
                         ->replicatedLogs()
                         ->database(_database)
                         ->log(_logId);
-  if (!_snapshot.hasAsNode(
-          targetPath->str(cluster::paths::SkipComponents{1}))) {
+  if (!_snapshot.get(targetPath->str(cluster::paths::SkipComponents{1}))) {
     finish("", "", false, "replicated log already gone");
   }
 
@@ -227,7 +226,7 @@ bool ReconfigureReplicatedLog::start(bool&) {
                         ->database(_database)
                         ->log(_logId);
   auto targetPathStr = targetPath->str(cluster::paths::SkipComponents{1});
-  if (!_snapshot.hasAsNode(targetPathStr)) {
+  if (!_snapshot.get(targetPathStr)) {
     finish("", "", false, "replicated log already gone");
   }
 

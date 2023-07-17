@@ -50,15 +50,14 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 
 /// Ctor with name
-Store::Store(std::string const& name)
-    : _node(std::make_shared<Node>(name, this)) {}
+Store::Store(std::string const& name) : _node(Node::create()) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
   if (&rhs != this) {
     std::lock_guard otherLock{rhs._storeLock};
     std::lock_guard lock{_storeLock};
-    _node = std::make_shared<Node>(*rhs._node);
+    _node = rhs._node;
   }
   return *this;
 }
@@ -224,13 +223,14 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
   for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
     std::vector<std::string> pv = split(precond.key.stringView());
 
-    Node const* node = &Node::dummyNode();
-
+    NodePtr node = nullptr;
     // Check is guarded in ::apply
     bool found = false;
     if (auto n = _node->get(pv); n) {
       found = true;
       node = n;
+    } else {
+      node = Node::create();
     }
 
     if (precond.value.isObject()) {
@@ -259,7 +259,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
               break;
             }
           }
-          bool isArray = (node->type() == LEAF && node->slice().isArray());
+          bool isArray = node->isArray();
           if (op.value.getBool() ? !isArray : isArray) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
@@ -283,9 +283,9 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
           }
         } else if (oper == "in") {  // in
           if (found) {
-            if (node->slice().isArray()) {
+            if (node->isArray()) {
               bool found = false;
-              for (auto const& i : VPackArrayIterator(node->slice())) {
+              for (auto const& i : *node->getArray()) {
                 if (basics::VelocyPackHelper::equal(i, op.value, false)) {
                   found = true;
                   break;
@@ -305,9 +305,9 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-          if (node->slice().isArray()) {
+          if (node->isArray()) {
             bool found = false;
-            for (auto const& i : VPackArrayIterator(node->slice())) {
+            for (auto const& i : *node->getArray()) {
               if (basics::VelocyPackHelper::equal(i, op.value, false)) {
                 found = true;
                 break;
@@ -325,10 +325,9 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
         } else if (oper == PREC_IS_WRITE_LOCKED) {  // is-write-locked
           // the lock is write locked by the given entity, if node and the value
           // are strings and both are equal.
-          if (found && op.value.isString() && node->slice().isString()) {
-            if (node->slice().isEqualString(op.value.stringView())) {
-              continue;
-            }
+          if (found && op.value.isString() &&
+              node->isWriteLocked(op.value.stringView())) {
+            continue;
           }
           ret.push_back(precond.key);
           if (mode == FIRST_FAIL) {
@@ -338,20 +337,9 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
           // the lock is read locked by the given entity, if node is an
           // array of strings and the value is a string and if the value is
           // contained in the node array.
-          if (found && op.value.isString() && node->slice().isArray()) {
-            bool isValid = false;
-            for (auto const& i : VPackArrayIterator(node->slice())) {
-              if (!i.isString()) {
-                isValid = false;
-                break;  // invalid, only strings allowed
-              }
-              if (i.isEqualString(op.value.stringView())) {
-                isValid = true;
-              }
-            }
-            if (isValid) {
-              continue;
-            }
+          if (found && op.value.isString() &&
+              node->isReadLocked(op.value.stringView())) {
+            continue;
           }
           ret.push_back(precond.key);
           if (mode == FIRST_FAIL) {
@@ -384,7 +372,6 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
             }
           }
         } else if (oper == "intersectionEmpty") {  // in
-          auto const nslice = node->slice();
           if (!op.value.isArray()) {  // right hand side must be array will
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
@@ -394,30 +381,35 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
             if (!found) {
               continue;
             }
-            if (nslice.isArray()) {
+            if (node->isArray()) {
               bool found_ = false;
+              auto& array = *node->getArray();
               std::unordered_set<VPackSlice,
                                  arangodb::velocypack::NormalizedCompare::Hash,
                                  arangodb::velocypack::NormalizedCompare::Equal>
                   elems;
-              Slice shorter, longer;
 
-              if (nslice.length() <= op.value.length()) {
-                longer = op.value;
-                shorter = nslice;
-              } else {
-                shorter = nslice;
-                longer = op.value;
-              }
-
-              for (auto const i : VPackArrayIterator(shorter)) {
-                elems.emplace(i);
-              }
-              for (auto const i : VPackArrayIterator(longer)) {
-                if (elems.find(i) != elems.end()) {
-                  found_ = true;
-                  break;
+              auto const loadHashMap = [&](auto const& iter) {
+                for (auto const& i : iter) {
+                  elems.emplace(i);
                 }
+              };
+
+              auto const searchIntersection = [&](auto const& iter) {
+                for (auto const& i : iter) {
+                  if (elems.find(i) != elems.end()) {
+                    return true;
+                  }
+                }
+                return false;
+              };
+
+              if (array.size() <= op.value.length()) {
+                loadHashMap(array);
+                found_ = searchIntersection(VPackArrayIterator(op.value));
+              } else {
+                loadHashMap(VPackArrayIterator(op.value));
+                found_ = searchIntersection(array);
               }
               if (!found_) {
                 continue;
@@ -469,6 +461,44 @@ std::vector<bool> Store::readMultiple(VPackSlice queries,
   return success;
 }
 
+namespace {
+
+template<typename Iter>
+NodePtr readQuerySub(NodePtr const& node, NodePtr const& result, Iter cur,
+                     Iter end) {
+  if (cur == end) {
+    return node;
+  } else {
+    auto sub = node->get(*cur);
+    auto sret = result->get(*cur);
+    if (sret == nullptr) {
+      sret = Node::create();
+    }
+    if (sub != nullptr) {
+      sub = readQuerySub(sub, sret, cur + 1, end);
+      return result->placeAt(*cur, sub);
+    } else {
+      return result;
+    }
+  }
+}
+
+NodePtr readQuery(NodePtr const& root, NodePtr const& result,
+                  std::string const& path) {
+  auto segments = Node::split(path);
+  return readQuerySub(root, result, segments.begin(), segments.end());
+}
+
+NodePtr readQueries(NodePtr const& root,
+                    std::vector<std::string> const& queries) {
+  auto result = Node::create();
+  for (auto const& path : queries) {
+    result = readQuery(root, result, path);
+  }
+  return result;
+}
+}  // namespace
+
 /// Read single query into ret
 bool Store::read(VPackSlice query, Builder& ret) const {
   bool success = true;
@@ -504,50 +534,13 @@ bool Store::read(VPackSlice query, Builder& ret) const {
   //   a fast path for exactly one path, in which we do not have to copy all
   //   a slow path for more than one path
 
-  std::lock_guard storeLocker{_storeLock};  // Freeze KV-Store for read
-  if (query_strs.size() == 1) {
-    auto const& path = query_strs[0];
-    std::vector<std::string> pv = split(path);
-    // Build surrounding object structure:
-    size_t e = _node->exists(pv).size();  // note: e <= pv.size()!
-    size_t i = 0;
-    for (auto it = pv.begin(); i < e; ++i, ++it) {
-      ret.openObject();
-      ret.add(VPackValue(*it));
-    }
-    if (e == pv.size()) {  // existing
-      _node->get(pv)->toBuilder(ret, showHidden);
-    } else {
-      VPackObjectBuilder guard(&ret);
-    }
-    // And close surrounding object structures:
-    for (i = 0; i < e; ++i) {
-      ret.close();
-    }
-  } else {  // slow path for 0 or more than 2 paths:
-    // Create response tree
-    Node copy("copy");
-    for (auto const& path : query_strs) {
-      std::vector<std::string> pv = split(path);
-      size_t e = _node->exists(pv).size();
-      if (e == pv.size()) {  // existing
-        copy.getOrCreate(pv) = *_node->get(pv);
-      } else {  // non-existing
-        for (size_t i = 0; i < pv.size() - e + 1; ++i) {
-          pv.pop_back();
-        }
-        if (copy.getOrCreate(pv).type() == LEAF &&
-            copy.getOrCreate(pv).slice().isNone()) {
-          copy.getOrCreate(pv) =
-              arangodb::velocypack::Slice::emptyObjectSlice();
-        }
-      }
-    }
+  std::unique_lock storeLocker{_storeLock};
+  auto readNode = _node;  // Freeze KV-Store for shared_ptr copy
+  storeLocker.unlock();
 
-    // Into result builder
-    copy.toBuilder(ret, showHidden);
-  }
-
+  NodePtr node = readQueries(readNode, query_strs);
+  // Into result builder
+  node->toBuilder(ret, showHidden);
   return success;
 }
 
@@ -614,6 +607,9 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
             });
 
   bool success = true;
+
+  auto node = _node;
+  TRI_ASSERT(node != nullptr);
   for (const auto& i : idx) {
     Slice value = i.second;
 
@@ -621,31 +617,44 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
       std::string_view const op = value.get("op").stringView();
 
       if (op == "delete" || op == "replace" || op == "erase") {
-        if (!_node->has(abskeys.at(i.first))) {
+        if (!node->has(abskeys.at(i.first))) {
           continue;
         }
       }
-      auto uri = Store::normalize(abskeys.at(i.first));
-      auto ret = _node->hasAsWritableNode(abskeys.at(i.first)).applyOp(value);
-      success &= ret.ok();
+
+      auto ret = node->applyOp(abskeys.at(i.first), value);
+      if (ret.fail()) {
+        success = false;
+        break;
+      }
+      node = std::move(ret).get();
+      if (node == nullptr) {  // if root node is deleted, keep an empty node
+        node = Node::create();
+      }
       // check for triggers here
       callTriggers(abskeys.at(i.first), op, value);
     } else {
-      success &= _node->hasAsWritableNode(abskeys.at(i.first)).applies(value);
+      node = node->applies(abskeys.at(i.first), value);
+      TRI_ASSERT(node != nullptr);
+      callTriggers(abskeys.at(i.first), "set", value);
     }
   }
 
+  if (success) {
+    ADB_PROD_ASSERT(node != nullptr);
+    _node = node;
+  }
   return success;
 }
 
 // Clear my data
 void Store::clear() {
   std::lock_guard storeLocker{_storeLock};
-  _node->clear();
+  _node = Node::create();
 }
 
 /// Apply a request to my key value store
-Store& Store::loadFromVelocyPack(VPackSlice s) {
+void Store::setNodeValue(VPackSlice s) {
   TRI_ASSERT(s.isObject());
   TRI_ASSERT(s.hasKey("readDB"));
   auto const& slice = s.get("readDB");
@@ -653,12 +662,10 @@ Store& Store::loadFromVelocyPack(VPackSlice s) {
   std::lock_guard storeLocker{_storeLock};
   if (slice.isArray()) {
     TRI_ASSERT(slice.length() >= 1);
-    _node->applies(slice[0]);
-
+    _node = Node::create(slice[0]);
   } else if (slice.isObject()) {
-    _node->applies(slice);
+    _node = Node::create(slice);
   }
-  return *this;
 }
 
 /// Put key value store in velocypack, guarded by caller
@@ -670,7 +677,7 @@ void Store::toBuilder(Builder& b, bool showHidden) const {
 void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
                 bool showHidden) const {
   std::lock_guard storeLocker{_storeLock};
-  if (auto node = _node->hasAsNode(path); node) {
+  if (auto node = _node->get(path); node) {
     node->toBuilder(b, showHidden);
   } else {
     // Backwards compatibility of a refactoring. Would be better to communicate
@@ -680,9 +687,9 @@ void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
 }
 
 /// Get node at path under mutex
-Node Store::get(std::string const& path) const {
+std::shared_ptr<Node const> Store::get(std::string const& path) const {
   std::lock_guard storeLocker{_storeLock};
-  return *_node->hasAsNode(path);
+  return _node->get(path);
 }
 
 /// Get node at path under mutex
@@ -727,7 +734,7 @@ std::string Store::normalize(char const* key, size_t length) {
  * @brief Unguarded pointer to a node path in this store.
  *        Caller must enforce locking.
  */
-Node const* Store::nodePtr(std::string const& path) const {
+std::shared_ptr<Node const> Store::nodePtr(std::string const& path) const {
   return _node->get(path);
 }
 
