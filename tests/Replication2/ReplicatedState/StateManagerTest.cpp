@@ -30,6 +30,7 @@
 #include <gmock/gmock.h>
 
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
+#include "Replication2/Mocks/FakeFollowerFactory.h"
 #include "Replication2/Mocks/FakeReplicatedState.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/LeaderCommunicatorMock.h"
@@ -77,25 +78,6 @@ struct FakeState {
 };
 }  // namespace
 
-struct FakeFollowerFactory
-    : replication2::replicated_log::IAbstractFollowerFactory {
-  FakeFollowerFactory(TRI_vocbase_t& vocbase, replication2::LogId id)
-      : vocbase(vocbase), id(id) {}
-  auto constructFollower(const ParticipantId& participantId) -> std::shared_ptr<
-      replication2::replicated_log::AbstractFollower> override {
-    return nullptr;
-  }
-
-  auto constructLeaderCommunicator(ParticipantId const& participantId)
-      -> std::shared_ptr<replicated_log::ILeaderCommunicator> override {
-    return leaderComm;
-  }
-
-  TRI_vocbase_t& vocbase;
-  replication2::LogId id;
-  std::shared_ptr<replicated_log::ILeaderCommunicator> leaderComm;
-};
-
 template<typename State>
 struct StateManagerTest : testing::Test {
   GlobalLogIdentifier gid = GlobalLogIdentifier("db", LogId{1});
@@ -133,8 +115,8 @@ struct StateManagerTest : testing::Test {
       std::make_shared<test::DelayedScheduler>();
   std::shared_ptr<test::RebootIdCacheMock> rebootIdCache =
       std::make_shared<test::RebootIdCacheMock>();
-  std::shared_ptr<FakeFollowerFactory> fakeFollowerFactory =
-      std::make_shared<FakeFollowerFactory>(vocbaseMock, gid.id);
+  std::shared_ptr<test::FakeFollowerFactory> fakeFollowerFactory =
+      std::make_shared<test::FakeFollowerFactory>(vocbaseMock, gid.id);
   std::shared_ptr<DefaultParticipantsFactory> participantsFactory =
       std::make_shared<replicated_log::DefaultParticipantsFactory>(
           fakeFollowerFactory, logScheduler, rebootIdCache);
