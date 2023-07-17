@@ -84,8 +84,11 @@ class Manager {
     std::uint64_t globalAllocation = 0;
     std::uint64_t peakGlobalAllocation = 0;
     std::uint64_t spareAllocation = 0;
+    std::uint64_t peakSpareAllocation = 0;
     std::uint64_t activeTables = 0;
     std::uint64_t spareTables = 0;
+    std::uint64_t migrateTasks = 0;
+    std::uint64_t freeMemoryTasks = 0;
   };
 
   static constexpr std::uint64_t kMinSize = 1024 * 1024;
@@ -102,7 +105,8 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
           std::uint64_t globalLimit, bool enableWindowedStats,
-          double idealLowerFillRatio, double idealUpperFillRatio);
+          double idealLowerFillRatio, double idealUpperFillRatio,
+          std::uint64_t maxSpareAllocation);
 
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
@@ -163,12 +167,6 @@ class Manager {
   [[nodiscard]] std::uint64_t globalAllocation() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Report the current amount of allocated, but unused memory of all
-  /// caches.
-  //////////////////////////////////////////////////////////////////////////////
-  [[nodiscard]] std::uint64_t spareAllocation() const noexcept;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Return some statistics about available caches
   //////////////////////////////////////////////////////////////////////////////
   [[nodiscard]] std::optional<MemoryStats> memoryStats(
@@ -220,7 +218,6 @@ class Manager {
   bool _shuttingDown;
   bool _resizing;
   bool _rebalancing;
-  bool _enableWindowedStats;
 
   // structure to handle access frequency monitoring
   Manager::AccessStatBuffer _accessStats;
@@ -246,13 +243,17 @@ class Manager {
   std::uint64_t _globalHighwaterMark;
   std::uint64_t _fixedAllocation;
   std::uint64_t _spareTableAllocation;
+  std::uint64_t _peakSpareTableAllocation;
   std::uint64_t _globalAllocation;
   std::uint64_t _peakGlobalAllocation;
   std::uint64_t _activeTables;
   std::uint64_t _spareTables;
+  std::uint64_t _migrateTasks;
+  std::uint64_t _freeMemoryTasks;
 
   double const _idealLowerFillRatio;
   double const _idealUpperFillRatio;
+  std::uint64_t _maxSpareAllocation;
 
   // transaction management
   TransactionManager _transactions;
@@ -276,7 +277,8 @@ class Manager {
   template<typename Hasher>
   friend class TransactionalCache;
 
- private:  // used by caches
+  // used by caches
+
   // register and unregister individual caches
   std::tuple<bool, Metadata, std::shared_ptr<Table>> registerCache(
       std::uint64_t fixedSize, std::uint64_t maxSize);
@@ -289,9 +291,10 @@ class Manager {
 
   // stat reporting
   void reportAccess(std::uint64_t id) noexcept;
-  void reportHitStat(Stat stat) noexcept;
+  void reportHit() noexcept;
+  void reportMiss() noexcept;
 
- private:  // used internally and by tasks
+  // used internally and by tasks
   static constexpr double highwaterMultiplier = 0.8;
   static constexpr std::chrono::milliseconds rebalancingGracePeriod{10};
   static const std::uint64_t minCacheAllocation;

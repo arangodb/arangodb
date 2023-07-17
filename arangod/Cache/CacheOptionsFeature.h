@@ -23,40 +23,34 @@
 
 #pragma once
 
-#include "Cache/CacheManagerFeatureThreads.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
-struct CacheOptionsProvider;
-class CacheRebalancerThread;
 
-namespace cache {
-class Manager;
-}
-
-class CacheManagerFeature final : public ArangodFeature {
+class CacheOptionsFeature final : public ArangodFeature,
+                                  public CacheOptionsProvider {
  public:
-  static constexpr std::string_view name() { return "CacheManager"; }
+  static constexpr std::string_view name() { return "CacheOptions"; }
 
-  explicit CacheManagerFeature(Server& server,
-                               CacheOptionsProvider const& provider);
-  ~CacheManagerFeature();
+  explicit CacheOptionsFeature(Server& server);
+  ~CacheOptionsFeature() = default;
 
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  /// @brief Pointer to global instance; Can be null if cache is disabled
-  cache::Manager* manager();
-
-  std::size_t minValueSizeForEdgeCompression() const noexcept;
-  std::uint32_t accelerationFactorForEdgeCompression() const noexcept;
+  double idealLowerFillRatio() const noexcept override;
+  double idealUpperFillRatio() const noexcept override;
+  std::size_t minValueSizeForEdgeCompression() const noexcept override;
+  std::uint32_t accelerationFactorForEdgeCompression() const noexcept override;
+  std::uint64_t cacheSize() const noexcept override;
+  std::uint64_t rebalancingInterval() const noexcept override;
+  std::uint64_t maxSpareAllocation() const noexcept override;
 
  private:
-  std::unique_ptr<cache::Manager> _manager;
-  std::unique_ptr<CacheRebalancerThread> _rebalancer;
+  static constexpr std::uint64_t minRebalancingInterval = 500 * 1000;
 
-  CacheOptionsProvider const& _options;
+  CacheOptions _options;
 };
 
 }  // namespace arangodb
