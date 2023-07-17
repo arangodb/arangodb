@@ -7,7 +7,7 @@ import { FormField } from "../../../components/form/FormField";
 import { FieldsGrid } from "../FieldsGrid";
 import { createGraph } from "../GraphsHelpers";
 import { useGraphsModeContext } from "../GraphsModeContext";
-import { CollectionNameInfo } from "./CollectionNameInfo";
+import { GraphWarnings } from "./GraphWarnings";
 import { SmartGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 import { GraphModalFooter } from "./GraphModalFooter";
@@ -124,7 +124,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
       {() => (
         <Form>
           <VStack spacing={4} align="stretch">
-            <CollectionNameInfo />
+            <GraphWarnings />
             <FieldsGrid maxWidth="full">
               <FormField
                 field={{

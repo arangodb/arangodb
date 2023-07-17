@@ -7,7 +7,7 @@ import { FormField } from "../../../components/form/FormField";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
 import { useGraphsModeContext } from "../GraphsModeContext";
-import { CollectionNameInfo } from "./CollectionNameInfo";
+import { GraphWarnings } from "./GraphWarnings";
 import { EnterpriseGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 import { GraphModalFooter } from "./GraphModalFooter";
@@ -107,7 +107,7 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
       {() => (
         <Form>
           <VStack spacing={4} align="stretch">
-            <CollectionNameInfo />
+            <GraphWarnings />
             <FieldsGrid maxWidth="full">
               <FormField
                 field={{
