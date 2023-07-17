@@ -6,30 +6,16 @@ import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
+import { GENERAL_GRAPH_FIELDS_MAP } from "../GraphsHelpers";
 import { useGraphsModeContext } from "../GraphsModeContext";
-import { GraphWarnings } from "./GraphWarnings";
 import { SatelliteGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 import { GraphModalFooter } from "./GraphModalFooter";
+import { GraphWarnings } from "./GraphWarnings";
 
 const satelliteGraphFieldsMap = {
-  name: {
-    name: "name",
-    type: "text",
-    label: "Name",
-    tooltip:
-      "String value. The name to identify the graph. Has to be unique and must follow the Document Keys naming conventions.",
-    isRequired: true
-  },
-  orphanCollections: {
-    name: "orphanCollections",
-    type: "creatableMultiSelect",
-    label: "Orphan collections",
-    tooltip:
-      "Collections that are part of a graph but not used in an edge definition.",
-    isRequired: true,
-    noOptionsMessage: () => "Please enter a new and valid collection name"
-  }
+  name: GENERAL_GRAPH_FIELDS_MAP.name,
+  orphanCollections: GENERAL_GRAPH_FIELDS_MAP.orphanCollections
 };
 
 const INITIAL_VALUES: SatelliteGraphCreateValues = {
@@ -106,4 +92,3 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
     </Formik>
   );
 };
-

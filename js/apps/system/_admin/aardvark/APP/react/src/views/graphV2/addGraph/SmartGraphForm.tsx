@@ -5,71 +5,26 @@ import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
 import { FieldsGrid } from "../FieldsGrid";
-import { createGraph } from "../GraphsHelpers";
+import {
+  createGraph,
+  CLUSTER_GRAPH_FIELDS_MAP,
+  GENERAL_GRAPH_FIELDS_MAP,
+  SMART_GRAPH_FIELDS_MAP
+} from "../GraphsHelpers";
 import { useGraphsModeContext } from "../GraphsModeContext";
-import { GraphWarnings } from "./GraphWarnings";
 import { SmartGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
 import { GraphModalFooter } from "./GraphModalFooter";
+import { GraphWarnings } from "./GraphWarnings";
 
 const smartGraphFieldsMap = {
-  name: {
-    name: "name",
-    type: "text",
-    label: "Name",
-    tooltip:
-      "String value. The name to identify the graph. Has to be unique and must follow the Document Keys naming conventions.",
-    isRequired: true
-  },
-  numberOfShards: {
-    name: "numberOfShards",
-    type: "number",
-    label: "Shards",
-    tooltip:
-      "Numeric value. Must be at least 1. Number of shards the graph is using.",
-    isRequired: true
-  },
-  replicationFactor: {
-    name: "replicationFactor",
-    type: "number",
-    label: "Replication factor",
-    tooltip:
-      "Numeric value. Must be at least 1. Total number of copies of the data in the cluster.If not given, the system default for new collections will be used.",
-    isRequired: false
-  },
-  minReplicationFactor: {
-    name: "minReplicationFactor",
-    type: "number",
-    label: "Write concern",
-    tooltip:
-      "Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value, the collection will be read-only until enough copies are created. If not given, the system default for new collections will be used.",
-    isRequired: false
-  },
-  isDisjoint: {
-    name: "isDisjoint",
-    type: "boolean",
-    label: "Create disjoint graph",
-    tooltip:
-      "Creates a Disjoint SmartGraph. Creating edges between different SmartGraph components is not allowed.",
-    isRequired: false
-  },
-  smartGraphAttribute: {
-    name: "smartGraphAttribute",
-    type: "text",
-    label: "SmartGraph Attribute",
-    tooltip:
-      "String value. The attribute name that is used to smartly shard the vertices of a graph. Every vertex in this Graph has to have this attribute. Cannot be modified later.",
-    isRequired: true
-  },
-  orphanCollections: {
-    name: "orphanCollections",
-    type: "creatableMultiSelect",
-    label: "Orphan collections",
-    tooltip:
-      "Collections that are part of a graph but not used in an edge definition.",
-    isRequired: true,
-    noOptionsMessage: () => "Please enter a new and valid collection name"
-  }
+  name: GENERAL_GRAPH_FIELDS_MAP.name,
+  numberOfShards: CLUSTER_GRAPH_FIELDS_MAP.numberOfShards,
+  replicationFactor: CLUSTER_GRAPH_FIELDS_MAP.replicationFactor,
+  minReplicationFactor: CLUSTER_GRAPH_FIELDS_MAP.minReplicationFactor,
+  isDisjoint: SMART_GRAPH_FIELDS_MAP.isDisjoint,
+  smartGraphAttribute: SMART_GRAPH_FIELDS_MAP.smartGraphAttribute,
+  orphanCollections: GENERAL_GRAPH_FIELDS_MAP.orphanCollections
 };
 
 const INITIAL_VALUES: SmartGraphCreateValues = {
@@ -113,6 +68,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
       window.arangoHelper.arangoError("Could not add graph", errorMessage);
     }
   };
+  const isDisabled = mode === "edit";
   return (
     <Formik
       initialValues={initialGraph || INITIAL_VALUES}
@@ -129,37 +85,37 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
               <FormField
                 field={{
                   ...smartGraphFieldsMap.name,
-                  isDisabled: mode === "edit"
+                  isDisabled
                 }}
               />
               <FormField
                 field={{
                   ...smartGraphFieldsMap.numberOfShards,
-                  isDisabled: mode === "edit"
+                  isDisabled
                 }}
               />
               <FormField
                 field={{
                   ...smartGraphFieldsMap.replicationFactor,
-                  isDisabled: mode === "edit"
+                  isDisabled
                 }}
               />
               <FormField
                 field={{
                   ...smartGraphFieldsMap.minReplicationFactor,
-                  isDisabled: mode === "edit"
+                  isDisabled
                 }}
               />
               <FormField
                 field={{
                   ...smartGraphFieldsMap.isDisjoint,
-                  isDisabled: mode === "edit"
+                  isDisabled
                 }}
               />
               <FormField
                 field={{
                   ...smartGraphFieldsMap.smartGraphAttribute,
-                  isDisabled: mode === "edit"
+                  isDisabled
                 }}
               />
               <EdgeDefinitionsField
@@ -171,7 +127,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
               <FormField
                 field={{
                   ...smartGraphFieldsMap.orphanCollections,
-                  isDisabled: mode === "edit"
+                  isDisabled
                 }}
               />
             </FieldsGrid>
