@@ -72,8 +72,7 @@ struct IReplicatedLogMethodsBase {
 };
 
 struct IReplicatedLogLeaderMethods : IReplicatedLogMethodsBase {
-  // TODO waitForSync parameter is missing
-  virtual auto insert(LogPayload) -> LogIndex = 0;
+  virtual auto insert(LogPayload, bool waitForSync) -> LogIndex = 0;
 };
 
 struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {
