@@ -23,7 +23,7 @@ const TABLE_COLUMNS = [
       return (
         <Link
           as={RouterLink}
-          to={`/graphs-v2/${cellValue}`}
+          to={`/graphs-v2/${encodeURIComponent(cellValue)}`}
           textDecoration="underline"
           color="blue.500"
           _hover={{
