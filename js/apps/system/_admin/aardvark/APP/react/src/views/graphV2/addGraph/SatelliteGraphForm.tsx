@@ -1,16 +1,15 @@
-import { Alert, AlertIcon, Button, Stack, VStack } from "@chakra-ui/react";
+import { Alert, AlertIcon, VStack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
-import { ModalFooter } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
 import { useGraphsModeContext } from "../GraphsModeContext";
-import { EditGraphButtons } from "../listGraphs/EditGraphButtons";
 import { SatelliteGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
+import { GraphModalFooter } from "./GraphModalFooter";
 
 const satelliteGraphFieldsMap = {
   name: {
@@ -75,7 +74,7 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
       })}
       onSubmit={handleSubmit}
     >
-      {({ isSubmitting }) => (
+      {() => (
         <Form>
           <VStack spacing={4} align="stretch">
             <Alert status="info">
@@ -103,25 +102,7 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
                 }}
               />
             </FieldsGrid>
-            <ModalFooter>
-              <Stack direction="row" spacing={4} align="center">
-                {mode === "edit" && (
-                  <EditGraphButtons graph={initialGraph} onClose={onClose} />
-                )}
-                <Button onClick={onClose} colorScheme="gray">
-                  Cancel
-                </Button>
-                {mode === "add" && (
-                  <Button
-                    colorScheme="blue"
-                    type="submit"
-                    isLoading={isSubmitting}
-                  >
-                    Create
-                  </Button>
-                )}
-              </Stack>
-            </ModalFooter>
+            <GraphModalFooter onClose={onClose} />
           </VStack>
         </Form>
       )}

@@ -1,16 +1,15 @@
-import { Button, Stack, VStack } from "@chakra-ui/react";
+import { VStack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
-import { ModalFooter } from "../../../components/modal";
 import { FieldsGrid } from "../FieldsGrid";
-import { useGraphsModeContext } from "../GraphsModeContext";
 import { createGraph } from "../GraphsHelpers";
+import { useGraphsModeContext } from "../GraphsModeContext";
 import { SmartGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
-import { EditGraphButtons } from "../listGraphs/EditGraphButtons";
+import { GraphModalFooter } from "./GraphModalFooter";
 
 const smartGraphFieldsMap = {
   name: {
@@ -121,7 +120,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
       })}
       onSubmit={handleSubmit}
     >
-      {({ isSubmitting }) => (
+      {(A) => (
         <Form>
           <VStack spacing={4} align="stretch">
             <FieldsGrid maxWidth="full">
@@ -174,25 +173,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
                 }}
               />
             </FieldsGrid>
-            <ModalFooter>
-              <Stack direction="row" spacing={4} align="center">
-                {mode === "edit" && (
-                  <EditGraphButtons graph={initialGraph} onClose={onClose} />
-                )}
-                <Button onClick={onClose} colorScheme="gray">
-                  Cancel
-                </Button>
-                {mode === "add" && (
-                  <Button
-                    colorScheme="blue"
-                    type="submit"
-                    isLoading={isSubmitting}
-                  >
-                    Create
-                  </Button>
-                )}
-              </Stack>
-            </ModalFooter>
+            <GraphModalFooter onClose={onClose} />
           </VStack>
         </Form>
       )}
