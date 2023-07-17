@@ -116,7 +116,7 @@ struct StateManagerTest : testing::Test {
   std::shared_ptr<test::RebootIdCacheMock> rebootIdCache =
       std::make_shared<test::RebootIdCacheMock>();
   std::shared_ptr<test::FakeFollowerFactory> fakeFollowerFactory =
-      std::make_shared<test::FakeFollowerFactory>(vocbaseMock, gid.id);
+      std::make_shared<test::FakeFollowerFactory>();
   std::shared_ptr<DefaultParticipantsFactory> participantsFactory =
       std::make_shared<replicated_log::DefaultParticipantsFactory>(
           fakeFollowerFactory, logScheduler, rebootIdCache);

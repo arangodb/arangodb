@@ -29,9 +29,9 @@ struct TRI_vocbase_t;
 namespace arangodb::replication2::test {
 
 struct FakeFollowerFactory : replicated_log::IAbstractFollowerFactory {
-  FakeFollowerFactory(TRI_vocbase_t& vocbase, replication2::LogId id)
-      : vocbase(vocbase), id(id) {}
-  auto constructFollower(const ParticipantId& participantId) -> std::shared_ptr<
+  FakeFollowerFactory() {}
+
+  auto constructFollower(ParticipantId const& participantId) -> std::shared_ptr<
       replication2::replicated_log::AbstractFollower> override {
     return nullptr;
   }
@@ -41,8 +41,6 @@ struct FakeFollowerFactory : replicated_log::IAbstractFollowerFactory {
     return leaderComm;
   }
 
-  TRI_vocbase_t& vocbase;
-  replication2::LogId id;
   std::shared_ptr<replicated_log::ILeaderCommunicator> leaderComm;
 };
 }  // namespace arangodb::replication2::test
