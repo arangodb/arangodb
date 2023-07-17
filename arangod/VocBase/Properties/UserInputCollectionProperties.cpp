@@ -41,37 +41,37 @@ UserInputCollectionProperties::Invariants::isSmartConfiguration(
           "A smart vertex collection needs to be "
           "marked with \"isSmart: true\"."};
     }
-    if (props.shardKeys.has_value() &&
-        (props.shardKeys->size() != 1 ||
+    if ((props.shardKeys->size() != 1 ||
          props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString)) {
       return {
           R"(A smart vertex collection needs to have "shardKeys": ["_key:"].)"};
     }
   } else if (props.isSmart) {
-    if (props.shardKeys.has_value()) {
-      // Check if SmartSharding is set correctly, but only if we have one.
-      // Otherwise our default sharding will set correct values.
-      if (props.shardKeys->size() != 1) {
-        return {R"(A smart collection needs to have a single shardKey)"};
-      } else {
-        TRI_ASSERT(props.shardKeys->size() == 1);
-        if (props.getType() == TRI_COL_TYPE_EDGE) {
-          if (props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString &&
-              props.shardKeys->at(0) != StaticStrings::PostfixOfKeyString &&
-              props.shardKeys->at(0) != StaticStrings::KeyString) {
-            // For Smart Edges Post and Prefix are allowed (for connecting
-            // satellites) Also just _key is allowed, as the shardKey for this
-            // collection is not really used. We use the shadows ShardKeys,
-            // which are _key based.
-            return {
-                R"(A smart edge collection needs to have "shardKeys": ["_key:"], [":_key"] or ["_key"].)"};
-          }
+    if (props.getType() == TRI_COL_TYPE_EDGE) {
+      if (props.shardKeys.has_value()) {
+        // Check if SmartSharding is set correctly, but only if we have one.
+        // Otherwise our default sharding will set correct values.
+        if (props.shardKeys->size() != 1) {
+          return {R"(A smart collection needs to have a single shardKey)"};
         } else {
-          if (props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
-            return {
-                R"(A smart collection needs to have "shardKeys": ["_key:"].)"};
+          TRI_ASSERT(props.shardKeys->size() == 1);
+          if (props.getType() == TRI_COL_TYPE_EDGE) {
+            if (props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString &&
+                props.shardKeys->at(0) != StaticStrings::PostfixOfKeyString &&
+                props.shardKeys->at(0) != StaticStrings::KeyString) {
+              // For Smart Edges Post and Prefix are allowed (for connecting
+              // satellites) Also just _key is allowed, as the shardKey for this
+              // collection is not really used. We use the shadows ShardKeys,
+              // which are _key based.
+              return {
+                  R"(A smart edge collection needs to have "shardKeys": ["_key:"], [":_key"] or ["_key"].)"};
+            }
           }
         }
+      }
+    } else {
+      if (props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
+        return {R"(A smart collection needs to have "shardKeys": ["_key:"].)"};
       }
     }
   }

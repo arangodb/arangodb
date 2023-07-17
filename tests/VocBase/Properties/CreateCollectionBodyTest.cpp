@@ -410,6 +410,12 @@ TEST_F(CreateCollectionBodyTest, test_smartJoinAttribute_cannot_be_empty) {
   EXPECT_FALSE(testee.ok()) << "Let an empty smartJoinAttribute through";
 }
 
+TEST_F(CreateCollectionBodyTest,
+       test_smartGraphAttribtueRequiresIsSmart) {
+  // Setting only SmartGraphAttribut is disallowed
+  __HELPER_assertParsingThrows(smartGraphAttribute, "test");
+}
+
 // Tests for generic attributes without special needs
 
 namespace {
