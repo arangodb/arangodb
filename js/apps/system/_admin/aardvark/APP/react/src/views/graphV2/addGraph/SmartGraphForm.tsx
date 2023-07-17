@@ -120,7 +120,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
       })}
       onSubmit={handleSubmit}
     >
-      {(A) => (
+      {() => (
         <Form>
           <VStack spacing={4} align="stretch">
             <FieldsGrid maxWidth="full">
