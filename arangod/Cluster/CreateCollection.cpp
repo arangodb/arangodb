@@ -39,6 +39,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/vocbase.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
