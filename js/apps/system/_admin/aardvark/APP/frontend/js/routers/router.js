@@ -1046,7 +1046,7 @@
         this.applierView.render();
       });
     },
-    
+
     graphManagement: function () {
       this.checkUser();
 
