@@ -129,6 +129,14 @@ auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice,
   // Ignore anything else
 }
 
+auto handleNumberOnly(std::string_view key, VPackSlice value, VPackSlice,
+                    DatabaseConfiguration const& config, VPackBuilder& result) {
+  if (value.isNumber()) {
+    result.add(key, value);
+  }
+  // Ignore anything else
+}
+
 auto handleWriteConcern(std::string_view key, VPackSlice value,
                         VPackSlice fullBody,
                         DatabaseConfiguration const& config,
@@ -146,6 +154,8 @@ auto handleNumberOfShards(std::string_view key, VPackSlice value,
                           VPackBuilder& result) {
   if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
     justKeep(key, value, fullBody, config, result);
+  } else if (config.isOneShardDB) {
+    handleNumberOnly(key, value, fullBody, config, result);
   }
   // Just ignore if we have distributeShardsLike
 }
