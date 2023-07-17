@@ -27,9 +27,6 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
-
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 
 [[nodiscard]] auto
@@ -44,8 +41,9 @@ UserInputCollectionProperties::Invariants::isSmartConfiguration(
           "A smart vertex collection needs to be "
           "marked with \"isSmart: true\"."};
     }
-    if (props.shardKeys.has_value() && (props.shardKeys->size() != 1 ||
-        props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString)) {
+    if (props.shardKeys.has_value() &&
+        (props.shardKeys->size() != 1 ||
+         props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString)) {
       return {
           R"(A smart vertex collection needs to have "shardKeys": ["_key:"].)"};
     }
@@ -61,14 +59,17 @@ UserInputCollectionProperties::Invariants::isSmartConfiguration(
           if (props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString &&
               props.shardKeys->at(0) != StaticStrings::PostfixOfKeyString &&
               props.shardKeys->at(0) != StaticStrings::KeyString) {
-            // For Smart Edges Post and Prefix are allowed (for connecting satellites)
-            // Also just _key is allowed, as the shardKey for this collection is not really used.
-            // We use the shadows ShardKeys, which are _key based.
-            return {R"(A smart edge collection needs to have "shardKeys": ["_key:"], [":_key"] or ["_key"].)"};
+            // For Smart Edges Post and Prefix are allowed (for connecting
+            // satellites) Also just _key is allowed, as the shardKey for this
+            // collection is not really used. We use the shadows ShardKeys,
+            // which are _key based.
+            return {
+                R"(A smart edge collection needs to have "shardKeys": ["_key:"], [":_key"] or ["_key"].)"};
           }
         } else {
           if (props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
-            return {R"(A smart collection needs to have "shardKeys": ["_key:"].)"};
+            return {
+                R"(A smart collection needs to have "shardKeys": ["_key:"].)"};
           }
         }
       }

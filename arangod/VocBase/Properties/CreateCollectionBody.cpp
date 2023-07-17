@@ -130,7 +130,8 @@ auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice,
 }
 
 auto handleNumberOnly(std::string_view key, VPackSlice value, VPackSlice,
-                    DatabaseConfiguration const& config, VPackBuilder& result) {
+                      DatabaseConfiguration const& config,
+                      VPackBuilder& result) {
   if (value.isNumber()) {
     result.add(key, value);
   }
