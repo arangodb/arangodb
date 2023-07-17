@@ -117,7 +117,8 @@ function OneShardPropertiesSuite () {
         assertEqual(props.sharding, "single");
         assertEqual(props.replicationFactor, 2);
         assertEqual(props.writeConcern, 2);
-
+        let c = db._create("test", { writeConcern: 1, replicationFactor: 1, numberOfShards: 2, distributeShardsLike: "" });
+        /* Expected implementation, if we can drop backwards compatibility with 3.11
         try {
           // Disallow using a different distributeShardsLike
           db._create("test", {distributeShardsLike: ""});
@@ -163,8 +164,9 @@ function OneShardPropertiesSuite () {
 
         // Allow creation where all values match
         let c = db._create("test", {writeConcern: 2, replicationFactor: 2, numberOfShards: 1});
+        */
         props = c.properties();
-        assertEqual(2, props.writeConcern);
+        assertEqual(1, props.writeConcern);
         assertEqual(2, props.replicationFactor);
         assertEqual(1, props.numberOfShards);
 
@@ -183,13 +185,26 @@ function OneShardPropertiesSuite () {
         // We need to create a new collection that we can use as a leader
         db._create("leading");
         try {
+          const c = db._create("test", {distributeShardsLike: "leading"});
+          // We can create an illegal distribute shards like. For one shard
+          // it will just be ignored
+          const props = c.properties();
+          assertEqual(2, props.writeConcern);
+          assertEqual(2, props.replicationFactor);
+          assertEqual(1, props.numberOfShards);
+          assertEqual("_graphs", props.distributeShardsLike);
+        } finally {
+          db._drop("test");
+        }
+        /* Expected code as soon as we can drop backwards compatibility
+        try {
           db._create("test", {distributeShardsLike: "leading"});
           fail();
         } catch (err) {
           // We cannot create the collection, as the leader is not allowed! We will have a chain of distributeShardsLike
           assertEqual(ERRORS.ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE.code, err.errorNum);
         }
-
+        */
         // It should be allowed to create a collection following the OneShard leader (_graphs for every non _system db)
         const c = db._create("test", {distributeShardsLike: "_graphs"});
         const props = c.properties();
@@ -359,6 +374,17 @@ function OneShardPropertiesSuite () {
           }
         }
 
+        {
+          // we want to create a normal collection
+          let col = db._create("overrideOneShardCollection", { distributeShardsLike: ""});
+          let colProperties = col.properties();
+
+          if (isCluster) {
+            assertEqual(colProperties.distributeShardsLike, "_graphs");
+            assertEqual(colProperties.replicationFactor, db._properties().replicationFactor);
+          }
+        }
+        /* Expected Test Code as soon as we drop compatibility with 3.11
         if (isCluster) {
           try {
             // We set distributeShardsLike to an illegal value
@@ -371,7 +397,22 @@ function OneShardPropertiesSuite () {
           // Should be allowed on single server
           db._create("overrideOneShardCollection", {distributeShardsLike: ""});
         }
+        */
+        {
+          // we want to create a normal collection and have a different replication factor
+          let nonDefaultReplicationFactor = 1;
+          assertNotEqual(db._properties.ReplicationFactor, nonDefaultReplicationFactor);
+          let col = db._create("overrideOneShardAndReplicationFactor", { distributeShardsLike: "", replicationFactor: nonDefaultReplicationFactor });
+          let colProperties = col.properties();
+          let graphsProperties = db._collection("_graphs").properties();
 
+          if (isCluster) {
+            assertEqual(colProperties.distributeShardsLike, "_graphs");
+            assertEqual(colProperties.replicationFactor, db._properties().replicationFactor);
+          }
+        }
+
+        /* Expected Test Code as soon as we drop compatibility with 3.11
         {
           // we want to create a normal collection and have a different replication factor
           let nonDefaultReplicationFactor = 1;
@@ -385,6 +426,7 @@ function OneShardPropertiesSuite () {
             assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
           }
         }
+        */
       }
     },
     

@@ -1654,12 +1654,22 @@ function CreateCollectionsInOneShardSuite() {
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           if (isCluster) {
-            validateProperties(getOneShardShardingValues(), collname, 2);
-            validateDeprecationLogEntryWritten();
+            if (v === "minReplicationFactor" || v === "writeConcern") {
+              // On Replication1 writeConcern is allowed to differ per Collection.
+              // On Replication2 it is not.
+              validateProperties({...getOneShardShardingValues(), writeConcern: value, minReplicationFactor: value}, collname, 2);
+            } else {
+              validateProperties(getOneShardShardingValues(), collname, 2);
+              validateDeprecationLogEntryWritten();
+            }
           } else {
             // OneShard has no meaning in single server, just assert values are taken
-            validateProperties({}, collname, 2);
-            validateDeprecationLogEntryWritten();
+            if (v === "minReplicationFactor" || v === "writeConcern") {
+              validateProperties({writeConcern: value}, collname, 2);
+            } else {
+              validateProperties({}, collname, 2);
+              validateDeprecationLogEntryWritten();
+            }
           }
         } finally {
           db._drop(collname);

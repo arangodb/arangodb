@@ -163,12 +163,15 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
     }
     TRI_ASSERT(groupInfo->writeConcern.has_value());
     if (writeConcern.has_value()) {
-      if (writeConcern != groupInfo->writeConcern) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "Cannot have a different writeConcern (" +
-                    std::to_string(writeConcern.value()) +
-                    "), than the leading collection (" +
-                    std::to_string(groupInfo->writeConcern.value()) + ")"};
+      if (config.replicationVersion == replication::Version::TWO) {
+        // Replication 2 requires teh writeConcern to be equal within a group.
+        if (writeConcern != groupInfo->writeConcern) {
+          return {TRI_ERROR_BAD_PARAMETER,
+                  "Cannot have a different writeConcern (" +
+                      std::to_string(writeConcern.value()) +
+                      "), than the leading collection (" +
+                      std::to_string(groupInfo->writeConcern.value()) + ")"};
+        }
       }
     } else {
       writeConcern = groupInfo->writeConcern;

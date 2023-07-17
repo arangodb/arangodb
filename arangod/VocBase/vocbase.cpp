@@ -1728,5 +1728,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
     config.defaultDistributeShardsLike = "";
   }
 
+  config.replicationVersion = replicationVersion();
+
   return config;
 }
