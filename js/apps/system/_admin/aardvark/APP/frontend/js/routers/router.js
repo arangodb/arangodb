@@ -43,7 +43,6 @@
       'services/install/remote': 'installUrlService',
       'service/:mount': 'applicationDetail',
       'store/:name': 'storeDetail',
-      'graphsold': 'graphManagementOld',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
       'graphs-v2/:name': 'showV2Graph',
@@ -1066,25 +1065,7 @@
         this.applierView.render();
       });
     },
-
-    graphManagementOld: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (this.graphManagementView) {
-          this.graphManagementView.undelegateEvents();
-        }
-        this.graphManagementView =
-          new window.GraphManagementView(
-            {
-              collection: new window.GraphCollection(),
-              collectionCollection: this.arangoCollectionsStore
-            }
-          );
-        this.graphManagementView.render();
-      });
-    },
-
+    
     graphManagement: function () {
       this.checkUser();
 
@@ -1241,9 +1222,6 @@
     handleResize: function () {
       if (this.dashboardView) {
         this.dashboardView.resize();
-      }
-      if (this.graphManagementView && Backbone.history.getFragment() === 'graphs') {
-        this.graphManagementView.handleResize($('#content').width());
       }
       if (this.queryView && Backbone.history.getFragment() === 'queries') {
         this.queryView.resize();
