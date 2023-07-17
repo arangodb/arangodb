@@ -26,18 +26,18 @@
 #include "types.hpp"
 #include "Basics/Result.h"
 
-namespace iresearch {
+namespace irs {
 class parametric_description;
-}  // namespace iresearch
+}  // namespace irs
 
 namespace arangodb {
 namespace iresearch {
 
-constexpr ::iresearch::byte_type kMaxLevenshteinDistance = 4;
-constexpr ::iresearch::byte_type kMaxDamerauLevenshteinDistance = 3;
+constexpr irs::byte_type kMaxLevenshteinDistance = 4;
+constexpr irs::byte_type kMaxDamerauLevenshteinDistance = 3;
 
-const ::iresearch::parametric_description& getParametricDescription(
-    ::iresearch::byte_type max_distance, bool with_transpositions);
+const irs::parametric_description& getParametricDescription(
+    irs::byte_type max_distance, bool with_transpositions);
 
 }  // namespace iresearch
 }  // namespace arangodb

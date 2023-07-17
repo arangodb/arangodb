@@ -430,7 +430,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                 << ", request ptr: " << (void*)req.get()
                 << ", response ptr: " << (void*)res.get()
                 << ", error: " << uint16_t(err);
-            _responseDurations.count(dur.count() / 1e9);
+            _responseDurations.count(dur.count());
           }
         }
         TRI_ASSERT(req != nullptr);

@@ -37,7 +37,6 @@ static float EPS = 0.00001f;
 static std::string const kConvergence = "convergence";
 static std::string const kStep = "step";
 static std::string const kRank = "rank";
-static std::string const kFailedCount = "failedCount";
 static std::string const kNonFailedCount = "nonfailedCount";
 static std::string const kScale = "scale";
 

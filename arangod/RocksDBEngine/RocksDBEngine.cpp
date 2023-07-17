@@ -69,6 +69,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
@@ -1080,6 +1081,7 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
+  _dumpManager = std::make_unique<RocksDBDumpManager>(*this);
 
   _settingsManager->retrieveInitialValues();
 
@@ -1119,6 +1121,11 @@ void RocksDBEngine::beginShutdown() {
   // block the creation of new replication contexts
   if (_replicationManager != nullptr) {
     _replicationManager->beginShutdown();
+  }
+
+  // block the creation of new dump contexts
+  if (_dumpManager != nullptr) {
+    _dumpManager->beginShutdown();
   }
 
   // from now on, all started compactions can be canceled.
@@ -1625,6 +1632,7 @@ Result RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) {
 
 Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
   replicationManager()->drop(&database);
+  dumpManager()->dropDatabase(database);
 
   return dropDatabase(database.id());
 }
@@ -2968,6 +2976,8 @@ void RocksDBEngine::syncIndexCaches() {
 DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
               "rocksdb_cache_active_tables");
 DECLARE_GAUGE(rocksdb_cache_allocated, uint64_t, "rocksdb_cache_allocated");
+DECLARE_GAUGE(rocksdb_cache_peak_allocated, uint64_t,
+              "rocksdb_cache_peak_allocated");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_lifetime, uint64_t,
               "rocksdb_cache_hit_rate_lifetime");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_recent, uint64_t,
@@ -3067,23 +3077,25 @@ DECLARE_GAUGE(rocksdb_total_sst_files_size, uint64_t,
 DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t,
               "rocksdb_engine_throttle_bps");
 DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
+DECLARE_GAUGE(rocksdb_total_sst_files, uint64_t, "rocksdb_total_sst_files");
 
 void RocksDBEngine::getStatistics(std::string& result) const {
   VPackBuilder stats;
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
+
   TRI_ASSERT(sslice.isObject());
   for (auto const& a : VPackObjectIterator(sslice)) {
     if (a.value.isNumber()) {
       std::string name = a.key.copyString();
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
-      if (name.front() != 'r') {
-        name = std::string{kEngineName}.append("_").append(name);
+      if (!name.empty() && name.front() != 'r') {
+        name = absl::StrCat(kEngineName, "_", name);
       }
-      result += "\n# HELP " + name + " " + name + "\n# TYPE " + name +
-                " gauge\n" + name + " " +
-                std::to_string(a.value.getNumber<uint64_t>()) + "\n";
+      result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
+                             " gauge\n", name, " ",
+                             a.value.getNumber<uint64_t>(), "\n");
     }
   }
 }
@@ -3109,18 +3121,20 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   // get string property from each column family and return sum;
   auto addIntAllCf = [&](std::string const& s) {
     int64_t sum = 0;
+    std::string v;
     for (auto cfh : RocksDBColumnFamilyManager::allHandles()) {
-      std::string v;
+      v.clear();
       if (_db->GetProperty(cfh, s, &v)) {
         int64_t temp = basics::StringUtils::int64(v);
 
-        // -1 returned for somethings that are valid property but no value
+        // -1 returned for some things that are valid property but no value
         if (0 < temp) {
           sum += temp;
         }  // if
       }    // if
     }      // for
     builder.add(s, VPackValue(sum));
+    return sum;
   };
 
   // add column family properties
@@ -3154,14 +3168,16 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   };
 
   builder.openObject();
+  int64_t numSstFilesOnAllLevels = 0;
   for (int i = 0; i < _optionsProvider.getOptions().num_levels; ++i) {
-    addIntAllCf(rocksdb::DB::Properties::kNumFilesAtLevelPrefix +
-                std::to_string(i));
+    numSstFilesOnAllLevels += addIntAllCf(
+        absl::StrCat(rocksdb::DB::Properties::kNumFilesAtLevelPrefix, i));
     // ratio needs new calculation with all cf, not a simple add operation
-    addIntAllCf(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix +
-                std::to_string(i));
+    addIntAllCf(absl::StrCat(
+        rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix, i));
   }
-  // caution:  you must read rocksdb/db/interal_stats.cc carefully to
+  builder.add("rocksdb.total-sst-files", VPackValue(numSstFilesOnAllLevels));
+  // caution:  you must read rocksdb/db/internal_stats.cc carefully to
   //           determine if a property is for whole database or one column
   //           family
   addIntAllCf(rocksdb::DB::Properties::kNumImmutableMemTable);
@@ -3228,6 +3244,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     auto rates = manager->globalHitRates();
     builder.add("cache.limit", VPackValue(stats.globalLimit));
     builder.add("cache.allocated", VPackValue(stats.globalAllocation));
+    builder.add("cache.peak-allocated", VPackValue(stats.peakGlobalAllocation));
     builder.add("cache.active-tables", VPackValue(stats.activeTables));
     builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
     builder.add("cache.unused-tables", VPackValue(stats.spareTables));

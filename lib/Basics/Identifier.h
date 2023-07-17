@@ -99,11 +99,6 @@ struct fmt::formatter<::arangodb::basics::Identifier>
         typename ::arangodb::basics::Identifier::BaseType>::format(ident.id(),
                                                                    fc);
   }
-  template<typename ParseContext>
-  auto parse(ParseContext& ctx) {
-    return ::fmt::formatter<
-        typename ::arangodb::basics::Identifier::BaseType>::parse(ctx);
-  }
 };
 
 #define DECLARE_HASH_FOR_IDENTIFIER(T)                        \

@@ -100,7 +100,7 @@ TEST_F(IResearchViewMetaTest, test_inheritDefaults) {
   defaults._consolidationIntervalMsec = 456;
   defaults._consolidationPolicy =
       arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy(
-          irs::index_writer::consolidation_policy_t(),
+          irs::ConsolidationPolicy(),
           std::move(*arangodb::velocypack::Parser::fromJson(
               "{ \"type\": \"tier\", \"threshold\": 0.11 }")));
   defaults._writebufferActive = 10;
@@ -670,7 +670,7 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
     meta._consolidationIntervalMsec = 0;
     meta._consolidationPolicy =
         arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy(
-            irs::index_writer::consolidation_policy_t(),
+            irs::ConsolidationPolicy(),
             std::move(*arangodb::velocypack::Parser::fromJson(
                 "{ \"type\": \"bytes_accum\", \"threshold\": 0.2 }")));
 
@@ -722,7 +722,7 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   meta._consolidationIntervalMsec = 456;
   meta._consolidationPolicy =
       arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy(
-          irs::index_writer::consolidation_policy_t(),
+          irs::ConsolidationPolicy(),
           std::move(*arangodb::velocypack::Parser::fromJson(
               "{ \"type\": \"tier\", \"threshold\": 0.11 }")));
   meta._version = 42;

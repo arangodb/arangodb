@@ -208,7 +208,7 @@ class Manager final {
     if (!_writeLockHeld) {
       LOG_TOPIC("eedda", TRACE, Logger::TRANSACTIONS)
           << "Trying to get write lock to hold transactions...";
-      ret = _rwLock.lockWrite(timeout);
+      ret = _rwLock.tryLockWriteFor(timeout);
       if (ret) {
         LOG_TOPIC("eeddb", TRACE, Logger::TRANSACTIONS)
             << "Got write lock to hold transactions.";

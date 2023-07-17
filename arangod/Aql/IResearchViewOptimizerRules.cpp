@@ -212,7 +212,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
     auto const& varsValid = viewNode.getVarsValid();
 
     // remove all invalid variables from the condition
-    if (searchCondition.removeInvalidVariables(varsValid)) {
+    [[maybe_unused]] bool noRemoves = true;
+    if (searchCondition.removeInvalidVariables(varsValid, noRemoves)) {
       // removing left a previously non-empty OR block empty...
       // this means we can't use the index to restrict the results
       return false;
@@ -780,7 +781,7 @@ void extractScorers(IResearchViewNode const& viewNode, DedupSearchFuncs& dedup,
               TRI_ERROR_BAD_PARAMETER,
               "Inaccesible non-ArangoSearch view variable '%s' is used in "
               "search function '%s'",
-              v->name.c_str(), funcName.c_str());
+              v->name.c_str(), std::string(funcName).c_str());
         }
       }
 
@@ -994,7 +995,7 @@ void handleConstrainedSortInView(Optimizer* opt,
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() noexcept {
+  auto addPlan = irs::Finally([opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
   });
 
@@ -1034,7 +1035,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() noexcept {
+  auto addPlan = irs::Finally([opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
   });
 
@@ -1114,7 +1115,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
       THROW_ARANGO_EXCEPTION_FORMAT(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
           "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
-          func.var->name.c_str(), funcName.c_str());
+          func.var->name.c_str(), std::string(funcName).c_str());
     }
   }
 }

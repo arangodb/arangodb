@@ -94,11 +94,6 @@ inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
       static_cast<bool>(static_cast<bool>(lhs) ^ static_cast<bool>(rhs))};
 }
 
-inline Weight Divide(const Weight& lhs, const Weight& rhs,
-                     DivideType typ = DIVIDE_ANY) {
-  return DivideLeft(lhs, rhs);
-}
-
 }  // namespace fst
 
 #include "utils/fstext/fst_builder.hpp"
@@ -558,14 +553,6 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
     revert.cancel();
   }
   return r;
-}
-
-void Search::open() {
-  // if (ServerState::instance()->isSingleServer()) {
-  //   auto& engine =
-  //       vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  //   _inRecovery.store(engine.inRecovery(), std::memory_order_seq_cst);
-  // }
 }
 
 bool Search::visitCollections(CollectionVisitor const& visitor) const {

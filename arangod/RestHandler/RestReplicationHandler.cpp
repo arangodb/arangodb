@@ -90,7 +90,6 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 std::string const dataString("data");
-std::string const keyString("key");
 std::string const typeString("type");
 }  // namespace
 

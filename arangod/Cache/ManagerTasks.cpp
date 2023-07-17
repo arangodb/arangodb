@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +21,9 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/ManagerTasks.h"
+#include "ManagerTasks.h"
+
+#include "Basics/ScopeGuard.h"
 #include "Basics/SpinLocker.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
@@ -36,44 +38,66 @@ FreeMemoryTask::FreeMemoryTask(Manager::TaskEnvironment environment,
 FreeMemoryTask::~FreeMemoryTask() = default;
 
 bool FreeMemoryTask::dispatch() {
+  // prepareTask counts a counter up
   _manager.prepareTask(_environment);
-  try {
-    if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
-      return true;
-    }
-    _manager.unprepareTask(_environment);
-    return false;
-  } catch (std::exception const&) {
-    _manager.unprepareTask(_environment);
-    throw;
+
+  // make sure we count the counter down in case we
+  // did not successfully dispatch the task
+  auto unprepareGuard =
+      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
+
+  if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
+    // intentionally don't unprepare task
+    unprepareGuard.cancel();
+    return true;
   }
+  return false;
 }
 
 void FreeMemoryTask::run() {
-  try {
-    using basics::SpinLocker;
+  using basics::SpinLocker;
 
-    bool ran = _cache->freeMemory();
+  auto unprepareGuard =
+      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
 
-    if (ran) {
-      std::uint64_t reclaimed = 0;
-      SpinLocker guard(SpinLocker::Mode::Write, _manager._lock);
-      Metadata& metadata = _cache->metadata();
-      {
-        SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
-        TRI_ASSERT(metaGuard.isLocked());
-        reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
-        metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
-        metadata.toggleResizing();
+  TRI_ASSERT(_cache->isResizingFlagSet());
+
+  auto toggleResizingGuard = scopeGuard([this]() noexcept {
+    // make sure we are always clearing the resizing flag
+    Metadata& metadata = _cache->metadata();
+    SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+    TRI_ASSERT(metadata.isResizing());
+    metadata.toggleResizing();
+    TRI_ASSERT(!metadata.isResizing());
+  });
+
+  bool ran = _cache->freeMemory();
+
+  // flag must still be set after freeMemory()
+  TRI_ASSERT(_cache->isResizingFlagSet());
+
+  if (ran) {
+    std::uint64_t reclaimed = 0;
+    SpinLocker guard(SpinLocker::Mode::Write, _manager._lock);
+    Metadata& metadata = _cache->metadata();
+    {
+      SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+      TRI_ASSERT(metadata.isResizing());
+      reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
+      bool ok = metadata.adjustLimits(metadata.softUsageLimit,
+                                      metadata.softUsageLimit);
+      metadata.toggleResizing();
+      TRI_ASSERT(!metadata.isResizing());
+
+      if (ok) {
+        TRI_ASSERT(_manager._globalAllocation >=
+                   reclaimed + _manager._fixedAllocation);
+        _manager._globalAllocation -= reclaimed;
+        TRI_ASSERT(_manager._globalAllocation >= _manager._fixedAllocation);
       }
-      _manager._globalAllocation -= reclaimed;
     }
-
-    _manager.unprepareTask(_environment);
-  } catch (std::exception const&) {
-    // always count down at the end
-    _manager.unprepareTask(_environment);
-    throw;
+    // do not toggle the resizing flag twice
+    toggleResizingGuard.cancel();
   }
 }
 
@@ -88,42 +112,40 @@ MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager& manager,
 MigrateTask::~MigrateTask() = default;
 
 bool MigrateTask::dispatch() {
+  // prepareTask counts a counter up
   _manager.prepareTask(_environment);
-  try {
-    if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
-      return true;
-    }
-    _manager.unprepareTask(_environment);
-    return false;
-  } catch (std::exception const&) {
-    _manager.unprepareTask(_environment);
-    throw;
+
+  // make sure we count the counter down in case we
+  // did not successfully dispatch the task
+  auto unprepareGuard =
+      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
+
+  if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
+    // intentionally don't unprepare task
+    unprepareGuard.cancel();
+    return true;
   }
+  return false;
 }
 
 void MigrateTask::run() {
-  try {
-    using basics::SpinLocker;
+  auto unprepareGuard =
+      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
 
-    // do the actual migration
-    bool ran = _cache->migrate(_table);
+  // we must be migrating when we get here
+  TRI_ASSERT(_cache->isMigratingFlagSet());
 
-    if (!ran) {
-      Metadata& metadata = _cache->metadata();
-      {
-        SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
-        TRI_ASSERT(metaGuard.isLocked());
-        metadata.toggleMigrating();
-      }
-      _manager.reclaimTable(std::move(_table), false);
-      TRI_ASSERT(_table == nullptr);
-    }
+  // do the actual migration
+  bool ran = _cache->migrate(_table);
 
-    _manager.unprepareTask(_environment);
-  } catch (std::exception const&) {
-    // always count down at the end
-    _manager.unprepareTask(_environment);
-    throw;
+  // migrate() must have unset the migrating flag, but we
+  // cannot check it here because another MigrateTask may
+  // have been scheduled in the meantime and have set the
+  // flag again, which would be a valid situation.
+
+  if (!ran) {
+    _manager.reclaimTable(std::move(_table), false);
+    TRI_ASSERT(_table == nullptr);
   }
 }
 }  // namespace arangodb::cache

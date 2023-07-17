@@ -2401,8 +2401,9 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
   }
 
   auto p = plan.get();
+  bool changed = false;
 
-  auto visitor = [p](AstNode* node) {
+  auto visitor = [&changed, p](AstNode* node) {
     again:
       if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         auto const* accessed = node->getMemberUnchecked(0);
@@ -2455,6 +2456,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            changed = true;
             return p->getAst()->createNodeValueNull();
           }
         }
@@ -2528,6 +2530,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            changed = true;
             return p->getAst()->createNodeValueNull();
           }
         } else if (accessed->type == NODE_TYPE_ARRAY) {
@@ -2541,6 +2544,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
                 valid);
             if (!valid) {
               // invalid index
+              changed = true;
               return p->getAst()->createNodeValueNull();
             }
           } else {
@@ -2567,6 +2571,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           }
 
           // index out of bounds
+          changed = true;
           return p->getAst()->createNodeValueNull();
         }
       }
@@ -2589,9 +2594,12 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     AstNode* root = nn->expression()->nodeForModification();
 
     if (root != nullptr) {
-      // reset for every round. can be modified by the visitor function!
+      // the changed variable is captured by reference by the lambda that
+      // traverses the Ast and may modify it. if it performs a modification,
+      // it will set changed=true
+      changed = false;
       AstNode* simplified = plan->getAst()->traverseAndModify(root, visitor);
-      if (simplified != root) {
+      if (simplified != root || changed) {
         nn->expression()->replaceNode(simplified);
         nn->expression()->invalidateAfterReplacements();
         modified = true;
@@ -5372,8 +5380,18 @@ class RemoveToEnumCollFinder final
           toRemove =
               ExecutionNode::castTo<ReplaceNode const*>(en)->inKeyVariable();
         } else if (en->getType() == EN::UPDATE) {
+          // first try if we have the pattern UPDATE <key> WITH <doc> IN
+          // collection. if so, then toRemove will contain <key>.
           toRemove =
               ExecutionNode::castTo<UpdateNode const*>(en)->inKeyVariable();
+
+          if (toRemove == nullptr) {
+            // if we don't have that pattern, we can if instead have
+            // UPDATE <doc> IN collection.
+            // in this case toRemove will contain <doc>.
+            toRemove =
+                ExecutionNode::castTo<UpdateNode const*>(en)->inDocVariable();
+          }
         } else if (en->getType() == EN::REMOVE) {
           toRemove = ExecutionNode::castTo<RemoveNode const*>(en)->inVariable();
         } else {
@@ -5429,8 +5447,8 @@ class RemoveToEnumCollFinder final
             for (auto const& it : shardKeys) {
               toFind.emplace(it);
             }
-            // for REMOVE, we must also know the _key value, otherwise
-            // REMOVE will not work
+            // for UPDATE/REPLACE/REMOVE, we must also know the _key value,
+            // otherwise they will not work.
             toFind.emplace(arangodb::StaticStrings::KeyString);
 
             // go through the input object attribute by attribute
@@ -5445,14 +5463,17 @@ class RemoveToEnumCollFinder final
                 continue;
               }
 
-              auto it = toFind.find(sub->getString());
+              std::string attributeName = sub->getString();
+              auto it = toFind.find(attributeName);
 
               if (it != toFind.end()) {
                 // we found one of the shard keys!
                 // remove the attribute from our to-do list
                 auto value = sub->getMember(0);
 
-                if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+                // check if we have something like: { key: source.key }
+                if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+                    value->getStringView() == attributeName) {
                   // check if all values for the shard keys are referring to
                   // the same FOR loop variable
                   auto var = value->getMember(0);

@@ -72,6 +72,7 @@
 #include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestDumpHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
@@ -687,6 +688,10 @@ void GeneralServerFeature::defineRemainingHandlers(
         "/_api/aqlfunction",
         RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
   }
+
+  f.addPrefixHandler(
+      "/_api/dump",
+      RestHandlerCreator<arangodb::RestDumpHandler>::createNoData);
 
   f.addPrefixHandler("/_api/explain",
                      RestHandlerCreator<RestExplainHandler>::createNoData);

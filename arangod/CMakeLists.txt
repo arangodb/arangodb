@@ -151,7 +151,7 @@ get_target_property(IRESEARCH_INCLUDE
   ${IRESEARCH_TARGET_DEPENDENCY} INCLUDE_DIRECTORIES)
 
 target_include_directories(arango_iresearch
-  PUBLIC ${IRESEARCH_INCLUDE}
+  SYSTEM PUBLIC ${IRESEARCH_INCLUDE}
 )
 
 if (USE_ENTERPRISE)
@@ -756,6 +756,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
   RestHandler/RestDocumentHandler.cpp
+  RestHandler/RestDumpHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
@@ -1016,11 +1017,11 @@ target_link_libraries(arango_cluster_engine boost_boost)
 target_link_libraries(arango_cluster_engine arango_v8 arango_v8_no_deadline)
 
 target_include_directories(arango_cluster_engine
-    PUBLIC ${IRESEARCH_INCLUDE}
+    SYSTEM PUBLIC ${IRESEARCH_INCLUDE}
 )
 
 target_include_directories(arango_indexes
-    PUBLIC ${IRESEARCH_INCLUDE}
+    SYSTEM PUBLIC ${IRESEARCH_INCLUDE}
 )
 
 target_link_libraries(arango_cluster_methods arango)
@@ -1202,6 +1203,7 @@ endif ()
 
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc_build)
+  target_link_libraries(arangod ${JEMALLOC_LIB})
 endif ()
 
 foreach(TARGET

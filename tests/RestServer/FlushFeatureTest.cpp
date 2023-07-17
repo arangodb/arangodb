@@ -148,9 +148,9 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
     feature.registerFlushSubscription(subscription);
 
     auto const subscriptionTick = engine.currentTick();
-    auto const currentTick = TRI_NewTickServer();
-    ASSERT_EQ(currentTick, engine.currentTick());
-    ASSERT_LT(subscriptionTick, engine.currentTick());
+    engine.incrementTick(1);
+    auto const currentTick = engine.currentTick();
+    ASSERT_LT(subscriptionTick, currentTick);
     subscription->_tick = subscriptionTick;
 
     {
@@ -161,9 +161,9 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
     }
 
     auto const newSubscriptionTick = currentTick;
-    auto const newCurrentTick = TRI_NewTickServer();
-    ASSERT_EQ(newCurrentTick, engine.currentTick());
-    ASSERT_LT(subscriptionTick, engine.currentTick());
+    engine.incrementTick(1);
+    auto const newCurrentTick = engine.currentTick();
+    ASSERT_LT(subscriptionTick, newCurrentTick);
     subscription->_tick = newSubscriptionTick;
 
     {

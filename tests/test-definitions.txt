@@ -86,7 +86,7 @@ recovery_cluster priority=2000 cluster buckets=8 -- --test search
 # different number of buckets in cluster
 shell_server_aql priority=1000 cluster buckets=16 -- --dumpAgencyOnError true
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
-shell_client_transaction priority=500 cluster parallelity=5 buckets=5 -- --dumpAgencyOnError true
+shell_client_transaction priority=500 cluster parallelity=5 buckets=4 -- --dumpAgencyOnError true
 shell_server priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 
 # Common Tests
@@ -110,10 +110,12 @@ dump_jwt -- --dumpAgencyOnError true
 dump_maskings -- --dumpAgencyOnError true
 dump_multiple -- --dumpAgencyOnError true
 dump_no_envelope -- --dumpAgencyOnError true
+dump_parallel -- --dumpAgencyOnError true
 dump_mixed_cluster_single -- --dumpAgencyOnError true
 dump_mixed_single_cluster -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes !mac parallelity=1 priority=2000 -- --dumpAgencyOnError true 
+dump_with_crashes_parallel !mac parallelity=1 priority=2000 -- --dumpAgencyOnError true
 
 # Audit Tests
 audit_client -- --dumpAgencyOnError true

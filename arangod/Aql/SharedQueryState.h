@@ -30,6 +30,8 @@
 #include "RestServer/arangod.h"
 
 namespace arangodb {
+class Scheduler;
+class SupervisedScheduler;
 namespace application_features {
 class ApplicationServer;
 }
@@ -37,11 +39,21 @@ namespace aql {
 
 class SharedQueryState final
     : public std::enable_shared_from_this<SharedQueryState> {
+// Use the SupervisedScheduler in production to allow for easier
+// devirtualization. Use the Scheduler in google tests so it can be mocked or
+// faked.
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  using SchedulerT = arangodb::SupervisedScheduler;
+#else
+  using SchedulerT = arangodb::Scheduler;
+#endif
  public:
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  explicit SharedQueryState(ArangodServer& server);
+  SharedQueryState(ArangodServer& server);
+  SharedQueryState(ArangodServer& server,
+                   SharedQueryState::SchedulerT* scheduler);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
@@ -111,6 +123,7 @@ class SharedQueryState final
             try {
               cb(true);
             } catch (...) {
+              TRI_ASSERT(false);
             }
             std::unique_lock<std::mutex> guard(self->_mutex);
             self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
@@ -130,6 +143,8 @@ class SharedQueryState final
     return queued;
   }
 
+  bool noTasksRunning();
+
  private:
   /// execute the _continueCallback. must hold _mutex
   void notifyWaiter(std::unique_lock<std::mutex>& guard);
@@ -139,6 +154,7 @@ class SharedQueryState final
 
  private:
   ArangodServer& _server;
+  SharedQueryState::SchedulerT* _scheduler;
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 

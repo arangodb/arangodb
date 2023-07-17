@@ -90,7 +90,7 @@ struct InvertedIndexField {
             LinkVersion version, bool extendedNames,
             IResearchAnalyzerFeature& analyzers,
             InvertedIndexField const& parent,
-            irs::string_ref const defaultVocbase, bool rootMode,
+            std::string_view const defaultVocbase, bool rootMode,
             std::string& errorField);
 
   bool json(arangodb::ArangodServer& server, VPackBuilder& builder,
@@ -173,6 +173,8 @@ struct IResearchInvertedIndexMetaIndexingContext {
 
   Features const& features() const noexcept { return _features; }
 
+  bool hasNested() const noexcept { return _hasNested; }
+
   absl::flat_hash_map<std::string_view,
                       IResearchInvertedIndexMetaIndexingContext>
       _fields;
@@ -219,7 +221,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   ////////////////////////////////////////////////////////////////////////////////
   bool init(arangodb::ArangodServer& server, VPackSlice const& slice,
             bool readAnalyzerDefinition, std::string& errorField,
-            irs::string_ref const defaultVocbase);
+            std::string_view const defaultVocbase);
 
   bool dense() const noexcept { return !_sort.empty(); }
 

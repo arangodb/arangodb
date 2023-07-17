@@ -34,8 +34,8 @@ const optionsDocumentation = [
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
-const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
+const {getGTestResults} = require('@arangodb/testutils/result-processing');
 
 const testPaths = {
   'fuerte': []
@@ -58,37 +58,6 @@ function locateGTest(name) {
     }
   }
   return file;
-}
-
-function getGTestResults(fileName, defaultResults) {
-  let results = defaultResults;
-  if (!fs.exists(fileName)) {
-    defaultResults.failed += 1;
-    print(RED + "No testresult file found at: " + fileName + RESET);
-    return defaultResults;
-  }
-  let gTestResults = JSON.parse(fs.read(fileName));
-  results.failed = gTestResults.failures + gTestResults.errors;
-  results.status = (gTestResults.errors === 0) || (gTestResults.failures === 0);
-  gTestResults.testsuites.forEach(function (testSuite) {
-    results[testSuite.name] = {
-      failed: testSuite.failures + testSuite.errors,
-      status: (testSuite.failures + testSuite.errors) === 0,
-      duration: testSuite.time
-    };
-    if (testSuite.failures !== 0) {
-      let message = "";
-      testSuite.testsuite.forEach(function (suite) {
-        if (suite.hasOwnProperty('failures')) {
-          suite.failures.forEach(function (fail) {
-            message += fail.failure;
-          });
-        }
-      });
-      results[testSuite.name].message = message;
-    }
-  });
-  return results;
 }
 
 function gtestRunner(options) {
@@ -114,7 +83,10 @@ function gtestRunner(options) {
   // start server
   print('Starting server...');
 
-  let instanceManager = new im.instanceManager('tcp', options, {"http.keep-alive-timeout" : "10"}, 'fuerte');
+  let instanceManager = new im.instanceManager('tcp', options, {
+    "http.keep-alive-timeout": "10",
+    "log.level": "requests=TRACE"
+  }, 'fuerte');
   instanceManager.prepareInstance();
   instanceManager.launchTcpDump("");
   if (!instanceManager.launchInstance()) {
@@ -158,13 +130,11 @@ function gtestRunner(options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['fuerte'] = gtestRunner;
 
   opts['skipFuerte'] = false;
-
-  defaultFns.push('fuerte');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

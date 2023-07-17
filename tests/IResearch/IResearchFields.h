@@ -35,7 +35,7 @@ namespace arangodb {
 namespace tests {
 
 struct StringField final {
-  irs::string_ref name() const { return fieldName; }
+  std::string_view name() const { return fieldName; }
 
   irs::token_stream& get_tokens() const {
     stream.reset(value);
@@ -54,13 +54,13 @@ struct StringField final {
   }
 
   mutable irs::string_token_stream stream;
-  irs::string_ref value;
-  irs::string_ref fieldName;
+  std::string_view value;
+  std::string_view fieldName;
   irs::features_t _featuresRange;
 };
 
 struct GeoField final {
-  irs::string_ref name() const { return fieldName; }
+  std::string_view name() const { return fieldName; }
 
   irs::token_stream& get_tokens() const {
     if (!shapeSlice.isNone()) {
@@ -84,7 +84,7 @@ struct GeoField final {
 
   mutable iresearch::GeoVPackAnalyzer stream{{}};
   VPackSlice shapeSlice;
-  irs::string_ref fieldName;
+  std::string_view fieldName;
   irs::features_t _featuresRange;
 };
 

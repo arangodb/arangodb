@@ -44,10 +44,10 @@
 #include <utility>
 #include <variant>
 
-namespace iresearch {
+namespace irs {
 struct score;
 struct document;
-}  // namespace iresearch
+}  // namespace irs
 
 namespace arangodb {
 class LogicalCollection;
@@ -274,7 +274,7 @@ class IndexReadBuffer {
   template<typename... Args>
   void pushValue(Args&&... args);
 
-  void pushSearchDoc(irs::sub_reader const& segment, irs::doc_id_t docId) {
+  void pushSearchDoc(irs::SubReader const& segment, irs::doc_id_t docId) {
     _searchDocs.emplace_back(segment, docId);
   }
 
@@ -346,19 +346,19 @@ class IndexReadBuffer {
     return std::vector<size_t>{_rows.begin() + start, _rows.end()};
   }
 
-  void setStoredValue(size_t idx, irs::bytes_ref value) {
+  void setStoredValue(size_t idx, irs::bytes_view value) {
     TRI_ASSERT(idx < _storedValuesBuffer.size());
     _storedValuesBuffer[idx] = value;
   }
 
-  void pushStoredValue(irs::bytes_ref value) {
+  void pushStoredValue(irs::bytes_view value) {
     TRI_ASSERT(_storedValuesBuffer.size() < _storedValuesBuffer.capacity());
-    _storedValuesBuffer.emplace_back(value.c_str(), value.size());
+    _storedValuesBuffer.emplace_back(value.data(), value.size());
   }
 
   using StoredValuesContainer =
       typename std::conditional<copyStored, std::vector<irs::bstring>,
-                                std::vector<irs::bytes_ref>>::type;
+                                std::vector<irs::bytes_view>>::type;
 
   StoredValuesContainer const& getStoredValues() const noexcept;
 
@@ -543,7 +543,7 @@ class IResearchViewExecutorBase {
 
   void pushStoredValues(irs::document const& doc, size_t storedValuesIndex = 0);
 
-  bool getStoredValuesReaders(irs::sub_reader const& segmentReader,
+  bool getStoredValuesReaders(irs::SubReader const& segmentReader,
                               size_t storedValuesIndex = 0);
 
  private:
@@ -560,7 +560,8 @@ class IResearchViewExecutorBase {
   iresearch::ViewSnapshotPtr _reader;
   irs::filter::prepared::ptr _filter;
   irs::filter::prepared const** _filterCookie{};
-  irs::Order _order;
+  containers::SmallVector<irs::Scorer::ptr, 2> _scorersContainer;
+  irs::Scorers _scorers;
   std::vector<ColumnIterator> _storedValuesReaders;
   std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
   bool _isInitialized;

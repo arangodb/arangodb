@@ -1,5 +1,248 @@
-v3.10.7 (XXXX-XX-XX)
+v3.10.10 (XXXX-XX-XX)
+---------------------
+
+* FE-20: fix UI placeholder format for locale when creating analyzers.
+
+* FE-304, FE-305: use navigator.onLine for checking internet connection, correct
+  path for running/slow queries.
+
+* FE-303: fix geo map doesn't show up in query UI.
+
+* Use libunwind in jemalloc profiling to make it available with libmusl
+  and static binaries.
+
+* FE-287: fix number validation for replicationFactor and writeConcern.
+
+* FE-162: Fix display of geodesic lines.
+
+* Upgraded OpenSSL to 3.0.9.
+
+* Enforce that server always returns an empty body if the return code is 204.
+
+* Arangodump retries dump requests in more cases: read, write and connection
+  errors.
+
+* When trying to read multiple documents, the coordinator will now handle empty
+  lists gracefully and return an empty result set instead of an error.
+
+
+v3.10.9 (2023-06-30)
 --------------------
+
+* Added startup option `--replication.active-failover-leader-grace-period`.
+  This startup option can be used to set the amount of time (in seconds) for
+  which the current leader in an active failover setup will continue to assume
+  its leadership even if it lost connection to the agency.
+
+  In case the leader cannot contact the agency anymore, the agency will elect a
+  new leader after the supervision grace period has elapsed.
+  In order to avoid a split-brain situation with multiple servers assuming
+  leadership, this option can be used to make a disconnected leader refuse any
+  incoming write operations after the grace period controled by this option has
+  elapsed.
+  Ideally the startup option should be given a value greater than the value of
+  the supervision grace period, in order to avoid a temporarily disconnected
+  leader giving up leadership too early and unnecessarily.
+
+  The default value is 120 seconds. Setting the option to a value of 0 will keep
+  the existing behavior, in which a disconnected leader will not refuse incoming
+  write operations.
+
+* Optimize runtime performance of exclusive locks.
+
+* Remove temporary `CREATING_{number}` directories from hot backup in case a hot
+  backup runs into an error.
+
+* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in
+  case the update AQL is of the pattern
+
+      FOR doc IN collection
+        UPDATE <doc> IN collection
+
+  Previously the optimization was only possible if the update AQL was of the
+  pattern
+
+      FOR doc IN collection
+        UPDATE <key> WITH <doc> IN collection
+
+  Both <key> and <doc> refer to data from the collection enumeration variable
+  `doc` here.
+
+  Also fix the optimization in case a shard key attribute is updated with a
+  value from a different attribute, e.g.
+
+     FOR doc IN collection
+       UPDATE { _key: doc.abc, abc: doc._key } IN collection
+
+  In this case the optimization was previously applied although it shouldn't.
+
+* Add a `description` field to OptimizerRule and dump the explanations via the
+  `GET /_api/query/rules` endpoint.
+
+* Attempt to avoid busy looping when locking collections with a timeout.
+
+* BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
+
+
+v3.10.8 (2023-06-23)
+--------------------
+
+* Fixed two possible deadlocks which could occur if all medium priority threads
+  are busy. One is that in this case the AgencyCache could no longer receive
+  updates from the agency and another that queries could no longer be finished.
+  This fixes BTS-1475 and BTS-1486.
+
+
+v3.10.7 (2023-06-12)
+--------------------
+
+* Updated arangosync to v2.18.1.
+
+* SEARCH-480: Speedup ArangoSearch recovery.
+
+* SEARCH-476: Fix bug in fst builder.
+
+* BTS-1325: AQL: Fixed a possible deadlock with multiple parallel traversals.
+
+* Updated OpenSSL to 1.1.1u.
+
+* BTS-1435: fixed invalid AQL optimization and added a safeguard.
+
+* APM-766, SEARCH-479: Reduce memory overhead for ArangoSearch removes.
+
+* Improve precision for ArangoSearch GEO_IN_RANGE function.
+
+* Updated ArangoDB Starter to 0.15.8.
+
+* FE-211: Allow admins to edit gravatar email.
+
+* BTS-1255: Fix sporadic memory usage accounting underflows in in-memory cache
+  subsystem.
+  Also turn the algorithm for freeing memory from a cache's buckets from a
+  non-deterministic one that did not guarantee progress into a bounded algorithm
+  with guaranteed progress.
+
+* Add a startup parameter `--rclone.argument` which can be utilised to enable
+  debugging with logfiles in hot backup RClone upload operacions:
+  `--rclone.argument=--log-level=DEBUG`
+  `--rclone.argument=-log-file=/tmp/rclone.log`
+
+* ECONNABORTED is treated as a ConnectionClosed error in fuerte.
+
+* Database drop operation no longer fails if we cannot remove the corresponding
+  permissions from the _users collection.
+
+* BTS-1261 For some named graphs in cluster, when creating a debugDump for a
+  traversal query that would use the graph's name, the graph wouldn't be able to
+  be recreated because the info gathered in the process of creating a debugDump
+  was broken. It uses the result form an aql explain to get the graph info and
+  use in the debugDump, but this wouldn't be available because, instead of
+  having the name of the graph as key in the graph object of the explain, there
+  would be an array with edge collection names. It was changed for the case when
+  there's a named graph, but maintained when there's no access to the graph's
+  name.
+
+* Fix issue #18982: query editor null/undefined check filters out bindParams
+  with value 0.
+
+* Support parsing HTTP GET requests with velocypack Content-Type without a
+  request body. Previously parsing such requests led to an error on the server
+  side.
+
+* ES-1566: fix an issue when trying to restrict traversals to non-existing
+  collections with the `edgeCollections` traversal option.
+  
+  If a non-existing collection is specified in the `edgeCollections` or
+  `vertexCollections` options of an AQL traversal, the query will now fail with
+  a `collection or view not found` error. Also, if wrong collection types are
+  used (e.g. a document collection or a view for `edgeCollections`), then an
+  error is raised about an invalid collection type being used.
+
+  This is a behavior change compared to previous versions, which ignored
+  specifying non-existing vertex collections and had undefined behavior when
+  specifying non-existing edge collections or using a vertex collection instead
+  of an edge collection.
+
+* Increase too short timeouts for requests made from coordinators to DB-servers
+  when retrieving the number of documents or the index selectivity estimates for
+  SmartGraph edge collection parts. These parts were treated like system
+  collections because of their naming convention, and the requests were run with
+  a timeout of only 5s.
+
+* BTS-1315: Fixed spurious occurring failures during Foxx Application
+  installation in case a Load Balancer is being used in front of the
+  coordinators.
+
+* Added startup option `--query.max-collections-per-query` to adjust the limit
+  for the maximum number of collections/shards per query. The option defaults to
+  `2048`, which is equivalent to the previous hardcoded value.
+
+* Added metric "rocksdb_total_sst_files" to count the number of sst files,
+  aggregated over all levels of the LSM tree.
+
+* Add metric `arangodb_file_descriptors_current` to expose the number of file
+  descriptors currently opened by the arangod process. This metric is available
+  on Linux only.
+  As counting the number of open file descriptors can be expensive, this metric
+  is only updated in a configurable interval. The new startup option
+  `--server.descriptors-count-interval` can be used to specify the update
+  interval (in milliseconds). It defaults to 60,000 (i.e. once per minute).
+  The startup option can be set to a value of `0` to disable the counting of
+  open file descriptors for performance reasons.
+  If counting is turned off, the metric will report a value of `0`.
+
+* Add metric `arangodb_file_descriptors_limit` to expose the system limit for
+  the number of open files for the arangod process.
+
+* Added metric `rocksdb_cache_peak_allocated` to store the peak memory
+  allocation value for in-memory caches.
+
+* Remove leftover in-memory cache tables after dropping collections that had
+  their `cacheEnabled` flag set to `true`. Previously some memory could remain
+  allocated in the in-memory cache even after such collections were dropped.
+
+* Reduce memory usage for incremental sync replication.
+
+  The incremental sync protocol that was used for collections created with 3.8
+  or higher had memory usage issues in case the follower already had some local
+  data and its dataset was much larger than the leader's. For example, this can
+  happen if a follower gets disconnected, then a lot of document removals happen
+  on the leader and afterwards the follower tries to get back into sync.
+
+  In this case, the follower buffered the ids of documents it had to remove
+  locally in a vector, which could grow arbitrarily large. The removal of the
+  documents contained in this vector would only happen at the end, potentially
+  even without performing intermediate commits.
+
+  The change in this PR is to trigger the document removal earlier, once the
+  vector has reached some size threshold, and also to use intermediate commits
+  during the removals.
+
+* FE-266: Use the method 'fromGeoJson()' instead of 'geometry.coordinates' for
+  GeoJSON.
+
+* Improved error reporting for system calls on Windows and fixed a
+  Windows-specific issue of the IOHeartbeatThread.
+
+* BTS-1181: fix a data race on the collection list in TransactionState.
+  This race could happen in the cluster when a collection is sharded by a
+  different attribute than `_key` and a document lookup by _key is performed.
+  This requires the lookup to be sent to each shard, since we cannot deduce the
+  shard based on the `_key` value. If this lookup is done as part of a stream
+  transaction, and if the collection has not been declared in the transaction's
+  `read` list, then the collection is added lazily. Previously this would result
+  in a race if multiple shards are located on the same
+  server.
+  For transactions with `allowDirtyReads` set to true read collections are
+  always added lazily, which made this race more likely.
+
+* Fixed issue #18942: arangorestore ignores the HTTP status code.
+
+* Fixed BTS-1398: GEO_DISTANCE() for ArangoSearch geo_s2 analyzer.
+
+* Fix MDS-1070 Update iresearch submodule.
+
+* FE-243: add support for geo_s2 analyzer.
 
 * FE-22: Don't display collection content by default when clicking on a
   collection in the Web UI.
@@ -25,12 +268,6 @@ v3.10.7 (XXXX-XX-XX)
 
 v3.10.6 (2023-04-27)
 --------------------
-
-* Fixed a race in the Maintenance, impacting leaders that have just been
-  resigned. During a MoveShard job, the old leader could sabotage the whole
-  operation by removing the newly added follower from Current. The solution
-  is to update Current using local collection information, instead of the
-  potentially outdated velocypack slice.
 
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
 

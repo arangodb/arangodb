@@ -141,8 +141,7 @@ Result IResearchInvertedIndexMock::insert(transaction::Methods& trx,
   IResearchInvertedIndexMetaIndexingContext ctx(&this->meta());
   return IResearchDataStore::insert<
       FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-      IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc, ctx,
-                                                 nullptr);
+      IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc, ctx);
 }
 
 AnalyzerPool::ptr IResearchInvertedIndexMock::findAnalyzer(
@@ -156,7 +155,7 @@ void IResearchInvertedIndexMock::invalidateQueryCache(TRI_vocbase_t* vocbase) {
   return IResearchInvertedIndex::invalidateQueryCache(vocbase);
 }
 
-irs::comparer const* IResearchInvertedIndexMock::getComparator()
+irs::Comparer const* IResearchInvertedIndexMock::getComparator()
     const noexcept {
   return IResearchInvertedIndex::getComparator();
 }
