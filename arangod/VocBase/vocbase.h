@@ -48,9 +48,6 @@
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
 
-// TODO: We can split out DBConfig from CreateBody and get away with forward
-#include "VocBase/Properties/CreateCollectionBody.h"
-
 #include <velocypack/Slice.h>
 
 namespace arangodb {

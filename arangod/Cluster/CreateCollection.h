@@ -26,9 +26,11 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
-#include "VocBase/vocbase.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <chrono>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace maintenance {
