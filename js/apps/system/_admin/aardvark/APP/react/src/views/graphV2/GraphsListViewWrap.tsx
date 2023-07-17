@@ -3,9 +3,9 @@ import { HashRouter, Route, Switch } from "react-router-dom";
 import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
 import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
-import { GraphsView } from "./GraphsView";
+import { GraphsListView } from "./GraphsListView";
 
-export const GraphsViewWrap = () => {
+export const GraphsListViewWrap = () => {
   useDisableNavBar();
   useGlobalStyleReset();
   return (
@@ -13,7 +13,7 @@ export const GraphsViewWrap = () => {
       <HashRouter basename="/" hashType={"noslash"}>
         <Switch>
           <Route path="/graphs" exact>
-            <GraphsView />
+            <GraphsListView />
           </Route>
         </Switch>
       </HashRouter>

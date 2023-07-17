@@ -6,11 +6,11 @@ import { GraphsListProvider } from "./GraphsListContext";
 import { GraphsModeProvider } from "./GraphsModeContext";
 import { GraphsTable } from "./listGraphs/GraphsTable";
 
-export const GraphsView = () => {
+export const GraphsListView = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   return (
     <Box padding="4" width="100%">
-      <GraphViewHeader onOpen={onOpen} />
+      <GraphListViewHeader onOpen={onOpen} />
       <GraphsModeProvider mode="add">
         <AddGraphModal isOpen={isOpen} onClose={onClose} />
       </GraphsModeProvider>
@@ -21,7 +21,7 @@ export const GraphsView = () => {
   );
 };
 
-const GraphViewHeader = ({ onOpen }: { onOpen: () => void }) => {
+const GraphListViewHeader = ({ onOpen }: { onOpen: () => void }) => {
   return (
     <Stack direction="row" marginBottom="4" alignItems="center">
       <Heading size="lg">Graphs</Heading>

@@ -1050,7 +1050,7 @@
     graphManagement: function () {
       this.checkUser();
 
-      this.init.then(() => ReactDOM.render(React.createElement(window.GraphsReactView),
+      this.init.then(() => ReactDOM.render(React.createElement(window.GraphsListReactView),
         document.getElementById('content-react')));
     },
 
