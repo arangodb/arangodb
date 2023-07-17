@@ -74,31 +74,19 @@ const ActionCell = ({ info }: { info: CellContext<GraphInfo, any> }) => {
   );
 };
 
+const GRAPH_TYPE_TO_LABEL_MAP = {
+  satellite: "Satellite",
+  smart: "Smart",
+  enterprise: "Enterprise",
+  general: "General"
+};
 const getGraphTypeString = (graph: GraphInfo) => {
   const { type, isDisjoint } = detectType(graph);
-
-  if (type === "satellite") {
-    if (isDisjoint) {
-      return "Disjoint Sattelite";
-    }
-    return "Satellite";
+  let graphTypeString = GRAPH_TYPE_TO_LABEL_MAP[type];
+  if (isDisjoint) {
+    return `Disjoint ${graphTypeString}`;
   }
-
-  if (type === "smart") {
-    if (isDisjoint) {
-      return "Disjoint Smart";
-    }
-    return "Smart";
-  }
-
-  if (type === "enterprise") {
-    if (isDisjoint) {
-      return "Disjoint Enterprise";
-    }
-    return "Enterprise";
-  }
-
-  return "General";
+  return graphTypeString;
 };
 
 export const GraphsTable = () => {
