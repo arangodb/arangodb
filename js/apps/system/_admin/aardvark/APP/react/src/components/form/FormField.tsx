@@ -9,7 +9,7 @@ import { MultiSelectControl } from "./MultiSelectControl";
 import { SwitchControl } from "./SwitchControl";
 
 export type FormFieldProps = {
-  noOptionsMessage?: ((obj: { inputValue: string; }) => ReactNode) | undefined;
+  noOptionsMessage?: ((obj: { inputValue: string }) => ReactNode) | undefined;
   label: string;
   name: string;
   type: string;
@@ -43,7 +43,7 @@ export const FormField = ({
       return (
         <>
           <FormLabel margin="0" htmlFor={field.name}>
-            {field.label}
+            {field.label} {field.isRequired && "*"}
           </FormLabel>
           <SwitchControl
             isDisabled={field.isDisabled}
@@ -61,7 +61,7 @@ export const FormField = ({
       return (
         <>
           <FormLabel margin="0" htmlFor={field.name}>
-            {field.label}
+            {field.label} {field.isRequired && "*"}
           </FormLabel>
           <InputControl
             isDisabled={field.isDisabled}
@@ -80,7 +80,7 @@ export const FormField = ({
       return (
         <>
           <FormLabel margin="0" htmlFor={field.name}>
-            {field.label}
+            {field.label} {field.isRequired && "*"}
           </FormLabel>
           <MultiSelectControl
             isDisabled={field.isDisabled}
@@ -103,7 +103,7 @@ export const FormField = ({
       return (
         <>
           <FormLabel margin="0" htmlFor={field.name}>
-            {field.label}
+            {field.label} {field.isRequired && "*"}
           </FormLabel>
           <CreatableSingleSelectControl
             isDisabled={field.isDisabled}
@@ -127,7 +127,7 @@ export const FormField = ({
       return (
         <>
           <FormLabel margin="0" htmlFor={field.name}>
-            {field.label}
+            {field.label} {field.isRequired && "*"}
           </FormLabel>
           <CreatableMultiSelectControl
             isDisabled={field.isDisabled}
@@ -152,7 +152,7 @@ export const FormField = ({
       return (
         <>
           <FormLabel margin="0" htmlFor={field.name}>
-            {field.label}
+            {field.label} {field.isRequired && "*"}
           </FormLabel>
           <InputControl
             isDisabled={field.isDisabled}
