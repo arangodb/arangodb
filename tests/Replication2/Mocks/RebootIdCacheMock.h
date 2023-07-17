@@ -29,7 +29,7 @@
 
 namespace arangodb::replication2::test {
 
-struct RebootIdCacheMock : IRebootIdCache {
+struct RebootIdCacheMock : replicated_log::IRebootIdCache {
   MOCK_METHOD((std::unordered_map<ParticipantId, RebootId>), getRebootIdsFor,
               (std::vector<ParticipantId> const&), (const, override));
   MOCK_METHOD((cluster::CallbackGuard), registerCallbackOnChange,

@@ -37,6 +37,7 @@
 #include "Replication2/Mocks/ParticipantsFactoryMock.h"
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
+#include "Replication2/Mocks/SchedulerMocks.h"
 #include "Replication2/Mocks/StorageEngineMethodsMock.h"
 #include "Mocks/Servers.h"
 
@@ -75,102 +76,6 @@ struct FakeState {
   using CleanupHandlerType = void;
 };
 }  // namespace
-
-struct FakeScheduler : IScheduler {
-  auto delayedFuture(std::chrono::steady_clock::duration delay,
-                     [[maybe_unused]] std::string_view name)
-      -> futures::Future<futures::Unit> override {
-    auto p = futures::Promise<futures::Unit>{};
-    auto f = p.getFuture();
-
-    auto thread = std::thread(
-        [delay, p = std::move(p), name = std::string(name)]() mutable noexcept {
-          // // for debugging
-          // __attribute__((used)) thread_local std::string const _name =
-          //    std::move(name);
-          std::this_thread::sleep_for(delay);
-          p.setValue();
-        });
-    thread.detach();
-
-    return f;
-  }
-
-  auto queueDelayed(std::string_view name,
-                    std::chrono::steady_clock::duration delay,
-                    fu2::unique_function<void(bool canceled)> handler) noexcept
-      -> WorkItemHandle override {
-    auto thread =
-        std::thread([delay, handler = std::move(handler)]() mutable noexcept {
-          std::this_thread::sleep_for(delay);
-          std::move(handler)(false);
-        });
-    thread.detach();
-    return nullptr;
-  }
-
-  void queue(fu2::unique_function<void()> cb) noexcept override {
-    auto thread = std::thread(
-        [cb = std::move(cb)]() mutable noexcept { std::move(cb)(); });
-    thread.detach();
-  }
-};
-
-struct DelayedScheduler : IScheduler {
-  auto delayedFuture(std::chrono::nanoseconds duration, std::string_view name)
-      -> arangodb::futures::Future<arangodb::futures::Unit> override {
-    if (name.data() == nullptr) {
-      name = "replication-2-test";
-    }
-    auto p = futures::Promise<futures::Unit>{};
-    auto f = p.getFuture();
-    queueDelayed(name, duration, [p = std::move(p)](bool cancelled) mutable {
-      TRI_ASSERT(!cancelled);
-      p.setValue();
-    });
-
-    return f;
-  }
-
-  auto queueDelayed(std::string_view name, std::chrono::nanoseconds delay,
-                    fu2::unique_function<void(bool canceled)> handler) noexcept
-      -> WorkItemHandle override {
-    // just queue immediately, ignore the delay
-    queue([handler = std::move(handler)]() mutable noexcept {
-      std::move(handler)(false);
-    });
-    return nullptr;
-  }
-  void queue(fu2::unique_function<void()> function) noexcept override {
-    _queue.push_back(std::move(function));
-  }
-
-  void runOnce() noexcept {
-    auto f = std::invoke([this] {
-      ADB_PROD_ASSERT(not _queue.empty());
-      auto f = std::move(_queue.front());
-      _queue.pop_front();
-      return f;
-    });
-    f.operator()();
-  }
-
-  void runAll() noexcept {
-    while (not _queue.empty()) {
-      runOnce();
-    }
-  }
-
-  auto hasWork() const noexcept -> bool { return not _queue.empty(); }
-
-  ~DelayedScheduler() {
-    EXPECT_TRUE(_queue.empty())
-        << "Unresolved item(s) in the DelayedScheduler queue";
-  }
-
- private:
-  std::deque<fu2::unique_function<void()>> _queue;
-};
 
 struct FakeFollowerFactory
     : replication2::replicated_log::IAbstractFollowerFactory {
@@ -222,10 +127,10 @@ struct StateManagerTest : testing::Test {
   agency::ServerInstanceReference const myself = {"SELF", RebootId{1}};
   agency::ServerInstanceReference const other = {"OTHER", RebootId{1}};
 
-  std::shared_ptr<DelayedScheduler> scheduler =
-      std::make_shared<DelayedScheduler>();
-  std::shared_ptr<DelayedScheduler> logScheduler =
-      std::make_shared<DelayedScheduler>();
+  std::shared_ptr<test::DelayedScheduler> scheduler =
+      std::make_shared<test::DelayedScheduler>();
+  std::shared_ptr<test::DelayedScheduler> logScheduler =
+      std::make_shared<test::DelayedScheduler>();
   std::shared_ptr<test::RebootIdCacheMock> rebootIdCache =
       std::make_shared<test::RebootIdCacheMock>();
   std::shared_ptr<FakeFollowerFactory> fakeFollowerFactory =
