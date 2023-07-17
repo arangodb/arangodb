@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.16.0-preview-3 and arangosync to v2.19.0-preview-1.
+
 * FE-289: Improve database table UI.
 
 * Added startup option `--database.max-databases` to limit the maximum number
