@@ -56,7 +56,6 @@ const TABLE_COLUMNS = [
 
 const ActionCell = ({ info }: { info: CellContext<GraphInfo, any> }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  console.log("info in ActionCell: ", info);
 
   return (
     <>
