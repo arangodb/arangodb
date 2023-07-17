@@ -40,6 +40,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/MethodsApi.h"
 #include "VocBase/LogicalCollection.h"
@@ -99,7 +101,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
           auto shards = ci.getShardList(std::to_string(cc->id().id()));
           for (ShardID const& shard : *shards) {
             auto sss = ci.getResponsibleServer(shard);
-            if (server == sss->at(0)) {
+            if (std::string_view{server} == sss->at(0)) {
               if (numCollections == 0) {
                 builder.add(key, VPackValue(VPackValueType::Array));
               }
@@ -233,6 +235,9 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
     return Result();
   }
 
+  auto commitGuard =
+      transaction::ManagerFeature::manager()->getTransactionCommitGuard();
+
   // only commit managed transactions, and AQL leader transactions (on
   // DBServers)
   if (!ClusterTrxMethods::isElCheapo(*state) ||
@@ -291,7 +296,8 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   }
 
   return futures::collectAll(requests).thenValue(
-      [=](std::vector<Try<network::Response>>&& responses) -> Result {
+      [=, commitGuard = std::move(commitGuard)](
+          std::vector<Try<network::Response>>&& responses) -> Result {
         if (state->isCoordinator()) {
           TRI_ASSERT(state->id().isCoordinatorTransactionId());
 

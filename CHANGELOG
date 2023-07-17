@@ -1,6 +1,21 @@
 devel
 -----
 
+* FE-289: Improve database table UI.
+
+* Added startup option `--database.max-databases` to limit the maximum number
+  of databases that can exist in parallel on a deployment. This option can be
+  used to limit resources used by database objects. If the option is used and
+  there already exist as many databases as configured by this option, any
+  attempt to create an additional database will fail with error 32
+  (`ERROR_RESOURCE_LIMIT`). Additional databases can then only be created if
+  other databases are dropped first.
+  The default value for this option is unlimited, so technically an arbitrary 
+  amount of databases can be created (although effectively the number of
+  databases is limited by memory and processing resources).
+
+* Updated ArangoDB Starter to 0.16.0-preview-2.
+
 * FE-304, FE-305: use navigator.onLine for checking internet connection,
   correct path for running/slow queries.
 
