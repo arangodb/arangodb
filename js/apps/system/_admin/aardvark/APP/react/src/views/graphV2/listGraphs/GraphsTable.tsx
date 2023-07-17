@@ -7,7 +7,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { useGraphsContext } from "../GraphsContext";
+import { useGraphsListContext } from "../GraphsListContext";
 import { detectType } from "../GraphsHelpers";
 import { GraphsModeProvider } from "../GraphsModeContext";
 import { EditGraphModal } from "./EditGraphModal";
@@ -89,7 +89,7 @@ const getGraphTypeString = (graph: GraphInfo) => {
 };
 
 export const GraphsTable = () => {
-  const { graphs } = useGraphsContext();
+  const { graphs } = useGraphsListContext();
   const tableInstance = useSortableReactTable<GraphInfo>({
     data: graphs || [],
     columns: TABLE_COLUMNS,
