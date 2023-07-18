@@ -21,7 +21,7 @@ export type EnterpriseGraphCreateValues = GraphCreateValues &
     | "isSmart"
     | "numberOfShards"
     | "replicationFactor"
-    | "minReplicationFactor"
+    | "writeConcern"
     | "satellites"
   >;
 export type SmartGraphCreateValues = GraphCreateValues &
@@ -30,7 +30,7 @@ export type SmartGraphCreateValues = GraphCreateValues &
     | "isSmart"
     | "numberOfShards"
     | "replicationFactor"
-    | "minReplicationFactor"
+    | "writeConcern"
     | "isDisjoint"
     | "smartGraphAttribute"
     | "satellites"

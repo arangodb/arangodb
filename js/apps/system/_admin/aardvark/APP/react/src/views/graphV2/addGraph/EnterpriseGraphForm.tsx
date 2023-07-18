@@ -46,7 +46,7 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
         isSmart: true,
         numberOfShards: Number(values.numberOfShards),
         replicationFactor: Number(values.replicationFactor),
-        minReplicationFactor: Number(values.minReplicationFactor),
+        writeConcern: Number(values.writeConcern),
         satellites: values.satellites
       }
     };

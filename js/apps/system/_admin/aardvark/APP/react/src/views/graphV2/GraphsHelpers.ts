@@ -103,7 +103,7 @@ export const CLUSTER_GRAPH_FIELDS_MAP = {
     type: "number",
     label: "Shards",
     tooltip:
-      "Numeric value. Must be at least 1. Number of shards the graph is using.",
+      "The number of shards that is used for every collection within this graph. Cannot be modified later. Must be at least 1.",
     isRequired: true
   },
   replicationFactor: {
@@ -111,11 +111,11 @@ export const CLUSTER_GRAPH_FIELDS_MAP = {
     type: "number",
     label: "Replication factor",
     tooltip:
-      "Numeric value. Must be at least 1. Total number of copies of the data in the cluster.If not given, the system default for new collections will be used.",
-    isRequired: true
+      "Total number of copies of the data in the cluster. If not given, the system default for new collections will be used. Must be at least 1.",
+    isRequired: false
   },
-  minReplicationFactor: {
-    name: "minReplicationFactor",
+  writeConcern: {
+    name: "writeConcern",
     type: "number",
     label: "Write concern",
     tooltip:

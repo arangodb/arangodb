@@ -27,7 +27,7 @@ export const ClusterFields = ({
       />
       <FormField
         field={{
-          ...CLUSTER_GRAPH_FIELDS_MAP.minReplicationFactor,
+          ...CLUSTER_GRAPH_FIELDS_MAP.writeConcern,
           isDisabled
         }}
       />

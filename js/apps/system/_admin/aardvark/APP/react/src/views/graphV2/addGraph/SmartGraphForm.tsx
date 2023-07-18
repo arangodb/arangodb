@@ -50,9 +50,9 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
           isSmart: true,
           numberOfShards: Number(values.numberOfShards),
           replicationFactor: Number(values.replicationFactor),
-          minReplicationFactor: Number(values.minReplicationFactor),
+          writeConcern: Number(values.writeConcern),
           satellites: values.satellites,
-          smartGraphAttribute: values.smartGraphAttribute,
+          smartGraphAttribute: values.smartGraphAttribute
         }
       };
       const info = await createGraph({
