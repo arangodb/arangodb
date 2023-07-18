@@ -70,7 +70,7 @@ export const AddGraphModal = ({
       <ModalHeader fontSize="sm" fontWeight="normal">
         <Flex direction="row" alignItems="center">
           <Heading marginRight="4" size="md">
-            {mode === "add" ? "Create Graph" : "Edit Graph"}
+            {mode === "add" ? "Create Graph" : "View Graph"}
           </Heading>
         </Flex>
       </ModalHeader>

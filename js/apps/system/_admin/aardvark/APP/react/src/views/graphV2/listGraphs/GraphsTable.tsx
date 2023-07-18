@@ -1,4 +1,4 @@
-import { EditIcon } from "@chakra-ui/icons";
+import { ViewIcon } from "@chakra-ui/icons";
 import { Button, Link, Stack, useDisclosure } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import { GraphInfo } from "arangojs/graph";
@@ -73,7 +73,7 @@ const ActionCell = ({ info }: { info: CellContext<GraphInfo, any> }) => {
         />
       </GraphsModeProvider>
       <Button onClick={onOpen} size="xs">
-        <EditIcon />
+        <ViewIcon />
       </Button>
     </>
   );
