@@ -32,6 +32,8 @@
 
 #include "Logger/Logger.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace arangodb {
 
 /// @brief create the transaction, using a data-source
@@ -110,11 +112,11 @@ DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(
   TRI_ASSERT(!name.empty());
   if ((name[0] < '0' || name[0] > '9') &&
       name != resolveTrxCollection()->collectionName()) {
+    auto message = absl::StrCat(
+        TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION), ": ",
+        name);
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string(
-            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-            ": " + std::string{name});
+        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, message);
   }
 
   if (AccessMode::isWriteOrExclusive(type) &&

@@ -1969,12 +1969,11 @@ DataSourceId transaction::Methods::addCollectionAtRuntime(
   } else {
     AccessMode::Type collectionAccessType = collection->accessType();
     if (AccessMode::isRead(collectionAccessType) && !AccessMode::isRead(type)) {
+      auto message = absl::StrCat(
+          TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION), ": ",
+          collectionName, " [", AccessMode::typeString(type), "]");
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-          std::string(
-              TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-              ": " + std::string{collectionName} + " [" +
-              AccessMode::typeString(type) + "]");
+          TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, message);
     }
   }
 
