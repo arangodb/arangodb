@@ -9,7 +9,6 @@ import { MultiSelectControl } from "./MultiSelectControl";
 import { SwitchControl } from "./SwitchControl";
 
 export type FormFieldProps = {
-  noOptionsMessage?: ((obj: { inputValue: string }) => ReactNode) | undefined;
   label: string;
   name: string;
   type: string;
@@ -20,6 +19,7 @@ export type FormFieldProps = {
   isDisabled?: boolean;
   isClearable?: boolean;
   placeholder?: string;
+  noOptionsMessage?: ((obj: { inputValue: string }) => ReactNode) | undefined;
 };
 
 export const FormField = ({

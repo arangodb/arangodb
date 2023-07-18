@@ -6,7 +6,7 @@ import { EnterpriseGraphForm } from "../addGraph/EnterpriseGraphForm";
 import { GeneralGraphForm } from "../addGraph/GeneralGraphForm";
 import { SatelliteGraphForm } from "../addGraph/SatelliteGraphForm";
 import { SmartGraphForm } from "../addGraph/SmartGraphForm";
-import { detectType } from "./GraphsHelpers";
+import { detectGraphType } from "./GraphsHelpers";
 import { GraphsModeProvider } from "./GraphsModeContext";
 
 const TYPE_TO_COMPONENT_MAP = {
@@ -25,7 +25,7 @@ export const EditGraphModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  const graphType = detectType(graph);
+  const graphType = detectGraphType(graph);
   const GraphComponent = TYPE_TO_COMPONENT_MAP[graphType?.type];
   return (
     <GraphsModeProvider mode="edit" initialGraph={graph}>

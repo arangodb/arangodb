@@ -1,14 +1,6 @@
 import { GraphInfo } from "arangojs/graph";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { notifyError, notifySuccess } from "../../../utils/notifications";
-import { GraphTypes } from "./Graphs.types";
-
-export const TYPE_TO_LABEL_MAP: {
-  [key in GraphTypes]: string;
-} = {
-  smart: "Smart",
-  enterprise: "Enterprise"
-};
 
 export const createGraph = async <
   ValuesType extends {
@@ -47,33 +39,59 @@ export const createGraph = async <
 
 type DetectedGraphType = "satellite" | "enterprise" | "smart" | "general";
 
-export const detectType = (
+const GRAPH_TYPE_TO_LABEL_MAP = {
+  satellite: "Satellite",
+  smart: "Smart",
+  enterprise: "Enterprise",
+  general: "General"
+};
+
+const getGraphLabel = ({
+  type,
+  isDisjoint
+}: {
+  type: DetectedGraphType;
+  isDisjoint?: boolean;
+}) => {
+  let graphTypeString = GRAPH_TYPE_TO_LABEL_MAP[type];
+  if (isDisjoint) {
+    return `Disjoint ${graphTypeString}`;
+  }
+  return graphTypeString;
+};
+
+export const detectGraphType = (
   graph: GraphInfo
 ): {
   type: DetectedGraphType;
   isDisjoint?: boolean;
+  label: string;
 } => {
   if (graph.isSatellite || (graph.replicationFactor as any) === "satellite") {
     return {
-      type: "satellite"
+      type: "satellite",
+      label: getGraphLabel({ type: "satellite" })
     };
   }
 
   if (graph.isSmart && graph.smartGraphAttribute === undefined) {
     return {
       type: "enterprise",
-      isDisjoint: graph.isDisjoint
+      isDisjoint: graph.isDisjoint,
+      label: getGraphLabel({ type: "enterprise", isDisjoint: graph.isDisjoint })
     };
   }
 
   if (graph.isSmart === true && graph.smartGraphAttribute !== undefined) {
     return {
       type: "smart",
-      isDisjoint: graph.isDisjoint
+      isDisjoint: graph.isDisjoint,
+      label: getGraphLabel({ type: "smart", isDisjoint: graph.isDisjoint })
     };
   }
   return {
-    type: "general"
+    type: "general",
+    label: getGraphLabel({ type: "general" })
   };
 };
 
