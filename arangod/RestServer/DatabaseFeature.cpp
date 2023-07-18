@@ -55,6 +55,7 @@
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utilities/NameValidator.h"
@@ -605,9 +606,19 @@ void DatabaseFeature::recoveryDone() {
 
   // '_pendingRecoveryCallbacks' will not change because
   // !StorageEngine.inRecovery()
+  // It's single active thread before recovery done,
+  // so we could use general purpose thread pool for this
+  std::vector<futures::Future<Result>> futures;
+  futures.reserve(_pendingRecoveryCallbacks.size());
   for (auto& entry : _pendingRecoveryCallbacks) {
-    auto result = entry();
-
+    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+        RequestLane::CLIENT_SLOW, std::move(entry)));
+  }
+  _pendingRecoveryCallbacks.clear();
+  // TODO(MBkkt) use single wait with early termination
+  // when it would be available
+  for (auto& future : futures) {
+    auto result = std::move(future).get();
     if (!result.ok()) {
       LOG_TOPIC("772a7", ERR, Logger::FIXME)
           << "recovery failure due to error from callback, error '"
@@ -617,8 +628,6 @@ void DatabaseFeature::recoveryDone() {
       THROW_ARANGO_EXCEPTION(result);
     }
   }
-
-  _pendingRecoveryCallbacks.clear();
 
   if (ServerState::instance()->isCoordinator()) {
     return;
