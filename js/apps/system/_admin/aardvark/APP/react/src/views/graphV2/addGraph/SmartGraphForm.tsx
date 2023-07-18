@@ -40,25 +40,20 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
   const handleSubmit = async (values: SmartGraphCreateValues) => {
     try {
-      const options = {
-        orphanCollections: values.orphanCollections,
+      const sanitizedValues = {
+        ...values,
         numberOfShards: Number(values.numberOfShards),
         replicationFactor: Number(values.replicationFactor),
         minReplicationFactor: Number(values.minReplicationFactor),
-        isDisjoint: values.isDisjoint,
-        isSmart: true,
-        smartGraphAttribute: values.smartGraphAttribute,
-        name: values.name,
-        edgeDefinitions: values.edgeDefinitions
+        isSmart: true
       };
-      const info = await createGraph(options);
-
-      window.arangoHelper.arangoNotification(
-        "Graph",
-        `Successfully created the graph ${values.name}`
-      );
-      mutate("/graphs");
-      onClose();
+      const info = await createGraph({
+        values: sanitizedValues,
+        onSuccess: () => {
+          mutate("/graphs");
+          onClose();
+        }
+      });
       return info;
     } catch (e: any) {
       const errorMessage = e.response.body.errorMessage;

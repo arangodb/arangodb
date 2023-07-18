@@ -4,11 +4,8 @@ import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
-import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
-import {
-  GENERAL_GRAPH_FIELDS_MAP
-} from "../GraphsHelpers";
+import { createGraph, GENERAL_GRAPH_FIELDS_MAP } from "../GraphsHelpers";
 import { useGraphsModeContext } from "../GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { EnterpriseGraphCreateValues } from "./CreateGraph.types";
@@ -37,29 +34,22 @@ const INITIAL_VALUES: EnterpriseGraphCreateValues = {
 export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
   const handleSubmit = async (values: EnterpriseGraphCreateValues) => {
-    const currentDB = getCurrentDB();
-    const graph = currentDB.graph(values.name);
-    try {
-      const options = {
-        orphanCollections: values.orphanCollections,
-        numberOfShards: Number(values.numberOfShards),
-        replicationFactor: Number(values.replicationFactor),
-        minReplicationFactor: Number(values.minReplicationFactor),
-        isDisjoint: false,
-        isSmart: true
-      };
-      const info = await graph.create(values.edgeDefinitions, options);
-      window.arangoHelper.arangoNotification(
-        "Graph",
-        `Successfully created the graph ${values.name}`
-      );
-      mutate("/graphs");
-      onClose();
-      return info;
-    } catch (e: any) {
-      const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError("Could not add graph", errorMessage);
-    }
+    const sanitizedValues = {
+      ...values,
+      numberOfShards: Number(values.numberOfShards),
+      replicationFactor: Number(values.replicationFactor),
+      minReplicationFactor: Number(values.minReplicationFactor),
+      isDisjoint: false,
+      isSmart: true
+    };
+    const info = await createGraph({
+      values: sanitizedValues,
+      onSuccess: () => {
+        mutate("/graphs");
+        onClose();
+      }
+    });
+    return info;
   };
   return (
     <Formik

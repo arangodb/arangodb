@@ -1,6 +1,6 @@
 import { GraphInfo } from "arangojs/graph";
 import { getCurrentDB } from "../../utils/arangoClient";
-import { SmartGraphCreateValues } from "./addGraph/CreateGraph.types";
+import { notifyError, notifySuccess } from "../../utils/notifications";
 import { GraphTypes } from "./Graphs.types";
 
 export const TYPE_TO_LABEL_MAP: {
@@ -10,24 +10,39 @@ export const TYPE_TO_LABEL_MAP: {
   enterprise: "Enterprise"
 };
 
-export const createGraph = async (values: SmartGraphCreateValues) => {
+export const createGraph = async <
+  ValuesType extends {
+    name: string;
+  }
+>({
+  values,
+  onSuccess
+}: {
+  values: ValuesType;
+  onSuccess: () => void;
+}) => {
   const currentDB = getCurrentDB();
-  const { orphanCollections, edgeDefinitions, isSmart, name, ...options } =
-    values;
-  return currentDB.request(
-    {
-      method: "POST",
-      path: "/_api/gharial",
-      body: {
-        orphanCollections,
-        edgeDefinitions,
-        isSmart,
-        name,
-        options
-      }
-    },
-    res => res.body.graph
-  );
+  try {
+    const response = await currentDB.request(
+      {
+        method: "POST",
+        path: "/_api/gharial",
+        body: {
+          ...values
+        }
+      },
+      res => res.body.graph
+    );
+    notifySuccess(`Successfully created the graph: ${values.name}`);
+    onSuccess();
+    return response;
+  } catch (e: any) {
+    const errorMessage = e.response.body.errorMessage;
+    notifyError(`Could not add graph: ${errorMessage}`);
+    return {
+      error: errorMessage
+    };
+  }
 };
 
 type DetectedGraphType = "satellite" | "enterprise" | "smart" | "general";

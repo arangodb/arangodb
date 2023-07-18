@@ -4,9 +4,8 @@ import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
-import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
-import { GENERAL_GRAPH_FIELDS_MAP } from "../GraphsHelpers";
+import { createGraph, GENERAL_GRAPH_FIELDS_MAP } from "../GraphsHelpers";
 import { useGraphsModeContext } from "../GraphsModeContext";
 import { SatelliteGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
@@ -34,24 +33,17 @@ const INITIAL_VALUES: SatelliteGraphCreateValues = {
 export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
   const handleSubmit = async (values: SatelliteGraphCreateValues) => {
-    const currentDB = getCurrentDB();
-    const graph = currentDB.graph(values.name);
-    try {
-      const info = await graph.create(values.edgeDefinitions, {
-        orphanCollections: values.orphanCollections,
+    const info = await createGraph({
+      values: {
+        ...values,
         replicationFactor: "satellite"
-      });
-      window.arangoHelper.arangoNotification(
-        "Graph",
-        `Successfully created the graph: ${values.name}`
-      );
-      mutate("/graphs");
-      onClose();
-      return info;
-    } catch (e: any) {
-      const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError("Could not add graph", errorMessage);
-    }
+      },
+      onSuccess: () => {
+        mutate("/graphs");
+        onClose();
+      }
+    });
+    return info;
   };
   return (
     <Formik

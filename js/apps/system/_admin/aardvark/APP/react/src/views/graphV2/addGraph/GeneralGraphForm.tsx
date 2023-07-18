@@ -4,9 +4,8 @@ import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
-import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
-import { GENERAL_GRAPH_FIELDS_MAP } from "../GraphsHelpers";
+import { createGraph, GENERAL_GRAPH_FIELDS_MAP } from "../GraphsHelpers";
 import { useGraphsModeContext } from "../GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
@@ -35,23 +34,14 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
   const { documentCollectionOptions } = useCollectionOptions();
   const handleSubmit = async (values: GeneralGraphCreateValues) => {
-    const currentDB = getCurrentDB();
-    const graph = currentDB.graph(values.name);
-    try {
-      const info = await graph.create(values.edgeDefinitions, {
-        orphanCollections: values.orphanCollections
-      });
-      window.arangoHelper.arangoNotification(
-        "Graph",
-        `Successfully created the graph: ${values.name}`
-      );
-      mutate("/graphs");
-      onClose();
-      return info;
-    } catch (e: any) {
-      const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError("Could not add graph", errorMessage);
-    }
+    const info = await createGraph({
+      values,
+      onSuccess: () => {
+        mutate("/graphs");
+        onClose();
+      }
+    });
+    return info;
   };
   return (
     <Formik
