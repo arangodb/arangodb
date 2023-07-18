@@ -194,10 +194,11 @@ TEST_F(CreateCollectionBodyTest, test_satelliteReplicationFactor) {
     EXPECT_EQ(testee->replicationFactor.value(), number)
         << "Parsing error in " << body.toJson();
 #else
-    ASSERT_FALSE(testee.ok()) << "Created a satellite collection without enterprise features enabled.";
-    EXPECT_EQ(testee.result().errorNumber(), TRI_ERROR_ONLY_ENTERPRISE) << " with message: " << testee.result().errorMessage();
+    ASSERT_FALSE(testee.ok()) << "Created a satellite collection without "
+                                 "enterprise features enabled.";
+    EXPECT_EQ(testee.result().errorNumber(), TRI_ERROR_ONLY_ENTERPRISE)
+        << " with message: " << testee.result().errorMessage();
 #endif
-
   };
 
   // Special handling for "satellite" string
@@ -416,8 +417,7 @@ TEST_F(CreateCollectionBodyTest, test_smartJoinAttribute_cannot_be_empty) {
   EXPECT_FALSE(testee.ok()) << "Let an empty smartJoinAttribute through";
 }
 
-TEST_F(CreateCollectionBodyTest,
-       test_smartGraphAttribtueRequiresIsSmart) {
+TEST_F(CreateCollectionBodyTest, test_smartGraphAttribtueRequiresIsSmart) {
   // Setting only SmartGraphAttribut is disallowed
   __HELPER_assertParsingThrows(smartGraphAttribute, "test");
 }
