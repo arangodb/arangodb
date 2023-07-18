@@ -31,7 +31,7 @@
 
 namespace arangodb {
 typedef std::basic_string<char, std::char_traits<char>,
-                          ResourceUsageAllocator<char>>
+                          ResourceUsageAllocator<char, ResourceMonitor>>
     MonitoredString;
 
 struct hash_monitored_string {
@@ -57,12 +57,14 @@ struct compare_monitored_string {
   }
 };
 
-typedef std::vector<MonitoredString, ResourceUsageAllocator<MonitoredString>>
+typedef std::vector<MonitoredString,
+                    ResourceUsageAllocator<MonitoredString, ResourceMonitor>>
     MonitoredStringVector;
-
-typedef std::unordered_map<MonitoredString, MonitoredStringVector,
-                           hash_monitored_string, compare_monitored_string,
-                           ResourceUsageAllocator<std::pair<
-                               const MonitoredString, MonitoredStringVector>>>
+typedef std::unordered_map<
+    MonitoredString, MonitoredStringVector, hash_monitored_string,
+    compare_monitored_string,
+    ResourceUsageAllocator<
+        std::pair<const MonitoredString, MonitoredStringVector>,
+        ResourceMonitor>>
     MonitoredCollectionToShardMap;
 }  // namespace arangodb

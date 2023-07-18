@@ -35,13 +35,15 @@ namespace aql {
 
 AttributeNamePath::AttributeNamePath(std::string attribute,
                                      arangodb::ResourceMonitor& resourceMonitor)
-    : _path(ResourceUsageAllocator<MonitoredStringVector>{resourceMonitor}) {
+    : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
+          resourceMonitor}) {
   _path.emplace_back(std::move(attribute));
 }
 
 AttributeNamePath::AttributeNamePath(std::vector<std::string> p,
                                      arangodb::ResourceMonitor& resourceMonitor)
-    : _path(ResourceUsageAllocator<MonitoredStringVector>{resourceMonitor}) {
+    : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
+          resourceMonitor}) {
   // TODO: Check this later again - we might want to pass a monitoredVector here
   // already.
   for (auto const& pathString : p) {
@@ -51,7 +53,8 @@ AttributeNamePath::AttributeNamePath(std::vector<std::string> p,
 
 AttributeNamePath::AttributeNamePath(MonitoredStringVector p,
                                      arangodb::ResourceMonitor& resourceMonitor)
-    : _path(ResourceUsageAllocator<MonitoredStringVector>{resourceMonitor}) {
+    : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
+          resourceMonitor}) {
   for (auto const& pathString : p) {
     _path.emplace_back(pathString);
   }

@@ -354,8 +354,8 @@ void Expression::initAccessor() {
 
   TRI_ASSERT(_node->numMembers() == 1);
   auto member = _node->getMemberUnchecked(0);
-  ResourceUsageAllocator<MonitoredCollectionToShardMap> alloc = {
-      _resourceMonitor};
+  ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor> alloc =
+      {_resourceMonitor};
   MonitoredStringVector parts{alloc};
   parts.emplace_back(_node->getString());
 

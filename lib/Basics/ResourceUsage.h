@@ -136,7 +136,7 @@ class ResourceUsageScope {
 
 /// @brief an std::allocator-like specialization that uses a ResourceMonitor
 /// underneath.
-template<typename Allocator>
+template<typename Allocator, typename ResourceMonitor>
 class ResourceUsageAllocatorBase : public Allocator {
  public:
   using difference_type =
@@ -170,7 +170,7 @@ class ResourceUsageAllocatorBase : public Allocator {
 
   template<typename A>
   ResourceUsageAllocatorBase(
-      ResourceUsageAllocatorBase<A> const& other) noexcept
+      ResourceUsageAllocatorBase<A, ResourceMonitor> const& other) noexcept
       : Allocator(other.rawAllocator()),
         _resourceMonitor(other.resourceMonitor()) {}
 
@@ -196,7 +196,8 @@ class ResourceUsageAllocatorBase : public Allocator {
   ResourceMonitor* resourceMonitor() const noexcept { return _resourceMonitor; }
 
   template<typename A>
-  bool operator==(ResourceUsageAllocatorBase<A> const& other) const noexcept {
+  bool operator==(ResourceUsageAllocatorBase<A, ResourceMonitor> const& other)
+      const noexcept {
     return rawAllocator() == other.rawAllocator() &&
            _resourceMonitor == other.resourceMonitor();
   }
@@ -205,18 +206,113 @@ class ResourceUsageAllocatorBase : public Allocator {
   ResourceMonitor* _resourceMonitor;
 };
 
+namespace detail {
 template<typename T>
-struct ResourceUsageAllocator : ResourceUsageAllocatorBase<std::allocator<T>> {
-  using ResourceUsageAllocatorBase<
-      std::allocator<T>>::ResourceUsageAllocatorBase;
+struct uses_allocator_construction_args_t;
+
+template<typename T>
+inline constexpr auto uses_allocator_construction_args =
+    uses_allocator_construction_args_t<T>{};
+
+template<typename T>
+struct uses_allocator_construction_args_t {
+  template<typename Alloc, typename... Args>
+  auto operator()(Alloc const& alloc, Args&&... args) const {
+    if constexpr (!std::uses_allocator<T, Alloc>::value) {
+      return std::forward_as_tuple(std::forward<Args>(args)...);
+    } else if constexpr (std::is_constructible_v<T, std::allocator_arg_t, Alloc,
+                                                 Args...>) {
+      return std::tuple<std::allocator_arg_t, Alloc const&, Args&&...>(
+          std::allocator_arg, alloc, std::forward<Args>(args)...);
+    } else {
+      return std::tuple<Args&&..., Alloc const&>(std::forward<Args>(args)...,
+                                                 alloc);
+    }
+  }
+};
+
+template<typename U, typename V>
+struct uses_allocator_construction_args_t<std::pair<U, V>> {
+  using T = std::pair<U, V>;
+  template<typename Alloc, typename Tuple1, typename Tuple2>
+  auto operator()(Alloc const& alloc, std::piecewise_construct_t, Tuple1&& t1,
+                  Tuple2&& t2) const {
+    return std::make_tuple(
+        std::piecewise_construct,
+        std::apply(
+            [&alloc](auto&&... args1) {
+              return uses_allocator_construction_args<U>(
+                  alloc, std::forward<decltype(args1)>(args1)...);
+            },
+            std::forward<Tuple1>(t1)),
+        std::apply(
+            [&alloc](auto&&... args2) {
+              return uses_allocator_construction_args<V>(
+                  alloc, std::forward<decltype(args2)>(args2)...);
+            },
+            std::forward<Tuple2>(t2)));
+  }
+  template<typename Alloc>
+  auto operator()(Alloc const& alloc) const {
+    return uses_allocator_construction_args<T>(alloc, std::piecewise_construct,
+                                               std::tuple<>{}, std::tuple<>{});
+  }
+
+  template<typename Alloc, typename A, typename B>
+  auto operator()(Alloc const& alloc, A&& a, B&& b) const {
+    return uses_allocator_construction_args<T>(
+        alloc, std::piecewise_construct,
+        std::forward_as_tuple(std::forward<A>(a)),
+        std::forward_as_tuple(std::forward<B>(b)));
+  }
+
+  template<typename Alloc, typename A, typename B>
+  auto operator()(Alloc const& alloc, std::pair<A, B>& pr) const {
+    return uses_allocator_construction_args<T>(
+        alloc, std::piecewise_construct, std::forward_as_tuple(pr.first),
+        std::forward_as_tuple(pr.second));
+  }
+
+  template<typename Alloc, typename A, typename B>
+  auto operator()(Alloc const& alloc, std::pair<A, B> const& pr) const {
+    return uses_allocator_construction_args<T>(
+        alloc, std::piecewise_construct, std::forward_as_tuple(pr.first),
+        std::forward_as_tuple(pr.second));
+  }
+
+  template<typename Alloc, typename A, typename B>
+  auto operator()(Alloc const& alloc, std::pair<A, B>&& pr) const {
+    return uses_allocator_construction_args<T>(
+        alloc, std::piecewise_construct,
+        std::forward_as_tuple(std::move(pr.first)),
+        std::forward_as_tuple(std::move(pr.second)));
+  }
+};
+
+}  // namespace detail
+
+template<typename T, typename ResourceMonitor>
+struct ResourceUsageAllocator
+    : ResourceUsageAllocatorBase<std::allocator<T>, ResourceMonitor> {
+  using ResourceUsageAllocatorBase<std::allocator<T>,
+                                   ResourceMonitor>::ResourceUsageAllocatorBase;
 
   template<typename U>
-  using rebind = ResourceUsageAllocator<U>;
+  struct rebind {
+    using other = ResourceUsageAllocator<U, ResourceMonitor>;
+  };
 
   template<typename X, typename... Args>
   void construct(X* ptr, Args&&... args) {
-    std::uninitialized_construct_using_allocator(ptr, *this,
-                                                 std::forward<Args>(args)...);
+    // Sadly libc++ on mac does not support this function. Thus we do it by hand
+    // std::uninitialized_construct_using_allocator(ptr, *this,
+    //                                              std::forward<Args>(args)...)
+    std::apply(
+        [&](auto&&... xs) {
+          return std::construct_at(ptr, std::forward<decltype(xs)>(xs)...);
+        },
+        detail::uses_allocator_construction_args<X>(
+            *this, std::forward<Args>(args)...));
   }
 };
 
