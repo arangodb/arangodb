@@ -49,10 +49,8 @@
       'graphs-v2/:name': 'showV2Graph',
       'metrics': 'metrics',
       'users': 'userManagement',
-      'usersold': 'userManagementOld',
       'user/:name': 'userView',
       'user/:name/permission': 'userPermission',
-      'userProfile': 'userProfile',
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
@@ -1272,21 +1270,6 @@
       });
     },
 
-    userManagementOld: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (this.userManagementView) {
-          this.userManagementView.remove();
-        }
-
-        this.userManagementView = new window.UserManagementView({
-          collection: this.userCollection
-        });
-        this.userManagementView.render();
-      });
-    },
-
     userManagement: function () {
       this.checkUser();
 
@@ -1294,19 +1277,6 @@
         document.getElementById('content-react')));
     },
 
-
-    userProfile: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (!this.userManagementView) {
-          this.userManagementView = new window.UserManagementView({
-            collection: this.userCollection
-          });
-        }
-        this.userManagementView.render(true);
-      });
-    },
     viewSettings: function (name) {
       this.checkUser();
 
