@@ -39,14 +39,17 @@ namespace arangodb {
 
 CacheOptionsFeature::CacheOptionsFeature(Server& server)
     : ArangodFeature{server, *this} {
+  setOptional(true);
+  startsAfter<BasicFeaturePhaseServer>();
+
   _options.cacheSize =
       (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
           ? static_cast<std::uint64_t>((PhysicalMemory::getValue() -
                                         (static_cast<std::uint64_t>(2) << 30)) *
                                        0.25)
           : (256 << 20);
-  setOptional(true);
-  startsAfter<BasicFeaturePhaseServer>();
+  // currently there is no way to stats off
+  _options.enableWindowedStats = true;
 }
 
 void CacheOptionsFeature::collectOptions(
@@ -175,34 +178,6 @@ void CacheOptionsFeature::validateOptions(
   }
 }
 
-double CacheOptionsFeature::idealLowerFillRatio() const noexcept {
-  return _options.idealLowerFillRatio;
-}
-
-double CacheOptionsFeature::idealUpperFillRatio() const noexcept {
-  return _options.idealUpperFillRatio;
-}
-
-std::size_t CacheOptionsFeature::minValueSizeForEdgeCompression()
-    const noexcept {
-  return _options.minValueSizeForEdgeCompression;
-}
-
-std::uint32_t CacheOptionsFeature::accelerationFactorForEdgeCompression()
-    const noexcept {
-  return _options.accelerationFactorForEdgeCompression;
-}
-
-std::uint64_t CacheOptionsFeature::cacheSize() const noexcept {
-  return _options.cacheSize;
-}
-
-std::uint64_t CacheOptionsFeature::rebalancingInterval() const noexcept {
-  return _options.rebalancingInterval;
-}
-
-std::uint64_t CacheOptionsFeature::maxSpareAllocation() const noexcept {
-  return _options.maxSpareAllocation;
-}
+CacheOptions CacheOptionsFeature::getOptions() const { return _options; }
 
 }  // namespace arangodb

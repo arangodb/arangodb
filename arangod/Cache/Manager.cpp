@@ -67,24 +67,23 @@ const std::uint64_t Manager::minCacheAllocation =
     Manager::cacheRecordOverhead;
 
 Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
-                 std::uint64_t globalLimit, bool enableWindowedStats,
-                 double idealLowerFillRatio, double idealUpperFillRatio,
-                 std::uint64_t maxSpareAllocation)
+                 CacheOptions const& options)
     : _sharedPRNG(sharedPRNG),
+      _options(options),
       _shutdown(false),
       _shuttingDown(false),
       _resizing(false),
       _rebalancing(false),
       _accessStats(sharedPRNG,
-                   (globalLimit >= (1024 * 1024 * 1024))
+                   (_options.cacheSize >= (1024 * 1024 * 1024))
                        ? ((1024 * 1024) / sizeof(std::uint64_t))
-                       : (globalLimit / (1024 * sizeof(std::uint64_t)))),
+                       : (_options.cacheSize / (1024 * sizeof(std::uint64_t)))),
       _findHits(),
       _findMisses(),
       _caches(),
       _nextCacheId(1),
-      _globalSoftLimit(globalLimit),
-      _globalHardLimit(globalLimit),
+      _globalSoftLimit(_options.cacheSize),
+      _globalHardLimit(_options.cacheSize),
       _globalHighwaterMark(
           static_cast<std::uint64_t>(Manager::highwaterMultiplier *
                                      static_cast<double>(_globalSoftLimit))),
@@ -98,9 +97,6 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _spareTables(0),
       _migrateTasks(0),
       _freeMemoryTasks(0),
-      _idealLowerFillRatio(idealLowerFillRatio),
-      _idealUpperFillRatio(idealUpperFillRatio),
-      _maxSpareAllocation(maxSpareAllocation),
       _schedulerPost(std::move(schedulerPost)),
       _outstandingTasks(0),
       _rebalancingTasks(0),
@@ -109,7 +105,7 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
                           Manager::rebalancingGracePeriod) {
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
-  if (enableWindowedStats) {
+  if (_options.enableWindowedStats) {
     _findStats = std::make_unique<Manager::FindStatBuffer>(sharedPRNG, 16384);
     _fixedAllocation += _findStats->memoryUsage();
     _globalAllocation = _fixedAllocation;
@@ -338,6 +334,13 @@ std::pair<double, double> Manager::globalHitRates() {
   }
 
   return std::make_pair(lifetimeRate, windowedRate);
+}
+
+double Manager::idealLowerFillRatio() const noexcept {
+  return _options.idealLowerFillRatio;
+}
+double Manager::idealUpperFillRatio() const noexcept {
+  return _options.idealUpperFillRatio;
 }
 
 Transaction* Manager::beginTransaction(bool readOnly) {
@@ -849,7 +852,7 @@ void Manager::reclaimTable(std::shared_ptr<Table>&& table, bool internal) {
         (logSize < 18) ? (static_cast<std::size_t>(1) << (18 - logSize)) : 1;
     if ((_tables[logSize].size() < maxTables) &&
         (memoryUsage <= maxTableSize) &&
-        (memoryUsage + _spareTableAllocation <= _maxSpareAllocation) &&
+        (memoryUsage + _spareTableAllocation <= _options.maxSpareAllocation) &&
         (_spareTables < kMaxSpareTablesTotal) &&
         ((memoryUsage + _spareTableAllocation) <
          ((_globalSoftLimit - _globalHighwaterMark) / 2))) {

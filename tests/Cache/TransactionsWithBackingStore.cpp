@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "RestServer/SharedPRNGFeature.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
 #include "Logger/LogMacros.h"
@@ -103,7 +104,9 @@ TEST(CacheWithBackingStoreTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 16 * 1024 * 1024, true, 0.04, 0.25, 0);
+  CacheOptions co;
+  co.cacheSize = 16 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t hotsetSize = 50000;
@@ -157,7 +160,9 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 256 * 1024 * 1024, true, 0.04, 0.25, 0);
+  CacheOptions co;
+  co.cacheSize = 256 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t batchSize = 1000;
@@ -249,7 +254,9 @@ TEST(CacheWithBackingStoreTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 256 * 1024 * 1024, true, 0.04, 0.25, 0);
+  CacheOptions co;
+  co.cacheSize = 256 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t writeBatchSize = 1000;
@@ -335,7 +342,9 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 16 * 1024 * 1024, true, 0.04, 0.25, 0);
+  CacheOptions co;
+  co.cacheSize = 16 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   Rebalancer rebalancer(&manager);
   TransactionalStore store1(&manager);
   TransactionalStore store2(&manager);

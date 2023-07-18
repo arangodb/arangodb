@@ -53,7 +53,7 @@ namespace arangodb {
 
 CacheManagerFeature::CacheManagerFeature(Server& server,
                                          CacheOptionsProvider const& provider)
-    : ArangodFeature{server, *this}, _options(provider) {
+    : ArangodFeature{server, *this}, _provider(provider) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<CacheOptionsFeature>();
@@ -62,7 +62,10 @@ CacheManagerFeature::CacheManagerFeature(Server& server,
 CacheManagerFeature::~CacheManagerFeature() = default;
 
 void CacheManagerFeature::start() {
-  if (ServerState::instance()->isAgent() || _options.cacheSize() == 0) {
+  // get options from provider once
+  _options = _provider.getOptions();
+
+  if (ServerState::instance()->isAgent() || _options.cacheSize == 0) {
     // we intentionally do not activate the cache on an agency node, as it
     // is not needed there
     return;
@@ -82,21 +85,20 @@ void CacheManagerFeature::start() {
   };
 
   LOG_TOPIC("708a6", DEBUG, Logger::CACHE)
-      << "cache manager starting up. cache size: " << _options.cacheSize()
-      << ", ideal lower fill ratio: " << _options.idealLowerFillRatio()
-      << ", ideal upper fill ratio: " << _options.idealUpperFillRatio()
+      << "cache manager starting up. cache size: " << _options.cacheSize
+      << ", ideal lower fill ratio: " << _options.idealLowerFillRatio
+      << ", ideal upper fill ratio: " << _options.idealUpperFillRatio
       << ", min value size for edge compression: "
-      << _options.minValueSizeForEdgeCompression() << ", acceleration factor: "
-      << _options.accelerationFactorForEdgeCompression();
+      << _options.minValueSizeForEdgeCompression << ", acceleration factor: "
+      << _options.accelerationFactorForEdgeCompression
+      << ", max spare allocation: " << _options.maxSpareAllocation
+      << ", enable windowed stats: " << _options.enableWindowedStats;
 
   SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
-  _manager = std::make_unique<Manager>(
-      sharedPRNG, std::move(postFn), _options.cacheSize(),
-      /*enableWindowedStats*/ true, _options.idealLowerFillRatio(),
-      _options.idealUpperFillRatio(), _options.maxSpareAllocation());
+  _manager = std::make_unique<Manager>(sharedPRNG, std::move(postFn), _options);
 
   _rebalancer = std::make_unique<CacheRebalancerThread>(
-      server(), _manager.get(), _options.rebalancingInterval());
+      server(), _manager.get(), _options.rebalancingInterval);
   if (!_rebalancer->start()) {
     LOG_TOPIC("13895", FATAL, Logger::STARTUP)
         << "cache manager startup failed";
@@ -123,12 +125,12 @@ cache::Manager* CacheManagerFeature::manager() { return _manager.get(); }
 
 std::size_t CacheManagerFeature::minValueSizeForEdgeCompression()
     const noexcept {
-  return _options.minValueSizeForEdgeCompression();
+  return _options.minValueSizeForEdgeCompression;
 }
 
 std::uint32_t CacheManagerFeature::accelerationFactorForEdgeCompression()
     const noexcept {
-  return _options.accelerationFactorForEdgeCompression();
+  return _options.accelerationFactorForEdgeCompression;
 }
 
 }  // namespace arangodb

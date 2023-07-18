@@ -39,13 +39,7 @@ class CacheOptionsFeature final : public ArangodFeature,
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  double idealLowerFillRatio() const noexcept override;
-  double idealUpperFillRatio() const noexcept override;
-  std::size_t minValueSizeForEdgeCompression() const noexcept override;
-  std::uint32_t accelerationFactorForEdgeCompression() const noexcept override;
-  std::uint64_t cacheSize() const noexcept override;
-  std::uint64_t rebalancingInterval() const noexcept override;
-  std::uint64_t maxSpareAllocation() const noexcept override;
+  CacheOptions getOptions() const override final;
 
  private:
   static constexpr std::uint64_t minRebalancingInterval = 500 * 1000;

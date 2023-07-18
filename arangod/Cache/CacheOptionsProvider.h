@@ -34,21 +34,15 @@ struct CacheOptions {
   std::size_t minValueSizeForEdgeCompression = 1'073'741'824ULL;  // 1GB
   std::uint32_t accelerationFactorForEdgeCompression = 1;
   std::uint64_t cacheSize = 0;
-  std::uint64_t rebalancingInterval = 2'000'000ULL;
+  std::uint64_t rebalancingInterval = 2'000'000ULL;  // 2s
   std::uint64_t maxSpareAllocation = 67'108'864ULL;  // 64MB
+  bool enableWindowedStats = true;
 };
 
 struct CacheOptionsProvider {
   virtual ~CacheOptionsProvider() = default;
 
-  virtual double idealLowerFillRatio() const noexcept = 0;
-  virtual double idealUpperFillRatio() const noexcept = 0;
-  virtual std::size_t minValueSizeForEdgeCompression() const noexcept = 0;
-  virtual std::uint32_t accelerationFactorForEdgeCompression()
-      const noexcept = 0;
-  virtual std::uint64_t cacheSize() const noexcept = 0;
-  virtual std::uint64_t rebalancingInterval() const noexcept = 0;
-  virtual std::uint64_t maxSpareAllocation() const noexcept = 0;
+  virtual CacheOptions getOptions() const = 0;
 };
 
 }  // namespace arangodb

@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Cache/CacheManagerFeatureThreads.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -56,7 +57,8 @@ class CacheManagerFeature final : public ArangodFeature {
   std::unique_ptr<cache::Manager> _manager;
   std::unique_ptr<CacheRebalancerThread> _rebalancer;
 
-  CacheOptionsProvider const& _options;
+  CacheOptionsProvider const& _provider;
+  CacheOptions _options;
 };
 
 }  // namespace arangodb

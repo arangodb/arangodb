@@ -27,6 +27,7 @@
 #include "Basics/SharedCounter.h"
 #include "Basics/SpinLocker.h"
 #include "Cache/CachedValue.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
@@ -104,9 +105,7 @@ class Manager {
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
   Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
-          std::uint64_t globalLimit, bool enableWindowedStats,
-          double idealLowerFillRatio, double idealUpperFillRatio,
-          std::uint64_t maxSpareAllocation);
+          CacheOptions const& options);
 
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
@@ -174,8 +173,8 @@ class Manager {
 
   [[nodiscard]] std::pair<double, double> globalHitRates();
 
-  double idealLowerFillRatio() const noexcept { return _idealLowerFillRatio; }
-  double idealUpperFillRatio() const noexcept { return _idealUpperFillRatio; }
+  double idealLowerFillRatio() const noexcept;
+  double idealUpperFillRatio() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Open a new transaction.
@@ -211,6 +210,7 @@ class Manager {
   static constexpr std::uint64_t triesSlow = 1000;
 
   SharedPRNGFeature& _sharedPRNG;
+  CacheOptions const _options;
 
   // simple state variables
   mutable basics::ReadWriteSpinLock _lock;
@@ -250,10 +250,6 @@ class Manager {
   std::uint64_t _spareTables;
   std::uint64_t _migrateTasks;
   std::uint64_t _freeMemoryTasks;
-
-  double const _idealLowerFillRatio;
-  double const _idealUpperFillRatio;
-  std::uint64_t _maxSpareAllocation;
 
   // transaction management
   TransactionManager _transactions;

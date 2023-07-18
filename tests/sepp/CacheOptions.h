@@ -55,13 +55,7 @@ struct CacheOptions : arangodb::CacheOptionsProvider {
             .fallback(f.keep()));
   }
 
-  double idealLowerFillRatio() const noexcept override;
-  double idealUpperFillRatio() const noexcept override;
-  std::size_t minValueSizeForEdgeCompression() const noexcept override;
-  std::uint32_t accelerationFactorForEdgeCompression() const noexcept override;
-  std::uint64_t cacheSize() const noexcept override;
-  std::uint64_t rebalancingInterval() const noexcept override;
-  std::uint64_t maxSpareAllocation() const noexcept override;
+  arangodb::CacheOptions getOptions() const override { return _options; }
 
  private:
   arangodb::CacheOptions _options;

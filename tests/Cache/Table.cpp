@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainBucket.h"
@@ -55,8 +56,9 @@ TEST(CacheTableTest, test_basic_constructor_behavior) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 16ULL * 1024ULL * 1024ULL, true, 0.04,
-                  0.25, 0);
+  CacheOptions co;
+  co.cacheSize = 16ULL * 1024ULL * 1024ULL;
+  Manager manager(sharedPRNG, postFn, co);
 
   for (std::uint32_t i = Table::kMinLogSize; i <= 20; i++) {
     auto table = std::make_shared<Table>(i, &manager);
@@ -76,8 +78,9 @@ TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 16ULL * 1024ULL * 1024ULL, true, 0.04,
-                  0.25, 0);
+  CacheOptions co;
+  co.cacheSize = 16ULL * 1024ULL * 1024ULL;
+  Manager manager(sharedPRNG, postFn, co);
 
   auto table = std::make_shared<Table>(Table::kMinLogSize, &manager);
   ASSERT_NE(table.get(), nullptr);
@@ -105,6 +108,7 @@ class CacheTableMigrationTest : public ::testing::Test {
  protected:
   MockScheduler scheduler;
   MockMetricsServer server;
+  CacheOptions co;
   Manager manager;
   std::shared_ptr<Table> small;
   std::shared_ptr<Table> large;
@@ -112,13 +116,14 @@ class CacheTableMigrationTest : public ::testing::Test {
 
   CacheTableMigrationTest()
       : scheduler(4),
+        co{.cacheSize = 16ULL * 1024ULL * 1024ULL},
         manager(
             server.getFeature<SharedPRNGFeature>(),
             [this](std::function<void()> fn) -> bool {
               scheduler.post(fn);
               return true;
             },
-            16ULL * 1024ULL * 1024ULL, true, 0.04, 0.25, 0),
+            co),
         small(std::make_shared<Table>(Table::kMinLogSize, &manager)),
         large(std::make_shared<Table>(Table::kMinLogSize + 2, &manager)),
         huge(std::make_shared<Table>(Table::kMinLogSize + 4, &manager)) {
@@ -219,14 +224,16 @@ TEST_F(CacheTableMigrationTest, check_subtable_apply_all_works) {
 }
 
 TEST_F(CacheTableMigrationTest, test_fill_ratio_methods) {
+  CacheOptions const co;
+
   for (std::uint64_t i = 0; i < large->size(); i++) {
     bool res = large->slotFilled();
     if (static_cast<double>(i + 1) <
-        0.04 * static_cast<double>(large->size())) {
+        co.idealLowerFillRatio * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() - 1);
       ASSERT_FALSE(res);
     } else if (static_cast<double>(i + 1) >
-               0.25 * static_cast<double>(large->size())) {
+               co.idealUpperFillRatio * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() + 1);
       ASSERT_TRUE(res);
     } else {
@@ -237,11 +244,11 @@ TEST_F(CacheTableMigrationTest, test_fill_ratio_methods) {
   for (std::uint64_t i = large->size(); i > 0; i--) {
     bool res = large->slotEmptied();
     if (static_cast<double>(i - 1) <
-        0.04 * static_cast<double>(large->size())) {
+        co.idealLowerFillRatio * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() - 1);
       ASSERT_TRUE(res);
     } else if (static_cast<double>(i - 1) >
-               0.25 * static_cast<double>(large->size())) {
+               co.idealUpperFillRatio * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() + 1);
       ASSERT_FALSE(res);
     } else {

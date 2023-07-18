@@ -35,35 +35,8 @@ CacheOptions::CacheOptions() {
                                         (static_cast<std::uint64_t>(2) << 30)) *
                                        0.25)
           : (256 << 20);
-}
-
-double CacheOptions::idealLowerFillRatio() const noexcept {
-  return _options.idealLowerFillRatio;
-}
-
-double CacheOptions::idealUpperFillRatio() const noexcept {
-  return _options.idealUpperFillRatio;
-}
-
-std::size_t CacheOptions::minValueSizeForEdgeCompression() const noexcept {
-  return _options.minValueSizeForEdgeCompression;
-}
-
-std::uint32_t CacheOptions::accelerationFactorForEdgeCompression()
-    const noexcept {
-  return _options.accelerationFactorForEdgeCompression;
-}
-
-std::uint64_t CacheOptions::cacheSize() const noexcept {
-  return _options.cacheSize;
-}
-
-std::uint64_t CacheOptions::rebalancingInterval() const noexcept {
-  return _options.rebalancingInterval;
-}
-
-std::uint64_t CacheOptions::maxSpareAllocation() const noexcept {
-  return _options.maxSpareAllocation;
+  // currently there is no way to stats off
+  _options.enableWindowedStats = true;
 }
 
 }  // namespace arangodb::sepp
