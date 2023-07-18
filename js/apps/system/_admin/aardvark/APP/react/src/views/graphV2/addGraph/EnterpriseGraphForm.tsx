@@ -9,8 +9,8 @@ import {
   CLUSTER_GRAPH_FIELDS_MAP,
   createGraph,
   GENERAL_GRAPH_FIELDS_MAP
-} from "../GraphsHelpers";
-import { useGraphsModeContext } from "../GraphsModeContext";
+} from "../listGraphs/GraphsHelpers";
+import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { EnterpriseGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";

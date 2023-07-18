@@ -1,10 +1,10 @@
 import { AddIcon } from "@chakra-ui/icons";
 import { Box, Button, Heading, Stack, useDisclosure } from "@chakra-ui/react";
 import React from "react";
-import { AddGraphModal } from "./addGraph/AddGraphModal";
+import { AddGraphModal } from "../addGraph/AddGraphModal";
 import { GraphsListProvider } from "./GraphsListContext";
 import { GraphsModeProvider } from "./GraphsModeContext";
-import { GraphsTable } from "./listGraphs/GraphsTable";
+import { GraphsTable } from "./GraphsTable";
 
 export const GraphsListView = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();

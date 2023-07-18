@@ -1,7 +1,7 @@
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
-import { CLUSTER_GRAPH_FIELDS_MAP } from "../GraphsHelpers";
-import { useGraphsModeContext } from "../GraphsModeContext";
+import { CLUSTER_GRAPH_FIELDS_MAP } from "../listGraphs/GraphsHelpers";
+import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 
 export const ClusterFields = ({
   isShardsRequired

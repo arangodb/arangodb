@@ -7,9 +7,9 @@ import { Link as RouterLink } from "react-router-dom";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { useGraphsListContext } from "../GraphsListContext";
-import { detectType } from "../GraphsHelpers";
-import { GraphsModeProvider } from "../GraphsModeContext";
+import { useGraphsListContext } from "./GraphsListContext";
+import { detectType } from "./GraphsHelpers";
+import { GraphsModeProvider } from "./GraphsModeContext";
 import { EditGraphModal } from "./EditGraphModal";
 
 const columnHelper = createColumnHelper<GraphInfo>();

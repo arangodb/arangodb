@@ -1,6 +1,6 @@
 import { Alert, AlertIcon, Stack } from "@chakra-ui/react";
 import React from "react";
-import { useGraphsListContext } from "../GraphsListContext";
+import { useGraphsListContext } from "../listGraphs/GraphsListContext";
 
 export const GraphWarnings = ({
   showOneShardWarning = true

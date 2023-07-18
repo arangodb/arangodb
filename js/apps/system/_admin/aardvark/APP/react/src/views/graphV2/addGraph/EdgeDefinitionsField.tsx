@@ -10,7 +10,7 @@ import {
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
-import { useGraphsModeContext } from "../GraphsModeContext";
+import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
 import { useCollectionOptions } from "./useEdgeCollectionOptions";
 import { useResetFromAndToValues } from "./useResetFromAndToValues";

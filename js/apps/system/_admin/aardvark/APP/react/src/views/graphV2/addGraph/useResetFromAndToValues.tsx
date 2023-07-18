@@ -2,7 +2,7 @@ import { usePrevious } from "@chakra-ui/react";
 import { useFormikContext } from "formik";
 import _ from "lodash";
 import { useEffect, useMemo, useState } from "react";
-import { useFetchGraphs } from "../useFetchGraphs";
+import { useFetchGraphs } from "../listGraphs/useFetchGraphs";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
 
 /**

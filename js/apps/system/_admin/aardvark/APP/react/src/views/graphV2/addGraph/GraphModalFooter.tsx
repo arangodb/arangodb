@@ -2,7 +2,7 @@ import { Button, Stack } from "@chakra-ui/react";
 import { useFormikContext } from "formik";
 import React from "react";
 import { ModalFooter } from "../../../components/modal";
-import { useGraphsModeContext } from "../GraphsModeContext";
+import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { EditGraphButtons } from "../listGraphs/EditGraphButtons";
 
 export const GraphModalFooter = ({ onClose }: { onClose: () => void; }) => {

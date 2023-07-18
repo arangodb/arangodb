@@ -9,7 +9,7 @@ import {
 } from "@chakra-ui/react";
 import React from "react";
 import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
-import { useGraphsModeContext } from "../GraphsModeContext";
+import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { EnterpriseGraphForm } from "./EnterpriseGraphForm";
 import { ExampleGraphForm } from "./ExampleGraphForm";
 import { GeneralGraphForm } from "./GeneralGraphForm";

@@ -1,7 +1,7 @@
 import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
 import { GraphInfo } from "arangojs/graph";
 import React from "react";
-import { GraphsModeProvider, useGraphsModeContext } from "../GraphsModeContext";
+import { GraphsModeProvider, useGraphsModeContext } from "./GraphsModeContext";
 import {
   Button,
   Flex,

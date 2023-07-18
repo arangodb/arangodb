@@ -1,6 +1,6 @@
 import { GraphInfo } from "arangojs/graph";
-import { getCurrentDB } from "../../utils/arangoClient";
-import { notifyError, notifySuccess } from "../../utils/notifications";
+import { getCurrentDB } from "../../../utils/arangoClient";
+import { notifyError, notifySuccess } from "../../../utils/notifications";
 import { GraphTypes } from "./Graphs.types";
 
 export const TYPE_TO_LABEL_MAP: {

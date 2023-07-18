@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import { getCurrentDB } from "../../utils/arangoClient";
+import { getCurrentDB } from "../../../utils/arangoClient";
 
 const useCurrentDbProperties = () => {
   const currentDbName = window.frontendConfig.db;
