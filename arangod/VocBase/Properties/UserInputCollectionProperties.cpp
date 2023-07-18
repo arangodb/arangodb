@@ -70,7 +70,8 @@ UserInputCollectionProperties::Invariants::isSmartConfiguration(
         }
       }
     } else {
-      if (props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
+      if (!props.shardKeys.has_value() || props.shardKeys->size() != 1 ||
+          props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
         return {R"(A smart collection needs to have "shardKeys": ["_key:"].)"};
       }
     }

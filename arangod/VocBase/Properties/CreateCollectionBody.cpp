@@ -145,6 +145,11 @@ auto handleNumberOfShards(std::string_view key, VPackSlice value,
                           VPackBuilder& result) {
   if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
     justKeep(key, value, fullBody, config, result);
+  } else if (config.maxNumberOfShards > 0 && value.isNumber() &&
+             value.getNumericValue<uint32_t>() > config.maxNumberOfShards) {
+    // If we restrict the number of Shards, and we get over this limit, we keep
+    // the value, such that we trigger the according error message.
+    result.add(key, value);
   }
   // Just ignore if we have distributeShardsLike
 }
