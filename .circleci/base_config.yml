@@ -322,6 +322,14 @@ workflows:
           edition: x64-community
           enterprise: false
           targets: "arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest"
+      - compile-linux:
+          context:
+          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: build-ce-non-maintainer
+          preset: community-pr-non-maintainer
+          edition: x64-community
+          enterprise: false
+          targets: "arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench"
   enterprise-pr:
     jobs:
       - compile-linux:
@@ -332,6 +340,15 @@ workflows:
           edition: x64-enterprise
           enterprise: true
           targets: "arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest"
+          enterprise-targets: "arangobackup"
+      - compile-linux:
+          context:
+          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: build-ee-non-maintainer
+          preset: enterprise-pr-non-maintainer
+          edition: x64-enterprise
+          enterprise: true
+          targets: "arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench"
           enterprise-targets: "arangobackup"
       - run-hotbackup-tests:
           name: run-hotbackup-tests

@@ -257,8 +257,16 @@
       "configurePreset": "community-pr"
     },
     {
+      "name": "community-pr-non-maintainer",
+      "configurePreset": "community-pr-non-maintainer"
+    },
+    {
       "name": "enterprise-pr",
       "configurePreset": "enterprise-pr"
+    },
+    {
+      "name": "enterprise-pr-non-maintainer",
+      "configurePreset": "enterprise-pr-non-maintainer"
     },
     {
       "name": "community-pr-arm",
