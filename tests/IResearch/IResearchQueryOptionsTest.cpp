@@ -57,8 +57,8 @@ class QueryOptions : public QueryTest {
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_1\" }");
-      auto logicalCollection1 = _vocbase.createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto logicalCollection1 =
+          _vocbase.createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection1);
     }
 
@@ -66,8 +66,8 @@ class QueryOptions : public QueryTest {
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_2\" }");
-      auto logicalCollection2 = _vocbase.createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto logicalCollection2 =
+          _vocbase.createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection2);
     }
 
@@ -75,8 +75,8 @@ class QueryOptions : public QueryTest {
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_3\" }");
-      auto logicalCollection3 = _vocbase.createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto logicalCollection3 =
+          _vocbase.createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection3);
     }
   }

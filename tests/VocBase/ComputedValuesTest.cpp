@@ -753,8 +753,7 @@ TEST_F(ComputedValuesTest, createCollectionNoComputedValues) {
   auto& vocbase = server->getSystemDatabase();
   auto b = velocypack::Parser::fromJson("{\"name\":\"test\"}");
 
-  auto c = vocbase.createCollection(b->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+  auto c = vocbase.createCollection(b->slice());
   ASSERT_EQ(nullptr, c->computedValues());
 }
 
@@ -763,8 +762,7 @@ TEST_F(ComputedValuesTest, createCollectionEmptyComputedValues) {
   auto b = velocypack::Parser::fromJson(
       "{\"name\":\"test\", \"computedValues\": []}");
 
-  auto c = vocbase.createCollection(b->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+  auto c = vocbase.createCollection(b->slice());
   ASSERT_EQ(nullptr, c->computedValues());
 }
 
@@ -774,8 +772,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteTrue) {
       "{\"name\":\"test\", \"computedValues\": [{\"name\":\"attr\", "
       "\"expression\":\"RETURN 'test'\", \"overwrite\": true}]}");
 
-  auto c = vocbase.createCollection(b->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+  auto c = vocbase.createCollection(b->slice());
   auto cv = c->computedValues();
   ASSERT_NE(nullptr, c->computedValues());
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
@@ -817,8 +814,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
       "{\"name\":\"test\", \"computedValues\": [{\"name\":\"attr\", "
       "\"expression\":\"RETURN 'test'\", \"overwrite\": false}]}");
 
-  auto c = vocbase.createCollection(b->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+  auto c = vocbase.createCollection(b->slice());
   auto cv = c->computedValues();
   ASSERT_NE(nullptr, c->computedValues());
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
@@ -860,8 +856,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
       "\"expression\":\"RETURN 'update'\", \"overwrite\": true, "
       "\"computeOn\":[\"update\"]}]}");
 
-  auto c = vocbase.createCollection(b->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+  auto c = vocbase.createCollection(b->slice());
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
@@ -901,8 +896,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
       "\"expression\":\"RETURN 'update'\", \"overwrite\": false, "
       "\"computeOn\":[\"update\"]}]}");
 
-  auto c = vocbase.createCollection(b->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+  auto c = vocbase.createCollection(b->slice());
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
@@ -942,8 +936,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningStatic) {
       "\"expression\":\"RETURN 1 / 0\", \"overwrite\": true, "
       "\"failOnWarning\": true}]}");
 
-  auto c = vocbase.createCollection(b->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+  auto c = vocbase.createCollection(b->slice());
   auto cv = c->computedValues();
   ASSERT_EQ(nullptr, c->computedValues());
 }
@@ -955,8 +948,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningDynamic) {
       "\"expression\":\"RETURN @doc.value / 0\", \"overwrite\": true, "
       "\"failOnWarning\": true}]}");
 
-  auto c = vocbase.createCollection(b->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+  auto c = vocbase.createCollection(b->slice());
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
@@ -977,8 +969,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInvalidValuesDynamic) {
       "\"expression\":\"RETURN @doc.value / 0\", \"overwrite\": true, "
       "\"failOnWarning\": false}]}");
 
-  auto c = vocbase.createCollection(b->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+  auto c = vocbase.createCollection(b->slice());
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
@@ -1007,8 +998,7 @@ TEST_F(ComputedValuesTest, insertKeepNullTrue) {
       "\"expression\":\"RETURN @doc.value ?: null\", \"overwrite\": true, "
       "\"keepNull\": true}]}");
 
-  auto c = vocbase.createCollection(b->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+  auto c = vocbase.createCollection(b->slice());
   auto cv = c->computedValues();
   ASSERT_NE(nullptr, c->computedValues());
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());

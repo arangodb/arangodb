@@ -86,9 +86,7 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
           unused);
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"id\":102, \"name\": \"foo\" }");
-      EXPECT_NE(nullptr, vocbase->createCollection(
-                             collectionJson->slice(),
-                             arangodb::transaction::TrxType::kInternal));
+      EXPECT_NE(nullptr, vocbase->createCollection(collectionJson->slice()));
     }
   }
 

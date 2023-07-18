@@ -212,9 +212,8 @@ class ShardDistributionReporterTest
     }
 
     vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server));
-    col = std::make_unique<arangodb::LogicalCollection>(
-        *vocbase, json->slice(), arangodb::transaction::TrxType::kInternal,
-        true);
+    col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(),
+                                                        true);
 
     col->setShardMap(shards);
 

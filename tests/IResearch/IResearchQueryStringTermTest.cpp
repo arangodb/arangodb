@@ -57,8 +57,7 @@ class QueryStringTerm : public QueryTest {
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_1\" }");
-      logicalCollection1 = _vocbase.createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      logicalCollection1 = _vocbase.createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection1);
     }
 
@@ -66,8 +65,7 @@ class QueryStringTerm : public QueryTest {
     {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"collection_2\" }");
-      logicalCollection2 = _vocbase.createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      logicalCollection2 = _vocbase.createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection2);
     }
   }

@@ -47,8 +47,7 @@ class QueryTraversal : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection0\" }");
-      auto collection = _vocbase.createCollection(
-          createJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_NE(nullptr, collection);
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -95,8 +94,7 @@ class QueryTraversal : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection1\" }");
-      auto collection = _vocbase.createCollection(
-          createJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_NE(nullptr, collection);
 
       std::filesystem::path resource;
@@ -128,8 +126,7 @@ class QueryTraversal : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"edges\", \"type\": 3 }");
-      auto collection = _vocbase.createCollection(
-          createJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_NE(nullptr, collection);
 
       auto createIndexJson =

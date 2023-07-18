@@ -264,8 +264,7 @@ class QueryNoMaterialization : public QueryTestMulti {
     {
       auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
                                                   collectionName1 + "\"}");
-      logicalCollection1 = vocbase().createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection1);
     }
 
@@ -274,8 +273,7 @@ class QueryNoMaterialization : public QueryTestMulti {
     {
       auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
                                                   collectionName2 + "\"}");
-      logicalCollection2 = vocbase().createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      logicalCollection2 = vocbase().createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection2);
     }
 
@@ -647,8 +645,7 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
   std::string collectionName("testCollection");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\":\"" + collectionName + "\"}");
-  auto logicalCollection = vocbase().createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto logicalCollection = vocbase().createCollection(collectionJson->slice());
   ASSERT_TRUE(logicalCollection);
   size_t const columnsCount = 6;  // PK + storedValues
   auto viewJson = arangodb::velocypack::Parser::fromJson(
@@ -811,8 +808,7 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
   std::string collectionName("testCollection");
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\":\"" + collectionName + "\"}");
-  auto logicalCollection = vocbase().createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto logicalCollection = vocbase().createCollection(collectionJson->slice());
   ASSERT_TRUE(logicalCollection);
   size_t const columnsCount = 6;  // PK + storedValues
   auto viewJson = arangodb::velocypack::Parser::fromJson(

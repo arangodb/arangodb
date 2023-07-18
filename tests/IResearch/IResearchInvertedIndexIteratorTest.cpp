@@ -126,8 +126,7 @@ class IResearchInvertedIndexIteratorTestBase
 
     auto createCollection = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\" }");
-    _collection = vocbase().createCollection(
-        createCollection->slice(), arangodb::transaction::TrxType::kInternal);
+    _collection = vocbase().createCollection(createCollection->slice());
     EXPECT_TRUE(_collection);
     arangodb::IndexId id(1);
     auto storedFields = Provider::storedFields();

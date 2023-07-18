@@ -99,8 +99,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.lookupCollection("UnitTestCollection")
                        ? vocbase.lookupCollection("UnitTestCollection")
-                       : vocbase.createCollection(
-                             json->slice(), transaction::TrxType::kInternal)),
+                       : vocbase.createCollection(json->slice())),
         outVariable("name", 1, false),
         varUsedLater(false),
         engine(fakedQuery->rootEngine()),
@@ -287,8 +286,7 @@ class EnumerateCollectionExecutorTestProduce
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.lookupCollection("UnitTestCollection")
                        ? vocbase.lookupCollection("UnitTestCollection")
-                       : vocbase.createCollection(
-                             json->slice(), transaction::TrxType::kInternal)),
+                       : vocbase.createCollection(json->slice())),
         outVariable("name", 1, false),
         varUsedLater(true),
         engine(fakedQuery.get()->rootEngine()),

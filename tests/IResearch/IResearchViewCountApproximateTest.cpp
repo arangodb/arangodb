@@ -67,8 +67,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     {
       auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
                                                   collectionName1 + "\"}");
-      logicalCollection1 = vocbase().createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
       EXPECT_NE(nullptr, logicalCollection1);
     }
 
@@ -77,8 +76,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     {
       auto collectionJson = VPackParser::fromJson(std::string("{\"name\": \"") +
                                                   collectionName2 + "\"}");
-      logicalCollection2 = vocbase().createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      logicalCollection2 = vocbase().createCollection(collectionJson->slice());
       EXPECT_NE(nullptr, logicalCollection2);
     }
     // create view

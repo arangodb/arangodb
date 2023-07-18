@@ -3930,9 +3930,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   TRI_vocbase_t* vocbase;
   EXPECT_TRUE(
       dbFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
-  EXPECT_FALSE(
-      !vocbase->createCollection(createCollectionJson->slice(),
-                                 arangodb::transaction::TrxType::kInternal));
+  EXPECT_FALSE(!vocbase->createCollection(createCollectionJson->slice()));
 
   // add document to collection
   {
@@ -4034,9 +4032,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   TRI_vocbase_t* vocbase;
   EXPECT_TRUE(
       dbFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
-  EXPECT_FALSE(
-      !vocbase->createCollection(createCollectionJson->slice(),
-                                 arangodb::transaction::TrxType::kInternal));
+  EXPECT_FALSE(!vocbase->createCollection(createCollectionJson->slice()));
 
   // add document to collection
   {
@@ -4096,8 +4092,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
     auto collection = system->lookupCollection(LEGACY_ANALYZER_COLLECTION_NAME);
     ASSERT_FALSE(collection);
     ASSERT_FALSE(
-        !system->createCollection(createLegacyCollectionJson->slice(),
-                                  arangodb::transaction::TrxType::kInternal));
+        !system->createCollection(createLegacyCollectionJson->slice()));
   }
 
   // add document to legacy collection after feature start
@@ -4158,9 +4153,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   TRI_vocbase_t* vocbase;
   EXPECT_TRUE(
       dbFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
-  EXPECT_FALSE(
-      !vocbase->createCollection(createCollectionJson->slice(),
-                                 arangodb::transaction::TrxType::kInternal));
+  EXPECT_FALSE(!vocbase->createCollection(createCollectionJson->slice()));
 
   // add document to collection
   {

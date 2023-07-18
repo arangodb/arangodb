@@ -122,8 +122,7 @@ TEST_F(TransactionManagerTest, transaction_id_reuse) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -146,8 +145,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -207,8 +205,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -260,8 +257,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -306,8 +302,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -352,8 +347,7 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -394,8 +388,7 @@ TEST_F(TransactionManagerTest, lock_conflict) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -424,8 +417,7 @@ TEST_F(TransactionManagerTest, lock_conflict_side_user) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -460,8 +452,7 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -491,8 +482,7 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -527,8 +517,7 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -572,8 +561,7 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 
@@ -603,8 +591,7 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase.createCollection(json->slice(),
-                                    arangodb::transaction::TrxType::kInternal);
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_NE(coll, nullptr);
 

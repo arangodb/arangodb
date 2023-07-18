@@ -293,8 +293,7 @@ class QueryOptimization : public QueryTestMulti {
     {
       auto collectionJson =
           VPackParser::fromJson("{ \"name\": \"collection_1\" }");
-      logicalCollection1 = vocbase().createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection1);
     }
 

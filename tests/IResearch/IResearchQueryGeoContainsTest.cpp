@@ -71,8 +71,7 @@ class QueryGeoContains : public QueryTest {
 
   void createCollections() {
     auto createJson = VPackParser::fromJson(R"({ "name": "testCollection0" })");
-    auto collection = _vocbase.createCollection(
-        createJson->slice(), transaction::TrxType::kInternal);
+    auto collection = _vocbase.createCollection(createJson->slice());
     ASSERT_TRUE(collection);
   }
 

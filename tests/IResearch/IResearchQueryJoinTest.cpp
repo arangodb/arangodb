@@ -39,14 +39,12 @@ class QueryJoin : public QueryTest {
   void createCollections1() {
     {
       auto json = VPackParser::fromJson(R"({ "name": "entities" })");
-      auto collection = _vocbase.createCollection(
-          json->slice(), transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(json->slice());
       ASSERT_TRUE(collection);
     }
     {
       auto json = VPackParser::fromJson(R"({ "name": "links", "type": 3 })");
-      auto collection = _vocbase.createCollection(
-          json->slice(), transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(json->slice());
       ASSERT_TRUE(collection);
     }
   }
@@ -54,20 +52,17 @@ class QueryJoin : public QueryTest {
   void createCollections23() {
     {
       auto json = VPackParser::fromJson(R"({ "name": "testCollection0" })");
-      auto collection = _vocbase.createCollection(
-          json->slice(), transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(json->slice());
       ASSERT_TRUE(collection);
     }
     {
       auto json = VPackParser::fromJson(R"({ "name": "testCollection1" })");
-      auto collection = _vocbase.createCollection(
-          json->slice(), transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(json->slice());
       ASSERT_TRUE(collection);
     }
     {
       auto json = VPackParser::fromJson(R"({ "name": "testCollection2" })");
-      auto collection = _vocbase.createCollection(
-          json->slice(), transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(json->slice());
       ASSERT_TRUE(collection);
     }
   }
@@ -227,8 +222,7 @@ class QueryJoin : public QueryTest {
       auto collectionJson = VPackParser::fromJson("{ \"name\": \"testView\" }");
       // TRI_vocbase_t::createCollection(...) throws exception instead of
       // returning a nullptr
-      EXPECT_ANY_THROW(_vocbase.createCollection(
-          collectionJson->slice(), transaction::TrxType::kInternal));
+      EXPECT_ANY_THROW(_vocbase.createCollection(collectionJson->slice()));
     }
 
     // populate view with the data

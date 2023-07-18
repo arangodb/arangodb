@@ -60,8 +60,7 @@ class QueryLateMaterialization : public QueryTest {
     {
       auto collectionJson =
           VPackParser::fromJson(R"({"name": "collection_1" })");
-      logicalCollection1 = vocbase().createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      logicalCollection1 = vocbase().createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection1);
     }
     // add collection_2
@@ -69,8 +68,7 @@ class QueryLateMaterialization : public QueryTest {
     {
       auto collectionJson =
           VPackParser::fromJson(R"({"name": "collection_2" })");
-      logicalCollection2 = vocbase().createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      logicalCollection2 = vocbase().createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection2);
     }
     createView();

@@ -128,8 +128,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     auto const viewId = std::to_string(
         ci.uniqid() +
         1);  // +1 because LogicalView creation will generate a new ID
-    auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
@@ -172,8 +171,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     auto const viewId = std::to_string(
         ci.uniqid() +
         1);  // +1 because LogicalView creation will generate a new ID
-    auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -222,8 +220,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
       "\"includeAllFields\": true }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalCollection = vocbase->createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
@@ -273,8 +270,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
   createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
 
-  auto logicalCollection = vocbase->createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   EXPECT_TRUE(
       (ci.createViewCoordinator(vocbase->name(), "42", viewCreateJson->slice())
@@ -306,8 +302,7 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": "
       "[ 3, 4, 5 ] }");
-  auto logicalCollection = vocbase->createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
@@ -397,8 +392,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -448,8 +442,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         "\"includeAllFields\": true }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase0");
-    auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
     arangodb::LogicalView::ptr logicalview;
     ASSERT_TRUE(arangodb::iresearch::IResearchView::factory()
@@ -496,8 +489,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         "\"includeAllFields\": true }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase1");
-    auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
     arangodb::LogicalView::ptr logicalview;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -568,8 +560,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
-    auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     std::vector<std::string> collections{logicalCollection->name()};
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", createJson->slice())
@@ -686,8 +677,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
-    auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", createJson->slice())
              .ok()));
@@ -760,8 +750,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -818,8 +807,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -1032,8 +1020,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   auto linkJson = arangodb::velocypack::Parser::fromJson(
       "{ \"view\": \"testView\", \"type\": \"arangosearch\", "
       "\"includeAllFields\": true }");
-  auto logicalCollection = vocbase->createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   ASSERT_NE(nullptr, logicalCollection);
   arangodb::LogicalView::ptr logicalview;
   ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -1188,8 +1175,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
-    auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_NE(nullptr, logicalCollection);
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice())
@@ -1330,8 +1316,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
-    auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_NE(nullptr, logicalCollection);
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice())
@@ -1475,8 +1460,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
-    auto logicalCollection = vocbase->createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_NE(nullptr, logicalCollection);
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice())
@@ -1627,11 +1611,11 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
-    auto logicalCollection0 = vocbase->createCollection(
-        collection0Json->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection0 =
+        vocbase->createCollection(collection0Json->slice());
     EXPECT_NE(nullptr, logicalCollection0);
-    auto logicalCollection1 = vocbase->createCollection(
-        collection1Json->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection1 =
+        vocbase->createCollection(collection1Json->slice());
     EXPECT_NE(nullptr, logicalCollection1);
     EXPECT_TRUE(
         (ci.createViewCoordinator(vocbase->name(), "42", viewJson->slice())
@@ -1801,8 +1785,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()

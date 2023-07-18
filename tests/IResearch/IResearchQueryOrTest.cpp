@@ -69,16 +69,16 @@ class QueryOr : public QueryTest {
     {
       auto collectionJson =
           VPackParser::fromJson("{ \"name\": \"collection_1\" }");
-      auto logicalCollection1 = _vocbase.createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto logicalCollection1 =
+          _vocbase.createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection1);
     }
     // add collection_2
     {
       auto collectionJson =
           VPackParser::fromJson("{ \"name\": \"collection_2\" }");
-      auto logicalCollection2 = _vocbase.createCollection(
-          collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto logicalCollection2 =
+          _vocbase.createCollection(collectionJson->slice());
       ASSERT_NE(nullptr, logicalCollection2);
     }
   }

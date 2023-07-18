@@ -48,11 +48,7 @@ class QueryLevenhsteinMatch : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection1\" }");
-      auto collection =
-          _vocbase
-              .createCollection(createJson->slice(),
-                                arangodb::transaction::TrxType::kInternal)
-              .get();
+      auto collection = _vocbase.createCollection(createJson->slice()).get();
       ASSERT_NE(nullptr, collection);
     }
   }

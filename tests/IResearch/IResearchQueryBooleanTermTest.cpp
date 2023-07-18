@@ -37,8 +37,7 @@ class QueryBooleanTerm : public QueryTest {
     {
       auto createJson =
           VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
-      auto collection = _vocbase.createCollection(
-          createJson->slice(), transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_TRUE(collection);
 
       std::vector<std::shared_ptr<VPackBuilder>> docs{
@@ -71,8 +70,7 @@ class QueryBooleanTerm : public QueryTest {
     {
       auto createJson =
           VPackParser::fromJson("{ \"name\": \"testCollection1\" }");
-      auto collection = _vocbase.createCollection(
-          createJson->slice(), transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_TRUE(collection);
 
       std::vector<std::shared_ptr<VPackBuilder>> docs{

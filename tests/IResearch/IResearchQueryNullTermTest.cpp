@@ -40,8 +40,7 @@ class QueryNullTerm : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection0\" }");
-      auto collection = _vocbase.createCollection(
-          createJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_NE(nullptr, collection);
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -81,8 +80,7 @@ class QueryNullTerm : public QueryTest {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection1\" }");
-      auto collection = _vocbase.createCollection(
-          createJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_NE(nullptr, collection);
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{

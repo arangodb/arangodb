@@ -93,8 +93,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   auto const cname = "testCollection";
   auto params = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection\" }");
-  vocbase.createCollection(params->slice(),
-                           arangodb::transaction::TrxType::kInternal);
+  vocbase.createCollection(params->slice());
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
   transaction::Options trxOpts;

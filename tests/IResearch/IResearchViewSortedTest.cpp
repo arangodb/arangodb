@@ -163,8 +163,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_1\" }");
-    logicalCollection1 = vocbase.createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    logicalCollection1 = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection1);
   }
 
@@ -172,8 +171,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_2\" }");
-    logicalCollection2 = vocbase.createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    logicalCollection2 = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection2);
   }
 
@@ -471,8 +469,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_1\" }");
-    logicalCollection1 = vocbase.createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    logicalCollection1 = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection1);
   }
 
@@ -480,8 +477,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"collection_2\" }");
-    logicalCollection2 = vocbase.createCollection(
-        collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+    logicalCollection2 = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection2);
   }
 

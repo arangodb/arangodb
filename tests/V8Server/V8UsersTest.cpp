@@ -253,10 +253,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
   // test auth missing (grant)
   {
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system
-            ->createCollection(usersJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
           system->dropCollection(ptr->id(), true);
         });
@@ -301,10 +298,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
   // test auth missing (revoke)
   {
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system
-            ->createCollection(usersJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
           system->dropCollection(ptr->id(), true);
         });
@@ -357,10 +351,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system
-            ->createCollection(usersJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
           system->dropCollection(ptr->id(), true);
         });
@@ -378,10 +369,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_NE(nullptr, userPtr);
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase
-            ->createCollection(collectionJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });
@@ -409,10 +397,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system
-            ->createCollection(usersJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
           system->dropCollection(ptr->id(), true);
         });
@@ -435,10 +420,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                      // User::collectionAuthLevel(...) returns
                                      // database auth::Level
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase
-            ->createCollection(collectionJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });
@@ -466,10 +448,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\", \"type\": \"testViewType\" }");
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system
-            ->createCollection(usersJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
           system->dropCollection(ptr->id(), true);
         });
@@ -522,10 +501,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\", \"type\": \"testViewType\" }");
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system
-            ->createCollection(usersJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
           system->dropCollection(ptr->id(), true);
         });
@@ -584,10 +560,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system
-            ->createCollection(usersJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
           system->dropCollection(ptr->id(), true);
         });
@@ -605,10 +578,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_NE(nullptr, userPtr);
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase
-            ->createCollection(collectionJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });
@@ -637,10 +607,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system
-            ->createCollection(usersJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
           system->dropCollection(ptr->id(), true);
         });
@@ -663,10 +630,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                      // User::collectionAuthLevel(...) returns
                                      // database auth::Level
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
-        vocbase
-            ->createCollection(collectionJson->slice(),
-                               arangodb::transaction::TrxType::kInternal)
-            .get(),
+        vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
           vocbase->dropCollection(ptr->id(), false);
         });

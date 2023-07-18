@@ -3353,8 +3353,7 @@ TEST_F(IResearchViewNodeTest, collections) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-    collection0 = vocbase.createCollection(
-        createJson->slice(), arangodb::transaction::TrxType::kInternal);
+    collection0 = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection0);
   }
 
@@ -3362,8 +3361,7 @@ TEST_F(IResearchViewNodeTest, collections) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection1\", \"id\" : \"4242\"  }");
-    collection1 = vocbase.createCollection(
-        createJson->slice(), arangodb::transaction::TrxType::kInternal);
+    collection1 = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection1);
   }
 
@@ -3371,9 +3369,7 @@ TEST_F(IResearchViewNodeTest, collections) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection2\" , \"id\" : \"424242\" }");
-    ASSERT_NE(nullptr, vocbase.createCollection(
-                           createJson->slice(),
-                           arangodb::transaction::TrxType::kInternal));
+    ASSERT_NE(nullptr, vocbase.createCollection(createJson->slice()));
   }
 
   // create view
@@ -3448,8 +3444,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-    collection0 = vocbase.createCollection(
-        createJson->slice(), arangodb::transaction::TrxType::kInternal);
+    collection0 = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection0);
   }
 
@@ -3716,16 +3711,14 @@ class IResearchViewVolatitlityTest
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-      collection0 = vocbase->createCollection(
-          createJson->slice(), arangodb::transaction::TrxType::kInternal);
+      collection0 = vocbase->createCollection(createJson->slice());
       EXPECT_NE(nullptr, collection0);
     }
     std::shared_ptr<arangodb::LogicalCollection> collection1;
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection1\", \"id\" : \"43\" }");
-      collection1 = vocbase->createCollection(
-          createJson->slice(), arangodb::transaction::TrxType::kInternal);
+      collection1 = vocbase->createCollection(createJson->slice());
       EXPECT_NE(nullptr, collection1);
     }
     arangodb::LogicalView::ptr logicalView0;
@@ -4135,8 +4128,7 @@ class IResearchViewBlockTest
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testCollection0\", \"id\" : \"42\" }");
-      collection0 = vocbase->createCollection(
-          createJson->slice(), arangodb::transaction::TrxType::kInternal);
+      collection0 = vocbase->createCollection(createJson->slice());
       EXPECT_NE(nullptr, collection0);
     }
     auto createJson = arangodb::velocypack::Parser::fromJson(

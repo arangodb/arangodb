@@ -59,8 +59,7 @@ class RemoveExecutorTest : public ::testing::Test {
   void SetUp() override {
     SCOPED_TRACE("SetUp");
     auto info = VPackParser::fromJson("{\"name\": \"" + collectionName + "\"}");
-    auto collection = vocbase.createCollection(info->slice(),
-                                               transaction::TrxType::kInternal);
+    auto collection = vocbase.createCollection(info->slice());
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
 
     std::string createQuery =
@@ -89,8 +88,7 @@ class RemoveExecutorTestPatterns
   void SetUp() override {
     SCOPED_TRACE("SetUp");
     auto info = VPackParser::fromJson("{\"name\": \"" + collectionName + "\"}");
-    auto collection = vocbase.createCollection(info->slice(),
-                                               transaction::TrxType::kInternal);
+    auto collection = vocbase.createCollection(info->slice());
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
 
     std::string createQuery = "FOR i IN 1.." + nDocsString +

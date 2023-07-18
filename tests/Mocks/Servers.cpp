@@ -774,8 +774,7 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
   VPackBuilder props;
   buildCollectionProperties(props, collectionName, cid, type,
                             additionalProperties);
-  LogicalCollection dummy(*vocbase, props.slice(),
-                          transaction::TrxType::kInternal, true);
+  LogicalCollection dummy(*vocbase, props.slice(), true);
 
   auto shards = std::make_shared<ShardMap>();
   for (auto const& [shard, server] : shardNameToServerNamePairs) {

@@ -65,8 +65,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testCollection0\","
         "  \"usesRevisionsAsDocumentIds\": true }");
-    collection = vocbase.createCollection(
-        createJson->slice(), arangodb::transaction::TrxType::kInternal);
+    collection = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
   }
 
@@ -196,8 +195,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testCollection0\","
         "  \"usesRevisionsAsDocumentIds\": true }");
-    collection = vocbase.createCollection(
-        createJson->slice(), arangodb::transaction::TrxType::kInternal);
+    collection = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
   }
 
@@ -363,8 +361,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testCollection0\","
         "  \"usesRevisionsAsDocumentIds\": true }");
-    collection = vocbase.createCollection(
-        createJson->slice(), arangodb::transaction::TrxType::kInternal);
+    collection = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
   }
 

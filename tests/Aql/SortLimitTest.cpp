@@ -49,6 +49,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/TrxType.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -184,8 +185,7 @@ class SortLimitTest
   void CreateCollection() {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\" }");
-    auto collection = vocbase->createCollection(
-        createJson->slice(), arangodb::transaction::TrxType::kInternal);
+    auto collection = vocbase->createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs;

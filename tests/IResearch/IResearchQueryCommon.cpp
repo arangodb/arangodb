@@ -179,8 +179,7 @@ void QueryTest::createCollections() {
   // testCollection0
   {
     auto createJson = VPackParser::fromJson(R"({ "name": "testCollection0" })");
-    auto collection = _vocbase.createCollection(
-        createJson->slice(), transaction::TrxType::kInternal);
+    auto collection = _vocbase.createCollection(createJson->slice());
     ASSERT_TRUE(collection);
 
     std::vector<std::shared_ptr<VPackBuilder>> docs{
@@ -215,8 +214,7 @@ void QueryTest::createCollections() {
   // testCollection1
   {
     auto createJson = VPackParser::fromJson(R"({ "name": "testCollection1" })");
-    auto collection = _vocbase.createCollection(
-        createJson->slice(), transaction::TrxType::kInternal);
+    auto collection = _vocbase.createCollection(createJson->slice());
     ASSERT_TRUE(collection);
 
     std::filesystem::path resource;

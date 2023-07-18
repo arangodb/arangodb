@@ -35,8 +35,7 @@ class QueryInRange : public QueryTest {
     {
       auto createJson =
           velocypack::Parser::fromJson(R"({ "name": "testCollection0" })");
-      auto collection = _vocbase.createCollection(
-          createJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_TRUE(collection);
       std::vector<std::shared_ptr<velocypack::Builder>> docs{
           velocypack::Parser::fromJson(R"({ "seq": -6, "value": null })"),
@@ -68,8 +67,7 @@ class QueryInRange : public QueryTest {
     {
       auto createJson =
           velocypack::Parser::fromJson(R"({ "name": "testCollection1" })");
-      auto collection = _vocbase.createCollection(
-          createJson->slice(), arangodb::transaction::TrxType::kInternal);
+      auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_TRUE(collection);
 
       std::filesystem::path resource;

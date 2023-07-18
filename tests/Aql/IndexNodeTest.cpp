@@ -32,8 +32,8 @@
 #include "Mocks/Servers.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/TrxType.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -94,8 +94,7 @@ TEST_F(IndexNodeTest, objectQuery) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto collection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"obj.a\", \"obj.b\", \"obj.c\"]}");
@@ -175,8 +174,7 @@ TEST_F(IndexNodeTest, expansionQuery) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto collection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
@@ -230,8 +228,7 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto collection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
@@ -274,8 +271,7 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto collection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags[*]\"]}");
@@ -335,8 +331,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto collection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!collection);
   // create an index node
   auto indexJson = arangodb::velocypack::Parser::fromJson(
@@ -618,8 +613,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
-  auto collection = vocbase.createCollection(
-      collectionJson->slice(), arangodb::transaction::TrxType::kInternal);
+  auto collection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!collection);
 
   auto ctx =

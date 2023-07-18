@@ -91,8 +91,7 @@ class QueryNGramMatch : public QueryTest {
       {
         auto createJson = arangodb::velocypack::Parser::fromJson(
             "{ \"name\": \"testCollection0\" }");
-        auto collection = vocbase.createCollection(
-            createJson->slice(), arangodb::transaction::TrxType::kInternal);
+        auto collection = vocbase.createCollection(createJson->slice());
         ASSERT_NE(nullptr, collection);
 
         std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
@@ -180,8 +179,7 @@ class QueryNGramMatch : public QueryTest {
       {
         auto createJson = arangodb::velocypack::Parser::fromJson(
             "{ \"name\": \"testCollection0\" }");
-        auto collection = vocbase.createCollection(
-            createJson->slice(), arangodb::transaction::TrxType::kInternal);
+        auto collection = vocbase.createCollection(createJson->slice());
         ASSERT_NE(nullptr, collection);
 
         std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{

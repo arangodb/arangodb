@@ -37,15 +37,15 @@ class QueryFilter : public QueryTest {
     {
       auto collectionJson =
           velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
-      auto logicalCollection1 = _vocbase.createCollection(
-          collectionJson->slice(), transaction::TrxType::kInternal);
+      auto logicalCollection1 =
+          _vocbase.createCollection(collectionJson->slice());
       ASSERT_TRUE(logicalCollection1);
     }
     {
       auto collectionJson =
           velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
-      auto logicalCollection2 = _vocbase.createCollection(
-          collectionJson->slice(), transaction::TrxType::kInternal);
+      auto logicalCollection2 =
+          _vocbase.createCollection(collectionJson->slice());
       ASSERT_TRUE(logicalCollection2);
     }
   }

@@ -476,8 +476,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_empty_subqueries) {
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   TRI_vocbase_t& vocbase{server.getSystemDatabase()};
   auto const info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
-  auto const collection =
-      vocbase.createCollection(info->slice(), transaction::TrxType::kInternal);
+  auto const collection = vocbase.createCollection(info->slice());
   auto const queryString = R"aql(
     LET new_id = (
         UPSERT { _key: @key }
