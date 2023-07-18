@@ -74,6 +74,20 @@ enum class CountApproximate {
   Cost = 1,   // iterator cost could be used as skipAllCount
 };
 
+struct HeapSortElement {
+
+  bool IsScore() const noexcept {
+    return fieldNumber == std::numeric_limits<size_t>::max();
+  }
+
+  std::string postfix;
+  // if fieldNumber is max then it is scored idx.
+  // Stored Column idx otherwise.
+  ptrdiff_t source{0};
+  size_t fieldNumber{std::numeric_limits<size_t>::max()};
+  bool ascending{true};
+};
+
 class IResearchViewNode final : public aql::ExecutionNode {
  public:
   // Node options
@@ -100,14 +114,6 @@ class IResearchViewNode final : public aql::ExecutionNode {
 
     // Try not to materialize documents.
     bool noMaterialization{true};
-  };
-
-  struct HeapSortElement {
-    ptrdiff_t scorer{std::numeric_limits<ptrdiff_t>::max()};
-    ptrdiff_t columnNumber{0};
-    size_t fieldNumber{0};
-    std::string postfix;
-    bool ascending{true};
   };
 
   static IResearchViewNode* getByVar(aql::ExecutionPlan const& plan,

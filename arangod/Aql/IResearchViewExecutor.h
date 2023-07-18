@@ -88,7 +88,9 @@ class IResearchViewExecutorInfos {
       iresearch::IResearchViewNode::ViewValuesRegisters&&
           outNonMaterializedViewRegs,
       iresearch::CountApproximate, iresearch::FilterOptimization,
-      std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit,
+      std::vector<iresearch::HeapSortElement> const&
+          heapSort,
+      size_t heapSortLimit,
       iresearch::SearchMeta const* meta);
 
   auto getDocumentRegister() const noexcept -> RegisterId;
@@ -132,9 +134,9 @@ class IResearchViewExecutorInfos {
 
   iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
 
-  size_t scoresSortLimit() const noexcept { return _scorersSortLimit; }
+  size_t heapSortLimit() const noexcept { return _heapSortLimit; }
 
-  auto scoresSort() const noexcept { return std::span{_scorersSort}; }
+  auto heapSort() const noexcept { return std::span{_heapSort}; }
 
   size_t scoreRegistersCount() const noexcept { return _scoreRegistersCount; }
 
@@ -160,9 +162,8 @@ class IResearchViewExecutorInfos {
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
   iresearch::CountApproximate _countApproximate;
   iresearch::FilterOptimization _filterOptimization;
-  // FIXME (Dronplane) rename;
-  std::vector<IResearchViewNode::HeapSortElement> _heapSort;
-  size_t _scorersSortLimit;
+  std::vector<iresearch::HeapSortElement> const& _heapSort;
+  size_t _heapSortLimit;
   iresearch::SearchMeta const* _meta;
   int const _depth;
   bool _filterConditionIsEmpty;
@@ -275,8 +276,10 @@ class IndexReadBuffer {
 
   ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
 
-  void setScoresSort(std::span<std::pair<size_t, bool> const> s) noexcept {
-    _scoresSort = s;
+  void setHeapSort(
+      std::span<iresearch::HeapSortElement const>
+          s) noexcept {
+    _heapSort = s;
   }
 
   irs::score_t* pushNoneScores(size_t count);
@@ -322,7 +325,7 @@ class IndexReadBuffer {
         maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
         maxSize * sizeof(typename decltype(_searchDocs)::value_type) +
         maxSize * sizeof(typename decltype(_storedValuesBuffer)::value_type);
-    if (!_scoresSort.empty()) {
+    if (!_heapSort.empty()) {
       res += maxSize * sizeof(typename decltype(_rows)::value_type);
     }
     return res;
@@ -341,7 +344,7 @@ class IndexReadBuffer {
       _searchDocs.reserve(atMost);
       _scoreBuffer.reserve(atMost * scores);
       _storedValuesBuffer.reserve(atMost * stored);
-      if (!_scoresSort.empty()) {
+      if (!_heapSort.empty()) {
         _rows.reserve(atMost);
       }
     }
@@ -398,7 +401,7 @@ class IndexReadBuffer {
   StoredValuesContainer _storedValuesBuffer;
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;
-  std::span<std::pair<size_t, bool> const> _scoresSort;
+  std::span<iresearch::HeapSortElement const> _heapSort;
   std::vector<size_t> _rows;
   size_t _maxSize;
   size_t _heapSizeLeft;

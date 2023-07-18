@@ -134,7 +134,7 @@ class BufferHeapSortContext {
  public:
   explicit BufferHeapSortContext(
       size_t numScoreRegisters,
-      std::span<std::pair<size_t, bool> const> heapSort,
+      std::span<HeapSortElement const> heapSort,
       std::span<float_t const> scoreBuffer)
       : _numScoreRegisters(numScoreRegisters),
         _heapSort(heapSort),
@@ -144,9 +144,9 @@ class BufferHeapSortContext {
     auto const* rhs_scores = &_scoreBuffer[b * _numScoreRegisters];
     auto lhs_scores = &_scoreBuffer[a * _numScoreRegisters];
     for (auto const& cmp : _heapSort) {
-      if (lhs_scores[cmp.first] != rhs_scores[cmp.first]) {
-        return cmp.second ? lhs_scores[cmp.first] < rhs_scores[cmp.first]
-                          : lhs_scores[cmp.first] > rhs_scores[cmp.first];
+      if (lhs_scores[cmp.source] != rhs_scores[cmp.source]) {
+        return cmp.ascending ? lhs_scores[cmp.source] < rhs_scores[cmp.source]
+                             : lhs_scores[cmp.source] > rhs_scores[cmp.source];
       }
     }
     return false;
@@ -155,9 +155,9 @@ class BufferHeapSortContext {
   bool compareInput(size_t lhsIdx, float_t const* rhs_scores) const noexcept {
     auto lhs_scores = &_scoreBuffer[lhsIdx * _numScoreRegisters];
     for (auto const& cmp : _heapSort) {
-      if (lhs_scores[cmp.first] != rhs_scores[cmp.first]) {
-        return cmp.second ? lhs_scores[cmp.first] < rhs_scores[cmp.first]
-                          : lhs_scores[cmp.first] > rhs_scores[cmp.first];
+      if (lhs_scores[cmp.source] != rhs_scores[cmp.source]) {
+        return cmp.ascending ? lhs_scores[cmp.source] < rhs_scores[cmp.source]
+                          : lhs_scores[cmp.source] > rhs_scores[cmp.source];
       }
     }
     return false;
@@ -165,7 +165,7 @@ class BufferHeapSortContext {
 
  private:
   size_t _numScoreRegisters;
-  std::span<std::pair<size_t, bool> const> _heapSort;
+  std::span<HeapSortElement const> _heapSort;
   std::span<float_t const> _scoreBuffer;
 };
 
@@ -187,7 +187,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
-    std::vector<std::pair<size_t, bool>> heapSort, size_t scorersSortLimit,
+    std::vector<HeapSortElement> const& heapSort,
+    size_t heapSortLimit,
     iresearch::SearchMeta const* meta)
     : _searchDocOutReg{searchDocRegister},
       _documentOutReg{outRegister},
@@ -208,8 +209,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _outNonMaterializedViewRegs{std::move(outNonMaterializedViewRegs)},
       _countApproximate{countApproximate},
       _filterOptimization{filterOptimization},
-      _heapSort{std::move(heapSort)},
-      _scorersSortLimit{scorersSortLimit},
+      _heapSort{heapSort},
+      _heapSortLimit{heapSortLimit},
       _meta{meta},
       _depth{depth},
       _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
@@ -1018,7 +1019,7 @@ template<typename ExecutionTraits>
 IResearchViewHeapSortExecutor<ExecutionTraits>::IResearchViewHeapSortExecutor(
     Fetcher& fetcher, Infos& infos)
     : Base{fetcher, infos} {
-  this->_indexReadBuffer.setheapSort(this->_infos.heapSort());
+  this->_indexReadBuffer.setHeapSort(this->_infos.heapSort());
 }
 
 template<typename ExecutionTraits>
