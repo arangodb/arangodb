@@ -186,9 +186,8 @@ Result TransactionState::addCollection(DataSourceId cid, std::string_view cname,
       } else {
         // everything else is not safe and must be rejected
         auto message = absl::StrCat(
-            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) +
-                ": ",
-            cname, " [", AccessMode::typeString(accessType), "]");
+            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION),
+            ": ", cname, " [", AccessMode::typeString(accessType), "]");
         res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, message);
       }
     }
