@@ -218,8 +218,7 @@ void RestControlPregelHandler::handleGetRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.empty()) {
-    pregel::statuswriter::CollectionStatusWriter cWriter{
-        _vocbase, transaction::TrxType::kREST};
+    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
     return handlePregelHistoryResult(cWriter.readAllNonExpiredResults());
   }
 
@@ -232,8 +231,8 @@ void RestControlPregelHandler::handleGetRequest() {
     }
     auto executionNumber = arangodb::pregel::ExecutionNumber{
         arangodb::basics::StringUtils::uint64(suffixes[0])};
-    pregel::statuswriter::CollectionStatusWriter cWriter{
-        _vocbase, executionNumber, transaction::TrxType::kREST};
+    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
+                                                         executionNumber};
     return handlePregelHistoryResult(cWriter.readResult(), true);
   } else if (suffixes.size() <= 2 && suffixes.at(0) == "history") {
     if (_pregel.isStopping()) {
@@ -242,15 +241,14 @@ void RestControlPregelHandler::handleGetRequest() {
 
     if (suffixes.size() == 1) {
       // Read all pregel history entries
-      pregel::statuswriter::CollectionStatusWriter cWriter{
-          _vocbase, transaction::TrxType::kREST};
+      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
       return handlePregelHistoryResult(cWriter.readAllResults());
     } else {
       // Read single history entry
       auto executionNumber = arangodb::pregel::ExecutionNumber{
           arangodb::basics::StringUtils::uint64(suffixes.at(1))};
-      pregel::statuswriter::CollectionStatusWriter cWriter{
-          _vocbase, executionNumber, transaction::TrxType::kREST};
+      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
+                                                           executionNumber};
       return handlePregelHistoryResult(cWriter.readResult(), true);
     }
   }
@@ -319,15 +317,14 @@ void RestControlPregelHandler::handleDeleteRequest() {
   if (suffixes.size() >= 1 && suffixes.at(0) == "history") {
     if (suffixes.size() == 1) {
       // Delete all pregel history entries
-      pregel::statuswriter::CollectionStatusWriter cWriter{
-          _vocbase, transaction::TrxType::kREST};
+      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
       return handlePregelHistoryResult(cWriter.deleteAllResults());
     } else {
       // Delete single history entry
       auto executionNumber = arangodb::pregel::ExecutionNumber{
           arangodb::basics::StringUtils::uint64(suffixes.at(1))};
-      pregel::statuswriter::CollectionStatusWriter cWriter{
-          _vocbase, executionNumber, transaction::TrxType::kREST};
+      pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
+                                                           executionNumber};
       return handlePregelHistoryResult(cWriter.deleteResult());
     }
   }

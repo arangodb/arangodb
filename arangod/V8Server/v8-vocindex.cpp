@@ -152,8 +152,7 @@ static void JS_DropIndexVocbaseCol(
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
-  auto res = methods::Indexes::drop(*collection, builder.slice(),
-                                    transaction::TrxType::kREST);
+  auto res = methods::Indexes::drop(*collection, builder.slice());
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -191,8 +190,7 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   VPackBuilder output;
-  auto res = methods::Indexes::getAll(*collection, flags, withHidden, output,
-                                      transaction::TrxType::kREST);
+  auto res = methods::Indexes::getAll(*collection, flags, withHidden, output);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -294,7 +292,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   std::shared_ptr<LogicalCollection> coll;
   auto result = methods::Collections::create(
       vocbase,  // collection vocbase
-      options, collections, transaction::TrxType::kREST,
+      options, collections,
       createWaitsForSyncReplication,  // replication wait flag
       enforceReplicationFactor,       // replication factor flag
       /*isNewDatabase*/ false         // here always false

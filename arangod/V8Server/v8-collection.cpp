@@ -64,8 +64,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-#include "Logger/LogMacros.h"
-
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1277,7 +1275,7 @@ static void JS_PropertiesVocbaseCol(
       OperationOptions options(ExecContext::current());
 
       auto res = methods::Collections::updateProperties(
-          *consoleColl, builder.slice(), options, transaction::TrxType::kREST);
+          *consoleColl, builder.slice(), options);
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }
@@ -1347,8 +1345,7 @@ static void JS_RenameVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::rename(*collection, name, doOverride,
-                                          transaction::TrxType::kREST);
+  auto res = methods::Collections::rename(*collection, name, doOverride);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

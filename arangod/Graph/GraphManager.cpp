@@ -50,6 +50,7 @@
 #include "Sharding/ShardingInfo.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/TrxType.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
@@ -113,7 +114,6 @@ Result GraphManager::createCollection(std::string const& name,
       name,     // collection name
       colType,  // collection type
       options,  // collection properties
-      _trxTypeHint,
       /*createWaitsForSyncReplication*/ waitForSyncReplication,
       /*enforceReplicationFactor*/ true,
       /*isNewDatabase*/ false, coll);
@@ -709,7 +709,7 @@ Result GraphManager::ensureCollections(
 
   OperationOptions opOptions(ExecContext::current());
   auto finalResult = methods::Collections::create(
-      ctx()->vocbase(), opOptions, std::move(createRequests), _trxTypeHint,
+      ctx()->vocbase(), opOptions, std::move(createRequests),
       waitForSyncReplication, true, false,
       allowEnterpriseCollectionsOnSingleServer);
   // We do not care for the Collections here, just forward the result

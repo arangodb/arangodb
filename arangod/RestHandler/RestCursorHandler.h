@@ -26,12 +26,12 @@
 #include "Aql/QueryResult.h"
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Scheduler/Scheduler.h"
+#include "Transaction/Hints.h"
+#include "Transaction/TrxType.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-
-#include "Scheduler/Scheduler.h"
-#include "Transaction/Hints.h"
 
 #include <mutex>
 #include <optional>
@@ -71,7 +71,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief register the query either as streaming cursor or in _query
   /// the query is not executed here.
   /// this method is also used by derived classes
-  RestStatus registerQueryOrCursor(arangodb::velocypack::Slice const& body,
+  RestStatus registerQueryOrCursor(velocypack::Slice body,
                                    transaction::TrxType trxTypeHint);
 
   /// @brief Process the query registered in _query.

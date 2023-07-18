@@ -36,6 +36,7 @@
 #include "Cluster/ServerState.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
+#include "Transaction/TrxType.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -153,7 +154,7 @@ void RestCursorHandler::cancel() {
 /// return If true, we need to continue processing,
 ///        If false we are done (error or stream)
 RestStatus RestCursorHandler::registerQueryOrCursor(
-    VPackSlice const& slice, transaction::TrxType trxTypeHint) {
+    velocypack::Slice slice, transaction::TrxType trxTypeHint) {
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {

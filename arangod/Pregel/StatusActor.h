@@ -31,11 +31,11 @@
 #include "Inspection/VPackWithErrorT.h"
 #include "Pregel/DatabaseTypes.h"
 #include "Pregel/StatusMessages.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 #include "fmt/core.h"
 #include "fmt/chrono.h"
-#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 
 namespace arangodb::pregel {
 
@@ -304,8 +304,7 @@ template<typename Runtime>
 struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
   auto updateStatusDocument() {
     statuswriter::CollectionStatusWriter cWriter{
-        this->state->vocbaseGuard.database(), this->state->status->id.number,
-        transaction::TrxType::kInternal};
+        this->state->vocbaseGuard.database(), this->state->status->id.number};
     auto serializedStatus =
         inspection::serializeWithErrorT(this->state->status);
     if (serializedStatus.ok()) {
@@ -323,8 +322,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
   }
   auto createStatusDocument() {
     statuswriter::CollectionStatusWriter cWriter{
-        this->state->vocbaseGuard.database(), this->state->status->id.number,
-        transaction::TrxType::kInternal};
+        this->state->vocbaseGuard.database(), this->state->status->id.number};
     auto serializedStatus =
         inspection::serializeWithErrorT(this->state->status);
     if (serializedStatus.ok()) {

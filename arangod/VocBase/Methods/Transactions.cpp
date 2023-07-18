@@ -44,8 +44,6 @@
 
 #include <velocypack/Slice.h>
 
-#include "Logger/LogMacros.h"
-
 namespace arangodb {
 
 bool allowTransactions(v8::Isolate* isolate) {

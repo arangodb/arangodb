@@ -41,6 +41,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/TrxType.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -872,8 +873,7 @@ bool State::ensureCollection(std::string const& name, bool drop) {
     dropCollection(name);
   }
 
-  auto collection =
-      _vocbase->createCollection(body.slice(), transaction::TrxType::kInternal);
+  auto collection = _vocbase->createCollection(body.slice());
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");

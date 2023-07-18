@@ -31,7 +31,6 @@
 #include "Indexes/IndexIterator.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Transaction/CountCache.h"
-#include "Transaction/TrxType.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/RevisionId.h"
@@ -101,7 +100,7 @@ class LogicalCollection : public LogicalDataSource {
  public:
   LogicalCollection() = delete;
   LogicalCollection(TRI_vocbase_t& vocbase, velocypack::Slice info,
-                    transaction::TrxType trxTypeHint, bool isAStub);
+                    bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
@@ -453,9 +452,6 @@ class LogicalCollection : public LogicalDataSource {
 
   // @brief Collection type
   TRI_col_type_e const _type;
-
-  // TODO: remove - should not be here
-  transaction::TrxType _trxTypeHint;
 
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;

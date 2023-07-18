@@ -22,25 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-pregel.h"
-#include "Pregel/ExecutionNumber.h"
-#include "Pregel/PregelOptions.h"
-#include "v8-vocbaseprivate.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
-
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/Conductor.h"
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/PregelOptions.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Pregel/Worker/Worker.h"
-
+#include "Utils/OperationResult.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-
-#include "Utils/OperationResult.h"
-#include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "V8Server/v8-vocbaseprivate.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -205,8 +202,7 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // check the arguments
   uint32_t const argLength = args.Length();
   if (argLength == 0) {
-    pregel::statuswriter::CollectionStatusWriter cWriter{
-        vocbase, transaction::TrxType::kREST};
+    pregel::statuswriter::CollectionStatusWriter cWriter{vocbase};
     handlePregelHistoryV8Result(cWriter.readAllNonExpiredResults());
     return;
   }
@@ -218,8 +214,7 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto executionNum = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
-  pregel::statuswriter::CollectionStatusWriter cWriter{
-      vocbase, executionNum, transaction::TrxType::kREST};
+  pregel::statuswriter::CollectionStatusWriter cWriter{vocbase, executionNum};
   handlePregelHistoryV8Result(cWriter.readResult(), true);
   return;
 
@@ -379,8 +374,7 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t const argLength = args.Length();
   if (argLength == 0) {
     // Read all pregel history entries
-    pregel::statuswriter::CollectionStatusWriter cWriter{
-        vocbase, transaction::TrxType::kREST};
+    pregel::statuswriter::CollectionStatusWriter cWriter{vocbase};
     handlePregelHistoryV8Result(cWriter.readAllResults());
     return;
   }
@@ -394,8 +388,8 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
 
-  pregel::statuswriter::CollectionStatusWriter cWriter{
-      vocbase, executionNumber, transaction::TrxType::kREST};
+  pregel::statuswriter::CollectionStatusWriter cWriter{vocbase,
+                                                       executionNumber};
   handlePregelHistoryV8Result(cWriter.readResult(), true);
   return;
   TRI_V8_TRY_CATCH_END
@@ -465,8 +459,7 @@ static void JS_PregelHistoryRemove(
   uint32_t const argLength = args.Length();
   if (argLength == 0) {
     // Delete all pregel history entries
-    pregel::statuswriter::CollectionStatusWriter cWriter{
-        vocbase, transaction::TrxType::kREST};
+    pregel::statuswriter::CollectionStatusWriter cWriter{vocbase};
     handlePregelHistoryV8Result(cWriter.deleteAllResults());
     return;
   }
@@ -479,8 +472,8 @@ static void JS_PregelHistoryRemove(
   // Delete single history entry
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
-  pregel::statuswriter::CollectionStatusWriter cWriter{
-      vocbase, executionNumber, transaction::TrxType::kREST};
+  pregel::statuswriter::CollectionStatusWriter cWriter{vocbase,
+                                                       executionNumber};
   handlePregelHistoryV8Result(cWriter.deleteResult());
   return;
   TRI_V8_TRY_CATCH_END

@@ -45,8 +45,6 @@
 
 #include <thread>
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;

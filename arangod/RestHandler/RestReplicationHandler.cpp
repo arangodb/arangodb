@@ -68,6 +68,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/TrxType.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -3609,7 +3610,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   OperationOptions options(_context);
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = methods::Collections::create(
-      _vocbase, options, infos, transaction::TrxType::kREST,
+      _vocbase, options, infos,
       /*createWaitsForSyncReplication*/ true, enforceReplicationFactor,
       isNewDatabase, nullptr, collections, allowSystem,
       allowEnterpriseCollectionsOnSingleServer,

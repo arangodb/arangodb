@@ -45,6 +45,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/TrxType.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
@@ -139,7 +140,6 @@ Result extractIndexHandle(velocypack::Slice arg, bool extendedNames,
 
 Result Indexes::getIndex(LogicalCollection const& collection,
                          VPackSlice indexId, VPackBuilder& out,
-                         transaction::TrxType trxTypeHint,
                          transaction::Methods* trx) {
   // do some magic to parse the iid
   std::string
@@ -184,7 +184,7 @@ Result Indexes::getIndex(LogicalCollection const& collection,
   VPackBuilder tmp;
   Result res =
       Indexes::getAll(collection, Index::makeFlags(Index::Serialize::Estimates),
-                      /*withHidden*/ true, tmp, trxTypeHint, trx);
+                      /*withHidden*/ true, tmp, trx);
   if (res.ok()) {
     for (VPackSlice index : VPackArrayIterator(tmp.slice())) {
       if ((index.hasKey(StaticStrings::IndexId) &&
@@ -203,8 +203,7 @@ Result Indexes::getIndex(LogicalCollection const& collection,
 arangodb::Result Indexes::getAll(
     LogicalCollection const& collection,
     std::underlying_type<Index::Serialize>::type flags, bool withHidden,
-    VPackBuilder& result, transaction::TrxType trxTypeHint,
-    transaction::Methods* inputTrx) {
+    VPackBuilder& result, transaction::Methods* inputTrx) {
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = collection.vocbase().name();
@@ -268,7 +267,7 @@ arangodb::Result Indexes::getAll(
     } else {
       trx = std::make_shared<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(collection.vocbase()),
-          collection, AccessMode::Type::READ, trxTypeHint);
+          collection, AccessMode::Type::READ, transaction::TrxType::kInternal);
 
       Result res = trx->begin();
       if (!res.ok()) {
@@ -686,8 +685,8 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const& collection,
   return {};
 }
 
-Result Indexes::drop(LogicalCollection& collection, velocypack::Slice indexArg,
-                     transaction::TrxType trxTypeHint) {
+Result Indexes::drop(LogicalCollection& collection,
+                     velocypack::Slice indexArg) {
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
     if (exec.databaseAuthLevel() != auth::Level::RW ||
@@ -700,7 +699,7 @@ Result Indexes::drop(LogicalCollection& collection, velocypack::Slice indexArg,
 
   IndexId iid = IndexId::none();
   std::string name;
-  auto getHandle = [&collection, &indexArg, &iid, &name, &trxTypeHint](
+  auto getHandle = [&collection, &indexArg, &iid, &name](
                        CollectionNameResolver const* resolver,
                        transaction::Methods* trx = nullptr) -> Result {
     Result res =
@@ -714,8 +713,7 @@ Result Indexes::drop(LogicalCollection& collection, velocypack::Slice indexArg,
 
     if (iid.empty() && !name.empty()) {
       VPackBuilder builder;
-      res = methods::Indexes::getIndex(collection, indexArg, builder,
-                                       trxTypeHint, trx);
+      res = methods::Indexes::getIndex(collection, indexArg, builder, trx);
       if (!res.ok()) {
         events::DropIndex(collection.vocbase().name(), collection.name(), "",
                           res.errorNumber());
@@ -765,7 +763,8 @@ Result Indexes::drop(LogicalCollection& collection, velocypack::Slice indexArg,
     trxOpts.requiresReplication = false;
     SingleCollectionTransaction trx(
         transaction::V8Context::CreateWhenRequired(collection.vocbase(), false),
-        collection, AccessMode::Type::EXCLUSIVE, trxTypeHint, trxOpts);
+        collection, AccessMode::Type::EXCLUSIVE,
+        transaction::TrxType::kInternal, trxOpts);
     Result res = trx.begin();
 
     if (!res.ok()) {

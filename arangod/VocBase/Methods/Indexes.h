@@ -43,8 +43,7 @@ namespace methods {
 struct Indexes {
   static arangodb::Result getIndex(LogicalCollection const& collection,
                                    velocypack::Slice indexId,
-                                   velocypack::Builder&,
-                                   transaction::TrxType trxTypeHint,
+                                   velocypack::Builder& out,
                                    transaction::Methods* trx = nullptr);
 
   /// @brief get all indexes, skips view links
@@ -52,7 +51,6 @@ struct Indexes {
                                  std::underlying_type<Index::Serialize>::type,
                                  bool withHidden,
                                  arangodb::velocypack::Builder&,
-                                 transaction::TrxType trxTypeHint,
                                  transaction::Methods* trx = nullptr);
 
   static arangodb::Result createIndex(LogicalCollection&, Index::IndexType,
@@ -65,8 +63,7 @@ struct Indexes {
       std::shared_ptr<std::function<arangodb::Result(double)>> f = nullptr);
 
   static arangodb::Result drop(LogicalCollection& collection,
-                               velocypack::Slice indexArg,
-                               transaction::TrxType trxTypeHint);
+                               velocypack::Slice indexArg);
 
   static arangodb::Result extractHandle(LogicalCollection const& collection,
                                         CollectionNameResolver const* resolver,

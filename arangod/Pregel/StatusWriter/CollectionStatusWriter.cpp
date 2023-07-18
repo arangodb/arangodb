@@ -26,6 +26,7 @@
 #include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Hints.h"
+#include "Transaction/TrxType.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -40,11 +41,8 @@ struct ExecutionNumber;
 namespace arangodb::pregel::statuswriter {
 
 CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase,
-                                               ExecutionNumber& executionNumber,
-                                               transaction::TrxType trxTypeHint)
-    : _vocbaseGuard(vocbase),
-      _executionNumber(executionNumber),
-      _trxTypeHint(trxTypeHint) {
+                                               ExecutionNumber& executionNumber)
+    : _vocbaseGuard(vocbase), _executionNumber(executionNumber) {
   CollectionNameResolver resolver(_vocbaseGuard.database());
   auto logicalCollection =
       resolver.getCollection(StaticStrings::PregelCollection);
@@ -58,9 +56,8 @@ CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase,
   }
 };
 
-CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase,
-                                               transaction::TrxType trxTypeHint)
-    : _vocbaseGuard(vocbase), _trxTypeHint(trxTypeHint) {
+CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase)
+    : _vocbaseGuard(vocbase) {
   CollectionNameResolver resolver(_vocbaseGuard.database());
   auto logicalCollection =
       resolver.getCollection(StaticStrings::PregelCollection);
@@ -82,8 +79,9 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
   OperationData opData(_executionNumber.value, data);
 
   auto accessModeType = AccessMode::Type::WRITE;
+  // TODO: is the trxType actually correct here?
   SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType, _trxTypeHint);
+                                  accessModeType, transaction::TrxType::kREST);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
   options.waitForSync = false;
@@ -197,9 +195,10 @@ auto CollectionStatusWriter::updateResult(velocypack::Slice data)
   }
   OperationData opData(_executionNumber.value, data);
 
+  // TODO: is the TrxType actually correct here?
   auto accessModeType = AccessMode::Type::WRITE;
   SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType, _trxTypeHint);
+                                  accessModeType, transaction::TrxType::kREST);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
 
@@ -220,8 +219,9 @@ auto CollectionStatusWriter::deleteResult() -> OperationResult {
   OperationData opData(_executionNumber.value);
 
   auto accessModeType = AccessMode::Type::WRITE;
+  // TODO: is the TrxType actually correct here?
   SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType, _trxTypeHint);
+                                  accessModeType, transaction::TrxType::kREST);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
 
@@ -237,8 +237,9 @@ auto CollectionStatusWriter::deleteResult() -> OperationResult {
 
 auto CollectionStatusWriter::deleteAllResults() -> OperationResult {
   auto accessModeType = AccessMode::Type::WRITE;
+  // TODO: is the TrxType actually correct here?
   SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType, _trxTypeHint);
+                                  accessModeType, transaction::TrxType::kREST);
   trx.addHint(transaction::Hints::Hint::NONE);
   OperationOptions options(ExecContext::current());
 
@@ -260,9 +261,10 @@ auto CollectionStatusWriter::executeQuery(
     bindParams = bindParameters.value();
   }
 
+  // TODO: is the TrxType actually correct here?
   auto query = arangodb::aql::Query::create(
       ctx(), arangodb::aql::QueryString(std::move(queryString)), bindParams,
-      _trxTypeHint);
+      transaction::TrxType::kREST);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
   if (queryResult.result.fail()) {

@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/TrxType.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 

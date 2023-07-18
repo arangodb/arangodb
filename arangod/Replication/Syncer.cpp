@@ -43,6 +43,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/TrxType.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
@@ -725,8 +726,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
   auto stripped = rocksutils::stripObjectIds(merged.slice());
 
   try {
-    col = vocbase.createCollection(stripped.first,
-                                   transaction::TrxType::kInternal);
+    col = vocbase.createCollection(stripped.first);
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

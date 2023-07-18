@@ -109,7 +109,6 @@ bool isSystemName(CollectionCreationInfo const& info) {
 
 Result validateCreationInfo(CollectionCreationInfo const& info,
                             TRI_vocbase_t& vocbase,
-                            transaction::TrxType trxTypeHint,
                             bool isSingleServerSmartGraph,
                             bool enforceReplicationFactor,
                             bool isLocalCollection, bool isSystemName,
@@ -161,7 +160,7 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
   // validate computed values
   auto result = ComputedValues::buildInstance(
       vocbase, shardKeys, info.properties.get(StaticStrings::ComputedValues),
-      trxTypeHint);
+      transaction::TrxType::kInternal);
   if (result.fail()) {
     return result.result();
   }
@@ -213,9 +212,8 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
 // validate collection parameters. if the validation fails, it will audit-log
 // the failure.
 Result validateAllCollectionsInfo(
-    TRI_vocbase_t& vocbase, transaction::TrxType trxTypeHint,
-    std::vector<CollectionCreationInfo> const& infos, bool allowSystem,
-    bool allowEnterpriseCollectionsOnSingleServer,
+    TRI_vocbase_t& vocbase, std::vector<CollectionCreationInfo> const& infos,
+    bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer,
     bool enforceReplicationFactor) {
   Result res;
 
@@ -226,7 +224,7 @@ Result validateAllCollectionsInfo(
 
     // validate the information of the collection to be created
     res = validateCreationInfo(
-        info, vocbase, trxTypeHint, allowEnterpriseCollectionsOnSingleServer,
+        info, vocbase, allowEnterpriseCollectionsOnSingleServer,
         enforceReplicationFactor, isLocalCollection(info), isSystemName(info),
         allowSystem);
     if (res.fail()) {
@@ -423,6 +421,7 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
   if (_responsibleForTrx && _trx == nullptr) {
     auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(),
                                                           embeddable);
+    // TODO: check if trxType is actually correct here
     auto trx = std::make_unique<SingleCollectionTransaction>(
         ctx, *_coll, type, transaction::TrxType::kREST);
 
@@ -597,9 +596,8 @@ Collections::create(         // create collection
     TRI_vocbase_t& vocbase,  // collection vocbase
     OperationOptions const& options,
     std::vector<CreateCollectionBody> collections,  // Collections to create
-    transaction::TrxType trxTypeHint,
-    bool createWaitsForSyncReplication,  // replication wait flag
-    bool enforceReplicationFactor,       // replication factor flag
+    bool createWaitsForSyncReplication,             // replication wait flag
+    bool enforceReplicationFactor,                  // replication factor flag
     bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
     bool isRestore) {
   // Let's first check if we are allowed to create the collections
@@ -636,7 +634,7 @@ Collections::create(         // create collection
       TRI_ASSERT(col.shardKeys.has_value());
       auto result = ComputedValues::buildInstance(
           vocbase, col.shardKeys.value(), col.computedValues.slice(),
-          trxTypeHint);
+          transaction::TrxType::kInternal);
       if (result.fail()) {
         return result.result();
       }
@@ -681,7 +679,7 @@ Collections::create(         // create collection
     // Therefore, we need to iterate over the infoSlice and create each
     // collection one by one.
     results = vocbase.createCollections(
-        collections, trxTypeHint, allowEnterpriseCollectionsOnSingleServer);
+        collections, allowEnterpriseCollectionsOnSingleServer);
     if (results.fail()) {
       for (auto const& info : collections) {
         events::CreateCollection(vocbase.name(), info.name,
@@ -774,9 +772,8 @@ Collections::create(         // create collection
     std::string const& name,                 // collection name
     TRI_col_type_e collectionType,           // collection type
     arangodb::velocypack::Slice properties,  // collection properties
-    transaction::TrxType trxTypeHint,
-    bool createWaitsForSyncReplication,  // replication wait flag
-    bool enforceReplicationFactor,       // replication factor flag
+    bool createWaitsForSyncReplication,      // replication wait flag
+    bool enforceReplicationFactor,           // replication factor flag
     bool isNewDatabase,
     std::shared_ptr<LogicalCollection>& ret,  // invoke on collection creation
     bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer,
@@ -793,10 +790,10 @@ Collections::create(         // create collection
   }
   std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
   std::vector<std::shared_ptr<LogicalCollection>> collections;
-  Result res = create(vocbase, options, infos, trxTypeHint,
-                      createWaitsForSyncReplication, enforceReplicationFactor,
-                      isNewDatabase, nullptr, collections, allowSystem,
-                      allowEnterpriseCollectionsOnSingleServer, isRestore);
+  Result res =
+      create(vocbase, options, infos, createWaitsForSyncReplication,
+             enforceReplicationFactor, isNewDatabase, nullptr, collections,
+             allowSystem, allowEnterpriseCollectionsOnSingleServer, isRestore);
   if (res.ok() && collections.size() > 0) {
     ret = std::move(collections[0]);
   }
@@ -806,8 +803,8 @@ Collections::create(         // create collection
 Result Collections::create(
     TRI_vocbase_t& vocbase, OperationOptions const& options,
     std::vector<CollectionCreationInfo> const& infos,
-    transaction::TrxType trxTypeHint, bool createWaitsForSyncReplication,
-    bool enforceReplicationFactor, bool isNewDatabase,
+    bool createWaitsForSyncReplication, bool enforceReplicationFactor,
+    bool isNewDatabase,
     std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
     std::vector<std::shared_ptr<LogicalCollection>>& ret, bool allowSystem,
     bool allowEnterpriseCollectionsOnSingleServer, bool isRestore) {
@@ -827,8 +824,8 @@ Result Collections::create(
   // validate information from every element of infos.
   // if the validation fails, it will audit-log the failure.
   Result res = validateAllCollectionsInfo(
-      vocbase, trxTypeHint, infos, allowSystem,
-      allowEnterpriseCollectionsOnSingleServer, enforceReplicationFactor);
+      vocbase, infos, allowSystem, allowEnterpriseCollectionsOnSingleServer,
+      enforceReplicationFactor);
   if (res.fail()) {
     return res;
   }
@@ -871,7 +868,7 @@ Result Collections::create(
       // Therefore, we need to iterate over the infoSlice and create each
       // collection one by one.
       collections = vocbase.createCollections(
-          infoSlice, trxTypeHint, allowEnterpriseCollectionsOnSingleServer);
+          infoSlice, allowEnterpriseCollectionsOnSingleServer);
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
@@ -1038,9 +1035,8 @@ void Collections::createSystemCollectionProperties(
                             name,  // collection name top create
                             TRI_COL_TYPE_DOCUMENT,  // collection type to create
                             bb.slice(),  // collection definition to create
-                            transaction::TrxType::kInternal,
-                            true,  // waitsForSyncReplication
-                            true,  // enforceReplicationFactor
+                            true,        // waitsForSyncReplication
+                            true,        // enforceReplicationFactor
                             isNewDatabase, createdCollection,
                             true /* allow system collection creation */);
   }
@@ -1104,8 +1100,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 
 Result Collections::updateProperties(LogicalCollection& collection,
                                      velocypack::Slice props,
-                                     OperationOptions const& options,
-                                     transaction::TrxType trxTypeHint) {
+                                     OperationOptions const& options) {
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
 
@@ -1165,7 +1160,8 @@ Result Collections::updateProperties(LogicalCollection& collection,
     auto ctx =
         transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
     SingleCollectionTransaction trx(ctx, collection,
-                                    AccessMode::Type::EXCLUSIVE, trxTypeHint);
+                                    AccessMode::Type::EXCLUSIVE,
+                                    transaction::TrxType::kInternal);
     Result res = trx.begin();
 
     if (res.ok()) {
@@ -1189,11 +1185,10 @@ Result Collections::updateProperties(LogicalCollection& collection,
 
 static ErrorCode RenameGraphCollections(TRI_vocbase_t& vocbase,
                                         std::string const& oldName,
-                                        std::string const& newName,
-                                        transaction::TrxType trxTypeHint) {
+                                        std::string const& newName) {
   ExecContextSuperuserScope exscope;
 
-  graph::GraphManager gmngr{vocbase, trxTypeHint};
+  graph::GraphManager gmngr{vocbase, transaction::TrxType::kInternal};
   bool r = gmngr.renameGraphCollection(oldName, newName);
   if (!r) {
     return TRI_ERROR_FAILED;
@@ -1202,8 +1197,7 @@ static ErrorCode RenameGraphCollections(TRI_vocbase_t& vocbase,
 }
 
 Result Collections::rename(LogicalCollection& collection,
-                           std::string const& newName, bool doOverride,
-                           transaction::TrxType trxTypeHint) {
+                           std::string const& newName, bool doOverride) {
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     return {TRI_ERROR_CLUSTER_UNSUPPORTED};
@@ -1255,8 +1249,7 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   // rename collection inside _graphs as well
-  return RenameGraphCollections(collection.vocbase(), oldName, newName,
-                                trxTypeHint);
+  return RenameGraphCollections(collection.vocbase(), oldName, newName);
 }
 
 #ifndef USE_ENTERPRISE
@@ -1411,6 +1404,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
 
+  // TODO: check if trxType is actually correct here
   auto ctx =
       transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ,

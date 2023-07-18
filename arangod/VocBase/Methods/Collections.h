@@ -97,9 +97,8 @@ struct Collections {
       TRI_vocbase_t& vocbase,  // collection vocbase
       OperationOptions const& options,
       std::vector<CreateCollectionBody> collections,  // Collections to create
-      transaction::TrxType trxTypeHint,
-      bool createWaitsForSyncReplication,  // replication wait flag
-      bool enforceReplicationFactor,       // replication factor flag
+      bool createWaitsForSyncReplication,             // replication wait flag
+      bool enforceReplicationFactor,                  // replication factor flag
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
       bool isRestore = false);  // whether this is being called
                                 // during restore
@@ -112,9 +111,8 @@ struct Collections {
       std::string const& name,                 // collection name
       TRI_col_type_e collectionType,           // collection type
       arangodb::velocypack::Slice properties,  // collection properties
-      transaction::TrxType trxTypeHint,
-      bool createWaitsForSyncReplication,  // replication wait flag
-      bool enforceReplicationFactor,       // replication factor flag
+      bool createWaitsForSyncReplication,      // replication wait flag
+      bool enforceReplicationFactor,           // replication factor flag
       bool isNewDatabase,
       std::shared_ptr<LogicalCollection>& ret,  // invoke on collection creation
       bool allowSystem = false,
@@ -126,7 +124,6 @@ struct Collections {
   /// transferred to callee
   static Result create(TRI_vocbase_t&, OperationOptions const&,
                        std::vector<CollectionCreationInfo> const& infos,
-                       transaction::TrxType trxTypeHint,
                        bool createWaitsForSyncReplication,
                        bool enforceReplicationFactor, bool isNewDatabase,
                        std::shared_ptr<LogicalCollection> const& colPtr,
@@ -149,12 +146,10 @@ struct Collections {
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,
                                  velocypack::Slice props,
-                                 OperationOptions const& options,
-                                 transaction::TrxType trxTypeHint);
+                                 OperationOptions const& options);
 
   static Result rename(LogicalCollection& collection,
-                       std::string const& newName, bool doOverride,
-                       transaction::TrxType trxTypeHint);
+                       std::string const& newName, bool doOverride);
 
   static arangodb::Result drop(           // drop collection
       arangodb::LogicalCollection& coll,  // collection to drop

@@ -559,7 +559,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 }
 
 #ifndef USE_ENTERPRISE
-void GraphNode::determineEnterpriseFlags(AstNode const*) {
+void GraphNode::determineEnterpriseFlags(AstNode const*,
+                                         transaction::TrxType /*trxTypeHint*/) {
   _isSmart = false;
   _isDisjoint = false;
   _enabledClusterOneShardRule = false;

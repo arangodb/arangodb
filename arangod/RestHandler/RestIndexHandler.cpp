@@ -44,8 +44,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -178,8 +176,7 @@ RestStatus RestIndexHandler::getIndexes() {
     bool withHidden = _request->parsedValue("withHidden", false);
 
     VPackBuilder indexes;
-    Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes,
-                                          transaction::TrxType::kREST);
+    Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());
@@ -222,8 +219,7 @@ RestStatus RestIndexHandler::getIndexes() {
     tmp.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(*coll, tmp.slice(), output,
-                                            transaction::TrxType::kREST);
+    Result res = methods::Indexes::getIndex(*coll, tmp.slice(), output);
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -440,8 +436,7 @@ RestStatus RestIndexHandler::dropIndex() {
     idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
   }
 
-  Result res = methods::Indexes::drop(*coll, idBuilder.slice(),
-                                      transaction::TrxType::kREST);
+  Result res = methods::Indexes::drop(*coll, idBuilder.slice());
   if (res.ok()) {
     VPackBuilder b;
     b.openObject();

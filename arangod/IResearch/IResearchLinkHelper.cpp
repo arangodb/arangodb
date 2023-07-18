@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "Basics/Common.h"
 #include "Basics/DownCast.h"
 
@@ -230,8 +231,7 @@ Result dropLink<IResearchViewCoordinator>(LogicalCollection& collection,
               velocypack::Value(link.index().id().id()));
   builder.close();
 
-  return methods::Indexes::drop(collection, builder.slice(),
-                                transaction::TrxType::kInternal);
+  return methods::Indexes::drop(collection, builder.slice());
 }
 
 struct State {

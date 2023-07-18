@@ -361,13 +361,13 @@ bool TRI_vocbase_t::dropCollectionCallback(LogicalCollection& collection) {
 
 #ifndef USE_ENTERPRISE
 std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollectionObject(
-    velocypack::Slice data, transaction::TrxType trxTypeHint, bool isAStub) {
+    velocypack::Slice data, bool isAStub) {
   // every collection object on coordinators must be a stub
   TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
   // collection objects on single servers must not be stubs
   TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
 
-  return std::make_shared<LogicalCollection>(*this, data, trxTypeHint, isAStub);
+  return std::make_shared<LogicalCollection>(*this, data, isAStub);
 }
 #endif
 
@@ -763,8 +763,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
 }
 
 std::shared_ptr<LogicalCollection>
-TRI_vocbase_t::createCollectionObjectForStorage(
-    velocypack::Slice parameters, transaction::TrxType trxTypeHint) {
+TRI_vocbase_t::createCollectionObjectForStorage(velocypack::Slice parameters) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // augment collection parameters with storage-engine specific data
@@ -781,11 +780,11 @@ TRI_vocbase_t::createCollectionObjectForStorage(
 
   // Try to create a new collection. This is not registered yet
   // This is always a new and empty collection.
-  return createCollectionObject(parameters, trxTypeHint, /*isAStub*/ false);
+  return createCollectionObject(parameters, /*isAStub*/ false);
 }
 
 std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollection(
-    velocypack::Slice parameters, transaction::TrxType trxTypeHint) {
+    velocypack::Slice parameters) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   auto const& dbName = _info.getName();
@@ -801,7 +800,7 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollection(
 
   try {
     // Try to create a new collection. This is not registered yet
-    auto collection = createCollectionObjectForStorage(parameters, trxTypeHint);
+    auto collection = createCollectionObjectForStorage(parameters);
 
     {
       READ_LOCKER(readLocker, _inventoryLock);
@@ -828,7 +827,6 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollection(
 ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
 TRI_vocbase_t::createCollections(
     std::vector<arangodb::CreateCollectionBody> const& collections,
-    transaction::TrxType trxTypeHint,
     bool allowEnterpriseCollectionsOnSingleServer) {
   // TODO: Need to get rid of this collection. Distribute Shards like
   // is now denoted inside the CreateCollectionBody
@@ -847,8 +845,8 @@ TRI_vocbase_t::createCollections(
     // / Agency. In that case, we're not batching collection creating.
     // Therefore, we need to iterate over the infoSlice and create each
     // collection one by one.
-    return {createCollections(infoSlice, trxTypeHint,
-                              allowEnterpriseCollectionsOnSingleServer)};
+    return {
+        createCollections(infoSlice, allowEnterpriseCollectionsOnSingleServer)};
 
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
@@ -861,7 +859,7 @@ TRI_vocbase_t::createCollections(
 
 std::vector<std::shared_ptr<LogicalCollection>>
 TRI_vocbase_t::createCollections(
-    velocypack::Slice infoSlice, transaction::TrxType trxTypeHint,
+    velocypack::Slice infoSlice,
     bool allowEnterpriseCollectionsOnSingleServer) {
   TRI_ASSERT(!allowEnterpriseCollectionsOnSingleServer ||
              ServerState::instance()->isSingleServer());
@@ -900,12 +898,12 @@ TRI_vocbase_t::createCollections(
       // we do not persist any data, so we can get away with a lightweight
       // object (isAStub = true).
       // This is always a new and empty collection.
-      col = createCollectionObject(slice, trxTypeHint, /*isAStub*/ true);
+      col = createCollectionObject(slice, /*isAStub*/ true);
     } else {
       // if we are not on a coordinator, we want to store the collection,
       // so we augment the collection data with some storage-engine
       // specific values
-      col = createCollectionObjectForStorage(slice, trxTypeHint);
+      col = createCollectionObjectForStorage(slice);
     }
 
     TRI_ASSERT(col != nullptr);

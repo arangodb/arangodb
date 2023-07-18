@@ -355,7 +355,7 @@ void RestCollectionHandler::handleCommandPost() {
   OperationOptions options(_context);
   auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
-      options, collections, transaction::TrxType::kREST,
+      options, collections,
       waitForSyncReplication,    // replication wait flag
       enforceReplicationFactor,  // replication factor flag
       /*isNewDatabase*/ false    // here always false
@@ -573,8 +573,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     VPackBuilder props = VPackCollection::keep(body, keep);
 
     OperationOptions options(_context);
-    res = methods::Collections::updateProperties(*coll, props.slice(), options,
-                                                 transaction::TrxType::kREST);
+    res = methods::Collections::updateProperties(*coll, props.slice(), options);
     if (res.fail()) {
       generateError(res);
       return RestStatus::DONE;
@@ -593,8 +592,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     }
 
     std::string const newName = newNameSlice.copyString();
-    res = methods::Collections::rename(*coll, newName, false,
-                                       transaction::TrxType::kREST);
+    res = methods::Collections::rename(*coll, newName, false);
 
     if (res.ok()) {
       collectionRepresentation(newName, /*showProperties*/ false,

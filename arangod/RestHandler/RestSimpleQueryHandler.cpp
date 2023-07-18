@@ -26,6 +26,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/TrxType.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/LogicalCollection.h"

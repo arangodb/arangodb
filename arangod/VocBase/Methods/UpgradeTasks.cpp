@@ -224,8 +224,7 @@ Result createSystemCollections(
     }
 
     auto cols = methods::Collections::create(
-        vocbase, options, testSystemCollectionsToCreate,
-        transaction::TrxType::kInternal, true, true, true,
+        vocbase, options, testSystemCollectionsToCreate, true, true, true,
 
         false /* allow system collection creation */);
     if (cols.fail()) {
@@ -290,8 +289,7 @@ Result createSystemCollections(
   // to use it to create indices later.
   if (!systemCollectionsToCreate.empty()) {
     auto cols = methods::Collections::create(
-        vocbase, options, systemCollectionsToCreate,
-        transaction::TrxType::kInternal, true, true, true,
+        vocbase, options, systemCollectionsToCreate, true, true, true,
 
         false /* allow system collection creation */);
     if (cols.fail()) {
@@ -345,9 +343,8 @@ Result createSystemStatisticsCollections(
       std::vector<std::shared_ptr<LogicalCollection>> cols;
       OperationOptions options(ExecContext::current());
       res = methods::Collections::create(
-          vocbase, options, systemCollectionsToCreate,
-          transaction::TrxType::kInternal, true, false, false, nullptr, cols,
-          true /* allow system collection creation */);
+          vocbase, options, systemCollectionsToCreate, true, false, false,
+          nullptr, cols, true /* allow system collection creation */);
       if (res.fail()) {
         return res;
       }
@@ -375,8 +372,7 @@ Result createSystemPregelCollection(TRI_vocbase_t& vocbase) {
 
     OperationOptions operationOptions(ExecContext::current());
     return methods::Collections::create(
-        vocbase, operationOptions, {info}, transaction::TrxType::kInternal,
-        true, true, true,
+        vocbase, operationOptions, {info}, true, true, true,
         nullptr /*nullptr on purpose, distributeShardsLike is defined by
                    createSystemCollectionProperties */
         ,

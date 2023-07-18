@@ -28,13 +28,14 @@
 #include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
+#include "Transaction/TrxType.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 
-#include <map>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
