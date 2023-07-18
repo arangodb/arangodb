@@ -89,18 +89,10 @@ bool ReadWriteLock::tryLockWriteFor(std::chrono::microseconds timeout) {
   }
 
   // Undo the counting of us as queued writer:
-  auto state = _state.fetch_sub(QUEUED_WRITER_INC, std::memory_order_relaxed) -
-               QUEUED_WRITER_INC;
+  _state.fetch_sub(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
-  if ((state & QUEUED_WRITER_MASK) != 0) {
-    // there are other writers waiting -> wake up one of them
-    { std::lock_guard<std::mutex> guard(_writer_mutex); }
-    _writers_bell.notify_one();
-  } else {
-    // no more writers -> wake up any waiting readings
-    { std::lock_guard<std::mutex> guard(_reader_mutex); }
-    _readers_bell.notify_all();
-  }
+  { std::lock_guard<std::mutex> guard(_reader_mutex); }
+  _readers_bell.notify_all();
 
   return false;
 }
