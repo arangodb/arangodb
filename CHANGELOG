@@ -8,6 +8,8 @@ devel
   by the API. The documented part of the API does not change. Watch out
   for an error with logid: ee638, this indicates you call deprecated parts.
 
+* Updated ArangoDB Starter to 0.16.0-preview-3 and arangosync to v2.19.0-preview-1.
+
 * FE-289: Improve database table UI.
 
 * Added startup option `--database.max-databases` to limit the maximum number
@@ -274,6 +276,8 @@ devel
   debugging with logfiles in hot backup RClone upload operacions:
   `--rclone.argument=--log-level=DEBUG`
   `--rclone.argument=-log-file=/tmp/rclone.log`
+
+* Remove ttl and observe/unobserve from agency api.
 
 * Fix issue #18982: query editor null/undefined check filters out bindParams
   with value 0.
