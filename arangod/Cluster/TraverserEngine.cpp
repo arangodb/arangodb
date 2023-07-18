@@ -191,8 +191,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
     std::string_view vertex = id.substr(pos + 1);
     for (auto const& shard : shards->second) {
       Result res = _trx->documentFastPathLocal(
-          std::string{shard}, vertex,
-          [&](LocalDocumentId const&, VPackSlice doc) {
+          shard, vertex, [&](LocalDocumentId const&, VPackSlice doc) {
             // FOUND. short circuit.
             read++;
             builder.add(v);
