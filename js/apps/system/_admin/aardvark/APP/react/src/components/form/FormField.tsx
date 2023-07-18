@@ -19,6 +19,7 @@ export type FormFieldProps = {
   isRequired?: boolean;
   isDisabled?: boolean;
   isClearable?: boolean;
+  placeholder?: string;
 };
 
 export const FormField = ({
@@ -65,7 +66,11 @@ export const FormField = ({
           </FormLabel>
           <InputControl
             isDisabled={field.isDisabled}
-            inputProps={{ type: "number", autoFocus }}
+            inputProps={{
+              type: "number",
+              autoFocus,
+              placeholder: field.placeholder
+            }}
             isRequired={field.isRequired}
             name={field.name}
           />
@@ -87,7 +92,8 @@ export const FormField = ({
             selectProps={{
               autoFocus,
               options: field.options,
-              noOptionsMessage: field.noOptionsMessage
+              noOptionsMessage: field.noOptionsMessage,
+              placeholder: field.placeholder
             }}
             isRequired={field.isRequired}
             name={field.name}
@@ -111,7 +117,8 @@ export const FormField = ({
               isClearable: field.isClearable,
               autoFocus,
               options: field.options,
-              noOptionsMessage: field.noOptionsMessage
+              noOptionsMessage: field.noOptionsMessage,
+              placeholder: field.placeholder
             }}
             isRequired={field.isRequired}
             name={field.name}
@@ -135,7 +142,8 @@ export const FormField = ({
               isClearable: field.isClearable,
               autoFocus,
               options: field.options,
-              noOptionsMessage: field.noOptionsMessage
+              noOptionsMessage: field.noOptionsMessage,
+              placeholder: field.placeholder
             }}
             isRequired={field.isRequired}
             name={field.name}
@@ -158,7 +166,7 @@ export const FormField = ({
             isDisabled={field.isDisabled}
             isRequired={field.isRequired}
             name={field.name}
-            inputProps={{ autoFocus }}
+            inputProps={{ autoFocus, placeholder: field.placeholder }}
           />
           {field.tooltip ? (
             <IndexInfoTooltip label={field.tooltip} />

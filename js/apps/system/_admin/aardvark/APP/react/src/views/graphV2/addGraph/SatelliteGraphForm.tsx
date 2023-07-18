@@ -35,8 +35,12 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
   const handleSubmit = async (values: SatelliteGraphCreateValues) => {
     const info = await createGraph({
       values: {
-        ...values,
-        replicationFactor: "satellite"
+        name: values.name,
+        edgeDefinitions: values.edgeDefinitions,
+        orphanCollections: values.orphanCollections,
+        options: {
+          replicationFactor: "satellite"
+        }
       },
       onSuccess: () => {
         mutate("/graphs");

@@ -9,7 +9,7 @@ type FormEdgeDefinitionOptions = {
 type GraphCreateValues = {
   name: string;
   edgeDefinitions: FormEdgeDefinitionOptions[];
-  orphanCollections: string[];
+  orphanCollections?: string[];
 };
 
 export type GeneralGraphCreateValues = GraphCreateValues;
@@ -18,7 +18,11 @@ export type SatelliteGraphCreateValues = GraphCreateValues &
 export type EnterpriseGraphCreateValues = GraphCreateValues &
   Pick<
     GraphCreateOptions,
-    "isSmart" | "numberOfShards" | "replicationFactor" | "minReplicationFactor"
+    | "isSmart"
+    | "numberOfShards"
+    | "replicationFactor"
+    | "minReplicationFactor"
+    | "satellites"
   >;
 export type SmartGraphCreateValues = GraphCreateValues &
   Pick<
@@ -29,4 +33,5 @@ export type SmartGraphCreateValues = GraphCreateValues &
     | "minReplicationFactor"
     | "isDisjoint"
     | "smartGraphAttribute"
+    | "satellites"
   >;

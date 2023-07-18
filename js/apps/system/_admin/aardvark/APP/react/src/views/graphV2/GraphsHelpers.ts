@@ -96,6 +96,7 @@ export const GENERAL_GRAPH_FIELDS_MAP = {
     noOptionsMessage: () => "Please enter a new and valid collection name"
   }
 };
+
 export const CLUSTER_GRAPH_FIELDS_MAP = {
   numberOfShards: {
     name: "numberOfShards",
@@ -120,6 +121,14 @@ export const CLUSTER_GRAPH_FIELDS_MAP = {
     tooltip:
       "Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value, the collection will be read-only until enough copies are created. If not given, the system default for new collections will be used.",
     isRequired: false
+  },
+  satellites: {
+    name: "satellites",
+    type: "creatableMultiSelect",
+    label: "Satellite collections",
+    tooltip:
+      "Insert vertex collections here which are being used in new edge definitions (fromCollections, toCollections). Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.",
+    placeholder: "Insert list of <from>/<to> Vertex Collections"
   }
 };
 

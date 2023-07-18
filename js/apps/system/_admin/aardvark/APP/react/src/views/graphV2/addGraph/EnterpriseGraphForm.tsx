@@ -5,7 +5,11 @@ import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
 import { FieldsGrid } from "../FieldsGrid";
-import { createGraph, GENERAL_GRAPH_FIELDS_MAP } from "../GraphsHelpers";
+import {
+  CLUSTER_GRAPH_FIELDS_MAP,
+  createGraph,
+  GENERAL_GRAPH_FIELDS_MAP
+} from "../GraphsHelpers";
 import { useGraphsModeContext } from "../GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { EnterpriseGraphCreateValues } from "./CreateGraph.types";
@@ -35,12 +39,16 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
   const handleSubmit = async (values: EnterpriseGraphCreateValues) => {
     const sanitizedValues = {
-      ...values,
-      numberOfShards: Number(values.numberOfShards),
-      replicationFactor: Number(values.replicationFactor),
-      minReplicationFactor: Number(values.minReplicationFactor),
-      isDisjoint: false,
-      isSmart: true
+      name: values.name,
+      orphanCollections: values.orphanCollections,
+      edgeDefinitions: values.edgeDefinitions,
+      options: {
+        isSmart: true,
+        numberOfShards: Number(values.numberOfShards),
+        replicationFactor: Number(values.replicationFactor),
+        minReplicationFactor: Number(values.minReplicationFactor),
+        satellites: values.satellites
+      }
     };
     const info = await createGraph({
       values: sanitizedValues,
@@ -71,6 +79,16 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
                 }}
               />
               <ClusterFields isShardsRequired />
+              {(window.frontendConfig.isCluster || true) && (
+                <FormField
+                  field={{
+                    ...CLUSTER_GRAPH_FIELDS_MAP.satellites,
+                    isDisabled: mode === "edit",
+                    noOptionsMessage: () =>
+                      "Please enter a new and valid collection name"
+                  }}
+                />
+              )}
               <EdgeDefinitionsField
                 noOptionsMessage={() =>
                   "Please enter a new and valid collection name"

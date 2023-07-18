@@ -6,6 +6,7 @@ import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
 import { FieldsGrid } from "../FieldsGrid";
 import {
+  CLUSTER_GRAPH_FIELDS_MAP,
   createGraph,
   GENERAL_GRAPH_FIELDS_MAP,
   SMART_GRAPH_FIELDS_MAP
@@ -41,11 +42,18 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
   const handleSubmit = async (values: SmartGraphCreateValues) => {
     try {
       const sanitizedValues = {
-        ...values,
-        numberOfShards: Number(values.numberOfShards),
-        replicationFactor: Number(values.replicationFactor),
-        minReplicationFactor: Number(values.minReplicationFactor),
-        isSmart: true
+        name: values.name,
+        edgeDefinitions: values.edgeDefinitions,
+        orphanCollections: values.orphanCollections,
+        options: {
+          isDisjoint: values.isDisjoint,
+          isSmart: true,
+          numberOfShards: Number(values.numberOfShards),
+          replicationFactor: Number(values.replicationFactor),
+          minReplicationFactor: Number(values.minReplicationFactor),
+          satellites: values.satellites,
+          smartGraphAttribute: values.smartGraphAttribute,
+        }
       };
       const info = await createGraph({
         values: sanitizedValues,
@@ -81,6 +89,16 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
                 }}
               />
               <ClusterFields isShardsRequired />
+              {window.frontendConfig.isCluster && (
+                <FormField
+                  field={{
+                    ...CLUSTER_GRAPH_FIELDS_MAP.satellites,
+                    isDisabled: mode === "edit",
+                    noOptionsMessage: () =>
+                      "Please enter a new and valid collection name"
+                  }}
+                />
+              )}
               <FormField
                 field={{
                   ...smartGraphFieldsMap.isDisjoint,
