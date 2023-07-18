@@ -247,7 +247,7 @@ ResultT<NodePtr> Node::handle<ERASE>(Node const* target,
   }
 
   if (haveVal) {
-    auto trans = immer::flex_vector_transient<VPackString>{};
+    auto trans = Node::Array::transient_type{};
     for (auto const& value : array) {
       if (!VelocyPackHelper::equal(value, valToErase, true)) {
         trans.push_back(value);
@@ -634,7 +634,7 @@ bool Node::isWriteLockable(std::string_view) const {
 }
 
 bool Node::isWriteUnlockable(std::string_view by) const {
-  return std::visit(overload{[&](VPackString const& slice) {
+  return std::visit(overload{[&](VPackStringType const& slice) {
                                return slice.isString() &&
                                       slice.isEqualString(by);
                              },
@@ -643,24 +643,25 @@ bool Node::isWriteUnlockable(std::string_view by) const {
 }
 
 void Node::toBuilder(Builder& builder, bool showHidden) const {
-  std::visit(overload{[&](Children const& ch) {
-                        VPackObjectBuilder ob(&builder);
-                        for (auto const& [key, node] : ch) {
-                          if (key[0] == '.' && !showHidden) {
-                            continue;
-                          }
-                          builder.add(VPackValue(key));
-                          node->toBuilder(builder, showHidden);
-                        }
-                      },
-                      [&](Array const& ar) {
-                        VPackArrayBuilder ab(&builder);
-                        for (auto const& slice : ar) {
-                          builder.add(slice);
-                        }
-                      },
-                      [&](VPackString const& slice) { builder.add(slice); }},
-             _value);
+  std::visit(
+      overload{[&](Children const& ch) {
+                 VPackObjectBuilder ob(&builder);
+                 for (auto const& [key, node] : ch) {
+                   if (key[0] == '.' && !showHidden) {
+                     continue;
+                   }
+                   builder.add(VPackValue(key));
+                   node->toBuilder(builder, showHidden);
+                 }
+               },
+               [&](Array const& ar) {
+                 VPackArrayBuilder ab(&builder);
+                 for (auto const& slice : ar) {
+                   builder.add(slice);
+                 }
+               },
+               [&](VPackStringType const& slice) { builder.add(slice); }},
+      _value);
 }
 
 // Print internals to ostream
@@ -714,7 +715,7 @@ bool Node::has(std::vector<std::string> const& rel) const {
 bool Node::has(std::string_view rel) const { return has(split(rel)); }
 
 std::optional<int64_t> Node::getInt() const noexcept {
-  if (auto slice = std::get_if<VPackString>(&_value);
+  if (auto slice = std::get_if<VPackStringType>(&_value);
       slice && slice->isNumber<int64_t>()) {
     return slice->getNumber<int64_t>();
   }
@@ -722,7 +723,7 @@ std::optional<int64_t> Node::getInt() const noexcept {
 }
 
 std::optional<uint64_t> Node::getUInt() const noexcept {
-  if (auto slice = std::get_if<VPackString>(&_value);
+  if (auto slice = std::get_if<VPackStringType>(&_value);
       slice && slice->isNumber<uint64_t>()) {
     return slice->getNumber<uint64_t>();
   }
@@ -730,7 +731,7 @@ std::optional<uint64_t> Node::getUInt() const noexcept {
 }
 
 std::optional<bool> Node::getBool() const noexcept {
-  if (auto slice = std::get_if<VPackString>(&_value);
+  if (auto slice = std::get_if<VPackStringType>(&_value);
       slice && slice->isBool()) {
     return slice->getBool();
   }
@@ -738,29 +739,29 @@ std::optional<bool> Node::getBool() const noexcept {
 }
 
 VPackSlice Node::slice() const noexcept {
-  if (auto slice = std::get_if<VPackString>(&_value); slice) {
+  if (auto slice = std::get_if<VPackStringType>(&_value); slice) {
     return slice->slice();
   }
   return VPackSlice::noneSlice();
 }
 
 bool Node::isBool() const {
-  auto slice = std::get_if<VPackString>(&_value);
+  auto slice = std::get_if<VPackStringType>(&_value);
   return slice && slice->isBool();
 }
 
 bool Node::isDouble() const {
-  auto slice = std::get_if<VPackString>(&_value);
+  auto slice = std::get_if<VPackStringType>(&_value);
   return slice && slice->isDouble();
 }
 
 bool Node::isString() const {
-  auto slice = std::get_if<VPackString>(&_value);
+  auto slice = std::get_if<VPackStringType>(&_value);
   return slice && slice->isString();
 }
 
 bool consensus::Node::isNull() const {
-  auto slice = std::get_if<VPackString>(&_value);
+  auto slice = std::get_if<VPackStringType>(&_value);
   return slice && slice->isNull();
 }
 
@@ -769,22 +770,22 @@ bool Node::isArray() const { return std::holds_alternative<Array>(_value); }
 bool Node::isObject() const { return std::holds_alternative<Children>(_value); }
 
 bool Node::isUInt() const {
-  auto slice = std::get_if<VPackString>(&_value);
+  auto slice = std::get_if<VPackStringType>(&_value);
   return slice && (slice->isUInt() || slice->isSmallInt());
 }
 
 bool Node::isInt() const {
-  auto slice = std::get_if<VPackString>(&_value);
+  auto slice = std::get_if<VPackStringType>(&_value);
   return slice && (slice->isInt() || slice->isSmallInt());
 }
 
 bool Node::isNumber() const {
-  auto slice = std::get_if<VPackString>(&_value);
+  auto slice = std::get_if<VPackStringType>(&_value);
   return slice && slice->isNumber();
 }
 
 std::optional<double> Node::getDouble() const noexcept {
-  if (auto slice = std::get_if<VPackString>(&_value);
+  if (auto slice = std::get_if<VPackStringType>(&_value);
       slice && slice->isDouble()) {
     return slice->getDouble();
   }
@@ -861,7 +862,7 @@ Node::Array const* Node::hasAsArray(std::string const& url) const {
 }  // hasAsArray
 
 std::optional<std::string> Node::getString() const {
-  if (auto slice = std::get_if<VPackString>(&_value);
+  if (auto slice = std::get_if<VPackStringType>(&_value);
       slice && slice->isString()) {
     return slice->copyString();
   }
@@ -869,7 +870,7 @@ std::optional<std::string> Node::getString() const {
 }
 
 std::optional<std::string_view> Node::getStringView() const {
-  if (auto slice = std::get_if<VPackString>(&_value);
+  if (auto slice = std::get_if<VPackStringType>(&_value);
       slice && slice->isString()) {
     return slice->stringView();
   }
@@ -893,17 +894,12 @@ std::vector<std::string> Node::keys() const {
   return result;
 }
 
-struct Node::NodeWrapper : Node {
-  template<typename... Args>
-  NodeWrapper(Args&&... args) : Node(std::forward<Args>(args)...) {}
-};
-
 NodePtr Node::create(VPackSlice slice) {
   if (slice.isObject()) {
     if (slice.isEmptyObject()) {
       return emptyObjectValue();
     }
-    immer::map_transient<std::string, NodePtr> trans;
+    Node::Children::transient_type trans;
     for (auto const& [key, sub] : VPackObjectIterator(slice)) {
       auto keyStr = key.copyString();
       if (keyStr.find("/") != std::string::npos) {
@@ -919,16 +915,16 @@ NodePtr Node::create(VPackSlice slice) {
       //    << slice.toJson();
       trans.set(std::move(keyStr), Node::create(sub));
     }
-    return std::make_shared<NodeWrapper>(trans.persistent());
+    return allocateNode(trans.persistent());
   } else if (slice.isArray()) {
     if (slice.isEmptyArray()) {
       return emptyArrayValue();
     }
-    immer::flex_vector_transient<VPackString> a;
+    Node::Array::transient_type a;
     for (auto const& elem : VPackArrayIterator(slice)) {
       a.push_back(elem);
     }
-    return std::make_shared<NodeWrapper>(a.persistent());
+    return allocateNode(a.persistent());
   } else {
     if (slice.isTrue()) {
       return trueValue();
@@ -937,44 +933,44 @@ NodePtr Node::create(VPackSlice slice) {
     } else if (slice.isNull()) {
       return nullValue();
     }
-    return std::make_shared<NodeWrapper>(VPackString(slice));
+    return allocateNode(VPackStringType(slice));
   }
 }
 
 NodePtr Node::create() { return emptyObjectValue(); }
 
 NodePtr Node::create(Node::VariantType value) {
-  return std::make_shared<NodeWrapper>(std::move(value));
+  return allocateNode(std::move(value));
 }
 NodePtr Node::create(Node::Array value) {
-  return std::make_shared<NodeWrapper>(std::move(value));
+  return allocateNode(std::move(value));
 }
 NodePtr Node::create(Node::Children value) {
-  return std::make_shared<NodeWrapper>(std::move(value));
+  return allocateNode(std::move(value));
 }
 
 NodePtr consensus::Node::trueValue() {
-  static auto node = std::make_shared<NodeWrapper>(VPackSlice::trueSlice());
+  static auto node = allocateNode(VPackSlice::trueSlice());
   return node;
 }
 
 NodePtr consensus::Node::falseValue() {
-  static auto node = std::make_shared<NodeWrapper>(VPackSlice::falseSlice());
+  static auto node = allocateNode(VPackSlice::falseSlice());
   return node;
 }
 
 NodePtr consensus::Node::nullValue() {
-  static auto node = std::make_shared<NodeWrapper>(VPackSlice::nullSlice());
+  static auto node = allocateNode(VPackSlice::nullSlice());
   return node;
 }
 
 NodePtr consensus::Node::emptyObjectValue() {
-  static auto node = std::make_shared<NodeWrapper>();
+  static auto node = allocateNode();
   return node;
 }
 
 NodePtr consensus::Node::emptyArrayValue() {
-  static auto node = std::make_shared<NodeWrapper>(Array{});
+  static auto node = allocateNode(Array{});
   return node;
 }
 
@@ -985,4 +981,20 @@ velocypack::ValueType consensus::Node::getVelocyPackValueType() const noexcept {
           [&](Array const& ar) { return velocypack::ValueType::Array; },
           [](auto const& vpack) { return vpack.type(); }},
       _value);
+}
+
+std::atomic<std::size_t> Node::memory_usage = 0;
+
+void Node::increaseMemoryUsage(std::size_t d) noexcept { memory_usage += d; }
+
+void Node::decreaseMemoryUsage(std::size_t d) noexcept { memory_usage -= d; }
+
+template<typename... Args>
+NodePtr consensus::Node::allocateNode(Args&&... args) {
+  struct NodeWrapper : Node {
+    NodeWrapper(Args&&... args) : Node(std::forward<Args>(args)...) {}
+  };
+
+  return std::allocate_shared<NodeWrapper>(Node::allocator_type{},
+                                           std::forward<Args>(args)...);
 }
