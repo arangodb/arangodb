@@ -120,8 +120,8 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
   // Add all Vertex shards to the transaction
   TRI_ASSERT(vertexSlice.isObject());
   for (auto collection : VPackObjectIterator(vertexSlice)) {
-    ResourceUsageAllocator<MonitoredCollectionToShardMap> alloc = {
-        _query.resourceMonitor()};
+    ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor>
+        alloc = {_query.resourceMonitor()};
     MonitoredStringVector shards{alloc};
     TRI_ASSERT(collection.value.isArray());
     for (auto shard : VPackArrayIterator(collection.value)) {

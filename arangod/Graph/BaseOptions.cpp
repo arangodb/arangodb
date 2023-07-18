@@ -487,8 +487,8 @@ void BaseOptions::setCollectionToShard(
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
   for (auto const& [key, value] : in) {
-    ResourceUsageAllocator<MonitoredCollectionToShardMap> alloc = {
-        _query.resourceMonitor()};
+    ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor>
+        alloc = {_query.resourceMonitor()};
     auto myVec = MonitoredStringVector{alloc};
     auto myString = MonitoredString{value, alloc};
     myVec.emplace_back(std::move(myString));
