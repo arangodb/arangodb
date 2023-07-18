@@ -1,0 +1,19 @@
+name: arangodb_rest_transactions_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Global value of accumulated memory consumption for REST transactions.
+unit: bytes
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - coordinator
+  - agent
+  - single
+description: |
+  This metric reflects the current amount of memory in bytes consumed by 
+  user-originated transactions in arangod. These are either streaming
+  transactions, JavaScript transactions, or document operations outside
+  of a transaction. Top-level AQL queries are excluded here, as they have
+  their own metric (arangodb_aql_global_memory_usage).

@@ -1,0 +1,17 @@
+name: arangodb_internal_transactions_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Global value of accumulated memory consumption for internal transactions.
+unit: bytes
+type: gauge
+category: Transactions
+complexity: advanced
+exposedBy:
+  - dbserver
+  - coordinator
+  - agent
+  - single
+description: |
+  This metric reflects the current amount of memory in bytes consumed by
+  internal transactions in arangod, i.e. transactions that weren't triggered
+  by a user command or transaction.
