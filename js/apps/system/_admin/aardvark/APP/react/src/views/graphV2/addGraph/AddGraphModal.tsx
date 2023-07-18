@@ -16,6 +16,38 @@ import { GeneralGraphForm } from "./GeneralGraphForm";
 import { SatelliteGraphForm } from "./SatelliteGraphForm";
 import { SmartGraphForm } from "./SmartGraphForm";
 
+const ALL_GRAPH_TABS = [
+  {
+    id: "examples",
+    label: "Examples",
+    Component: ExampleGraphForm
+  },
+  {
+    id: "satellite",
+    label: "SatelliteGraph",
+    Component: SatelliteGraphForm
+  },
+  {
+    id: "general",
+    label: "GeneralGraph",
+    Component: GeneralGraphForm
+  },
+  {
+    id: "smart",
+    label: "SmartGraph",
+    Component: SmartGraphForm
+  },
+  {
+    id: "enterprise",
+    label: "EnterpriseGraph",
+    Component: EnterpriseGraphForm
+  }
+];
+const COMMUNITY_GRAPH_TYPES = ["examples", "general"];
+const COMMUNITY_TABS = ALL_GRAPH_TABS.filter(tab =>
+  COMMUNITY_GRAPH_TYPES.includes(tab.id)
+);
+
 export const AddGraphModal = ({
   isOpen,
   onClose
@@ -23,9 +55,10 @@ export const AddGraphModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
+  const isEnterprise = window.frontendConfig.isEnterprise;
   const initialFocusRef = React.useRef<HTMLInputElement>(null);
   const { mode } = useGraphsModeContext();
-  const defaultIndex = window.frontendConfig.isEnterprise ? 4 : 1;
+  const defaultIndex = isEnterprise ? 4 : 1;
 
   return (
     <Modal
@@ -43,63 +76,33 @@ export const AddGraphModal = ({
       </ModalHeader>
       <ModalBody>
         <Tabs size="md" variant="enclosed-colored" defaultIndex={defaultIndex}>
-          {window.frontendConfig.isEnterprise ? (
-            <EnterpriseTabs onClose={onClose} />
-          ) : (
-            <CommunityTabs onClose={onClose} />
-          )}
+          <TabsInner onClose={onClose} />
         </Tabs>
       </ModalBody>
     </Modal>
   );
 };
 
-const EnterpriseTabs = ({ onClose }: { onClose: () => void }) => {
+const TabsInner = ({ onClose }: { onClose: () => void }) => {
+  const TABS_LIST = window.frontendConfig.isEnterprise
+    ? ALL_GRAPH_TABS
+    : COMMUNITY_TABS;
   return (
     <>
       <TabList>
-        <Tab>Examples</Tab>
-        <Tab>SatelliteGraph</Tab>
-        <Tab>GeneralGraph</Tab>
-        <Tab>SmartGraph</Tab>
-        <Tab>EnterpriseGraph</Tab>
+        {TABS_LIST.map(tab => {
+          return <Tab key={tab.id}>{tab.label}</Tab>;
+        })}
       </TabList>
       <TabPanels>
-        <TabPanel>
-          <ExampleGraphForm onClose={onClose} />
-        </TabPanel>
-        <TabPanel>
-          <SatelliteGraphForm onClose={onClose} />
-        </TabPanel>
-        <TabPanel>
-          <GeneralGraphForm onClose={onClose} />
-        </TabPanel>
-        <TabPanel>
-          <SmartGraphForm onClose={onClose} />
-        </TabPanel>
-        <TabPanel>
-          <EnterpriseGraphForm onClose={onClose} />
-        </TabPanel>
+        {TABS_LIST.map(tab => {
+          return (
+            <TabPanel key={tab.id}>
+              <tab.Component onClose={onClose} />
+            </TabPanel>
+          );
+        })}
       </TabPanels>
     </>
   );
 };
-const CommunityTabs = ({ onClose }: { onClose: () => void }) => {
-  return (
-    <>
-      <TabList>
-        <Tab>Examples</Tab>
-        <Tab>GeneralGraph</Tab>
-      </TabList>
-      <TabPanels>
-        <TabPanel>
-          <ExampleGraphForm onClose={onClose} />
-        </TabPanel>
-        <TabPanel>
-          <GeneralGraphForm onClose={onClose} />
-        </TabPanel>
-      </TabPanels>
-    </>
-  );
-};
-

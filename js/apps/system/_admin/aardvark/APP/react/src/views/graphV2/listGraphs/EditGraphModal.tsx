@@ -1,13 +1,13 @@
-import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
+import { Flex, Heading } from "@chakra-ui/react";
 import { GraphInfo } from "arangojs/graph";
 import React from "react";
-import { GraphsModeProvider } from "../GraphsModeContext";
-import { Flex, Heading } from "@chakra-ui/react";
-import { SatelliteGraphForm } from "../addGraph/SatelliteGraphForm";
-import { SmartGraphForm } from "../addGraph/SmartGraphForm";
+import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
 import { EnterpriseGraphForm } from "../addGraph/EnterpriseGraphForm";
 import { GeneralGraphForm } from "../addGraph/GeneralGraphForm";
+import { SatelliteGraphForm } from "../addGraph/SatelliteGraphForm";
+import { SmartGraphForm } from "../addGraph/SmartGraphForm";
 import { detectType } from "../GraphsHelpers";
+import { GraphsModeProvider } from "../GraphsModeContext";
 
 const TYPE_TO_COMPONENT_MAP = {
   general: GeneralGraphForm,
