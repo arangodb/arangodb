@@ -4,7 +4,7 @@ import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
-import { FieldsGrid } from "../listGraphs/FieldsGrid";
+import { FieldsGrid } from "./FieldsGrid";
 import {
   CLUSTER_GRAPH_FIELDS_MAP,
   createGraph,
