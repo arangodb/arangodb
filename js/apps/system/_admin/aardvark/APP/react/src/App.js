@@ -12,13 +12,14 @@ const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 require('../../frontend/js/arango/arangoValidationHelper.js');
 
 // import new react views
-// require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
+require('./views/databases/DatabasesReactView');
 require('./views/graphV2/GraphV2ReactView');
 require('./views/users/UsersReactView');
 require('./views/views/ViewSettingsReactView');
 require('./views/views/ViewsListReactView');
 require('./views/collections/indices/CollectionIndicesReactView');
+require('./views/shards/distribution/ShardDistributionReactView');
 
 // old libraries
 const jQuery = require('jquery');

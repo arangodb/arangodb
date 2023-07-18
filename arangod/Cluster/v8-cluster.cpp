@@ -961,7 +961,8 @@ static void JS_GetResponsibleServerClusterInfo(
   v8::Handle<v8::Array> list = v8::Array::New(isolate, (int)result->size());
   uint32_t count = 0;
   for (auto const& s : *result) {
-    list->Set(context, count++, TRI_V8_STD_STRING(isolate, s)).FromMaybe(true);
+    list->Set(context, count++, TRI_V8_STD_STRING(isolate, s.c_str()))
+        .FromMaybe(true);
   }
 
   TRI_V8_RETURN(list);
@@ -1550,6 +1551,37 @@ static void JS_GetAnalyzersRevision(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_WaitForPlanVersion(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  // Trigger synchronous wait until this coordinator has seen the handed in plan
+  // version. Has a potential to lock, in case a too high version number is
+  // handed in. Use with care.
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  onlyInCluster();
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("waitForPlanVersion(<planVersion>)");
+  }
+
+  auto const planVersion = TRI_ObjectToUInt64(isolate, args[0], false);
+  if (planVersion == 0) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER(
+        "<planVersion> is invalid, has to be a number larger 0");
+  }
+
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
+
+  VPackBuilder result;
+  auto fut = ci.waitForPlanVersion(planVersion);
+  // Block and wait.
+  fut.wait();
+  // We will only continue after the requested plan version was witnessed.
+  TRI_V8_RETURN_BOOL(true);
+  TRI_V8_TRY_CATCH_END
+}
+
 // send a self-heal request to all other coordinators, if any
 static void JS_PropagateSelfHeal(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1746,6 +1778,9 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "getAnalyzersRevision"),
                        JS_GetAnalyzersRevision);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "waitForPlanVersion"),
+                       JS_WaitForPlanVersion);
 
   v8g->ClusterInfoTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(

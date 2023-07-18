@@ -23,13 +23,10 @@
 
 #include "Algorithms.h"
 
-#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
-#include "Cluster/FailureOracle.h"
 #include "Logger/LogMacros.h"
-#include "Random/RandomGenerator.h"
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/TermIndexMapping.h"
 
 #include <algorithm>
 #include <random>
@@ -59,8 +56,9 @@ auto algorithms::to_string(ConflictReason r) noexcept -> std::string_view {
   FATAL_ERROR_ABORT();
 }
 
-auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
-                                TermIndexPair prevLog) noexcept
+auto algorithms::detectConflict(
+    replicated_log::TermIndexMapping const& termIndexMap,
+    TermIndexPair prevLog) noexcept
     -> std::optional<std::pair<ConflictReason, TermIndexPair>> {
   /*
    * There are three situations to handle here:
@@ -69,14 +67,14 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
    *    - It is before our first entry
    *  - The term does not match.
    */
-  auto entry = log.getEntryByIndex(prevLog.index);
+  auto entry = termIndexMap.getTermOfIndex(prevLog.index);
   if (entry.has_value()) {
     // check if the term matches
-    if (entry->entry().logTerm() != prevLog.term) {
+    if (*entry != prevLog.term) {
       auto conflict = std::invoke([&] {
-        if (auto idx = log.getFirstIndexOfTerm(entry->entry().logTerm());
+        if (auto idx = termIndexMap.getFirstIndexOfTerm(*entry);
             idx.has_value()) {
-          return TermIndexPair{entry->entry().logTerm(), *idx};
+          return TermIndexPair{*entry, *idx};
         }
         return TermIndexPair{};
       });
@@ -87,18 +85,18 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
       return std::nullopt;
     }
   } else {
-    auto lastEntry = log.getLastEntry();
-    if (!lastEntry.has_value()) {
+    auto lastEntry = termIndexMap.getLastIndex();
+    if (not lastEntry.has_value()) {
       // The log is empty, reset to (0, 0)
       return std::make_pair(ConflictReason::LOG_EMPTY, TermIndexPair{});
-    } else if (prevLog.index > lastEntry->entry().logIndex()) {
+    } else if (prevLog.index > lastEntry->index) {
       // the given entry is too far ahead
-      return std::make_pair(ConflictReason::LOG_ENTRY_AFTER_END,
-                            TermIndexPair{lastEntry->entry().logTerm(),
-                                          lastEntry->entry().logIndex() + 1});
+      return std::make_pair(
+          ConflictReason::LOG_ENTRY_AFTER_END,
+          TermIndexPair{lastEntry->term, lastEntry->index + 1});
     } else {
-      TRI_ASSERT(prevLog.index < lastEntry->entry().logIndex());
-      TRI_ASSERT(prevLog.index < log.getFirstEntry()->entry().logIndex());
+      TRI_ASSERT(prevLog.index < lastEntry->index);
+      TRI_ASSERT(prevLog.index < termIndexMap.getFirstIndex()->index);
       // the given index too old, reset to (0, 0)
       return std::make_pair(ConflictReason::LOG_ENTRY_BEFORE_BEGIN,
                             TermIndexPair{});
@@ -149,8 +147,8 @@ auto operator<=>(ParticipantState const& left,
 auto algorithms::calculateCommitIndex(
     std::vector<ParticipantState> const& participants,
     size_t const effectiveWriteConcern, LogIndex const currentCommitIndex,
-    TermIndexPair const lastTermIndex)
-    -> std::tuple<LogIndex, CommitFailReason, std::vector<ParticipantId>> {
+    TermIndexPair const lastTermIndex, LogIndex const currentSyncCommitIndex)
+    -> CommitIndexReport {
   // We keep a vector of eligible participants.
   // To be eligible, a participant
   //  - must not be excluded, and
@@ -171,6 +169,7 @@ auto algorithms::calculateCommitIndex(
     // anything, even if all participants are eligible.
     TRI_ASSERT(!participants.empty());
     return {currentCommitIndex,
+            currentSyncCommitIndex,
             CommitFailReason::withFewerParticipantsThanWriteConcern({
                 .effectiveWriteConcern = effectiveWriteConcern,
                 .numParticipants = participants.size(),
@@ -184,6 +183,7 @@ auto algorithms::calculateCommitIndex(
   // If there are no forced participants, this component is just
   // the spearhead (the furthest we could commit to).
   auto minForcedCommitIndex = spearhead;
+  auto minForcedSyncCommitIndex = spearhead;
   auto minForcedParticipantId = std::optional<ParticipantId>{};
   for (auto const& pt : participants) {
     if (pt.isForced()) {
@@ -191,6 +191,7 @@ auto algorithms::calculateCommitIndex(
         // A forced participant has entries from a previous term. We can't use
         // this participant, hence it becomes impossible to commit anything.
         return {currentCommitIndex,
+                currentSyncCommitIndex,
                 CommitFailReason::withForcedParticipantNotInQuorum(pt.id),
                 {}};
       }
@@ -198,12 +199,17 @@ auto algorithms::calculateCommitIndex(
         minForcedCommitIndex = pt.lastIndex();
         minForcedParticipantId = pt.id;
       }
+      minForcedSyncCommitIndex =
+          std::min(minForcedSyncCommitIndex, pt.syncIndex);
     }
   }
 
   // While effectiveWriteConcern == 0 is silly we still allow it.
   if (effectiveWriteConcern == 0) {
-    return {minForcedCommitIndex, CommitFailReason::withNothingToCommit(), {}};
+    return {minForcedCommitIndex,
+            minForcedSyncCommitIndex,
+            CommitFailReason::withNothingToCommit(),
+            {}};
   }
 
   if (effectiveWriteConcern <= eligible.size()) {
@@ -227,17 +233,28 @@ auto algorithms::calculateCommitIndex(
     std::transform(std::begin(eligible), std::next(nth),
                    std::back_inserter(quorum), [](auto& p) { return p.id; });
 
+    // syncCommitIndex is only reported
+    std::nth_element(std::begin(eligible), nth, std::end(eligible),
+                     [](auto& left, auto& right) {
+                       return left.syncIndex > right.syncIndex;
+                     });
+    auto const minNonExcludedSyncCommitIndex = nth->syncIndex;
+    auto syncCommitIndex =
+        std::min(minForcedSyncCommitIndex, minNonExcludedSyncCommitIndex);
+    TRI_ASSERT(syncCommitIndex <= commitIndex);
+
     if (spearhead == commitIndex) {
       // The quorum has been reached and any uncommitted entries can now be
       // committed.
-      return {commitIndex, CommitFailReason::withNothingToCommit(),
-              std::move(quorum)};
+      return {commitIndex, syncCommitIndex,
+              CommitFailReason::withNothingToCommit(), std::move(quorum)};
     } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
       // The forced participant didn't make the quorum because its index
       // is too low. Return its index, but report that it is dragging down the
       // commit index.
       TRI_ASSERT(minForcedParticipantId.has_value());
       return {commitIndex,
+              syncCommitIndex,
               CommitFailReason::withForcedParticipantNotInQuorum(
                   minForcedParticipantId.value()),
               {}};
@@ -258,7 +275,7 @@ auto algorithms::calculateCommitIndex(
               });
         }
       }
-      return {commitIndex,
+      return {commitIndex, syncCommitIndex,
               CommitFailReason::withQuorumSizeNotReached(std::move(who),
                                                          lastTermIndex),
               std::move(quorum)};
@@ -288,6 +305,7 @@ auto algorithms::calculateCommitIndex(
 
   TRI_ASSERT(!participants.empty());
   return {currentCommitIndex,
+          currentSyncCommitIndex,
           CommitFailReason::withNonEligibleServerRequiredForQuorum(
               std::move(candidates)),
           {}};

@@ -24,7 +24,6 @@
 #pragma once
 
 #include "AgentInterface.h"
-#include "Agency/Node.h"
 #include "Basics/ConditionVariable.h"
 #include "RestServer/arangod.h"
 
@@ -37,6 +36,8 @@
 
 namespace arangodb {
 namespace consensus {
+
+class Node;
 
 struct check_ret_t {
   bool success;
@@ -76,8 +77,8 @@ class Agent;
 class Store {
  public:
   /// @brief Construct with name
-  explicit Store(arangodb::ArangodServer& server, Agent* agent,
-                 std::string const& name = "root");
+  explicit Store(std::string const& name = "root");
+  explicit Store(std::nullptr_t) = delete;
 
   /// @brief Destruct
   ~Store();
@@ -107,11 +108,11 @@ class Store {
   /// first entry is a write transaction (i.e. an array of length 1, 2 or 3),
   /// if present, the second entry is a precondition, and the third
   /// entry, if present, is a uuid:
-  check_ret_t applyTransaction(Slice query);
+  check_ret_t applyTransaction(velocypack::Slice query);
 
   /// @brief Apply log entries in query, also process callbacks
   std::vector<bool> applyLogEntries(arangodb::velocypack::Builder const& query,
-                                    index_t index, term_t term, bool inform);
+                                    index_t index, term_t term);
 
   /// @brief Read multiple entries from store
   std::vector<bool> readMultiple(arangodb::velocypack::Slice query,
@@ -122,23 +123,25 @@ class Store {
             arangodb::velocypack::Builder& result) const;
 
   /// @brief Dump everything to builder
-  void dumpToBuilder(Builder&) const;
+  void dumpToBuilder(velocypack::Builder&) const;
 
-  Store& operator=(VPackSlice const& slice);
+  void setNodeValue(VPackSlice s);
 
   /// @brief Create Builder representing this store
-  void toBuilder(Builder&, bool showHidden = false) const;
+  void toBuilder(velocypack::Builder&, bool showHidden = false) const;
 
   /// @brief get node from this store.
   /// Unprotected! Caller must guard the store.
-  Node const* nodePtr(std::string const& path = std::string("/")) const;
+  std::shared_ptr<Node const> nodePtr(
+      std::string const& path = std::string("/")) const;
 
   /// @brief Get node at path under mutex and store it in velocypack
   void get(std::string const& path, arangodb::velocypack::Builder& b,
            bool showHidden) const;
 
   /// @brief Copy out a node
-  Node get(std::string const& path = std::string("/")) const;
+  std::shared_ptr<Node const> get(
+      std::string const& path = std::string("/")) const;
 
   /// @brief Copy out a node
   bool has(std::string const& path = std::string("/")) const;
@@ -146,13 +149,6 @@ class Store {
   std::string toJson() const;
 
   void clear();
-
-  /// @brief Remove time to live entries for uri
-  void removeTTL(std::string const&);
-
-  std::unordered_multimap<std::string, std::string>& observedTable();
-  std::unordered_multimap<std::string, std::string> const& observedTable()
-      const;
 
   static std::string normalize(char const* key, size_t length);
 
@@ -163,59 +159,29 @@ class Store {
 
   /// @brief Split strings by forward slashes, omitting empty strings,
   /// and ignoring multiple subsequent forward slashes
-  static std::vector<std::string> split(std::string_view str) {
-    return Node::split(str);
-  }
+  static std::vector<std::string> split(std::string_view str);
 
   using AgencyTriggerCallback =
       std::function<void(std::string_view path, VPackSlice trx)>;
 
   void registerPrefixTrigger(std::string const& prefix, AgencyTriggerCallback);
 
-#if !defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
- private:
-#endif  // defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
-
-  /// @brief Notify observers
-  void notifyObservers() const;
-
  private:
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
 
   friend class consensus::Node;
-  std::multimap<TimePoint, std::string>& timeTable();
-  std::multimap<TimePoint, std::string> const& timeTable() const;
   /// @brief Check precondition
   check_ret_t check(arangodb::velocypack::Slice slice,
                     CheckMode = FIRST_FAIL) const;
 
-  /// @brief Clear entries, whose time to live has expired
-  query_t clearExpired() const;
-
  private:
-  /// @brief underlying application server, needed for testing code
-  arangodb::ArangodServer& _server;
-
-  /// @brief Condition variable guarding removal of expired entries
-  mutable arangodb::basics::ConditionVariable _cv;
-
   /// @brief Read/Write mutex on database
   /// guard _node, _timeTable, _observerTable, _observedTable
   mutable std::mutex _storeLock;
 
-  /// @brief My own agent
-  Agent* _agent;
-
-  /// @brief Table of expiries in tree (only used in root node)
-  std::multimap<TimePoint, std::string> _timeTable;
-
-  /// @brief Table of observers in tree (only used in root node)
-  std::unordered_multimap<std::string, std::string> _observerTable;
-  std::unordered_multimap<std::string, std::string> _observedTable;
-
   /// @brief Root node
-  Node _node;
+  std::shared_ptr<Node const> _node;
 
   struct AgencyTrigger {
     explicit AgencyTrigger(AgencyTriggerCallback callback)
@@ -228,9 +194,7 @@ class Store {
   std::map<std::string, AgencyTrigger, std::less<>> _triggers;
 };
 
-inline std::ostream& operator<<(std::ostream& o, Store const& store) {
-  return store.get().print(o);
-}
+inline std::ostream& operator<<(std::ostream& o, Store const& store);
 
 }  // namespace consensus
 }  // namespace arangodb

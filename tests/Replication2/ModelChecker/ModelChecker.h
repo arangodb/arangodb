@@ -160,8 +160,8 @@ struct DFSEnumerator {
   friend auto operator<<(std::ostream& os, PathVectorType const& path)
       -> std::ostream& {
     for (auto const& [v, t] : path) {
-      os << "{" << v->state << "}" << std::endl
-         << " -[" << t << "]-> " << std::endl;
+      os << "{" << v->state << "}\n"
+         << " -[" << t << "]-> \n";
     }
     return os;
   }
@@ -292,15 +292,17 @@ struct DFSEnumerator {
             result.stats.eliminatedStates += 1;
           }
           auto checkResult = step->observer.check(step->state);
+          constexpr auto maxDepth = 40;
           if (isPrune(checkResult)) {
             continue;
           } else if (isError(checkResult)) {
             result.failed.emplace(checkResult.asError(), step,
                                   buildPathVector());
             return result;
-          } else if (v->depth > 40) {
-            result.failed.emplace(CheckError("path to long"), step,
-                                  buildPathVector());
+          } else if (v->depth > maxDepth) {
+            result.failed.emplace(
+                CheckError(fmt::format("path too long (>{})", maxDepth)), step,
+                buildPathVector());
             return result;
           }
           if (step->isActive()) {
@@ -389,8 +391,8 @@ struct RandomEnumerator {
   friend auto operator<<(std::ostream& os, PathVectorType const& path)
       -> std::ostream& {
     for (auto const& [v, t] : path) {
-      os << "{" << v->state << "}"
-         << " -[" << t << "]-> ";
+      os << "{" << v->state << "}\n"
+         << " -[" << t << "]-> \n";
     }
     return os;
   }

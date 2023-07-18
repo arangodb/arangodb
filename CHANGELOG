@@ -3,6 +3,171 @@ devel
 
 * FE-301: Unify Users View UI.
 
+* Updated ArangoDB Starter to 0.16.0-preview-3 and arangosync to v2.19.0-preview-1.
+
+* FE-289: Improve database table UI.
+
+* Added startup option `--database.max-databases` to limit the maximum number
+  of databases that can exist in parallel on a deployment. This option can be
+  used to limit resources used by database objects. If the option is used and
+  there already exist as many databases as configured by this option, any
+  attempt to create an additional database will fail with error 32
+  (`ERROR_RESOURCE_LIMIT`). Additional databases can then only be created if
+  other databases are dropped first.
+  The default value for this option is unlimited, so technically an arbitrary 
+  amount of databases can be created (although effectively the number of
+  databases is limited by memory and processing resources).
+
+* Updated ArangoDB Starter to 0.16.0-preview-2.
+
+* FE-304, FE-305: use navigator.onLine for checking internet connection,
+  correct path for running/slow queries.
+
+* BTS-744: Disable development mode for system services.
+
+* Updated ArangoDB Starter to 0.16.0-preview-1.
+
+* Added transparent LZ4 compression for values in the in-memory edge cache if
+  their size exceeds a configurable threshold. This is configurable as an
+  opt-in functionality.
+
+  LZ4 compression of edge index cache values allows to store more data in main
+  memory than without compression, so the available memory can be used more
+  efficiently. The compression is transparent and does not require any change
+  to queries or applications. 
+  The compression can add CPU overhead for compressing values when storing them
+  in the cache, and for decompressing values when fetching them from the cache.
+  
+  The new startup option `--cache.min-value-size-for-edge-compression` can be
+  used to set a threshold value size for compression edge index cache payload
+  values. The default value is `1GB`, which will effectively turn compression
+  off. Setting the option to a lower value (e.g. `100`) will turn on the
+  compression for any payloads whose size exceeds this value.
+  
+  The new startup option `--cache.acceleration-factor-for-edge-compression` can
+  be used to fine-tune the compression. It controls the LZ4-internal 
+  "acceleration" factor used for the compression. The default value is `1`.
+  Higher values typically mean less compression but faster speeds.
+
+  The following new metrics can be used to determine the usefulness of 
+  compression:
+
+  - `rocksdb_cache_edge_effective_entries_size`: will return the total
+    number of bytes of all entries that were stored in the in-memory edge cache,
+    after compression was attempted/applied. This metric will be populated
+    regardless of whether compression is used or not.
+  - `rocksdb_cache_edge_uncompressed_entries_size`: will return the 
+    total number of bytes of all entries that were ever stored in the 
+    in-memory edge cache, before compression was applied. This metric will be
+    populated regardless of whether compression is used or not. 
+  - `rocksdb_cache_edge_compression_ratio`: will return the effective
+    compression ratio for all edge cache entries ever stored in the cache.
+
+  Note that these metrics will be increased upon every insertion into the
+  edge cache, but not decreased when data gets evicted from the cache.
+
+* Enforce that server always returns an empty body if the return code is 204.
+
+* Arangodump retries dump requests in more cases: read, write and connection
+  errors.
+
+* Added startup option `--replication.active-failover-leader-grace-period`.
+  This startup option can be used to set the amount of time (in seconds) for
+  which the current leader in an active failover setup will continue to 
+  assume its leadership even if it lost connection to the agency.
+
+  In case the leader cannot contact the agency anymore, the agency will elect
+  a new leader after the supervision grace period has elapsed. 
+  In order to avoid a split-brain situation with multiple servers assuming
+  leadership, this option can be used to make a disconnected leader refuse
+  any incoming write operations after the grace period controled by this option
+  has elapsed.
+  Ideally the startup option should be given a value greater than the value
+  of the supervision grace period, in order to avoid a temporarily disconnected
+  leader giving up leadership too early and unnecessarily.
+
+  The default value is 120 seconds. Setting the option to a value of 0 will
+  keep the existing behavior, in which a disconnected leader will not refuse
+  incoming write operations.
+
+* Lower default value of `--query.log-memory-usage-threshold` from 4GB to 1GB.
+  This leads to queries that consume 1GB or more memory to be logged so that
+  they can be investigated and improved.
+
+* Set threshold for RocksDB automatic WAL file deletion by age from 30 days
+  to 30 years.
+  This should effectively not change any behavior, as we don't rely on 
+  RocksDB's built-in WAL file deletion mechanism. Instead, we tell RocksDB
+  explicitly to delete which WAL files, depending on what other functionality
+  (e.g. replication, index creation) still needs them or not.
+
+* Deprecate the startup option `--rocksdb.wal-archive-size-limit` because
+  it can be unsafe to use in environments that use replication (cluster,
+  active failover, single-to-single replication). When using the option and
+  limiting the total size of the WAL files in the archive, this may lead
+  to still-needed WAL files being pruned too early. This can have side
+  effects, such as aborting ongoing replication or index creation attempts.
+
+* Remove temporary `CREATING_{number}` directories from hot backup in case a
+  hot backup runs into an error.
+
+* Added new startup options `--cache.ideal-lower-fill-ratio` and 
+  `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
+  ratios for cache tables that trigger shrinking and growing of the table
+  by the cache rebalancer. The default values are:
+
+  - `0.04` (i.e. 4%) for the lower bound that triggers shrinking
+  - `0.25` (i.e. 25%) for the upper bound that triggers growing
+
+  These values were hard-coded in previous versions of ArangoDB.
+
+* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in 
+  case the update AQL is of the pattern 
+
+      FOR doc IN collection
+        UPDATE <doc> IN collection
+
+  Previously the optimization was only possible if the update AQL was of the
+  pattern 
+
+      FOR doc IN collection
+        UPDATE <key> WITH <doc> IN collection
+
+  Both <key> and <doc> refer to data from the collection enumeration variable
+  `doc` here.
+
+  Also fix the optimization in case a shard key attribute is updated with a
+  value from a different attribute, e.g.
+
+     FOR doc IN collection
+       UPDATE { _key: doc.abc, abc: doc._key } IN collection
+
+  In this case the optimization was previously applied although it shouldn't.
+
+* BTS-1490: query can use a lot more memory when using COLLECT WITH COUNT.
+
+* Attempt to avoid busy looping when locking collections with a timeout
+
+* Add a `description` field to OptimizerRule and dump the explanations via the
+  `GET /_api/query/rules` endpoint.
+
+* Don't show "write query options" for AQL write queries in the explain and
+  profile output. The write query options normally don't produce any valuable
+  insights and only take up screen real estate.
+
+* If a startup option has a dynamic default value (e.g. if the default value
+  depends on the amount of available RAM), display a "dynamic default" hint
+  when invoking `--help`.
+
+* FE-229: Improve shard rebalancing UI.
+
+* FE-20: fix UI placeholder format for locale when creating analyzers.
+
+* Fixed Github issue #19175.
+  This fixes a problem in traversal query optimization that was introduced
+  in 3.11 and that can lead to traversal queries being aborted with an error
+  `AQL: cannot and-combine normalized condition`.
+
 * FE-240: disable JSON editor when viewing inverted index.
 
 * FE-262: Improve Analyzer table UI.
@@ -106,6 +271,8 @@ devel
   debugging with logfiles in hot backup RClone upload operacions:
   `--rclone.argument=--log-level=DEBUG`
   `--rclone.argument=-log-file=/tmp/rclone.log`
+
+* Remove ttl and observe/unobserve from agency api.
 
 * Fix issue #18982: query editor null/undefined check filters out bindParams
   with value 0.

@@ -2656,18 +2656,18 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       VPackObjectBuilder ob(&body);
       body.add("collection", collectionName);
     }
-    try {
-      leaderState->replicateOperation(
-          body.sharedSlice(),
-          replication2::replicated_state::document::OperationType::kTruncate,
-          state()->id(),
-          replication2::replicated_state::document::ReplicationOptions{});
-    } catch (basics::Exception const& e) {
-      return OperationResult(Result{e.code(), e.what()}, options);
-    } catch (std::exception const& e) {
-      return OperationResult(Result{TRI_ERROR_INTERNAL, e.what()}, options);
-    }
-    return OperationResult{Result{}, options};
+    auto operation =
+        replication2::replicated_state::document::ReplicatedOperation::
+            buildTruncateOperation(state()->id(), trxColl->collectionName());
+    // Should finish immediately, because we are not waiting the operation to be
+    // committed in the replicated log
+    auto replicationFut = leaderState->replicateOperation(
+        std::move(operation),
+        replication2::replicated_state::document::ReplicationOptions{
+            .waitForSync = options.waitForSync});
+    TRI_ASSERT(replicationFut.isReady());
+    auto replicationRes = replicationFut.get();
+    return OperationResult{replicationRes.result(), options};
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -3153,17 +3153,23 @@ Future<Result> Methods::replicateOperations(
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
         transactionCollection);
     auto leaderState = rtc.leaderState();
-    try {
-      leaderState->replicateOperation(
-          replicationData.sharedSlice(),
-          replication2::replicated_state::document::fromDocumentOperation(
-              operation),
-          state()->id(),
-          replication2::replicated_state::document::ReplicationOptions{});
-    } catch (basics::Exception const& e) {
-      return Result{e.code(), e.what()};
-    } catch (std::exception const& e) {
-      return Result{TRI_ERROR_INTERNAL, e.what()};
+    auto replicatedOp = replication2::replicated_state::document::
+        ReplicatedOperation::buildDocumentOperation(
+            operation, state()->id(), rtc.collectionName(),
+            replicationData.sharedSlice());
+    // Should finish immediately
+    auto replicationFut = leaderState->replicateOperation(
+        std::move(replicatedOp),
+        replication2::replicated_state::document::ReplicationOptions{
+            .waitForSync = options.waitForSync});
+
+    // Should finish immediately, because we are not waiting the operation to be
+    // committed in the replicated log
+    TRI_ASSERT(replicationFut.isReady());
+
+    auto replicationRes = replicationFut.get();
+    if (replicationRes.fail()) {
+      return replicationRes.result();
     }
     return performIntermediateCommitIfRequired(collection->id());
   }

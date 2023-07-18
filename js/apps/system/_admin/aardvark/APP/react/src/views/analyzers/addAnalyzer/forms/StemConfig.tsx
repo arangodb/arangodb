@@ -9,7 +9,10 @@ export const StemConfig = ({
 }) => {
   return (
     <Grid templateColumns={"1fr 1fr"} columnGap="4">
-      <LocaleInput basePropertiesPath={basePropertiesPath} />
+      <LocaleInput
+        basePropertiesPath={basePropertiesPath}
+        placeholder="language"
+      />
     </Grid>
   );
 };

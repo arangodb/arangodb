@@ -92,20 +92,21 @@
 
 using namespace std::chrono_literals;
 
-DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
-              "Number of arangosearch links/indexes currently out of sync");
-
-#ifdef USE_ENTERPRISE
-DECLARE_GAUGE(arangodb_search_columns_cache_size, int64_t,
-              "ArangoSearch columns cache usage in bytes");
-#endif
-
 namespace arangodb::aql {
 class Query;
 }  // namespace arangodb::aql
 
 namespace arangodb::iresearch {
 namespace {
+
+DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
+              "Number of arangosearch links/indexes currently out of sync");
+
+#ifdef USE_ENTERPRISE
+
+DECLARE_GAUGE(arangodb_search_columns_cache_size, LimitedResourceManager,
+              "ArangoSearch columns cache usage in bytes");
+#endif
 
 // Log topic implementation for IResearch
 class IResearchLogTopic final : public LogTopic {
@@ -875,20 +876,18 @@ IResearchFeature::IResearchFeature(Server& server)
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
       _failQueriesOnOutOfSync(false),
+      _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_num_out_of_sync_links{})),
+#ifdef USE_ENTERPRISE
+      _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_columns_cache_size{})),
+#endif
       _consolidationThreads(0),
       _consolidationThreadsIdle(0),
       _commitThreads(0),
       _commitThreadsIdle(0),
       _threads(0),
-      _threadsLimit(0),
-      _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_num_out_of_sync_links{}))
-#ifdef USE_ENTERPRISE
-      ,
-      _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_columns_cache_size{}))
-#endif
-{
+      _threadsLimit(0) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
@@ -1023,11 +1022,13 @@ If set to `false`, queries on out-of-sync links/indexes are answered normally,
 but the returned data may be incomplete.)");
 
 #ifdef USE_ENTERPRISE
+  auto& manager =
+      basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
   options
       ->addOption(CACHE_LIMIT,
                   "The limit (in bytes) for ArangoSearch columns cache "
                   "(0 = no caching).",
-                  new options::UInt64Parameter(&_columnsCacheLimit),
+                  new options::UInt64Parameter(&manager.limit),
                   options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                             options::Flags::OnSingle,
                                             options::Flags::OnDBServer,
@@ -1202,8 +1203,10 @@ void IResearchFeature::start() {
         << "] consolidation thread(s)";
 
 #ifdef USE_ENTERPRISE
+    auto& manager =
+        basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
     LOG_TOPIC("c2c74", INFO, arangodb::iresearch::TOPIC)
-        << "ArangoSearch columns cache limit: " << _columnsCacheLimit;
+        << "ArangoSearch columns cache limit: " << manager.limit;
 #endif
 
     {
@@ -1253,27 +1256,6 @@ void cleanupDatabase(TRI_vocbase_t& database) {
         << "Failed to remove arangosearch path for database (id '"
         << database.id() << "' name: '" << database.name() << "') with error '"
         << error.message() << "'";
-  }
-}
-
-void IResearchFeature::reportRecoveryProgress(arangodb::IndexId id,
-                                              std::string_view phase,
-                                              size_t current, size_t total) {
-  TRI_ASSERT(total != 0);
-  auto now = std::chrono::system_clock::now();
-
-  if (id != _progressState.lastReportId ||
-      now - _progressState.lastReportTime >= std::chrono::minutes(1)) {
-    // report progress only when index/link id changes or one minute has passed
-
-    auto progress = static_cast<size_t>(100.0 * current / total);
-    LOG_TOPIC("d1f18", INFO, TOPIC)
-        << "recovering arangosearch index " << id << ", " << phase
-        << ": operation " << (current + 1) << "/" << total << " (" << progress
-        << "%)...";
-
-    _progressState.lastReportId = id;
-    _progressState.lastReportTime = now;
   }
 }
 
@@ -1383,23 +1365,16 @@ void IResearchFeature::registerIndexFactory() {
 #ifdef USE_ENTERPRISE
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 int64_t IResearchFeature::columnsCacheUsage() const noexcept {
-  return _columnsCacheMemoryUsed.load();
+  auto& manager =
+      basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
+  return manager.load();
+}
+void IResearchFeature::setCacheUsageLimit(uint64_t limit) noexcept {
+  auto& manager =
+      basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
+  manager.limit = limit;
 }
 #endif
-bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
-  bool done = false;
-  int64_t current = _columnsCacheMemoryUsed.load(std::memory_order_relaxed);
-  do {
-    auto const newValue = current + diff;
-    if (newValue <= static_cast<int64_t>(_columnsCacheLimit)) {
-      TRI_ASSERT(newValue >= 0);
-      done = _columnsCacheMemoryUsed.compare_exchange_weak(current, newValue);
-    } else {
-      return false;
-    }
-  } while (!done);
-  return true;
-}
 
 bool IResearchFeature::columnsCacheOnlyLeaders() const noexcept {
   TRI_ASSERT(ServerState::instance()->isDBServer() || !_columnsCacheOnlyLeader);

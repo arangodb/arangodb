@@ -50,6 +50,8 @@ MutexNode::MutexNode(ExecutionPlan* plan,
 
 ExecutionNode::NodeType MutexNode::getType() const { return MUTEX; }
 
+size_t MutexNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 ExecutionNode* MutexNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
   auto clone = cloneHelper(std::make_unique<MutexNode>(plan, _id),
@@ -70,8 +72,7 @@ void MutexNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> MutexNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 

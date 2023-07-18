@@ -119,11 +119,12 @@ class TraversalNode : public virtual GraphNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,

@@ -267,8 +267,8 @@ const buildCode = function(key, command, cn, duration) {
   let file = fs.getTempFile() + "-" + key;
   fs.write(file, `
 (function() {
-// For chaos tests additional 10 secs might be not enough
-require('internal').SetGlobalExecutionDeadlineTo((${duration} + 60) * 1000);
+// For chaos tests additional 10 secs might be not enough, so add 3 minutes buffer
+require('internal').SetGlobalExecutionDeadlineTo((${duration} + 180) * 1000);
 let tries = 0;
 while (true) {
   if (++tries % 3 === 0) {
@@ -331,7 +331,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
           }
         }
       });
-      if (count > duration) {
+      if (count >= duration + 10) {
         clients.forEach(function (client) {
           if (!client.done) {
             debug(`force terminating ${client.pid} since we're aborting the tests`);
@@ -596,6 +596,7 @@ exports.agency = {
   },
 
   call: callAgency,
+  transact: (body) => callAgency("transact", body),
 
   increaseVersion: function (path) {
     callAgency('write', [[{
