@@ -80,7 +80,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024, true, 0.04, 0.25);
+  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024, true, 0.04, 0.25, 0);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -207,7 +207,7 @@ TEST(CacheRebalancerTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024, true, 0.04, 0.25);
+  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024, true, 0.04, 0.25, 0);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;

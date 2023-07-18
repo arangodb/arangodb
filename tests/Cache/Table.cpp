@@ -56,7 +56,7 @@ TEST(CacheTableTest, test_basic_constructor_behavior) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 16ULL * 1024ULL * 1024ULL, true, 0.04,
-                  0.25);
+                  0.25, 0);
 
   for (std::uint32_t i = Table::kMinLogSize; i <= 20; i++) {
     auto table = std::make_shared<Table>(i, &manager);
@@ -77,7 +77,7 @@ TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 16ULL * 1024ULL * 1024ULL, true, 0.04,
-                  0.25);
+                  0.25, 0);
 
   auto table = std::make_shared<Table>(Table::kMinLogSize, &manager);
   ASSERT_NE(table.get(), nullptr);
@@ -118,7 +118,7 @@ class CacheTableMigrationTest : public ::testing::Test {
               scheduler.post(fn);
               return true;
             },
-            16ULL * 1024ULL * 1024ULL, true, 0.04, 0.25),
+            16ULL * 1024ULL * 1024ULL, true, 0.04, 0.25, 0),
         small(std::make_shared<Table>(Table::kMinLogSize, &manager)),
         large(std::make_shared<Table>(Table::kMinLogSize + 2, &manager)),
         huge(std::make_shared<Table>(Table::kMinLogSize + 4, &manager)) {
