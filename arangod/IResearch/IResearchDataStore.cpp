@@ -903,7 +903,6 @@ Result IResearchDataStore::commitUnsafeImpl(
     }();
 #endif
     auto engineSnapshot = _engine->currentSnapshot();
-    TRI_IF_FAILURE("ArangoSearch::DisableMoveTickInCommit") { return {}; }
     if (ADB_UNLIKELY(!engineSnapshot)) {
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("Failed to get engine snapshot while committing "
@@ -1666,10 +1665,15 @@ void IResearchDataStore::recoveryInsert(uint64_t recoveryTick,
   // TODO(MBkkt) IndexWriter::Commit? Probably makes sense only if were removes
 }
 
-void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
-                                       transaction::Methods* trx) {
+void IResearchDataStore::truncateCommit(TruncateGuard&& guard,
+                                        TRI_voc_tick_t tick,
+                                        transaction::Methods* trx) {
   // '_dataStore' can be asynchronously modified
   auto linkLock = _asyncSelf->lock();
+  if (!linkLock) {
+    // it means index already dropped, so truncate not necessary here
+    return;
+  }
 
   bool ok{false};
   irs::Finally computeMetrics = [&]() noexcept {
@@ -1682,15 +1686,6 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
     CrashHandler::setHardKill();
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (!linkLock) {
-    // the current link is no longer valid (checked after ReadLock
-    // acquisition)
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-        absl::StrCat("failed to lock ArangoSearch index '", index().id().id(),
-                     "' while truncating it"));
   }
 
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
@@ -1713,7 +1708,9 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     _recoveryTrx.Abort();
   }
 
-  std::lock_guard commitLock{_commitMutex};
+  if (!guard.mutex) {
+    guard = truncateBegin();
+  }
   absl::Cleanup clearGuard = [&, last = _lastCommittedTick]() noexcept {
     _lastCommittedTick = last;
   };

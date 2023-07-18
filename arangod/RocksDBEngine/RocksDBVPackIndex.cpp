@@ -2710,12 +2710,13 @@ void RocksDBVPackIndex::expandInSearchValues(
   }
 }
 
-void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
-                                      transaction::Methods* trx) {
+void RocksDBVPackIndex::truncateCommit(TruncateGuard&& guard,
+                                       TRI_voc_tick_t tick,
+                                       transaction::Methods* trx) {
   if (_estimator != nullptr) {
     _estimator->bufferTruncate(tick);
   }
-  RocksDBIndex::afterTruncate(tick, trx);
+  RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
 
 std::shared_ptr<cache::Cache> RocksDBVPackIndex::makeCache() const {
