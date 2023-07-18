@@ -1,10 +1,13 @@
 import { usePrevious } from "@chakra-ui/react";
 import { useFormikContext } from "formik";
+import _ from "lodash";
 import { useEffect, useMemo, useState } from "react";
 import { useFetchGraphs } from "../useFetchGraphs";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
-import _ from "lodash";
 
+/**
+ * Creates a map of collection -> from/to by iterating over all graphs
+ * */
 const useCollectionToFromAndToMap = () => {
   const { graphs } = useFetchGraphs();
   const collectionsToFromAndToMap = useMemo(() => {
@@ -28,11 +31,13 @@ const useCollectionToFromAndToMap = () => {
   return collectionsToFromAndToMap;
 };
 /**
- * if any collection is selected by the user, this resets the from/to if required
+ * If any collection is selected by the user,
+ * this uses a collection -> from/to map to
+ * set the from/to values and disable the inputs
  */
 export const useResetFromAndToValues = () => {
   const { values, setValues } = useFormikContext<GeneralGraphCreateValues>();
-  const [isFromAndToDisabled, setIsFromAndToDisabled] = useState<{
+  const [collectionToDisabledMap, setCollectionToDisabledMap] = useState<{
     [key: number]: boolean;
   }>({});
   const edgeDefinitionsMap = useCollectionToFromAndToMap();
@@ -50,7 +55,7 @@ export const useResetFromAndToValues = () => {
           edgeDefinitionsMap[edgeDefinition.collection as string];
         if (foundDefinition) {
           const { from, to } = foundDefinition;
-          setIsFromAndToDisabled(currentIsFromAndToDisabled => {
+          setCollectionToDisabledMap(currentIsFromAndToDisabled => {
             return {
               ...currentIsFromAndToDisabled,
               [index]: true
@@ -62,7 +67,7 @@ export const useResetFromAndToValues = () => {
             to
           };
         }
-        setIsFromAndToDisabled(currentIsFromAndToDisabled => {
+        setCollectionToDisabledMap(currentIsFromAndToDisabled => {
           return {
             ...currentIsFromAndToDisabled,
             [index]: false
@@ -79,5 +84,5 @@ export const useResetFromAndToValues = () => {
     // in running this if a collection changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edgeDefinitionsMap, isAnyCollectionUpdated]);
-  return { isFromAndToDisabled };
+  return { collectionToDisabledMap };
 };

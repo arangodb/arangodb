@@ -54,7 +54,7 @@ export const EdgeDefinitionsField = ({
   allowExistingCollections?: boolean;
 }) => {
   const { values } = useFormikContext<GeneralGraphCreateValues>();
-  const { isFromAndToDisabled } = useResetFromAndToValues();
+  const { collectionToDisabledMap } = useResetFromAndToValues();
   const { edgeCollectionOptions, documentCollectionOptions } =
     useCollectionOptions();
   const { mode } = useGraphsModeContext();
@@ -68,6 +68,10 @@ export const EdgeDefinitionsField = ({
                 Relations
               </Text>
               {values.edgeDefinitions.map((_edgeDef, index) => {
+                const isFromAndToDisabled = collectionToDisabledMap[index];
+                const collectionFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.collection.name}`;
+                const fromFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.from.name}`;
+                const toFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.to.name}`;
                 return (
                   <Stack
                     spacing="4"
@@ -101,31 +105,31 @@ export const EdgeDefinitionsField = ({
                             ? edgeCollectionOptions
                             : undefined,
                           isClearable: true,
-                          name: `edgeDefinitions[${index}]${graphRelationFieldsMap.collection.name}`,
+                          name: collectionFieldName,
                           isDisabled: mode === "edit",
-                          noOptionsMessage: noOptionsMessage
+                          noOptionsMessage
                         }}
                       />
                       <FormField
                         field={{
                           ...graphRelationFieldsMap.from,
-                          name: `edgeDefinitions[${index}]${graphRelationFieldsMap.from.name}`,
-                          isDisabled: isFromAndToDisabled[index],
+                          name: fromFieldName,
+                          isDisabled: isFromAndToDisabled,
                           options: allowExistingCollections
                             ? documentCollectionOptions
                             : undefined,
-                          noOptionsMessage: noOptionsMessage
+                          noOptionsMessage
                         }}
                       />
                       <FormField
                         field={{
                           ...graphRelationFieldsMap.to,
-                          name: `edgeDefinitions[${index}]${graphRelationFieldsMap.to.name}`,
-                          isDisabled: isFromAndToDisabled[index],
+                          name: toFieldName,
+                          isDisabled: isFromAndToDisabled,
                           options: allowExistingCollections
                             ? documentCollectionOptions
                             : undefined,
-                          noOptionsMessage: noOptionsMessage
+                          noOptionsMessage
                         }}
                       />
                     </Grid>
