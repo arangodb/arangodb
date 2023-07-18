@@ -36,6 +36,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server

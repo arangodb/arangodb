@@ -29,6 +29,7 @@
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
+#include "Agency/Node.h"
 #include "Agency/NodeDeserialization.h"
 #include "Agency/ReconfigureReplicatedLog.h"
 #include "Basics/TimeString.h"
@@ -38,6 +39,7 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
                                    std::string const& jobId,
@@ -229,7 +231,7 @@ bool ResignLeadership::start(bool& aborts) {
 
   // Check that _to is not in `Target/CleanedServers`:
   VPackBuilder cleanedServersBuilder;
-  auto const& cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
+  auto const& cleanedServersNode = _snapshot.get(cleanedPrefix);
   if (cleanedServersNode) {
     cleanedServersNode->toBuilder(cleanedServersBuilder);
   } else {
@@ -249,10 +251,10 @@ bool ResignLeadership::start(bool& aborts) {
 
   // Check that _to is not in `Target/FailedServers`:
   //  (this node is expected to NOT exists, so make test before processing
-  //   so that hasAsNode does not generate a warning log message)
+  //   so that get does not generate a warning log message)
   VPackBuilder failedServersBuilder;
   if (_snapshot.has(failedServersPrefix)) {
-    auto const& failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
+    auto const& failedServersNode = _snapshot.get(failedServersPrefix);
     if (failedServersNode) {
       failedServersNode->toBuilder(failedServersBuilder);
     } else {
@@ -375,7 +377,7 @@ void ResignLeadership::scheduleJobsR2(std::shared_ptr<Builder>& trx,
   auto logs = _snapshot.hasAsChildren(replicatedLogsPath);
 
   for (auto const& [logIdString, logNode] : *logs) {
-    auto logTarget = deserialize<replication2::agency::LogTarget>(*logNode);
+    auto logTarget = deserialize<replication2::agency::LogTarget>(logNode);
     auto logPlan = readLogPlan(_snapshot, database, logTarget.id);
 
     bool changeLeader = [&] {
@@ -437,7 +439,7 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         // Only shards, which are affected
         int found = -1;
         int count = 0;
-        for (VPackSlice dbserver : VPackArrayIterator(shard.second->slice())) {
+        for (VPackSlice dbserver : *shard.second->getArray()) {
           if (dbserver.stringView() == _server) {
             found = count;
             break;
