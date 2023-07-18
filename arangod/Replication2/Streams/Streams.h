@@ -74,7 +74,7 @@ struct Stream {
  */
 template<typename T>
 struct ProducerStream : Stream<T> {
-  virtual auto insert(T const&) -> LogIndex = 0;
+  virtual auto insert(T const&, bool waitForSync = false) -> LogIndex = 0;
 };
 
 /**
