@@ -77,7 +77,7 @@ export const GENERAL_GRAPH_FIELDS_MAP = {
     label: "Orphan collections",
     tooltip:
       "Collections that are part of a graph but not used in an edge definition.",
-    isRequired: true,
+    isRequired: false,
     noOptionsMessage: () => "Please enter a new and valid collection name"
   }
 };
@@ -96,7 +96,7 @@ export const CLUSTER_GRAPH_FIELDS_MAP = {
     label: "Replication factor",
     tooltip:
       "Numeric value. Must be at least 1. Total number of copies of the data in the cluster.If not given, the system default for new collections will be used.",
-    isRequired: false
+    isRequired: true
   },
   minReplicationFactor: {
     name: "minReplicationFactor",
