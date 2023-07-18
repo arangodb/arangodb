@@ -188,10 +188,16 @@ TEST_F(CreateCollectionBodyTest, test_satelliteReplicationFactor) {
   auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, uint64_t number) {
     auto testee = CreateCollectionBody::fromCreateAPIBody(
         body.slice(), defaultDBConfig(), false);
+#ifdef USE_ENTERPRISE
     ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
     ASSERT_TRUE(testee->replicationFactor.has_value());
     EXPECT_EQ(testee->replicationFactor.value(), number)
         << "Parsing error in " << body.toJson();
+#else
+    ASSERT_FALSE(testee.ok()) << "Created a satellite collection without enterprise features enabled.";
+    EXPECT_EQ(testee.result().errorNumber(), TRI_ERROR_ONLY_ENTERPRISE) << " with message: " << testee.result().errorMessage();
+#endif
+
   };
 
   // Special handling for "satellite" string

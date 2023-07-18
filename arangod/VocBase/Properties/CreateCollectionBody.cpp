@@ -133,11 +133,10 @@ auto handleWriteConcern(std::string_view key, VPackSlice value,
                         VPackSlice fullBody,
                         DatabaseConfiguration const& config,
                         VPackBuilder& result) {
-  if (shouldConsiderClusterAttribute(fullBody, config)) {
+  if (!isSingleServer()) {
+    // Just take in cluster
     result.add(key, value);
   }
-  // Just ignore if we have distributeShardsLike or are on SingleServer or do
-  // not get a number
 }
 
 auto handleNumberOfShards(std::string_view key, VPackSlice value,

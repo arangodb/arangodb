@@ -132,7 +132,7 @@ ClusteringMutableProperties::validateDatabaseConfiguration(
   }
 #ifndef USE_ENTERPRISE
   if (isSatellite()) {
-    return {TRI_ERROR_BAD_PARAMETER,
+    return {TRI_ERROR_ONLY_ENTERPRISE,
             "'satellite' collections only allowed in enterprise edition"};
   }
 #endif
