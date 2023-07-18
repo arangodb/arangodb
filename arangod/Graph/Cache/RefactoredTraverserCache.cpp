@@ -43,6 +43,7 @@
 #include "Transaction/Options.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Slice.h>
@@ -224,7 +225,8 @@ bool RefactoredTraverserCache::appendVertex(
     THROW_ARANGO_EXCEPTION(collectionNameResult.result());
   }
 
-  auto findDocumentInShard = [&](std::string const& collectionName) -> bool {
+  auto findDocumentInShard =
+      [&](std::string_view const& collectionName) -> bool {
     if (!_produceVertices) {
       // we don't need any vertex data, return quickly
       result.add(VPackSlice::nullSlice());
@@ -277,11 +279,12 @@ bool RefactoredTraverserCache::appendVertex(
     } catch (basics::Exception const& ex) {
       if (isWithClauseMissing(ex)) {
         // turn the error into a different error
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-            "collection not known to traversal: '" + collectionName +
-                "'. please add 'WITH " + collectionName +
-                "' as the first line in your AQL");
+        auto message =
+            absl::StrCat("collection not known to traversal: '", collectionName,
+                         "'. please add 'WITH ", collectionName,
+                         "' as the first line in your AQL");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                       message);
       }
       // rethrow original error
       throw;
@@ -306,7 +309,7 @@ bool RefactoredTraverserCache::appendVertex(
               "' as the first line in your AQL");
     }
     for (auto const& shard : it->second) {
-      if (findDocumentInShard(std::string{shard})) {
+      if (findDocumentInShard(shard)) {
         // Short circuit, as soon as one shard contains this document
         // we can return it.
         return true;

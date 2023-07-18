@@ -47,6 +47,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#include <absl/strings/str_cat.h>
 #include <any>
 
 using namespace arangodb;
@@ -184,11 +185,10 @@ Result TransactionState::addCollection(DataSourceId cid, std::string_view cname,
         _type = std::max(_type, accessType);
       } else {
         // everything else is not safe and must be rejected
-        res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                  std::string(TRI_errno_string(
-                      TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-                      ": " + std::string{cname} + " [" +
-                      AccessMode::typeString(accessType) + "]");
+        auto message = absl::StrCat(
+            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION),
+            ": ", cname, " [", AccessMode::typeString(accessType), "]");
+        res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, message);
       }
     }
   }

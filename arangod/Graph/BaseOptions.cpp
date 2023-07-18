@@ -623,11 +623,14 @@ void BaseOptions::setVertexProjections(Projections projections) {
     resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
                                           sizeof(aql::Projections::Projection));
   }
-  arangodb::ResourceUsageScope guard(
-      resourceMonitor(),
-      projections.size() * sizeof(aql::Projections::Projection));
-  _vertexProjections = std::move(projections);
-  guard.steal();  // now we are responsible for tracking the memory
+  try {
+    resourceMonitor().increaseMemoryUsage(projections.size() *
+                                          sizeof(aql::Projections::Projection));
+    _vertexProjections = std::move(projections);
+  } catch (...) {
+    _vertexProjections.clear();
+    throw;
+  }
 }
 
 void BaseOptions::setEdgeProjections(Projections projections) {
@@ -635,11 +638,14 @@ void BaseOptions::setEdgeProjections(Projections projections) {
     resourceMonitor().decreaseMemoryUsage(getEdgeProjections().size() *
                                           sizeof(aql::Projections::Projection));
   }
-  arangodb::ResourceUsageScope guard(
-      resourceMonitor(),
-      projections.size() * sizeof(aql::Projections::Projection));
-  _edgeProjections = std::move(projections);
-  guard.steal();  // now we are responsible for tracking the memory
+  try {
+    resourceMonitor().increaseMemoryUsage(projections.size() *
+                                          sizeof(aql::Projections::Projection));
+    _edgeProjections = std::move(projections);
+  } catch (...) {
+    _edgeProjections.clear();
+    throw;
+  }
 }
 
 void BaseOptions::setMaxProjections(size_t projections) noexcept {
@@ -693,15 +699,14 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
     if (!getVertexProjections().empty()) {
       resourceMonitor().decreaseMemoryUsage(
           getVertexProjections().size() * sizeof(aql::Projections::Projection));
+      _vertexProjections.clear();
     }
 
     _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections",
                                                      resourceMonitor());
     try {
-      arangodb::ResourceUsageScope vGuard(
-          resourceMonitor(),
+      resourceMonitor().increaseMemoryUsage(
           getVertexProjections().size() * sizeof(aql::Projections::Projection));
-      vGuard.steal();  // now we are responsible for tracking the memory
     } catch (...) {
       _vertexProjections.clear();
       throw;
@@ -712,14 +717,13 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
     if (!getEdgeProjections().empty()) {
       resourceMonitor().decreaseMemoryUsage(
           getEdgeProjections().size() * sizeof(aql::Projections::Projection));
+      _edgeProjections.clear();
     }
     _edgeProjections =
         Projections::fromVelocyPack(info, "edgeProjections", resourceMonitor());
     try {
-      arangodb::ResourceUsageScope eGuard(
-          resourceMonitor(),
+      resourceMonitor().increaseMemoryUsage(
           getEdgeProjections().size() * sizeof(aql::Projections::Projection));
-      eGuard.steal();  // now we are responsible for tracking the memory
     } catch (...) {
       _edgeProjections.clear();
       throw;
