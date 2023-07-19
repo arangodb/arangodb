@@ -36,7 +36,7 @@ typedef std::basic_string<char, std::char_traits<char>,
 
 struct hash_monitored_string {
   using is_transparent = void;
-  [[nodiscard]] size_t operator()(const char* txt) const {
+  [[nodiscard]] size_t operator()(char const* txt) const {
     return std::hash<std::string_view>{}(txt);
   }
   [[nodiscard]] size_t operator()(std::string_view txt) const {
