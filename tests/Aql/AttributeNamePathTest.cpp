@@ -32,7 +32,9 @@
 using namespace arangodb::aql;
 
 TEST(AttributeNamePathTest, empty) {
-  AttributeNamePath p;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AttributeNamePath p{monitor};
   ASSERT_TRUE(p.empty());
   ASSERT_EQ(0, p.size());
 
@@ -42,7 +44,9 @@ TEST(AttributeNamePathTest, empty) {
 }
 
 TEST(AttributeNamePathTest, size) {
-  AttributeNamePath p;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AttributeNamePath p{monitor};
   ASSERT_EQ(0, p.size());
 
   for (size_t i = 0; i < 10; ++i) {
@@ -110,7 +114,9 @@ TEST(AttributeNamePathTest, hash) {
 }
 
 TEST(AttributeNamePathTest, atLong) {
-  AttributeNamePath p;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AttributeNamePath p{monitor};
   p._path.emplace_back("foo");
   p._path.emplace_back("bar");
   p._path.emplace_back("baz");
@@ -128,12 +134,14 @@ TEST(AttributeNamePathTest, atShort) {
 }
 
 TEST(AttributeNamePathTest, equalsLong) {
-  AttributeNamePath p1;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AttributeNamePath p1{monitor};
   p1._path.emplace_back("foo");
   p1._path.emplace_back("bar");
   p1._path.emplace_back("baz");
 
-  AttributeNamePath p2;
+  AttributeNamePath p2{monitor};
   p2._path.emplace_back("foo");
   p2._path.emplace_back("bar");
   p2._path.emplace_back("baz");
@@ -285,7 +293,7 @@ TEST(AttributeNamePathTest, shortenTo) {
             AttributeNamePath("abc", resMonitor).shortenTo(2));
   ASSERT_EQ(AttributeNamePath("abc", resMonitor),
             AttributeNamePath("abc", resMonitor).shortenTo(1));
-  ASSERT_EQ(AttributeNamePath(),
+  ASSERT_EQ(AttributeNamePath(resMonitor),
             AttributeNamePath("abc", resMonitor).shortenTo(0));
 
   ASSERT_EQ(AttributeNamePath(std::vector<std::string>{}, resMonitor),
