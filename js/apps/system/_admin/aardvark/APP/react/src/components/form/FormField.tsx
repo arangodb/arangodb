@@ -49,7 +49,10 @@ export const FormField = ({
   const inputProps = {
     autoFocus,
     placeholder: field.placeholder,
-    type: field.type
+    // TODO: this is a temporary workaround
+    // due to bootstrap styling issues,
+    // to be fixed in a later PR
+    type: field.type !== "text" ? field.type : undefined
   };
 
   const commonProps = {
