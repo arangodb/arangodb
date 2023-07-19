@@ -1,6 +1,6 @@
 import { useField, useFormikContext } from "formik";
 import React from "react";
-import { Props as ReactSelectProps, PropsValue } from "react-select";
+import { Props as ReactSelectProps } from "react-select";
 import CreatableSingleSelect from "../select/CreatableSingleSelect";
 import { BaseFormControlProps, FormikFormControl } from "./FormikFormControl";
 
@@ -14,20 +14,12 @@ export type InputControlProps = BaseFormControlProps & {
 
 export const CreatableSingleSelectControl = (props: InputControlProps) => {
   const { name, label, selectProps, ...rest } = props;
-  const [field, , helper] = useField(name);
+  const [field, , helper] = useField<string | undefined>(name);
   const { isSubmitting } = useFormikContext();
-
-  let value = selectProps?.options?.find(option => {
-    return (option as OptionType).value === field.value;
-  }) as PropsValue<OptionType>;
-
-  // this is when a value is newly created
-  if (!selectProps?.options && field.value) {
-    value = {
-      value: field.value,
-      label: field.value
-    }
-  }
+  const value = getValue({
+    field,
+    options: selectProps?.options as OptionType[]
+  });
   return (
     <FormikFormControl name={name} label={label} {...rest}>
       <CreatableSingleSelect
@@ -43,3 +35,38 @@ export const CreatableSingleSelectControl = (props: InputControlProps) => {
     </FormikFormControl>
   );
 };
+const createValue = (value: string) => {
+  return {
+    value,
+    label: value
+  };
+};
+function getValue({
+  field,
+  options
+}: {
+  field: { value: string | undefined };
+  options: OptionType[] | undefined;
+}) {
+  if (!field.value) {
+    return undefined;
+  }
+
+  // if no options are provided, it's a newly created value
+  if (!options || options.length === 0) {
+    return createValue(field.value);
+  }
+  if (typeof field.value === "string") {
+    // if it's a string, find it in options
+    const foundValue = options.find(option => {
+      return option.value === field.value;
+    });
+    if (foundValue) {
+      return foundValue;
+    } else {
+      // if not found, it's a newly created value
+      return createValue(field.value);
+    }
+  }
+  return field.value;
+}
