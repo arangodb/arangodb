@@ -16,7 +16,7 @@ export const CreatableMultiSelectControl = (props: InputControlProps) => {
   const { name, label, selectProps, ...rest } = props;
   const [field, , helper] = useField<string | string[] | undefined>(name);
   const { isSubmitting } = useFormikContext();
-  let value: PropsValue<OptionType> = getValue({
+  const value: PropsValue<OptionType> = getValue({
     field,
     options: selectProps?.options as OptionType[]
   });
