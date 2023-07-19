@@ -446,10 +446,3 @@ inline std::ostream& operator<<(std::ostream& o, Node const& n) {
 }
 
 }  // namespace arangodb::consensus
-
-// Create an explicit instantiation for VPackString using the Node
-// AccountingAllocator
-#include <velocypack/SliceBase.tpp>
-
-template class arangodb::velocypack::BasicString<
-    typename arangodb::consensus::Node::allocator_type::rebind<uint8_t>::type>;

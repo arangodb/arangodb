@@ -24,16 +24,18 @@
 #include "Node.h"
 #include "Store.h"
 
-#include "AgencyStrings.h"
 #include "Agency/PathComponent.h"
+#include "AgencyStrings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/GaugeBuilder.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/SliceBase.tpp>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -989,13 +991,17 @@ void Node::increaseMemoryUsage(std::size_t d) noexcept { memoryUsage += d; }
 
 void Node::decreaseMemoryUsage(std::size_t d) noexcept { memoryUsage -= d; }
 
+constexpr std::string_view nodeMetricsHelpText =
+    "Memory used by agency store/cache";
+
+DECLARE_GAUGE(arangodb_agency_node_memory_usage, uint64_t, nodeMetricsHelpText);
+
 void Node::toPrometheus(std::string& result) {
-  constexpr std::string_view name = "arangodb_agency_node_memory_usage";
-  constexpr std::string_view desc = "Memory used by agency store/cache";
+  auto name = arangodb_agency_node_memory_usage{}.name();
   auto nodeMemoryUsage = consensus::Node::getMemoryUsage();
-  result += basics::StringUtils::concatT("# HELP ", name, " ", desc,
-                                         "\n# TYPE ", name, " gauge\n", name,
-                                         " ", nodeMemoryUsage, "\n");
+  result += basics::StringUtils::concatT(
+      "# HELP ", name, " ", nodeMetricsHelpText, "\n# TYPE ", name, " gauge\n",
+      name, " ", nodeMemoryUsage, "\n");
 }
 
 template<typename... Args>
@@ -1007,3 +1013,8 @@ NodePtr consensus::Node::allocateNode(Args&&... args) {
   return std::allocate_shared<NodeWrapper>(Node::allocator_type{},
                                            std::forward<Args>(args)...);
 }
+
+// Create an explicit instantiation for VPackString using the Node
+// AccountingAllocator
+template class arangodb::velocypack::BasicString<
+    typename arangodb::consensus::Node::allocator_type::rebind<uint8_t>::type>;
