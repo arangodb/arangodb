@@ -14,7 +14,7 @@ import {
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
-import { CreateDatabaseUserValues } from "./CreateUser.types";
+import { CreateUserValues } from "./CreateUser.types";
 
 const addUserFields = {
   user: {
@@ -57,7 +57,7 @@ const addUserFields = {
   }
 };
 
-const INITIAL_VALUES: CreateDatabaseUserValues = {
+const INITIAL_VALUES: CreateUserValues = {
   role: "",
   active: true,
   user: "",
@@ -86,7 +86,7 @@ export const AddUserModal = ({
   onClose: () => void;
 }) => {
   const initialFocusRef = React.useRef<HTMLInputElement>(null);
-  const handleSubmit = async (values: CreateDatabaseUserValues) => {
+  const handleSubmit = async (values: CreateUserValues) => {
     const userOptions = {
       user: values.user,
       active: values.active,

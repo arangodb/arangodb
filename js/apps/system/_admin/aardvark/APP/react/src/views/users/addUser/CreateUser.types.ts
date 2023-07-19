@@ -1,4 +1,4 @@
-export type CreateDatabaseUserValues = {
+export type CreateUserValues = {
   role: string;
   name: string;
   extra: {
