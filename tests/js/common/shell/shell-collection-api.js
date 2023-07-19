@@ -1379,7 +1379,9 @@ function CreateCollectionsSuite() {
       try {
         const res = tryCreate({name: systemName, isSystem: true});
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        validateProperties({isSystem: true}, systemName, 2);
+	// NOTE: We set replicationFactor 2 here, because that is the default
+	// for _system collections, and differs from the default on user collections in windows.
+        validateProperties({isSystem: true, replicationFactor: 2}, systemName, 2);
       } finally {
         db._drop(systemName, {isSystem: true});
       }
@@ -1631,14 +1633,22 @@ function CreateCollectionsInOneShardSuite() {
         const value = v === "replicationFactor" ? 3 : 2;
         const res = tryCreate({name: collname, [v]: value});
         try {
-          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          if (isCluster) {
-            validateProperties(getOneShardShardingValues(), collname, 2);
-            validateDeprecationLogEntryWritten();
-          } else {
-            // OneShard has no meaning in single server, just assert values are taken
-            validateProperties({}, collname, 2);
-            validateDeprecationLogEntryWritten();
+          if (isWindows && (v === 'writeConcern' || v === 'minReplicationFactor')) {
+            // NOTE: On windows we inject a replicationFactor of 1 (which will be ignored later)
+            // this however prohibits to set writeConcern or minReplicationFactor to anything other then 1.
+            isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {[v]: value});
+            // Raising the replicationFactor for windows would modify the test case, as it does not
+            // do a standalone test on writeConcern anymore.
+	  } else {
+            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+            if (isCluster) {
+              validateProperties(getOneShardShardingValues(), collname, 2);
+              validateDeprecationLogEntryWritten();
+            } else {
+              // OneShard has no meaning in single server, just assert values are taken
+              validateProperties({}, collname, 2);
+              validateDeprecationLogEntryWritten();
+            }
           }
         } finally {
           db._drop(collname);
