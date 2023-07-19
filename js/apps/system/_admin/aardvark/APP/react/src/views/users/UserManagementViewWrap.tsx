@@ -1,11 +1,31 @@
 import { AddIcon } from "@chakra-ui/icons";
 import { Box, Button, Heading, Stack, useDisclosure } from "@chakra-ui/react";
 import React from "react";
+import { HashRouter, Route, Switch } from "react-router-dom";
+import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
+import { useDisableNavBar } from "../../utils/useDisableNavBar";
+import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
 import { AddUserModal } from "./addUser/AddUserModal";
 import { UsersTable } from "./listUsers/UsersTable";
 import { UsersProvider } from "./UsersContext";
 
-export const UsersView = () => {
+export const UserManagementViewWrap = () => {
+  useDisableNavBar();
+  useGlobalStyleReset();
+  return (
+    <ChakraCustomProvider overrideNonReact>
+      <HashRouter basename="/" hashType={"noslash"}>
+        <Switch>
+          <Route path="/users" exact>
+            <UserManagementView />
+          </Route>
+        </Switch>
+      </HashRouter>
+    </ChakraCustomProvider>
+  );
+};
+
+const UserManagementView = () => {
   const {
     isOpen: isAddUserModalOpen,
     onOpen: onAddUserModalOpen,
@@ -13,7 +33,7 @@ export const UsersView = () => {
   } = useDisclosure();
   return (
     <Box padding="4" width="100%">
-      <UserViewHeader onAddUserModalOpen={onAddUserModalOpen} />
+      <UserManagementHeader onAddUserModalOpen={onAddUserModalOpen} />
       <AddUserModal isOpen={isAddUserModalOpen} onClose={onAddUserModalClose} />
       <UsersProvider>
         <UsersTable />
@@ -22,7 +42,7 @@ export const UsersView = () => {
   );
 };
 
-const UserViewHeader = ({
+const UserManagementHeader = ({
   onAddUserModalOpen
 }: {
   onAddUserModalOpen: () => void;
