@@ -39,6 +39,25 @@ export const FormField = ({
   if (render && field.type === "custom") {
     return render({ field, index, autoFocus });
   }
+  const selectProps = {
+    autoFocus,
+    placeholder: field.placeholder,
+    isClearable: field.isClearable,
+    options: field.options,
+    noOptionsMessage: field.noOptionsMessage
+  };
+  const inputProps = {
+    autoFocus,
+    placeholder: field.placeholder,
+    type: field.type
+  };
+
+  const commonProps = {
+    isDisabled: field.isDisabled,
+    isRequired: field.isRequired,
+    name: field.name
+  };
+
   switch (field.type) {
     case "boolean":
       return (
@@ -46,11 +65,7 @@ export const FormField = ({
           <FormLabel margin="0" htmlFor={field.name}>
             {field.label} {field.isRequired && "*"}
           </FormLabel>
-          <SwitchControl
-            isDisabled={field.isDisabled}
-            isRequired={field.isRequired}
-            name={field.name}
-          />
+          <SwitchControl {...commonProps} />
           {field.tooltip ? (
             <IndexInfoTooltip label={field.tooltip} />
           ) : (
@@ -64,16 +79,7 @@ export const FormField = ({
           <FormLabel margin="0" htmlFor={field.name}>
             {field.label} {field.isRequired && "*"}
           </FormLabel>
-          <InputControl
-            isDisabled={field.isDisabled}
-            inputProps={{
-              type: "number",
-              autoFocus,
-              placeholder: field.placeholder
-            }}
-            isRequired={field.isRequired}
-            name={field.name}
-          />
+          <InputControl {...commonProps} inputProps={inputProps} />
           {field.tooltip ? (
             <IndexInfoTooltip label={field.tooltip} />
           ) : (
@@ -87,17 +93,7 @@ export const FormField = ({
           <FormLabel margin="0" htmlFor={field.name}>
             {field.label} {field.isRequired && "*"}
           </FormLabel>
-          <MultiSelectControl
-            isDisabled={field.isDisabled}
-            selectProps={{
-              autoFocus,
-              options: field.options,
-              noOptionsMessage: field.noOptionsMessage,
-              placeholder: field.placeholder
-            }}
-            isRequired={field.isRequired}
-            name={field.name}
-          />
+          <MultiSelectControl {...commonProps} selectProps={selectProps} />
           {field.tooltip ? (
             <IndexInfoTooltip label={field.tooltip} />
           ) : (
@@ -112,16 +108,8 @@ export const FormField = ({
             {field.label} {field.isRequired && "*"}
           </FormLabel>
           <CreatableSingleSelectControl
-            isDisabled={field.isDisabled}
-            selectProps={{
-              isClearable: field.isClearable,
-              autoFocus,
-              options: field.options,
-              noOptionsMessage: field.noOptionsMessage,
-              placeholder: field.placeholder
-            }}
-            isRequired={field.isRequired}
-            name={field.name}
+            {...commonProps}
+            selectProps={selectProps}
           />
           {field.tooltip ? (
             <IndexInfoTooltip label={field.tooltip} />
@@ -137,16 +125,8 @@ export const FormField = ({
             {field.label} {field.isRequired && "*"}
           </FormLabel>
           <CreatableMultiSelectControl
-            isDisabled={field.isDisabled}
-            selectProps={{
-              isClearable: field.isClearable,
-              autoFocus,
-              options: field.options,
-              noOptionsMessage: field.noOptionsMessage,
-              placeholder: field.placeholder
-            }}
-            isRequired={field.isRequired}
-            name={field.name}
+            {...commonProps}
+            selectProps={selectProps}
           />
           {field.tooltip ? (
             <IndexInfoTooltip label={field.tooltip} />
@@ -162,12 +142,7 @@ export const FormField = ({
           <FormLabel margin="0" htmlFor={field.name}>
             {field.label} {field.isRequired && "*"}
           </FormLabel>
-          <InputControl
-            isDisabled={field.isDisabled}
-            isRequired={field.isRequired}
-            name={field.name}
-            inputProps={{ autoFocus, placeholder: field.placeholder }}
-          />
+          <InputControl {...commonProps} inputProps={inputProps} />
           {field.tooltip ? (
             <IndexInfoTooltip label={field.tooltip} />
           ) : (
