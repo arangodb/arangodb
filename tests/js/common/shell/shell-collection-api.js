@@ -964,17 +964,17 @@ function CreateCollectionsSuite() {
                 }
                 return tmp;
               };
-              validateProperties({...edge, numberOfShards: 0}, edgeName, 3, shouldKeepClusterSpecificAttributes);
-              validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+              validateProperties({...edge, numberOfShards: 0}, edgeName, 3, keepEnterpriseSimulationAttributes);
+              validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
               if (!isDisjoint || isServer) {
                 // If we are not disjoint we get all collections, as server test cannot let isDisjoint pass, we will also end up here
-                validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
-                validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
+                validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
               } else {
                 assertEqual(db._collections().filter(c => c.name() === `_from_${edgeName}` || c.name() === `_to_${edgeName}`).length, 0, "Created incorrect hidden collections");
               }
             } else {
-              validateProperties(edge, edgeName, 3, shouldKeepClusterSpecificAttributes);
+              validateProperties(edge, edgeName, 3, keepEnterpriseSimulationAttributes);
             }
             if (!isEnterprise && !isCluster) {
               validateDeprecationLogEntryWritten();
