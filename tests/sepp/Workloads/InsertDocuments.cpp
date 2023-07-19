@@ -80,25 +80,26 @@ auto InsertDocuments::createThreads(Execution& exec, Server& server)
 
   WorkerThreadList result;
   for (std::uint32_t i = 0; i < _options.threads; ++i) {
-    result.emplace_back(std::make_unique<Thread>(defaultThread, exec, server));
+    result.emplace_back(
+        std::make_unique<Thread>(defaultThread, i, exec, server));
   }
   return result;
 }
 
-InsertDocuments::Thread::Thread(ThreadOptions options, Execution& exec,
-                                Server& server)
-    : ExecutionThread(exec, server),
+InsertDocuments::Thread::Thread(ThreadOptions options, std::uint32_t id,
+                                Execution& exec, Server& server)
+    : ExecutionThread(id, exec, server),
       _options(std::move(options)),
       _modifier(_options.documentModifier) {}
 
 InsertDocuments::Thread::~Thread() = default;
 
 void InsertDocuments::Thread::run() {
-  auto trx = std::make_unique<SingleCollectionTransaction>(
+  SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(*_server.vocbase()),
       _options.collection, AccessMode::Type::WRITE);
 
-  auto res = trx->begin();
+  auto res = trx.begin();
   if (!res.ok()) {
     throw std::runtime_error("Failed to begin trx: " +
                              std::string(res.errorMessage()));
@@ -107,14 +108,14 @@ void InsertDocuments::Thread::run() {
   velocypack::Builder builder;
   for (std::uint32_t j = 0; j < _options.documentsPerTrx; ++j) {
     buildDocument(builder);
-    auto res = trx->insert(_options.collection, builder.slice(), {});
+    auto res = trx.insert(_options.collection, builder.slice(), {});
     if (!res.ok()) {
       throw std::runtime_error("Failed to insert document in trx: " +
                                std::string(res.errorMessage()));
     }
   }
 
-  res = trx->commit();
+  res = trx.commit();
   if (!res.ok()) {
     throw std::runtime_error("Failed to commit trx: " +
                              std::string(res.errorMessage()));
