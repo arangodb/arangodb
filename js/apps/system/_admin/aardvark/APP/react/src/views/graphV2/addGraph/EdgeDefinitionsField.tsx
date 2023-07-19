@@ -54,9 +54,6 @@ export const EdgeDefinitionsField = ({
   allowExistingCollections?: boolean;
 }) => {
   const { values } = useFormikContext<GeneralGraphCreateValues>();
-  const { collectionToDisabledMap } = useResetFromAndToValues();
-  const { edgeCollectionOptions, documentCollectionOptions } =
-    useCollectionOptions();
   const { mode } = useGraphsModeContext();
   return (
     <GridItem colSpan={3}>
@@ -68,72 +65,14 @@ export const EdgeDefinitionsField = ({
                 Relations
               </Text>
               {values.edgeDefinitions.map((_edgeDef, index) => {
-                const isFromAndToDisabled = collectionToDisabledMap[index];
-                const collectionFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.collection.name}`;
-                const fromFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.from.name}`;
-                const toFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.to.name}`;
                 return (
-                  <Stack
-                    spacing="4"
-                    backgroundColor="gray.100"
-                    padding="4"
-                    borderRadius={"md"}
-                  >
-                    <Stack direction="row" alignItems="center" spacing="4">
-                      <Text fontWeight="medium" fontSize="lg">
-                        Relation {index + 1}
-                      </Text>
-                      {index !== 0 && (
-                        <IconButton
-                          size="sm"
-                          variant="ghost"
-                          colorScheme="red"
-                          icon={<DeleteIcon />}
-                          isDisabled={mode === "edit"}
-                          onClick={() => {
-                            remove(index);
-                          }}
-                          aria-label={"Remove relation"}
-                        />
-                      )}
-                    </Stack>
-                    <Grid gridTemplateColumns={"200px 1fr 40px"} gap="4">
-                      <FormField
-                        field={{
-                          ...graphRelationFieldsMap.collection,
-                          options: allowExistingCollections
-                            ? edgeCollectionOptions
-                            : undefined,
-                          isClearable: true,
-                          name: collectionFieldName,
-                          isDisabled: mode === "edit",
-                          noOptionsMessage
-                        }}
-                      />
-                      <FormField
-                        field={{
-                          ...graphRelationFieldsMap.from,
-                          name: fromFieldName,
-                          isDisabled: isFromAndToDisabled,
-                          options: allowExistingCollections
-                            ? documentCollectionOptions
-                            : undefined,
-                          noOptionsMessage
-                        }}
-                      />
-                      <FormField
-                        field={{
-                          ...graphRelationFieldsMap.to,
-                          name: toFieldName,
-                          isDisabled: isFromAndToDisabled,
-                          options: allowExistingCollections
-                            ? documentCollectionOptions
-                            : undefined,
-                          noOptionsMessage
-                        }}
-                      />
-                    </Grid>
-                  </Stack>
+                  <EdgeDefinition
+                    key={index}
+                    index={index}
+                    remove={remove}
+                    allowExistingCollections={allowExistingCollections}
+                    noOptionsMessage={noOptionsMessage}
+                  />
                 );
               })}
               <Button
@@ -156,5 +95,89 @@ export const EdgeDefinitionsField = ({
         }}
       </FieldArray>
     </GridItem>
+  );
+};
+
+const EdgeDefinition = ({
+  index,
+  remove,
+  allowExistingCollections,
+  noOptionsMessage
+}: {
+  index: number;
+  remove: <T>(index: number) => T | undefined;
+  allowExistingCollections: boolean;
+  noOptionsMessage: (() => string) | undefined;
+}) => {
+  const { mode } = useGraphsModeContext();
+  const { collectionToDisabledMap } = useResetFromAndToValues();
+  const { edgeCollectionOptions, documentCollectionOptions } =
+    useCollectionOptions();
+  const isFromAndToDisabled = collectionToDisabledMap[index];
+  const collectionFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.collection.name}`;
+  const fromFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.from.name}`;
+  const toFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.to.name}`;
+  return (
+    <Stack
+      spacing="4"
+      backgroundColor="gray.100"
+      padding="4"
+      borderRadius={"md"}
+    >
+      <Stack direction="row" alignItems="center" spacing="4">
+        <Text fontWeight="medium" fontSize="lg">
+          Relation {index + 1}
+        </Text>
+        {index !== 0 && (
+          <IconButton
+            size="sm"
+            variant="ghost"
+            colorScheme="red"
+            icon={<DeleteIcon />}
+            isDisabled={mode === "edit"}
+            onClick={() => {
+              remove(index);
+            }}
+            aria-label={"Remove relation"}
+          />
+        )}
+      </Stack>
+      <Grid gridTemplateColumns={"200px 1fr 40px"} gap="4">
+        <FormField
+          field={{
+            ...graphRelationFieldsMap.collection,
+            options: allowExistingCollections
+              ? edgeCollectionOptions
+              : undefined,
+            isClearable: true,
+            name: collectionFieldName,
+            isDisabled: mode === "edit",
+            noOptionsMessage
+          }}
+        />
+        <FormField
+          field={{
+            ...graphRelationFieldsMap.from,
+            name: fromFieldName,
+            isDisabled: isFromAndToDisabled,
+            options: allowExistingCollections
+              ? documentCollectionOptions
+              : undefined,
+            noOptionsMessage
+          }}
+        />
+        <FormField
+          field={{
+            ...graphRelationFieldsMap.to,
+            name: toFieldName,
+            isDisabled: isFromAndToDisabled,
+            options: allowExistingCollections
+              ? documentCollectionOptions
+              : undefined,
+            noOptionsMessage
+          }}
+        />
+      </Grid>
+    </Stack>
   );
 };
