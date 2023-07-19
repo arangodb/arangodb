@@ -32,6 +32,7 @@
 
 #include "Aql/types.h"
 #include "Containers/HashSet.h"
+#include "Basics/ResourceUsage.h"
 
 namespace arangodb {
 namespace transaction {
@@ -304,6 +305,8 @@ class Expression {
 
   // type of expression
   ExpressionType _type;
+
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 
 }  // namespace aql

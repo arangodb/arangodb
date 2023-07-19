@@ -30,9 +30,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalDataSource.h"
 
-#include "Logger/Logger.h"
-
-#include "Logger/LogMacros.h"
+#include <absl/strings/str_cat.h>
 
 namespace arangodb {
 
@@ -108,15 +106,15 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
 }
 
 DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(
-    std::string const& name, AccessMode::Type type) {
+    std::string_view name, AccessMode::Type type) {
   TRI_ASSERT(!name.empty());
   if ((name[0] < '0' || name[0] > '9') &&
       name != resolveTrxCollection()->collectionName()) {
+    auto message = absl::StrCat(
+        TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION), ": ",
+        name);
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string(
-            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-            ": " + name);
+        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, message);
   }
 
   if (AccessMode::isWriteOrExclusive(type) &&
@@ -126,7 +124,8 @@ DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(
         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
         std::string(
             TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-            ": " + name + " [" + AccessMode::typeString(type) + "]");
+            ": " + std::string{name} + " [" + AccessMode::typeString(type) +
+            "]");
   }
 
   return _cid;

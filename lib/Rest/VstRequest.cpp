@@ -180,6 +180,7 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
   auto it = _headers.try_emplace(std::move(key), std::move(value));
   if (!it.second) {
     auto old = it.first->first.size() + it.first->second.size();
+    // cppcheck-suppress accessMoved
     _headers[std::move(key)] = std::move(value);
     _memoryUsage -= old;
   }

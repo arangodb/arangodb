@@ -67,7 +67,7 @@ class SingleCollectionTransaction final : public transaction::Methods {
 #endif
   /// @brief add a collection to the transaction for read, at runtime
   /// note that this can only be ourselves
-  DataSourceId addCollectionAtRuntime(std::string const& name,
+  DataSourceId addCollectionAtRuntime(std::string_view name,
                                       AccessMode::Type type) override final;
 
   /// @brief get the underlying collection's name

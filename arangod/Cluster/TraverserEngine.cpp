@@ -24,8 +24,8 @@
 #include "TraverserEngine.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
-#include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Graph/EdgeCursor.h"
@@ -33,9 +33,6 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 
@@ -46,7 +43,6 @@
 #include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
 #endif
 
-#include <initializer_list>
 #include <string_view>
 
 using namespace arangodb;
@@ -81,7 +77,9 @@ static const std::string TYPE = "type";
 
 BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
                        VPackSlice info)
-    : _engineId(TRI_NewTickServer()), _query(query) {
+    : _engineId(TRI_NewTickServer()),
+      _query(query),
+      _vertexShards{_query.resourceMonitor()} {
   VPackSlice shardsSlice = info.get(SHARDS);
 
   if (!shardsSlice.isObject()) {
@@ -122,7 +120,9 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
   // Add all Vertex shards to the transaction
   TRI_ASSERT(vertexSlice.isObject());
   for (auto collection : VPackObjectIterator(vertexSlice)) {
-    std::vector<std::string> shards;
+    ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor>
+        alloc = {_query.resourceMonitor()};
+    MonitoredStringVector shards{alloc};
     TRI_ASSERT(collection.value.isArray());
     for (auto shard : VPackArrayIterator(collection.value)) {
       TRI_ASSERT(shard.isString());
@@ -131,7 +131,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
                                aql::Collection::Hint::Shard);
       shards.emplace_back(std::move(name));
     }
-    _vertexShards.try_emplace(collection.key.copyString(), std::move(shards));
+    _vertexShards.emplace(collection.key.copyString(), std::move(shards));
   }
 
 #ifdef USE_ENTERPRISE
@@ -190,7 +190,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       return;
     }
     std::string_view vertex = id.substr(pos + 1);
-    for (std::string const& shard : shards->second) {
+    for (auto const& shard : shards->second) {
       Result res = _trx->documentFastPathLocal(
           shard, vertex, [&](LocalDocumentId const&, VPackSlice doc) {
             // FOUND. short circuit.

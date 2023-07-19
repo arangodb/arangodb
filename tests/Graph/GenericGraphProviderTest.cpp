@@ -74,8 +74,9 @@ class GraphProviderTest : public ::testing::Test {
   arangodb::ResourceMonitor resourceMonitor{global};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
   std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
-
-  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+  ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor> alloc =
+      {resourceMonitor};
+  MonitoredCollectionToShardMap _emptyShardMap{alloc};
   aql::Projections _vertexProjections{};
   aql::Projections _edgeProjections{};
 
