@@ -172,6 +172,8 @@ class DatabaseFeature final : public ArangodFeature {
   void disableUpgrade() noexcept { _upgrade = false; }
   void isInitiallyEmpty(bool value) noexcept { _isInitiallyEmpty = value; }
 
+  size_t maxDatabases() const noexcept { return _maxDatabases; }
+
   static TRI_vocbase_t& getCalculationVocbase();
 
  private:
@@ -205,6 +207,8 @@ class DatabaseFeature final : public ArangodFeature {
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
+
+  size_t _maxDatabases{SIZE_MAX};
 
   using DatabasesList = containers::FlatHashMap<std::string, TRI_vocbase_t*>;
   class DatabasesListGuard {
