@@ -28,6 +28,7 @@
 
 #include "Auth/Common.h"
 #include "VocBase/Identifiers/RevisionId.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -128,7 +129,10 @@ class User {
 
  private:
   User(std::string&& key, RevisionId rid);
-  typedef std::unordered_map<std::string, auth::Level> CollLevelMap;
+
+  typedef std::unordered_map<std::string, auth::Level,
+                             arangodb::hash_monitored_string, std::equal_to<>>
+      CollLevelMap;
 
   struct DBAuthContext {
     DBAuthContext(auth::Level dbLvl, CollLevelMap const& coll)
