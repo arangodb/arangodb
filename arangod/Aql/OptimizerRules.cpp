@@ -6394,6 +6394,9 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
     bool canOptimize = true;
 
     ExecutionNode* current = ksp->getFirstParent();
+    arangodb::ResourceMonitor& resMonitor =
+        plan->getAst()->query().resourceMonitor();
+
     while (current != nullptr && canOptimize) {
       switch (current->getType()) {
         case EN::CALCULATION: {
@@ -6406,7 +6409,7 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
             AstNode const* node = exp->node();
             if (!Ast::getReferencedAttributesRecursive(
                     node, variable, /*expectedAttributes*/ "", attributes,
-                    current->plan()->getAst()->query().resourceMonitor())) {
+                    resMonitor)) {
               // full path variable is used, or accessed in a way that we don't
               // understand, e.g. "p" or "p[0]" or "p[*]..."
               canOptimize = false;
@@ -6429,9 +6432,8 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
     }
 
     if (canOptimize) {
-      bool produceVertices = attributes.contains(
-          {StaticStrings::GraphQueryVertices,
-           current->plan()->getAst()->query().resourceMonitor()});
+      bool produceVertices =
+          attributes.contains({StaticStrings::GraphQueryVertices, resMonitor});
 
       if (!produceVertices) {
         auto* options = ksp->options();
