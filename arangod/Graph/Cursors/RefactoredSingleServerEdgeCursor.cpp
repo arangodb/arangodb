@@ -169,9 +169,10 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
 
     // projections we want to cover
     std::vector<aql::AttributeNamePath> paths = {};
-    aql::AttributeNamePath path = aql::AttributeNamePath(
-        {StaticStrings::FromString, StaticStrings::ToString}, monitor);
-    paths.emplace_back(std::move(path));
+    paths.emplace_back(
+        aql::AttributeNamePath({StaticStrings::FromString}, monitor));
+    paths.emplace_back(
+        aql::AttributeNamePath({StaticStrings::ToString}, monitor));
     aql::Projections edgeProjections(std::move(paths));
 
     if (index->covers(edgeProjections)) {

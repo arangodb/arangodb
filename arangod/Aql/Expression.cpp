@@ -360,7 +360,7 @@ void Expression::initAccessor() {
   parts.emplace_back(_node->getString());
 
   while (member->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    parts.insert(parts.begin(), MonitoredString{member->getString()});
+    parts.insert(parts.begin(), MonitoredString{member->getString(), alloc});
     member = member->getMemberUnchecked(0);
   }
 

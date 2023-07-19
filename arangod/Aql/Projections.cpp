@@ -141,7 +141,7 @@ void Projections::toVelocyPackFromDocument(
       // projection for any other top-level attribute
       TRI_ASSERT(levelsOpen == 0);
       TRI_ASSERT(it.path.size() == 1);
-      VPackSlice found = slice.get(it.path._path[0]);
+      VPackSlice found = slice.get(it.path._path.at(0));
       if (found.isNone()) {
         // attribute not found
         b.add(it.path[0], VPackValue(VPackValueType::Null));
