@@ -4,7 +4,6 @@ import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
-import { FieldsGrid } from "./FieldsGrid";
 import {
   CLUSTER_GRAPH_FIELDS_MAP,
   createGraph,
@@ -14,6 +13,7 @@ import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { EnterpriseGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
+import { FieldsGrid } from "./FieldsGrid";
 import { GraphModalFooter } from "./GraphModalFooter";
 import { GraphWarnings } from "./GraphWarnings";
 
@@ -67,45 +67,43 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
       })}
       onSubmit={handleSubmit}
     >
-      {() => (
-        <Form>
-          <VStack spacing={4} align="stretch">
-            <GraphWarnings />
-            <FieldsGrid maxWidth="full">
+      <Form>
+        <VStack spacing={4} align="stretch">
+          <GraphWarnings />
+          <FieldsGrid maxWidth="full">
+            <FormField
+              field={{
+                ...enterpriseGraphFieldsMap.name,
+                isDisabled: mode === "edit"
+              }}
+            />
+            <ClusterFields isShardsRequired />
+            {(window.frontendConfig.isCluster || true) && (
               <FormField
                 field={{
-                  ...enterpriseGraphFieldsMap.name,
-                  isDisabled: mode === "edit"
+                  ...CLUSTER_GRAPH_FIELDS_MAP.satellites,
+                  isDisabled: mode === "edit",
+                  noOptionsMessage: () =>
+                    "Please enter a new and valid collection name"
                 }}
               />
-              <ClusterFields isShardsRequired />
-              {(window.frontendConfig.isCluster || true) && (
-                <FormField
-                  field={{
-                    ...CLUSTER_GRAPH_FIELDS_MAP.satellites,
-                    isDisabled: mode === "edit",
-                    noOptionsMessage: () =>
-                      "Please enter a new and valid collection name"
-                  }}
-                />
-              )}
-              <EdgeDefinitionsField
-                noOptionsMessage={() =>
-                  "Please enter a new and valid collection name"
-                }
-                allowExistingCollections={false}
-              />
-              <FormField
-                field={{
-                  ...enterpriseGraphFieldsMap.orphanCollections,
-                  isDisabled: mode === "edit"
-                }}
-              />
-            </FieldsGrid>
-            <GraphModalFooter onClose={onClose} />
-          </VStack>
-        </Form>
-      )}
+            )}
+            <EdgeDefinitionsField
+              noOptionsMessage={() =>
+                "Please enter a new and valid collection name"
+              }
+              allowExistingCollections={false}
+            />
+            <FormField
+              field={{
+                ...enterpriseGraphFieldsMap.orphanCollections,
+                isDisabled: mode === "edit"
+              }}
+            />
+          </FieldsGrid>
+          <GraphModalFooter onClose={onClose} />
+        </VStack>
+      </Form>
     </Formik>
   );
 };

@@ -4,7 +4,6 @@ import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
-import { FieldsGrid } from "./FieldsGrid";
 import {
   CLUSTER_GRAPH_FIELDS_MAP,
   createGraph,
@@ -15,6 +14,7 @@ import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { SmartGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
+import { FieldsGrid } from "./FieldsGrid";
 import { GraphModalFooter } from "./GraphModalFooter";
 import { GraphWarnings } from "./GraphWarnings";
 
@@ -77,57 +77,55 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
       })}
       onSubmit={handleSubmit}
     >
-      {() => (
-        <Form>
-          <VStack spacing={4} align="stretch">
-            <GraphWarnings />
-            <FieldsGrid maxWidth="full">
+      <Form>
+        <VStack spacing={4} align="stretch">
+          <GraphWarnings />
+          <FieldsGrid maxWidth="full">
+            <FormField
+              field={{
+                ...smartGraphFieldsMap.name,
+                isDisabled
+              }}
+            />
+            <ClusterFields isShardsRequired />
+            {window.frontendConfig.isCluster && (
               <FormField
                 field={{
-                  ...smartGraphFieldsMap.name,
-                  isDisabled
+                  ...CLUSTER_GRAPH_FIELDS_MAP.satellites,
+                  isDisabled: mode === "edit",
+                  noOptionsMessage: () =>
+                    "Please enter a new and valid collection name"
                 }}
               />
-              <ClusterFields isShardsRequired />
-              {window.frontendConfig.isCluster && (
-                <FormField
-                  field={{
-                    ...CLUSTER_GRAPH_FIELDS_MAP.satellites,
-                    isDisabled: mode === "edit",
-                    noOptionsMessage: () =>
-                      "Please enter a new and valid collection name"
-                  }}
-                />
-              )}
-              <FormField
-                field={{
-                  ...smartGraphFieldsMap.isDisjoint,
-                  isDisabled
-                }}
-              />
-              <FormField
-                field={{
-                  ...smartGraphFieldsMap.smartGraphAttribute,
-                  isDisabled
-                }}
-              />
-              <EdgeDefinitionsField
-                noOptionsMessage={() =>
-                  "Please enter a new and valid collection name"
-                }
-                allowExistingCollections={false}
-              />
-              <FormField
-                field={{
-                  ...smartGraphFieldsMap.orphanCollections,
-                  isDisabled
-                }}
-              />
-            </FieldsGrid>
-            <GraphModalFooter onClose={onClose} />
-          </VStack>
-        </Form>
-      )}
+            )}
+            <FormField
+              field={{
+                ...smartGraphFieldsMap.isDisjoint,
+                isDisabled
+              }}
+            />
+            <FormField
+              field={{
+                ...smartGraphFieldsMap.smartGraphAttribute,
+                isDisabled
+              }}
+            />
+            <EdgeDefinitionsField
+              noOptionsMessage={() =>
+                "Please enter a new and valid collection name"
+              }
+              allowExistingCollections={false}
+            />
+            <FormField
+              field={{
+                ...smartGraphFieldsMap.orphanCollections,
+                isDisabled
+              }}
+            />
+          </FieldsGrid>
+          <GraphModalFooter onClose={onClose} />
+        </VStack>
+      </Form>
     </Formik>
   );
 };

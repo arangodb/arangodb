@@ -5,7 +5,10 @@ import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
 import { FieldsGrid } from "./FieldsGrid";
-import { createGraph, GENERAL_GRAPH_FIELDS_MAP } from "../listGraphs/GraphsHelpers";
+import {
+  createGraph,
+  GENERAL_GRAPH_FIELDS_MAP
+} from "../listGraphs/GraphsHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
@@ -51,34 +54,32 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
       })}
       onSubmit={handleSubmit}
     >
-      {() => (
-        <Form>
-          <VStack spacing={4} align="stretch">
-            <FieldsGrid maxWidth="full">
-              <FormField
-                field={{
-                  ...generalGraphFieldsMap.name,
-                  isDisabled: mode === "edit"
-                }}
-              />
-              {window.frontendConfig.isCluster && (
-                <ClusterFields isShardsRequired={false} />
-              )}
-              <EdgeDefinitionsField
-                noOptionsMessage={() => "No collections found"}
-              />
-              <FormField
-                field={{
-                  ...generalGraphFieldsMap.orphanCollections,
-                  options: documentCollectionOptions,
-                  isDisabled: mode === "edit"
-                }}
-              />
-            </FieldsGrid>
-            <GraphModalFooter onClose={onClose} />
-          </VStack>
-        </Form>
-      )}
+      <Form>
+        <VStack spacing={4} align="stretch">
+          <FieldsGrid maxWidth="full">
+            <FormField
+              field={{
+                ...generalGraphFieldsMap.name,
+                isDisabled: mode === "edit"
+              }}
+            />
+            {window.frontendConfig.isCluster && (
+              <ClusterFields isShardsRequired={false} />
+            )}
+            <EdgeDefinitionsField
+              noOptionsMessage={() => "No collections found"}
+            />
+            <FormField
+              field={{
+                ...generalGraphFieldsMap.orphanCollections,
+                options: documentCollectionOptions,
+                isDisabled: mode === "edit"
+              }}
+            />
+          </FieldsGrid>
+          <GraphModalFooter onClose={onClose} />
+        </VStack>
+      </Form>
     </Formik>
   );
 };

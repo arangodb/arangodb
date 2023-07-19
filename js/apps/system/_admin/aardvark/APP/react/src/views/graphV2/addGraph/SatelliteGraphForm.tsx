@@ -4,11 +4,14 @@ import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
-import { FieldsGrid } from "./FieldsGrid";
-import { createGraph, GENERAL_GRAPH_FIELDS_MAP } from "../listGraphs/GraphsHelpers";
+import {
+  createGraph,
+  GENERAL_GRAPH_FIELDS_MAP
+} from "../listGraphs/GraphsHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { SatelliteGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
+import { FieldsGrid } from "./FieldsGrid";
 import { GraphModalFooter } from "./GraphModalFooter";
 import { GraphWarnings } from "./GraphWarnings";
 
@@ -57,34 +60,32 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
       })}
       onSubmit={handleSubmit}
     >
-      {() => (
-        <Form>
-          <VStack spacing={4} align="stretch">
-            <GraphWarnings showOneShardWarning={false} />
-            <FieldsGrid maxWidth="full">
-              <FormField
-                field={{
-                  ...satelliteGraphFieldsMap.name,
-                  isDisabled: mode === "edit"
-                }}
-              />
-              <EdgeDefinitionsField
-                noOptionsMessage={() =>
-                  "Please enter a new and valid collection name"
-                }
-                allowExistingCollections={false}
-              />
-              <FormField
-                field={{
-                  ...satelliteGraphFieldsMap.orphanCollections,
-                  isDisabled: mode === "edit"
-                }}
-              />
-            </FieldsGrid>
-            <GraphModalFooter onClose={onClose} />
-          </VStack>
-        </Form>
-      )}
+      <Form>
+        <VStack spacing={4} align="stretch">
+          <GraphWarnings showOneShardWarning={false} />
+          <FieldsGrid maxWidth="full">
+            <FormField
+              field={{
+                ...satelliteGraphFieldsMap.name,
+                isDisabled: mode === "edit"
+              }}
+            />
+            <EdgeDefinitionsField
+              noOptionsMessage={() =>
+                "Please enter a new and valid collection name"
+              }
+              allowExistingCollections={false}
+            />
+            <FormField
+              field={{
+                ...satelliteGraphFieldsMap.orphanCollections,
+                isDisabled: mode === "edit"
+              }}
+            />
+          </FieldsGrid>
+          <GraphModalFooter onClose={onClose} />
+        </VStack>
+      </Form>
     </Formik>
   );
 };
