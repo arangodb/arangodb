@@ -1,14 +1,12 @@
-import { Avatar, Link, Stack, Tag } from "@chakra-ui/react";
+import { Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
-import _ from "lodash";
 import React from "react";
-import { Link as RouterLink } from "react-router-dom";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { DatabaseUserValues } from "../addUser/CreateUser.types";
 import { useUsersContext } from "../UsersContext";
-import { AccountCircle, Group } from "styled-icons/material";
+import { AvatarCell, LinkCell, StatusCell } from "./UserTableCells";
 
 const columnHelper = createColumnHelper<DatabaseUserValues>();
 
@@ -17,20 +15,7 @@ const TABLE_COLUMNS = [
     header: "Username",
     id: "user",
     cell: info => {
-      const cellValue = info.cell.getValue();
-      return (
-        <Link
-          as={RouterLink}
-          to={`/user/${cellValue}`}
-          textDecoration="underline"
-          color="blue.500"
-          _hover={{
-            color: "blue.600"
-          }}
-        >
-          {cellValue}
-        </Link>
-      );
+      return <LinkCell info={info} />;
     },
     meta: {
       filterType: "text"
@@ -39,10 +24,6 @@ const TABLE_COLUMNS = [
   columnHelper.accessor("extra.name", {
     header: "Name",
     id: "extra.name",
-    cell: info => {
-      const cellValue = info.cell.getValue();
-      return <>{cellValue}</>;
-    },
     meta: {
       filterType: "text"
     }
@@ -53,40 +34,14 @@ const TABLE_COLUMNS = [
     enableColumnFilter: false,
     enableSorting: false,
     cell: info => {
-      if (info.row.original.user?.substring(0, 6) === ":role:") {
-        return <Avatar size="xs" icon={<Group />} />;
-      }
-
-      if (!_.isEmpty(info.row.original.extra.img)) {
-        return (
-          <Avatar
-            size="xs"
-            src={`https://s.gravatar.com/avatar/${info.row.original.extra.img}`}
-          />
-        );
-      }
-
-      return <Avatar size="xs" icon={<AccountCircle />} />;
+      return <AvatarCell info={info} />;
     }
   }),
   columnHelper.accessor(row => (row.active ? "Active" : "Inactive"), {
-    header: "Active",
+    header: "Status",
     id: "active",
     filterFn: "equals",
-    cell: info => {
-      const cellValue = info.cell.getValue();
-      return (
-        <>
-          {cellValue === "Active" ? (
-            <Tag background="green.400" color="white">
-              {cellValue}
-            </Tag>
-          ) : (
-            <Tag>{cellValue}</Tag>
-          )}
-        </>
-      );
-    },
+    cell: info => <StatusCell info={info} />,
     meta: {
       filterType: "single-select"
     }

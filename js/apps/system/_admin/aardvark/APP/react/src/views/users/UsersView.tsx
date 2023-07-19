@@ -1,19 +1,20 @@
 import { AddIcon } from "@chakra-ui/icons";
 import { Box, Button, Heading, Stack, useDisclosure } from "@chakra-ui/react";
 import React from "react";
-import { UsersProvider } from "./UsersContext";
-import { UsersModeProvider } from "./UsersModeContext";
 import { AddUserModal } from "./addUser/AddUserModal";
 import { UsersTable } from "./listUsers/UsersTable";
+import { UsersProvider } from "./UsersContext";
 
 export const UsersView = () => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isAddUserModalOpen,
+    onOpen: onAddUserModalOpen,
+    onClose: onAddUserModalClose
+  } = useDisclosure();
   return (
     <Box padding="4" width="100%">
-      <UserViewHeader onOpen={onOpen} />
-      <UsersModeProvider mode="add">
-        <AddUserModal isOpen={isOpen} onClose={onClose} />
-      </UsersModeProvider>
+      <UserViewHeader onAddUserModalOpen={onAddUserModalOpen} />
+      <AddUserModal isOpen={isAddUserModalOpen} onClose={onAddUserModalClose} />
       <UsersProvider>
         <UsersTable />
       </UsersProvider>
@@ -21,7 +22,11 @@ export const UsersView = () => {
   );
 };
 
-const UserViewHeader = ({ onOpen }: { onOpen: () => void }) => {
+const UserViewHeader = ({
+  onAddUserModalOpen
+}: {
+  onAddUserModalOpen: () => void;
+}) => {
   return (
     <Stack direction="row" marginBottom="4" alignItems="center">
       <Heading size="lg">Users</Heading>
@@ -29,9 +34,7 @@ const UserViewHeader = ({ onOpen }: { onOpen: () => void }) => {
         size="sm"
         leftIcon={<AddIcon />}
         colorScheme="blue"
-        onClick={() => {
-          onOpen();
-        }}
+        onClick={onAddUserModalOpen}
       >
         Add user
       </Button>

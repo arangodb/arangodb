@@ -1,5 +1,7 @@
 import { Button, Flex, Heading, Stack, VStack } from "@chakra-ui/react";
+import CryptoJS from "crypto-js";
 import { Form, Formik } from "formik";
+import _ from "lodash";
 import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
@@ -12,10 +14,7 @@ import {
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { FieldsGrid } from "../FieldsGrid";
-import { useUsersModeContext } from "../UsersModeContext";
 import { CreateDatabaseUserValues } from "./CreateUser.types";
-import _ from "lodash";
-import CryptoJS from "crypto-js";
 
 const addUserFields = {
   user: {
@@ -87,7 +86,6 @@ export const AddUserModal = ({
   onClose: () => void;
 }) => {
   const initialFocusRef = React.useRef<HTMLInputElement>(null);
-  const { mode } = useUsersModeContext();
   const handleSubmit = async (values: CreateDatabaseUserValues) => {
     const userOptions = {
       user: values.user,
@@ -104,7 +102,7 @@ export const AddUserModal = ({
     }
 
     if (window.frontendConfig.isEnterprise && values.role) {
-      userOptions.user = ':role:' + values.user;
+      userOptions.user = ":role:" + values.user;
       delete userOptions.passwd;
     }
 
@@ -134,13 +132,12 @@ export const AddUserModal = ({
       <ModalHeader fontSize="sm" fontWeight="normal">
         <Flex direction="row" alignItems="center">
           <Heading marginRight="4" size="md">
-            {mode === "add" ? "Create new user" : "Edit user"}
+            Create new user
           </Heading>
         </Flex>
       </ModalHeader>
       <ModalBody>
         <Formik
-          //initialValues={initialUser || INITIAL_VALUES}
           initialValues={INITIAL_VALUES}
           validationSchema={Yup.object({
             user: Yup.string().required("Username is required")
@@ -151,53 +148,28 @@ export const AddUserModal = ({
             <Form>
               <VStack spacing={4} align="stretch">
                 <FieldsGrid maxWidth="full">
-                  <FormField
-                    field={{
-                      ...addUserFields.user
-                    }}
-                  />
-                  <FormField
-                    field={{
-                      ...addUserFields.name
-                    }}
-                  />
-                  <FormField
-                    field={{
-                      ...addUserFields.gravatar
-                    }}
-                  />
-                  <FormField
-                    field={{
-                      ...addUserFields.passwd
-                    }}
-                  />
+                  <FormField field={addUserFields.user} />
+                  <FormField field={addUserFields.name} />
+                  <FormField field={addUserFields.gravatar} />
+                  <FormField field={addUserFields.passwd} />
                   {window.frontendConfig.isEnterprise && (
-                    <FormField
-                      field={{
-                        ...addUserFields.role
-                      }}
-                    />
+                    <FormField field={addUserFields.role} />
                   )}
-                  <FormField
-                    field={{
-                      ...addUserFields.active
-                    }}
-                  />
+                  <FormField field={addUserFields.active} />
                 </FieldsGrid>
                 <ModalFooter>
                   <Stack direction="row" spacing={4} align="center">
                     <Button onClick={onClose} colorScheme="gray">
                       Cancel
                     </Button>
-                    {mode === "add" && (
-                      <Button
-                        colorScheme="blue"
-                        type="submit"
-                        isLoading={isSubmitting}
-                      >
-                        Create
-                      </Button>
-                    )}
+
+                    <Button
+                      colorScheme="blue"
+                      type="submit"
+                      isLoading={isSubmitting}
+                    >
+                      Create
+                    </Button>
                   </Stack>
                 </ModalFooter>
               </VStack>
