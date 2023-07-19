@@ -566,6 +566,7 @@ NodePtr Node::applies(std::string_view path, VPackSlice slice) const {
       this, path,
       [&](Node const*) -> ResultT<NodePtr> { return Node::create(slice); });
   TRI_ASSERT(res.ok()) << res.errorMessage();
+  // cppcheck-suppress returnStdMoveLocal
   return std::move(res.get());
 }
 
@@ -581,6 +582,7 @@ NodePtr Node::placeAt(std::string_view path, NodePtr node) const {
   auto res = buildPathAndExecute(
       this, path, [&](Node const*) -> ResultT<NodePtr> { return node; });
   TRI_ASSERT(res.ok());
+  // cppcheck-suppress returnStdMoveLocal
   return std::move(res.get());
 }
 
