@@ -55,6 +55,7 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+using namespace arangodb::velocypack;
 
 namespace {
 std::vector<std::string> const jobStatus{"ToDo", "Pending", "Finished",
@@ -453,9 +454,9 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
         }
         // Now look up this server:
         auto it = healthData.find(serverStr);
-        if (it != healthData.end()) {
+        if (it != nullptr) {
           // Only check if found
-          std::shared_ptr<Node> healthNode = it->second;
+          NodePtr healthNode = *it;
           // Check its status:
 
           if (auto status = healthNode->hasAsString("Status");
@@ -463,7 +464,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
                          status.value() == Supervision::HEALTH_STATUS_BAD)) {
             ++count;
             // check is server is maintenance mode, if so, consider as good
-          } else if (maintenanceSet && maintenanceSet->contains(serverStr)) {
+          } else if (maintenanceSet &&
+                     maintenanceSet->find(serverStr) != nullptr) {
             ++count;
           }
         }
@@ -485,9 +487,9 @@ size_t Job::countGoodOrBadServersInList(
     for (auto& serverStr : serverList) {
       // Now look up this server:
       auto it = healthData.find(serverStr);
-      if (it != healthData.end()) {
+      if (it != nullptr) {
         // Only check if found
-        std::shared_ptr<Node> healthNode = it->second;
+        auto& healthNode = *it;
         // Check its status:
         if (auto status = healthNode->hasAsString("Status");
             status && (status.value() == Supervision::HEALTH_STATUS_GOOD ||
@@ -505,9 +507,9 @@ bool Job::isInServerList(Node const& snap, std::string const& prefix,
                          std::string const& server, bool isArray) {
   bool found = false;
   if (isArray) {
-    auto slice = snap.hasAsSlice(prefix);
-    if (slice && slice->isArray()) {
-      for (VPackSlice srv : VPackArrayIterator(*slice)) {
+    auto slice = snap.hasAsArray(prefix);
+    if (slice) {
+      for (VPackSlice srv : *slice) {
         if (srv.isEqualString(server)) {
           found = true;
           break;
@@ -541,9 +543,9 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   auto excludePrefix = [&ret, &snapshot](std::string const& prefix,
                                          bool isArray) {
     if (isArray) {
-      auto slice = snapshot.hasAsSlice(prefix);
+      auto slice = snapshot.hasAsArray(prefix);
       if (slice) {
-        for (VPackSlice srv : VPackArrayIterator(*slice)) {
+        for (auto srv : *slice) {
           ret.erase(std::remove(ret.begin(), ret.end(), srv.copyString()),
                     ret.end());
         }
@@ -619,7 +621,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot,
   std::string databasePath = planColPrefix + database,
               planPath = databasePath + "/" + collection + "/shards";
 
-  auto myshards = sortedShardList(*snapshot.hasAsNode(planPath));
+  auto myshards = sortedShardList(*snapshot.get(planPath));
   auto steps = std::distance(
       myshards.begin(), std::find(myshards.begin(), myshards.end(), shard));
 
@@ -632,9 +634,8 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot,
     if (otherCollection != collection &&
         col.has("distributeShardsLike") &&  // use .has() form to prevent
                                             // logging of missing
-        col.hasAsSlice("distributeShardsLike").value().stringView() ==
-            collection) {
-      auto const& theirshards = sortedShardList(*col.hasAsNode("shards"));
+        col.hasAsStringView("distributeShardsLike").value() == collection) {
+      auto const& theirshards = sortedShardList(*col.get("shards"));
       if (theirshards.size() > 0) {  // do not care about virtual collections
         if (theirshards.size() == myshards.size()) {
           ret.emplace_back(otherCollection, theirshards[steps]);
@@ -685,12 +686,12 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
 
     // If we do have failover candidates, we should use them
     auto serverList = snap.hasAsArray(currentFailoverCandidatesPath);
-    if (!serverList.has_value()) {
+    if (!serverList) {
       // We have old DBServers that do not report failover candidates,
       // Need to rely on current
       serverList = snap.hasAsArray(currentShardPath);
-      TRI_ASSERT(serverList.has_value());
-      if (!serverList.has_value()) {
+      TRI_ASSERT(serverList);
+      if (!serverList) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
             "Could not find common insync server for: " + currentShardPath +
@@ -698,9 +699,9 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
       }
     }
     // Guaranteed by if above
-    TRI_ASSERT(serverList->isArray());
+    TRI_ASSERT(serverList);
 
-    for (auto server : VPackArrayIterator(*serverList)) {
+    for (auto server : *serverList) {
       auto id = server.copyString();
       if (id == serverToAvoid) {
         // Skip current leader for which we are seeking a replacement
@@ -725,8 +726,7 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
       // check if it is also part of the plan...because if not the soon-to-be
       // leader will drop the collection
       bool found = false;
-      for (auto const& plannedServer :
-           VPackArrayIterator(snap.hasAsArray(plannedShardPath).value())) {
+      for (auto const& plannedServer : *snap.hasAsArray(plannedShardPath)) {
         if (plannedServer.isEqualString(server.stringView())) {
           found = true;
           break;
@@ -765,7 +765,7 @@ std::vector<std::string> Job::findAllInSyncReplicas(
     auto serverList = snap.hasAsArray(currentPath);
     if (serverList) {
       std::unordered_set<std::string> setHere;
-      for (auto server : VPackArrayIterator(*serverList)) {
+      for (auto server : *serverList) {
         auto id = server.copyString();
         if (first) {
           result.push_back(id);
@@ -805,7 +805,7 @@ std::unordered_set<std::string> Job::findAllFailoverCandidates(
     // If we do have failover candidates, we should use them
     auto serverList = snap.hasAsArray(currentFailoverCandidatesPath);
     if (serverList) {
-      for (auto server : VPackArrayIterator(*serverList)) {
+      for (auto server : *serverList) {
         result.insert(server.copyString());
       }
     }
@@ -835,7 +835,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
   if (!snapshot.has(pendingPrefix + jobId)) {
     return false;
   }
-  auto const& job = snapshot.hasAsNode(pendingPrefix + jobId);
+  auto const& job = snapshot.get(pendingPrefix + jobId);
   if (!job || !job->has("type")) {
     return false;
   }
@@ -868,10 +868,15 @@ void Job::doForAllShards(
     std::string curPath = curColPrefix + database + "/" + collShard.collection +
                           "/" + collShard.shard + "/servers";
 
-    Slice plan = snapshot.hasAsSlice(planPath).value();
-    Slice current = snapshot.hasAsSlice(curPath).value_or(Slice::noneSlice());
+    auto planBuilder = snapshot.get(planPath)->toBuilder();
+    VPackBuilder currBuilder;
+    if (auto curr = snapshot.get(curPath); curr) {
+      currBuilder = curr->toBuilder();
+    } else {
+      currBuilder.add(VPackSlice::noneSlice());
+    }
 
-    worker(plan, current, planPath, curPath);
+    worker(planBuilder.slice(), currBuilder.slice(), planPath, curPath);
   }
 }
 
@@ -987,6 +992,15 @@ void Job::addPreconditionShardNotBlocked(Builder& pre,
 
 void Job::addPreconditionUnchanged(Builder& pre, std::string_view key,
                                    Slice value) {
+  pre.add(VPackValue(key));
+  {
+    VPackObjectBuilder guard(&pre);
+    pre.add("old", value);
+  }
+}
+
+void Job::addPreconditionUnchanged(Builder& pre, std::string_view key,
+                                   VPackValue value) {
   pre.add(VPackValue(key));
   {
     VPackObjectBuilder guard(&pre);
@@ -1207,7 +1221,7 @@ std::optional<arangodb::replication2::LogId> Job::getReplicatedStateId(
   }
   auto group =
       deserialize<replication2::agency::CollectionGroupPlanSpecification>(
-          *groupNode);
+          groupNode);
   TRI_ASSERT(shardIndex < group.shardSheaves.size());
   auto logId = group.shardSheaves.at(shardIndex).replicatedLog;
   return logId;

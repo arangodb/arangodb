@@ -24,6 +24,8 @@
 #include "gtest/gtest.h"
 
 #include "Aql/Query.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Cache/RefactoredTraverserCache.h"
 #include "Graph/GraphTestTools.h"
@@ -45,8 +47,6 @@ namespace traverser_cache_test {
 
 class TraverserCacheTest : public ::testing::Test {
  protected:
-  ServerState::RoleEnum oldRole;
-
   graph::GraphTestSetup s{};
   graph::MockGraphDatabase gdb;
   arangodb::aql::TraversalStats stats{};
@@ -54,8 +54,12 @@ class TraverserCacheTest : public ::testing::Test {
   std::unique_ptr<RefactoredTraverserCache> traverserCache{nullptr};
   std::shared_ptr<transaction::Context> queryContext{nullptr};
   std::unique_ptr<arangodb::transaction::Methods> trx{nullptr};
-  MonitoredCollectionToShardMap
-      collectionToShardMap{};  // can be empty, only used in standalone mode
+  arangodb::GlobalResourceMonitor global;
+  arangodb::ResourceMonitor resourceMonitor = arangodb::ResourceMonitor(global);
+  ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor> alloc =
+      {resourceMonitor};
+  MonitoredCollectionToShardMap collectionToShardMap{
+      alloc};  // can be empty, only used in standalone mode
   arangodb::ResourceMonitor* _monitor;
   arangodb::aql::Projections _vertexProjections{};
   arangodb::aql::Projections _edgeProjections{};

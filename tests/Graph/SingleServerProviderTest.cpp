@@ -71,8 +71,9 @@ class SingleServerProviderTest : public ::testing::Test {
   aql::AstNode* _varNode{nullptr};
   aql::Projections _vertexProjections{};
   aql::Projections _edgeProjections{};
-
-  MonitoredCollectionToShardMap _emptyShardMap{};
+  ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor> alloc =
+      {_resourceMonitor};
+  MonitoredCollectionToShardMap _emptyShardMap{alloc};
 
   // can be used for further testing to generate a expression
   // std::string stringToMatch = "0-1";

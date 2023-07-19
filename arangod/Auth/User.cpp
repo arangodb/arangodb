@@ -584,7 +584,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     if (it != _dbAccess.end()) {
       // Second try to find a specific grant
       CollLevelMap::const_iterator pair =
-          it->second._collectionAccess.find(std::string{cname});
+          it->second._collectionAccess.find(cname);
       if (pair != it->second._collectionAccess.end()) {
         return pair->second;      // found specific collection grant
       } else if (cname == "*") {  // skip special rules for wildcard
