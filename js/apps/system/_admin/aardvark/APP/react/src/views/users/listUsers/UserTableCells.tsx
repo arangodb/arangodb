@@ -15,7 +15,7 @@ export const StatusCell = ({
   const isActive = cellValue === "Active";
   return (
     <Tag
-      background={isActive ? "green.400" : ""}
+      background={isActive ? "green.400" : "gray.200"}
       color={isActive ? "white" : ""}
     >
       {cellValue}

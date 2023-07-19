@@ -1,7 +1,6 @@
 import { Button, Flex, Heading, Stack, VStack } from "@chakra-ui/react";
 import CryptoJS from "crypto-js";
 import { Form, Formik } from "formik";
-import _ from "lodash";
 import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
@@ -58,7 +57,7 @@ const addUserFields = {
 };
 
 const INITIAL_VALUES: CreateUserValues = {
-  role: "",
+  role: false,
   active: true,
   user: "",
   passwd: "",
@@ -70,12 +69,44 @@ const INITIAL_VALUES: CreateUserValues = {
 };
 
 const parseImgString = (img: string) => {
-  // if already md5
+  // if it's not an email, it's already an md5
   if (img.indexOf("@") === -1) {
     return img;
   }
-  // else generate md5
+  // else convert email to md5
   return CryptoJS.MD5(img).toString();
+};
+
+const putUser = async ({
+  userOptions,
+  onSuccess
+}: {
+  userOptions: {
+    user: string;
+    active: boolean;
+    extra: {
+      name?: string;
+      img?: string;
+    };
+    passwd?: string;
+  };
+  onSuccess: () => void;
+}) => {
+  try {
+    const currentDB = getCurrentDB();
+    const route = currentDB.route("_api/user");
+    const info = await route.post(userOptions);
+    window.arangoHelper.arangoNotification(
+      "User",
+      `Successfully created the user: ${userOptions.user}`
+    );
+    mutate("/users");
+    onSuccess();
+    return info;
+  } catch (e: any) {
+    const errorMessage = e.response.body.errorMessage;
+    window.arangoHelper.arangoError("Could not create user", errorMessage);
+  }
 };
 
 export const AddUserModal = ({
@@ -85,50 +116,26 @@ export const AddUserModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  const initialFocusRef = React.useRef<HTMLInputElement>(null);
   const handleSubmit = async (values: CreateUserValues) => {
+    const profileImg = values.extra.img && parseImgString(values.extra.img);
+    const isRole = window.frontendConfig.isEnterprise && values.role;
+    let { user } = values;
+    if (isRole) {
+      user = ":role:" + values.user;
+    }
     const userOptions = {
-      user: values.user,
+      user,
       active: values.active,
       extra: {
         name: values.name,
-        img: values.extra.img
+        img: profileImg || undefined
       },
-      passwd: values.passwd
+      passwd: !isRole ? values.passwd : undefined
     };
-    const profileImg = parseImgString(values.extra.img);
-    if (!_.isEmpty(profileImg)) {
-      userOptions.extra.img = profileImg;
-    }
-
-    if (window.frontendConfig.isEnterprise && values.role) {
-      userOptions.user = ":role:" + values.user;
-      delete userOptions.passwd;
-    }
-
-    try {
-      const currentDB = getCurrentDB();
-      const route = currentDB.route("_api/user");
-      const info = await route.post(userOptions);
-      window.arangoHelper.arangoNotification(
-        "User",
-        `Successfully created the user: ${userOptions.user}`
-      );
-      mutate("/users");
-      onClose();
-      return info;
-    } catch (e: any) {
-      const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError("Could not create user", errorMessage);
-    }
+    putUser({ userOptions, onSuccess: onClose });
   };
   return (
-    <Modal
-      initialFocusRef={initialFocusRef}
-      size="6xl"
-      isOpen={isOpen}
-      onClose={onClose}
-    >
+    <Modal size="6xl" isOpen={isOpen} onClose={onClose}>
       <ModalHeader fontSize="sm" fontWeight="normal">
         <Flex direction="row" alignItems="center">
           <Heading marginRight="4" size="md">
@@ -144,14 +151,16 @@ export const AddUserModal = ({
           })}
           onSubmit={handleSubmit}
         >
-          {({ isSubmitting }) => (
+          {({ isSubmitting, values }) => (
             <Form>
               <VStack spacing={4} align="stretch">
                 <FieldsGrid maxWidth="full">
                   <FormField field={addUserFields.user} />
                   <FormField field={addUserFields.name} />
                   <FormField field={addUserFields.gravatar} />
-                  <FormField field={addUserFields.passwd} />
+                  <FormField
+                    field={{ ...addUserFields.passwd, isDisabled: values.role }}
+                  />
                   {window.frontendConfig.isEnterprise && (
                     <FormField field={addUserFields.role} />
                   )}

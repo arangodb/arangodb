@@ -1,5 +1,5 @@
 export type CreateUserValues = {
-  role: string;
+  role: boolean;
   name: string;
   extra: {
     img: string;
