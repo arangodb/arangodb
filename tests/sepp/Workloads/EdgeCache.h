@@ -18,35 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <optional>
-#include <variant>
 
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
 
 #include "ExecutionThread.h"
-#include "Inspection/detail/traits.h"
 #include "StoppingCriterion.h"
+#include "ValueGenerator.h"
 #include "Workload.h"
 
 namespace arangodb::sepp::workloads {
 
-struct IterateDocuments : Workload {
-  struct ThreadOptions {
-    std::string collection;
-    bool fillBlockCache{false};
-    StoppingCriterion::type stop;
-  };
+struct EdgeCache : Workload {
+  struct ThreadOptions;
   struct Options;
   struct Thread;
-  struct Object;
 
-  IterateDocuments(Options const& options) : _options(options) {}
+  EdgeCache(Options const& options) : _options(options) {}
 
   auto createThreads(Execution& exec, Server& server)
       -> WorkerThreadList override;
@@ -56,44 +50,64 @@ struct IterateDocuments : Workload {
   Options const& _options;
 };
 
-struct IterateDocuments::Options {
+struct EdgeCache::Options {
   struct Thread {
     std::string collection;
-    bool fillBlockCache{false};
+    std::uint32_t documentsPerTrx;
+    std::uint32_t readsPerEdge;
+    std::uint64_t edgesPerVertex;
 
     template<class Inspector>
     friend inline auto inspect(Inspector& f, Thread& o) {
       return f.object(o).fields(
-          f.field("fillBlockCache", o.fillBlockCache).fallback(f.keep()),
+          f.field("documentsPerTrx", o.documentsPerTrx).fallback(100u),
+          f.field("edgesPerVertex", o.edgesPerVertex).fallback(10u),
+          f.field("readsPerEdge", o.readsPerEdge).fallback(2u),
           f.field("collection", o.collection));
     }
   };
 
   std::optional<Thread> defaultThreadOptions;
-  std::uint32_t threads{1};  // TODO - make variant fixed number/array of Thread
+  std::uint32_t threads{1};
+  StoppingCriterion::type stop;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, Options& o) {
+    return f.object(o).fields(f.field("default", o.defaultThreadOptions),
+                              f.field("threads", o.threads),
+                              f.field("stopAfter", o.stop));
+  }
+};
+
+struct EdgeCache::ThreadOptions {
+  std::string collection;
+  std::uint32_t documentsPerTrx{100};
+  std::uint64_t readsPerEdge{2};
+  std::uint64_t edgesPerVertex{10};
   StoppingCriterion::type stop;
 };
 
-template<class Inspector>
-inline auto inspect(Inspector& f, IterateDocuments::Options& o) {
-  return f.object(o).fields(f.field("default", o.defaultThreadOptions),
-                            f.field("threads", o.threads),
-                            f.field("stopAfter", o.stop));
-}
-
-struct IterateDocuments::Thread : ExecutionThread {
+struct EdgeCache::Thread : ExecutionThread {
   Thread(ThreadOptions options, std::uint32_t id, Execution& exec,
          Server& server);
   ~Thread();
+
   void run() override;
-  [[nodiscard]] virtual ThreadReport report() const override {
-    return {.data = {}, .operations = _operations};
-  }
+  [[nodiscard]] auto report() const -> ThreadReport override;
   auto shouldStop() const noexcept -> bool override;
 
  private:
-  std::uint64_t _operations{0};
+  void executeWriteTransaction();
+  void executeReadTransaction(std::uint64_t startDocument);
+  void buildString(std::uint64_t currentDocument);
   ThreadOptions _options;
+  std::uint64_t _operations{0};
+  std::uint64_t currentDocument{0};
+
+  // string prefix used for edges in this thread
+  std::string _prefix;
+  // temporary string object used to build string values
+  std::string scratch;
 };
 
 }  // namespace arangodb::sepp::workloads
