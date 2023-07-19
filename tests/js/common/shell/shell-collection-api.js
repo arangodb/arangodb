@@ -49,14 +49,22 @@ const {
   ERROR_HTTP_CORRUPTED_JSON
 } = require("internal").errors;
 
-const filterClusterOnlyAttributes = (attributes) => {
-  // The following attributes are not returned by the Collection Properties API
+const filterNotExposedAttributes = (attributes) => {
+  // The following attributes are not always returned by the Collection Properties API
   // However the user can still send them to the API. Erase them here as they should
   // not be returned by the server.
+
+  // Also note: The way this filter is used, the test will fail, if the properties
+  // of a collection expose any of the following ignored attributes.
   if (!isCluster) {
-    const clusterOnlyAttributes = ["numberOfShards", "shardKeys", "replicationFactor"];
-    /* , , "writeConcern" */
-    for (const key of clusterOnlyAttributes) {
+    // NOTE: Some attributes are not on this list.
+    // 1) writeConcern is actually exposed on the SingleServer
+    // 2) minReplicationFactor is exposed on the Cluster, but only sometimes on SingleServer (See when this test is disabled)
+    // 3) DistributeShardsLike is exposed to simulate SmartGraphs on SingleServer in Enterprise
+    // 4) shardingStrategy: is erased later, because the following are only optionally erased on single server
+
+    const enterpriseSimulationAttributes = ["numberOfShards", "shardKeys", "replicationFactor"];
+    for (const key of enterpriseSimulationAttributes) {
       delete attributes[key];
     }
   }
@@ -139,9 +147,13 @@ const tryCreate = (parameters) => {
 };
 
 const defaultProps = getDefaultProps();
-const validateProperties = (overrides, colName, type, keepClusterSpecificAttributes = false) => {
-  if (!keepClusterSpecificAttributes) {
-    overrides = filterClusterOnlyAttributes(overrides);
+const validateProperties = (overrides, colName, type, keepEnterpriseSimulationAttributes = false) => {
+  if (!isCluster) {
+    // SingleServer never exposes a shardingStrategy
+    delete overrides.shardingStrategy;
+  }
+  if (!keepEnterpriseSimulationAttributes) {
+    overrides = filterNotExposedAttributes(overrides);
   }
   const col = db._collection(colName);
   const props = col.properties();
@@ -153,7 +165,7 @@ const validateProperties = (overrides, colName, type, keepClusterSpecificAttribu
   assertEqual(col.name(), colName);
   assertEqual(col.type(), type);
   const expectedProps = {...defaultProps, ...overrides};
-  if (keepClusterSpecificAttributes && !isCluster) {
+  if (keepEnterpriseSimulationAttributes && !isCluster) {
     // In some cases minReplicationFactor is returned
     // but is not part of the expected list. So let us add it
     expectedProps.minReplicationFactor = expectedProps.writeConcern;
@@ -863,7 +875,7 @@ function CreateCollectionsSuite() {
           distributeShardsLike: vertexName
         };
 
-        const shouldKeepClusterSpecificAttributes = isEnterprise || isCluster;
+        const keepEnterpriseSimulationAttributes = isEnterprise || isCluster;
 
         const res = tryCreate({...vertex, type: 2, name: vertexName});
         try {
@@ -879,7 +891,6 @@ function CreateCollectionsSuite() {
               delete vertex.smartGraphAttribute;
               delete vertex.isDisjoint;
             }
-            delete vertex.shardingStrategy;
             // Single Server always falls back to default replicationFactor
             vertex.replicationFactor = 1;
           } else {
@@ -902,7 +913,7 @@ function CreateCollectionsSuite() {
           if (!isEnterprise && !isCluster) {
             validateDeprecationLogEntryWritten();
           }
-          validateProperties(vertex, vertexName, 2, shouldKeepClusterSpecificAttributes);
+          validateProperties(vertex, vertexName, 2, keepEnterpriseSimulationAttributes);
           const resEdge = tryCreate({...edge, type: "edge", name: edgeName});
           try {
             // Should work, everything required for smartGraphs is there.
@@ -1006,7 +1017,7 @@ function CreateCollectionsSuite() {
           distributeShardsLike: vertexName
         };
 
-        const shouldKeepClusterSpecificAttributes = isEnterprise || isCluster;
+        const keepEnterpriseSimulationAttributes = isEnterprise || isCluster;
 
         const res = tryCreate({...vertex, type: 2, name: vertexName});
         try {
@@ -1026,7 +1037,6 @@ function CreateCollectionsSuite() {
                 delete vertex.smartGraphAttribute;
                 delete vertex.isDisjoint;
               }
-              delete vertex.shardingStrategy;
               // Single Server always falls back to default replicationFactor
               vertex.replicationFactor = 1;
             } else {
@@ -1048,7 +1058,7 @@ function CreateCollectionsSuite() {
                 delete vertex.isDisjoint;
               }
             }
-            validateProperties(vertex, vertexName, 2, shouldKeepClusterSpecificAttributes);
+            validateProperties(vertex, vertexName, 2, keepEnterpriseSimulationAttributes);
             if (!isEnterprise && !isCluster) {
               validateDeprecationLogEntryWritten();
             }
@@ -1063,7 +1073,6 @@ function CreateCollectionsSuite() {
                   delete edge.isSmart;
                   delete edge.isDisjoint;
                 }
-                delete edge.shardingStrategy;
                 // And also erases distributeShardsLike
                 delete edge.distributeShardsLike;
                 // Single Server always falls back to default replicationFactor
@@ -1102,16 +1111,16 @@ function CreateCollectionsSuite() {
                   }
                   return tmp;
                 };
-                validateProperties({...edge, numberOfShards: 0}, edgeName, 3, shouldKeepClusterSpecificAttributes);
-                validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                validateProperties({...edge, numberOfShards: 0}, edgeName, 3, keepEnterpriseSimulationAttributes);
+                validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
                 if (!isDisjoint || isServer) {
-                  validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
-                  validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                  validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
+                  validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
                 } else {
                   assertEqual(db._collections().filter(c => c.name() === `_from_${edgeName}` || c.name() === `_to_${edgeName}`).length, 0, "Created incorrect hidden collections");
                 }
               } else {
-                validateProperties(edge, edgeName, 3, shouldKeepClusterSpecificAttributes);
+                validateProperties(edge, edgeName, 3, keepEnterpriseSimulationAttributes);
               }
               if (!isEnterprise && !isCluster) {
                 validateDeprecationLogEntryWritten();
@@ -1154,7 +1163,7 @@ function CreateCollectionsSuite() {
           distributeShardsLike: vertexName
         };
 
-        const shouldKeepClusterSpecificAttributes = isEnterprise || isCluster;
+        const keepEnterpriseSimulationAttributes = isEnterprise || isCluster;
 
         const res = tryCreate({...vertex, type: 2, name: vertexName});
         try {
@@ -1174,7 +1183,6 @@ function CreateCollectionsSuite() {
                 delete vertex.smartGraphAttribute;
                 delete vertex.isDisjoint;
               }
-              delete vertex.shardingStrategy;
               // Single Server always falls back to default replicationFactor
               vertex.replicationFactor = 1;
             } else {
@@ -1196,7 +1204,7 @@ function CreateCollectionsSuite() {
                 delete vertex.isDisjoint;
               }
             }
-            validateProperties(vertex, vertexName, 2, shouldKeepClusterSpecificAttributes);
+            validateProperties(vertex, vertexName, 2, keepEnterpriseSimulationAttributes);
             if (!isEnterprise && !isCluster) {
               validateDeprecationLogEntryWritten();
             }
@@ -1211,7 +1219,6 @@ function CreateCollectionsSuite() {
                   delete edge.isSmart;
                   delete edge.isDisjoint;
                 }
-                delete edge.shardingStrategy;
                 // And also erases distributeShardsLike
                 delete edge.distributeShardsLike;
                 // Single Server always falls back to default replicationFactor
@@ -1250,16 +1257,16 @@ function CreateCollectionsSuite() {
                   }
                   return tmp;
                 };
-                validateProperties({...edge, numberOfShards: 0}, edgeName, 3, shouldKeepClusterSpecificAttributes);
-                validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                validateProperties({...edge, numberOfShards: 0}, edgeName, 3, keepEnterpriseSimulationAttributes);
+                validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
                 if (!isDisjoint || isServer) {
-                  validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
-                  validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, shouldKeepClusterSpecificAttributes);
+                  validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
+                  validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
                 } else {
                   assertEqual(db._collections().filter(c => c.name() === `_from_${edgeName}` || c.name() === `_to_${edgeName}`).length, 0, "Created incorrect hidden collections");
                 }
               } else {
-                validateProperties(edge, edgeName, 3, shouldKeepClusterSpecificAttributes);
+                validateProperties(edge, edgeName, 3, keepEnterpriseSimulationAttributes);
               }
               if (!isEnterprise && !isCluster) {
                 validateDeprecationLogEntryWritten();
