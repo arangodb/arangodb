@@ -315,7 +315,7 @@ void Projections::toVelocyPack(velocypack::Builder& b,
         projections.emplace_back(
             AttributeNamePath(it.copyString(), resourceMonitor));
       } else if (it.isArray()) {
-        AttributeNamePath path;
+        AttributeNamePath path{resourceMonitor};
         for (auto const& it2 : velocypack::ArrayIterator(it)) {
           path._path.emplace_back(it2.copyString());
         }

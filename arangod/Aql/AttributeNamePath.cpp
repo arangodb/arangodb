@@ -33,6 +33,11 @@
 namespace arangodb {
 namespace aql {
 
+AttributeNamePath::AttributeNamePath(
+    arangodb::ResourceMonitor& resourceMonitor) noexcept
+    : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
+          resourceMonitor}) {}
+
 AttributeNamePath::AttributeNamePath(std::string attribute,
                                      arangodb::ResourceMonitor& resourceMonitor)
     : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
