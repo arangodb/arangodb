@@ -900,7 +900,8 @@ int64_t AqlValue::toInt64() const {
           _data.longNumberMeta.data.intLittleEndian.val);
     case VPACK_INLINE_UINT64:
       if (ADB_UNLIKELY(
-              _data.longNumberMeta.data.uintLittleEndian.val >
+              basics::littleToHost(
+                  _data.longNumberMeta.data.uintLittleEndian.val) >
               static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))) {
         throw velocypack::Exception(velocypack::Exception::NumberOutOfRange);
       }
@@ -1674,6 +1675,27 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice,
                                : AqlValueType::VPACK_INLINE_INT64);
         memcpy(_data.longNumberMeta.data.slice.slice, slice.begin(),
                static_cast<size_t>(length));
+        // If length == 9, we're done;
+        // If length == 8, there's one byte left to fill.
+
+        // For signed ints, do an *arithmetic* shift of the biggest byte. So
+        // we get 0xff for negative, and 0x00 for all nonnegative integers.
+        auto const filler =
+            slice.isUInt()
+                ? 0x00
+                : std::int8_t(slice.begin()[length - 1]) >> (CHAR_BIT - 1);
+        auto const remainingBytes =
+            sizeof(_data.longNumberMeta.data.slice.slice) - length;
+        // Set the remaining byte (if any):
+        std::memset(_data.longNumberMeta.data.slice.slice + length, filler,
+                    remainingBytes);
+        TRI_ASSERT(
+            slice.isUInt()
+                ? slice.getUInt() > std::numeric_limits<std::int64_t>().max() ||
+                      slice.getUInt() == static_cast<uint64_t>(this->toInt64())
+                : slice.getInt() == this->toInt64())
+            << (slice.isUInt() ? "uint " : "int ") << slice.toJson()
+            << " != " << this->toInt64();
       } else {
         memcpy(_data.shortNumberMeta.data.slice.slice, slice.begin(),
                static_cast<size_t>(length));
