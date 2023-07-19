@@ -2,8 +2,8 @@ import { Avatar, Link, Tag } from "@chakra-ui/react";
 import { CellContext } from "@tanstack/react-table";
 import _ from "lodash";
 import React from "react";
-import { Link as RouterLink } from "react-router-dom";
 import { AccountCircle, Group } from "styled-icons/material";
+import { createEncodedUrl } from "../../../utils/urlHelper";
 import { DatabaseUserValues } from "../addUser/CreateUser.types";
 
 export const StatusCell = ({
@@ -29,10 +29,13 @@ export const LinkCell = ({
   info: CellContext<DatabaseUserValues, string>;
 }) => {
   const cellValue = info.cell.getValue();
+  const href = createEncodedUrl({
+    path: "user",
+    value: cellValue
+  });
   return (
     <Link
-      as={RouterLink}
-      to={`/user/${cellValue}`}
+      href={href}
       textDecoration="underline"
       color="blue.500"
       _hover={{
