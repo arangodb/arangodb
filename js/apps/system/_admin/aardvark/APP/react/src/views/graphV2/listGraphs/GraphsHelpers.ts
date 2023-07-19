@@ -74,7 +74,7 @@ export const detectGraphType = (
     };
   }
 
-  if (graph.isSmart && graph.smartGraphAttribute === undefined) {
+  if (graph.isSmart && !graph.smartGraphAttribute) {
     return {
       type: "enterprise",
       isDisjoint: graph.isDisjoint,
@@ -82,7 +82,7 @@ export const detectGraphType = (
     };
   }
 
-  if (graph.isSmart === true && graph.smartGraphAttribute !== undefined) {
+  if (graph.isSmart === true && !!graph.smartGraphAttribute) {
     return {
       type: "smart",
       isDisjoint: graph.isDisjoint,

@@ -53,7 +53,7 @@ function getValue({
   }
 
   // if no options are provided, it's a newly created value
-  if (!options || options.length === 0) {
+  if (!options || !options.length) {
     return createValue(field.value);
   }
   if (typeof field.value === "string") {

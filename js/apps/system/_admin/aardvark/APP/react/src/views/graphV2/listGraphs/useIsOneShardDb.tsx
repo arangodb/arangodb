@@ -13,7 +13,6 @@ export const useIsOneShardDb = (): boolean => {
   const currentDbProperties = useCurrentDbProperties();
   return (
     currentDbProperties?.sharding === "single" ||
-    window.frontendConfig.forceOneShard ||
-    false
+    window.frontendConfig.forceOneShard
   );
 };

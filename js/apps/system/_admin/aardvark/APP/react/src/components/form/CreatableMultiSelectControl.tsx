@@ -69,7 +69,7 @@ const getValue = ({
   }
 
   // if no options provided, it's a newly created value
-  if (!options || options.length === 0) {
+  if (!options || !options.length) {
     return createValue(field.value);
   }
 
