@@ -18,51 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "CacheOptions.h"
 
-#include <memory>
-#include <string_view>
-
-#include "VocBase/voc-types.h"
-
-#include <velocypack/Slice.h>
-
-#include "Options.h"
-#include "Report.h"
-
-namespace arangodb {
-class LogicalCollection;
-}
+#include "Basics/PhysicalMemory.h"
+#include "Cache/CacheOptionsProvider.h"
 
 namespace arangodb::sepp {
 
-struct Server;
-
-class Runner {
- public:
-  Runner(std::string_view executable, std::string_view reportFile,
-         velocypack::Slice config);
-  ~Runner();
-  void run();
-
- private:
-  void startServer();
-  void setup();
-  auto createCollection(std::string const& name, std::string const& type)
-      -> std::shared_ptr<LogicalCollection>;
-  void createIndex(LogicalCollection& col, IndexSetup const& index);
-  auto runBenchmark() -> Report;
-  void printSummary(Report const& report);
-  void writeReport(Report const& report);
-
-  std::string_view _executable;
-  std::string _reportFile;
-
-  Options _options;
-  std::unique_ptr<Server> _server;
-};
+CacheOptions::CacheOptions() {
+  _options.cacheSize =
+      (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
+          ? static_cast<std::uint64_t>((PhysicalMemory::getValue() -
+                                        (static_cast<std::uint64_t>(2) << 30)) *
+                                       0.25)
+          : (256 << 20);
+  // currently there is no way to turn stats off
+  _options.enableWindowedStats = true;
+}
 
 }  // namespace arangodb::sepp

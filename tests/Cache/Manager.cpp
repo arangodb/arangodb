@@ -32,6 +32,7 @@
 
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/CacheManagerFeatureThreads.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
@@ -51,7 +52,9 @@ TEST(CacheManagerTest, test_create_and_destroy_caches) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(sharedPRNG, postFn, requestLimit, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = requestLimit;
+  Manager manager(sharedPRNG, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -113,7 +116,9 @@ TEST(CacheManagerTest, test_basic_constructor_function) {
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(sharedPRNG, postFn, requestLimit, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = requestLimit;
+  Manager manager(sharedPRNG, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -121,7 +126,9 @@ TEST(CacheManagerTest, test_basic_constructor_function) {
   ASSERT_TRUE(requestLimit > manager.globalAllocation());
 
   std::uint64_t bigRequestLimit = 4ULL * 1024ULL * 1024ULL * 1024ULL;
-  Manager bigManager(sharedPRNG, nullptr, bigRequestLimit, true, 0.04, 0.25);
+  CacheOptions co2;
+  co2.cacheSize = bigRequestLimit;
+  Manager bigManager(sharedPRNG, nullptr, co2);
 
   ASSERT_EQ(bigRequestLimit, bigManager.globalLimit());
 
@@ -139,8 +146,9 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
 
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL, true, 0.04,
-                  0.25);
+  CacheOptions co;
+  co.cacheSize = 1024ULL * 1024ULL * 1024ULL;
+  Manager manager(sharedPRNG, postFn, co);
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
@@ -254,8 +262,9 @@ TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
 
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL, true, 0.04,
-                  0.25);
+  CacheOptions co;
+  co.cacheSize = 1024ULL * 1024ULL * 1024ULL;
+  Manager manager(sharedPRNG, postFn, co);
   std::size_t threadCount = 4;
   std::uint64_t operationCount = 4ULL * 1024ULL;
 
