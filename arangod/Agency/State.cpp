@@ -1016,16 +1016,24 @@ index_t State::loadCompacted() {
 
 /// Load persisted configuration
 bool State::loadOrPersistConfiguration() {
-  std::string const aql(
-      "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
+  // this must be in a lambda so the query lifetime does not overlap
+  // with the lifetime of the other transaction in this function.
+  // otherwise, they may both try to acquire the status lock of the
+  // same collection at the same time, which would be recursive locking.
+  auto loadConfiguration = [&]() -> aql::QueryResult {
+    std::string const aql(
+        "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
 
-  TRI_ASSERT(nullptr !=
-             _vocbase);  // this check was previously in the Query constructor
-  auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+    TRI_ASSERT(nullptr !=
+               _vocbase);  // this check was previously in the Query constructor
+    auto query = arangodb::aql::Query::create(
+        transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
+        nullptr);
+    
+    return query->executeSync();
+  };
 
-  aql::QueryResult queryResult = query->executeSync();
+  aql::QueryResult queryResult = loadConfiguration();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
