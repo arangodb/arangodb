@@ -18,30 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Agency/Helpers.h"
+#pragma once
 
-#include "Basics/StaticStrings.h"
-#include "Replication2/Version.h"
+#include "Cache/CacheOptionsProvider.h"
+#include "RestServer/arangod.h"
 
-namespace arangodb::consensus {
+namespace arangodb {
 
-bool isReplicationTwoDB(Node::Children const& databases,
-                        std::string const& dbName) {
-  auto it = databases.find(dbName);
-  if (it == nullptr) {
-    // this should actually never happen, but if it does we simply claim that
-    // this is an old replication 1 DB.
-    return false;
-  }
+class CacheOptionsFeature final : public ArangodFeature,
+                                  public CacheOptionsProvider {
+ public:
+  static constexpr std::string_view name() { return "CacheOptions"; }
 
-  if (auto v = (*it)->hasAsString(StaticStrings::ReplicationVersion); v) {
-    auto res = replication::parseVersion(v.value());
-    return res.ok() && res.get() == replication::Version::TWO;
-  }
-  return false;
-}
+  explicit CacheOptionsFeature(Server& server);
+  ~CacheOptionsFeature() = default;
 
-}  // namespace arangodb::consensus
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+
+  CacheOptions getOptions() const override final;
+
+ private:
+  static constexpr std::uint64_t minRebalancingInterval = 500 * 1000;
+
+  CacheOptions _options;
+};
+
+}  // namespace arangodb

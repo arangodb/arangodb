@@ -66,14 +66,15 @@ auto IterateDocuments::createThreads(Execution& exec, Server& server)
 
   WorkerThreadList result;
   for (std::uint32_t i = 0; i < _options.threads; ++i) {
-    result.emplace_back(std::make_unique<Thread>(defaultThread, exec, server));
+    result.emplace_back(
+        std::make_unique<Thread>(defaultThread, i, exec, server));
   }
   return result;
 }
 
-IterateDocuments::Thread::Thread(ThreadOptions options, Execution& exec,
-                                 Server& server)
-    : ExecutionThread(exec, server), _options(options) {}
+IterateDocuments::Thread::Thread(ThreadOptions options, std::uint32_t id,
+                                 Execution& exec, Server& server)
+    : ExecutionThread(id, exec, server), _options(options) {}
 
 IterateDocuments::Thread::~Thread() = default;
 

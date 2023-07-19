@@ -18,30 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Agency/Helpers.h"
+#pragma once
 
-#include "Basics/StaticStrings.h"
-#include "Replication2/Version.h"
+#include <cstddef>
+#include <cstdint>
 
-namespace arangodb::consensus {
+namespace arangodb {
 
-bool isReplicationTwoDB(Node::Children const& databases,
-                        std::string const& dbName) {
-  auto it = databases.find(dbName);
-  if (it == nullptr) {
-    // this should actually never happen, but if it does we simply claim that
-    // this is an old replication 1 DB.
-    return false;
-  }
+struct CacheOptions {
+  double idealLowerFillRatio = 0.04;
+  double idealUpperFillRatio = 0.25;
+  std::size_t minValueSizeForEdgeCompression = 1'073'741'824ULL;  // 1GB
+  std::uint32_t accelerationFactorForEdgeCompression = 1;
+  std::uint64_t cacheSize = 0;
+  std::uint64_t rebalancingInterval = 2'000'000ULL;  // 2s
+  std::uint64_t maxSpareAllocation = 67'108'864ULL;  // 64MB
+  bool enableWindowedStats = true;
+};
 
-  if (auto v = (*it)->hasAsString(StaticStrings::ReplicationVersion); v) {
-    auto res = replication::parseVersion(v.value());
-    return res.ok() && res.get() == replication::Version::TWO;
-  }
-  return false;
-}
+struct CacheOptionsProvider {
+  virtual ~CacheOptionsProvider() = default;
 
-}  // namespace arangodb::consensus
+  virtual CacheOptions getOptions() const = 0;
+};
+
+}  // namespace arangodb
