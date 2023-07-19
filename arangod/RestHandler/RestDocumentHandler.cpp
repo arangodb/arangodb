@@ -158,6 +158,7 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestDocumentHandler::insertDocument() {
+  ADB_STACK_FRAME;
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {
@@ -336,6 +337,7 @@ RestStatus RestDocumentHandler::readDocument() {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
+  ADB_STACK_FRAME;
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   // split the document reference
@@ -482,6 +484,7 @@ RestStatus RestDocumentHandler::updateDocument() {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
+  ADB_STACK_FRAME;
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 2) {
@@ -688,6 +691,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestDocumentHandler::removeDocument() {
+  ADB_STACK_FRAME;
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() < 1 || suffixes.size() > 2) {
@@ -838,6 +842,7 @@ RestStatus RestDocumentHandler::removeDocument() {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestDocumentHandler::readManyDocuments() {
+  ADB_STACK_FRAME;
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() != 1) {

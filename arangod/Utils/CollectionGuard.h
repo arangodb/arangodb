@@ -42,28 +42,35 @@ class CollectionGuard {
   CollectionGuard& operator=(CollectionGuard const&) = delete;
 
   CollectionGuard(CollectionGuard&& other)
-      : _vocbase(other._vocbase), _collection(std::move(other._collection)) {
+      : _vocbase(other._vocbase),
+        _collection(std::move(other._collection)),
+        _lockId(other._lockId) {
     other._collection.reset();
     other._vocbase = nullptr;
   }
 
   /// @brief create the guard, using a collection id
-  CollectionGuard(TRI_vocbase_t* vocbase, DataSourceId cid)
-      : _vocbase(vocbase),
-        _collection(_vocbase->useCollection(cid, /*checkPermissions*/ true)) {
+  CollectionGuard(TRI_vocbase_t* vocbase, DataSourceId cid,
+                  bool checkPermissions = true)
+      : _vocbase(vocbase) {
+    std::tie(_collection, _lockId) =
+        _vocbase->useCollection(cid, checkPermissions);
     // useCollection will throw if the collection does not exist
     TRI_ASSERT(_collection != nullptr);
   }
 
   /// @brief create the guard, using a collection name
-  CollectionGuard(TRI_vocbase_t* vocbase, std::string const& name)
+  CollectionGuard(TRI_vocbase_t* vocbase, std::string const& name,
+                  bool checkPermissions = true)
       : _vocbase(vocbase), _collection(nullptr) {
     if (!name.empty() && name[0] >= '0' && name[0] <= '9') {
       DataSourceId id{NumberUtils::atoi_zero<DataSourceId::BaseType>(
           name.data(), name.data() + name.size())};
-      _collection = _vocbase->useCollection(id, /*checkPermissions*/ true);
+      std::tie(_collection, _lockId) =
+          _vocbase->useCollection(id, checkPermissions);
     } else {
-      _collection = _vocbase->useCollection(name, /*checkPermissions*/ true);
+      std::tie(_collection, _lockId) =
+          _vocbase->useCollection(name, checkPermissions);
     }
     // useCollection will throw if the collection does not exist
     TRI_ASSERT(_collection != nullptr);
@@ -72,7 +79,7 @@ class CollectionGuard {
   /// @brief destroy the guard
   ~CollectionGuard() {
     if (_collection != nullptr) {
-      _vocbase->releaseCollection(_collection.get());
+      _vocbase->releaseCollection(_collection.get(), _lockId);
     }
   }
 
@@ -86,5 +93,6 @@ class CollectionGuard {
 
   /// @brief pointer to collection
   std::shared_ptr<arangodb::LogicalCollection> _collection;
+  size_t _lockId;
 };
 }  // namespace arangodb

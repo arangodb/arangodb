@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <csignal>
 #include <set>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -193,6 +194,34 @@ void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder& builder) {
   builder.close();
 }
 #endif
+
+namespace {
+thread_local arangodb::basics::StackFrame* threadLocalStack = nullptr;
+}
+
+namespace arangodb::basics {
+StackFrame::StackFrame(char const* function, char const* file, int const line)
+    : function(function), file(file), line(line) {
+  prev = threadLocalStack;
+  threadLocalStack = this;
+}
+
+StackFrame::~StackFrame() {
+  TRI_ASSERT(threadLocalStack == this);
+  threadLocalStack = prev;
+}
+}  // namespace arangodb::basics
+
+std::string getStackTrace() {
+  std::ostringstream ss;
+  auto frame = threadLocalStack;
+  while (frame) {
+    ss << frame->function << ' ' << frame->file << ':' << frame->line << '\n';
+    frame->visit(ss);
+    frame = frame->prev;
+  }
+  return ss.str();
+}
 
 template<>
 char const conpar<true>::open = '{';

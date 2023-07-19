@@ -37,6 +37,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -50,6 +51,7 @@
 #include "Transaction/Context.h"
 
 #include <velocypack/Iterator.h>
+#include <ostream>
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -367,6 +369,9 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
   if (!success) {
     return RestStatus::DONE;
   }
+  ADB_STACK_FRAME_WITH_DATA([&](std::ostream& ss) {
+    ss << "op: " << operation << " query: " << querySlice.toJson();
+  });
 
   if (!_engine) {  // the PUT verb
     TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE ||
@@ -700,6 +705,7 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
 // handle for useQuery
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice querySlice) {
+  ADB_STACK_FRAME;
   bool found;
   std::string const& shardId =
       _request->header(StaticStrings::AqlShardIdHeader, found);

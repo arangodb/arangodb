@@ -41,6 +41,7 @@
 #include "Aql/ReturnExecutor.h"
 #include "Aql/SkipResult.h"
 #include "Aql/SharedQueryState.h"
+#include "Basics/debugging.h"
 #include "Basics/ScopeGuard.h"
 #include "Containers/FlatHashMap.h"
 #include "Cluster/ClusterFeature.h"
@@ -621,6 +622,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(
 
 auto ExecutionEngine::execute(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  ADB_STACK_FRAME;
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
@@ -649,6 +651,7 @@ auto ExecutionEngine::execute(AqlCallStack const& stack)
 auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
                                        std::string const& clientId)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  ADB_STACK_FRAME;
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
@@ -675,6 +678,7 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(
     size_t atMost) {
+  ADB_STACK_FRAME;
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
@@ -696,6 +700,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(
 }
 
 std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
+  ADB_STACK_FRAME;
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }

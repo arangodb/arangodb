@@ -641,6 +641,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
 /// @brief creates a collection, based on the VelocyPack provided
 Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
                                 LogicalCollection** dst) {
+  ADB_STACK_FRAME;
   if (dst != nullptr) {
     *dst = nullptr;
   }

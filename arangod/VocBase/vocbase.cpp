@@ -27,6 +27,7 @@
 #include <chrono>
 #include <cinttypes>
 #include <exception>
+#include <map>
 #include <memory>
 #include <type_traits>
 #include <unordered_map>
@@ -42,6 +43,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Auth/Common.h"
+#include "Basics/Guarded.h"
 #include "Basics/application-exit.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Exceptions.tpp"
@@ -119,6 +121,16 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+
+namespace {
+
+struct LockInfo {
+  arangodb::LogicalCollection* collection;
+  std::string stack;
+};
+Guarded<std::unordered_map<size_t, LockInfo>> lockMap;
+
+}  // namespace
 
 bool TRI_vocbase_t::use() noexcept {
   auto v = _refCount.load(std::memory_order_relaxed);
@@ -402,8 +414,13 @@ void TRI_vocbase_t::persistCollection(
   }
 }
 
+std::atomic<size_t> globalLockId{0};
+
+/// @brief loads an existing collection
+/// Note that this will READ lock the collection. You have to release the
+/// collection lock by yourself.
 Result TRI_vocbase_t::loadCollection(LogicalCollection& collection,
-                                     bool checkPermissions) {
+                                     size_t& lockId, bool checkPermissions) {
   TRI_ASSERT(collection.id().isSet());
 
   if (checkPermissions) {
@@ -422,6 +439,8 @@ Result TRI_vocbase_t::loadCollection(LogicalCollection& collection,
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             std::string("collection '") + collection.name() + "' not found"};
   }
+  // LOG_DEVEL << "readlocking " << collection.name();
+  lockId = globalLockId.fetch_add(1);
 
   // DO NOT release the lock
   locker.steal();
@@ -462,6 +481,8 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
   CONDITIONAL_WRITE_LOCKER(locker, collection.statusLock(),
                            basics::ConditionalLocking::DoNotLock);
 
+  int count = 0;
+  bool logged = false;
   while (true) {
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
@@ -488,6 +509,19 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
     }
 
     engine.prepareDropCollection(*this, collection);
+    if (++count > 100 && !logged) {
+      logged = true;
+      std::stringstream ss;
+      lockMap.doUnderLock([&](auto& map) {
+        for (auto& info : map) {
+          ss << info.second.collection->name() << "\n"
+             << info.second.stack << "\n";
+        }
+      });
+      LOG_DEVEL << "Cannot acquire log for collection " << collection.name()
+                << "\nlockMap:\n"
+                << ss.str();
+    }
 
     // sleep for a while
     std::this_thread::yield();
@@ -1231,13 +1265,15 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   return TRI_ERROR_NO_ERROR;
 }
 
-std::shared_ptr<LogicalCollection> TRI_vocbase_t::useCollection(
-    DataSourceId cid, bool checkPermissions) {
+/// @brief locks a (document) collection for usage by id
+std::pair<std::shared_ptr<arangodb::LogicalCollection>, size_t>
+TRI_vocbase_t::useCollection(DataSourceId cid, bool checkPermissions) {
   return useCollectionInternal(lookupCollection(cid), checkPermissions);
 }
 
-std::shared_ptr<LogicalCollection> TRI_vocbase_t::useCollection(
-    std::string_view name, bool checkPermissions) {
+/// @brief locks a collection for usage by name
+std::pair<std::shared_ptr<arangodb::LogicalCollection>, size_t>
+TRI_vocbase_t::useCollection(std::string_view name, bool checkPermissions) {
   // check that we have an existing name
   std::shared_ptr<LogicalCollection> collection;
   {
@@ -1254,22 +1290,32 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::useCollection(
   return useCollectionInternal(collection, checkPermissions);
 }
 
-std::shared_ptr<LogicalCollection> TRI_vocbase_t::useCollectionInternal(
-    std::shared_ptr<LogicalCollection> const& collection,
+std::pair<std::shared_ptr<arangodb::LogicalCollection>, size_t>
+TRI_vocbase_t::useCollectionInternal(
+    std::shared_ptr<arangodb::LogicalCollection> const& collection,
     bool checkPermissions) {
   if (!collection) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   // try to load the collection
-  Result res = loadCollection(*collection, checkPermissions);
+  size_t lockId;
+  Result res = loadCollection(*collection, lockId, checkPermissions);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  return collection;
+  lockMap.getLockedGuard()->emplace(
+      lockId, LockInfo{collection.get(), getStackTrace()});
+  return {collection, lockId};
 }
 
-void TRI_vocbase_t::releaseCollection(LogicalCollection* collection) noexcept {
+void TRI_vocbase_t::releaseCollection(LogicalCollection* collection,
+                                      size_t lockId) noexcept {
+  lockMap.doUnderLock([&](auto& map) {
+    auto it = map.find(lockId);
+    TRI_ASSERT(it != map.end());
+    map.erase(it);
+  });
   collection->statusLock().unlock();
 }
 

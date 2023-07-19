@@ -417,6 +417,7 @@ Collections::Context::~Context() {
 
 transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
                                                 bool embeddable) {
+  ADB_STACK_FRAME;
   if (_responsibleForTrx && _trx == nullptr) {
     auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(),
                                                           embeddable);

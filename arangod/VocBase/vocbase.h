@@ -407,18 +407,19 @@ struct TRI_vocbase_t {
   /// note: when the collection is not used anymore, the caller *must*
   /// call vocbase::releaseCollection() to decrease the reference
   /// counter for this collection
-  std::shared_ptr<arangodb::LogicalCollection> useCollection(
+  std::pair<std::shared_ptr<arangodb::LogicalCollection>, size_t> useCollection(
       arangodb::DataSourceId cid, bool checkPermissions);
 
   /// @brief locks a collection for usage by name.
   /// note: when the collection is not used anymore, the caller *must*
   /// call vocbase::releaseCollection() to decrease the reference
   /// counter for this collection
-  std::shared_ptr<arangodb::LogicalCollection> useCollection(
+  std::pair<std::shared_ptr<arangodb::LogicalCollection>, size_t> useCollection(
       std::string_view name, bool checkPermissions);
 
   /// @brief releases a collection from usage
-  void releaseCollection(arangodb::LogicalCollection* collection) noexcept;
+  void releaseCollection(arangodb::LogicalCollection* collection,
+                         size_t lockId) noexcept;
 
   /// @brief creates a collection object (of type LogicalCollection or one of
   /// the SmartGraph-specific subtypes). the object only exists on the heap and
@@ -465,7 +466,8 @@ struct TRI_vocbase_t {
   /// @brief check some invariants on the various lists of collections
   void checkCollectionInvariants() const noexcept;
 
-  std::shared_ptr<arangodb::LogicalCollection> useCollectionInternal(
+  std::pair<std::shared_ptr<arangodb::LogicalCollection>, size_t>
+  useCollectionInternal(
       std::shared_ptr<arangodb::LogicalCollection> const& collection,
       bool checkPermissions);
 
@@ -473,7 +475,7 @@ struct TRI_vocbase_t {
   /// Note that this will READ lock the collection. You have to release the
   /// collection lock by yourself.
   arangodb::Result loadCollection(arangodb::LogicalCollection& collection,
-                                  bool checkPermissions);
+                                  size_t& lockId, bool checkPermissions);
 
   /// @brief adds a new collection
   /// caller must hold _dataSourceLock in write mode or set doLock

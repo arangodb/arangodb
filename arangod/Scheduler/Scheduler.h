@@ -178,6 +178,7 @@ class Scheduler {
       schedulerJobMemoryAccounting(-static_cast<int64_t>(sizeof(*this)));
     }
     void invoke() override {
+      ADB_STACK_FRAME;
       LogContext::ScopedContext ctxGuard(logContext);
       this->operator()();
     }

@@ -84,8 +84,9 @@ class TransactionCollection {
   TransactionState* _transaction;                  // the transaction state
   DataSourceId const _cid;                         // collection id
   std::shared_ptr<LogicalCollection> _collection;  // vocbase collection pointer
-  AccessMode::Type _accessType;                    // access type (read|write)
-  AccessMode::Type _lockType;                      // actual held lock type
+  size_t _lockId;
+  AccessMode::Type _accessType;  // access type (read|write)
+  AccessMode::Type _lockType;    // actual held lock type
 
  private:
   // perform lock, sets _lockType

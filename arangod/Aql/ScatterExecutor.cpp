@@ -86,6 +86,7 @@ auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
 auto ScatterExecutor::ClientBlockData::execute(AqlCallStack const& callStack,
                                                ExecutionState upstreamState)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  ADB_STACK_FRAME;
   TRI_ASSERT(_executor != nullptr);
 
   // Make sure we actually have data before you call execute

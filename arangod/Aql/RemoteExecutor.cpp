@@ -167,6 +167,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
 
 auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  ADB_STACK_FRAME;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool old = false;
   TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
@@ -194,6 +195,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack)
 auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(
     AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  ADB_STACK_FRAME;
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

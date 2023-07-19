@@ -105,6 +105,46 @@ inline constexpr bool TRI_CanUseFailurePointsDebugging() { return true; }
 inline constexpr bool TRI_CanUseFailurePointsDebugging() { return false; }
 #endif
 
+namespace arangodb::basics {
+struct StackFrame {
+  StackFrame(char const* function, char const* file, int const line);
+  virtual ~StackFrame();
+  virtual void visit(std::ostream&) {}
+  char const* function;
+  char const* file;
+  int const line;
+  StackFrame* prev;
+};
+
+template<class Fn>
+struct StackFrameWithData : StackFrame {
+  StackFrameWithData(char const* function, char const* file, int const line,
+                     Fn dataGenerator)
+      : StackFrame(function, file, line),
+        dataGenerator(std::move(dataGenerator)) {}
+  void visit(std::ostream& stream) override {
+    stream << "    data: ";
+    dataGenerator(stream);
+    stream << '\n';
+  }
+  Fn dataGenerator;
+};
+}  // namespace arangodb::basics
+
+std::string getStackTrace();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#define ADB_STACK_FRAME                                                    \
+  basics::StackFrame __frame_##__FUNCTION__(__PRETTY_FUNCTION__, __FILE__, \
+                                            __LINE__);
+#define ADB_STACK_FRAME_WITH_DATA(generator)         \
+  basics::StackFrameWithData __frame_##__FUNCTION__( \
+      __PRETTY_FUNCTION__, __FILE__, __LINE__, generator);
+#else
+#define ADB_STACK_FRAME
+#define ADB_STACK_FRAME_WITH_DATA(data)
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container traits
 ////////////////////////////////////////////////////////////////////////////////

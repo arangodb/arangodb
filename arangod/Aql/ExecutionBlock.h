@@ -167,6 +167,7 @@ class ExecutionBlock {
   /// assert that no other thread can access this block at the same time - as
   /// this would harm our implementation.
   std::atomic<bool> _isBlockInUse{false};
+  std::atomic<std::string*> _blockOwner{nullptr};
 #endif
 };
 

@@ -1067,6 +1067,7 @@ void RestReplicationHandler::handleCommandRestoreData() {
 Result RestReplicationHandler::processRestoreCollection(
     VPackSlice const& collection, bool dropExisting, bool force,
     bool ignoreDistributeShardsLikeErrors) {
+  ADB_STACK_FRAME;
   if (!collection.isObject()) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                   "collection declaration is invalid");
@@ -1469,6 +1470,7 @@ Result RestReplicationHandler::processRestoreCollection(
 ////////////////////////////////////////////////////////////////////////////////
 
 Result RestReplicationHandler::processRestoreData(std::string const& colName) {
+  ADB_STACK_FRAME;
 #ifdef USE_ENTERPRISE
   bool force = _request->parsedValue("force", false);
   if (ignoreHiddenEnterpriseCollection(colName, force)) {
@@ -1674,6 +1676,7 @@ Result RestReplicationHandler::parseBatchForSystemCollection(
     std::string const& collectionName, VPackBuilder& documentsToInsert,
     std::unordered_set<std::string>& documentsToRemove,
     bool generateNewRevisionIds) {
+  ADB_STACK_FRAME;
   TRI_ASSERT(documentsToInsert.isEmpty());
 
   // this "fake" transaction here is only needed to get access to the underlying
@@ -2465,6 +2468,7 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandAddFollower() {
+  ADB_STACK_FRAME;
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   bool success = false;

@@ -30,6 +30,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
@@ -400,6 +401,7 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
 
 Result Manager::beginTransaction(transaction::Hints hints,
                                  std::shared_ptr<TransactionState>& state) {
+  ADB_STACK_FRAME;
   Result res;
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
@@ -473,6 +475,7 @@ Result Manager::lockCollections(
     std::vector<std::string> const& exclusiveCollections,
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& readCollections) {
+  ADB_STACK_FRAME;
   Result res;
   CollectionNameResolver resolver(vocbase);
 
@@ -569,6 +572,7 @@ ResultT<TransactionId> Manager::createManagedTrx(
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections,
     transaction::Options options, double ttl) {
+  ADB_STACK_FRAME;
   // We cannot run this on FollowerTransactions.
   // They need to get injected the TransactionIds.
   TRI_ASSERT(!isFollowerTransactionOnDBServer(options));
@@ -664,6 +668,7 @@ Result Manager::ensureManagedTrx(
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections,
     transaction::Options options, double ttl) {
+  ADB_STACK_FRAME;
   Result res;
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);

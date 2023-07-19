@@ -77,6 +77,7 @@ ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
 ResignShardLeadership::~ResignShardLeadership() = default;
 
 bool ResignShardLeadership::first() {
+  ADB_STACK_FRAME;
   std::string const& database = getDatabase();
   std::string const& collection = getShard();
 

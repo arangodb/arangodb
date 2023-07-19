@@ -41,8 +41,10 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -54,6 +56,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -154,11 +157,24 @@ template<class Executor>
 auto BlocksWithClientsImpl<Executor>::executeForClient(
     AqlCallStack stack, std::string const& clientId)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  ADB_STACK_FRAME_WITH_DATA([&](std::ostream& ss) {
+    ss << "this " << (void*)this << " thread: " << std::this_thread::get_id()
+       << " clientId: " << clientId << " stack: " << stack.toString();
+  });
   if constexpr (std::is_same<MutexExecutor, Executor>::value) {
     _executor.acquireLock();
   }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool old = false;
+  auto* stacktrace = new std::string(getStackTrace());
+  auto* oldStack = _blockOwner.exchange(stacktrace);
+  if (oldStack) {
+    velocypack::Builder builder;
+    this->_engine->getQuery().ast()->toVelocyPack(builder, true);
+    LOG_DEVEL << "oldStack " << *oldStack << "\nnewStack " << *stacktrace
+              << "\n"
+              << builder.slice().toJson();
+  }
   TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
   TRI_ASSERT(_isBlockInUse);
 #endif
@@ -166,6 +182,7 @@ auto BlocksWithClientsImpl<Executor>::executeForClient(
   auto guard = scopeGuard([&]() noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     bool old = true;
+    delete _blockOwner.exchange(nullptr);
     TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, false));
     TRI_ASSERT(!_isBlockInUse);
 #endif

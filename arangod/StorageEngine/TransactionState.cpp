@@ -135,6 +135,7 @@ Result TransactionState::addCollection(DataSourceId cid,
                                        std::string const& cname,
                                        AccessMode::Type accessType,
                                        bool lockUsage) {
+  ADB_STACK_FRAME;
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && \
     defined(ARANGODB_ENABLE_FAILURE_TESTS)
   TRI_IF_FAILURE("WaitOnLock::" + cname) {
@@ -201,6 +202,10 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
                                                std::string const& cname,
                                                AccessMode::Type accessType,
                                                bool lockUsage) {
+  ADB_STACK_FRAME_WITH_DATA([&](std::ostream& ss) {
+    ss << "collection: " << cname << " accessType: " << (int)accessType
+       << " lockUsage: " << lockUsage;
+  });
   Result res;
 
   std::lock_guard lock(_collectionsLock);
@@ -283,6 +288,7 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
 
 /// @brief use all participating collections of a transaction
 Result TransactionState::useCollections() {
+  ADB_STACK_FRAME;
   Result res;
   // process collections in forward order
 

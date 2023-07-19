@@ -1802,7 +1802,7 @@ Result transaction::Methods::begin() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
   }
-
+  ADB_STACK_FRAME;
   Result res;
 
   if (_mainTransaction) {
@@ -1937,6 +1937,7 @@ OperationResult transaction::Methods::anyLocal(
 DataSourceId transaction::Methods::addCollectionAtRuntime(
     DataSourceId cid, std::string const& collectionName,
     AccessMode::Type type) {
+  ADB_STACK_FRAME;
   auto collection = trxCollection(cid);
 
   if (collection == nullptr) {
@@ -2380,6 +2381,7 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
 Future<OperationResult> transaction::Methods::insertLocal(
     std::string const& collectionName, VPackSlice value,
     OperationOptions& options) {
+  ADB_STACK_FRAME;
   auto res = InsertProcessor::create(*this, collectionName, value, options);
   if (res.fail()) {
     return futures::makeFuture(
@@ -2457,6 +2459,7 @@ Future<OperationResult> transaction::Methods::replaceAsync(
 Future<OperationResult> transaction::Methods::modifyLocal(
     std::string const& collectionName, VPackSlice newValue,
     OperationOptions& options, bool isUpdate) {
+  ADB_STACK_FRAME;
   auto res = ModifyProcessor::create(*this, collectionName, newValue, options,
                                      isUpdate);
   if (res.fail()) {
@@ -2506,6 +2509,7 @@ Future<OperationResult> transaction::Methods::removeCoordinator(
 Future<OperationResult> transaction::Methods::removeLocal(
     std::string const& collectionName, VPackSlice value,
     OperationOptions& options) {
+  ADB_STACK_FRAME;
   auto res = RemoveProcessor::create(*this, collectionName, value, options);
   if (res.fail()) {
     return futures::makeFuture(
@@ -3008,6 +3012,7 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
 Result transaction::Methods::addCollection(DataSourceId cid,
                                            std::string const& collectionName,
                                            AccessMode::Type type) {
+  ADB_STACK_FRAME;
   if (_state == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "cannot add collection without state");
