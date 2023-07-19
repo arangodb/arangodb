@@ -35,7 +35,7 @@ CacheOptions::CacheOptions() {
                                         (static_cast<std::uint64_t>(2) << 30)) *
                                        0.25)
           : (256 << 20);
-  // currently there is no way to stats off
+  // currently there is no way to turn stats off
   _options.enableWindowedStats = true;
 }
 
