@@ -51,10 +51,22 @@ const exampleGraphsMap = [
 
 export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
   const createExampleGraph = async ({ graphName }: { graphName: string }) => {
-    const data = await getRouteForDB(window.frontendConfig.db, "_admin").post(
-      `/aardvark/graph-examples/create/${graphName}`
-    );
-    return data.body;
+    setIsLoading(true);
+    try {
+      await getRouteForDB(window.frontendConfig.db, "_admin").post(
+        `/aardvark/graph-examples/create/${graphName}`
+      );
+      window.arangoHelper.arangoNotification(
+        "Graph",
+        `Successfully created the graph: ${graphName}`
+      );
+      mutate("/graphs");
+      onClose();
+    } catch (e: any) {
+      const errorMessage = e.response.body.errorMessage;
+      window.arangoHelper.arangoError("Could not add graph", errorMessage);
+    }
+    setIsLoading(false);
   };
   const [isLoading, setIsLoading] = useState(false);
 
@@ -72,25 +84,7 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
               type="submit"
               isLoading={isLoading}
               onClick={async () => {
-                setIsLoading(true);
-                try {
-                  await createExampleGraph({
-                    graphName: exampleGraphField.name
-                  });
-                  window.arangoHelper.arangoNotification(
-                    "Graph",
-                    `Successfully created the graph: ${exampleGraphField.name}`
-                  );
-                  mutate("/graphs");
-                  onClose();
-                } catch (e: any) {
-                  const errorMessage = e.response.body.errorMessage;
-                  window.arangoHelper.arangoError(
-                    "Could not add graph",
-                    errorMessage
-                  );
-                }
-                setIsLoading(false);
+                await createExampleGraph({ graphName: exampleGraphField.name });
               }}
             >
               Create
