@@ -99,10 +99,10 @@ class Node : public std::enable_shared_from_this<Node> {
 
  private:
   template<typename T>
-  struct accounting_allocator : std::allocator<T> {
+  struct AccountingAllocator : std::allocator<T> {
     template<typename U>
-    accounting_allocator(accounting_allocator<U> const&) {}
-    accounting_allocator() = default;
+    AccountingAllocator(AccountingAllocator<U> const&) {}
+    AccountingAllocator() = default;
 
     T* allocate(std::size_t n) {
       auto mem = std::allocator<T>::allocate(n);
@@ -117,14 +117,14 @@ class Node : public std::enable_shared_from_this<Node> {
 
     template<typename U>
     struct rebind {
-      using type = accounting_allocator<U>;
+      using type = AccountingAllocator<U>;
     };
   };
 
-  using allocator_type = accounting_allocator<Node>;
+  using allocator_type = AccountingAllocator<Node>;
 
   template<typename Base>
-  struct accounting_heap : Base {
+  struct AccountingHeap : Base {
     template<typename... Tags>
     static void* allocate(std::size_t size, Tags... tags) {
       auto* mem = Base::allocate(size, tags...);
@@ -139,16 +139,19 @@ class Node : public std::enable_shared_from_this<Node> {
     }
   };
 
-  using accounting_memory_policy =
-      ::immer::memory_policy<accounting_heap<::immer::default_heap_policy>,
+  using AccountingMemoryPolicy =
+      ::immer::memory_policy<AccountingHeap<::immer::default_heap_policy>,
                              ::immer::default_refcount_policy,
                              ::immer::default_lock_policy>;
 
   static void increaseMemoryUsage(std::size_t) noexcept;
   static void decreaseMemoryUsage(std::size_t) noexcept;
-  static std::atomic<std::size_t> memory_usage;
+  static std::atomic<std::size_t> memoryUsage;
 
  public:
+  static std::size_t getMemoryUsage() noexcept { return memoryUsage; }
+  static void toPrometheus(std::string&);
+
   // If you want those types to be accounted for as well, please do so.
   // But be aware that this will change the type and the interface and you have
   // to modify a lot of code to make this work. You have been warned.
@@ -183,10 +186,10 @@ class Node : public std::enable_shared_from_this<Node> {
   };
 
   using Children = ::immer::map<StringType, NodePtr, TransparentHash,
-                                TransparentEqual, accounting_memory_policy>;
+                                TransparentEqual, AccountingMemoryPolicy>;
 
   using Array =
-      ::immer::flex_vector<velocypack::String, accounting_memory_policy>;
+      ::immer::flex_vector<velocypack::String, AccountingMemoryPolicy>;
 
   using VariantType = std::variant<Children, Array, VPackStringType>;
 

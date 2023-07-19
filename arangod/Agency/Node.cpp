@@ -983,11 +983,20 @@ velocypack::ValueType consensus::Node::getVelocyPackValueType() const noexcept {
       _value);
 }
 
-std::atomic<std::size_t> Node::memory_usage = 0;
+std::atomic<std::size_t> Node::memoryUsage = 0;
 
-void Node::increaseMemoryUsage(std::size_t d) noexcept { memory_usage += d; }
+void Node::increaseMemoryUsage(std::size_t d) noexcept { memoryUsage += d; }
 
-void Node::decreaseMemoryUsage(std::size_t d) noexcept { memory_usage -= d; }
+void Node::decreaseMemoryUsage(std::size_t d) noexcept { memoryUsage -= d; }
+
+void Node::toPrometheus(std::string& result) {
+  constexpr std::string_view name = "arangodb_agency_node_memory_usage";
+  constexpr std::string_view desc = "Memory used by agency store/cache";
+  auto nodeMemoryUsage = consensus::Node::getMemoryUsage();
+  result += basics::StringUtils::concatT("# HELP ", name, " ", desc,
+                                         "\n# TYPE ", name, " gauge\n", name,
+                                         " ", nodeMemoryUsage, "\n");
+}
 
 template<typename... Args>
 NodePtr consensus::Node::allocateNode(Args&&... args) {
