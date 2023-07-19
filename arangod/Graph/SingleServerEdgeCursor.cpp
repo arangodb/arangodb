@@ -408,9 +408,10 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
 
     // projections we want to cover
     std::vector<aql::AttributeNamePath> paths = {};
-    aql::AttributeNamePath path = aql::AttributeNamePath(
-        {StaticStrings::FromString, StaticStrings::ToString}, _monitor);
-    paths.emplace_back(std::move(path));
+    paths.emplace_back(
+        aql::AttributeNamePath({StaticStrings::FromString}, _monitor));
+    paths.emplace_back(
+        aql::AttributeNamePath({StaticStrings::ToString}, _monitor));
     aql::Projections edgeProjections(std::move(paths));
 
     if (index->covers(edgeProjections)) {
