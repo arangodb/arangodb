@@ -53,14 +53,15 @@ Finding PlainCache<Hasher>::find(void const* key, std::uint32_t keySize) {
   Table::BucketLocker guard;
   std::tie(status, guard) = getBucket(hash, Cache::triesFast);
   if (status != TRI_ERROR_NO_ERROR) {
+    recordMiss();
     result.reportError(status);
   } else {
     PlainBucket& bucket = guard.bucket<PlainBucket>();
     result.set(bucket.find<Hasher>(hash.value, key, keySize));
     if (result.found()) {
-      recordStat(Stat::findHit);
+      recordHit();
     } else {
-      recordStat(Stat::findMiss);
+      recordMiss();
       result.reportError(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     }
   }
@@ -363,7 +364,8 @@ std::pair<::ErrorCode, Table::BucketLocker> PlainCache<Hasher>::getBucket(
 }
 
 template<typename Hasher>
-Table::BucketClearer PlainCache<Hasher>::bucketClearer(Metadata* metadata) {
+Table::BucketClearer PlainCache<Hasher>::bucketClearer(Manager* /*manager*/,
+                                                       Metadata* metadata) {
   return [metadata](void* ptr) -> void {
     auto bucket = static_cast<PlainBucket*>(ptr);
     bucket->lock(Cache::triesGuarantee);

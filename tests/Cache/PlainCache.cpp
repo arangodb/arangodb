@@ -31,6 +31,7 @@
 
 #include "Basics/xoroshiro128plus.h"
 #include "Cache/BinaryKeyHasher.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
@@ -50,7 +51,9 @@ TEST(CachePlainCacheTest, test_basic_cache_creation) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache1 =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, 256 * 1024);
   ASSERT_TRUE(true);
@@ -71,7 +74,9 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, cacheLimit);
 
@@ -125,7 +130,9 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, cacheLimit);
 
@@ -193,7 +200,9 @@ TEST(CachePlainCacheTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 1024 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Plain);
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
@@ -222,7 +231,9 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 1024 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain);
@@ -321,7 +332,9 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cacheMiss =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, true, cacheLimit);
   auto cacheHit =

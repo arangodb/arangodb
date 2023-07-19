@@ -69,7 +69,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
         std::shared_ptr<Table> table, bool enableWindowedStats,
-        std::function<Table::BucketClearer(Metadata*)> bucketClearer,
+        std::function<Table::BucketClearer(Manager*, Metadata*)> bucketClearer,
         std::size_t slotsPerBucket);
 
  public:
@@ -222,7 +222,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static void freeValue(CachedValue* value) noexcept;
   bool reclaimMemory(std::uint64_t size) noexcept;
 
-  void recordStat(Stat stat);
+  void recordHit();
+  void recordMiss();
 
   bool reportInsert(bool hadEviction);
 
@@ -255,7 +256,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
   basics::ReadWriteSpinLock _taskLock;
   std::atomic<bool> _shutdown;
 
-  bool _enableWindowedStats;
   std::unique_ptr<StatBuffer> _findStats;
   mutable basics::SharedCounter<64> _findHits;
   mutable basics::SharedCounter<64> _findMisses;

@@ -33,6 +33,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/voc-errors.h"
 #include "Cache/BinaryKeyHasher.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
@@ -81,7 +82,9 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 128 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -208,7 +211,9 @@ TEST(CacheRebalancerTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 128 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;

@@ -67,37 +67,36 @@ const std::uint64_t Manager::minCacheAllocation =
     Manager::cacheRecordOverhead;
 
 Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
-                 std::uint64_t globalLimit, bool enableWindowedStats,
-                 double idealLowerFillRatio, double idealUpperFillRatio)
+                 CacheOptions const& options)
     : _sharedPRNG(sharedPRNG),
+      _options(options),
       _shutdown(false),
       _shuttingDown(false),
       _resizing(false),
       _rebalancing(false),
-      _enableWindowedStats(enableWindowedStats),
       _accessStats(sharedPRNG,
-                   (globalLimit >= (1024 * 1024 * 1024))
+                   (_options.cacheSize >= (1024 * 1024 * 1024))
                        ? ((1024 * 1024) / sizeof(std::uint64_t))
-                       : (globalLimit / (1024 * sizeof(std::uint64_t)))),
+                       : (_options.cacheSize / (1024 * sizeof(std::uint64_t)))),
       _findHits(),
       _findMisses(),
       _caches(),
       _nextCacheId(1),
-      _globalSoftLimit(globalLimit),
-      _globalHardLimit(globalLimit),
+      _globalSoftLimit(_options.cacheSize),
+      _globalHardLimit(_options.cacheSize),
       _globalHighwaterMark(
           static_cast<std::uint64_t>(Manager::highwaterMultiplier *
                                      static_cast<double>(_globalSoftLimit))),
       _fixedAllocation(sizeof(Manager) + Manager::tableListsOverhead +
                        _accessStats.memoryUsage()),
       _spareTableAllocation(0),
+      _peakSpareTableAllocation(0),
       _globalAllocation(_fixedAllocation),
       _peakGlobalAllocation(_fixedAllocation),
       _activeTables(0),
       _spareTables(0),
-      _idealLowerFillRatio(idealLowerFillRatio),
-      _idealUpperFillRatio(idealUpperFillRatio),
-      _transactions(),
+      _migrateTasks(0),
+      _freeMemoryTasks(0),
       _schedulerPost(std::move(schedulerPost)),
       _outstandingTasks(0),
       _rebalancingTasks(0),
@@ -106,7 +105,7 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
                           Manager::rebalancingGracePeriod) {
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
-  if (enableWindowedStats) {
+  if (_options.enableWindowedStats) {
     _findStats = std::make_unique<Manager::FindStatBuffer>(sharedPRNG, 16384);
     _fixedAllocation += _findStats->memoryUsage();
     _globalAllocation = _fixedAllocation;
@@ -276,11 +275,6 @@ std::uint64_t Manager::globalAllocation() const noexcept {
   return _globalAllocation;
 }
 
-std::uint64_t Manager::spareAllocation() const noexcept {
-  SpinLocker guard(SpinLocker::Mode::Read, _lock);
-  return _spareTableAllocation;
-}
-
 std::optional<Manager::MemoryStats> Manager::memoryStats(
     std::uint64_t maxTries) const noexcept {
   SpinLocker guard(SpinLocker::Mode::Read, _lock,
@@ -293,8 +287,11 @@ std::optional<Manager::MemoryStats> Manager::memoryStats(
     result.globalAllocation = _globalAllocation;
     result.peakGlobalAllocation = _peakGlobalAllocation;
     result.spareAllocation = _spareTableAllocation;
+    result.peakSpareAllocation = _peakSpareTableAllocation;
     result.activeTables = _activeTables;
     result.spareTables = _spareTables;
+    result.migrateTasks = _migrateTasks;
+    result.freeMemoryTasks = _freeMemoryTasks;
     return result;
   }
 
@@ -312,7 +309,7 @@ std::pair<double, double> Manager::globalHitRates() {
                             static_cast<double>(currentHits + currentMisses));
   }
 
-  if (_enableWindowedStats && _findStats.get() != nullptr) {
+  if (_findStats != nullptr) {
     auto stats = _findStats->getFrequencies();
     if (stats.size() == 1) {
       if (stats[0].first == static_cast<std::uint8_t>(Stat::findHit)) {
@@ -337,6 +334,13 @@ std::pair<double, double> Manager::globalHitRates() {
   }
 
   return std::make_pair(lifetimeRate, windowedRate);
+}
+
+double Manager::idealLowerFillRatio() const noexcept {
+  return _options.idealLowerFillRatio;
+}
+double Manager::idealUpperFillRatio() const noexcept {
+  return _options.idealUpperFillRatio;
 }
 
 Transaction* Manager::beginTransaction(bool readOnly) {
@@ -510,25 +514,17 @@ void Manager::reportAccess(std::uint64_t id) noexcept {
   }
 }
 
-void Manager::reportHitStat(Stat stat) noexcept {
-  switch (stat) {
-    case Stat::findHit: {
-      _findHits.add(1, std::memory_order_relaxed);
-      if (_enableWindowedStats && _findStats != nullptr) {
-        _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findHit));
-      }
-      break;
-    }
-    case Stat::findMiss: {
-      _findMisses.add(1, std::memory_order_relaxed);
-      if (_enableWindowedStats && _findStats != nullptr) {
-        _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findMiss));
-      }
-      break;
-    }
-    default: {
-      break;
-    }
+void Manager::reportHit() noexcept {
+  _findHits.add(1, std::memory_order_relaxed);
+  if (_findStats != nullptr) {
+    _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findHit));
+  }
+}
+
+void Manager::reportMiss() noexcept {
+  _findMisses.add(1, std::memory_order_relaxed);
+  if (_findStats != nullptr) {
+    _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findMiss));
   }
 }
 
@@ -767,6 +763,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     TRI_ASSERT(metadata.isResizing());
     metadata.toggleResizing();
     TRI_ASSERT(!metadata.isResizing());
+  } else {
+    ++_freeMemoryTasks;
   }
 }
 
@@ -800,6 +798,8 @@ void Manager::migrateCache(Manager::TaskEnvironment environment,
     TRI_ASSERT(metadata.isMigrating());
     metadata.toggleMigrating();
     TRI_ASSERT(!metadata.isMigrating());
+  } else {
+    ++_migrateTasks;
   }
 }
 
@@ -853,11 +853,13 @@ void Manager::reclaimTable(std::shared_ptr<Table>&& table, bool internal) {
         (logSize < 18) ? (static_cast<std::size_t>(1) << (18 - logSize)) : 1;
     if ((_tables[logSize].size() < maxTables) &&
         (memoryUsage <= maxTableSize) &&
+        (memoryUsage + _spareTableAllocation <= _options.maxSpareAllocation) &&
         (_spareTables < kMaxSpareTablesTotal) &&
         ((memoryUsage + _spareTableAllocation) <
          ((_globalSoftLimit - _globalHighwaterMark) / 2))) {
       _tables[logSize].emplace(std::move(table));
       _spareTableAllocation += memoryUsage;
+      _peakSpareTableAllocation += memoryUsage;
       ++_spareTables;
       TRI_ASSERT(_spareTables <= kMaxSpareTablesTotal);
     } else {

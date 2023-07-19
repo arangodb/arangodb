@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,35 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <memory>
-
-#include "VocBase/vocbase.h"
+#include "Cache/CacheOptionsProvider.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-struct CacheOptionsProvider;
-struct RocksDBOptionsProvider;
-}  // namespace arangodb
 
-namespace arangodb::sepp {
+class CacheOptionsFeature final : public ArangodFeature,
+                                  public CacheOptionsProvider {
+ public:
+  static constexpr std::string_view name() { return "CacheOptions"; }
 
-struct Server {
-  Server(arangodb::RocksDBOptionsProvider const& optionsProvider,
-         arangodb::CacheOptionsProvider const& cacheOptionsProvider,
-         std::string databaseDirectory);
-  ~Server();
+  explicit CacheOptionsFeature(Server& server);
+  ~CacheOptionsFeature() = default;
 
-  void start(char const* exectuable);
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  TRI_vocbase_t* vocbase();
+  CacheOptions getOptions() const override final;
 
  private:
-  struct Impl;
-  std::unique_ptr<Impl> _impl;
+  static constexpr std::uint64_t minRebalancingInterval = 500 * 1000;
+
+  CacheOptions _options;
 };
 
-}  // namespace arangodb::sepp
+}  // namespace arangodb

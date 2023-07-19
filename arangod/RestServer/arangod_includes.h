@@ -53,6 +53,7 @@
 #include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "Cache/CacheManagerFeature.h"
+#include "Cache/CacheOptionsFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/MaintenanceFeature.h"
