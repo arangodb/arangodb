@@ -26,6 +26,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -144,6 +145,7 @@ bool MultiDependencySingleRowFetcher::isDone(
 auto MultiDependencySingleRowFetcher::executeForDependency(
     size_t const dependency, AqlCallStack& stack)
     -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
+  ADB_STACK_FRAME;
   auto [state, skipped, block] =
       _dependencyProxy->executeForDependency(dependency, stack);
 

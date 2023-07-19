@@ -1063,6 +1063,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(
 Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
                                                   std::string const& leaderColl,
                                                   TRI_voc_tick_t maxTick) {
+  ADB_STACK_FRAME;
   using basics::StringUtils::boolean;
   using basics::StringUtils::itoa;
   using basics::StringUtils::uint64;
@@ -1317,6 +1318,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(LogicalCollection* coll,
 Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
     LogicalCollection* coll, std::string const& leaderColl,
     TRI_voc_tick_t maxTick) {
+  ADB_STACK_FRAME;
   using basics::StringUtils::urlEncode;
 
   if (!_config.isChild()) {
@@ -1691,6 +1693,7 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
 Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     LogicalCollection* coll, std::string const& leaderColl,
     TRI_voc_tick_t maxTick) {
+  ADB_STACK_FRAME;
   using basics::StringUtils::urlEncode;
   using transaction::Hints;
 
@@ -2294,6 +2297,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
                                                velocypack::Slice indexes,
                                                bool incremental,
                                                SyncPhase phase) {
+  ADB_STACK_FRAME;
   using basics::StringUtils::itoa;
 
   if (isAborted()) {

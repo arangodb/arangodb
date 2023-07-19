@@ -152,6 +152,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
                             v8::Handle<v8::Value> const& arg,
                             v8::Handle<v8::Value>& result,
                             v8::TryCatch& tryCatch) {
+  ADB_STACK_FRAME;
   Result rv;
 
   if (!allowTransactions(isolate)) {

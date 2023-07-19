@@ -389,6 +389,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 /// @brief process a document operation, based on the VelocyPack provided
 Result TailingSyncer::processDocument(TRI_replication_operation_e type,
                                       VPackSlice const& slice) {
+  ADB_STACK_FRAME;
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
 
   if (vocbase == nullptr) {
@@ -578,6 +579,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
 Result TailingSyncer::removeSingleDocument(LogicalCollection* coll,
                                            std::string const& key) {
+  ADB_STACK_FRAME;
   SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(coll->vocbase()), *coll,
       AccessMode::Type::EXCLUSIVE);
@@ -608,6 +610,7 @@ Result TailingSyncer::removeSingleDocument(LogicalCollection* coll,
 
 /// @brief starts a transaction, based on the VelocyPack provided
 Result TailingSyncer::startTransaction(VPackSlice const& slice) {
+  ADB_STACK_FRAME;
   // {"type":2200,"tid":"230920705812199", "database": "123",
   // "collections":[{"cid":"230920700700391","operations":10}]}
 
@@ -836,6 +839,7 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
 /// @brief truncate a collections. Assumes no trx are running
 Result TailingSyncer::truncateCollection(
     arangodb::velocypack::Slice const& slice) {
+  ADB_STACK_FRAME;
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "collection slice is no object");

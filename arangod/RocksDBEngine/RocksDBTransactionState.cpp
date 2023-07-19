@@ -88,6 +88,9 @@ void RocksDBTransactionState::unuse() noexcept {
 
 /// @brief start a transaction
 Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
+  ADB_STACK_FRAME_WITH_DATA([&](std::ostream& ss) {
+    ss << AccessMode::typeString(_type) << " transaction";
+  });
   LOG_TRX("0c057", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 

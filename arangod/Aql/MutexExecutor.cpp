@@ -45,6 +45,7 @@ MutexExecutor::MutexExecutor(MutexExecutorInfos const& infos)
 auto MutexExecutor::distributeBlock(
     SharedAqlItemBlockPtr const& block, SkipResult skipped,
     std::unordered_map<std::string, ClientBlockData>& blockMap) -> void {
+  ADB_STACK_FRAME;
   TRI_IF_FAILURE("MutexExecutor::distributeBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

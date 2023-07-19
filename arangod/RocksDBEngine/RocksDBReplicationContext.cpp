@@ -49,6 +49,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "Utilities/NameValidator.h"
@@ -99,17 +100,12 @@ bool RocksDBReplicationContext::findCollection(
 
   std::shared_ptr<LogicalCollection> coll;
   try {
-    coll = vocbase->useCollection(collection, /*checkPermissions*/ false);
+    CollectionGuard guard(vocbase.get(), collection, false);
+    cb(*vocbase, *guard.collection());
   } catch (...) {
     // will fail if collection does not exist
   }
-  if (!coll) {
-    return false;
-  }
-  auto collectionGuard =
-      scopeGuard([&]() noexcept { vocbase->releaseCollection(coll.get()); });
 
-  cb(*vocbase, *coll);
   return true;
 }
 
@@ -1160,7 +1156,8 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   try {
-    vocbase.useCollection(logical->id(), true);
+    auto r = vocbase.useCollection(logical->id(), true);
+    lockId = r.second;
   } catch (...) {
     vocbase.release();
     throw;
@@ -1172,7 +1169,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
 
 RocksDBReplicationContext::CollectionIterator::~CollectionIterator() {
   TRI_ASSERT(!vocbase.isDangling());
-  vocbase.releaseCollection(logical.get());
+  vocbase.releaseCollection(logical.get(), lockId);
   LOG_TOPIC("71237", TRACE, Logger::REPLICATION)
       << "replication released iterator for collection '" << logical->name()
       << "'";

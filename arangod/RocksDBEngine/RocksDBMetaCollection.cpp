@@ -765,6 +765,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
 ResultT<std::pair<std::unique_ptr<containers::RevisionTree>,
                   rocksdb::SequenceNumber>>
 RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
+  ADB_STACK_FRAME;
   auto ctxt =
       transaction::StandaloneContext::Create(_logicalCollection.vocbase());
   SingleCollectionTransaction trx(ctxt, _logicalCollection,

@@ -28,6 +28,7 @@
 
 #include <velocypack/Value.h>
 
+#include "Basics/debugging.h"
 #include "SupervisedScheduler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -491,6 +492,7 @@ void SupervisedScheduler::shutdown() {
 }
 
 void SupervisedScheduler::runWorker() {
+  ADB_STACK_FRAME;
   uint64_t id;
 
   std::shared_ptr<WorkerState> state;

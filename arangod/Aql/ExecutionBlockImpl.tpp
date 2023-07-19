@@ -412,6 +412,7 @@ void ExecutionBlockImpl<Executor>::collectExecStats(ExecutionStats& stats) {
 template<class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
+  ADB_STACK_FRAME;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool old = false;
   TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
@@ -815,6 +816,7 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                                   AqlCallType const& aqlCall)
     -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
+  ADB_STACK_FRAME;
   // TODO The logic in the MultiDependencySingleRowFetcher branch should be
   //      moved into the MultiDependencySingleRowFetcher.
   static_assert(isMultiDepExecutor<Executor> ==
@@ -920,6 +922,7 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::executeProduceRows(
     typename Fetcher::DataRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> {
+  ADB_STACK_FRAME;
   if constexpr (isMultiDepExecutor<Executor>) {
     TRI_ASSERT(input.numberDependencies() == _dependencies.size());
     return executor().produceRows(input, output);
@@ -936,6 +939,7 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
     typename Fetcher::DataRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t,
                   AqlCallType> {
+  ADB_STACK_FRAME;
   // The skippedRows is a temporary counter used in this function
   // We need to make sure to reset it afterwards.
   auto sg = arangodb::scopeGuard([&]() noexcept { call.resetSkipCount(); });
@@ -1393,6 +1397,7 @@ template<class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(
     AqlCallStack const& callStack) {
+  ADB_STACK_FRAME;
   // We can only work on a Stack that has valid calls for all levels.
   TRI_ASSERT(callStack.hasAllValidCalls());
   ExecutionContext ctx(*this, callStack);

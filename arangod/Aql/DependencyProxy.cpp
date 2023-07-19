@@ -27,6 +27,7 @@
 #include "Aql/BlocksWithClients.h"
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 
 using namespace arangodb;
@@ -58,6 +59,7 @@ template<BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
                                                         AqlCallStack& stack) {
+  ADB_STACK_FRAME_WITH_DATA([this](auto& ss) { ss << "this " << (void*)this; });
   ExecutionState state = ExecutionState::HASMORE;
   SkipResult skipped;
   SharedAqlItemBlockPtr block = nullptr;

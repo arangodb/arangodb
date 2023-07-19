@@ -35,6 +35,7 @@
 #include "Aql/Stats.h"
 #include "Basics/ScopeGuard.h"
 
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 
 #include <algorithm>
@@ -55,6 +56,7 @@ ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
+  ADB_STACK_FRAME;
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -70,6 +72,7 @@ ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
     AqlCallStack const& stack) {
+  ADB_STACK_FRAME;
   //  if (getQuery().killed()) {
   //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   //  }
@@ -109,6 +112,10 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   _internalState = AsyncState::InProgress;
   bool queued =
       _sharedState->asyncExecuteAndWakeup([this, stack](bool const isAsync) {
+        ADB_STACK_FRAME_WITH_DATA([&](std::ostream& ss) {
+          ss << "isAsync " << isAsync << " mutex: " << (void*)&_mutex
+             << " dependency[0] " << _dependencies[0]->printBlockInfo();
+        });
         std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
 
         try {

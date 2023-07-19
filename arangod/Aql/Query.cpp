@@ -392,6 +392,7 @@ void Query::prepareQuery(SerializationFormat format) {
 /// to be able to only prepare a query from VelocyPack and then store it in the
 /// QueryRegistry.
 std::unique_ptr<ExecutionPlan> Query::preparePlan() {
+  ADB_STACK_FRAME;
   TRI_ASSERT(!_queryString.empty());
   LOG_TOPIC("9625e", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::prepare"
@@ -476,6 +477,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
 /// @brief execute an AQL query
 ExecutionState Query::execute(QueryResult& queryResult) {
+  ADB_STACK_FRAME;
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
@@ -994,6 +996,7 @@ QueryResult Query::parse() {
 
 /// @brief explain an AQL query
 QueryResult Query::explain() {
+  ADB_STACK_FRAME;
   QueryResult result;
 
   try {

@@ -93,6 +93,11 @@ void ClusterQuery::prepareClusterQuery(
     VPackSlice querySlice, VPackSlice collections, VPackSlice variables,
     VPackSlice snippets, VPackSlice traverserSlice, VPackBuilder& answerBuilder,
     QueryAnalyzerRevisions const& analyzersRevision) {
+  ADB_STACK_FRAME_WITH_DATA([&](std::ostream& ss) {
+    ss << "query: " << querySlice.toJson()
+       << " collections: " << collections.toJson()
+       << " vars: " << variables.toJson();
+  });
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " ClusterQuery::prepareClusterQuery"
       << " this: " << (uintptr_t)this;

@@ -366,14 +366,15 @@ Result RocksDBIndexCacheRefillFeature::warmupIndex(
 
   DatabaseGuard guard(df, database);
 
-  auto c =
+  auto [c, lockId] =
       guard.database().useCollection(collection, /*checkPermissions*/ false);
   if (c == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
-  auto releaser = scopeGuard(
-      [&]() noexcept { guard.database().releaseCollection(c.get()); });
+  auto releaser = scopeGuard([c = c, lockId = lockId, &guard]() noexcept {
+    guard.database().releaseCollection(c.get(), lockId);
+  });
 
   auto indexes = c->getIndexes();
   for (auto const& index : indexes) {

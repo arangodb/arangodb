@@ -173,6 +173,7 @@ class Scheduler {
     explicit WorkItem(F f)
         : F(std::move(f)), logContext(LogContext::current()) {}
     void invoke() override {
+      ADB_STACK_FRAME;
       LogContext::ScopedContext ctxGuard(logContext);
       this->operator()();
     }

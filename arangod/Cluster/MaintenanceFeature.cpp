@@ -120,6 +120,7 @@ bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
 
 arangodb::Result arangodb::maintenance::collectionCount(
     arangodb::LogicalCollection const& collection, uint64_t& c) {
+  ADB_STACK_FRAME;
   std::string collectionName(collection.name());
   transaction::StandaloneContext ctx(collection.vocbase());
   SingleCollectionTransaction trx(

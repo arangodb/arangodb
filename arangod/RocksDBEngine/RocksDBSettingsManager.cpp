@@ -166,8 +166,10 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
       TRI_ASSERT(!vocbase->isDangling());
 
       std::shared_ptr<LogicalCollection> coll;
+      size_t lockId;
       try {
-        coll = vocbase->useCollection(cid, /*checkPermissions*/ false);
+        std::tie(coll, lockId) =
+            vocbase->useCollection(cid, /*checkPermissions*/ false);
       } catch (...) {
         // will fail if collection does not exist
       }
@@ -177,9 +179,9 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
       if (!coll) {
         continue;
       }
-      auto sg2 = arangodb::scopeGuard(
-          [&]() noexcept { vocbase->releaseCollection(coll.get()); });
-
+      auto sg2 = arangodb::scopeGuard([coll, lockId, &vocbase]() noexcept {
+        vocbase->releaseCollection(coll.get(), lockId);
+      });
       if (coll->isAStub()) {
         continue;
       }

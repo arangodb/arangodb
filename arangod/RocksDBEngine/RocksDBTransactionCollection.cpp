@@ -24,7 +24,9 @@
 #include "RocksDBTransactionCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Guarded.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -90,8 +92,8 @@ bool RocksDBTransactionCollection::canAccess(
 }
 
 Result RocksDBTransactionCollection::lockUsage() {
+  ADB_STACK_FRAME;
   Result res;
-
   bool doSetup = false;
   if (_collection == nullptr) {
     res = ensureCollection();
@@ -147,7 +149,7 @@ void RocksDBTransactionCollection::releaseUsage() {
 
     TRI_ASSERT(_usageLocked);  // simon: TODO make _usageLocked maintainer only
     if (_usageLocked) {
-      _transaction->vocbase().releaseCollection(_collection.get());
+      _transaction->vocbase().releaseCollection(_collection.get(), _lockId);
       _usageLocked = false;
     }
     _collection = nullptr;
@@ -447,7 +449,15 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
   return {};
 }
 
+namespace {
+
+Guarded<std::unordered_map<arangodb::RocksDBTransactionCollection*, unsigned>>
+    lockMap;
+
+}  // namespace
+
 Result RocksDBTransactionCollection::ensureCollection() {
+  ADB_STACK_FRAME;
   if (_collection == nullptr) {
     // open the collection
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
@@ -465,7 +475,7 @@ Result RocksDBTransactionCollection::ensureCollection() {
 #endif
       // will throw if collection does not exist
       try {
-        _collection =
+        std::tie(_collection, _lockId) =
             _transaction->vocbase().useCollection(_cid, checkPermissions);
       } catch (basics::Exception const& ex) {
         return {ex.code(), ex.what()};

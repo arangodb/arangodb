@@ -78,6 +78,7 @@ class RocksDBReplicationContext {
 
     TRI_vocbase_t& vocbase;
     std::shared_ptr<LogicalCollection> logical;
+    size_t lockId;
 
     /// Iterator over primary index or documents
     std::unique_ptr<rocksdb::Iterator> iter;

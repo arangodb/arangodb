@@ -180,6 +180,7 @@ auto DistributeClientBlock::popJoinedBlock()
 auto DistributeClientBlock::execute(AqlCallStack callStack,
                                     ExecutionState upstreamState)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  ADB_STACK_FRAME;
   TRI_ASSERT(_executor != nullptr);
   // Make sure we actually have data before you call execute
   TRI_ASSERT(hasDataFor(callStack.peek()));

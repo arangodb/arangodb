@@ -24,6 +24,7 @@
 #include "RestCollectionHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/debugging.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -46,6 +47,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
+#include <ostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -427,6 +429,8 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     return RestStatus::DONE;
   }
   TRI_ASSERT(coll);
+
+  ADB_STACK_FRAME_WITH_DATA([&](std::ostream& ss) { ss << sub; });
 
   if (sub == "load") {
     // "load" is a no-op starting with 3.9
