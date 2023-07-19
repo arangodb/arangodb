@@ -75,8 +75,10 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <Containers/HashSet.h>
 #include <velocypack/Builder.h>
@@ -3540,6 +3542,70 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
     return TRI_ERROR_NO_ERROR;
   }
 
+#if true
+
+  auto config = _vocbase.getDatabaseConfiguration();
+
+  // Original
+  auto origRequest = CreateCollectionBody::fromCreateAPIBody(slice, config);
+  if (origRequest.fail()) {
+    return origRequest.errorNumber();
+  }
+  OperationOptions options(_context);
+
+  std::vector<CreateCollectionBody> collections{std::move(origRequest.get())};
+  // We always wait for Collections to be synced on shards
+  bool waitForSyncReplication = true;
+  bool isNewDatabase = false;
+  bool isRestore = true;
+
+  bool allowEnterpriseCollectionsOnSingleServer = false;
+  bool enforceReplicationFactor = false;
+
+#ifdef USE_ENTERPRISE
+  if (slice.get(StaticStrings::IsSmart).isTrue() ||
+      slice.get(StaticStrings::GraphIsSatellite).isTrue()) {
+    allowEnterpriseCollectionsOnSingleServer = true;
+    enforceReplicationFactor = true;
+  }
+#endif
+
+  auto result = methods::Collections::create(
+      _vocbase, options, collections, waitForSyncReplication,
+      enforceReplicationFactor, isNewDatabase,
+      allowEnterpriseCollectionsOnSingleServer, isRestore);
+
+  if (result.fail()) {
+    return result.errorNumber();
+  }
+
+  if (result->size() == 0 || result->front() == nullptr) {
+    TRI_ASSERT(result->size() == 0) << "We have returned a nullptr for a collection on restore.";
+    return TRI_ERROR_INTERNAL;
+  }
+  col = result->front();
+
+  /* Temporary ASSERTS to prove correctness of new constructor */
+  TRI_ASSERT(col->system() == (name[0] == '_'));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  DataSourceId planId = DataSourceId::none();
+  VPackSlice const planIdSlice = slice.get("planId");
+  if (planIdSlice.isNumber()) {
+    planId =
+        DataSourceId{planIdSlice.getNumericValue<DataSourceId::BaseType>()};
+  } else if (planIdSlice.isString()) {
+    std::string tmp = planIdSlice.copyString();
+    planId = DataSourceId{StringUtils::uint64(tmp)};
+  } else if (planIdSlice.isNone()) {
+    // There is no plan ID it has to be equal to collection id
+    planId = col->id();
+  }
+
+  TRI_ASSERT(col->planId() == planId);
+#endif
+
+  return TRI_ERROR_NO_ERROR;
+#else
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
   VPackBuilder patch;
@@ -3580,8 +3646,34 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   VPackBuilder builder =
       VPackCollection::merge(slice, patch.slice(),
                              /*mergeValues*/ true, /*nullMeansRemove*/ true);
-  slice = builder.slice();
 
+  {
+    // Temporary printing
+    LOG_DEVEL << "Original " << slice.toJson();
+    LOG_DEVEL << "Local transformation: " << builder.toJson();
+    auto config = _vocbase.getDatabaseConfiguration();
+
+    // Original
+    auto origRequest = CreateCollectionBody::fromCreateAPIBody(slice, config);
+    if (origRequest.ok()) {
+      LOG_DEVEL << "Original resulted in: " << origRequest->toCollectionsCreate().toJson();
+    } else {
+      LOG_DEVEL << "Original resulted in error:  " << origRequest.errorNumber() << " " << origRequest.errorMessage();
+    }
+    // Patched
+    auto patchedRequest = CreateCollectionBody::fromCreateAPIBody(builder.slice(), config);
+    if (patchedRequest.ok()) {
+      LOG_DEVEL << "Patch resulted in: " << patchedRequest->toCollectionsCreate().toJson();
+    } else {
+      LOG_DEVEL << "Patch resulted in error:  " << patchedRequest.errorNumber() << " " << patchedRequest.errorMessage();
+    }
+
+    if (origRequest.ok() != patchedRequest.ok()) {
+      TRI_ASSERT(false);
+    }
+  }
+
+  slice = builder.slice();
   // Initializing creation options
   TRI_col_type_e collectionType = Helper::getNumericValue<TRI_col_type_e, int>(
       slice, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT);
@@ -3637,6 +3729,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
 #endif
 
   return TRI_ERROR_NO_ERROR;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
