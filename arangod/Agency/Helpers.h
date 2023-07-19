@@ -28,6 +28,6 @@
 namespace arangodb::consensus {
 
 bool isReplicationTwoDB(Node::Children const& databases,
-                        std::string_view dbName);
+                        std::string const& dbName);
 
 }  // namespace arangodb::consensus

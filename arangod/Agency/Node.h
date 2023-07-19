@@ -121,8 +121,6 @@ class Node : public std::enable_shared_from_this<Node> {
     };
   };
 
-  using allocator_type = AccountingAllocator<Node>;
-
   template<typename Base>
   struct AccountingHeap : Base {
     template<typename... Tags>
@@ -149,16 +147,17 @@ class Node : public std::enable_shared_from_this<Node> {
   static std::atomic<std::size_t> memoryUsage;
 
  public:
+  using allocator_type = AccountingAllocator<Node>;
+
   static std::size_t getMemoryUsage() noexcept { return memoryUsage; }
   static void toPrometheus(std::string&);
 
   // If you want those types to be accounted for as well, please do so.
   // But be aware that this will change the type and the interface and you have
   // to modify a lot of code to make this work. You have been warned.
-  using VPackStringType =
-      velocypack::BasicString</* accounting_allocator<uint8_t> */>;
   using StringType = std::basic_string<char, std::char_traits<char>
                                        /*, accounting_allocator<char>*/>;
+  using VPackStringType = velocypack::BasicString<AccountingAllocator<uint8_t>>;
 
   struct TransparentHash {
     using is_transparent = void;
@@ -447,3 +446,10 @@ inline std::ostream& operator<<(std::ostream& o, Node const& n) {
 }
 
 }  // namespace arangodb::consensus
+
+// Create an explicit instantiation for VPackString using the Node
+// AccountingAllocator
+#include <velocypack/SliceBase.tpp>
+
+template class arangodb::velocypack::BasicString<
+    typename arangodb::consensus::Node::allocator_type::rebind<uint8_t>::type>;

@@ -29,7 +29,7 @@
 namespace arangodb::consensus {
 
 bool isReplicationTwoDB(Node::Children const& databases,
-                        std::string_view dbName) {
+                        std::string const& dbName) {
   auto it = databases.find(dbName);
   if (it == nullptr) {
     // this should actually never happen, but if it does we simply claim that
