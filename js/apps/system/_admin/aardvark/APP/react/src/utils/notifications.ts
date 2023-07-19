@@ -5,35 +5,22 @@ const toast = createStandaloneToast({
   theme: theme
 });
 
-export const notifyError = (message: string, options?: UseToastOptions) => {
+const notify = (message: string, options?: UseToastOptions) => {
   toast({
     isClosable: true,
     ...options,
-    title: message,
-    status: "error"
+    title: message
   });
+};
+export const notifyError = (message: string, options?: UseToastOptions) => {
+  notify(message, { ...options, status: "error" });
 };
 export const notifySuccess = (message: string, options?: UseToastOptions) => {
-  toast({
-    isClosable: true,
-    ...options,
-    title: message,
-    status: "success"
-  });
+  notify(message, { ...options, status: "success" });
 };
 export const notifyWarning = (message: string, options?: UseToastOptions) => {
-  toast({
-    isClosable: true,
-    ...options,
-    title: message,
-    status: "warning"
-  });
+  notify(message, { ...options, status: "warning" });
 };
 export const notifyInfo = (message: string, options?: UseToastOptions) => {
-  toast({
-    isClosable: true,
-    ...options,
-    title: message,
-    status: "info"
-  });
+  notify(message, { ...options, status: "info" });
 };
