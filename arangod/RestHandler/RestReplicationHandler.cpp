@@ -1066,6 +1066,68 @@ void RestReplicationHandler::handleCommandRestoreData() {
 /// @brief restores the structure of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
+#if true
+
+Result RestReplicationHandler::processRestoreCollection(
+    VPackSlice const& collection, bool dropExisting, bool force,
+    bool ignoreDistributeShardsLikeErrors) {
+  if (!collection.isObject()) {
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "collection declaration is invalid");
+  }
+
+  VPackSlice const parameters = collection.get("parameters");
+
+  {
+    // NOTE: This code is only to check if attribute is there
+    // TODO: Reorganize, processRestore should be called with
+    // Parameters only, and restore Indexes with indexes
+    // only, test of existence should be outside.
+    VPackSlice const indexes = collection.get("indexes");
+
+    if (!indexes.isArray()) {
+      return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "collection indexes declaration is invalid");
+    }
+  }
+
+  auto config = _vocbase.getDatabaseConfiguration();
+
+  LOG_DEVEL << "Trigger new code path";
+  LOG_DEVEL << "Input: " << parameters.toJson();
+  // Original
+  auto input = CreateCollectionBody::fromRestoreAPIBody(parameters, config);
+  if (input.fail()) {
+    LOG_DEVEL << "Failed to parse input: " << input.errorMessage();
+    return input.errorNumber();
+  }
+  LOG_DEVEL << "Created output for create: " << input->toCollectionsCreate().toJson();
+  OperationOptions options(_context);
+
+  std::vector<CreateCollectionBody> collections{std::move(input.get())};
+  // We always wait for Collections to be synced on shards
+  bool waitForSyncReplication = true;
+  bool isNewDatabase = false;
+  bool isRestore = true;
+
+  bool allowEnterpriseCollectionsOnSingleServer = false;
+  bool enforceReplicationFactor = false;
+
+  if (input->isSmart || input->isSatellite()) {
+    allowEnterpriseCollectionsOnSingleServer = true;
+    enforceReplicationFactor = true;
+  }
+
+  auto result = methods::Collections::create(
+      _vocbase, options, collections, waitForSyncReplication,
+      enforceReplicationFactor, isNewDatabase,
+      allowEnterpriseCollectionsOnSingleServer, isRestore);
+
+  // NOTE: ErrorNumber can be NO_ERROR which is a success.
+  return result.errorNumber();
+}
+
+#else
 Result RestReplicationHandler::processRestoreCollection(
     VPackSlice const& collection, bool dropExisting, bool force,
     bool ignoreDistributeShardsLikeErrors) {
@@ -1188,7 +1250,6 @@ Result RestReplicationHandler::processRestoreCollection(
 
   // Now we have done our best to remove the Collection.
   // It shall not be there anymore. Try to recreate it.
-
   // TODO the following shall be unified as well.
   if (ServerState::instance()->isCoordinator()) {
     // Build up new information that we need to merge with the given one
@@ -1461,10 +1522,10 @@ Result RestReplicationHandler::processRestoreCollection(
         });
       }
     }
-
     return Result();
   }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the data of a collection
@@ -3542,70 +3603,6 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
     return TRI_ERROR_NO_ERROR;
   }
 
-#if true
-
-  auto config = _vocbase.getDatabaseConfiguration();
-
-  // Original
-  auto origRequest = CreateCollectionBody::fromCreateAPIBody(slice, config);
-  if (origRequest.fail()) {
-    return origRequest.errorNumber();
-  }
-  OperationOptions options(_context);
-
-  std::vector<CreateCollectionBody> collections{std::move(origRequest.get())};
-  // We always wait for Collections to be synced on shards
-  bool waitForSyncReplication = true;
-  bool isNewDatabase = false;
-  bool isRestore = true;
-
-  bool allowEnterpriseCollectionsOnSingleServer = false;
-  bool enforceReplicationFactor = false;
-
-#ifdef USE_ENTERPRISE
-  if (slice.get(StaticStrings::IsSmart).isTrue() ||
-      slice.get(StaticStrings::GraphIsSatellite).isTrue()) {
-    allowEnterpriseCollectionsOnSingleServer = true;
-    enforceReplicationFactor = true;
-  }
-#endif
-
-  auto result = methods::Collections::create(
-      _vocbase, options, collections, waitForSyncReplication,
-      enforceReplicationFactor, isNewDatabase,
-      allowEnterpriseCollectionsOnSingleServer, isRestore);
-
-  if (result.fail()) {
-    return result.errorNumber();
-  }
-
-  if (result->size() == 0 || result->front() == nullptr) {
-    TRI_ASSERT(result->size() == 0) << "We have returned a nullptr for a collection on restore.";
-    return TRI_ERROR_INTERNAL;
-  }
-  col = result->front();
-
-  /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(col->system() == (name[0] == '_'));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  DataSourceId planId = DataSourceId::none();
-  VPackSlice const planIdSlice = slice.get("planId");
-  if (planIdSlice.isNumber()) {
-    planId =
-        DataSourceId{planIdSlice.getNumericValue<DataSourceId::BaseType>()};
-  } else if (planIdSlice.isString()) {
-    std::string tmp = planIdSlice.copyString();
-    planId = DataSourceId{StringUtils::uint64(tmp)};
-  } else if (planIdSlice.isNone()) {
-    // There is no plan ID it has to be equal to collection id
-    planId = col->id();
-  }
-
-  TRI_ASSERT(col->planId() == planId);
-#endif
-
-  return TRI_ERROR_NO_ERROR;
-#else
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
   VPackBuilder patch;
@@ -3729,7 +3726,6 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
 #endif
 
   return TRI_ERROR_NO_ERROR;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
