@@ -31,11 +31,58 @@
 
 using namespace arangodb;
 
-CreateCollectionBody::CreateCollectionBody() {}
+namespace {
+auto rewriteStatusErrorMessage(inspection::Status const& status) -> Result {
+  TRI_ASSERT(!status.ok());
+
+  if (status.path() == StaticStrings::DataSourceName) {
+    // Special handling to be backwards compatible error reporting
+    // on "name"
+    return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+
+  if (status.path().rfind(StaticStrings::KeyOptions, 0) == 0) {
+    // Special handling to be backwards compatible error reporting
+    // on "keyOptions"
+    return Result{TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, status.error()};
+  }
+  if (status.path() == StaticStrings::SmartJoinAttribute) {
+    return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
+  }
+  return Result{
+      TRI_ERROR_BAD_PARAMETER,
+      status.error() +
+          (status.path().empty() ? "" : " on attribute " + status.path())};
+}
+
+auto rewriteStatusErrorMessageForRestore(inspection::Status const& status)
+    -> Result {
+  TRI_ASSERT(!status.ok());
+
+  if (status.path() == StaticStrings::DataSourceName) {
+    // Special handling to be backwards compatible error reporting
+    // on "name"
+    return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+
+  if (status.path().rfind(StaticStrings::KeyOptions, 0) == 0) {
+    // Special handling to be backwards compatible error reporting
+    // on "keyOptions"
+    return Result{TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, status.error()};
+  }
+  if (status.path() == StaticStrings::SmartJoinAttribute) {
+    return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
+  }
+  return Result{
+      TRI_ERROR_BAD_PARAMETER,
+      status.error() +
+          (status.path().empty() ? "" : " on attribute " + status.path())};
+}
 
 ResultT<CreateCollectionBody> parseAndValidate(
     DatabaseConfiguration const& config, VPackSlice input,
-    std::function<void(CreateCollectionBody&)> applyDefaults) {
+    std::function<void(CreateCollectionBody&)> applyDefaults,
+    std::function<Result(inspection::Status const&)> const& statusToResult) {
   try {
     CreateCollectionBody res;
     applyDefaults(res);
@@ -49,30 +96,16 @@ ResultT<CreateCollectionBody> parseAndValidate(
       }
       return res;
     }
-    if (status.path() == "name") {
-      // Special handling to be backwards compatible error reporting
-      // on "name"
-      return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
-    }
-
-    if (status.path().rfind("keyOptions", 0) == 0) {
-      // Special handling to be backwards compatible error reporting
-      // on "keyOptions"
-      return Result{TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, status.error()};
-    }
-    if (status.path() == StaticStrings::SmartJoinAttribute) {
-      return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
-    }
-    return Result{
-        TRI_ERROR_BAD_PARAMETER,
-        status.error() +
-            (status.path().empty() ? "" : " on path " + status.path())};
+    return statusToResult(status);
   } catch (basics::Exception const& e) {
     return Result{e.code(), e.message()};
   } catch (std::exception const& e) {
     return Result{TRI_ERROR_INTERNAL, e.what()};
   }
 }
+}  // namespace
+
+CreateCollectionBody::CreateCollectionBody() {}
 
 ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     VPackSlice input, DatabaseConfiguration const& config) {
@@ -81,7 +114,9 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return ::parseAndValidate(config, input, [](CreateCollectionBody& col) {});
+  return ::parseAndValidate(
+      config, input, [](CreateCollectionBody& col) {},
+      ::rewriteStatusErrorMessage);
 }
 
 ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
@@ -92,13 +127,24 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return ::parseAndValidate(config, properties,
-                            [&name, &type](CreateCollectionBody& col) {
-                              // Inject the default values given by V8 in a
-                              // separate parameter
-                              col.type = type;
-                              col.name = name;
-                            });
+  return ::parseAndValidate(
+      config, properties,
+      [&name, &type](CreateCollectionBody& col) {
+        // Inject the default values given by V8 in a
+        // separate parameter
+        col.type = type;
+        col.name = name;
+      },
+      ::rewriteStatusErrorMessage);
+}
+
+ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
+    VPackSlice input, DatabaseConfiguration const& config) {
+  auto result = ::parseAndValidate(
+      config, input, [](CreateCollectionBody& col) {},
+      ::rewriteStatusErrorMessageForRestore);
+
+  return result;
 }
 
 arangodb::velocypack::Builder
