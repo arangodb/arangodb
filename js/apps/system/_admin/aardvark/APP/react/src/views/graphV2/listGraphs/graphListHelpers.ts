@@ -1,6 +1,8 @@
 import { GraphInfo } from "arangojs/graph";
+import * as Yup from "yup";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { notifyError, notifySuccess } from "../../../utils/notifications";
+import { getNormalizedByteLengthTest } from "../../../utils/yupHelper";
 
 export const createGraph = async <
   ValuesType extends {
@@ -20,7 +22,8 @@ export const createGraph = async <
         method: "POST",
         path: "/_api/gharial",
         body: {
-          ...values
+          ...values,
+          name: values.name.normalize()
         }
       },
       res => res.body.graph
@@ -168,3 +171,18 @@ export const SMART_GRAPH_FIELDS_MAP = {
     isRequired: true
   }
 };
+
+const documentKeyRegex = window.arangoValidationHelper.getDocumentKeyRegex();
+export const GRAPH_VALIDATION_SCHEMA = Yup.object({
+  name: Yup.string()
+    .required("Name is required")
+    .test(
+      "normalizedByteLength",
+      "Graph name max length is 254 bytes.",
+      getNormalizedByteLengthTest(254, "Graph name max length is 254 bytes.")
+    )
+    .matches(
+      documentKeyRegex,
+      "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %"
+    )
+});

@@ -2,17 +2,17 @@ import { VStack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { mutate } from "swr";
-import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
-import { FieldsGrid } from "./FieldsGrid";
 import {
   createGraph,
-  GENERAL_GRAPH_FIELDS_MAP
+  GENERAL_GRAPH_FIELDS_MAP,
+  GRAPH_VALIDATION_SCHEMA
 } from "../listGraphs/graphListHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
+import { FieldsGrid } from "./FieldsGrid";
 import { GraphModalFooter } from "./GraphModalFooter";
 import { useCollectionOptions } from "./useEdgeCollectionOptions";
 
@@ -49,9 +49,7 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
   return (
     <Formik
       initialValues={initialGraph || INITIAL_VALUES}
-      validationSchema={Yup.object({
-        name: Yup.string().required("Name is required")
-      })}
+      validationSchema={GRAPH_VALIDATION_SCHEMA}
       onSubmit={handleSubmit}
     >
       <Form>

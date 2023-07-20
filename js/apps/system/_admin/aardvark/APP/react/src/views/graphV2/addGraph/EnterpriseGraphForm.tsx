@@ -2,12 +2,12 @@ import { VStack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { mutate } from "swr";
-import * as Yup from "yup";
 import { FormField } from "../../../components/form/FormField";
 import {
   CLUSTER_GRAPH_FIELDS_MAP,
   createGraph,
-  GENERAL_GRAPH_FIELDS_MAP
+  GENERAL_GRAPH_FIELDS_MAP,
+  GRAPH_VALIDATION_SCHEMA
 } from "../listGraphs/graphListHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
@@ -62,9 +62,7 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
   return (
     <Formik
       initialValues={initialGraph || INITIAL_VALUES}
-      validationSchema={Yup.object({
-        name: Yup.string().required("Name is required")
-      })}
+      validationSchema={GRAPH_VALIDATION_SCHEMA}
       onSubmit={handleSubmit}
     >
       <Form>
