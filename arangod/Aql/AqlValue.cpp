@@ -721,8 +721,8 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
 
 /// @brief get the (object) element(s) by name
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
-                       std::vector<std::string_view> const& names, bool& mustDestroy,
-                       bool doCopy) const {
+                       std::vector<std::string_view> const& names,
+                       bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   if (names.empty()) {
     return AqlValue(AqlValueHintNull());
