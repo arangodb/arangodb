@@ -1027,9 +1027,9 @@ bool State::loadOrPersistConfiguration() {
     TRI_ASSERT(nullptr !=
                _vocbase);  // this check was previously in the Query constructor
     auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-        nullptr);
-    
+        transaction::StandaloneContext::Create(*_vocbase),
+        aql::QueryString(aql), nullptr);
+
     return query->executeSync();
   };
 
