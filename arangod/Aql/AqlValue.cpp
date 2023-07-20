@@ -1693,7 +1693,9 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice,
 
         TRI_ASSERT(
             slice.isUInt()
-                ? slice.getUInt() > std::numeric_limits<std::int64_t>().max() ||
+                ? slice.getUInt() >
+                          static_cast<uint64_t>(
+                              std::numeric_limits<std::int64_t>().max()) ||
                       slice.getUInt() == static_cast<uint64_t>(this->toInt64())
                 : slice.getInt() == this->toInt64())
             << (slice.isUInt() ? "uint " : "int ") << slice.toJson()
