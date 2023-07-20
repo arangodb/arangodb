@@ -74,6 +74,7 @@ function StorageForQueryWithCollectionSortSuite() {
       let queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
       const memoryUsage1 = queryStats.peakMemoryUsage;
+      res.dispose();
 
       res = db._query(query, null, {spillOverThresholdNumRows: 5000, stream: true});
       assertResult("asc", res, 500000);
@@ -83,6 +84,7 @@ function StorageForQueryWithCollectionSortSuite() {
         current: queryStats.peakMemoryUsage,
         previous: memoryUsage1
       });
+      res.dispose();
 
       res = db._query(query, null, {spillOverThresholdMemoryUsage: 5000, stream: true});
       assertResult("asc", res, 500000);
@@ -92,6 +94,7 @@ function StorageForQueryWithCollectionSortSuite() {
         current: queryStats.peakMemoryUsage,
         previous: memoryUsage1
       });
+      res.dispose();
     },
 
     testSortComparePeakMemoryUsageDescCollection: function() {
@@ -101,6 +104,7 @@ function StorageForQueryWithCollectionSortSuite() {
       let queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
       const memoryUsage1 = queryStats.peakMemoryUsage;
+      res.dispose();
 
       res = db._query(query, null, {spillOverThresholdNumRows: 5000, stream: true});
       assertResult("desc", res, 500000);
@@ -110,6 +114,7 @@ function StorageForQueryWithCollectionSortSuite() {
         current: queryStats.peakMemoryUsage,
         previous: memoryUsage1
       });
+      res.dispose();
 
       res = db._query(query, null, {spillOverThresholdMemoryUsage: 5000, stream: true});
       assertResult("desc", res, 500000);
@@ -119,6 +124,7 @@ function StorageForQueryWithCollectionSortSuite() {
         current: queryStats.peakMemoryUsage,
         previous: memoryUsage1
       });
+      res.dispose();
     },
 
   };
