@@ -26,8 +26,8 @@
 #include <Inspection/VPackSaveInspector.h>
 #include <Basics/ErrorT.h>
 
+#include <memory>
 #include <velocypack/String.h>
-#include <bits/allocator.h>
 
 namespace arangodb::velocypack {
 class SharedSlice;
