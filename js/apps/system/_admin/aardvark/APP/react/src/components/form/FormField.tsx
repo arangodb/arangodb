@@ -82,12 +82,7 @@ export const FormField = ({
           <FormLabel margin="0" htmlFor={field.name}>
             {field.label}
           </FormLabel>
-          <InputControl
-            isDisabled={field.isDisabled}
-            inputProps={{ type: "password", autoFocus }}
-            isRequired={field.isRequired}
-            name={field.name}
-          />
+          <InputControl {...commonProps} inputProps={inputProps} />
           {field.tooltip ? (
             <IndexInfoTooltip label={field.tooltip} />
           ) : (
