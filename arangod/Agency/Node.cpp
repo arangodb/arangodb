@@ -468,25 +468,25 @@ arangodb::ResultT<NodePtr> Node::applyOp(Node const* target, VPackSlice slice) {
 
   if (oper == "delete") {
     return nullptr;
-  } else if (oper == "set") {  // "op":"set"
+  } else if (oper == "set") {         // "op":"set"
     return handle<SET>(target, slice);
-  } else if (oper == "increment") {  // "op":"increment"
+  } else if (oper == "increment") {   // "op":"increment"
     return handle<INCREMENT>(target, slice);
-  } else if (oper == "decrement") {  // "op":"decrement"
+  } else if (oper == "decrement") {   // "op":"decrement"
     return handle<DECREMENT>(target, slice);
-  } else if (oper == "push") {  // "op":"push"
+  } else if (oper == "push") {        // "op":"push"
     return handle<PUSH>(target, slice);
   } else if (oper == "push-queue") {  // "op":"push-queue"
     return handle<PUSH_QUEUE>(target, slice);
-  } else if (oper == "pop") {  // "op":"pop"
+  } else if (oper == "pop") {         // "op":"pop"
     return handle<POP>(target, slice);
-  } else if (oper == "prepend") {  // "op":"prepend"
+  } else if (oper == "prepend") {     // "op":"prepend"
     return handle<PREPEND>(target, slice);
-  } else if (oper == "shift") {  // "op":"shift"
+  } else if (oper == "shift") {       // "op":"shift"
     return handle<SHIFT>(target, slice);
-  } else if (oper == "erase") {  // "op":"erase"
+  } else if (oper == "erase") {       // "op":"erase"
     return handle<ERASE>(target, slice);
-  } else if (oper == "replace") {  // "op":"replace"
+  } else if (oper == "replace") {     // "op":"replace"
     return handle<REPLACE>(target, slice);
   } else if (oper == OP_READ_LOCK) {
     return handle<READ_LOCK>(target, slice);
@@ -1018,5 +1018,5 @@ NodePtr consensus::Node::allocateNode(Args&&... args) {
 
 // Create an explicit instantiation for VPackString using the Node
 // AccountingAllocator
-template class arangodb::velocypack::BasicString<
+template struct arangodb::velocypack::BasicString<
     typename arangodb::consensus::Node::allocator_type::rebind<uint8_t>::type>;
