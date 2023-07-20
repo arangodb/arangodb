@@ -215,10 +215,16 @@ auto handleSmartJoinAttribute(std::string_view key, VPackSlice value,
 auto handleShardKeys(std::string_view key, VPackSlice value,
                      VPackSlice fullBody, DatabaseConfiguration const& config,
                      VPackBuilder& result) {
-  if (!isSingleServer() || !config.isOneShardDB) {
+  if (!isSingleServer()) {
+    // Cluster needs to handle all shardKeys and eventually reject
+    justKeep(key, value, fullBody, config, result);
+  } else if (!value.isArray()) {
+    // Single server checks if shardKeys look valid.
+    // But it will never take their value.
+    // Hence we keep invalid one, to produce errors,
+    // but drp valid entries.
     justKeep(key, value, fullBody, config, result);
   }
-  // In oneShardDB shardKeys are ignored
 }
 
 auto handleIsSmart(std::string_view key, VPackSlice value, VPackSlice fullBody,
