@@ -144,6 +144,9 @@ jobs:
       enterprise-targets:
         type: string
         default: ""
+      publish-artifacts:
+        type: boolean
+        default: true
     docker:
       - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.1
     resource_class: xlarge
@@ -196,24 +199,27 @@ jobs:
           name: SCCache Statistics
           command: sccache -s
       - store_artifacts:
-          path: build/bin/arango*
-      - store_artifacts:
           path: /tmp/sccache.log
-      - persist_to_workspace:
-          root: .
-          paths:
-            - CMakePresets.json
-            - build/
-            - scripts/
-            - js/
-            - enterprise/js
-            - etc/
-            - tests/js
-            - enterprise/tests/js
-            - utils
-            - UnitTests
-            - 3rdParty/iresearch/tests/resources
-            - 3rdParty/rta-makedata
+      - when:
+          condition: << parameters.publish-artifacts >>
+          steps:
+            - store_artifacts:
+                path: build/bin/arango*
+            - persist_to_workspace:
+                root: .
+                paths:
+                  - CMakePresets.json
+                  - build/
+                  - scripts/
+                  - js/
+                  - enterprise/js
+                  - etc/
+                  - tests/js
+                  - enterprise/tests/js
+                  - utils
+                  - UnitTests
+                  - 3rdParty/iresearch/tests/resources
+                  - 3rdParty/rta-makedata
 
   run-tests:
     docker:
@@ -330,6 +336,7 @@ workflows:
           edition: x64-community
           enterprise: false
           targets: "arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench"
+          publish-artifacts: false
   enterprise-pr:
     jobs:
       - compile-linux:
@@ -350,6 +357,7 @@ workflows:
           enterprise: true
           targets: "arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench"
           enterprise-targets: "arangobackup"
+          publish-artifacts: false
       - run-hotbackup-tests:
           name: run-hotbackup-tests
           requires:
