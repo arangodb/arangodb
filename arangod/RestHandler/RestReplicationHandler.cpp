@@ -96,6 +96,81 @@ using Helper = arangodb::basics::VelocyPackHelper;
 namespace {
 std::string const dataString("data");
 std::string const typeString("type");
+
+auto handlingOfExistingCollection(TRI_vocbase_t& vocbase, std::string const& name,
+                                  bool dropExisting) -> Result {
+  ExecContextSuperuserScope escope(
+      ExecContext::current().isSuperuser() ||
+      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+
+  std::shared_ptr<LogicalCollection> col;
+  auto lookupResult = methods::Collections::lookup(vocbase, name, col);
+
+  if (lookupResult.ok()) {
+    TRI_ASSERT(col);
+    if (dropExisting) {
+      try {
+        if (ServerState::instance()->isCoordinator() &&
+            name == StaticStrings::AnalyzersCollection &&
+            vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+          // We have ArangoSearch here. So process analyzers accordingly.
+          // We can`t just recreate/truncate collection. Agency should be
+          // properly notified analyzers are gone.
+          // The single server and DBServer case is handled after restore of
+          // data.
+          return vocbase.server()
+              .getFeature<iresearch::IResearchAnalyzerFeature>()
+              .removeAllAnalyzers(vocbase);
+        }
+
+        auto dropResult = methods::Collections::drop(*col, true, true);
+        if (dropResult.fail()) {
+          if (dropResult.is(TRI_ERROR_FORBIDDEN) ||
+              dropResult.is(
+                  TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
+            // If we are not allowed to drop the collection.
+            // Try to truncate.
+            auto ctx = transaction::StandaloneContext::Create(vocbase);
+            SingleCollectionTransaction trx(ctx, *col,
+                                            AccessMode::Type::EXCLUSIVE);
+
+            trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+            trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+            auto trxRes = trx.begin();
+
+            if (!trxRes.ok()) {
+              return trxRes;
+            }
+
+            OperationOptions options;
+            OperationResult opRes = trx.truncate(name, options);
+
+            return trx.finish(opRes.result);
+          }
+
+          return Result(dropResult.errorNumber(),
+                        arangodb::basics::StringUtils::concatT(
+                            "unable to drop collection '", name,
+                            "': ", dropResult.errorMessage()));
+        }
+
+        // we just removed the collection, so we cannot rely on it being present
+        // now
+        col.reset();
+      } catch (basics::Exception const& ex) {
+        LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
+            << "processRestoreCollection "
+            << "could not drop collection: " << ex.what();
+      } catch (...) {
+      }
+    }
+  } else if (lookupResult.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    return lookupResult;
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
+
 }  // namespace
 
 uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
@@ -1104,6 +1179,13 @@ Result RestReplicationHandler::processRestoreCollection(
   LOG_DEVEL << "Created output for create: " << input->toCollectionsCreate().toJson();
   OperationOptions options(_context);
 
+  {
+    auto result = handlingOfExistingCollection(_vocbase, input->name, dropExisting);
+    if (result.fail()) {
+      return result.errorNumber();
+    }
+  }
+
   std::vector<CreateCollectionBody> collections{std::move(input.get())};
   // We always wait for Collections to be synced on shards
   bool waitForSyncReplication = true;
@@ -1177,75 +1259,11 @@ Result RestReplicationHandler::processRestoreCollection(
     }
   }
 
-  // only local
-  ExecContextSuperuserScope escope(
-      ExecContext::current().isSuperuser() ||
-      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
-  // end only local
-
-  std::shared_ptr<LogicalCollection> col;
-  auto lookupResult = methods::Collections::lookup(_vocbase, name, col);
-
-  if (lookupResult.ok()) {
-    TRI_ASSERT(col);
-    if (dropExisting) {
-      try {
-        if (ServerState::instance()->isCoordinator() &&
-            name == StaticStrings::AnalyzersCollection &&
-            server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
-          // We have ArangoSearch here. So process analyzers accordingly.
-          // We can`t just recreate/truncate collection. Agency should be
-          // properly notified analyzers are gone.
-          // The single server and DBServer case is handled after restore of
-          // data.
-          return server()
-              .getFeature<iresearch::IResearchAnalyzerFeature>()
-              .removeAllAnalyzers(_vocbase);
-        }
-
-        auto dropResult = methods::Collections::drop(*col, true, true);
-        if (dropResult.fail()) {
-          if (dropResult.is(TRI_ERROR_FORBIDDEN) ||
-              dropResult.is(
-                  TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
-            // If we are not allowed to drop the collection.
-            // Try to truncate.
-            auto ctx = transaction::StandaloneContext::Create(_vocbase);
-            SingleCollectionTransaction trx(ctx, *col,
-                                            AccessMode::Type::EXCLUSIVE);
-
-            trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-            trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-            auto trxRes = trx.begin();
-
-            if (!trxRes.ok()) {
-              return trxRes;
-            }
-
-            OperationOptions options;
-            OperationResult opRes = trx.truncate(name, options);
-
-            return trx.finish(opRes.result);
-          }
-
-          return Result(dropResult.errorNumber(),
-                        arangodb::basics::StringUtils::concatT(
-                            "unable to drop collection '", name,
-                            "': ", dropResult.errorMessage()));
-        }
-
-        // we just removed the collection, so we cannot rely on it being present
-        // now
-        col.reset();
-      } catch (basics::Exception const& ex) {
-        LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
-            << "processRestoreCollection "
-            << "could not drop collection: " << ex.what();
-      } catch (...) {
-      }
+  {
+    auto res = handlingOfExistingCollection(_vocbase, name, dropExisting);
+    if (res.fail()) {
+      return res.errorNumber();
     }
-  } else if (lookupResult.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-    return lookupResult;
   }
 
   // Now we have done our best to remove the Collection.
