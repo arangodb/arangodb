@@ -1018,5 +1018,5 @@ NodePtr consensus::Node::allocateNode(Args&&... args) {
 
 // Create an explicit instantiation for VPackString using the Node
 // AccountingAllocator
-template class arangodb::velocypack::BasicString<
+template struct arangodb::velocypack::BasicString<
     typename arangodb::consensus::Node::allocator_type::rebind<uint8_t>::type>;
