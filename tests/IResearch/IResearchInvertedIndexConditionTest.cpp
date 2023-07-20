@@ -49,6 +49,17 @@
 
 using namespace arangodb::aql;
 
+namespace {
+auto createAttributeNamePath = [](std::vector<std::string>&& vec,
+                                  arangodb::ResourceMonitor& resMonitor) {
+  arangodb::MonitoredStringVector myVector{resMonitor};
+  for (auto& s : vec) {
+    myVector.emplace_back(s);
+  }
+  return AttributeNamePath(std::move(myVector), resMonitor);
+};
+}
+
 class IResearchInvertedIndexConditionTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
@@ -273,15 +284,6 @@ class IResearchInvertedIndexConditionTest
   arangodb::LogicalCollection& collection() { return *_collection; }
   TRI_vocbase_t& vocbase() { return *_vocbase; }
 };  // IResearchFilterSetup
-
-auto createAttributeNamePath = [](std::vector<std::string>&& vec,
-                                  arangodb::ResourceMonitor& resMonitor) {
-  arangodb::MonitoredStringVector myVector{resMonitor};
-  for (auto& s : vec) {
-    myVector.emplace_back(s);
-  }
-  return AttributeNamePath(std::move(myVector), resMonitor);
-};
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_equality) {
   std::string queryString = "FOR d IN test FILTER d.a == 'value' RETURN d ";

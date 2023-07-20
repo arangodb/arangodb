@@ -40,6 +40,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests;
 
+namespace {
 auto createAttributeNamePath = [](std::vector<std::string>&& vec,
                                   arangodb::ResourceMonitor& resMonitor) {
   arangodb::MonitoredStringVector myVector{resMonitor};
@@ -48,6 +49,7 @@ auto createAttributeNamePath = [](std::vector<std::string>&& vec,
   }
   return AttributeNamePath(std::move(myVector), resMonitor);
 };
+}
 
 TEST(ProjectionsTest, buildEmpty) {
   Projections p;

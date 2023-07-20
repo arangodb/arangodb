@@ -30,6 +30,7 @@
 
 using namespace arangodb::aql;
 
+namespace {
 auto createAttributeNamePath = [](std::vector<std::string>&& vec,
                                   arangodb::ResourceMonitor& resMonitor) {
   arangodb::MonitoredStringVector myVector{resMonitor};
@@ -38,6 +39,7 @@ auto createAttributeNamePath = [](std::vector<std::string>&& vec,
   }
   return AttributeNamePath(std::move(myVector), resMonitor);
 };
+}
 
 TEST(AttributeNamePathTest, empty) {
   arangodb::GlobalResourceMonitor global{};
