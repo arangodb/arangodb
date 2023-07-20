@@ -29,6 +29,9 @@
 #include "Basics/Thread.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -59,6 +62,7 @@ MaxMapCountFeature::MaxMapCountFeature(Server& server)
           arangodb_memory_maps_limit{})) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
+  _memoryMapsLimit = actualMaxMappings();
 }
 
 void MaxMapCountFeature::collectOptions(
@@ -78,7 +82,6 @@ uint64_t MaxMapCountFeature::actualMaxMappings() {
   try {
     std::string value = basics::FileUtils::slurp("/proc/sys/vm/max_map_count");
     maxMappings = basics::StringUtils::uint64(value);
-    _memoryMapsLimit = maxMappings;
   } catch (...) {
     // file not found or values not convertible into integers
   }
@@ -109,7 +112,7 @@ void MaxMapCountFeature::countMemoryMaps() {
 #ifdef __linux__
   try {
     size_t numLines = FileUtils::countLines("/proc/self/maps");
-    _memoryMapsCurrent.store(numFiles, std::memory_order_relaxed);
+    _memoryMapsCurrent.store(numLines, std::memory_order_relaxed);
   } catch (std::exception const& ex) {
     LOG_TOPIC("bee41", DEBUG, Logger::SYSCALL)
         << "unable to count number of open files for arangod process: "
