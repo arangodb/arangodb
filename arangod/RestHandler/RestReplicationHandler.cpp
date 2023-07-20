@@ -1196,7 +1196,6 @@ Result RestReplicationHandler::processRestoreCollection(
     }
   }
 
-  std::vector<CreateCollectionBody> collections{std::move(input.get())};
   // We always wait for Collections to be synced on shards
   bool waitForSyncReplication = true;
   bool isNewDatabase = false;
@@ -1210,6 +1209,8 @@ Result RestReplicationHandler::processRestoreCollection(
     enforceReplicationFactor = true;
   }
 
+
+  std::vector<CreateCollectionBody> collections{std::move(input.get())};
   auto result = methods::Collections::create(
       _vocbase, options, collections, waitForSyncReplication,
       enforceReplicationFactor, isNewDatabase,
