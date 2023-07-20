@@ -97,12 +97,100 @@ class Node : public std::enable_shared_from_this<Node> {
   using PathType = std::vector<std::string>;
   using PathTypeView = std::span<std::string const>;
 
-  /// @brief Child nodes
-  using Children = ::immer::map<std::string, NodePtr>;
+ private:
+  template<typename T>
+  struct AccountingAllocator : std::allocator<T> {
+    template<typename U>
+    AccountingAllocator(AccountingAllocator<U> const&) {}
+    AccountingAllocator() = default;
 
-  using Array = ::immer::flex_vector<velocypack::String>;
+    T* allocate(std::size_t n) {
+      auto mem = std::allocator<T>::allocate(n);
+      Node::increaseMemoryUsage(sizeof(T) * n);
+      return mem;
+    }
 
-  using VariantType = std::variant<Children, Array, velocypack::String>;
+    void deallocate(T* p, std::size_t n) {
+      std::allocator<T>::deallocate(p, n);
+      Node::decreaseMemoryUsage(sizeof(T) * n);
+    }
+
+    template<typename U>
+    struct rebind {
+      using type = AccountingAllocator<U>;
+    };
+  };
+
+  template<typename Base>
+  struct AccountingHeap : Base {
+    template<typename... Tags>
+    static void* allocate(std::size_t size, Tags... tags) {
+      auto* mem = Base::allocate(size, tags...);
+      Node::increaseMemoryUsage(size);
+      return mem;
+    }
+
+    template<typename... Tags>
+    static void deallocate(std::size_t size, void* data, Tags... tags) {
+      Base::deallocate(size, data, tags...);
+      Node::decreaseMemoryUsage(size);
+    }
+  };
+
+  using AccountingMemoryPolicy =
+      ::immer::memory_policy<AccountingHeap<::immer::default_heap_policy>,
+                             ::immer::default_refcount_policy,
+                             ::immer::default_lock_policy>;
+
+  static void increaseMemoryUsage(std::size_t) noexcept;
+  static void decreaseMemoryUsage(std::size_t) noexcept;
+  static std::atomic<std::size_t> memoryUsage;
+
+ public:
+  using allocator_type = AccountingAllocator<Node>;
+
+  static std::size_t getMemoryUsage() noexcept { return memoryUsage; }
+  static void toPrometheus(std::string&);
+
+  // If you want those types to be accounted for as well, please do so.
+  // But be aware that this will change the type and the interface and you have
+  // to modify a lot of code to make this work. You have been warned.
+  using StringType = std::basic_string<char, std::char_traits<char>
+                                       /*, accounting_allocator<char>*/>;
+  using VPackStringType = velocypack::BasicString<AccountingAllocator<uint8_t>>;
+
+  struct TransparentHash {
+    using is_transparent = void;
+    template<typename Traits, typename Alloc>
+    auto operator()(std::basic_string<char, Traits, Alloc> const& str) {
+      return std::hash<std::string_view>{}(str);
+    }
+    auto operator()(std::string_view str) {
+      return std::hash<std::string_view>{}(str);
+    }
+  };
+
+  struct TransparentEqual {
+    using is_transparent = void;
+    template<typename T, typename U>
+    bool operator()(T const& t, U const& u) {
+      return t == u;
+    }
+
+    template<typename Chars, typename Traits, typename Alloc1, typename Alloc2>
+    auto operator()(std::basic_string<Chars, Traits, Alloc1> const& str,
+                    std::basic_string<Chars, Traits, Alloc2> const& other) {
+      return std::string_view{str} == other;
+    }
+  };
+
+  using Children = ::immer::map<StringType, NodePtr, TransparentHash,
+                                TransparentEqual, AccountingMemoryPolicy>;
+
+  using Array =
+      ::immer::flex_vector<velocypack::String, AccountingMemoryPolicy>;
+
+  using VariantType = std::variant<Children, Array, VPackStringType>;
 
   /// @brief Split strings by forward slashes, omitting empty strings,
   /// and ignoring multiple subsequent forward slashes
@@ -341,8 +429,8 @@ class Node : public std::enable_shared_from_this<Node> {
  private:
   VPackSlice slice() const noexcept;
 
-  struct NodeWrapper;
-  friend struct NodeWrapper;
+  template<typename... Args>
+  static NodePtr allocateNode(Args&&...);
 
   Node() = default;
   template<typename... Args>
