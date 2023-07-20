@@ -6,7 +6,7 @@ import {
   UrlParametersType
 } from "./UrlParametersContext";
 import { fetchUserConfig } from "./useFetchAndSetupGraphParams";
-const putUserConfig = async ({
+export const putUserConfig = async ({
   params,
   fullConfig,
   graphName
@@ -27,10 +27,10 @@ const putUserConfig = async ({
       mode: ""
     }
   };
-  const data = await getRouteForDB(
-    window.frontendConfig.db,
-    "_api"
-  ).put(`/user/${username}/config/graphs-v2`, { value: finalConfig });
+  const data = await getRouteForDB(window.frontendConfig.db, "_api").put(
+    `/user/${username}/config/graphs-v2`,
+    { value: finalConfig }
+  );
   return data.body;
 };
 export const useGraphSettingsHandlers = ({
