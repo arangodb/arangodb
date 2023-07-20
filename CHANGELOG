@@ -12,6 +12,15 @@ devel
   value. For example, `SORT x` lead to an unexpected order if x was such a
   number. `SORT [x]` however worked as expected.
 
+* Added deprecation message for parts of createCollection API. So far
+  this API ignored unknown options, and therefore did not warn about
+  typos. Furthermore some combinations of values that are not sensible
+  are accepted. In some future version of ArangoDB those will be rejected
+  by the API. The documented part of the API does not change. Watch out
+  for an error with logid: ee638, this indicates you call deprecated parts.
+
+* Avoid recursive lock during agency startup.
+
 * FE-290: Unify Graphs View on web UI.
 
 * Added the following metrics for the in-memory edge cache:
