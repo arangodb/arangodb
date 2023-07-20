@@ -1595,9 +1595,11 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
 template<transaction::Methods::CallbacksTag tag, typename Callback>
 bool transaction::Methods::addCallbackImpl(Callback const* callback) {
   if (!callback || !*callback) {
-    return true;  // nothing to call back
+    // nothing to call back
+    return true;
   } else if (!_state) {
-    return false;  // nothing to add to
+    // nothing to add to
+    return false;
   }
 
   auto* statusChangeCallbacks = getCallbacks<tag>(*_state, true);
@@ -1618,9 +1620,11 @@ bool transaction::Methods::addStatusChangeCallback(
 bool transaction::Methods::removeStatusChangeCallback(
     StatusChangeCallback const* callback) {
   if (!callback || !*callback) {
-    return true;  // nothing to call back
+    // nothing to call back
+    return true;
   } else if (!_state) {
-    return false;  // nothing to add to
+    // nothing to add to
+    return false;
   }
 
   auto* statusChangeCallbacks =
@@ -1935,8 +1939,7 @@ OperationResult transaction::Methods::anyLocal(
 }
 
 DataSourceId transaction::Methods::addCollectionAtRuntime(
-    DataSourceId cid, std::string const& collectionName,
-    AccessMode::Type type) {
+    DataSourceId cid, std::string_view collectionName, AccessMode::Type type) {
   auto collection = trxCollection(cid);
 
   if (collection == nullptr) {
@@ -1966,12 +1969,11 @@ DataSourceId transaction::Methods::addCollectionAtRuntime(
   } else {
     AccessMode::Type collectionAccessType = collection->accessType();
     if (AccessMode::isRead(collectionAccessType) && !AccessMode::isRead(type)) {
+      auto message = absl::StrCat(
+          TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION), ": ",
+          collectionName, " [", AccessMode::typeString(type), "]");
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-          std::string(
-              TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-              ": " + collectionName + " [" + AccessMode::typeString(type) +
-              "]");
+          TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, message);
     }
   }
 
@@ -1981,7 +1983,7 @@ DataSourceId transaction::Methods::addCollectionAtRuntime(
 
 /// @brief add a collection to the transaction for read, at runtime
 DataSourceId transaction::Methods::addCollectionAtRuntime(
-    std::string const& collectionName, AccessMode::Type type) {
+    std::string_view collectionName, AccessMode::Type type) {
   if (collectionName == _collectionCache.name && !collectionName.empty()) {
     return _collectionCache.cid;
   }
@@ -2089,7 +2091,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 ///        Does not care for revision handling!
 ///        Must only be called on a local server, not in cluster case!
 Result transaction::Methods::documentFastPathLocal(
-    std::string const& collectionName, std::string_view key,
+    std::string_view collectionName, std::string_view key,
     IndexIterator::DocumentCallback const& cb) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
@@ -3006,7 +3008,7 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
 
 /// @brief add a collection by id, with the name supplied
 Result transaction::Methods::addCollection(DataSourceId cid,
-                                           std::string const& collectionName,
+                                           std::string_view collectionName,
                                            AccessMode::Type type) {
   if (_state == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -3080,7 +3082,7 @@ Result transaction::Methods::addCollection(DataSourceId cid,
 }
 
 /// @brief add a collection by name
-Result transaction::Methods::addCollection(std::string const& name,
+Result transaction::Methods::addCollection(std::string_view name,
                                            AccessMode::Type type) {
   return addCollection(resolver()->getCollectionId(name), name, type);
 }
