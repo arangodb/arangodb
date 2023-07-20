@@ -1,6 +1,9 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue with lock starvation when an AQL insert operation with multiple
+  static documents was executed as part of a streaming transaction.
+
 * Added startup option `--database.max-databases` to limit the maximum number
   of databases that can exist in parallel on a deployment. This option can be
   used to limit resources used by database objects. If the option is used and
