@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed issue with lock starvation when an AQL insert operation with multiple
+  static documents was executed as part of a streaming transaction.
+
 * Optimize runtime performance of exclusive locks.
 
 * FE-290: Unify Graphs View on web UI.
