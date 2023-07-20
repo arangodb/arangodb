@@ -403,6 +403,7 @@ void Expression::prepareForExecution() {
             velocypack_malloc(static_cast<size_t>(bufferSize)));
         if (_data == nullptr) {
           // malloc returned a nullptr
+          _usedBytesByData = 0;
           throw std::bad_alloc();
         }
         memcpy(_data, buffer.data(), static_cast<size_t>(bufferSize));
