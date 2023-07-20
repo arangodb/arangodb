@@ -196,7 +196,7 @@ function OneShardPropertiesSuite () {
         } finally {
           db._drop("test");
         }
-        /* Expected code as soon as we can drop backwards compatibility
+        /* Expected Test Code as soon as we drop compatibility with 3.11
         try {
           db._create("test", {distributeShardsLike: "leading"});
           fail();
