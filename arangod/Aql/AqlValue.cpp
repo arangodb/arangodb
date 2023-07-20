@@ -1678,17 +1678,19 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice,
         // If length == 9, we're done;
         // If length == 8, there's one byte left to fill.
 
-        // For signed ints, do an *arithmetic* shift of the biggest byte. So
-        // we get 0xff for negative, and 0x00 for all nonnegative integers.
-        auto const filler =
-            slice.isUInt()
-                ? 0x00
-                : std::int8_t(slice.begin()[length - 1]) >> (CHAR_BIT - 1);
-        auto const remainingBytes =
-            sizeof(_data.longNumberMeta.data.slice.slice) - length;
-        // Set the remaining byte (if any):
-        std::memset(_data.longNumberMeta.data.slice.slice + length, filler,
-                    remainingBytes);
+        if (length == 8) {
+          // For signed ints, do an *arithmetic* shift of the biggest byte. So
+          // we get 0xff for negative, and 0x00 for all nonnegative integers.
+          auto const filler =
+              slice.isUInt()
+                  ? 0x00
+                  : std::int8_t(slice.begin()[length - 1]) >> (CHAR_BIT - 1);
+
+          _data.longNumberMeta.data.slice.slice[length] = filler;
+        } else {
+          TRI_ASSERT(length == 9);
+        }
+
         TRI_ASSERT(
             slice.isUInt()
                 ? slice.getUInt() > std::numeric_limits<std::int64_t>().max() ||
