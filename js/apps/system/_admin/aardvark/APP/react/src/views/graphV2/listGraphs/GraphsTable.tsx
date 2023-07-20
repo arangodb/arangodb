@@ -8,7 +8,7 @@ import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { EditGraphModal } from "./EditGraphModal";
-import { detectGraphType } from "./GraphsHelpers";
+import { detectGraphType } from "./graphListHelpers";
 import { useGraphsListContext } from "./GraphsListContext";
 import { GraphsModeProvider } from "./GraphsModeContext";
 

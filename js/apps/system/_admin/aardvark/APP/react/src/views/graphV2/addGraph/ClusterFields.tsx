@@ -1,6 +1,6 @@
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
-import { CLUSTER_GRAPH_FIELDS_MAP } from "../listGraphs/GraphsHelpers";
+import { CLUSTER_GRAPH_FIELDS_MAP } from "../listGraphs/graphListHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 
 export const ClusterFields = ({

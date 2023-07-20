@@ -8,7 +8,7 @@ import {
   CLUSTER_GRAPH_FIELDS_MAP,
   createGraph,
   GENERAL_GRAPH_FIELDS_MAP
-} from "../listGraphs/GraphsHelpers";
+} from "../listGraphs/graphListHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { EnterpriseGraphCreateValues } from "./CreateGraph.types";

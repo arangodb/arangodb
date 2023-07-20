@@ -6,7 +6,7 @@ import { EnterpriseGraphForm } from "../addGraph/EnterpriseGraphForm";
 import { GeneralGraphForm } from "../addGraph/GeneralGraphForm";
 import { SatelliteGraphForm } from "../addGraph/SatelliteGraphForm";
 import { SmartGraphForm } from "../addGraph/SmartGraphForm";
-import { detectGraphType } from "./GraphsHelpers";
+import { detectGraphType } from "./graphListHelpers";
 import { GraphsModeProvider } from "./GraphsModeContext";
 
 const TYPE_TO_COMPONENT_MAP = {

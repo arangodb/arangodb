@@ -82,7 +82,7 @@ export const detectGraphType = (
     };
   }
 
-  if (graph.isSmart === true && !!graph.smartGraphAttribute) {
+  if (graph.isSmart && !!graph.smartGraphAttribute) {
     return {
       type: "smart",
       isDisjoint: graph.isDisjoint,

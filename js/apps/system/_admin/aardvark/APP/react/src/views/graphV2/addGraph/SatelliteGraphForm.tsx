@@ -7,7 +7,7 @@ import { FormField } from "../../../components/form/FormField";
 import {
   createGraph,
   GENERAL_GRAPH_FIELDS_MAP
-} from "../listGraphs/GraphsHelpers";
+} from "../listGraphs/graphListHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { SatelliteGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";

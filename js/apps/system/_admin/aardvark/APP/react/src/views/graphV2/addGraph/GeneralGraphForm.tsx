@@ -8,7 +8,7 @@ import { FieldsGrid } from "./FieldsGrid";
 import {
   createGraph,
   GENERAL_GRAPH_FIELDS_MAP
-} from "../listGraphs/GraphsHelpers";
+} from "../listGraphs/graphListHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
