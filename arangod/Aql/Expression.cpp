@@ -67,7 +67,11 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the expression
 Expression::Expression(Ast* ast, AstNode* node)
-    : _ast(ast), _node(node), _data(nullptr), _type(UNPROCESSED) {
+    : _ast(ast),
+      _node(node),
+      _data(nullptr),
+      _type(UNPROCESSED),
+      _resourceMonitor(ast->query().resourceMonitor()) {
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
 
