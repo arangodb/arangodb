@@ -20,10 +20,10 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "Aql/AttributeNamePath.h"
 #include "common.h"
 #include "gtest/gtest.h"
-#include "IResearch/common.h"
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
@@ -33,10 +33,8 @@
 #include "Aql/Projections.h"
 #include "Aql/SortNode.h"
 #include "IResearch/AqlHelper.h"
-#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/ExpressionContextMock.h"
-#include "IResearch/IResearchFilterFactory.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -275,6 +273,15 @@ class IResearchInvertedIndexConditionTest
   arangodb::LogicalCollection& collection() { return *_collection; }
   TRI_vocbase_t& vocbase() { return *_vocbase; }
 };  // IResearchFilterSetup
+
+auto createAttributeNamePath = [](std::vector<std::string>&& vec,
+                                  arangodb::ResourceMonitor& resMonitor) {
+  arangodb::MonitoredStringVector myVector{resMonitor};
+  for (auto& s : vec) {
+    myVector.emplace_back(s);
+  }
+  return AttributeNamePath(std::move(myVector), resMonitor);
+};
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_equality) {
   std::string queryString = "FOR d IN test FILTER d.a == 'value' RETURN d ";
@@ -735,7 +742,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_one) {
   arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    attributes.emplace_back(arangodb::aql::AttributeNamePath("a", resMonitor));
+    attributes.emplace_back(createAttributeNamePath({"a"}, resMonitor));
     std::vector<std::vector<std::string>> fields = {{"a"}};
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 1;
@@ -745,8 +752,8 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_one) {
   // sub-attribute
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path{"a", "b", "c"};
-    attributes.emplace_back(arangodb::aql::AttributeNamePath(path, resMonitor));
+    attributes.emplace_back(
+        createAttributeNamePath({"a", "b", "c"}, resMonitor));
     std::vector<std::vector<std::string>> fields = {{"a.b.c"}};
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 3;
@@ -757,8 +764,8 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_one) {
   // sub-attribute partial
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path{"a", "b", "c"};
-    attributes.emplace_back(arangodb::aql::AttributeNamePath(path, resMonitor));
+    attributes.emplace_back(
+        createAttributeNamePath({"a", "b", "c"}, resMonitor));
     std::vector<std::vector<std::string>> fields = {{"a.b"}};
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 2;
@@ -772,7 +779,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
   arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    attributes.emplace_back(arangodb::aql::AttributeNamePath("a", resMonitor));
+    attributes.emplace_back(createAttributeNamePath({"a"}, resMonitor));
     attributes.emplace_back("c", resMonitor);
     std::vector<std::vector<std::string>> fields = {{"a"}, {"b"}, {"c"}};
     arangodb::aql::Projections expected(attributes);
@@ -786,9 +793,9 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
   // sub-attribute
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path{"a", "b", "c"};
-    attributes.emplace_back(arangodb::aql::AttributeNamePath(path, resMonitor));
-    attributes.emplace_back(arangodb::aql::AttributeNamePath("d", resMonitor));
+    attributes.emplace_back(
+        createAttributeNamePath({"a", "b", "c"}, resMonitor));
+    attributes.emplace_back(createAttributeNamePath({"d"}, resMonitor));
     std::vector<std::vector<std::string>> fields = {{"a.b.c"}, {"d"}};
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 3;
@@ -801,8 +808,8 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
   // sub-attribute partial
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path{"a", "b", "c"};
-    attributes.emplace_back(arangodb::aql::AttributeNamePath(path, resMonitor));
+    attributes.emplace_back(
+        createAttributeNamePath({"a", "b", "c"}, resMonitor));
     attributes.emplace_back("d", resMonitor);
     std::vector<std::vector<std::string>> fields = {{"a.b"}, {"d"}};
     arangodb::aql::Projections expected(attributes);
@@ -816,12 +823,8 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
   // sub-attribute partial more complex
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path1{"a", "b"};
-    attributes.emplace_back(
-        arangodb::aql::AttributeNamePath(path1, resMonitor));
-    std::vector<std::string> path2{"b", "d"};
-    attributes.emplace_back(
-        arangodb::aql::AttributeNamePath(path2, resMonitor));
+    attributes.emplace_back(createAttributeNamePath({"a", "b"}, resMonitor));
+    attributes.emplace_back(createAttributeNamePath({"b", "d"}, resMonitor));
     attributes.emplace_back("d", resMonitor);
     std::vector<std::vector<std::string>> fields = {{"a.b"}, {"b.d"}, {"d"}};
     arangodb::aql::Projections expected(attributes);
@@ -837,11 +840,9 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
   // sub-attribute partial - check if the best is selected
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path1{"a", "b"};
-    attributes.emplace_back(path1, resMonitor);
-    std::vector<std::string> path2{"b", "d"};
-    attributes.emplace_back(path2, resMonitor);
-    attributes.emplace_back("d", resMonitor);
+    attributes.emplace_back(createAttributeNamePath({"a", "b"}, resMonitor));
+    attributes.emplace_back(createAttributeNamePath({"b", "d"}, resMonitor));
+    attributes.emplace_back(createAttributeNamePath({"d"}, resMonitor));
     std::vector<std::vector<std::string>> fields = {
         {"a.b"}, {"b.d"}, {"a.b", "b.d", "a.c"}, {"d"}};
     arangodb::aql::Projections expected(attributes);

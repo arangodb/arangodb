@@ -45,17 +45,6 @@ AttributeNamePath::AttributeNamePath(std::string attribute,
   _path.emplace_back(std::move(attribute));
 }
 
-AttributeNamePath::AttributeNamePath(std::vector<std::string> p,
-                                     arangodb::ResourceMonitor& resourceMonitor)
-    : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
-          resourceMonitor}) {
-  // TODO: Check this later again - we might want to pass a monitoredVector here
-  // already.
-  for (auto const& pathString : p) {
-    _path.emplace_back(pathString);
-  }
-}
-
 AttributeNamePath::AttributeNamePath(MonitoredStringVector p,
                                      arangodb::ResourceMonitor& resourceMonitor)
     : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{

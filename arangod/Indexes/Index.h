@@ -37,6 +37,7 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 
 namespace arangodb {
 class IndexIterator;
@@ -177,6 +178,26 @@ class Index {
 
     for (auto const& it : _fields) {
       std::vector<std::string> parts;
+      parts.reserve(it.size());
+      for (auto const& it2 : it) {
+        parts.emplace_back(it2.name);
+      }
+      result.emplace_back(std::move(parts));
+    }
+    return result;
+  }
+
+  /// @brief return the index fields names incl. tracking the resources
+  /// using a resourceMonitor. This needed to be implemented next to the
+  /// method above as we do not have always a resourceMonitor in place
+  /// when acquiring the index fields names.
+  std::vector<MonitoredStringVector> trackedFieldNames(
+      arangodb::ResourceMonitor& resourceMonitor) const {
+    std::vector<MonitoredStringVector> result;
+    result.reserve(_fields.size());
+
+    for (auto const& it : _fields) {
+      MonitoredStringVector parts{resourceMonitor};
       parts.reserve(it.size());
       for (auto const& it2 : it) {
         parts.emplace_back(it2.name);

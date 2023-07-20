@@ -53,9 +53,6 @@ struct AttributeNamePath {
                     arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief construct an attribute path from a nested attribute (e.g. a.b.c)
-  AttributeNamePath(std::vector<std::string> path,
-                    arangodb::ResourceMonitor& resourceMonitor);
-
   AttributeNamePath(MonitoredStringVector path,
                     arangodb::ResourceMonitor& resourceMonitor);
 

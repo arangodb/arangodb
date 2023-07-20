@@ -178,7 +178,9 @@ bool translateNodeStackToAttributePath(
     }
 
     // now take off all projections from the stack
-    std::vector<std::string> path;
+    ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor> alloc = {
+        resourceMonitor};
+    MonitoredStringVector path{alloc};
     while (top->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       path.emplace_back(top->getString());
       state.seen.pop_back();

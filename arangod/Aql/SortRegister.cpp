@@ -29,6 +29,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortNode.h"
+#include "Basics/ResourceUsage.h"
 
 namespace arangodb {
 namespace aql {
@@ -38,7 +39,9 @@ namespace aql {
 // -----------------------------------------------------------------------------
 
 SortRegister::SortRegister(RegisterId reg, SortElement const& element) noexcept
-    : attributePath(element.attributePath), reg(reg), asc(element.ascending) {}
+    : attributePath(element.attributePath),
+      reg(reg),
+      asc(element.ascending) {}
 
 void SortRegister::fill(ExecutionPlan const& /*execPlan*/,
                         RegisterPlan const& regPlan,
