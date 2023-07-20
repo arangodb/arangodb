@@ -419,7 +419,7 @@ struct AqlValue final {
   AqlValue get(CollectionNameResolver const& resolver, std::string_view name,
                bool& mustDestroy, bool copy) const;
   AqlValue get(CollectionNameResolver const& resolver,
-               std::vector<std::string> const& names, bool& mustDestroy,
+               std::vector<std::string_view> const& names, bool& mustDestroy,
                bool copy) const;
   bool hasKey(std::string_view name) const;
 

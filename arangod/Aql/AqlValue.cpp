@@ -23,19 +23,15 @@
 
 #include "AqlValue.h"
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/Arithmetic.h"
 #include "Aql/Range.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Endian.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
 #include "V8/v8-vpack.h"
 
 #include <velocypack/Buffer.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <type_traits>
 
@@ -725,7 +721,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
 
 /// @brief get the (object) element(s) by name
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
-                       std::vector<std::string> const& names, bool& mustDestroy,
+                       std::vector<std::string_view> const& names, bool& mustDestroy,
                        bool doCopy) const {
   mustDestroy = false;
   if (names.empty()) {

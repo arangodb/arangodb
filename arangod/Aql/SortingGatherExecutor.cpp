@@ -74,14 +74,14 @@ class OurLessThan {
         // Take attributePath into consideration:
         bool mustDestroyA;
         AqlValue aa = lhs.get(_resolver,
-                              std::vector<std::string>{attributePath.begin(),
-                                                       attributePath.end()},
+                              std::vector<std::string_view>{
+                                  attributePath.begin(), attributePath.end()},
                               mustDestroyA, false);
         AqlValueGuard guardA(aa, mustDestroyA);
         bool mustDestroyB;
         AqlValue bb = rhs.get(_resolver,
-                              std::vector<std::string>{attributePath.begin(),
-                                                       attributePath.end()},
+                              std::vector<std::string_view>{
+                                  attributePath.begin(), attributePath.end()},
                               mustDestroyB, false);
         AqlValueGuard guardB(bb, mustDestroyB);
         cmp = AqlValue::Compare(&_vpackOptions, aa, bb, true);

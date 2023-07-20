@@ -84,10 +84,10 @@ struct AttributeNamePath {
   bool operator<(AttributeNamePath const& other) const noexcept;
 
   /// @brief get the full path
-  MonitoredStringVector const& get() const noexcept;
+  [[nodiscard]] MonitoredStringVector const& get() const noexcept;
 
   /// @brief get the full path as an std::vector
-  std::vector<std::string> getCopy() const;
+  [[nodiscard]] std::vector<std::string_view> getStringViewVector() const;
 
   /// @brief clear all path attributes
   void clear() noexcept;
