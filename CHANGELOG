@@ -6,6 +6,8 @@ devel
 
 * Optimize runtime performance of exclusive locks.
 
+* Avoid recursive lock during agency startup.
+
 * FE-290: Unify Graphs View on web UI.
 
 * Added the following metrics for the in-memory edge cache:
