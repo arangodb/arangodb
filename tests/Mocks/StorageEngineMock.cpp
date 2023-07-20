@@ -213,12 +213,6 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void load() override {}
   void unload() override {}
-  void truncateCommit(arangodb::TruncateGuard&& /*guard*/,
-                      TRI_voc_tick_t /*tick*/,
-                      arangodb::transaction::Methods* /*trx*/) override {
-    _edgesFrom.clear();
-    _edgesTo.clear();
-  }
 
   void toVelocyPack(VPackBuilder& builder,
                     std::underlying_type<arangodb::Index::Serialize>::type
@@ -797,12 +791,6 @@ class HashIndexMock final : public arangodb::Index {
   void load() override {}
 
   void unload() override {}
-
-  void truncateCommit(arangodb::TruncateGuard&& /*guard*/,
-                      TRI_voc_tick_t /*tick*/,
-                      arangodb::transaction::Methods* /*trx*/) override {
-    _hashData.clear();
-  }
 
   void toVelocyPack(VPackBuilder& builder,
                     std::underlying_type<arangodb::Index::Serialize>::type
