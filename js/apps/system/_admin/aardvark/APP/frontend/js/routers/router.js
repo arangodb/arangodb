@@ -1049,19 +1049,8 @@
     graphManagement: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.graphManagementView) {
-          this.graphManagementView.undelegateEvents();
-        }
-        this.graphManagementView =
-          new window.GraphManagementView(
-            {
-              collection: new window.GraphCollection(),
-              collectionCollection: this.arangoCollectionsStore
-            }
-          );
-        this.graphManagementView.render();
-      });
+      this.init.then(() => ReactDOM.render(React.createElement(window.GraphsListReactView),
+        document.getElementById('content-react')));
     },
 
     showGraph: function (name) {
@@ -1213,9 +1202,6 @@
     handleResize: function () {
       if (this.dashboardView) {
         this.dashboardView.resize();
-      }
-      if (this.graphManagementView && Backbone.history.getFragment() === 'graphs') {
-        this.graphManagementView.handleResize($('#content').width());
       }
       if (this.queryView && Backbone.history.getFragment() === 'queries') {
         this.queryView.resize();

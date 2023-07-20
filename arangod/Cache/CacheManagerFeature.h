@@ -24,20 +24,25 @@
 #pragma once
 
 #include "Cache/CacheManagerFeatureThreads.h"
-#include "Cache/Manager.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
+struct CacheOptionsProvider;
+class CacheRebalancerThread;
+
+namespace cache {
+class Manager;
+}
 
 class CacheManagerFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() { return "CacheManager"; }
 
-  explicit CacheManagerFeature(Server& server);
+  explicit CacheManagerFeature(Server& server,
+                               CacheOptionsProvider const& provider);
   ~CacheManagerFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void beginShutdown() override final;
   void stop() override final;
@@ -45,15 +50,15 @@ class CacheManagerFeature final : public ArangodFeature {
   /// @brief Pointer to global instance; Can be null if cache is disabled
   cache::Manager* manager();
 
- private:
-  static constexpr uint64_t minRebalancingInterval = 500 * 1000;
+  std::size_t minValueSizeForEdgeCompression() const noexcept;
+  std::uint32_t accelerationFactorForEdgeCompression() const noexcept;
 
+ private:
   std::unique_ptr<cache::Manager> _manager;
   std::unique_ptr<CacheRebalancerThread> _rebalancer;
-  double _idealLowerFillRatio;
-  double _idealUpperFillRatio;
-  std::uint64_t _cacheSize;
-  std::uint64_t _rebalancingInterval;
+
+  CacheOptionsProvider const& _provider;
+  CacheOptions _options;
 };
 
 }  // namespace arangodb

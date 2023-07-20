@@ -41,7 +41,6 @@
 #include "Cache/PlainCache.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalCache.h"
-#include "Random/RandomGenerator.h"
 #include "RestServer/SharedPRNGFeature.h"
 
 namespace arangodb::cache {
@@ -49,19 +48,19 @@ namespace arangodb::cache {
 using SpinLocker = ::arangodb::basics::SpinLocker;
 using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 
-Cache::Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
-             std::shared_ptr<Table> table, bool enableWindowedStats,
-             std::function<Table::BucketClearer(Metadata*)> bucketClearer,
-             std::size_t slotsPerBucket)
+Cache::Cache(
+    Manager* manager, std::uint64_t id, Metadata&& metadata,
+    std::shared_ptr<Table> table, bool enableWindowedStats,
+    std::function<Table::BucketClearer(Manager*, Metadata*)> bucketClearer,
+    std::size_t slotsPerBucket)
     : _shutdown(false),
-      _enableWindowedStats(enableWindowedStats),
       _findHits(),
       _findMisses(),
       _manager(manager),
       _id(id),
       _metadata(std::move(metadata)),
       _table(std::move(table)),
-      _bucketClearer(bucketClearer(&_metadata)),
+      _bucketClearer(bucketClearer(manager, &_metadata)),
       _slotsPerBucket(slotsPerBucket),
       _insertsTotal(),
       _insertEvictions(),
@@ -72,12 +71,11 @@ Cache::Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
   TRI_ASSERT(_table != nullptr);
   _table->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
   _table->enable();
-  if (_enableWindowedStats) {
+  if (enableWindowedStats) {
     try {
       _findStats = std::make_unique<StatBuffer>(manager->sharedPRNG(),
                                                 findStatsCapacity);
     } catch (std::bad_alloc const&) {
-      _enableWindowedStats = false;
     }
   }
 }
@@ -144,7 +142,7 @@ std::pair<double, double> Cache::hitRates() {
                           static_cast<double>(currentHits + currentMisses));
   }
 
-  if (_enableWindowedStats && _findStats) {
+  if (_findStats) {
     auto stats = _findStats->getFrequencies();
     if (stats.size() == 1) {
       if (stats[0].first == static_cast<std::uint8_t>(Stat::findHit)) {
@@ -273,32 +271,28 @@ bool Cache::reclaimMemory(std::uint64_t size) noexcept {
   return (_metadata.softUsageLimit >= _metadata.usage);
 }
 
-void Cache::recordStat(Stat stat) {
+void Cache::recordHit() {
   if ((_manager->sharedPRNG().rand() & static_cast<unsigned long>(7)) != 0) {
     return;
   }
 
-  switch (stat) {
-    case Stat::findHit: {
-      _findHits.add(1, std::memory_order_relaxed);
-      if (_enableWindowedStats && _findStats) {
-        _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findHit));
-      }
-      _manager->reportHitStat(Stat::findHit);
-      break;
-    }
-    case Stat::findMiss: {
-      _findMisses.add(1, std::memory_order_relaxed);
-      if (_enableWindowedStats && _findStats) {
-        _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findMiss));
-      }
-      _manager->reportHitStat(Stat::findMiss);
-      break;
-    }
-    default: {
-      break;
-    }
+  _findHits.add(1, std::memory_order_relaxed);
+  if (_findStats) {
+    _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findHit));
   }
+  _manager->reportHit();
+}
+
+void Cache::recordMiss() {
+  if ((_manager->sharedPRNG().rand() & static_cast<unsigned long>(7)) != 0) {
+    return;
+  }
+
+  _findMisses.add(1, std::memory_order_relaxed);
+  if (_findStats) {
+    _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findMiss));
+  }
+  _manager->reportMiss();
 }
 
 bool Cache::reportInsert(bool hadEviction) {
