@@ -309,6 +309,16 @@ function RestoreCollectionsSuite() {
       }
     },
 
+    testRestoreNumberOfShardsAndListOfShards: function () {
+      const res = tryRestore({name: collname, shards: {"s01": ["server1", "server2"], "s02": ["server3"]}, numberOfShards: 3});
+      try {
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        validateProperties({numberOfShards: 3}, collname, 2);
+      } finally {
+        db._drop(collname);
+      }
+    },
+
     testRestoreReplicationFactor: function () {
       const res = tryRestore({name: collname, replicationFactor: 3});
       try {
@@ -358,7 +368,7 @@ function RestoreCollectionsSuite() {
         if (isCluster) {
           validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
         } else {
-          // WriteConcern on SingleServe has no meaning, it is returned but as default value.
+          // WriteConcern on SingleServer has no meaning, it is returned but as default value.
           validateProperties({replicationFactor: 3, writeConcern: 1}, collname, 2);
         }
       } finally {
