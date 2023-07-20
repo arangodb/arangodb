@@ -3,6 +3,20 @@ devel
 
 * FE-290: Unify Graphs View UI.
 
+* Added the following metrics for the in-memory edge cache:
+
+  - `rocksdb_cache_edge_inserts_total`: total number of insertions into the
+    in-memory edge cache.
+  - `rocksdb_cache_edge_compressed_inserts_total`: total number of insertions
+    into the in-memory edge cache that used compression.
+
+* Added the startup option `--cache.max-spare-memory-usage` to control memory
+  usage for spare, unused hash tables in the in-memory caching subsystem. This
+  option can be used to cap the memory used by spare tables. It can be set to
+  a value of 0 to not use any memory except for active hash tables. 
+
+* Updated ArangoDB Starter to 0.16.0-preview-3 and arangosync to v2.19.0-preview-1.
+
 * FE-289: Improve database table UI.
 
 * Added startup option `--database.max-databases` to limit the maximum number
@@ -269,6 +283,8 @@ devel
   debugging with logfiles in hot backup RClone upload operacions:
   `--rclone.argument=--log-level=DEBUG`
   `--rclone.argument=-log-file=/tmp/rclone.log`
+
+* Remove ttl and observe/unobserve from agency api.
 
 * Fix issue #18982: query editor null/undefined check filters out bindParams
   with value 0.

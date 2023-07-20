@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Agency/Node.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/MaintenanceFeature.h"

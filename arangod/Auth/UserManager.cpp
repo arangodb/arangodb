@@ -826,7 +826,7 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
 
 auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
                                                    std::string const& dbname,
-                                                   std::string const& coll,
+                                                   std::string_view coll,
                                                    bool configured) {
   if (coll.empty()) {
     return auth::Level::NONE;

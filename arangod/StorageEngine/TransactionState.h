@@ -162,7 +162,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
       std::string_view name, AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
-  [[nodiscard]] Result addCollection(DataSourceId cid, std::string const& cname,
+  [[nodiscard]] Result addCollection(DataSourceId cid, std::string_view cname,
                                      AccessMode::Type accessType,
                                      bool lockUsage);
 
@@ -373,11 +373,11 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
  private:
   /// @brief check if current user can access this collection
-  Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
+  Result checkCollectionPermission(DataSourceId cid, std::string_view cname,
                                    AccessMode::Type);
 
   /// @brief helper function for addCollection
-  Result addCollectionInternal(DataSourceId cid, std::string const& cname,
+  Result addCollectionInternal(DataSourceId cid, std::string_view cname,
                                AccessMode::Type accessType, bool lockUsage);
 
  protected:

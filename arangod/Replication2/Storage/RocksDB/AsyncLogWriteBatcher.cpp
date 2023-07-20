@@ -245,6 +245,7 @@ auto AsyncLogWriteBatcher::queue(AsyncLogWriteContext& ctx, Action action,
   if (wantNewThread) {
     startNewThread(lane);
   }
+  // cppcheck-suppress returnStdMoveLocal
   return std::move(future);
 }
 
