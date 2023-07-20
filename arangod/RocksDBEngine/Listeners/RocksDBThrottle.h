@@ -44,6 +44,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
+#include "Metrics/Gauge.h"
 
 // public rocksdb headers
 #include <rocksdb/db.h>
@@ -70,7 +71,8 @@ class RocksDBThrottle : public rocksdb::EventListener {
  public:
   RocksDBThrottle(uint64_t numSlots, uint64_t frequency, uint64_t scalingFactor,
                   uint64_t maxWriteRate, uint64_t slowdownWritesTrigger,
-                  uint64_t lowerBoundBps);
+                  uint64_t lowerBoundBps,
+                  metrics::MetricsFeature& metricsFeature);
   virtual ~RocksDBThrottle();
 
   void OnFlushBegin(rocksdb::DB* db,
@@ -153,6 +155,9 @@ class RocksDBThrottle : public rocksdb::EventListener {
   uint64_t const _maxWriteRate;
   uint64_t const _slowdownWritesTrigger;
   uint64_t const _lowerBoundThrottleBps;
+
+  metrics::Gauge<uint64_t> const* _fileDescriptorsCurrent;
+  metrics::Gauge<uint64_t> const* _fileDescriptorsLimit;
 };
 
 }  // namespace arangodb

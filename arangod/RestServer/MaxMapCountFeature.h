@@ -25,6 +25,7 @@
 
 #include "RestServer/arangod.h"
 #include "Basics/Common.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 
@@ -44,8 +45,20 @@ class MaxMapCountFeature final : public ArangodFeature {
 #endif
   }
 
+  void countMemoryMaps();
+  void countMemoryMapsIfNeeded();
+
   static uint64_t actualMaxMappings();
   static uint64_t minimumExpectedMaxMappings();
+
+ private:
+  uint64_t _countInterval;
+
+  metrics::Gauge<uint64_t>& _memoryMapsCurrent;
+  metrics::Gauge<uint64_t>& _memoryMapsLimit;
+
+  std::mutex _lastCountMutex;
+  std::chrono::steady_clock::time_point _lastCountStamp;
 };
 
 }  // namespace arangodb

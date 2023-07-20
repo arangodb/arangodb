@@ -29,6 +29,8 @@
 #include "Basics/Thread.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
@@ -38,8 +40,23 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+DECLARE_GAUGE(arangodb_memory_maps_current, uint64_t,
+              "Number of currently mapped memory pages");
+DECLARE_GAUGE(
+    arangodb_memory_maps_limit, uint64_t,
+    "Limit for the number of memory mappings for the arangod process");
+
 MaxMapCountFeature::MaxMapCountFeature(Server& server)
-    : ArangodFeature{server, *this} {
+    : ArangodFeature{server, *this},
+#ifdef __linux__
+      _countInterval(10 * 1000),
+#else
+      _countInterval(0),
+#endif
+      _memoryMapsCurrent(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_memory_maps_current{})),
+      _memoryMapsLimit(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_memory_maps_limit{})) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
@@ -60,8 +77,8 @@ uint64_t MaxMapCountFeature::actualMaxMappings() {
   // test max_map_count value in /proc/sys/vm
   try {
     std::string value = basics::FileUtils::slurp("/proc/sys/vm/max_map_count");
-
     maxMappings = basics::StringUtils::uint64(value);
+    _memoryMapsLimit = maxMappings;
   } catch (...) {
     // file not found or values not convertible into integers
   }
@@ -86,4 +103,37 @@ uint64_t MaxMapCountFeature::minimumExpectedMaxMappings() {
 #else
   return 0;
 #endif
+}
+
+void MaxMapCountFeature::countMemoryMaps() {
+#ifdef __linux__
+  try {
+    size_t numLines = FileUtils::countLines("/proc/self/maps");
+    _memoryMapsCurrent.store(numFiles, std::memory_order_relaxed);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("bee41", DEBUG, Logger::SYSCALL)
+        << "unable to count number of open files for arangod process: "
+        << ex.what();
+  } catch (...) {
+    LOG_TOPIC("0a654", DEBUG, Logger::SYSCALL)
+        << "unable to count number of open files for arangod process";
+  }
+#endif
+}
+
+void MaxMapCountFeature::countMemoryMapsIfNeeded() {
+  if (_countInterval == 0) {
+    return;
+  }
+
+  auto now = std::chrono::steady_clock::now();
+
+  std::unique_lock guard{_lastCountMutex, std::try_to_lock};
+
+  if (guard.owns_lock() &&
+      (_lastCountStamp.time_since_epoch().count() == 0 ||
+       now - _lastCountStamp > std::chrono::milliseconds(_countInterval))) {
+    countMemoryMaps();
+    _lastCountStamp = now;
+  }
 }

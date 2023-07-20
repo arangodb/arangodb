@@ -48,8 +48,10 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace rocksdb;
+using namespace arangodb::metrics;
 
 namespace arangodb {
 
@@ -62,7 +64,8 @@ thread_local std::chrono::steady_clock::time_point flushStart =
 RocksDBThrottle::RocksDBThrottle(uint64_t numSlots, uint64_t frequency,
                                  uint64_t scalingFactor, uint64_t maxWriteRate,
                                  uint64_t slowdownWritesTrigger,
-                                 uint64_t lowerBoundBps)
+                                 uint64_t lowerBoundBps,
+                                 MetricsFeature& metricsFeature)
     : _internalRocksDB(nullptr),
       _throttleState(ThrottleState::NotStarted),
       _throttleData(std::make_unique<std::vector<ThrottleData_t>>(numSlots)),
@@ -75,7 +78,11 @@ RocksDBThrottle::RocksDBThrottle(uint64_t numSlots, uint64_t frequency,
       _maxWriteRate(maxWriteRate == 0 ? std::numeric_limits<uint64_t>::max()
                                       : maxWriteRate),
       _slowdownWritesTrigger(slowdownWritesTrigger),
-      _lowerBoundThrottleBps(lowerBoundBps) {
+      _lowerBoundThrottleBps(lowerBoundBps),
+      _fileDescriptorsCurrent(static_cast<Gauge<uint64_t>*>(
+          metricsFeature.get({"arangodb_file_descriptors_current", ""}))),
+      _fileDescriptorsLimit(static_cast<Gauge<uint64_t>*>(
+          metricsFeature.get({"arangodb_file_descriptors_limit", ""}))) {
   TRI_ASSERT(_scalingFactor != 0);
 }
 
@@ -258,8 +265,13 @@ void RocksDBThrottle::recalculateThrottle() {
   std::chrono::microseconds totalMicros{0};
 
   auto [compactionBacklog, pendingCompactionBytes] = computeBacklog();
+
   TRI_ASSERT(_throttleData != nullptr);
   auto& throttleData = *_throttleData;
+
+  LOG_TOPIC("b1ab1", DEBUG, arangodb::Logger::ENGINES)
+      << "NOpenFiles - max:" << _fileDescriptorsLimit->load()
+      << " current: " << _fileDescriptorsCurrent->load();
 
   uint64_t totalBytes = 0;
   bool noData;

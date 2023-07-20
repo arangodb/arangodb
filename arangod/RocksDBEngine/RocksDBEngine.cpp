@@ -46,27 +46,20 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandlerFactory.h"
-#include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "Rest/Version.h"
-#include "RestHandler/RestHandlerCreator.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FlushFeature.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/HistogramBuilder.h"
-#include "Metrics/MetricsFeature.h"
-#include "RestServer/LanguageCheckFeature.h"
-#include "RestServer/ServerIdFeature.h"
 #include "Replication2/Storage/LogStorageMethods.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
@@ -74,6 +67,13 @@
 #include "Replication2/Storage/RocksDB/StatePersistor.h"
 #include "Replication2/Storage/RocksDB/Metrics.h"
 #include "Replication2/Storage/RocksDB/ReplicatedStateInfo.h"
+#include "Rest/Version.h"
+#include "RestHandler/RestHandlerCreator.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
+#include "RestServer/LanguageCheckFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
@@ -974,6 +974,8 @@ void RocksDBEngine::start() {
 
   // set the database sub-directory for RocksDB
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+  auto& metricsFeature = server().getFeature<metrics::MetricsFeature>();
+
   _path = databasePathFeature.subdirectoryName("engine-rocksdb");
 
   [[maybe_unused]] bool createdEngineDir = false;
@@ -1098,7 +1100,7 @@ void RocksDBEngine::start() {
     _throttleListener = std::make_shared<RocksDBThrottle>(
         _throttleSlots, _throttleFrequency, _throttleScalingFactor,
         _throttleMaxWriteRate, _throttleSlowdownWritesTrigger,
-        _throttleLowerBoundBps);
+        _throttleLowerBoundBps, metricsFeature);
     _dbOptions.listeners.push_back(_throttleListener);
   }
 

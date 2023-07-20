@@ -53,6 +53,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
+#include "RestServer/MaxMapCountFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -233,9 +234,10 @@ void DatabaseManagerThread::run() {
         // update metric for the number of open file descriptors.
         // technically this does not belong here, but there is no other
         // ideal place for this
-        FileDescriptorsFeature& fds =
-            server().getFeature<FileDescriptorsFeature>();
-        fds.countOpenFilesIfNeeded();
+        server().getFeature<FileDescriptorsFeature>().countOpenFilesIfNeeded();
+#endif
+#ifdef __linux__
+        server().getFeature<MaxMapCountFeature>().countMemoryMapsIfNeeded();
 #endif
       }
     } catch (...) {
