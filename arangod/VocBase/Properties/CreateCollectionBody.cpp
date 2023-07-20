@@ -79,6 +79,18 @@ auto rewriteStatusErrorMessageForRestore(inspection::Status const& status)
           (status.path().empty() ? "" : " on attribute " + status.path())};
 }
 
+#if false
+auto handleShards(std::string_view, VPackSlice value, VPackSlice fullBody,
+                DatabaseConfiguration const& config, VPackBuilder& result) {
+  if (value.isObject() && !value.isEmptyObject() &&
+      !fullBody.hasKey(StaticStrings::NumberOfShards)) {
+    // If we get a valid list of Shards we use them to define the number of shards.
+    // unless they are explicitly given in the input.
+    result.add(StaticStrings::NumberOfShards, VPackValue(value.length()));
+  }
+}
+#endif
+
 ResultT<CreateCollectionBody> parseAndValidate(
     DatabaseConfiguration const& config, VPackSlice input,
     std::function<void(CreateCollectionBody&)> applyDefaults,
