@@ -29,6 +29,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Agency/Node.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
@@ -171,6 +172,7 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
   if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
     cm.toPrometheus(result, _globals, _ensureWhitespace);
   }
+  consensus::Node::toPrometheus(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
