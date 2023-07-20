@@ -97,6 +97,26 @@ namespace {
 std::string const dataString("data");
 std::string const typeString("type");
 
+bool ignoreHiddenEnterpriseCollection(std::string const& name,
+                                             bool force) {
+#ifdef USE_ENTERPRISE
+  if (!force && name[0] == '_') {
+    if (name.starts_with(StaticStrings::FullLocalPrefix) ||
+        name.starts_with(StaticStrings::FullFromPrefix) ||
+        name.starts_with(StaticStrings::FullToPrefix)) {
+      LOG_TOPIC("944c4", WARN, arangodb::Logger::REPLICATION)
+          << "Restore ignoring collection " << name
+          << ". Will be created via SmartGraphs of a full dump. If you want to "
+          << "restore ONLY this collection use 'arangorestore --force'. "
+          << "However this is not recommended and you should instead restore "
+          << "the EdgeCollection of the SmartGraph instead.";
+      return true;
+    }
+  }
+#endif
+  return false;
+}
+
 auto handlingOfExistingCollection(TRI_vocbase_t& vocbase, std::string const& name,
                                   bool dropExisting) -> Result {
   ExecContextSuperuserScope escope(
@@ -186,26 +206,6 @@ std::unordered_map<std::string,
 static TransactionId ExtractReadlockId(VPackSlice slice) {
   TRI_ASSERT(slice.isString());
   return TransactionId{StringUtils::uint64(slice.copyString())};
-}
-
-static bool ignoreHiddenEnterpriseCollection(std::string const& name,
-                                             bool force) {
-#ifdef USE_ENTERPRISE
-  if (!force && name[0] == '_') {
-    if (name.starts_with(StaticStrings::FullLocalPrefix) ||
-        name.starts_with(StaticStrings::FullFromPrefix) ||
-        name.starts_with(StaticStrings::FullToPrefix)) {
-      LOG_TOPIC("944c4", WARN, arangodb::Logger::REPLICATION)
-          << "Restore ignoring collection " << name
-          << ". Will be created via SmartGraphs of a full dump. If you want to "
-          << "restore ONLY this collection use 'arangorestore --force'. "
-          << "However this is not recommended and you should instead restore "
-          << "the EdgeCollection of the SmartGraph instead.";
-      return true;
-    }
-  }
-#endif
-  return false;
 }
 
 static Result checkPlanLeaderDirect(
@@ -1178,6 +1178,16 @@ Result RestReplicationHandler::processRestoreCollection(
   }
   LOG_DEVEL << "Created output for create: " << input->toCollectionsCreate().toJson();
   OperationOptions options(_context);
+
+  if (ignoreHiddenEnterpriseCollection(input->name, force)) {
+    return {TRI_ERROR_NO_ERROR};
+  }
+
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
+    // we don't care about deleted collections
+    return Result();
+  }
 
   {
     auto result = handlingOfExistingCollection(_vocbase, input->name, dropExisting);
