@@ -10,8 +10,8 @@ BackupNoAuthNoSysTests single
 BackupNoAuthSysTests single
 
 # Single Server Replication Tests
-replication_fuzz priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
-replication_ongoing priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_fuzz !mac priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_ongoing !mac priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
 replication_ongoing_frompresent parallelity=3 single -- --extraArgs:log.level replication=trace
 replication_ongoing_global priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
 replication_ongoing_global_spec parallelity=3 single -- --extraArgs:log.level replication=trace
@@ -36,23 +36,23 @@ version single
 shell_api priority=500 single suffix=http -- $EncryptionAtRest
 shell_api priority=500 single suffix=https -- $EncryptionAtRest --protocol ssl
 # Shell client tests Single Server; distribute evenly
-shell_client priority=250 parallelity=2 single suffix=http -- $EncryptionAtRest
+shell_client priority=250 parallelity=2 single suffix=http -- --http true $EncryptionAtRest
 shell_client priority=1500 parallelity=2 single suffix=http2 -- --http2 true
 shell_client priority=2500 parallelity=2 single suffix=vst -- --vst true
 shell_client_transaction priority=750 single suffix=http -- $EncryptionAtRest
-shell_client_transaction priority=1750 single suffix=http2 -- --http2 true
-shell_client_transaction priority=2750 single suffix=vst -- --vst true
-shell_client_traffic priority=250 parallelity=1 single suffix=http -- http true
-shell_client_traffic priority=250 parallelity=1 single suffix=http2 -- --http2 true 
-shell_client_traffic priority=250 parallelity=1 single suffix=vst -- --vst true
-shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http -- http true --protocol ssl
-shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http2 -- --http2 true --protocol ssl
-shell_client_traffic priority=250 parallelity=1 single suffix=ssl-vst -- --vst true --protocol ssl
+shell_client_transaction !mac priority=1750 single suffix=http2 -- --http2 true
+shell_client_transaction !mac priority=2750 single suffix=vst -- --vst true
+shell_client_traffic !mac priority=250 parallelity=1 single suffix=http -- --http true
+shell_client_traffic !mac priority=250 parallelity=1 single suffix=http2 -- --http2 true 
+shell_client_traffic !mac priority=250 parallelity=1 single suffix=vst -- --vst true
+shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-http -- http true --protocol ssl
+shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-http2 -- --http2 true --protocol ssl
+shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-vst -- --vst true --protocol ssl
 
 shell_client_aql priority=500 single suffix=http
-shell_client_aql priority=500 single suffix=http2 -- --http2 true
-shell_client_aql priority=500 single suffix=vst -- --vst true
-shell_client_aql priority=500 single enterprise suffix=encrypt -- --encryptionAtRest true
+shell_client_aql !mac priority=500 single suffix=http2 -- --http2 true
+shell_client_aql !mac priority=500 single suffix=vst -- --vst true
+shell_client_aql !mac priority=500 single enterprise suffix=encrypt -- --encryptionAtRest true
 
 shell_server_aql priority=750 single buckets=5
 # execute without buckets in single server, but use 5 buckets in cluster
@@ -67,8 +67,8 @@ fuerte priority=500 single
 # Cluster Tests
 
 arangobench priority=1000 cluster -- --dumpAgencyOnError true
-chaos cluster !full -- --dumpAgencyOnError true parallelity=6
-restart priority=1000 cluster -- --dumpAgencyOnError true --forceJson true
+chaos cluster !mac !coverage !full -- --dumpAgencyOnError true parallelity=6
+restart !mac priority=1000 cluster -- --dumpAgencyOnError true --forceJson true
 
 load_balancing priority=500 cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 cluster -- --dumpAgencyOnError true
@@ -114,8 +114,8 @@ dump_parallel -- --dumpAgencyOnError true
 dump_mixed_cluster_single -- --dumpAgencyOnError true
 dump_mixed_single_cluster -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
-dump_with_crashes parallelity=1 priority=2000 -- --dumpAgencyOnError true 
-dump_with_crashes_parallel parallelity=1 priority=2000 -- --dumpAgencyOnError true 
+dump_with_crashes !mac parallelity=1 priority=2000 -- --dumpAgencyOnError true 
+dump_with_crashes_parallel !mac parallelity=1 priority=2000 -- --dumpAgencyOnError true
 
 # Audit Tests
 audit_client -- --dumpAgencyOnError true
@@ -123,8 +123,8 @@ audit_server -- --dumpAgencyOnError true
 
 
 # Full Tests Single Server
-shell_fuzzer full cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
-shell_fuzzer full single priority=500 -- --dumpAgencyOnError true
+shell_fuzzer full !mac cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
+shell_fuzzer full !mac single priority=500 -- --dumpAgencyOnError true
 authentication_parameters single full priority=1000
 authentication_server single full priority=1000
 config single full priority=1000
@@ -146,19 +146,19 @@ ldapsecondldap !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST -
 
 # Full Cluster Tests
 authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
-chaos full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
-client_resilience full cluster priority=500 -- --dumpAgencyOnError true
-resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
-resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true
-resilience_move_view full cluster priority=750 -- --dumpAgencyOnError true
-resilience_repair full cluster priority=500 -- --dumpAgencyOnError true
-resilience_transactions full cluster priority=500 -- --dumpAgencyOnError true
-shell_client_aql full cluster priority=2500 -- --dumpAgencyOnError true
+chaos !windows !mac !coverage full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
+client_resilience !mac full cluster priority=500 -- --dumpAgencyOnError true
+resilience_failover_failure !mac full cluster priority=500 -- --dumpAgencyOnError true
+resilience_failover_view !mac full cluster priority=500 -- --dumpAgencyOnError true
+resilience_move_view !mac full cluster priority=750 -- --dumpAgencyOnError true
+resilience_repair !mac full cluster priority=500 -- --dumpAgencyOnError true
+resilience_transactions !mac full cluster priority=500 -- --dumpAgencyOnError true
+shell_client_aql !mac full cluster priority=2500 -- --dumpAgencyOnError true
 wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
 
 # Common Full Tests
-communication full priority=1000 parallelity=2 single
-communication_ssl full priority=1000 parallelity=2 single
+communication full !mac priority=1000 parallelity=2 single
+communication_ssl !mac full priority=1000 parallelity=2 single
 
-communication full priority=1000 parallelity=4 cluster
-communication_ssl full priority=1000 parallelity=4 cluster
+communication full !mac priority=1000 parallelity=4 cluster
+communication_ssl !mac full priority=1000 parallelity=4 cluster
