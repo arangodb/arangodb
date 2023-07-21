@@ -878,25 +878,36 @@ Result IResearchDataStore::commitUnsafeImpl(
     };
 
 #ifdef USE_ENTERPRISE
-    auto forceOpen = [&]() -> bool {
-      bool force{false};
-      if (_asyncFeature->columnsCacheOnlyLeaders()) {
-        auto& ci = _collection.vocbase()
-                       .server()
-                       .getFeature<ClusterFeature>()
-                       .clusterInfo();
-        auto newUseSearchCache =
-            _useSearchCache.load(std::memory_order_relaxed);
-        auto r = ci.getShardLeadership(ServerState::instance()->getId(),
-                                       _collection.name());
-        if (r != ClusterInfo::ShardLeadership::kUnclear) {
-          newUseSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
-        }
-        force = _useSearchCache.load(std::memory_order_relaxed) !=
-                newUseSearchCache;
-        _useSearchCache = newUseSearchCache;
+    bool const reopenColumnstore = [&] {
+      if (!_asyncFeature->columnsCacheOnlyLeaders()) {
+        return false;
       }
-      return force;
+      auto& ci = collection()
+                     .vocbase()
+                     .server()
+                     .getFeature<ClusterFeature>()
+                     .clusterInfo();
+      auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                     collection().name());
+      if (r == ClusterInfo::ShardLeadership::kUnclear) {
+        return false;
+      }
+      bool curr = r == ClusterInfo::ShardLeadership::kLeader;
+      bool prev = _useSearchCache.exchange(curr, std::memory_order_relaxed);
+      return prev != curr;
+    }();
+#endif
+    auto engineSnapshot = _engine->currentSnapshot();
+    if (ADB_UNLIKELY(!engineSnapshot)) {
+      return {TRI_ERROR_INTERNAL,
+              absl::StrCat("Failed to get engine snapshot while committing "
+                           "ArangoSearch index '",
+                           id().id(), "'")};
+    }
+    auto const beforeCommit = engineSnapshot->tick();
+    TRI_ASSERT(_lastCommittedTick <= beforeCommit);
+    absl::Cleanup commitGuard = [&, last = _lastCommittedTick]() noexcept {
+      _lastCommittedTick = last;
     };
 #endif
     auto const wereChanges = _dataStore._writer->Commit(
@@ -1430,10 +1441,25 @@ Result IResearchDataStore::initDataStore(
           linkLock->finishCreation();
         }
 
-        auto progress = [id, asyncFeature](std::string_view phase,
-                                           size_t current, size_t total) {
-          // forward progress reporting to asyncFeature
-          asyncFeature->reportRecoveryProgress(id, phase, current, total);
+        std::chrono::time_point<std::chrono::steady_clock>
+            lastRecoveryProgressReportTime{};
+        auto progress = [id = index.id(), &lastRecoveryProgressReportTime](
+                            std::string_view phase, size_t current,
+                            size_t total) {
+          TRI_ASSERT(total != 0);
+          auto now = std::chrono::steady_clock::now();
+
+          if (now - lastRecoveryProgressReportTime >= std::chrono::minutes(1)) {
+            // report progress only when index/link id changes or one minute
+            // has passed
+
+            auto progress = static_cast<size_t>(100.0 * current / total);
+            LOG_TOPIC("d1f18", INFO, TOPIC)
+                << "recovering arangosearch index " << id << ", " << phase
+                << ": operation " << (current + 1) << "/" << total << " ("
+                << progress << "%)...";
+            lastRecoveryProgressReportTime = now;
+          }
         };
 
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
@@ -1661,10 +1687,15 @@ void IResearchDataStore::recoveryInsert(uint64_t recoveryTick,
   // removes
 }
 
-void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
-                                       transaction::Methods* trx) {
+void IResearchDataStore::truncateCommit(TruncateGuard&& guard,
+                                        TRI_voc_tick_t tick,
+                                        transaction::Methods* trx) {
   // '_dataStore' can be asynchronously modified
   auto linkLock = _asyncSelf->lock();
+  if (!linkLock) {
+    // it means index already dropped, so truncate not necessary here
+    return;
+  }
 
   bool ok{false};
   irs::Finally computeMetrics = [&]() noexcept {
@@ -1708,7 +1739,9 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     _recoveryTrx.Abort();
   }
 
-  std::lock_guard commitLock{_commitMutex};
+  if (!guard.mutex) {
+    guard = truncateBegin();
+  }
   absl::Cleanup clearGuard = [&, last = _lastCommittedTick]() noexcept {
     _lastCommittedTick = last;
   };

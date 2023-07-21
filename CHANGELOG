@@ -1,6 +1,9 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
+* Fix SEARCH-465: Truncate on ArangoSearch index could release a WAL if commit
+  passed.
+
 * Updated ArangoDB Starter to 0.16.0.
 
 * Avoid recursive lock during agency startup.

@@ -1232,24 +1232,24 @@ void IResearchFeature::unprepare() {
   _running.store(false);
 }
 
-void IResearchFeature::reportRecoveryProgress(arangodb::IndexId id,
-                                              std::string_view phase,
-                                              size_t current, size_t total) {
-  TRI_ASSERT(total != 0);
-  auto now = std::chrono::system_clock::now();
+std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+                                       TRI_vocbase_t& database) {
+  std::filesystem::path path{dbPathFeature.directory()};
+  path /= "databases";
+  path /= absl::StrCat("database-", database.id());
+  return path;
+}
 
-  if (id != _progressState.lastReportId ||
-      now - _progressState.lastReportTime >= std::chrono::minutes(1)) {
-    // report progress only when index/link id changes or one minute has passed
-
-    auto progress = static_cast<size_t>(100.0 * current / total);
-    LOG_TOPIC("d1f18", INFO, TOPIC)
-        << "recovering arangosearch index " << id << ", " << phase
-        << ": operation " << (current + 1) << "/" << total << " (" << progress
-        << "%)...";
-
-    _progressState.lastReportId = id;
-    _progressState.lastReportTime = now;
+void cleanupDatabase(TRI_vocbase_t& database) {
+  auto const& feature = database.server().getFeature<DatabasePathFeature>();
+  auto path = getPersistedPath(feature, database);
+  std::error_code error;
+  std::filesystem::remove_all(path);
+  if (error) {
+    LOG_TOPIC("bad02", ERR, TOPIC)
+        << "Failed to remove arangosearch path for database (id '"
+        << database.id() << "' name: '" << database.name() << "') with error '"
+        << error.message() << "'";
   }
 }
 

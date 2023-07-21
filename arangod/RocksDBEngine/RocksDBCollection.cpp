@@ -893,17 +893,15 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
   }
 
   // delete index values
-  {
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    for (std::shared_ptr<Index> const& idx : _indexes) {
-      RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-      bounds = ridx->getBounds();
-      s = batch.DeleteRange(bounds.columnFamily(), bounds.start(),
-                            bounds.end());
-      if (!s.ok()) {
-        return rocksutils::convertStatus(s);
-      }
+  std::vector<TruncateGuard> guards;
+  guards.reserve(indexes.size());
+  for (auto const& idx : indexes) {
+    auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+    auto r = rIdx->truncateBegin(batch);
+    if (!r.ok()) {
+      return std::move(r).result();
     }
+    guards.push_back(std::move(r.get()));
   }
 
   // add the log entry so we can recover the correct count
@@ -922,25 +920,29 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
   }
+  // we need crash server if any failure in order to trigger recovery,
+  // as rocksdb truncate already committed here
+  [&]() noexcept {
+    // post commit sequence
+    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber() - 1;
 
-  rocksdb::SequenceNumber seq =
-      db->GetLatestSequenceNumber() - 1;  // post commit sequence
+    uint64_t numDocs = _meta.numberDocuments();
+    _meta.adjustNumberDocuments(seq,
+                                /*revision*/ _logicalCollection.newRevisionId(),
+                                -static_cast<int64_t>(numDocs));
 
-  uint64_t numDocs = _meta.numberDocuments();
-  _meta.adjustNumberDocuments(seq,
-                              /*revision*/ _logicalCollection.newRevisionId(),
-                              -static_cast<int64_t>(numDocs));
-
-  {
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    for (std::shared_ptr<Index> const& idx : _indexes) {
-      idx->afterTruncate(seq,
-                         &trx);  // clears caches / clears links (if applicable)
+    for (auto it = guards.begin(); auto const& idx : indexes) {
+      // clears caches / clears links (if applicable)
+      auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+      rIdx->truncateCommit(std::move(*it++), seq, &trx);
     }
-  }
-  bufferTruncate(seq);
 
-  TRI_ASSERT(!state->hasOperations());  // not allowed
+    indexesSnapshot.release();
+
+    bufferTruncate(seq);
+
+    TRI_ASSERT(!state->hasOperations());  // not allowed
+  }();
   return {};
 }
 
