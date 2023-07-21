@@ -1045,16 +1045,20 @@ index_t State::loadCompacted() {
 
 /// Load persisted configuration
 bool State::loadOrPersistConfiguration() {
-  std::string const aql(
-      "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
+  auto loadConfiguration = [&]() -> aql::QueryResult {
+    std::string const aql(
+        "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
 
-  TRI_ASSERT(nullptr !=
-             _vocbase);  // this check was previously in the Query constructor
-  auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr, transaction::TrxType::kInternal);
+    TRI_ASSERT(nullptr !=
+               _vocbase);  // this check was previously in the Query constructor
+    auto query = arangodb::aql::Query::create(
+        transaction::StandaloneContext::Create(*_vocbase),
+        aql::QueryString(aql), nullptr, transaction::TrxType::kInternal);
 
-  aql::QueryResult queryResult = query->executeSync();
+    return query->executeSync();
+  };
+
+  aql::QueryResult queryResult = loadConfiguration();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
