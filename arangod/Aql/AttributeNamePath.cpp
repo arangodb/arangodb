@@ -125,13 +125,6 @@ MonitoredStringVector const& AttributeNamePath::get() const noexcept {
   return _path;
 }
 
-std::vector<std::string_view> AttributeNamePath::getStringViewVector() const {
-  // In comparison to the above method, this will inplace create a new vector of
-  // default std-based types. This is currently still required as we do have
-  // methods which expect a std::vector<std::string_view> as input.
-  return std::vector<std::string_view>{_path.begin(), _path.end()};
-}
-
 void AttributeNamePath::clear() noexcept { _path.clear(); }
 
 AttributeNamePath& AttributeNamePath::reverse() {

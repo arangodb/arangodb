@@ -27,6 +27,7 @@
 #include "Aql/AqlValueFwd.h"
 #include "Aql/types.h"
 #include "Basics/Endian.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "IResearch/Misc.h"
 
 #include <velocypack/Slice.h>
@@ -419,7 +420,7 @@ struct AqlValue final {
   AqlValue get(CollectionNameResolver const& resolver, std::string_view name,
                bool& mustDestroy, bool copy) const;
   AqlValue get(CollectionNameResolver const& resolver,
-               std::vector<std::string_view> const& names, bool& mustDestroy,
+               MonitoredStringVector const& names, bool& mustDestroy,
                bool copy) const;
   bool hasKey(std::string_view name) const;
 

@@ -115,7 +115,7 @@ class AttributeAccessorMulti final : public AttributeAccessor {
     AqlValue const& value =
         context->getVariableValue(_variable, false, mustDestroy);
     // use general version for multiple attributes (e.g. variable.attr.subattr)
-    return value.get(resolver, _path.getStringViewVector(), mustDestroy, true);
+    return value.get(resolver, _path._path, mustDestroy, true);
   }
 
  private:

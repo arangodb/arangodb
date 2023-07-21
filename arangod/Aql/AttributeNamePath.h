@@ -86,9 +86,6 @@ struct AttributeNamePath {
   /// @brief get the full path
   [[nodiscard]] MonitoredStringVector const& get() const noexcept;
 
-  /// @brief get the full path as an std::vector
-  [[nodiscard]] std::vector<std::string_view> getStringViewVector() const;
-
   /// @brief clear all path attributes
   void clear() noexcept;
 

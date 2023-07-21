@@ -721,8 +721,8 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
 
 /// @brief get the (object) element(s) by name
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
-                       std::vector<std::string_view> const& names,
-                       bool& mustDestroy, bool doCopy) const {
+                       MonitoredStringVector const& names, bool& mustDestroy,
+                       bool doCopy) const {
   mustDestroy = false;
   if (names.empty()) {
     return AqlValue(AqlValueHintNull());
@@ -966,7 +966,7 @@ bool AqlValue::toBoolean() const {
   switch (t) {
     case VPACK_INLINE_INT48:
       return _data.shortNumberMeta.data.int48.val != 0;
-    case VPACK_INLINE_INT64:  // intentinally ignore endianess. 0 is always 0
+    case VPACK_INLINE_INT64:   // intentinally ignore endianess. 0 is always 0
       return _data.longNumberMeta.data.intLittleEndian.val != 0;
     case VPACK_INLINE_UINT64:  // intentinally ignore endianess. 0 is always 0
       return _data.longNumberMeta.data.uintLittleEndian.val != 0;
