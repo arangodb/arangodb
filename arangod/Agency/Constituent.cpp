@@ -657,10 +657,11 @@ void Constituent::run() {
       int64_t randTimeout = RandomGenerator::interval(a, b);
       int64_t randWait = randTimeout;
 
-      // Speedup for size() == 1 - do not wait at all. Candidate immediately.
+      // Speedup for size() == 1 - do not wait at all. Start election
+      // immediately.
       if (size() == 1) {
         LOG_TOPIC("31ed7", INFO, Logger::AGENCY)
-            << "Immediately candidate because of single agency";
+            << "Immediately start election because of single agency";
         randWait = 0;
       }
 
