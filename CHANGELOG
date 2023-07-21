@@ -10,6 +10,8 @@ devel
 
 * Avoid recursive lock during agency startup.
 
+* Remove TTL and Observe/Unobserve from the Agency API.
+
 * FE-290: Unify Graphs View on web UI.
 
 * Added the following metrics for the in-memory edge cache:
