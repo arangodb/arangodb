@@ -94,9 +94,6 @@ RocksDBThrottle::RocksDBThrottle(
           metricsFeature.get({"arangodb_memory_maps_limit", ""}))) {
   TRI_ASSERT(_scalingFactor != 0);
 
-  LOG_TOPIC("2af9e", WARN, arangodb::Logger::ENGINES)
-      << _fileDescriptorsSlowdownTrigger << " " << _fileDescriptorsStopTrigger
-      << " " << _memoryMapsSlowdownTrigger << " " << _memoryMapsStopTrigger;
 }
 
 // Shutdown the background thread only if it was ever started
