@@ -114,6 +114,15 @@ Metric* MetricsFeature::get(MetricKeyView const& key) {
   return it->second.get();
 }
 
+Metric const* MetricsFeature::get(MetricKeyView const& key) const {
+  std::shared_lock lock{_mutex};
+  auto it = _registry.find(key);
+  if (it == _registry.end()) {
+    return nullptr;
+  }
+  return it->second.get();
+}
+
 bool MetricsFeature::remove(Builder const& builder) {
   MetricKeyView key{builder.name(), builder.labels()};
   std::lock_guard guard{_mutex};

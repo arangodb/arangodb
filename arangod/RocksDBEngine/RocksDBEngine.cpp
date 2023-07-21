@@ -640,6 +640,59 @@ on the write rate.)");
       .setLongDescription(R"(There is normally no need to change this value.)");
 
   options
+      ->addOption(
+          "--rocksdb.open-file-descriptors-percentage-slowdown-trigger",
+          "The percentage of maximum allowed file descriptors which triggers "
+          "a write slowdown.",
+          new DoubleParameter(&_fileDescriptorsSlowdownTrigger),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31010);
+
+  options
+      ->addOption(
+          "--rocksdb.open-file-descriptors-percentage-stop-trigger",
+          "The percentage of maximum allowed file descriptors which triggers "
+          "a full write stop.",
+          new DoubleParameter(&_fileDescriptorsStopTrigger),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31010);
+
+  options
+      ->addOption(
+          "--rocksdb.mapped-memory-percentage-slowdown-trigger",
+          "The percentage of maximum allowed file descriptors which triggers "
+          "a write slowdown.",
+          new DoubleParameter(&_mappedMemorySlowdownTrigger),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31010);
+
+  options
+      ->addOption(
+          "--rocksdb.mapped-memory-percentage-stop-trigger",
+          "The percentage of maximum allowed file descriptors which triggers "
+          "a full write stop.",
+          new DoubleParameter(&_mappedMemoryStopTrigger),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31010)
+      .setLongDescription(R"(There is normally no need to change this value.)");
+
+  options
       ->addOption("--rocksdb.throttle-lower-bound-bps",
                   "The lower bound for throttle's write bandwidth "
                   "(in bytes per second).",
@@ -1100,6 +1153,8 @@ void RocksDBEngine::start() {
     _throttleListener = std::make_shared<RocksDBThrottle>(
         _throttleSlots, _throttleFrequency, _throttleScalingFactor,
         _throttleMaxWriteRate, _throttleSlowdownWritesTrigger,
+        _fileDescriptorsSlowdownTrigger, _fileDescriptorsStopTrigger,
+        _mappedMemorySlowdownTrigger, _mappedMemoryStopTrigger,
         _throttleLowerBoundBps, metricsFeature);
     _dbOptions.listeners.push_back(_throttleListener);
   }
