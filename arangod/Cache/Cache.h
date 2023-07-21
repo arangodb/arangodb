@@ -254,8 +254,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   void ensureFindStats();
 
-  static constexpr std::uint64_t kFindStatsCapacity = 8192;
-
   basics::ReadWriteSpinLock _taskLock;
   std::atomic<bool> _shutdown;
 

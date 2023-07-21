@@ -371,7 +371,7 @@ void Cache::ensureFindStats() {
         _findStats = std::make_unique<FindStats>();
         if (_enableWindowedStats) {
           _findStats->findStats = std::make_unique<StatBuffer>(
-              _manager->sharedPRNG(), kFindStatsCapacity);
+              _manager->sharedPRNG(), Manager::kFindStatsCapacity);
         }
         _haveFindStats.store(true);
         lock.unlock();

@@ -36,14 +36,12 @@
 
 namespace arangodb::cache {
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Lockless structure to calculate approximate relative event
 /// frequencies.
 ///
 /// Used to record events and then compute the approximate number of
 /// occurrences of each within a certain time-frame. Will write to randomized
 /// memory location inside the frequency buffer
-////////////////////////////////////////////////////////////////////////////////
 template<class T, class Comparator = std::equal_to<T>,
          class Hasher = std::hash<T>>
 class FrequencyBuffer {
@@ -52,9 +50,7 @@ class FrequencyBuffer {
 
   static_assert(sizeof(std::atomic<T>) == sizeof(T));
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize with the given capacity.
-  //////////////////////////////////////////////////////////////////////////////
   explicit FrequencyBuffer(SharedPRNGFeature& sharedPRNG, std::size_t capacity)
       : _sharedPRNG(sharedPRNG),
         _capacity(powerOf2(capacity)),
@@ -65,32 +61,24 @@ class FrequencyBuffer {
     TRI_ASSERT(_buffer.size() == _capacity);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the hidden allocation size (not captured by sizeof).
-  //////////////////////////////////////////////////////////////////////////////
   static constexpr std::size_t allocationSize(std::size_t capacity) {
     return capacity * sizeof(T);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the memory usage in bytes.
-  //////////////////////////////////////////////////////////////////////////////
   std::size_t memoryUsage() const noexcept {
     return allocationSize(_capacity) + sizeof(FrequencyBuffer<T>);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Insert an individual event record.
-  //////////////////////////////////////////////////////////////////////////////
   void insertRecord(T record) noexcept {
     // we do not care about the order in which threads insert their values
     _buffer[_sharedPRNG.rand() & _mask].store(record,
                                               std::memory_order_relaxed);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Remove all occurrences of the specified event record.
-  //////////////////////////////////////////////////////////////////////////////
   void purgeRecord(T record) {
     T const empty{};
     for (std::size_t i = 0; i < _capacity; i++) {
@@ -102,10 +90,8 @@ class FrequencyBuffer {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Return a list of (event, count) pairs for each recorded event in
   /// ascending order.
-  //////////////////////////////////////////////////////////////////////////////
   typename FrequencyBuffer::stats_t getFrequencies() const {
     T const empty{};
     // calculate frequencies
@@ -132,9 +118,7 @@ class FrequencyBuffer {
     return data;  // RVO moves this out
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Clear the buffer, removing all event records.
-  //////////////////////////////////////////////////////////////////////////////
   void clear() noexcept {
     for (std::size_t i = 0; i < _capacity; i++) {
       _buffer[i].store(T(), std::memory_order_relaxed);

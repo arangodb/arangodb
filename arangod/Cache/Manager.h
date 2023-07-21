@@ -92,6 +92,7 @@ class Manager {
     std::uint64_t freeMemoryTasks = 0;
   };
 
+  static constexpr std::size_t kFindStatsCapacity = 8192;
   static constexpr std::uint64_t kMinSize = 1024 * 1024;
   static constexpr std::uint64_t kMaxSpareTablesTotal = 16;
 

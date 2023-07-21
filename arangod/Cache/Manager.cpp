@@ -103,8 +103,8 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
   if (_options.enableWindowedStats) {
-    _findStats = std::make_unique<Manager::FindStatBuffer>(
-        sharedPRNG, Cache::kFindStatsCapacity);
+    _findStats = std::make_unique<Manager::FindStatBuffer>(sharedPRNG,
+                                                           kFindStatsCapacity);
     _fixedAllocation += _findStats->memoryUsage();
     _globalAllocation = _fixedAllocation;
     _peakGlobalAllocation = _globalAllocation;
