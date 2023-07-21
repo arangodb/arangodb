@@ -1,6 +1,8 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.16.0.
+
 * Avoid recursive lock during agency startup.
 
 * Fixed issue with lock starvation when an AQL insert operation with multiple
