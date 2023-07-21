@@ -89,6 +89,10 @@ export const FilterBar = <Data extends object>({
           </MenuButton>
           <MenuList>
             {filterOptions.map(filter => {
+              const column = filter.id && table.getColumn(filter.id);
+              if (!column || !column.getCanFilter()) {
+                return null;
+              }
               return (
                 <MenuItem onClick={() => addFilter(filter)} key={filter.id}>
                   {filter.header}

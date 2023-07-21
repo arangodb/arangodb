@@ -11,7 +11,7 @@ import json
 
 from pathlib import Path
 from termcolor import colored
-from arango import ArangoClient
+from arango import ArangoClient, DocumentGetError, AQLQueryExecuteError
 from modules import ArangoDBInstanceManager
 from modules.ArangodEnvironment.ArangodEnvironment import ArangodEnvironment
 from modules.ArangodEnvironment.Agent import Agent
@@ -54,6 +54,21 @@ def ensure_workdir(desired_workdir):
         path = Path(desired_workdir)
         path.mkdir(parents=True)
     return desired_workdir
+
+
+def assert_after_restore(func):
+    # sometimes the cluster is not immediately ready after a restore to execute AQL
+    # this loop tries to catch common errors after a restore.
+    for i in range(10):
+        try:
+            func()
+            return
+        except (DocumentGetError, AQLQueryExecuteError) as e:
+            print(f"cluster not yet ready, got {e}")
+        # add more exceptions here if necessary
+        time.sleep(2)
+
+    assert False, "cluster not ready in time - abort"
 
 
 def run_test_arangosearch(client):
@@ -110,38 +125,40 @@ def run_test_arangosearch(client):
     # restore the hotbackup taken above
     result = sys_db.backup.restore(result["backup_id"])
 
-    # Check that all documents that are in the test_view
-    # are also in the test_collection (and vice-versa)
-    p = list(test_db.aql.execute(
-        """LET x = (FOR v IN test_collection RETURN v._key)
-           FOR w IN test_view
-             FILTER w._key NOT IN x
-             RETURN w
-        """))
-    assert (p == [])
-    q = list(test_db.aql.execute(
-        """LET x = (FOR v IN test_view RETURN v._key)
-           FOR w IN test_collection
-             FILTER w._key NOT IN x
-             RETURN w
-        """))
-    assert q == [], f"q == {q}"
+    def check():
+        # Check that all documents that are in the test_view
+        # are also in the test_collection (and vice-versa)
+        p = list(test_db.aql.execute(
+            """LET x = (FOR v IN test_collection RETURN v._key)
+               FOR w IN test_view
+                 FILTER w._key NOT IN x
+                 RETURN w
+            """))
+        assert (p == [])
+        q = list(test_db.aql.execute(
+            """LET x = (FOR v IN test_view RETURN v._key)
+               FOR w IN test_collection
+                 FILTER w._key NOT IN x
+                 RETURN w
+            """))
+        assert q == [], f"q == {q}"
 
-    # Check that the inverted index is consistent with the documents
-    # in the collection.
-    # I could not come up with a reliable way to do this: the AQL optimiser
-    # is free to optimise the index into the first query, and then
-    # this check is void. in the same way it could happen that the optimiser
-    # decidesd that the filter in the second query is not best served by
-    # the inverted index and the test is void.
-    p = set(test_db.aql.execute("FOR v IN test_collection RETURN v._key"))
-    q = set(test_db.aql.execute("""
-        FOR w IN test_collection
-             FILTER w.field1 == "stone"
-             RETURN w._key
-        """))
-    assert p == q
+        # Check that the inverted index is consistent with the documents
+        # in the collection.
+        # I could not come up with a reliable way to do this: the AQL optimiser
+        # is free to optimise the index into the first query, and then
+        # this check is void. in the same way it could happen that the optimiser
+        # decidesd that the filter in the second query is not best served by
+        # the inverted index and the test is void.
+        p = set(test_db.aql.execute("FOR v IN test_collection RETURN v._key"))
+        q = set(test_db.aql.execute("""
+            FOR w IN test_collection
+                 FILTER w.field1 == "stone"
+                 RETURN w._key
+            """))
+        assert p == q
 
+    assert_after_restore(check)
     txn_db.abort_transaction()
 
 
@@ -185,18 +202,20 @@ def run_test_aql(client):
     # restore the hotbackup taken above
     sys_db.backup.restore(result["backup_id"])
 
-    for i in range(10):
-        result = list(test_db.aql.execute("""
-            FOR doc IN test_collection
-                FILTER doc.thrd == @idx
-                COLLECT WITH COUNT INTO length
-                RETURN length
-        """, bind_vars={"idx": str(i)}))[0]
+    def check():
+        for i in range(10):
+            result = list(test_db.aql.execute("""
+                FOR doc IN test_collection
+                    FILTER doc.thrd == @idx
+                    COLLECT WITH COUNT INTO length
+                    RETURN length
+            """, bind_vars={"idx": str(i)}))[0]
 
-        # each thread writes batches of 1000 documents
-        # thus is each query is transactional, we should only see multiples
-        assert result % 1000 == 0, f"found {result} documents for thread {i}"
+            # each thread writes batches of 1000 documents
+            # thus is each query is transactional, we should only see multiples
+            assert result % 1000 == 0, f"found {result} documents for thread {i}"
 
+    assert_after_restore(check)
 
 def run_test_smart_graphs(client):
     # create a database to run the test on
@@ -259,26 +278,30 @@ def run_test_smart_graphs(client):
     # restore the hotbackup taken above
     sys_db.backup.restore(result["backup_id"])
 
-    result = {}
+    def check():
+        result = {}
 
-    # now check for each vertex pair get the list of incident edges
-    for i in range(20):
-        edges = list(test_db.aql.execute("""
-            FOR v, e, p IN 1..1 ANY @start GRAPH "graph"
-                RETURN e
-        """, bind_vars={"start": f"foo/{i}:v{i}"}))
+        # now check for each vertex pair get the list of incident edges
+        for i in range(20):
+            edges = list(test_db.aql.execute("""
+                FOR v, e, p IN 1..1 ANY @start GRAPH "graph"
+                    RETURN e
+            """, bind_vars={"start": f"foo/{i}:v{i}"}))
 
-        for e in edges:
-            key = (e["f"], e["t"], e["_rev"])
-            value = -1 if e["t"] == i else 1
-            if key in result:
-                result[key] += value
-            else:
-                result[key] = value
+            for e in edges:
+                key = (e["f"], e["t"], e["_rev"])
+                value = -1 if e["t"] == i else 1
+                if key in result:
+                    result[key] += value
+                else:
+                    result[key] = value
 
-    for edge, count in result.items():
-        side = ["_to", "_from"]
-        assert count == 0, f"missing edge from {edge[0]} to {edge[1]} in {side[(count+1)//2]}"
+        for edge, count in result.items():
+            side = ["_to", "_from"]
+            assert count == 0, f"missing edge from {edge[0]} to {edge[1]} in {side[(count + 1) // 2]}"
+
+    assert_after_restore(check)
+
 
 def run_test_el_cheapo_trx(client):
     # create a database to run the test on
@@ -299,13 +322,13 @@ def run_test_el_cheapo_trx(client):
     def el_cheapo_writer(idx):
         i = 0
         while not stop_ev.is_set():
-            trx_db = test_db.begin_transaction()
+            trx_db = test_db.begin_transaction(write=[c.name for c in collections])
 
             for col in collections:
-                col.insert({"trd": idx, "i": i})
+                trx_col = trx_db.collection(col.name)
+                trx_col.insert({"trd": idx, "i": i})
             trx_db.commit_transaction()
             i += 1
-
 
     threads = []
     for i in range(10):
@@ -330,17 +353,20 @@ def run_test_el_cheapo_trx(client):
     # restore the hotbackup taken above
     sys_db.backup.restore(result["backup_id"])
 
-    result = {}
-    for col in collections:
-        for doc in col:
-            key = (doc["trd"], doc["i"])
-            if key in result:
-                result[key] += 1
-            else:
-                result[key] = 1
+    def check():
+        result = {}
+        for col in collections:
+            for doc in col:
+                key = (doc["trd"], doc["i"])
+                if key in result:
+                    result[key] += 1
+                else:
+                    result[key] = 1
 
-    for trx, count in result.items():
-        assert count == len(collections), f"expected {len(collections)} documents, but only found {count}"
+        for trx, count in result.items():
+            assert count == len(collections), f"expected {len(collections)} documents, but only found {count}"
+
+    assert_after_restore(check)
 
 
 def main():

@@ -25,7 +25,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cinttypes>
 #include <exception>
 #include <memory>
 #include <type_traits>
@@ -34,7 +33,6 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
-#include <velocypack/Utf8Helper.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 
@@ -42,51 +40,36 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Auth/Common.h"
-#include "Basics/application-exit.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Exceptions.tpp"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/Locking.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/DownCast.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
-#include "Basics/Result.tpp"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
-#include "Basics/error.h"
-#include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Containers/Helpers.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
-#include "Indexes/Index.h"
-#include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
-#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "Replication2/IScheduler.h"
 #include "Replication2/Version.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
@@ -1727,6 +1710,8 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   } else {
     config.defaultDistributeShardsLike = "";
   }
+
+  config.replicationVersion = replicationVersion();
 
   return config;
 }
