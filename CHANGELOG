@@ -1,6 +1,8 @@
 v3.9.12 (XXXX-X-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.16.0.
+
 * Fixed two possible deadlocks which could occur if all medium priority threads
   are busy. One is that in this case the AgencyCache could no longer receive
   updates from the agency and another that queries could no longer be finished.
