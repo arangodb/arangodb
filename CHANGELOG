@@ -1,6 +1,8 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
+* Updated ArangoDB Starter to 0.16.0.
+
 * Avoid recursive lock during agency startup.
 
 * FE-20: fix UI placeholder format for locale when creating analyzers.
