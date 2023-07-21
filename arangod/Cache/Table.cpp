@@ -181,10 +181,9 @@ void Table::BucketLocker::steal(Table::BucketLocker&& other) noexcept {
 }
 
 Table::Table(std::uint32_t logSize, Manager* manager)
-    : _lock(),
+    : _logSize(std::min(logSize, kMaxLogSize)),
       _disabled(true),
       _evictions(false),
-      _logSize(std::min(logSize, kMaxLogSize)),
       _size(static_cast<std::uint64_t>(1) << _logSize),
       _shift(32 - _logSize),
       _mask(static_cast<std::uint32_t>((_size - 1) << _shift)),

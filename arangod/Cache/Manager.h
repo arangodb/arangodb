@@ -77,7 +77,7 @@ class Rebalancer;
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
  protected:
-  typedef std::function<bool(std::function<void()>)> PostFn;
+  using PostFn = std::function<bool(std::function<void()>)>;
 
  public:
   struct MemoryStats {
@@ -95,8 +95,8 @@ class Manager {
   static constexpr std::uint64_t kMinSize = 1024 * 1024;
   static constexpr std::uint64_t kMaxSpareTablesTotal = 16;
 
-  typedef FrequencyBuffer<uint64_t> AccessStatBuffer;
-  typedef FrequencyBuffer<uint8_t> FindStatBuffer;
+  using AccessStatBuffer = FrequencyBuffer<std::uint64_t>;
+  using FindStatBuffer = FrequencyBuffer<std::uint8_t>;
   typedef std::vector<std::pair<std::shared_ptr<Cache>&, double>> PriorityList;
   typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 
@@ -134,6 +134,8 @@ class Manager {
   /// @brief Destroy the given cache.
   //////////////////////////////////////////////////////////////////////////////
   static void destroyCache(std::shared_ptr<Cache> const& cache);
+
+  void adjustGlobalAllocation(std::int64_t value) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Prepare for shutdown.
@@ -220,10 +222,10 @@ class Manager {
   bool _rebalancing;
 
   // structure to handle access frequency monitoring
-  Manager::AccessStatBuffer _accessStats;
+  AccessStatBuffer _accessStats;
 
   // structures to handle hit rate monitoring
-  std::unique_ptr<Manager::FindStatBuffer> _findStats;
+  std::unique_ptr<FindStatBuffer> _findStats;
   basics::SharedCounter<64> _findHits;
   basics::SharedCounter<64> _findMisses;
 

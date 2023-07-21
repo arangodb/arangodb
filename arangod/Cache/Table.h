@@ -259,10 +259,9 @@ class Table : public std::enable_shared_from_this<Table> {
   static void defaultClearer(void* ptr);
 
   basics::ReadWriteSpinLock _lock;
+  std::uint32_t const _logSize;
   bool _disabled;
   bool _evictions;
-
-  std::uint32_t const _logSize;
   std::uint64_t const _size;
   std::uint32_t const _shift;
   std::uint32_t const _mask;

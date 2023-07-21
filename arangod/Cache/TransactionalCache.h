@@ -30,7 +30,6 @@
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Finding.h"
-#include "Cache/FrequencyBuffer.h"
 #include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
@@ -118,12 +117,8 @@ class TransactionalCache final : public Cache {
   friend class Manager;
   friend class MigrateTask;
 
-  static constexpr uint64_t allocationSize(bool enableWindowedStats) {
-    return sizeof(TransactionalCache) +
-           (enableWindowedStats
-                ? (sizeof(StatBuffer) +
-                   StatBuffer::allocationSize(findStatsCapacity))
-                : 0);
+  static constexpr uint64_t allocationSize() {
+    return sizeof(TransactionalCache);
   }
 
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,

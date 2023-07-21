@@ -39,6 +39,7 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <mutex>
 
 namespace arangodb::cache {
 
@@ -73,9 +74,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
         std::size_t slotsPerBucket);
 
  public:
-  virtual ~Cache() = default;
+  virtual ~Cache();
 
-  typedef FrequencyBuffer<uint8_t> StatBuffer;
+  using StatBuffer = FrequencyBuffer<std::uint8_t>;
 
   static constexpr std::uint64_t kMinSize = 16384;
   static constexpr std::uint64_t kMinLogSize = 14;
@@ -251,21 +252,38 @@ class Cache : public std::enable_shared_from_this<Cache> {
                              std::unique_ptr<Table::Subtable> targets,
                              Table& newTable) = 0;
 
-  static constexpr std::uint64_t findStatsCapacity = 16384;
+  void ensureFindStats();
+
+  static constexpr std::uint64_t kFindStatsCapacity = 8192;
 
   basics::ReadWriteSpinLock _taskLock;
   std::atomic<bool> _shutdown;
-
-  std::unique_ptr<StatBuffer> _findStats;
-  mutable basics::SharedCounter<64> _findHits;
-  mutable basics::SharedCounter<64> _findMisses;
 
   // allow communication with manager
   Manager* _manager;
   std::uint64_t const _id;
   Metadata _metadata;
 
+  struct FindStats {
+    mutable basics::SharedCounter<64> findHits;
+    mutable basics::SharedCounter<64> findMisses;
+    std::unique_ptr<StatBuffer> findStats;
+  };
+
+  // this will only flip from false to true, when the eviction stats
+  // are created
+  std::atomic<bool> _haveFindStats;
+
+  bool const _enableWindowedStats;
+
+  // used to create eviction stats under the lock (so that only a single
+  // thread creates them)
+  std::mutex _findStatsLock;
+  std::unique_ptr<FindStats> _findStats;
+
  private:
+  void ensureEvictionStats();
+
   // manage the actual table - note: MUST be used only with atomic_load and
   // atomic_store!
   std::shared_ptr<Table> _table;
@@ -274,8 +292,18 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::size_t const _slotsPerBucket;
 
   // manage eviction rate
-  basics::SharedCounter<64> _insertsTotal;
-  basics::SharedCounter<64> _insertEvictions;
+  struct EvictionStats {
+    basics::SharedCounter<64> insertsTotal;
+    basics::SharedCounter<64> insertEvictions;
+  };
+
+  // this will only flip from false to true, when the eviction stats
+  // are created
+  std::atomic<bool> _haveEvictionStats;
+  // used to create eviction stats under the lock (so that only a single
+  // thread creates them)
+  std::mutex _evictionStatsLock;
+  std::unique_ptr<EvictionStats> _evictionStats;
 
   // times to wait until requesting is allowed again
   std::atomic<Manager::time_point::rep> _migrateRequestTime;

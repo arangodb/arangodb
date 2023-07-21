@@ -41,6 +41,7 @@
 #include "Cache/PlainCache.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalCache.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/SharedPRNGFeature.h"
 
 namespace arangodb::cache {
@@ -54,16 +55,15 @@ Cache::Cache(
     std::function<Table::BucketClearer(Manager*, Metadata*)> bucketClearer,
     std::size_t slotsPerBucket)
     : _shutdown(false),
-      _findHits(),
-      _findMisses(),
       _manager(manager),
       _id(id),
       _metadata(std::move(metadata)),
+      _haveFindStats(false),
+      _enableWindowedStats(enableWindowedStats),
       _table(std::move(table)),
       _bucketClearer(bucketClearer(manager, &_metadata)),
       _slotsPerBucket(slotsPerBucket),
-      _insertsTotal(),
-      _insertEvictions(),
+      _haveEvictionStats(false),
       _migrateRequestTime(
           std::chrono::steady_clock::now().time_since_epoch().count()),
       _resizeRequestTime(
@@ -71,12 +71,20 @@ Cache::Cache(
   TRI_ASSERT(_table != nullptr);
   _table->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
   _table->enable();
-  if (enableWindowedStats) {
-    try {
-      _findStats = std::make_unique<StatBuffer>(manager->sharedPRNG(),
-                                                findStatsCapacity);
-    } catch (std::bad_alloc const&) {
-    }
+}
+
+Cache::~Cache() {
+  if (_haveFindStats.load(std::memory_order_relaxed)) {
+    TRI_ASSERT(_findStats != nullptr);
+    _manager->adjustGlobalAllocation(
+        -(sizeof(decltype(_findStats)::element_type) +
+          (_findStats->findStats ? _findStats->findStats->memoryUsage() : 0)));
+  }
+
+  if (_haveEvictionStats.load(std::memory_order_relaxed)) {
+    TRI_ASSERT(_evictionStats != nullptr);
+    _manager->adjustGlobalAllocation(
+        -sizeof(decltype(_evictionStats)::element_type));
   }
 }
 
@@ -135,32 +143,37 @@ std::pair<double, double> Cache::hitRates() {
   double lifetimeRate = std::nan("");
   double windowedRate = std::nan("");
 
-  std::uint64_t currentMisses = _findMisses.value(std::memory_order_relaxed);
-  std::uint64_t currentHits = _findHits.value(std::memory_order_relaxed);
-  if (currentMisses + currentHits > 0) {
-    lifetimeRate = 100 * (static_cast<double>(currentHits) /
-                          static_cast<double>(currentHits + currentMisses));
-  }
+  if (_haveFindStats.load(std::memory_order_relaxed)) {
+    std::uint64_t currentMisses =
+        _findStats->findMisses.value(std::memory_order_relaxed);
+    std::uint64_t currentHits =
+        _findStats->findHits.value(std::memory_order_relaxed);
+    if (currentMisses + currentHits > 0) {
+      lifetimeRate = 100 * (static_cast<double>(currentHits) /
+                            static_cast<double>(currentHits + currentMisses));
+    }
 
-  if (_findStats) {
-    auto stats = _findStats->getFrequencies();
-    if (stats.size() == 1) {
-      if (stats[0].first == static_cast<std::uint8_t>(Stat::findHit)) {
-        windowedRate = 100.0;
-      } else {
-        windowedRate = 0.0;
-      }
-    } else if (stats.size() == 2) {
-      if (stats[0].first == static_cast<std::uint8_t>(Stat::findHit)) {
-        currentHits = stats[0].second;
-        currentMisses = stats[1].second;
-      } else {
-        currentHits = stats[1].second;
-        currentMisses = stats[0].second;
-      }
-      if (currentHits + currentMisses > 0) {
-        windowedRate = 100 * (static_cast<double>(currentHits) /
-                              static_cast<double>(currentHits + currentMisses));
+    if (_findStats->findStats) {
+      auto stats = _findStats->findStats->getFrequencies();
+      if (stats.size() == 1) {
+        if (stats[0].first == static_cast<std::uint8_t>(Stat::findHit)) {
+          windowedRate = 100.0;
+        } else {
+          windowedRate = 0.0;
+        }
+      } else if (stats.size() == 2) {
+        if (stats[0].first == static_cast<std::uint8_t>(Stat::findHit)) {
+          currentHits = stats[0].second;
+          currentMisses = stats[1].second;
+        } else {
+          currentHits = stats[1].second;
+          currentMisses = stats[0].second;
+        }
+        if (currentHits + currentMisses > 0) {
+          windowedRate =
+              100 * (static_cast<double>(currentHits) /
+                     static_cast<double>(currentHits + currentMisses));
+        }
       }
     }
   }
@@ -276,9 +289,16 @@ void Cache::recordHit() {
     return;
   }
 
-  _findHits.add(1, std::memory_order_relaxed);
-  if (_findStats) {
-    _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findHit));
+  try {
+    ensureFindStats();
+  } catch (...) {
+    return;
+  }
+
+  _findStats->findHits.add(1, std::memory_order_relaxed);
+  if (_findStats->findStats) {
+    _findStats->findStats->insertRecord(
+        static_cast<std::uint8_t>(Stat::findHit));
   }
   _manager->reportHit();
 }
@@ -288,22 +308,43 @@ void Cache::recordMiss() {
     return;
   }
 
-  _findMisses.add(1, std::memory_order_relaxed);
-  if (_findStats) {
-    _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findMiss));
+  try {
+    ensureFindStats();
+  } catch (...) {
+    return;
+  }
+
+  _findStats->findMisses.add(1, std::memory_order_relaxed);
+  if (_findStats->findStats) {
+    _findStats->findStats->insertRecord(
+        static_cast<std::uint8_t>(Stat::findMiss));
   }
   _manager->reportMiss();
 }
 
 bool Cache::reportInsert(bool hadEviction) {
+  try {
+    ensureEvictionStats();
+  } catch (...) {
+    // in case we run out of memory and can't create the eviction stats,
+    // we simply pretend that everything is ok, and don't record the
+    // insert here. this situation will hopefully be fixed in one of the
+    // following insert attempts
+    return false;
+  }
+
+  TRI_ASSERT(_evictionStats != nullptr);
+
   bool shouldMigrate = false;
   if (hadEviction) {
-    _insertEvictions.add(1, std::memory_order_relaxed);
+    _evictionStats->insertEvictions.add(1, std::memory_order_relaxed);
   }
-  _insertsTotal.add(1, std::memory_order_relaxed);
+  _evictionStats->insertsTotal.add(1, std::memory_order_relaxed);
   if ((_manager->sharedPRNG().rand() & _evictionMask) == 0) {
-    std::uint64_t total = _insertsTotal.value(std::memory_order_relaxed);
-    std::uint64_t evictions = _insertEvictions.value(std::memory_order_relaxed);
+    std::uint64_t total =
+        _evictionStats->insertsTotal.value(std::memory_order_relaxed);
+    std::uint64_t evictions =
+        _evictionStats->insertEvictions.value(std::memory_order_relaxed);
     if (total > 0 && total > evictions &&
         ((static_cast<double>(evictions) / static_cast<double>(total)) >
          _evictionRateThreshold)) {
@@ -312,11 +353,54 @@ bool Cache::reportInsert(bool hadEviction) {
       TRI_ASSERT(table != nullptr);
       table->signalEvictions();
     }
-    _insertEvictions.reset(std::memory_order_relaxed);
-    _insertsTotal.reset(std::memory_order_relaxed);
+    _evictionStats->insertEvictions.reset(std::memory_order_relaxed);
+    _evictionStats->insertsTotal.reset(std::memory_order_relaxed);
   }
 
   return shouldMigrate;
+}
+
+void Cache::ensureFindStats() {
+  // the happy path is that we already have find stats ready
+  if (ADB_UNLIKELY(!_haveFindStats.load(std::memory_order_relaxed))) {
+    // if we want a single thread to be responsible to create them
+    {
+      std::unique_lock<std::mutex> lock(_findStatsLock);
+      if (!_haveFindStats.load(std::memory_order_relaxed)) {
+        TRI_ASSERT(_findStats == nullptr);
+        _findStats = std::make_unique<FindStats>();
+        if (_enableWindowedStats) {
+          _findStats->findStats = std::make_unique<StatBuffer>(
+              _manager->sharedPRNG(), kFindStatsCapacity);
+        }
+        _haveFindStats.store(true);
+        lock.unlock();
+        _manager->adjustGlobalAllocation(
+            sizeof(decltype(_findStats)::element_type) +
+            (_enableWindowedStats ? _findStats->findStats->memoryUsage() : 0));
+      }
+    }
+  }
+  TRI_ASSERT(_findStats != nullptr);
+}
+
+void Cache::ensureEvictionStats() {
+  // the happy path is that we already have eviction stats ready
+  if (ADB_UNLIKELY(!_haveEvictionStats.load(std::memory_order_relaxed))) {
+    // if we want a single thread to be responsible to create them
+    {
+      std::unique_lock<std::mutex> lock(_evictionStatsLock);
+      if (!_haveEvictionStats.load(std::memory_order_relaxed)) {
+        TRI_ASSERT(_evictionStats == nullptr);
+        _evictionStats = std::make_unique<EvictionStats>();
+        _haveEvictionStats.store(true);
+        lock.unlock();
+        _manager->adjustGlobalAllocation(
+            sizeof(decltype(_evictionStats)::element_type));
+      }
+    }
+  }
+  TRI_ASSERT(_evictionStats != nullptr);
 }
 
 Metadata& Cache::metadata() { return _metadata; }

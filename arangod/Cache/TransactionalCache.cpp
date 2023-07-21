@@ -32,7 +32,6 @@
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Finding.h"
-#include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"

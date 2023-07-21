@@ -48,9 +48,9 @@ template<class T, class Comparator = std::equal_to<T>,
          class Hasher = std::hash<T>>
 class FrequencyBuffer {
  public:
-  typedef std::vector<std::pair<T, uint64_t>> stats_t;
+  using stats_t = std::vector<std::pair<T, std::uint64_t>>;
 
-  static_assert(sizeof(std::atomic<T>) == sizeof(T), "");
+  static_assert(sizeof(std::atomic<T>) == sizeof(T));
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize with the given capacity.
@@ -60,8 +60,7 @@ class FrequencyBuffer {
         _capacity(powerOf2(capacity)),
         _mask(_capacity - 1),
         _buffer(_capacity),
-        _cmp(),
-        _empty() {
+        _cmp() {
     TRI_ASSERT(_buffer.capacity() == _capacity);
     TRI_ASSERT(_buffer.size() == _capacity);
   }
@@ -77,7 +76,7 @@ class FrequencyBuffer {
   /// @brief Reports the memory usage in bytes.
   //////////////////////////////////////////////////////////////////////////////
   std::size_t memoryUsage() const noexcept {
-    return ((_capacity * sizeof(T)) + sizeof(FrequencyBuffer<T>));
+    return allocationSize(_capacity) + sizeof(FrequencyBuffer<T>);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -93,10 +92,11 @@ class FrequencyBuffer {
   /// @brief Remove all occurrences of the specified event record.
   //////////////////////////////////////////////////////////////////////////////
   void purgeRecord(T record) {
+    T const empty{};
     for (std::size_t i = 0; i < _capacity; i++) {
       auto tmp = _buffer[i].load(std::memory_order_relaxed);
       if (_cmp(tmp, record)) {
-        _buffer[i].compare_exchange_strong(tmp, _empty,
+        _buffer[i].compare_exchange_strong(tmp, empty,
                                            std::memory_order_relaxed);
       }
     }
@@ -107,11 +107,12 @@ class FrequencyBuffer {
   /// ascending order.
   //////////////////////////////////////////////////////////////////////////////
   typename FrequencyBuffer::stats_t getFrequencies() const {
+    T const empty{};
     // calculate frequencies
     std::unordered_map<T, std::size_t, Hasher, Comparator> frequencies;
     for (std::size_t i = 0; i < _capacity; i++) {
       T const entry = _buffer[i].load(std::memory_order_relaxed);
-      if (!_cmp(entry, _empty)) {
+      if (!_cmp(entry, empty)) {
         frequencies[entry]++;
       }
     }
@@ -152,7 +153,6 @@ class FrequencyBuffer {
   std::size_t const _mask;
   std::vector<std::atomic<T>> _buffer;
   Comparator _cmp;
-  T const _empty;
 };
 
 };  // end namespace arangodb::cache

@@ -62,8 +62,8 @@ using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 // between them
 const std::uint64_t Manager::minCacheAllocation =
     Cache::kMinSize + Table::allocationSize(Table::kMinLogSize) +
-    std::max(PlainCache<BinaryKeyHasher>::allocationSize(true),
-             TransactionalCache<BinaryKeyHasher>::allocationSize(true)) +
+    std::max(PlainCache<BinaryKeyHasher>::allocationSize(),
+             TransactionalCache<BinaryKeyHasher>::allocationSize()) +
     Manager::cacheRecordOverhead;
 
 Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
@@ -78,9 +78,6 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
                    (_options.cacheSize >= (1024 * 1024 * 1024))
                        ? ((1024 * 1024) / sizeof(std::uint64_t))
                        : (_options.cacheSize / (1024 * sizeof(std::uint64_t)))),
-      _findHits(),
-      _findMisses(),
-      _caches(),
       _nextCacheId(1),
       _globalSoftLimit(_options.cacheSize),
       _globalHardLimit(_options.cacheSize),
@@ -106,7 +103,8 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
   if (_options.enableWindowedStats) {
-    _findStats = std::make_unique<Manager::FindStatBuffer>(sharedPRNG, 16384);
+    _findStats = std::make_unique<Manager::FindStatBuffer>(
+        sharedPRNG, Cache::kFindStatsCapacity);
     _fixedAllocation += _findStats->memoryUsage();
     _globalAllocation = _fixedAllocation;
     _peakGlobalAllocation = _globalAllocation;
@@ -125,7 +123,8 @@ Manager::~Manager() {
   TRI_ASSERT(_globalAllocation == _fixedAllocation)
       << "globalAllocation: " << _globalAllocation
       << ", fixedAllocation: " << _fixedAllocation
-      << ", outstandingTasks: " << _outstandingTasks;
+      << ", outstandingTasks: " << _outstandingTasks
+      << ", caches: " << _caches.size();
 #endif
 }
 
@@ -142,13 +141,12 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
     bool allowed = isOperational();
 
     if (allowed) {
-      std::uint64_t fixedSize = [&type, &enableWindowedStats]() {
+      std::uint64_t fixedSize = [&type]() {
         switch (type) {
           case CacheType::Plain:
-            return PlainCache<Hasher>::allocationSize(enableWindowedStats);
+            return PlainCache<Hasher>::allocationSize();
           case CacheType::Transactional:
-            return TransactionalCache<Hasher>::allocationSize(
-                enableWindowedStats);
+            return TransactionalCache<Hasher>::allocationSize();
           default:
             return std::uint64_t(0);
         }
@@ -186,6 +184,18 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
 
 void Manager::destroyCache(std::shared_ptr<Cache> const& cache) {
   Cache::destroy(cache);
+}
+
+void Manager::adjustGlobalAllocation(std::int64_t value) noexcept {
+  if (value > 0) {
+    SpinLocker guard(SpinLocker::Mode::Write, _lock);
+    _globalAllocation += static_cast<uint64_t>(value);
+    _peakGlobalAllocation = std::max(_globalAllocation, _peakGlobalAllocation);
+  } else {
+    SpinLocker guard(SpinLocker::Mode::Write, _lock);
+    TRI_ASSERT(_globalAllocation >= static_cast<uint64_t>(-value));
+    _globalAllocation -= static_cast<uint64_t>(-value);
+  }
 }
 
 void Manager::beginShutdown() {

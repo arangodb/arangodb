@@ -69,7 +69,8 @@ TEST(CacheManagerTest, test_create_and_destroy_caches) {
 
     auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
     ASSERT_NE(nullptr, cache);
-    ASSERT_GT(cache->size(), 80 * 1024);  // size of each cache is about 80kb
+    ASSERT_GT(cache->size(),
+              40 * 1024);  // size of each cache is about 40kb without stats
 
     auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
     ASSERT_EQ(beforeStats->globalAllocation + cache->size(),
@@ -89,7 +90,7 @@ TEST(CacheManagerTest, test_create_and_destroy_caches) {
 
     auto cache = caches.back();
     std::uint64_t size = cache->size();
-    ASSERT_GT(size, 80 * 1024);  // size of each cache is about 80kb
+    ASSERT_GT(size, 40 * 1024);  // size of each cache is about 40kb
     manager.destroyCache(cache);
 
     auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
