@@ -1,6 +1,9 @@
 v3.11.2 (XXXX-XX-XX)
 --------------------
 
+* Fix SEARCH-465: Truncate on ArangoSearch index could release a WAL if commit
+  passed.
+
 * Updated ArangoDB Starter to 0.16.0.
 
 * Avoid recursive lock during agency startup.
@@ -8,11 +11,11 @@ v3.11.2 (XXXX-XX-XX)
 * Fixed issue with lock starvation when an AQL insert operation with multiple
   static documents was executed as part of a streaming transaction.
 
-* Added startup option `--database.max-databases` to limit the maximum number
-  of databases that can exist in parallel on a deployment. This option can be
-  used to limit resources used by database objects. If the option is used and
-  there already exist as many databases as configured by this option, any
-  attempt to create an additional database will fail with error 32
+* Added startup option `--database.max-databases` to limit the maximum number of
+  databases that can exist in parallel on a deployment. This option can be used
+  to limit resources used by database objects. If the option is used and there
+  already exist as many databases as configured by this option, any attempt to
+  create an additional database will fail with error 32
   (`ERROR_RESOURCE_LIMIT`). Additional databases can then only be created if
   other databases are dropped first.
   The default value for this option is unlimited, so technically an arbitrary
