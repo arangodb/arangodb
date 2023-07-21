@@ -38,7 +38,7 @@ using namespace arangodb;
 namespace {
 auto transform(UserInputCollectionProperties col)
     -> replication2::agency::CollectionTargetSpecification {
-  // TODO Maybe we can kind a better way than this for transformation.
+  // TODO Maybe we can find a better way than this for transformation.
   replication2::agency::CollectionTargetSpecification spec;
   spec.groupId = col.groupId.value();
   spec.mutableProperties = {std::move(col.computedValues),

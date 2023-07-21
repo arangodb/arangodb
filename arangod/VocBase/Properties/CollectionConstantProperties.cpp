@@ -30,23 +30,6 @@
 
 using namespace arangodb;
 
-[[nodiscard]] auto
-CollectionConstantProperties::Invariants::isSmartConfiguration(
-    CollectionConstantProperties const& props) -> inspection::Status {
-  if (props.smartGraphAttribute.has_value()) {
-    if (props.getType() != TRI_COL_TYPE_DOCUMENT) {
-      return {"Only document collections can have a smartGraphAttribute."};
-    }
-    if (!props.isSmart) {
-      return {
-          "A smart vertex collection needs to be "
-          "marked with \"isSmart: true\"."};
-    }
-  }
-
-  return inspection::Status::Success{};
-}
-
 bool CollectionConstantProperties::operator==(
     CollectionConstantProperties const& other) const {
   if (type != other.type) {
