@@ -131,11 +131,7 @@ Agent::Agent(ArangodServer& server, config_t const& config)
           arangodb_agency_local_commit_index{})) {
   _state.configure(this);
   _constituent.configure(this);
-  if (size() > 1) {
-    _inception = std::make_unique<Inception>(*this);
-  } else {
-    _leaderSince = 0;
-  }
+  _inception = std::make_unique<Inception>(*this);
 
   auto const notifySupervision = [this](std::string_view, VPackSlice) {
     _supervision->notify();
@@ -286,10 +282,6 @@ bool Agent::leading() const {
 
 // Waits here for confirmation of log's commits up to index. Timeout in seconds.
 AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
-  if (size() == 1) {  // single host agency
-    return Agent::raft_commit_t::OK;
-  }
-
   auto startTime = steady_clock::now();
   index_t lastCommitIndex = 0;
 
@@ -342,10 +334,6 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 
 // Check if log is committed up to index.
 bool Agent::isCommitted(index_t index) const {
-  if (size() == 1) {  // single host agency
-    return true;
-  }
-
   std::lock_guard guard{_waitForCV.mutex};
   if (leading()) {
     return _commitIndex.load(std::memory_order_relaxed) >= index;
@@ -998,7 +986,7 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
   query_t builder;
 
   std::string leader = _constituent.leaderID();
-  if (!loaded() || (size() > 1 && leader != id())) {
+  if (!loaded() || leader != id()) {
     return std::tuple<futures::Future<query_t>, bool, std::string const&>{
         futures::makeFuture(std::move(builder)), false, std::move(leader)};
   }
@@ -1103,7 +1091,7 @@ void Agent::load() {
   // one agent, since no AppendEntriesRPC have to be issued. Therefore,
   // this thread is almost certainly terminated (and thus isStopping() returns
   // true), when we get here.
-  if (size() > 1 && isStopping()) {
+  if (isStopping()) {
     return;
   }
 
@@ -1122,19 +1110,8 @@ void Agent::load() {
     _supervision->start(this);
   }
 
-  if (_inception != nullptr) {  // resilient agency only
-    _inception->start();
-  } else {
-    std::lock_guard guard{_ioLock};  // need this for callback to set _spearhead
-    READ_LOCKER(guard2, _outputLock);
-    _spearhead = _readDB;
-    activateAgency();
-  }
-
+  _inception->start();
   _loaded = true;
-  if (size() == 1) {
-    endPrepareLeadership();
-  }
 }
 
 /// Still leading? Under MUTEX from ::read or ::write
@@ -1308,12 +1285,6 @@ trans_ret_t Agent::transact(velocypack::Slice qs) {
   // Report that leader has persisted
   reportIn(id(), maxind);
 
-  if (size() == 1) {
-    std::unique_lock<std::mutex> guard(
-        _protectAdvanceCommitIndexInSingleServerAgency);
-    advanceCommitIndex();
-  }
-
   return trans_ret_t(true, id(), maxind, failed, std::move(ret));
 }
 
@@ -1410,15 +1381,13 @@ write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
   using namespace std::chrono;
   std::vector<apply_ret_t> applied;
   std::vector<index_t> indices;
-  auto multihost = size() > 1;
 
   // Note that we are leading (_constituent.leading()) if and only
   // if _constituent.leaderId == our own ID. Therefore, we do not have
   // to use leading() or _constituent.leading() here, but can simply
   // look at the leaderID.
   auto leader = _constituent.leaderID();
-  if ((!loaded() && wmode != WriteMode(true, true)) ||
-      (multihost && leader != id())) {
+  if ((!loaded() && wmode != WriteMode(true, true)) || leader != id()) {
     ++_write_no_leader;
     return write_ret_t(false, std::move(leader));
   }
@@ -1470,7 +1439,7 @@ write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
       }
 
       // Only leader else redirect
-      if (multihost && challengeLeadership()) {
+      if (challengeLeadership()) {
         resign();
         ++_write_no_leader;
         return write_ret_t(false, NO_LEADER);
@@ -1502,12 +1471,6 @@ write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
   // Report that leader has persisted
   reportIn(id(), maxind);
 
-  if (size() == 1) {
-    std::unique_lock<std::mutex> guard(
-        _protectAdvanceCommitIndexInSingleServerAgency);
-    advanceCommitIndex();
-  }
-
   ++_write_ok;
   return write_ret_t(true, id(), std::move(applied), std::move(indices));
 }
@@ -1519,7 +1482,7 @@ read_ret_t Agent::read(velocypack::Slice query) {
   // to use leading() or _constituent.leading() here, but can simply
   // look at the leaderID.
   auto leader = _constituent.leaderID();
-  if (!loaded() || (size() > 1 && leader != id())) {
+  if (!loaded() || leader != id()) {
     ++_read_no_leader;
     return read_ret_t(false, std::move(leader));
   }
@@ -1591,114 +1554,100 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
 
 /// Send out append entries to followers regularly or on event
 void Agent::run() {
-  if (size() == 1) {
-    while (!this->isStopping()) {
-      try {
-        // Clear expired long polls
-        clearExpiredPolls();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-      } catch (std::exception const& e) {
-        LOG_TOPIC("a0ef7", WARN, Logger::AGENCY)
-            << "Caught exception in single-host agent thread " << e.what();
+  while (!this->isStopping()) {
+    try {
+      {
+        // We set the variable to false here, if any change happens during
+        // or after the calls in this loop, this will be set to true to
+        // indicate no sleeping. Any change will happen under the mutex.
+        std::lock_guard guard{_appendCV.mutex};
+        _agentNeedsWakeup = false;
       }
-    }
-  } else {
-    // Only run in case we are in multi-host mode
-    while (!this->isStopping()) {
-      try {
-        {
-          // We set the variable to false here, if any change happens during
-          // or after the calls in this loop, this will be set to true to
-          // indicate no sleeping. Any change will happen under the mutex.
-          std::lock_guard guard{_appendCV.mutex};
-          _agentNeedsWakeup = false;
-        }
 
-        if (leading() && getPrepareLeadership() == 1) {
-          // If we are officially leading but the _preparing flag is set, we
-          // are in the process of preparing for leadership. This flag is
-          // set when the Constituent celebrates an election victory. Here,
-          // in the main thread, we do the actual preparations:
+      if (leading() && getPrepareLeadership() == 1) {
+        // If we are officially leading but the _preparing flag is set, we
+        // are in the process of preparing for leadership. This flag is
+        // set when the Constituent celebrates an election victory. Here,
+        // in the main thread, we do the actual preparations:
 
-          if (!prepareLead()) {
-            _constituent.follow(0);  // do not change _term or _votedFor
-          } else {
-            // we need to start work as leader
-            lead();
-          }
-
-          donePrepareLeadership();  // we are ready to roll, except that we
-          // have to wait for the _commitIndex to
-          // reach the end of our log
-        }
-
-        // Clear expired long polls
-        clearExpiredPolls();
-
-        // Leader working only
-        if (leading()) {
-          if (1 == getPrepareLeadership()) {
-            // Skip the usual work and the waiting such that above preparation
-            // code runs immediately. We will return with value 2 such that
-            // replication and confirmation of it can happen. Service will
-            // continue once _commitIndex has reached the end of the log and
-            // then getPrepareLeadership() will finally return 0.
-            continue;
-          }
-
-          // Challenge leadership.
-          // Let's proactively know, that we no longer lead instead of finding
-          // out through read/write.
-          if (challengeLeadership()) {
-            resign();
-            continue;
-          }
-
-          // Append entries to followers
-          sendAppendEntriesRPC();
-
-          // Check whether we can advance _commitIndex
-          advanceCommitIndex();
-
-          bool commenceService = false;
-          {
-            READ_LOCKER(oLocker, _outputLock);
-            if (leading() && getPrepareLeadership() == 2 &&
-                _commitIndex.load(std::memory_order_relaxed) ==
-                    _state.lastIndex()) {
-              commenceService = true;
-            }
-          }
-
-          if (commenceService) {
-            std::lock_guard ioLocker{_ioLock};
-            READ_LOCKER(oLocker, _outputLock);
-            _spearhead = _readDB;
-            endPrepareLeadership();  // finally service can commence
-          }
-
-          // Go to sleep some:
-          {
-            std::unique_lock guard{_appendCV.mutex};
-            if (!_agentNeedsWakeup) {
-              // wait up to minPing():
-              _appendCV.cv.wait_for(
-                  guard, std::chrono::microseconds{
-                             static_cast<uint64_t>(1.0e6 * _config.minPing())});
-              // We leave minPing here without the multiplier to run this
-              // loop often enough in cases of high load.
-            }
-          }
+        if (!prepareLead()) {
+          _constituent.follow(0);  // do not change _term or _votedFor
         } else {
+          // we need to start work as leader
+          lead();
+        }
+
+        donePrepareLeadership();  // we are ready to roll, except that we
+        // have to wait for the _commitIndex to
+        // reach the end of our log
+      }
+
+      // Clear expired long polls
+      clearExpiredPolls();
+
+      // Leader working only
+      if (leading()) {
+        if (1 == getPrepareLeadership()) {
+          // Skip the usual work and the waiting such that above preparation
+          // code runs immediately. We will return with value 2 such that
+          // replication and confirmation of it can happen. Service will
+          // continue once _commitIndex has reached the end of the log and
+          // then getPrepareLeadership() will finally return 0.
+          continue;
+        }
+
+        // Challenge leadership.
+        // Let's proactively know, that we no longer lead instead of finding
+        // out through read/write.
+        if (challengeLeadership()) {
+          resign();
+          continue;
+        }
+
+        // Append entries to followers
+        sendAppendEntriesRPC();
+
+        // Check whether we can advance _commitIndex
+        advanceCommitIndex();
+
+        bool commenceService = false;
+        {
+          READ_LOCKER(oLocker, _outputLock);
+          if (leading() && getPrepareLeadership() == 2 &&
+              _commitIndex.load(std::memory_order_relaxed) ==
+                  _state.lastIndex()) {
+            commenceService = true;
+          }
+        }
+
+        if (commenceService) {
+          std::lock_guard ioLocker{_ioLock};
+          READ_LOCKER(oLocker, _outputLock);
+          _spearhead = _readDB;
+          endPrepareLeadership();  // finally service can commence
+        }
+
+        // Go to sleep some:
+        {
           std::unique_lock guard{_appendCV.mutex};
           if (!_agentNeedsWakeup) {
-            _appendCV.cv.wait_for(guard, std::chrono::seconds{1});
+            // wait up to minPing():
+            _appendCV.cv.wait_for(
+                guard, std::chrono::microseconds{
+                           static_cast<uint64_t>(1.0e6 * _config.minPing())});
+            // We leave minPing here without the multiplier to run this
+            // loop often enough in cases of high load.
           }
         }
-      } catch (std::exception const& e) {
-        LOG_TOPIC("70efa", WARN, Logger::AGENCY)
-            << "Caught exception in multi-host agent thread " << e.what();
+      } else {
+        std::unique_lock guard{_appendCV.mutex};
+        if (!_agentNeedsWakeup) {
+          _appendCV.cv.wait_for(guard, std::chrono::seconds{1});
+        }
       }
+    } catch (std::exception const& e) {
+      LOG_TOPIC("70efa", WARN, Logger::AGENCY)
+          << "Caught exception in multi-host agent thread " << e.what();
     }
   }
 }
@@ -2299,13 +2248,7 @@ void Agent::ready(bool b) {
   _ready = b;
 }
 
-bool Agent::ready() const {
-  if (size() == 1) {
-    return true;
-  }
-
-  return _ready;
-}
+bool Agent::ready() const { return _ready; }
 
 query_t Agent::buildDB(arangodb::consensus::index_t index) {
   Store store;

@@ -682,12 +682,12 @@ function AutoIncrementSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateNullKeyGen: function() {
-      try {
-        db._create(cn, {keyOptions: null});
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, ERRORS.ERROR_ARANGO_INVALID_KEY_GENERATOR.code);
-      }
+      // NOTE: This is only passing for 3.11 compatibility mode
+      let c = db._create(cn, {keyOptions: null});
+
+      let options = c.properties().keyOptions;
+      assertEqual("traditional", options.type);
+      assertEqual(true, options.allowUserKeys);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

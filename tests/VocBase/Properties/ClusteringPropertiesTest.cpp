@@ -205,10 +205,17 @@ TEST_F(ClusteringPropertiesTest, test_shardKeyOnSatellites) {
       }
     }
     auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
+#ifdef USE_ENTERPRISE
     auto result = testee.result();
     EXPECT_TRUE(result.ok())
         << "Failed to created a satellite collection with default sharding "
         << result.errorMessage();
+#else
+    auto result = testee.result();
+    EXPECT_FALSE(result.ok())
+        << "Created a 'satellite' collection in community edition. "
+        << result.errorMessage();
+#endif
   }
 
   {
@@ -243,6 +250,7 @@ TEST_F(ClusteringPropertiesTest, test_satellite) {
   ASSERT_TRUE(testee.ok());
   auto config = defaultDBConfig();
   auto res = testee->applyDefaultsAndValidateDatabaseConfiguration(config);
+#if USE_ENTERPRISE
   ASSERT_TRUE(res.ok()) << "Failed with " << res.fail();
   EXPECT_TRUE(testee->isSatellite());
   ASSERT_TRUE(testee->writeConcern.has_value());
@@ -250,6 +258,11 @@ TEST_F(ClusteringPropertiesTest, test_satellite) {
   ASSERT_TRUE(testee->numberOfShards.has_value());
   EXPECT_EQ(testee->numberOfShards.value(), 1ull);
   __HELPER_equalsAfterSerializeParseCircle(testee.get());
+#else
+  EXPECT_FALSE(res.ok())
+      << "Created a 'satellite' collection in community edition. "
+      << res.errorMessage();
+#endif
 }
 
 TEST_F(ClusteringPropertiesTest, test_satellite_numberOfShards_forbidden) {
@@ -277,6 +290,7 @@ TEST_F(ClusteringPropertiesTest, test_satellite_numberOfShards_allowed) {
   ASSERT_TRUE(testee.ok());
   auto config = defaultDBConfig();
   auto res = testee->applyDefaultsAndValidateDatabaseConfiguration(config);
+#ifdef USE_ENTERPRISE
   ASSERT_TRUE(res.ok()) << "Failed with " << res.fail();
   EXPECT_TRUE(testee->isSatellite());
   ASSERT_TRUE(testee->writeConcern.has_value());
@@ -284,6 +298,11 @@ TEST_F(ClusteringPropertiesTest, test_satellite_numberOfShards_allowed) {
   ASSERT_TRUE(testee->numberOfShards.has_value());
   EXPECT_EQ(testee->numberOfShards.value(), 1ull);
   __HELPER_equalsAfterSerializeParseCircle(testee.get());
+#else
+  EXPECT_FALSE(res.ok())
+      << "Created a 'satellite' collection in community edition. "
+      << res.errorMessage();
+#endif
 }
 
 TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_forbidden) {
@@ -322,6 +341,7 @@ TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_allowed) {
   ASSERT_TRUE(testee.ok());
   auto config = defaultDBConfig();
   auto res = testee->applyDefaultsAndValidateDatabaseConfiguration(config);
+#ifdef USE_ENTERPRISE
   ASSERT_TRUE(res.ok()) << "Failed with " << res.fail();
   EXPECT_TRUE(testee->isSatellite());
   ASSERT_TRUE(testee->writeConcern.has_value());
@@ -329,6 +349,11 @@ TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_allowed) {
   ASSERT_TRUE(testee->numberOfShards.has_value());
   EXPECT_EQ(testee->numberOfShards.value(), 1ull);
   __HELPER_equalsAfterSerializeParseCircle(testee.get());
+#else
+  EXPECT_FALSE(res.ok())
+      << "Created a 'satellite' collection in community edition. "
+      << res.errorMessage();
+#endif
 }
 
 }  // namespace arangodb::tests
