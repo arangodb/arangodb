@@ -222,11 +222,11 @@ void FileDescriptorsFeature::countOpenFiles() {
     size_t numFiles = FileUtils::countFiles("/proc/self/fd");
     _fileDescriptorsCurrent.store(numFiles, std::memory_order_relaxed);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("bee41", DEBUG, Logger::SYSCALL)
+    LOG_TOPIC("be4e1", DEBUG, Logger::SYSCALL)
         << "unable to count number of open files for arangod process: "
         << ex.what();
   } catch (...) {
-    LOG_TOPIC("0a654", DEBUG, Logger::SYSCALL)
+    LOG_TOPIC("0a564", DEBUG, Logger::SYSCALL)
         << "unable to count number of open files for arangod process";
   }
 #endif
