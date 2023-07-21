@@ -1,4 +1,4 @@
-v3.11.2 (XXXX-XX-XX)
+v3.11.2 (2023-07-21)
 --------------------
 
 * Fix SEARCH-465: Truncate on ArangoSearch index could release a WAL if commit
