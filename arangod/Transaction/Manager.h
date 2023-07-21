@@ -216,7 +216,7 @@ class Manager final : public IManager {
     if (!_hotbackupCommitLockHeld) {
       LOG_TOPIC("eedda", TRACE, Logger::TRANSACTIONS)
           << "Trying to get write lock to hold transactions...";
-      ret = _hotbackupCommitLock.lockWrite(timeout);
+      ret = _hotbackupCommitLock.tryLockWriteFor(timeout);
       if (ret) {
         LOG_TOPIC("eeddb", TRACE, Logger::TRANSACTIONS)
             << "Got write lock to hold transactions.";

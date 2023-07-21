@@ -63,12 +63,6 @@ void Constituent::configure(Agent* agent) {
 
   _agent = agent;
   TRI_ASSERT(_agent != nullptr);
-
-  if (size() == 1) {
-    _role = LEADER;
-    LOG_TOPIC("c396f", INFO, Logger::AGENCY)
-        << "Set _role to LEADER in term " << _term;
-  }
 }
 
 // Default ctor
@@ -642,164 +636,163 @@ void Constituent::run() {
     act = _agent->config().active();
   }
 
-  if (size() == 1) {
+  {
     std::lock_guard guard{_termVoteLock};
-    _leaderID = _agent->config().id();
-    LOG_TOPIC("66f72", INFO, Logger::AGENCY)
-        << "Set _leaderID to '" << _leaderID << "' in term " << _term;
-  } else {
-    {
-      std::lock_guard guard{_termVoteLock};
-      LOG_TOPIC("29175", INFO, Logger::AGENCY)
-          << "Setting role to follower in term " << _term;
-      _role = FOLLOWER;
-    }
+    LOG_TOPIC("29175", INFO, Logger::AGENCY)
+        << "Setting role to follower in term " << _term;
+    _role = FOLLOWER;
+  }
 
-    std::chrono::steady_clock::time_point constituentLoopStart;
+  std::chrono::steady_clock::time_point constituentLoopStart;
 
-    while (!this->isStopping()) {
-      constituentLoopStart = std::chrono::steady_clock::now();
+  while (!this->isStopping()) {
+    constituentLoopStart = std::chrono::steady_clock::now();
 
-      role_t role = _role.load(std::memory_order_relaxed);
+    role_t role = _role.load(std::memory_order_relaxed);
 
-      if (role == FOLLOWER) {
-        static double const M = 1.0e6;
-        int64_t a = static_cast<int64_t>(M * _agent->config().minPing() *
-                                         _agent->config().timeoutMult());
-        int64_t b = static_cast<int64_t>(M * _agent->config().maxPing() *
-                                         _agent->config().timeoutMult());
-        int64_t randTimeout = RandomGenerator::interval(a, b);
-        int64_t randWait = randTimeout;
+    if (role == FOLLOWER) {
+      static double const M = 1.0e6;
+      int64_t a = static_cast<int64_t>(M * _agent->config().minPing() *
+                                       _agent->config().timeoutMult());
+      int64_t b = static_cast<int64_t>(M * _agent->config().maxPing() *
+                                       _agent->config().timeoutMult());
+      int64_t randTimeout = RandomGenerator::interval(a, b);
+      int64_t randWait = randTimeout;
 
-        {
-          std::lock_guard guard{_termVoteLock};
+      // Speedup for size() == 1 - do not wait at all. Start election
+      // immediately.
+      if (size() == 1) {
+        LOG_TOPIC("31ed7", INFO, Logger::AGENCY)
+            << "Immediately start election because of single agency";
+        randWait = 0;
+      }
 
-          // in the beginning, pure random, after that, we might have to
-          // wait for less than planned, since the last heartbeat we have
-          // seen is already some time ago, note that this waiting time
-          // can become negative:
-          if (_lastHeartbeatSeen > 0.0) {
-            double now = TRI_microtime();
-            randWait -= static_cast<int64_t>(M * (now - _lastHeartbeatSeen));
-            if (randWait < a) {
-              randWait = a;
-            } else if (randWait > b) {
-              randWait = b;
-            }
+      {
+        std::lock_guard guard{_termVoteLock};
+
+        // in the beginning, pure random, after that, we might have to
+        // wait for less than planned, since the last heartbeat we have
+        // seen is already some time ago, note that this waiting time
+        // can become negative:
+        if (_lastHeartbeatSeen > 0.0) {
+          double now = TRI_microtime();
+          randWait -= static_cast<int64_t>(M * (now - _lastHeartbeatSeen));
+          if (randWait < a) {
+            randWait = a;
+          } else if (randWait > b) {
+            randWait = b;
           }
         }
+      }
 
-        LOG_TOPIC("9a750", TRACE, Logger::AGENCY)
-            << "Random timeout: " << randTimeout << ", wait: " << randWait;
+      LOG_TOPIC("9a750", TRACE, Logger::AGENCY)
+          << "Random timeout: " << randTimeout << ", wait: " << randWait;
 
-        if (randWait > 0) {
-          std::unique_lock guardv{_cv.mutex};
-          _cv.cv.wait_for(guardv, std::chrono::microseconds{randWait});
+      if (randWait > 0) {
+        std::unique_lock guardv{_cv.mutex};
+        _cv.cv.wait_for(guardv, std::chrono::microseconds{randWait});
+      }
+
+      {
+        std::lock_guard guard{_termVoteLock};
+        bool isTimeout = false;
+
+        if (_lastHeartbeatSeen <= 0.0) {
+          LOG_TOPIC("456d2", TRACE, Logger::AGENCY) << "no heartbeat seen";
+          isTimeout = true;
+        } else {
+          double diff = TRI_microtime() - _lastHeartbeatSeen;
+          LOG_TOPIC("f475b", TRACE, Logger::AGENCY)
+              << "last heartbeat: " << diff << "sec ago";
+
+          isTimeout = (static_cast<int64_t>(M * diff) > randTimeout);
         }
 
-        {
-          std::lock_guard guard{_termVoteLock};
-          bool isTimeout = false;
-
-          if (_lastHeartbeatSeen <= 0.0) {
-            LOG_TOPIC("456d2", TRACE, Logger::AGENCY) << "no heartbeat seen";
-            isTimeout = true;
-          } else {
-            double diff = TRI_microtime() - _lastHeartbeatSeen;
-            LOG_TOPIC("f475b", TRACE, Logger::AGENCY)
-                << "last heartbeat: " << diff << "sec ago";
-
-            isTimeout = (static_cast<int64_t>(M * diff) > randTimeout);
-          }
-
-          if (isTimeout) {
-            LOG_TOPIC("18b71", TRACE, Logger::AGENCY)
-                << "timeout, calling an election";
-            candidateNoLock();
-            _agent->endPrepareLeadership();
-          }
+        if (isTimeout) {
+          LOG_TOPIC("18b71", TRACE, Logger::AGENCY)
+              << "timeout, calling an election";
+          candidateNoLock();
+          _agent->endPrepareLeadership();
         }
-      } else if (role == CANDIDATE) {
-        callElection();  // Run for office
-        // Now we take this point of time as the next base point for a
-        // potential next random timeout, since we have just cast a vote for
-        // ourselves:
-        _lastHeartbeatSeen = TRI_microtime();
-        LOG_TOPIC("aeaef", TRACE, Logger::AGENCY)
-            << "setting last heartbeat because we voted for us: "
-            << _lastHeartbeatSeen;
+      }
+    } else if (role == CANDIDATE) {
+      callElection();  // Run for office
+      // Now we take this point of time as the next base point for a
+      // potential next random timeout, since we have just cast a vote for
+      // ourselves:
+      _lastHeartbeatSeen = TRI_microtime();
+      LOG_TOPIC("aeaef", TRACE, Logger::AGENCY)
+          << "setting last heartbeat because we voted for us: "
+          << _lastHeartbeatSeen;
 
-      } else {
-        double interval =
-            0.25 * _agent->config().minPing() * _agent->config().timeoutMult();
+    } else {
+      double interval =
+          0.25 * _agent->config().minPing() * _agent->config().timeoutMult();
 
-        double now = TRI_microtime();
-        double nextWakeup = interval;  // might be lowered below
+      double now = TRI_microtime();
+      double nextWakeup = interval;  // might be lowered below
 
-        std::string const myid = _agent->id();
-        for (auto const& followerId : _agent->config().active()) {
-          if (followerId != myid) {
-            bool needed = false;
-            {
-              std::lock_guard guard{_heartBeatMutex};
-              auto it = _lastHeartbeatSent.find(followerId);
-              if (it == _lastHeartbeatSent.end()) {
+      std::string const myid = _agent->id();
+      for (auto const& followerId : _agent->config().active()) {
+        if (followerId != myid) {
+          bool needed = false;
+          {
+            std::lock_guard guard{_heartBeatMutex};
+            auto it = _lastHeartbeatSent.find(followerId);
+            if (it == _lastHeartbeatSent.end()) {
+              needed = true;
+            } else {
+              double diff = now - it->second;
+              if (diff >= interval) {
                 needed = true;
+                nextWakeup = 0;
               } else {
-                double diff = now - it->second;
-                if (diff >= interval) {
-                  needed = true;
-                  nextWakeup = 0;
-                } else {
-                  // diff < interval, so only needed again in interval-diff s
-                  double waitOnly = interval - diff;
-                  if (nextWakeup > waitOnly) {
-                    nextWakeup = waitOnly;
-                  }
-                  LOG_TOPIC("25d6b", DEBUG, Logger::AGENCY)
-                      << "No need for empty AppendEntriesRPC: " << diff;
+                // diff < interval, so only needed again in interval-diff s
+                double waitOnly = interval - diff;
+                if (nextWakeup > waitOnly) {
+                  nextWakeup = waitOnly;
                 }
-              }
-            }
-            LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY)
-                << "Considering empty AppendEntriesRPC for follower "
-                << followerId << " needed: " << needed;
-            if (needed) {
-              auto startTime = std::chrono::steady_clock::now();
-              _agent->sendEmptyAppendEntriesRPC(followerId);
-              auto endTime = std::chrono::steady_clock::now();
-              if (endTime - startTime > std::chrono::milliseconds(100)) {
-                LOG_TOPIC("ddeeb", DEBUG, Logger::AGENCY)
-                    << "Call to sendEmptyAppendEntriesRPC took longer than 0.1 "
-                       "s: time needed: "
-                    << std::chrono::duration<double>(endTime - startTime)
-                           .count();
+                LOG_TOPIC("25d6b", DEBUG, Logger::AGENCY)
+                    << "No need for empty AppendEntriesRPC: " << diff;
               }
             }
           }
+          LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY)
+              << "Considering empty AppendEntriesRPC for follower "
+              << followerId << " needed: " << needed;
+          if (needed) {
+            auto startTime = std::chrono::steady_clock::now();
+            _agent->sendEmptyAppendEntriesRPC(followerId);
+            auto endTime = std::chrono::steady_clock::now();
+            if (endTime - startTime > std::chrono::milliseconds(100)) {
+              LOG_TOPIC("ddeeb", DEBUG, Logger::AGENCY)
+                  << "Call to sendEmptyAppendEntriesRPC took longer than 0.1 "
+                     "s: time needed: "
+                  << std::chrono::duration<double>(endTime - startTime).count();
+            }
+          }
         }
+      }
 
-        auto beforeWaitTime = std::chrono::steady_clock::now();
+      auto beforeWaitTime = std::chrono::steady_clock::now();
 
-        // This is the smallest time until any of the followers need a
-        // new empty heartbeat:
-        uint64_t timeout = static_cast<uint64_t>(1000000.0 * nextWakeup);
-        if (timeout > 0) {
-          std::unique_lock guardv{_cv.mutex};
-          _cv.cv.wait_for(guardv, std::chrono::microseconds{timeout});
-        }
-        auto afterWaitTime = std::chrono::steady_clock::now();
-        if (afterWaitTime - constituentLoopStart >
-            std::chrono::seconds(1) * _agent->config().minPing() *
-                _agent->config().timeoutMult()) {
-          LOG_TOPIC("aa123", WARN, Logger::AGENCY)
-              << "Constituent loop delayed: First part took "
-              << (beforeWaitTime - constituentLoopStart).count()
-              << ", second part took "
-              << (afterWaitTime - beforeWaitTime).count()
-              << ", which is together more than minPing="
-              << _agent->config().minPing() * _agent->config().timeoutMult();
-        }
+      // This is the smallest time until any of the followers need a
+      // new empty heartbeat:
+      uint64_t timeout = static_cast<uint64_t>(1000000.0 * nextWakeup);
+      if (timeout > 0) {
+        std::unique_lock guardv{_cv.mutex};
+        _cv.cv.wait_for(guardv, std::chrono::microseconds{timeout});
+      }
+      auto afterWaitTime = std::chrono::steady_clock::now();
+      if (afterWaitTime - constituentLoopStart >
+          std::chrono::seconds(1) * _agent->config().minPing() *
+              _agent->config().timeoutMult()) {
+        LOG_TOPIC("aa123", WARN, Logger::AGENCY)
+            << "Constituent loop delayed: First part took "
+            << (beforeWaitTime - constituentLoopStart).count()
+            << ", second part took " << (afterWaitTime - beforeWaitTime).count()
+            << ", which is together more than minPing="
+            << _agent->config().minPing() * _agent->config().timeoutMult();
       }
     }
   }
