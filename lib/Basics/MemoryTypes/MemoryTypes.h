@@ -53,6 +53,7 @@ struct compare_monitored_string {
   bool operator()(
       std::basic_string<C, std::char_traits<C>, T> const& lhs,
       std::basic_string<C, std::char_traits<C>, U> const& rhs) const noexcept {
+    // cppcheck-suppress mismatchingContainers
     return std::basic_string_view<C>{lhs} == std::basic_string_view<C>{rhs};
   }
 };
