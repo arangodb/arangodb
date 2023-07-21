@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.16.0.
+
 * Fixed issue with lock starvation when an AQL insert operation with multiple
   static documents was executed as part of a streaming transaction.
 
