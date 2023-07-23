@@ -29,7 +29,9 @@ export const QueryEditorBottomBar = () => {
     currentQueryName,
     onOpenSaveAsModal,
     onSave,
-    savedQueries
+    savedQueries,
+    queryOptions,
+    disabledRules
   } = useQueryContext();
   const existingQuery = currentQueryName
     ? savedQueries?.find(query => query.name === currentQueryName)
@@ -95,7 +97,9 @@ export const QueryEditorBottomBar = () => {
               method: () =>
                 onExecute({
                   queryValue,
-                  queryBindParams
+                  queryBindParams,
+                  queryOptions,
+                  disabledRules
                 }),
               label: "Execute"
             },

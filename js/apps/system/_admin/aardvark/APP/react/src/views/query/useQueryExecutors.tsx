@@ -15,7 +15,12 @@ export const useQueryExecutors = ({
   setQueryResultById: (queryResult: QueryResultType) => void;
 }) => {
   const onExecute = useCallback(
-    async ({ queryValue, queryBindParams }: QueryExecutionOptions) => {
+    async ({
+      queryValue,
+      queryBindParams,
+      queryOptions,
+      disabledRules
+    }: QueryExecutionOptions) => {
       const route = getApiRouteForCurrentDB();
       try {
         const literalValue = literal(queryValue);
@@ -26,7 +31,11 @@ export const useQueryExecutors = ({
             query: literalValue.toAQL(),
             bindVars: queryBindParams,
             options: {
-              profile: true
+              profile: true,
+              ...queryOptions,
+              optimizer: {
+                rules: disabledRules
+              }
             }
           },
           undefined,
