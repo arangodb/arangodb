@@ -38,7 +38,7 @@ const addUserFields = {
   },
   passwd: {
     name: "passwd",
-    type: "password", // does the type "password" exist in FormField?
+    type: "password",
     label: "Password",
     isRequired: false
   },
