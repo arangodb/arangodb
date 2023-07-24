@@ -2,9 +2,9 @@ import { Button, useDisclosure } from "@chakra-ui/react";
 import { GraphInfo } from "arangojs/graph";
 import React from "react";
 import { DeleteGraphModal } from "./DeleteGraphModal";
-import { fetchUserConfig } from "../useFetchAndSetupGraphParams";
-import { DEFAULT_URL_PARAMETERS } from "../UrlParametersContext";
-import { putUserConfig } from "../useGraphSettingsHandlers";
+import { fetchUserConfig } from "../viewGraph/useFetchAndSetupGraphParams";
+import { DEFAULT_URL_PARAMETERS } from "../viewGraph/UrlParametersContext";
+import { putUserConfig } from "../viewGraph/useGraphSettingsHandlers";
 
 export const EditGraphButtons = ({
   graph,
