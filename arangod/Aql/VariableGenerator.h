@@ -61,16 +61,18 @@ class VariableGenerator {
       bool includeTemporaries) const;
 
   /// @brief generate a variable
-  Variable* createVariable(std::string_view name, bool isUserDefined);
+  Variable* createVariable(std::string_view name, bool isUserDefined,
+                           arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief generate a variable from VelocyPack
-  Variable* createVariable(arangodb::velocypack::Slice);
+  Variable* createVariable(arangodb::velocypack::Slice,
+                           arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief clones a variable from an existing one
   Variable* createVariable(Variable const*);
 
   /// @brief generate a temporary variable
-  Variable* createTemporaryVariable();
+  Variable* createTemporaryVariable(arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief renames a variable (assigns a temporary name)
   Variable* renameVariable(VariableId);
@@ -88,7 +90,8 @@ class VariableGenerator {
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
   /// @brief import from VelocyPack
-  void fromVelocyPack(arangodb::velocypack::Slice const allVariablesList);
+  void fromVelocyPack(arangodb::velocypack::Slice const allVariablesList,
+                      arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief validate a variable name
   static bool isValidName(char const* p, char const* end) noexcept;

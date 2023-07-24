@@ -170,7 +170,8 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
   }
 
   /// create subquery
-  Variable* subqueryOutVariable = ast->variables()->createTemporaryVariable();
+  Variable* subqueryOutVariable = ast->variables()->createTemporaryVariable(
+      plan->getAst()->query().resourceMonitor());
   ExecutionNode* eSubquery = plan->registerSubquery(
       new SubqueryNode(plan, plan->nextId(), eReturn, subqueryOutVariable));
 
@@ -268,7 +269,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   auto* aqlCollection =
       aql::addCollectionToQuery(query, params.collection, "NEAR OR WITHIN");
 
-  Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
+  Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable(
+      plan->getAst()->query().resourceMonitor());
   ExecutionNode* eEnumerate = plan->registerNode(
       // link output of index with the return node
       new EnumerateCollectionNode(plan, plan->nextId(), aqlCollection,
@@ -307,7 +309,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   auto calcExpr = std::make_unique<Expression>(ast, expressionAst);
 
   // put condition into calculation node
-  Variable* calcOutVariable = ast->variables()->createTemporaryVariable();
+  Variable* calcOutVariable = ast->variables()->createTemporaryVariable(
+      plan->getAst()->query().resourceMonitor());
   ExecutionNode* eCalc = plan->registerNode(new CalculationNode(
       plan, plan->nextId(), std::move(calcExpr), calcOutVariable));
   eCalc->addDependency(eEnumerate);
@@ -358,8 +361,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
 
     auto* funMerge = ast->createNodeFunctionCall("MERGE", argsArrayMerge, true);
 
-    Variable* calcMergeOutVariable =
-        ast->variables()->createTemporaryVariable();
+    Variable* calcMergeOutVariable = ast->variables()->createTemporaryVariable(
+        plan->getAst()->query().resourceMonitor());
     auto calcMergeExpr = std::make_unique<Expression>(ast, funMerge);
     ExecutionNode* eCalcMerge = plan->registerNode(new CalculationNode(
         plan, plan->nextId(), std::move(calcMergeExpr), calcMergeOutVariable));
@@ -426,7 +429,8 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   }
 
   // FOR part
-  Variable* collVar = ast->variables()->createTemporaryVariable();
+  Variable* collVar = ast->variables()->createTemporaryVariable(
+      plan->getAst()->query().resourceMonitor());
   AstNode* forNode = ast->createNodeFor(collVar, coll, nullptr);
 
   // Create GEO_CONTAINS function
@@ -499,7 +503,8 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   }
 
   // and register a reference to the subquery result in the expression
-  Variable* v = ast->variables()->createTemporaryVariable();
+  Variable* v = ast->variables()->createTemporaryVariable(
+      plan->getAst()->query().resourceMonitor());
   SubqueryNode* sqn = plan->registerSubquery(
       new SubqueryNode(plan, plan->nextId(), subquery, v));
   plan->insertDependency(calcNode, sqn);
@@ -550,7 +555,8 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
   condition->andCombine(funAstNode);
   condition->normalize(plan);
   // create a fresh out variable
-  Variable* indexOutVariable = ast->variables()->createTemporaryVariable();
+  Variable* indexOutVariable = ast->variables()->createTemporaryVariable(
+      plan->getAst()->query().resourceMonitor());
 
   ExecutionNode* eIndex = plan->registerNode(
       new IndexNode(plan, plan->nextId(), aqlCollection, indexOutVariable,

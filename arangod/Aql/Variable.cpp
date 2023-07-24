@@ -24,6 +24,7 @@
 #include "Variable.h"
 #include "Aql/Ast.h"
 #include "Aql/VariableGenerator.h"
+#include "Aql/QueryContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 
@@ -35,24 +36,31 @@ using namespace arangodb::aql;
 
 /// @brief create the variable
 Variable::Variable(std::string name, VariableId id,
-                   bool isFullDocumentFromCollection)
+                   bool isFullDocumentFromCollection,
+                   arangodb::ResourceMonitor& resourceMonitor)
     : id(id),
       name(std::move(name)),
-      isFullDocumentFromCollection(isFullDocumentFromCollection) {}
+      isFullDocumentFromCollection(isFullDocumentFromCollection),
+      _resourceMonitor(resourceMonitor) {}
 
-Variable::Variable(velocypack::Slice slice)
+Variable::Variable(velocypack::Slice slice,
+                   arangodb::ResourceMonitor& resourceMonitor)
     : id(basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice,
                                                                        "id")),
       name(basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
       isFullDocumentFromCollection(basics::VelocyPackHelper::getBooleanValue(
           slice, "isFullDocumentFromCollection", false)),
+      _resourceMonitor(resourceMonitor),
       _constantValue(slice.get("constantValue")) {}
 
 /// @brief destroy the variable
-Variable::~Variable() { _constantValue.destroy(); }
+Variable::~Variable() {
+  _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage()),
+      _constantValue.destroy();
+}
 
 Variable* Variable::clone() const {
-  return new Variable(name, id, isFullDocumentFromCollection);
+  return new Variable(name, id, isFullDocumentFromCollection, _resourceMonitor);
 }
 
 bool Variable::isUserDefined() const noexcept {
@@ -124,7 +132,8 @@ Variable* Variable::varFromVPack(Ast* ast, velocypack::Slice base,
         "mandatory variable \"" + std::string(variableName) + "\" not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(msg));
   }
-  return ast->variables()->createVariable(variable);
+  return ast->variables()->createVariable(variable,
+                                          ast->query().resourceMonitor());
 }
 
 bool Variable::isEqualTo(Variable const& other) const noexcept {
@@ -139,6 +148,13 @@ Variable::Type Variable::type() const noexcept {
 }
 
 void Variable::setConstantValue(AqlValue value) noexcept {
+  _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage());
   _constantValue.destroy();
-  _constantValue = value;
+
+  try {
+    _resourceMonitor.increaseMemoryUsage(value.memoryUsage());
+    _constantValue = value;
+  } catch (...) {
+    throw;
+  }
 }

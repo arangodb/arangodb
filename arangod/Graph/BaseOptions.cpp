@@ -306,7 +306,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The options require a tmpVar");
   }
-  _tmpVar = query.ast()->variables()->createVariable(read);
+  _tmpVar = query.ast()->variables()->createVariable(read, resourceMonitor());
 
   read = info.get("baseLookupInfos");
   if (!read.isArray()) {

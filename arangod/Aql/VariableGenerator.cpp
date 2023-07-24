@@ -24,6 +24,7 @@
 #include "Aql/VariableGenerator.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -59,8 +60,9 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
 }
 
 /// @brief generate a variable
-Variable* VariableGenerator::createVariable(std::string_view name,
-                                            bool isUserDefined) {
+Variable* VariableGenerator::createVariable(
+    std::string_view name, bool isUserDefined,
+    arangodb::ResourceMonitor& resourceMonitor) {
   std::string temp(name);
 
   if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) {
@@ -70,7 +72,8 @@ Variable* VariableGenerator::createVariable(std::string_view name,
             TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, temp.c_str()));
   }
 
-  auto variable = std::make_unique<Variable>(std::move(temp), nextId(), false);
+  auto variable = std::make_unique<Variable>(std::move(temp), nextId(), false,
+                                             resourceMonitor);
 
   TRI_ASSERT(!isUserDefined || variable->isUserDefined());
 
@@ -97,8 +100,9 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
 }
 
 /// @brief generate a variable from VelocyPack
-Variable* VariableGenerator::createVariable(VPackSlice slice) {
-  auto variable = std::make_unique<Variable>(slice);
+Variable* VariableGenerator::createVariable(
+    VPackSlice slice, arangodb::ResourceMonitor& resourceMonitor) {
+  auto variable = std::make_unique<Variable>(slice, resourceMonitor);
   VariableId const id = variable->id;
 
   // make sure _id is at least as high as the highest variable id
@@ -110,8 +114,9 @@ Variable* VariableGenerator::createVariable(VPackSlice slice) {
 }
 
 /// @brief generate a temporary variable
-Variable* VariableGenerator::createTemporaryVariable() {
-  return createVariable(nextName(), false);
+Variable* VariableGenerator::createTemporaryVariable(
+    arangodb::ResourceMonitor& resourceMonitor) {
+  return createVariable(nextName(), false, resourceMonitor);
 }
 
 /// @brief renames a variable (assigns a temporary name)
@@ -158,7 +163,8 @@ void VariableGenerator::toVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief import from VelocyPack
-void VariableGenerator::fromVelocyPack(VPackSlice const slice) {
+void VariableGenerator::fromVelocyPack(
+    VPackSlice const slice, arangodb::ResourceMonitor& resourceMonitor) {
   VPackSlice allVariablesList = slice;
   if (slice.isObject()) {
     allVariablesList = slice.get("variables");
@@ -173,7 +179,7 @@ void VariableGenerator::fromVelocyPack(VPackSlice const slice) {
   _variables.reserve(static_cast<size_t>(len));
 
   for (auto const& var : VPackArrayIterator(allVariablesList)) {
-    createVariable(var);
+    createVariable(var, resourceMonitor);
   }
 }
 

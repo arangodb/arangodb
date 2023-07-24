@@ -210,7 +210,8 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
   // for the temporary variable during expression calculation, so we can use a
   // const Ast.
   ast->scopes()->start(aql::AQL_SCOPE_MAIN);
-  _tempVariable = ast->variables()->createTemporaryVariable();
+  _tempVariable =
+      ast->variables()->createTemporaryVariable(ast->query().resourceMonitor());
 
   _rootNode = ast->traverseAndModify(
       const_cast<aql::AstNode*>(ast->root()), [&](aql::AstNode* node) {

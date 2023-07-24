@@ -63,9 +63,11 @@ struct Variable {
   };
 
   /// @brief create the variable
-  Variable(std::string name, VariableId id, bool isFullDocumentFromCollection);
+  Variable(std::string name, VariableId id, bool isFullDocumentFromCollection,
+           arangodb::ResourceMonitor& resourceMonitor);
 
-  explicit Variable(velocypack::Slice slice);
+  explicit Variable(velocypack::Slice slice,
+                    arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief destroy the variable
   ~Variable();
@@ -121,6 +123,8 @@ struct Variable {
   bool isFullDocumentFromCollection;
 
  private:
+  arangodb::ResourceMonitor& _resourceMonitor;
+
   /// @brief serialize common parts
   void toVelocyPackCommon(velocypack::Builder& builder) const;
 

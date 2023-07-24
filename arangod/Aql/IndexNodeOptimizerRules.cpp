@@ -32,6 +32,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Optimizer.h"
+#include "Aql/QueryContext.h"
 #include "Basics/AttributeNameParser.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
@@ -297,11 +298,13 @@ void arangodb::aql::lateDocumentMaterializationRule(
                   attrAndField.afData.field,
                   IndexNode::IndexVariable{
                       attrAndField.afData.fieldNumber,
-                      ast->variables()->createTemporaryVariable()});
+                      ast->variables()->createTemporaryVariable(
+                          plan->getAst()->query().resourceMonitor())});
             }
           }
         }
-        auto const* localDocIdTmp = ast->variables()->createTemporaryVariable();
+        auto const* localDocIdTmp = ast->variables()->createTemporaryVariable(
+            plan->getAst()->query().resourceMonitor());
         TRI_ASSERT(localDocIdTmp);
         for (auto& node : nodesToChange) {
           for (auto& attr : node.attrs) {
