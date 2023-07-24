@@ -41,7 +41,6 @@
 #include "Cache/PlainCache.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalCache.h"
-#include "Logger/LogMacros.h"
 #include "RestServer/SharedPRNGFeature.h"
 
 namespace arangodb::cache {
