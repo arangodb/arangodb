@@ -95,6 +95,11 @@ class Manager {
   static constexpr std::size_t kFindStatsCapacity = 8192;
   static constexpr std::uint64_t kMinSize = 1024 * 1024;
   static constexpr std::uint64_t kMaxSpareTablesTotal = 16;
+  // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
+  // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
+  // most libraries
+  static constexpr std::uint64_t kCacheRecordOverhead =
+      sizeof(std::shared_ptr<Cache>) + 64;
 
   using AccessStatBuffer = FrequencyBuffer<std::uint64_t>;
   using FindStatBuffer = FrequencyBuffer<std::uint8_t>;
@@ -200,12 +205,11 @@ class Manager {
 
   SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  void freeUnusedTablesForTesting();
+#endif
+
  private:
-  // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
-  // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
-  // most libraries
-  static constexpr std::uint64_t kCacheRecordOverhead =
-      sizeof(std::shared_ptr<Cache>) + 64;
   // assume at most 16 slots in each stack -- TODO: check validity
   static constexpr std::uint64_t kTableListsOverhead =
       32 * 16 * sizeof(std::shared_ptr<Cache>);

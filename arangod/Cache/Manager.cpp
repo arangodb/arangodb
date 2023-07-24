@@ -720,6 +720,13 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
   }
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+void Manager::freeUnusedTablesForTesting() {
+  SpinLocker guard(SpinLocker::Mode::Write, _lock);
+  freeUnusedTables();
+}
+#endif
+
 void Manager::freeUnusedTables() {
   TRI_ASSERT(_lock.isLockedWrite());
 

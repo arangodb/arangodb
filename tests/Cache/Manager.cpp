@@ -37,6 +37,7 @@
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
+#include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/SharedPRNGFeature.h"
 
@@ -47,8 +48,164 @@ using namespace arangodb;
 using namespace arangodb::cache;
 using namespace arangodb::tests::mocks;
 
+TEST(CacheManagerTest, test_memory_usage_for_cache_creation) {
+  std::uint64_t requestLimit = 1024 * 1024;
+
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  auto postFn = [](std::function<void()>) -> bool { return false; };
+  CacheOptions co;
+  co.cacheSize = requestLimit;
+  co.maxSpareAllocation = 0;
+  Manager manager(sharedPRNG, postFn, co);
+
+  ASSERT_EQ(requestLimit, manager.globalLimit());
+
+  ASSERT_TRUE(0ULL < manager.globalAllocation());
+  ASSERT_TRUE(requestLimit > manager.globalAllocation());
+
+  {
+    auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(0, beforeStats->activeTables);
+
+    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    ASSERT_NE(nullptr, cache);
+
+    manager.destroyCache(cache);
+
+    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(0, afterStats->activeTables);
+    ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+  }
+}
+
+TEST(CacheManagerTest, test_memory_usage_for_cache_reusage) {
+  std::uint64_t requestLimit = 1024 * 1024;
+
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  auto postFn = [](std::function<void()>) -> bool { return false; };
+  CacheOptions co;
+  co.cacheSize = requestLimit;
+  co.maxSpareAllocation = 256 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
+
+  ASSERT_EQ(requestLimit, manager.globalLimit());
+
+  ASSERT_TRUE(0ULL < manager.globalAllocation());
+  ASSERT_TRUE(requestLimit > manager.globalAllocation());
+
+  {
+    auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(0, beforeStats->activeTables);
+
+    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    ASSERT_NE(nullptr, cache);
+
+    manager.destroyCache(cache);
+
+    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(1, afterStats->activeTables);
+    ASSERT_LT(beforeStats->globalAllocation, afterStats->globalAllocation);
+
+    cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+
+    auto afterStats2 = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(1, afterStats2->activeTables);
+    ASSERT_LT(afterStats->globalAllocation, afterStats2->globalAllocation);
+
+    manager.destroyCache(cache);
+
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-TEST(CacheManagerTest, test_memory_usage_with_failure_during_allocation) {
+    manager.freeUnusedTablesForTesting();
+
+    auto afterStats3 = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(0, afterStats3->activeTables);
+    ASSERT_LT(beforeStats->globalAllocation, afterStats3->globalAllocation);
+#endif
+  }
+}
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST(CacheManagerTest,
+     test_memory_usage_with_failure_during_allocation_with_reserve) {
+  std::uint64_t requestLimit = 1024 * 1024;
+
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  auto postFn = [](std::function<void()>) -> bool { return false; };
+  CacheOptions co;
+  co.cacheSize = requestLimit;
+  co.maxSpareAllocation = 256 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
+
+  ASSERT_EQ(requestLimit, manager.globalLimit());
+
+  ASSERT_TRUE(0ULL < manager.globalAllocation());
+  ASSERT_TRUE(requestLimit > manager.globalAllocation());
+
+  try {
+    {
+      TRI_ClearFailurePointsDebugging();
+      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+      TRI_AddFailurePointDebugging("CacheAllocation::fail1");
+      auto cache =
+          manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+      ASSERT_EQ(nullptr, cache);
+
+      TRI_ClearFailurePointsDebugging();
+      cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+      ASSERT_NE(nullptr, cache);
+
+      manager.destroyCache(cache);
+
+      manager.freeUnusedTablesForTesting();
+
+      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+    }
+
+    {
+      TRI_ClearFailurePointsDebugging();
+      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+      TRI_AddFailurePointDebugging("CacheAllocation::fail2");
+      ASSERT_ANY_THROW(
+          manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+
+      manager.freeUnusedTablesForTesting();
+
+      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+    }
+
+    {
+      TRI_ClearFailurePointsDebugging();
+      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+      TRI_AddFailurePointDebugging("CacheAllocation::fail3");
+      ASSERT_ANY_THROW(
+          manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+
+      manager.freeUnusedTablesForTesting();
+
+      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+    }
+
+  } catch (...) {
+    TRI_ClearFailurePointsDebugging();
+    throw;
+  }
+
+  TRI_ClearFailurePointsDebugging();
+}
+#endif
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST(CacheManagerTest,
+     test_memory_usage_with_failure_during_allocation_no_reserve) {
   std::uint64_t requestLimit = 1024 * 1024;
 
   MockMetricsServer server;
@@ -76,6 +233,7 @@ TEST(CacheManagerTest, test_memory_usage_with_failure_during_allocation) {
 
       auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
       ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+      ASSERT_EQ(beforeStats->activeTables, afterStats->activeTables);
     }
 
     {
@@ -88,6 +246,7 @@ TEST(CacheManagerTest, test_memory_usage_with_failure_during_allocation) {
 
       auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
       ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+      ASSERT_EQ(beforeStats->activeTables, afterStats->activeTables);
     }
 
     {
@@ -100,6 +259,7 @@ TEST(CacheManagerTest, test_memory_usage_with_failure_during_allocation) {
 
       auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
       ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+      ASSERT_EQ(beforeStats->activeTables, afterStats->activeTables);
     }
 
   } catch (...) {

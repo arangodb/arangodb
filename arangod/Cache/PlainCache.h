@@ -95,13 +95,13 @@ class PlainCache final : public Cache {
   /// @brief returns the name of the hasher
   std::string_view hasherName() const noexcept;
 
+  static constexpr uint64_t allocationSize() { return sizeof(PlainCache); }
+
  private:
   // friend class manager and tasks
   friend class FreeMemoryTask;
   friend class Manager;
   friend class MigrateTask;
-
-  static constexpr uint64_t allocationSize() { return sizeof(PlainCache); }
 
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
                                        Metadata&& metadata,

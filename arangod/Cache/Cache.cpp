@@ -74,17 +74,23 @@ Cache::Cache(
 }
 
 Cache::~Cache() {
+  std::size_t memoryUsage = 0;
+
   if (_haveFindStats.load(std::memory_order_relaxed)) {
     TRI_ASSERT(_findStats != nullptr);
-    _manager->adjustGlobalAllocation(
-        -(sizeof(decltype(_findStats)::element_type) +
-          (_findStats->findStats ? _findStats->findStats->memoryUsage() : 0)));
+    memoryUsage += sizeof(decltype(_findStats)::element_type);
+    if (_findStats->findStats) {
+      memoryUsage += _findStats->findStats->memoryUsage();
+    }
   }
 
   if (_haveEvictionStats.load(std::memory_order_relaxed)) {
     TRI_ASSERT(_evictionStats != nullptr);
-    _manager->adjustGlobalAllocation(
-        -sizeof(decltype(_evictionStats)::element_type));
+    memoryUsage += sizeof(decltype(_evictionStats)::element_type);
+  }
+
+  if (memoryUsage > 0) {
+    _manager->adjustGlobalAllocation(-static_cast<int64_t>(memoryUsage));
   }
 }
 

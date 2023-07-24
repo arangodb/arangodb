@@ -1,6 +1,10 @@
 devel
 -----
 
+* Reduce memory usage for empty in-memory edge caches by ~40%. This is achieved
+  by allocating each cache's statistics objects only lazily, when actually 
+  needed.
+
 * FE-301: Unify Users View on web UI.
 
 * Updated ArangoDB Starter to 0.16.0.
