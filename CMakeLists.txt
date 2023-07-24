@@ -401,10 +401,10 @@ configure_file(
   NEWLINE_STYLE UNIX
 )
 
-# if (VERBOSE)
+if (VERBOSE)
   message(STATUS "ARANGODB_BUILD_REPOSITORY=\"${ARANGODB_BUILD_REPOSITORY}\"")
   message(STATUS "ENTERPRISE_BUILD_REPOSITORY=\"${ENTERPRISE_BUILD_REPOSITORY}\"")
-# endif ()
+endif ()
 
 ################################################################################
 ## OPERATION SYSTEM
