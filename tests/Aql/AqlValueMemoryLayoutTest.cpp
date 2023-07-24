@@ -25,9 +25,9 @@
 
 #include "Aql/AqlValue.h"
 #include "Basics/Endian.h"
-#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -36,7 +36,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-using arangodb::velocypack::operator""_vpack;
 
 namespace {
 
@@ -145,6 +144,18 @@ void runChecksForSlice(velocypack::Slice value, std::uint8_t const* expected) {
   } else {
     TRI_ASSERT(false) << "Unexpected type " << value.typeName();
   }
+}
+
+auto vpackFromJsonString(char const* c) -> std::shared_ptr<VPackBuilder> {
+  velocypack::Options options;
+  options.checkAttributeUniqueness = true;
+  velocypack::Parser parser(&options);
+  parser.parse(c);
+  return parser.steal();
+}
+
+auto operator"" _vpack(const char* json, size_t) -> velocypack::SharedSlice {
+  return vpackFromJsonString(json)->sharedSlice();
 }
 
 // note: in all following tests, the value UNINITIALIZED (0xa5) has a special
