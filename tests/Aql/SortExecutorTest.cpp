@@ -45,7 +45,6 @@
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
-#include "VelocypackUtils/VelocyPackStringLiteral.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include "AqlItemBlockHelper.h"
