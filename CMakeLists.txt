@@ -205,7 +205,7 @@ endif ()
 # enable code coverage
 option(USE_COVERAGE "enable gcov code coverage" OFF)
 if (USE_COVERAGE)
-  add_compile_options(-fno-stack-protector -fprofile-arcs -ftest-coverage)
+  add_compile_options(-fprofile-arcs -ftest-coverage)
   add_link_options(--coverage)
   add_definitions("-DUSE_COVERAGE=1")
 endif ()
