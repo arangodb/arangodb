@@ -2,6 +2,7 @@ import { VStack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { mutate } from "swr";
+import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { FormField } from "../../../components/form/FormField";
 import {
   CLUSTER_GRAPH_FIELDS_MAP,
@@ -13,7 +14,6 @@ import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { EnterpriseGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
-import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { GraphModalFooter } from "./GraphModalFooter";
 import { GraphWarnings } from "./GraphWarnings";
 
