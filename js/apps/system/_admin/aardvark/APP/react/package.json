@@ -89,6 +89,7 @@
   ],
   "devDependencies": {
     "@types/leaflet": "^1.9.3",
+    "@types/crypto-js": "^4.1.1",
     "@types/minimatch": "^5.1.2",
     "compression-webpack-plugin": "^10.0.0",
     "html-loader": "^4.2.0",
