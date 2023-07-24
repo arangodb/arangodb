@@ -109,7 +109,7 @@ struct Variable {
 
   /// @brief set the constant value of the variable.
   /// This implicitly changes the type -> see type()
-  void setConstantValue(AqlValue value) noexcept;
+  void setConstantValue(AqlValue value);
 
   /// @brief variable id
   VariableId const id;

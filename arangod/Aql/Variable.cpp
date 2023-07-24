@@ -146,7 +146,7 @@ Variable::Type Variable::type() const noexcept {
   return Variable::Type::Const;
 }
 
-void Variable::setConstantValue(AqlValue value) noexcept {
+void Variable::setConstantValue(AqlValue value) {
   _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage());
   _constantValue.destroy();
 
