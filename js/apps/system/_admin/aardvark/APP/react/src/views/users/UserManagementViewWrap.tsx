@@ -16,7 +16,7 @@ export const UserManagementViewWrap = () => {
     <ChakraCustomProvider overrideNonReact>
       <HashRouter basename="/" hashType={"noslash"}>
         <Switch>
-          <Route path="/users" exact>
+          <Route path="/users">
             <UserManagementView />
           </Route>
         </Switch>
