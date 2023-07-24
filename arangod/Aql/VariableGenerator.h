@@ -44,7 +44,7 @@ namespace aql {
 class VariableGenerator {
  public:
   /// @brief create the generator
-  VariableGenerator();
+  VariableGenerator(arangodb::ResourceMonitor& resourceMonitor);
 
   VariableGenerator(VariableGenerator const& other) = delete;
   VariableGenerator& operator=(VariableGenerator const& other) = delete;
@@ -61,18 +61,16 @@ class VariableGenerator {
       bool includeTemporaries) const;
 
   /// @brief generate a variable
-  Variable* createVariable(std::string_view name, bool isUserDefined,
-                           arangodb::ResourceMonitor& resourceMonitor);
+  Variable* createVariable(std::string_view name, bool isUserDefined);
 
   /// @brief generate a variable from VelocyPack
-  Variable* createVariable(arangodb::velocypack::Slice,
-                           arangodb::ResourceMonitor& resourceMonitor);
+  Variable* createVariable(arangodb::velocypack::Slice);
 
   /// @brief clones a variable from an existing one
   Variable* createVariable(Variable const*);
 
   /// @brief generate a temporary variable
-  Variable* createTemporaryVariable(arangodb::ResourceMonitor& resourceMonitor);
+  Variable* createTemporaryVariable();
 
   /// @brief renames a variable (assigns a temporary name)
   Variable* renameVariable(VariableId);
@@ -90,8 +88,7 @@ class VariableGenerator {
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
   /// @brief import from VelocyPack
-  void fromVelocyPack(arangodb::velocypack::Slice const allVariablesList,
-                      arangodb::ResourceMonitor& resourceMonitor);
+  void fromVelocyPack(arangodb::velocypack::Slice const allVariablesList);
 
   /// @brief validate a variable name
   static bool isValidName(char const* p, char const* end) noexcept;
@@ -110,6 +107,8 @@ class VariableGenerator {
 
   /// @brief the next assigned variable id
   VariableId _id;
+
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 }  // namespace aql
 }  // namespace arangodb

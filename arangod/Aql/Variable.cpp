@@ -132,8 +132,7 @@ Variable* Variable::varFromVPack(Ast* ast, velocypack::Slice base,
         "mandatory variable \"" + std::string(variableName) + "\" not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(msg));
   }
-  return ast->variables()->createVariable(variable,
-                                          ast->query().resourceMonitor());
+  return ast->variables()->createVariable(variable);
 }
 
 bool Variable::isEqualTo(Variable const& other) const noexcept {

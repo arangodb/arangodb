@@ -298,13 +298,11 @@ void arangodb::aql::lateDocumentMaterializationRule(
                   attrAndField.afData.field,
                   IndexNode::IndexVariable{
                       attrAndField.afData.fieldNumber,
-                      ast->variables()->createTemporaryVariable(
-                          plan->getAst()->query().resourceMonitor())});
+                      ast->variables()->createTemporaryVariable()});
             }
           }
         }
-        auto const* localDocIdTmp = ast->variables()->createTemporaryVariable(
-            plan->getAst()->query().resourceMonitor());
+        auto const* localDocIdTmp = ast->variables()->createTemporaryVariable();
         TRI_ASSERT(localDocIdTmp);
         for (auto& node : nodesToChange) {
           for (auto& attr : node.attrs) {

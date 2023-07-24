@@ -124,7 +124,7 @@ arangodb::ResourceMonitor& EdgeConditionBuilder::resourceMonitor() {
 
 EdgeConditionBuilderContainer::EdgeConditionBuilderContainer(
     arangodb::ResourceMonitor& resourceMonitor)
-    : EdgeConditionBuilder(nullptr, resourceMonitor) {
+    : EdgeConditionBuilder(nullptr, resourceMonitor), _varGen(resourceMonitor) {
   auto node = std::make_unique<AstNode>(NODE_TYPE_OPERATOR_NARY_AND);
   _astNodes.emplace_back(node.get());
   _modCondition = node.release();
@@ -135,7 +135,7 @@ EdgeConditionBuilderContainer::EdgeConditionBuilderContainer(
   _astNodes.emplace_back(comp.get());
   _compareNode = comp.release();
 
-  _var = _varGen.createTemporaryVariable(resourceMonitor);
+  _var = _varGen.createTemporaryVariable();
 
   auto varNode = std::make_unique<AstNode>(NODE_TYPE_REFERENCE);
   varNode->setData(_var);

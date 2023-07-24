@@ -119,7 +119,7 @@ void ClusterQuery::prepareClusterQuery(
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
-  _ast->variables()->fromVelocyPack(variables, _resourceMonitor);
+  _ast->variables()->fromVelocyPack(variables);
   // creating the plan may have produced some collections
   // we need to add them to the transaction now (otherwise the query will fail)
 

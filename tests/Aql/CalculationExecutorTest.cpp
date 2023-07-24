@@ -38,6 +38,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -87,12 +88,14 @@ class CalculationExecutorTest
   RegisterId outRegID;
   RegisterId inRegID;
   RegisterInfos registerInfos;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   CalculationExecutorTest()
       : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         ast(*fakedQuery.get()),
         one(ast.createNodeValueInt(1)),
-        var("a", 0, false),
+        var("a", 0, false, resourceMonitor),
         a(::initializeReference(ast, var)),
         node(ast.createNodeBinaryOperator(
             AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),

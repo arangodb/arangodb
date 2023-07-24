@@ -486,8 +486,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
       break;
     }
     case NODE_TYPE_VARIABLE: {
-      auto variable = ast->variables()->createVariable(
-          slice, ast->query().resourceMonitor());
+      auto variable = ast->variables()->createVariable(slice);
       TRI_ASSERT(variable != nullptr);
       setData(variable);
       break;

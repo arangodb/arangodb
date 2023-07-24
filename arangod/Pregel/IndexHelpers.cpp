@@ -44,7 +44,8 @@ EdgeCollectionInfo::EdgeCollectionInfo(ResourceMonitor& monitor,
       _trx(trx),
       _collectionName(collectionName),
       _collection(nullptr),
-      _coveringPosition(0) {
+      _coveringPosition(0),
+      _searchBuilder(monitor) {
   if (!trx->isEdgeCollection(collectionName)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
