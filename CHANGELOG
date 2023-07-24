@@ -1,6 +1,40 @@
 devel
 -----
 
+* FE-301: Unify Users View on web UI.
+
+* Updated ArangoDB Starter to 0.16.0.
+
+* Fixed issue with lock starvation when an AQL insert operation with multiple
+  static documents was executed as part of a streaming transaction.
+
+* Optimize runtime performance of exclusive locks.
+
+* Added deprecation message for parts of createCollection API. So far
+  this API ignored unknown options, and therefore did not warn about
+  typos. Furthermore some combinations of values that are not sensible
+  are accepted. In some future version of ArangoDB those will be rejected
+  by the API. The documented part of the API does not change. Watch out
+  for an error with logid: ee638, this indicates you call deprecated parts.
+
+* Avoid recursive lock during agency startup.
+
+* Remove TTL and Observe/Unobserve from the Agency API.
+
+* FE-290: Unify Graphs View on web UI.
+
+* Added the following metrics for the in-memory edge cache:
+
+  - `rocksdb_cache_edge_inserts_total`: total number of insertions into the
+    in-memory edge cache.
+  - `rocksdb_cache_edge_compressed_inserts_total`: total number of insertions
+    into the in-memory edge cache that used compression.
+
+* Added the startup option `--cache.max-spare-memory-usage` to control memory
+  usage for spare, unused hash tables in the in-memory caching subsystem. This
+  option can be used to cap the memory used by spare tables. It can be set to
+  a value of 0 to not use any memory except for active hash tables.
+
 * Updated ArangoDB Starter to 0.16.0-preview-3 and arangosync to v2.19.0-preview-1.
 
 * FE-289: Improve database table UI.
@@ -109,7 +143,7 @@ devel
 * Remove temporary `CREATING_{number}` directories from hot backup in case a
   hot backup runs into an error.
 
-* Added new startup options `--cache.ideal-lower-fill-ratio` and 
+* Added new startup options `--cache.ideal-lower-fill-ratio` and
   `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
   ratios for cache tables that trigger shrinking and growing of the table
   by the cache rebalancer. The default values are:
@@ -119,14 +153,14 @@ devel
 
   These values were hard-coded in previous versions of ArangoDB.
 
-* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in 
-  case the update AQL is of the pattern 
+* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in
+  case the update AQL is of the pattern
 
       FOR doc IN collection
         UPDATE <doc> IN collection
 
   Previously the optimization was only possible if the update AQL was of the
-  pattern 
+  pattern
 
       FOR doc IN collection
         UPDATE <key> WITH <doc> IN collection
