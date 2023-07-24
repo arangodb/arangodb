@@ -413,8 +413,8 @@ function RestoreCollectionsSuite() {
         if (isCluster) {
           validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
         } else {
-          // WriteConcern on SingleServer has no meaning, it is returned but as default value.
-          validateProperties({replicationFactor: 3, writeConcern: 1}, collname, 2);
+          // SingleServer does not expose minReplicationFactor
+          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
         }
       } finally {
         db._drop(collname);
@@ -428,8 +428,8 @@ function RestoreCollectionsSuite() {
         if (isCluster) {
           validateProperties({replicationFactor: 3, minReplicationFactor: 2, writeConcern: 2}, collname, 2);
         } else {
-          // WriteConcern on SingleServe has no meaning, it is returned but as default value.
-          validateProperties({replicationFactor: 3, writeConcern: 1}, collname, 2);
+          // SingleServer does not expose minReplicationFactor, but uses it as input
+          validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
         }
       } finally {
         db._drop(collname);
@@ -1224,7 +1224,7 @@ function IgnoreIllegalTypesSuite() {
                   if (ignoredValue < 0) {
                     // This is actually a VPack Error.
                     // We should consider to make this a non-internal Error.
-                    isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_INTERNAL.code, res, testParam);
+                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
                   } else {
                     isAllowed(res, collname, testParam);
                   }
@@ -1341,7 +1341,13 @@ function RestoreInOneShardSuite() {
             validateProperties(getOneShardShardingValues(), collname, 2);
           } else {
             // OneShard has no meaning in single server, just assert values are taken
-            validateProperties({}, collname, 2);
+            if (v === "minReplicationFactor") {
+              // On Single Server only writeConcern is exposed.
+              // But can be configured with minReplicationFactor
+              validateProperties({writeConcern: 2}, collname, 2);
+            } else {
+              validateProperties({[v]: 2}, collname, 2);
+            }
           }
         } finally {
           db._drop(collname);

@@ -75,6 +75,12 @@ auto rewriteStatusErrorMessageForRestore(inspection::Status const& status)
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
 
+  if (status.path() == StaticStrings::DataSourceType) {
+    // Special handling to be backwards compatible error reporting
+    // on "name"
+    return Result{TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID};
+  }
+
   if (status.path().rfind(StaticStrings::KeyOptions, 0) == 0) {
     // Special handling to be backwards compatible error reporting
     // on "keyOptions"
@@ -83,6 +89,12 @@ auto rewriteStatusErrorMessageForRestore(inspection::Status const& status)
   if (status.path() == StaticStrings::SmartJoinAttribute) {
     return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
   }
+
+  if (status.path() == StaticStrings::Schema) {
+    // Schema should return a validation bad parameter, not only bad parameter
+    return Result{TRI_ERROR_VALIDATION_BAD_PARAMETER, status.error()};
+  }
+
   return Result{
       TRI_ERROR_BAD_PARAMETER,
       status.error() +
@@ -189,6 +201,14 @@ auto handleReplicationFactor(std::string_view key, VPackSlice value,
 auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice,
                     DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isBoolean()) {
+    result.add(key, value);
+  }
+  // Ignore anything else
+}
+
+auto handleNumbersOnly(std::string_view key, VPackSlice value, VPackSlice,
+                       DatabaseConfiguration const&, VPackBuilder& result) {
+  if (value.isNumber()) {
     result.add(key, value);
   }
   // Ignore anything else
@@ -400,6 +420,42 @@ auto transformFromBackwardsCompatibleBody(VPackSlice body,
   return result;
 }
 
+
+/**
+ * Transform an illegal inbound body into a legal one, honoring the exact
+ * behaviour of 3.11 version, for Restore api
+ *
+ * @param body The original body
+ * @param parsingResult The error result returned by
+ * @return
+ */
+auto transformFromBackwardsCompatibleRestoreBody(
+    VPackSlice body, DatabaseConfiguration const& config, Result parsingResult)
+    -> ResultT<VPackBuilder> {
+  TRI_ASSERT(parsingResult.fail());
+  VPackBuilder result;
+  {
+    VPackObjectBuilder objectGuard(&result);
+    auto keyAllowList = makeAllowList();
+    for (auto const& [key, value] : VPackObjectIterator(body)) {
+      // Special handling of some keys that behave differently then in createCollectionAPI.
+      if (key.stringView() == StaticStrings::DataSourceType) {
+        handleNumbersOnly(key.stringView(), value, body, config, result);
+        continue;
+      }
+      auto handler = keyAllowList.find(key.stringView());
+      if (handler == keyAllowList.end()) {
+        // We ignore all keys we are not aware of
+        continue;
+      } else {
+        // All others have implemented a handler
+        handler->second(key.stringView(), value, body, config, result);
+      }
+    }
+  }
+  return result;
+}
+
 #ifndef USE_ENTERPRISE
 Result validateEnterpriseFeaturesNotUsed(CreateCollectionBody const& body) {
   if (body.isSatellite()) {
@@ -541,12 +597,25 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
 
 ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
     VPackSlice input, DatabaseConfiguration const& config) {
-  auto result = ::parseAndValidate(
+  auto res = ::parseAndValidate(
       config, input, [](CreateCollectionBody& col) {},
       ::rewriteStatusErrorMessageForRestore,
       [](CreateCollectionBody& col) {});
 
-  return result;
+  if (res.fail()) {
+    auto newBody =
+        transformFromBackwardsCompatibleRestoreBody(input, config, res.result());
+    if (newBody.fail()) {
+      return newBody.result();
+    }
+    // NOTE: We do not log a deprecation message here. The restore API is forever backwards
+    // compatible.
+    return ::parseAndValidate(
+        config, newBody->slice(), [](CreateCollectionBody& col) {},
+        ::rewriteStatusErrorMessageForRestore,
+        [](CreateCollectionBody& col) {});
+  }
+  return res;
 }
 
 arangodb::velocypack::Builder
