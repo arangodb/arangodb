@@ -31,9 +31,12 @@
 
 #include "Cache/Manager.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
 #include "Basics/cpu-relax.h"
+#include "Basics/debugging.h"
+#include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/Cache.h"
@@ -139,41 +142,66 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
     SpinLocker guard(SpinLocker::Mode::Write, _lock);
     bool allowed = isOperational();
 
+    std::uint64_t fixedSize = 0;
     if (allowed) {
-      std::uint64_t fixedSize = [&type]() {
+      fixedSize = [&type]() {
         switch (type) {
           case CacheType::Plain:
             return PlainCache<Hasher>::allocationSize();
           case CacheType::Transactional:
             return TransactionalCache<Hasher>::allocationSize();
           default:
-            return std::uint64_t(0);
+            ADB_UNREACHABLE;
         }
       }();
+
       std::tie(allowed, metadata, table) = registerCache(fixedSize, maxSize);
     }
 
-    // note: allowed can be overwritten by registerCache()
+    // note: allowed could have been overwritten by registerCache()
     if (allowed) {
+      TRI_ASSERT(table != nullptr);
+      auto tableGuard = scopeGuard([&]() noexcept {
+        reclaimTable(std::move(table), /*internal*/ true);
+      });
+
       std::uint64_t id = _nextCacheId++;
 
-      switch (type) {
-        case CacheType::Plain:
-          result =
-              PlainCache<Hasher>::create(this, id, std::move(metadata),
-                                         std::move(table), enableWindowedStats);
-          break;
-        case CacheType::Transactional:
-          result = TransactionalCache<Hasher>::create(
-              this, id, std::move(metadata), std::move(table),
-              enableWindowedStats);
-          break;
-        default:
-          break;
-      }
+      try {
+        // simulates an OOM exception during cache creation
+        TRI_IF_FAILURE("CacheAllocation::fail2") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
 
-      if (result != nullptr) {
-        _caches.try_emplace(id, result);
+        switch (type) {
+          case CacheType::Plain:
+            result = PlainCache<Hasher>::create(this, id, std::move(metadata),
+                                                table, enableWindowedStats);
+            break;
+          case CacheType::Transactional:
+            result = TransactionalCache<Hasher>::create(
+                this, id, std::move(metadata), table, enableWindowedStats);
+            break;
+          default:
+            ADB_UNREACHABLE;
+        }
+
+        TRI_IF_FAILURE("CacheAllocation::fail3") {
+          // simulates an OOM exception during insertion into _caches
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        if (result != nullptr) {
+          _caches.try_emplace(id, result);
+        }
+
+        tableGuard.cancel();
+      } catch (...) {
+        TRI_ASSERT(_globalAllocation >= Cache::kMinSize + fixedSize +
+                                            kCacheRecordOverhead +
+                                            _fixedAllocation);
+        _globalAllocation -= Cache::kMinSize + fixedSize + kCacheRecordOverhead;
+        throw;
       }
     }
   }
@@ -383,10 +411,15 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
   }
 
   if (ok) {
+    TRI_ASSERT(table != nullptr);
+
     std::uint64_t memoryUsage = table->memoryUsage();
     metadata = Metadata(Cache::kMinSize, fixedSize, memoryUsage, maxSize);
     TRI_ASSERT(metadata.allocatedSize >= memoryUsage);
     ok = increaseAllowed(metadata.allocatedSize - memoryUsage, true);
+
+    TRI_IF_FAILURE("CacheAllocation::fail1") { ok = false; }
+
     if (ok) {
       TRI_ASSERT(_globalAllocation + (metadata.allocatedSize - memoryUsage) >=
                  _fixedAllocation);

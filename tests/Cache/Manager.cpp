@@ -30,6 +30,7 @@
 #include <thread>
 #include <vector>
 
+#include "Basics/debugging.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/CacheOptionsProvider.h"
@@ -45,6 +46,70 @@
 using namespace arangodb;
 using namespace arangodb::cache;
 using namespace arangodb::tests::mocks;
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST(CacheManagerTest, test_memory_usage_with_failure_during_allocation) {
+  std::uint64_t requestLimit = 1024 * 1024;
+
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  auto postFn = [](std::function<void()>) -> bool { return false; };
+  CacheOptions co;
+  co.cacheSize = requestLimit;
+  co.maxSpareAllocation = 0;
+  Manager manager(sharedPRNG, postFn, co);
+
+  ASSERT_EQ(requestLimit, manager.globalLimit());
+
+  ASSERT_TRUE(0ULL < manager.globalAllocation());
+  ASSERT_TRUE(requestLimit > manager.globalAllocation());
+
+  try {
+    {
+      TRI_ClearFailurePointsDebugging();
+      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+      TRI_AddFailurePointDebugging("CacheAllocation::fail1");
+      auto cache =
+          manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+      ASSERT_EQ(nullptr, cache);
+
+      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+    }
+
+    {
+      TRI_ClearFailurePointsDebugging();
+      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+      TRI_AddFailurePointDebugging("CacheAllocation::fail2");
+      ASSERT_ANY_THROW(
+          manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+
+      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+    }
+
+    {
+      TRI_ClearFailurePointsDebugging();
+      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+      TRI_AddFailurePointDebugging("CacheAllocation::fail3");
+      ASSERT_ANY_THROW(
+          manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+
+      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+    }
+
+  } catch (...) {
+    TRI_ClearFailurePointsDebugging();
+    throw;
+  }
+
+  TRI_ClearFailurePointsDebugging();
+}
+#endif
 
 TEST(CacheManagerTest, test_create_and_destroy_caches) {
   std::uint64_t requestLimit = 1024 * 1024;
