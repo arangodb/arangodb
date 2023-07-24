@@ -25,12 +25,17 @@
 
 #include "Aql/AqlValue.h"
 #include "Basics/Endian.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/SharedSlice.h>
+
+#include <cstdint>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using arangodb::velocypack::operator""_vpack;
 
 namespace {
 
@@ -60,24 +65,23 @@ void runChecksForNumber(AqlValue const& value, uint8_t const* expected) {
       if (expected[i] == UNINITIALIZED) {
         continue;
       }
-      EXPECT_EQ(data[i], expected[i]);
+      EXPECT_EQ(data[i], expected[i]) << "i=" << (int)i;
     }
   }
 }
 
+struct alignas(16) AqlValueMemory {
+  AqlValueMemory() {
+    // poison memory with some garbage values
+    memset(&buffer[0], 0x99, sizeof(buffer));
+  }
+  uint8_t buffer[16];
+
+  static_assert(sizeof(buffer) == 16, "invalid size of AqlValueMemory buffer");
+};
+static_assert(sizeof(AqlValueMemory) == 16, "invalid size of AqlValueMemory");
+
 void runChecksForUInt64(uint64_t value, uint8_t const* expected) {
-  struct alignas(16) AqlValueMemory {
-    AqlValueMemory() {
-      // poison memory with some garbage values
-      memset(&buffer[0], 0x99, sizeof(buffer));
-    }
-    uint8_t buffer[16];
-
-    static_assert(sizeof(buffer) == 16,
-                  "invalid size of AqlValueMemory buffer");
-  };
-  static_assert(sizeof(AqlValueMemory) == 16, "invalid size of AqlValueMemory");
-
   // poison some memory with 0x99 values
   AqlValueMemory memory;
   void* p = reinterpret_cast<void*>(&memory);
@@ -101,6 +105,44 @@ void runChecksForUInt64(uint64_t value, uint8_t const* expected) {
     EXPECT_EQ(static_cast<int64_t>(value), aqlValue.toInt64());
     EXPECT_EQ(static_cast<int64_t>(value),
               aqlValue.slice().getNumber<int64_t>());
+  }
+}
+
+void runChecksForSlice(velocypack::Slice value, std::uint8_t const* expected) {
+  // poison some memory with 0x99 values
+  AqlValueMemory memory;
+  void* p = reinterpret_cast<void*>(&memory);
+
+  // initialize aql value from a slice. note: we are using placement new here,
+  // so that the AqlValue uses the poisoned memory region
+  new (p) AqlValue(value);
+  // although we are using placement new here, we don't need to call the
+  // destructor here, as the AqlValue with the payloads we use here won't
+  // do anything in its destructor
+
+  AqlValue& aqlValue = *reinterpret_cast<AqlValue*>(p);
+  runChecksForNumber(aqlValue, expected);
+
+  if (value.isUInt()) {
+    auto uval = value.getUInt();
+
+    EXPECT_EQ(uval != 0, aqlValue.toBoolean());
+    EXPECT_EQ(uval, aqlValue.slice().getNumber<std::uint64_t>());
+
+    if (uval <=
+        static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>().max())) {
+      auto ival = static_cast<std::int64_t>(uval);
+      EXPECT_EQ(ival, aqlValue.toInt64());
+      EXPECT_EQ(ival, aqlValue.slice().getNumber<std::int64_t>());
+    }
+  } else if (value.isInt() || value.isSmallInt()) {
+    auto ival = value.getInt();
+    EXPECT_EQ(ival != 0, aqlValue.toBoolean());
+    EXPECT_EQ(ival, aqlValue.slice().getNumber<std::int64_t>());
+    EXPECT_EQ(ival, aqlValue.toInt64());
+    EXPECT_EQ(ival, aqlValue.slice().getNumber<std::int64_t>());
+  } else {
+    TRI_ASSERT(false) << "Unexpected type " << value.typeName();
   }
 }
 
@@ -829,6 +871,222 @@ TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_18446744073709551615) {
       0xff,
   };
   runChecksForUInt64(uint64_t(18446744073709551615ULL), expected);
+}
+
+TEST(AqlValueMemoryLayoutTest, Slice_Unsigned64Bit_36028797018963968) {
+  auto value = "36028797018963968"_vpack;
+  // 00 00 00 00 00 00 80 00
+  uint8_t const expected[] = {
+      AqlValue::AqlValueType::VPACK_INLINE_UINT64,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      0x2e,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x80,
+      0x00,
+  };
+
+  runChecksForSlice(value.slice(), expected);
+}
+
+TEST(AqlValueMemoryLayoutTest, Slice_Unsigned64Bit_36028797018963969) {
+  auto value = "36028797018963969"_vpack;
+  // 01 00 00 00 00 00 80 00
+  uint8_t const expected[] = {
+      AqlValue::AqlValueType::VPACK_INLINE_UINT64,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      0x2e,
+      0x01,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x80,
+      0x00,
+  };
+  runChecksForSlice(value.slice(), expected);
+}
+
+TEST(AqlValueMemoryLayoutTest, Slice_Unsigned64Bit_72057594037927935) {
+  auto value = "72057594037927935"_vpack;
+  // ff ff ff ff ff ff ff 00
+  uint8_t const expected[] = {
+      AqlValue::AqlValueType::VPACK_INLINE_UINT64,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      0x2e,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+      0x00,
+  };
+  runChecksForSlice(value.slice(), expected);
+}
+
+TEST(AqlValueMemoryLayoutTest, Slice_Unsigned64Bit_72057594037927936) {
+  auto value = "72057594037927936"_vpack;
+  // 00 00 00 00 00 00 00 01
+  uint8_t const expected[] = {
+      AqlValue::AqlValueType::VPACK_INLINE_UINT64,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      0x2f,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+  };
+  runChecksForSlice(value.slice(), expected);
+}
+TEST(AqlValueMemoryLayoutTest, Slice_Unsigned64Bit_18446744073709551615) {
+  auto value = "18446744073709551615"_vpack;
+  // ff ff ff ff ff ff ff ff
+  uint8_t const expected[] = {
+      AqlValue::AqlValueType::VPACK_INLINE_UINT64,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      0x2f,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+  };
+  runChecksForSlice(value.slice(), expected);
+}
+
+TEST(AqlValueMemoryLayoutTest, Slice_Signed64Bit_minus_17979145283436031) {
+  auto value = "-17979145283436031"_vpack;
+  // 01 02 04 08 10 20 c0 ff
+  uint8_t const expected[] = {
+      AqlValue::AqlValueType::VPACK_INLINE_INT64,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      0x26,
+      0x01,
+      0x02,
+      0x04,
+      0x08,
+      0x10,
+      0x20,
+      0xc0,
+      0xff,
+  };
+  runChecksForSlice(value.slice(), expected);
+}
+
+TEST(AqlValueMemoryLayoutTest, Slice_Signed64Bit_minus_36028797018963968) {
+  auto value = "-36028797018963968"_vpack;
+  // 00 00 00 00 00 00 80 ff
+  uint8_t const expected[] = {
+      AqlValue::AqlValueType::VPACK_INLINE_INT64,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      0x26,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x80,
+      0xff,
+  };
+  runChecksForSlice(value.slice(), expected);
+}
+
+TEST(AqlValueMemoryLayoutTest, Slice_Signed64Bit_minus_36028797018963969) {
+  auto value = "-36028797018963969"_vpack;
+  // ff ff ff ff ff ff 7f ff
+  uint8_t const expected[] = {
+      AqlValue::AqlValueType::VPACK_INLINE_INT64,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      0x27,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+      0xff,
+      0x7f,
+      0xff,
+  };
+  runChecksForSlice(value.slice(), expected);
+}
+
+TEST(AqlValueMemoryLayoutTest, Slice_Signed64Bit_minus_9223372036854775808) {
+  auto value = "-9223372036854775808"_vpack;
+  // 00 00 00 00 00 00 00 80
+  uint8_t const expected[] = {
+      AqlValue::AqlValueType::VPACK_INLINE_INT64,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      UNINITIALIZED,
+      0x27,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x80,
+  };
+  runChecksForSlice(value.slice(), expected);
 }
 
 }  // namespace

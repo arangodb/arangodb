@@ -46,6 +46,9 @@
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
+#include "Basics/VelocyPackHelper.h"
+
 #include "AqlItemBlockHelper.h"
 #include "search/score.hpp"
 
@@ -296,4 +299,29 @@ TEST_P(SortExecutorTest, skip_nested_subquery_no_data) {
       .expectedState(ExecutionState::DONE)
       .run();
 }
+
+// Regression test for BTS-1511:
+// https://arangodb.atlassian.net/browse/BTS-1511
+// The query
+//   FOR x IN [-220000000000002, 1, 10] SORT x RETURN x
+// resulted in
+//   [ 1, 10, -220000000000002 ]
+// while
+//   [ -220000000000002, 1, 10 ]
+// would be expected.
+TEST_P(SortExecutorTest, regression_bts_1511) {
+  AqlCall call{};          // unlimited produce
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(),
+                                 ExecutionNode::SORT)
+      .setInputSplitType(getSplit())
+      .setInputValueList(R"(-220000000000002)", 1, 10)
+      .expectOutput({0}, {{R"(-220000000000002)"}, {1}, {10}})
+      .setCall(call)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
 }  // namespace arangodb::tests::aql
