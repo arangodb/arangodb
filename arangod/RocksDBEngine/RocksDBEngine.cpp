@@ -182,12 +182,12 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
-DECLARE_GAUGE(rocksdb_cache_edge_uncompressed_entries_size, uint64_t,
-              "Total gross memory size of all edge cache entries ever stored "
-              "in memory");
-DECLARE_GAUGE(rocksdb_cache_edge_effective_entries_size, uint64_t,
-              "Total effective memory size of all edge cache entries ever "
-              "stored in memory (after compression)");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_uncompressed_entries_size_total,
+                "Total gross memory size of all edge cache entries ever stored "
+                "in memory");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_effective_entries_size_total,
+                "Total effective memory size of all edge cache entries ever "
+                "stored in memory (after compression)");
 DECLARE_GAUGE(rocksdb_cache_edge_compression_ratio, double,
               "Overall compression ratio for all edge cache entries ever "
               "stored in memory");
@@ -330,10 +330,10 @@ RocksDBEngine::RocksDBEngine(Server& server,
               arangodb_revision_tree_resurrections_total{})),
       _metricsEdgeCacheEntriesSizeInitial(
           server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_uncompressed_entries_size{})),
+              rocksdb_cache_edge_inserts_uncompressed_entries_size_total{})),
       _metricsEdgeCacheEntriesSizeEffective(
           server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_effective_entries_size{})),
+              rocksdb_cache_edge_inserts_effective_entries_size_total{})),
       _metricsEdgeCacheInserts(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_edge_inserts_total{})),
       _metricsEdgeCacheCompressedInserts(
@@ -4088,8 +4088,8 @@ void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
                                     uint64_t totalInserts,
                                     uint64_t totalCompressedInserts) noexcept {
   if (totalInserts > 0) {
-    _metricsEdgeCacheEntriesSizeInitial.fetch_add(initial);
-    _metricsEdgeCacheEntriesSizeEffective.fetch_add(effective);
+    _metricsEdgeCacheEntriesSizeInitial.count(initial);
+    _metricsEdgeCacheEntriesSizeEffective.count(effective);
     _metricsEdgeCacheInserts.count(totalInserts);
     _metricsEdgeCacheCompressedInserts.count(totalCompressedInserts);
   }

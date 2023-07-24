@@ -750,10 +750,10 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeResurrections;
 
   // total size of uncompressed values for the edge cache
-  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeInitial;
+  metrics::Counter& _metricsEdgeCacheEntriesSizeInitial;
   // total size of values stored in the edge cache (can be smaller than the
   // initial size because of compression)
-  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeEffective;
+  metrics::Counter& _metricsEdgeCacheEntriesSizeEffective;
 
   metrics::Counter& _metricsEdgeCacheInserts;
   metrics::Counter& _metricsEdgeCacheCompressedInserts;
