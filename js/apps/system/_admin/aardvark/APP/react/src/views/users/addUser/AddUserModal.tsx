@@ -4,6 +4,7 @@ import { Form, Formik } from "formik";
 import React from "react";
 import { mutate } from "swr";
 import * as Yup from "yup";
+import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { FormField } from "../../../components/form/FormField";
 import {
   Modal,
@@ -12,7 +13,6 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
-import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { CreateUserValues } from "./CreateUser.types";
 
 const addUserFields = {
@@ -121,7 +121,7 @@ export const AddUserModal = ({
     const isRole = window.frontendConfig.isEnterprise && values.role;
     let { user } = values;
     if (isRole) {
-      user = ":role:" + values.user;
+      user = `:role:${values.user}`;
     }
     const userOptions = {
       user,
