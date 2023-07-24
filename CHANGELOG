@@ -22,7 +22,7 @@ devel
   in-memory cache subsystem, and the subsystem not exceeding its configured
   limit. However, as memory usage by the in-memory cache subsystem was 
   previously (inaccurately) underreported, it also means that the limit will 
-  now behit more quickly. It may be necessary to increase the value of the
+  now be hit more quickly. It may be necessary to increase the value of the
   startup option `--cache.size` to counter this effect.
 
 * Reduce memory usage for empty in-memory edge caches by ~40%. This is achieved
