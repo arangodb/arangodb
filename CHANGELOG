@@ -14,9 +14,16 @@ devel
   will help to keep the hot set in memory rather than evicting it in favor of
   "random" other index entries.
 
-* Properly track memory usage for allocated objects in in-memory edge cache.
+* Properly track memory usage for allocated objects in the in-memory cache
+  (e.g. the edge cache or the in-memory cache for other persistent indexes).
   Previously only the memory used for the underlying hash tables was accounted
   for, but not the value of the cache payloads (keys and values).
+  This change leads to more accurate memory usage tracking and reporting by the 
+  in-memory cache subsystem, and the subsystem not exceeding its configured
+  limit. However, as memory usage by the in-memory cache subsystem was 
+  previously (inaccurately) underreported, it also means that the limit will 
+  now behit more quickly. It may be necessary to increase the value of the
+  startup option `--cache.size` to counter this effect.
 
 * Reduce memory usage for empty in-memory edge caches by ~40%. This is achieved
   by allocating each cache's statistics objects only lazily, when actually 
