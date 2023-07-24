@@ -162,6 +162,8 @@ function makeDataWrapper (options) {
         if (!rc.status) {
           let rx = new RegExp(/\\n/g);
           res.message += file + ':\n' + fs.read(args['log.file']).replace(rx, '\n');
+        } else {
+          fs.remove(args['log.file']);
         }
         res.total++;
         res.duration += rc.duration;
