@@ -71,11 +71,14 @@ TEST(CacheManagerTest, test_memory_usage_for_cache_creation) {
     auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
     ASSERT_NE(nullptr, cache);
 
+    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(1, afterStats->activeTables);
+
     manager.destroyCache(cache);
 
-    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
-    ASSERT_EQ(0, afterStats->activeTables);
-    ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+    auto afterStats2 = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(0, afterStats2->activeTables);
+    ASSERT_EQ(beforeStats->globalAllocation, afterStats2->globalAllocation);
   }
 }
 
@@ -105,13 +108,15 @@ TEST(CacheManagerTest, test_memory_usage_for_cache_reusage) {
     manager.destroyCache(cache);
 
     auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
-    ASSERT_EQ(1, afterStats->activeTables);
+    ASSERT_EQ(0, afterStats->activeTables);
+    ASSERT_EQ(1, afterStats->spareTables);
     ASSERT_LT(beforeStats->globalAllocation, afterStats->globalAllocation);
 
     cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
 
     auto afterStats2 = manager.memoryStats(cache::Cache::triesGuarantee);
     ASSERT_EQ(1, afterStats2->activeTables);
+    ASSERT_EQ(0, afterStats2->spareTables);
     ASSERT_LT(afterStats->globalAllocation, afterStats2->globalAllocation);
 
     manager.destroyCache(cache);
@@ -121,7 +126,8 @@ TEST(CacheManagerTest, test_memory_usage_for_cache_reusage) {
 
     auto afterStats3 = manager.memoryStats(cache::Cache::triesGuarantee);
     ASSERT_EQ(0, afterStats3->activeTables);
-    ASSERT_LT(beforeStats->globalAllocation, afterStats3->globalAllocation);
+    ASSERT_EQ(0, afterStats3->spareTables);
+    ASSERT_EQ(beforeStats->globalAllocation, afterStats3->globalAllocation);
 #endif
   }
 }
@@ -474,6 +480,7 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
   for (auto cache : caches) {
     manager.destroyCache(cache);
   }
+  caches.clear();
 
   RandomGenerator::shutdown();
 }

@@ -216,12 +216,13 @@ void Manager::destroyCache(std::shared_ptr<Cache> const& cache) {
 void Manager::adjustGlobalAllocation(std::int64_t value) noexcept {
   if (value > 0) {
     SpinLocker guard(SpinLocker::Mode::Write, _lock);
-    _globalAllocation += static_cast<uint64_t>(value);
+    _globalAllocation += static_cast<std::uint64_t>(value);
     _peakGlobalAllocation = std::max(_globalAllocation, _peakGlobalAllocation);
-  } else {
+  } else if (value < 0) {
     SpinLocker guard(SpinLocker::Mode::Write, _lock);
-    TRI_ASSERT(_globalAllocation >= static_cast<uint64_t>(-value));
-    _globalAllocation -= static_cast<uint64_t>(-value);
+    TRI_ASSERT(_globalAllocation >=
+               static_cast<std::uint64_t>(-value) + _fixedAllocation);
+    _globalAllocation -= static_cast<std::uint64_t>(-value);
   }
 }
 

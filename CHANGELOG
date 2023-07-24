@@ -1,6 +1,10 @@
 devel
 -----
 
+* Properly track memory usage for allocated objects in in-memory edge cache.
+  Previously only the memory used for the underlying hash tables was accounted
+  for, but not the value of the cache payloads (keys and values).
+
 * Reduce memory usage for empty in-memory edge caches by ~40%. This is achieved
   by allocating each cache's statistics objects only lazily, when actually 
   needed.

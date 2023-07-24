@@ -123,6 +123,7 @@ template<typename Hasher>
           maybeMigrate = source->slotFilled();
         }
         maybeMigrate |= reportInsert(eviction);
+        adjustGlobalAllocation(change, false);
       } else {
         requestGrow();  // let function do the hard work
         status = TRI_ERROR_RESOURCE_LIMIT;
@@ -168,6 +169,7 @@ template<typename Hasher>
       }
 
       freeValue(candidate);
+      adjustGlobalAllocation(change, false);
       maybeMigrate = source->slotEmptied();
     }
   }
@@ -358,19 +360,27 @@ std::pair<::ErrorCode, Table::BucketLocker> PlainCache<Hasher>::getBucket(
 }
 
 template<typename Hasher>
-Table::BucketClearer PlainCache<Hasher>::bucketClearer(Manager* /*manager*/,
+Table::BucketClearer PlainCache<Hasher>::bucketClearer(Cache* cache,
                                                        Metadata* metadata) {
-  return [metadata](void* ptr) -> void {
+  return [cache, metadata](void* ptr) -> void {
     auto bucket = static_cast<PlainBucket*>(ptr);
+    std::uint64_t totalSize = 0;
     bucket->lock(Cache::triesGuarantee);
     for (std::size_t j = 0; j < PlainBucket::kSlotsData; j++) {
       if (bucket->_cachedData[j] != nullptr) {
         std::uint64_t size = bucket->_cachedData[j]->size();
         freeValue(bucket->_cachedData[j]);
+        totalSize += size;
+      }
+    }
+    if (totalSize > 0) {
+      {
         SpinLocker metaGuard(SpinLocker::Mode::Read,
                              metadata->lock());  // special case
-        metadata->adjustUsageIfAllowed(-static_cast<int64_t>(size));
+        metadata->adjustUsageIfAllowed(-static_cast<std::int64_t>(totalSize));
       }
+      cache->adjustGlobalAllocation(-static_cast<std::int64_t>(totalSize),
+                                    /*force*/ false);
     }
     bucket->clear();
   };

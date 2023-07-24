@@ -52,16 +52,17 @@ using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 Cache::Cache(
     Manager* manager, std::uint64_t id, Metadata&& metadata,
     std::shared_ptr<Table> table, bool enableWindowedStats,
-    std::function<Table::BucketClearer(Manager*, Metadata*)> bucketClearer,
+    std::function<Table::BucketClearer(Cache*, Metadata*)> bucketClearer,
     std::size_t slotsPerBucket)
     : _shutdown(false),
       _manager(manager),
       _id(id),
       _metadata(std::move(metadata)),
+      _memoryUsageDiff(0),
       _haveFindStats(false),
       _enableWindowedStats(enableWindowedStats),
       _table(std::move(table)),
-      _bucketClearer(bucketClearer(manager, &_metadata)),
+      _bucketClearer(bucketClearer(this, &_metadata)),
       _slotsPerBucket(slotsPerBucket),
       _haveEvictionStats(false),
       _migrateRequestTime(
@@ -74,7 +75,11 @@ Cache::Cache(
 }
 
 Cache::~Cache() {
-  std::size_t memoryUsage = 0;
+  // report memory usage diff to manager
+  adjustGlobalAllocation(/*value*/ 0, /*force*/ true);
+  TRI_ASSERT(_memoryUsageDiff == 0);
+
+  std::uint64_t memoryUsage = 0;
 
   if (_haveFindStats.load(std::memory_order_relaxed)) {
     TRI_ASSERT(_findStats != nullptr);
@@ -89,8 +94,38 @@ Cache::~Cache() {
     memoryUsage += sizeof(decltype(_evictionStats)::element_type);
   }
 
-  if (memoryUsage > 0) {
-    _manager->adjustGlobalAllocation(-static_cast<int64_t>(memoryUsage));
+  _manager->adjustGlobalAllocation(-static_cast<std::int64_t>(memoryUsage));
+}
+
+void Cache::adjustGlobalAllocation(std::int64_t value, bool force) noexcept {
+  // if value is 0 but force is true, we still want to set _memoryUsageDiff
+  // to 0 and report our current "debt" to the manager, so that we can still
+  // set our own value to 0 and be fine.
+  if (value != 0 || force) {
+    auto expected =
+        _memoryUsageDiff.fetch_add(value, std::memory_order_relaxed) + value;
+    // only increment global memory usage if our own |delta| is >= 1kb.
+    // we do this to release lock pressure on the manager's mutex, which must
+    // be acquired to update the global allocation value
+    static_assert(kMemoryReportGranularity > 0);
+    force |= (expected >= kMemoryReportGranularity ||
+              expected <= -kMemoryReportGranularity);
+
+    if (force) {
+      do {
+        if (_memoryUsageDiff.compare_exchange_weak(expected, 0,
+                                                   std::memory_order_acq_rel,
+                                                   std::memory_order_relaxed)) {
+          if (expected != 0) {
+            // only inform manager if there is an actual change in memory usage.
+            // the other code above which resets _memoryUsageDiff should be
+            // executed even if value was 0 (and the force flag was set).
+            _manager->adjustGlobalAllocation(expected);
+          }
+          break;
+        }
+      } while (true);
+    }
   }
 }
 
@@ -285,6 +320,8 @@ void Cache::freeValue(CachedValue* value) noexcept {
 }
 
 bool Cache::reclaimMemory(std::uint64_t size) noexcept {
+  adjustGlobalAllocation(-static_cast<std::int64_t>(size), /*force*/ false);
+
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   _metadata.adjustUsageIfAllowed(-static_cast<std::int64_t>(size));
   return (_metadata.softUsageLimit >= _metadata.usage);
@@ -452,6 +489,11 @@ void Cache::shutdown() {
     std::atomic_store_explicit(&_table, std::shared_ptr<cache::Table>(),
                                std::memory_order_release);
   }
+
+  taskGuard.release();
+
+  // report memory usage diff to manager
+  adjustGlobalAllocation(/*value*/ 0, /*force*/ true);
 }
 
 bool Cache::canResize() noexcept {
@@ -462,18 +504,6 @@ bool Cache::canResize() noexcept {
   return !isResizingOrMigratingFlagSet();
 }
 
-/// TODO Improve freeing algorithm
-/// Currently we pick a bucket at random, free something if possible, then
-/// repeat. In a table with a low fill ratio, this will inevitably waste a lot
-/// of time visiting empty buckets. If we get unlucky, we can go an arbitrarily
-/// long time without fixing anything. We may wish to make the walk a bit more
-/// like visiting the buckets in the order of a fixed random permutation. This
-/// should be achievable by picking a random start bucket S, and a suitably
-/// large number P co-prime to the size of the table N to use as a constant
-/// offset for each subsequent step. (The sequence of numbers S, ((S + P) % N)),
-/// ((S + 2P) % N)... (S + (N-1)P) % N should form a permuation of [1, N].
-/// That way we still visit the buckets in a sufficiently random order, but we
-/// are guaranteed to make progress in a finite amount of time.
 bool Cache::freeMemory() {
   TRI_ASSERT(isResizingFlagSet());
 

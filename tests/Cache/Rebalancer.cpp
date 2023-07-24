@@ -196,6 +196,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   for (auto cache : caches) {
     manager.destroyCache(cache);
   }
+  caches.clear();
 
   RandomGenerator::shutdown();
 }
@@ -341,6 +342,7 @@ TEST(CacheRebalancerTest,
   for (auto cache : caches) {
     manager.destroyCache(cache);
   }
+  caches.clear();
 
   RandomGenerator::shutdown();
 }

@@ -70,7 +70,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
         std::shared_ptr<Table> table, bool enableWindowedStats,
-        std::function<Table::BucketClearer(Manager*, Metadata*)> bucketClearer,
+        std::function<Table::BucketClearer(Cache*, Metadata*)> bucketClearer,
         std::size_t slotsPerBucket);
 
  public:
@@ -80,6 +80,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   static constexpr std::uint64_t kMinSize = 16384;
   static constexpr std::uint64_t kMinLogSize = 14;
+  static constexpr std::int64_t kMemoryReportGranularity = 4096;
 
   static constexpr std::uint64_t triesGuarantee =
       std::numeric_limits<std::uint64_t>::max();
@@ -91,6 +92,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   virtual ::ErrorCode insert(CachedValue* value) = 0;
   virtual ::ErrorCode remove(void const* key, std::uint32_t keySize) = 0;
   virtual ::ErrorCode banish(void const* key, std::uint32_t keySize) = 0;
+
+  void adjustGlobalAllocation(std::int64_t value, bool force) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ID for this cache.
@@ -261,6 +264,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   Manager* _manager;
   std::uint64_t const _id;
   Metadata _metadata;
+
+  std::atomic<std::int64_t> _memoryUsageDiff;
 
   struct FindStats {
     mutable basics::SharedCounter<64> findHits;

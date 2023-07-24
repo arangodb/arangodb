@@ -135,8 +135,7 @@ class TransactionalCache final : public Cache {
       Table::HashOrId bucket, std::uint64_t maxTries,
       bool singleOperation = true);
 
-  static Table::BucketClearer bucketClearer(Manager* manager,
-                                            Metadata* metadata);
+  static Table::BucketClearer bucketClearer(Cache* cache, Metadata* metadata);
 };
 
 }  // end namespace arangodb::cache
