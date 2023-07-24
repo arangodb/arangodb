@@ -291,71 +291,101 @@ configure_file(
 
 find_program (GIT_EXE git)
 if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
+  # Get community commit hash 
+  execute_process(
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${GIT_EXE} rev-parse --short HEAD
+    OUTPUT_VARIABLE COMMIT_RAW
+  )
+  if (NOT COMMIT_RAW)
+    message(FATAL_ERROR "Can't extract current commit with the command: 'git rev-parse --short HEAD'")
+  endif()
+
+  string(STRIP ${COMMIT_RAW} COMMIT_SHORT)
+
   if (NOT DEFINED BUILD_REPO_INFO OR BUILD_REPO_INFO STREQUAL "default")
     execute_process(
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-
-      COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
-      OUTPUT_VARIABLE GIT_OUTPUT)
-
-    # this may fail on shallow clones that only knows about a limited number of commits.
-    # if there is an older merged revision the head, it may not be available to git.
-    if (NOT GIT_OUTPUT)
-        set(ARANGODB_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
-        set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
-      else()
-        string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-        set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
-        set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+      COMMAND ${GIT_EXE} branch --show-current
+      OUTPUT_VARIABLE BRANCH_NAME_RAW)
+    if (NOT BRANCH_NAME_RAW)
+      message(FATAL_ERROR "Can't extract current branch name with the command: 'git branch --show-current'")
+    else()
+      string(STRIP ${BRANCH_NAME_RAW} BRANCH_NAME)
+      set(ARANGODB_BUILD_REPOSITORY "refs/${BRANCH_NAME} ${COMMIT_SHORT}")
+      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
     endif()
+  elseif(BUILD_REPO_INFO STREQUAL "release")
+    execute_process(
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      COMMAND ${GIT_EXE} describe --all --tags --match v${ARANGODB_PLAIN_VERSION}
+      OUTPUT_VARIABLE TAG_RAW)
+    if (NOT TAG_RAW)
+      message(FATAL_ERROR "Can't extract tag using the command: 'git describe --all --tags --match v${ARANGODB_PLAIN_VERSION}")
+    else()
+      string(STRIP ${TAG_RAW} TAG)
+      set(ARANGODB_BUILD_REPOSITORY "refs/${TAG} ${COMMIT_SHORT}")
+      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+    endif()
+  elseif(BUILD_REPO_INFO STREQUAL "nightly")
+    set(ARANGODB_BUILD_REPOSITORY "refs/head/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR} ${COMMIT_SHORT}")
+    set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+  else ()
+    set(ARANGODB_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - UNSUPPORTED BUILD MODE")
+    set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
   endif()
-else ()
+else()
   set(ARANGODB_BUILD_REPOSITORY "")
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
 
-if (DEFINED BUILD_REPO_INFO AND NOT DEFINED ARANGODB_BUILD_REPOSITORY)
-  if (BUILD_REPO_INFO STREQUAL "release" OR BUILD_REPO_INFO STREQUAL "nightly")
-    set(ARANGODB_BUILD_REPOSITORY ${ARANGODB_VERSION})
-    set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
-  else()
-    set(ARANGODB_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - UNSUPPORTED BUILD MODE")
-    set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
-  endif()
-endif()
-
 if (DEFINED GIT_EXE AND USE_ENTERPRISE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
+  # Get enterprise commit hash 
+  execute_process(
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/enterprise
+    COMMAND ${GIT_EXE} rev-parse --short HEAD
+    OUTPUT_VARIABLE COMMIT_RAW
+  )
+  if (NOT COMMIT_RAW)
+    message(FATAL_ERROR "Can't extract current commit with the command: 'git rev-parse --short HEAD'")
+  endif()
+  
+  string(STRIP ${COMMIT_RAW} COMMIT_SHORT)
+  
   if (NOT DEFINED BUILD_REPO_INFO OR BUILD_REPO_INFO STREQUAL "default")
     execute_process(
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/enterprise
-
-      COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
-      OUTPUT_VARIABLE GIT_OUTPUT)
-
-    # this may fail on shallow clones that only knows about a limited number of commits.
-    # if there is an older merged revision the head, it may not be available to git.
-    if (NOT GIT_OUTPUT)
-        set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
-        set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
-      else()
-        string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-        set(ENTERPRISE_BUILD_REPOSITORY ${REPOSITORY_VERSION})
-        set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
-      endif()
-  endif()    
-else ()
-  set(ENTERPRISE_BUILD_REPOSITORY "")
-  set(HAVE_ENTERPRISE_BUILD_REPOSITORY "0")
-endif()
-
-if (DEFINED BUILD_REPO_INFO AND USE_ENTERPRISE AND NOT DEFINED ENTERPRISE_BUILD_REPOSITORY)
-  if (BUILD_REPO_INFO STREQUAL "release" OR BUILD_REPO_INFO STREQUAL "nightly")
-    set(ENTERPRISE_BUILD_REPOSITORY ${ARANGODB_VERSION})
+      COMMAND ${GIT_EXE} branch --show-current
+      OUTPUT_VARIABLE BRANCH_NAME_RAW)
+    if (NOT BRANCH_NAME_RAW)
+      message(FATAL_ERROR "Can't extract current branch name with the command: 'git branch --show-current'")
+    else()
+      string(STRIP ${BRANCH_NAME_RAW} BRANCH_NAME)
+      set(ENTERPRISE_BUILD_REPOSITORY "refs/${BRANCH_NAME} ${COMMIT_SHORT}")
+      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+    endif()
+  elseif(BUILD_REPO_INFO STREQUAL "release")
+    execute_process(
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/enterprise
+      COMMAND ${GIT_EXE} describe --all --tags --match v${ARANGODB_PLAIN_VERSION}
+      OUTPUT_VARIABLE TAG_RAW)
+    if (NOT TAG_RAW)
+      message(FATAL_ERROR "Can't extract tag using the command: 'git describe --all --tags --match v${ARANGODB_PLAIN_VERSION}")
+    else()
+      string(STRIP ${TAG_RAW} TAG)
+      set(ENTERPRISE_BUILD_REPOSITORY "refs/${TAG} ${COMMIT_SHORT}")
+      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
+    endif()
+  elseif(BUILD_REPO_INFO STREQUAL "nightly")
+    set(ENTERPRISE_BUILD_REPOSITORY "refs/head/${-}.${ARANGODB_VERSION_MINOR} ${COMMIT_SHORT}")
     set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
-  else()
+  else ()
     set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - UNSUPPORTED BUILD MODE")
     set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
   endif()
+else ()
+  set(ENTERPRISE_BUILD_REPOSITORY "")
+  set(HAVE_ENTERPRISE_BUILD_REPOSITORY "0")
 endif()
 
 if (DEFINED OSKAR_BUILD_REPOSITITORY)
@@ -371,10 +401,10 @@ configure_file(
   NEWLINE_STYLE UNIX
 )
 
-if (VERBOSE)
+# if (VERBOSE)
   message(STATUS "ARANGODB_BUILD_REPOSITORY=\"${ARANGODB_BUILD_REPOSITORY}\"")
   message(STATUS "ENTERPRISE_BUILD_REPOSITORY=\"${ENTERPRISE_BUILD_REPOSITORY}\"")
-endif ()
+# endif ()
 
 ################################################################################
 ## OPERATION SYSTEM
