@@ -12,7 +12,7 @@ import {
 } from "@chakra-ui/react";
 import { FormField } from "../../../components/form/FormField";
 import { Form, Formik } from "formik";
-import { FieldsGrid } from "../addGraph/FieldsGrid";
+import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { mutate } from "swr";
 

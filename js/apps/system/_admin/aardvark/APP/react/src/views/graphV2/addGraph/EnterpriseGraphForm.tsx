@@ -13,7 +13,7 @@ import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
 import { EnterpriseGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
-import { FieldsGrid } from "./FieldsGrid";
+import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { GraphModalFooter } from "./GraphModalFooter";
 import { GraphWarnings } from "./GraphWarnings";
 

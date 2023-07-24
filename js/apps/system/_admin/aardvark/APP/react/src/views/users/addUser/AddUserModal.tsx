@@ -12,7 +12,7 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
-import { FieldsGrid } from "../FieldsGrid";
+import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { CreateUserValues } from "./CreateUser.types";
 
 const addUserFields = {
