@@ -60,11 +60,11 @@ using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 // note: the usage of BinaryKeyHasher here is arbitrary. actually all
 // hashers should be stateless and thus there should be no size difference
 // between them
-const std::uint64_t Manager::minCacheAllocation =
+std::uint64_t const Manager::minCacheAllocation =
     Cache::kMinSize + Table::allocationSize(Table::kMinLogSize) +
     std::max(PlainCache<BinaryKeyHasher>::allocationSize(),
              TransactionalCache<BinaryKeyHasher>::allocationSize()) +
-    Manager::cacheRecordOverhead;
+    kCacheRecordOverhead;
 
 Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
                  CacheOptions const& options)
@@ -81,10 +81,9 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _nextCacheId(1),
       _globalSoftLimit(_options.cacheSize),
       _globalHardLimit(_options.cacheSize),
-      _globalHighwaterMark(
-          static_cast<std::uint64_t>(Manager::highwaterMultiplier *
-                                     static_cast<double>(_globalSoftLimit))),
-      _fixedAllocation(sizeof(Manager) + Manager::tableListsOverhead +
+      _globalHighwaterMark(static_cast<std::uint64_t>(
+          kHighwaterMultiplier * static_cast<double>(_globalSoftLimit))),
+      _fixedAllocation(sizeof(Manager) + kTableListsOverhead +
                        _accessStats.memoryUsage()),
       _spareTableAllocation(0),
       _peakSpareTableAllocation(0),
@@ -99,12 +98,12 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _rebalancingTasks(0),
       _resizingTasks(0),
       _rebalanceCompleted(std::chrono::steady_clock::now() -
-                          Manager::rebalancingGracePeriod) {
+                          rebalancingGracePeriod) {
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
   if (_options.enableWindowedStats) {
-    _findStats = std::make_unique<Manager::FindStatBuffer>(sharedPRNG,
-                                                           kFindStatsCapacity);
+    _findStats =
+        std::make_unique<FindStatBuffer>(sharedPRNG, kFindStatsCapacity);
     _fixedAllocation += _findStats->memoryUsage();
     _globalAllocation = _fixedAllocation;
     _peakGlobalAllocation = _globalAllocation;
@@ -240,13 +239,13 @@ void Manager::shutdown() {
 bool Manager::resize(std::uint64_t newGlobalLimit) {
   SpinLocker guard(SpinLocker::Mode::Write, _lock);
 
-  if ((newGlobalLimit < Manager::kMinSize) ||
-      (static_cast<std::uint64_t>(0.5 * (1.0 - Manager::highwaterMultiplier) *
+  if ((newGlobalLimit < kMinSize) ||
+      (static_cast<std::uint64_t>(0.5 * (1.0 - kHighwaterMultiplier) *
                                   static_cast<double>(newGlobalLimit)) <
        _fixedAllocation) ||
-      (static_cast<std::uint64_t>(Manager::highwaterMultiplier *
+      (static_cast<std::uint64_t>(kHighwaterMultiplier *
                                   static_cast<double>(newGlobalLimit)) <
-       (_caches.size() * Manager::minCacheAllocation))) {
+       (_caches.size() * minCacheAllocation))) {
     return false;
   }
 
@@ -261,7 +260,7 @@ bool Manager::resize(std::uint64_t newGlobalLimit) {
       _resizing = true;
       _globalSoftLimit = newGlobalLimit;
       _globalHighwaterMark = static_cast<std::uint64_t>(
-          Manager::highwaterMultiplier * static_cast<double>(_globalSoftLimit));
+          kHighwaterMultiplier * static_cast<double>(_globalSoftLimit));
       freeUnusedTables();
       done = adjustGlobalLimitsIfAllowed(newGlobalLimit);
       if (!done) {
@@ -291,7 +290,7 @@ std::optional<Manager::MemoryStats> Manager::memoryStats(
                    static_cast<size_t>(maxTries));
 
   if (guard.isLocked()) {
-    Manager::MemoryStats result;
+    MemoryStats result;
 
     result.globalLimit = _resizing ? _globalSoftLimit : _globalHardLimit;
     result.globalAllocation = _globalAllocation;
@@ -374,8 +373,7 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
   std::shared_ptr<Table> table;
   bool ok = true;
 
-  if ((_globalHighwaterMark / (_caches.size() + 1)) <
-      Manager::minCacheAllocation) {
+  if ((_globalHighwaterMark / (_caches.size() + 1)) < minCacheAllocation) {
     ok = false;
   }
 
@@ -432,7 +430,7 @@ std::pair<bool, Manager::time_point> Manager::requestGrow(Cache* cache) {
   bool allowed = false;
 
   SpinLocker guard(SpinLocker::Mode::Write, _lock,
-                   static_cast<std::size_t>(Manager::triesSlow));
+                   static_cast<std::size_t>(triesSlow));
   if (guard.isLocked()) {
     if (isOperational() && !globalProcessRunning()) {
       Metadata& metadata = cache->metadata();
@@ -471,7 +469,7 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
   bool allowed = false;
 
   SpinLocker guard(SpinLocker::Mode::Write, _lock,
-                   static_cast<std::size_t>(Manager::triesSlow));
+                   static_cast<std::size_t>(triesSlow));
   if (guard.isLocked()) {
     if (isOperational() && !globalProcessRunning()) {
       Metadata& metadata = cache->metadata();
@@ -635,19 +633,19 @@ ErrorCode Manager::rebalance(bool onlyCalculate) {
     auto newDeserved = static_cast<std::uint64_t>(
         std::ceil(weight * static_cast<double>(_globalHighwaterMark)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    if (newDeserved < Manager::minCacheAllocation) {
+    if (newDeserved < minCacheAllocation) {
       LOG_TOPIC("eabec", DEBUG, Logger::CACHE)
           << "Deserved limit of " << newDeserved << " from weight " << weight
           << " and highwater " << _globalHighwaterMark
-          << ". Should be at least " << Manager::minCacheAllocation;
-      TRI_ASSERT(newDeserved >= Manager::minCacheAllocation);
+          << ". Should be at least " << minCacheAllocation;
+      TRI_ASSERT(newDeserved >= minCacheAllocation);
     }
 #endif
     Metadata& metadata = cache->metadata();
     SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     std::uint64_t fixed =
-        metadata.fixedSize + metadata.tableSize + Manager::cacheRecordOverhead;
+        metadata.fixedSize + metadata.tableSize + kCacheRecordOverhead;
     if (newDeserved < fixed) {
       LOG_TOPIC("e63e4", DEBUG, Logger::CACHE)
           << "Setting deserved cache size " << newDeserved
@@ -720,7 +718,7 @@ bool Manager::adjustGlobalLimitsIfAllowed(std::uint64_t newGlobalLimit) {
   }
 
   _globalHighwaterMark = static_cast<std::uint64_t>(
-      Manager::highwaterMultiplier * static_cast<double>(newGlobalLimit));
+      kHighwaterMultiplier * static_cast<double>(newGlobalLimit));
   _globalSoftLimit = newGlobalLimit;
   _globalHardLimit = newGlobalLimit;
 
@@ -898,11 +896,11 @@ bool Manager::increaseAllowed(std::uint64_t increase,
 
 std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   TRI_ASSERT(_lock.isLockedWrite());
-  double minimumWeight = static_cast<double>(Manager::minCacheAllocation) /
+  double minimumWeight = static_cast<double>(minCacheAllocation) /
                          static_cast<double>(_globalHighwaterMark);
   while (static_cast<std::uint64_t>(std::ceil(
              minimumWeight * static_cast<double>(_globalHighwaterMark))) <
-         Manager::minCacheAllocation) {
+         minCacheAllocation) {
     minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
   }
 
@@ -993,7 +991,7 @@ bool Manager::pastRebalancingGracePeriod() const {
   bool ok = !_rebalancing;
   if (ok) {
     ok = (std::chrono::steady_clock::now() - _rebalanceCompleted) >=
-         Manager::rebalancingGracePeriod;
+         rebalancingGracePeriod;
   }
 
   return ok;

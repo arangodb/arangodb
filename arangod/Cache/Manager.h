@@ -204,10 +204,10 @@ class Manager {
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
   // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
   // most libraries
-  static constexpr std::uint64_t cacheRecordOverhead =
+  static constexpr std::uint64_t kCacheRecordOverhead =
       sizeof(std::shared_ptr<Cache>) + 64;
   // assume at most 16 slots in each stack -- TODO: check validity
-  static constexpr std::uint64_t tableListsOverhead =
+  static constexpr std::uint64_t kTableListsOverhead =
       32 * 16 * sizeof(std::shared_ptr<Cache>);
   static constexpr std::uint64_t triesFast = 100;
   static constexpr std::uint64_t triesSlow = 1000;
@@ -294,7 +294,7 @@ class Manager {
   void reportMiss() noexcept;
 
   // used internally and by tasks
-  static constexpr double highwaterMultiplier = 0.8;
+  static constexpr double kHighwaterMultiplier = 0.8;
   static constexpr std::chrono::milliseconds rebalancingGracePeriod{10};
   static const std::uint64_t minCacheAllocation;
 
