@@ -132,7 +132,7 @@ export const AddUserModal = ({
       },
       passwd: !isRole ? values.passwd : undefined
     };
-    putUser({ userOptions, onSuccess: onClose });
+    await putUser({ userOptions, onSuccess: onClose });
   };
   return (
     <Modal size="6xl" isOpen={isOpen} onClose={onClose}>
