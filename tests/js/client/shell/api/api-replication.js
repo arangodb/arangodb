@@ -61,6 +61,51 @@ const {
  * none of the existing tests here needs to be changed.
  */
 
+
+// Lists of illegal type values, for each test to iterate over.
+const illegalTestValues = () => {
+  return {
+    string: [1, -3.6, true, false, [], {foo: "bar"}],
+    integer: [-3, 5.1, true, false, [2], {foo: "bar"}, "test"],
+    bool: [1, -3.1, [true], {foo: "bar"}, "test"],
+    object: [0, -2.1, true, false, [], "test"],
+    array: [0, -2.1, true, false, {foo: "bar"}, "test"]
+  };
+};
+
+// Definition of value types.
+const makePropertiesToTest = () => {
+  return {
+    type: "integer",
+    isDeleted: "bool",
+    isSystem: "bool",
+    waitForSync: "bool",
+    keyOptions: "object",
+    writeConcern: "integer",
+    cacheEnabled: "bool",
+    computedValues: "array",
+    syncByRevision: "bool",
+    schema: "object",
+    /* Cluster Properties, should also be ignored on single server */
+    isSmart: "bool",
+    shardKeys: "array",
+    numberOfShards: "integer",
+    replicationFactor: "integer",
+    minReplicationFactor: "integer",
+    shardingStrategy: "string",
+    isDisjoint: "bool",
+    distributeShardsLike: "string"
+  };
+};
+
+const getCollectionId = (collname) => {
+  // This method has the side-effect
+  // to update the local collection cache.
+  // DO NOT DELETE IT
+  db._collections();
+  return db._collection(collname)._id;
+};
+
 const filterClusterOnlyAttributes = (attributes) => {
   // The following attributes are not returned by the Collection Properties API
   // However we support restore cluster -> SingleServer so we need to be able to restore the
@@ -936,16 +981,16 @@ function RestoreCollectionsSuite() {
         validateProperties({}, collname, 2);
         db._collection(collname).save([{}, {}, {}]);
         assertEqual(db._collection(collname).count(), 3, `Test_setup assert, we are not able to create data!`);
-        const idBeforeRestore = db._collection(collname)._id;
+        const idBeforeRestore = getCollectionId(collname);
 
         // With overwrite we can recreate the collection
         const resAgain = tryRestore({name: collname}, {overwrite: true});
         assertTrue(resAgain.result, `Result: ${JSON.stringify(resAgain)}`);
         validateProperties({}, collname, 2);
-        const idAfterRestore = db._collection(collname)._id;
+        const idAfterRestore = getCollectionId(collname);
         assertEqual(db._collection(collname).count(), 0, `Data not removed!`);
-        // We keep the collection, and just truncate it.
-        assertEqual(idBeforeRestore, idAfterRestore, `Collection dropped, not just truncated!`);
+        // We drop and recreate this collection
+        assertNotEqual(idBeforeRestore, idAfterRestore, `Collection not dropped, just truncated!`);
       } finally {
         db._drop(collname);
       }
@@ -962,14 +1007,22 @@ function RestoreCollectionsSuite() {
         // Create a follower: (NOTE: we enforce the side-effect here, that a leader cannot be dropped)
         const resFollower = tryRestore({name: followerName, distributeShardsLike: collname});
         assertTrue(resFollower.result, `Result: ${JSON.stringify(res)}`);
-        const idBeforeRestore = db._collection(collname)._id;
+        if (isCluster) {
+          assertEqual(db._collection(followerName).properties().distributeShardsLike, collname);
+        }
+        const idBeforeRestore = getCollectionId(collname);
         // With overwrite we can recreate the collection
         const resAgain = tryRestore({name: collname}, {overwrite: true});
         assertTrue(resAgain.result, `Result: ${JSON.stringify(resAgain)}`);
         validateProperties({}, collname, 2);
-        const idAfterRestore = db._collection(collname)._id;
+        const idAfterRestore = getCollectionId(collname);
         assertEqual(db._collection(collname).count(), 0, `Data not removed!`);
-        assertEqual(idBeforeRestore, idAfterRestore, `Collection dropped, it was not just truncated!`);
+        if (isCluster) {
+          // Cannot drop distributeShardsLike leader, truncate it instead
+          assertEqual(idBeforeRestore, idAfterRestore, `Collection dropped, it was not just truncated!`);
+        } else {
+          assertNotEqual(idBeforeRestore, idAfterRestore, `Collection dropped, it was not just truncated!`);
+        }
       } finally {
         db._drop(followerName);
         db._drop(collname);
@@ -1115,35 +1168,9 @@ function RestoreCollectionsSuite() {
 
 function IgnoreIllegalTypesSuite() {
   // Lists of illegal type values, for each test to iterate over.
-  const testValues = {
-    string: [1, -3.6, true, false, [], {foo: "bar"}],
-    integer: [-3, 5.1, true, false, [2], {foo: "bar"}, "test"],
-    bool: [1, -3.1, [true], {foo: "bar"}, "test"],
-    object: [0, -2.1, true, false, [], "test"],
-    array: [0, -2.1, true, false, {foo: "bar"}, "test"]
-  };
+  const testValues = illegalTestValues();
   // Definition of value types.
-  const propertiesToTest = {
-    type: "integer",
-    isDeleted: "bool",
-    isSystem: "bool",
-    waitForSync: "bool",
-    keyOptions: "object",
-    writeConcern: "integer",
-    cacheEnabled: "bool",
-    computedValues: "array",
-    syncByRevision: "bool",
-    schema: "object",
-    /* Cluster Properties, should also be ignored on single server */
-    isSmart: "bool",
-    shardKeys: "array",
-    numberOfShards: "integer",
-    replicationFactor: "integer",
-    minReplicationFactor: "integer",
-    shardingStrategy: "string",
-    isDisjoint: "bool",
-    distributeShardsLike: "string"
-  };
+  const propertiesToTest = makePropertiesToTest();
 
   const collname = "UnitTestRestore";
 
@@ -1365,8 +1392,59 @@ function RestoreInOneShardSuite() {
   };
 }
 
+function RestoreOverwriteErrorSuite() {
+  // Lists of illegal type values, for each test to iterate over.
+  const testValues = illegalTestValues();
+  // Definition of value types.
+  const propertiesToTest = makePropertiesToTest();
+
+  const collname = "UnitTestRestore";
+
+  // No Setup or teardown required.
+  // Every test in the suite is self-contained
+  const suite = {
+    setUp: function() {
+      // Make sure a collection with given name exists
+      // We do not care how it looks like, so we could
+      // take illegal leftovers from previous test.
+      if (db._collection(collname) === null) {
+        db._create(collname);
+      }
+    },
+    tearDownAll: function() {
+      try {
+        // Drop collection if if was left behind by the last test
+        db._drop(collname);
+      } catch (e) {}
+    }
+  };
+
+  for (const [prop, type] of Object.entries(propertiesToTest)) {
+    suite[`testOverwriteIllegalEntries${prop}`] = function () {
+      for (const ignoredValue of testValues[type]) {
+        assertNotEqual(db._collection(collname), null, `Setup failed, no collection with the name exists`);
+        const prevID = getCollectionId(collname);
+        const res = tryRestore({name: collname, [prop]: ignoredValue}, {overwrite: true});
+        // We on purpose make no difference o which illegal entries should produce errors, that is tested in a different test.
+        // Here we just test that all error scenarios drop/create or keep the original collections on overwrite.
+        if (res.error === true) {
+          // In case of error we expect the original collection to stay
+          assertNotEqual(db[collname], null, `Collection is dropped even in error case.`);
+          assertEqual(prevID, getCollectionId(collname), `Collection got a new ID in error case, so something was created.`);
+        } else {
+          assertNotEqual(db[collname], null, `Collection is not created although it was a successful operation.`);
+          assertNotEqual(prevID, getCollectionId(collname), `Collection did not change ID in success case, it seems it was not recreated.`);
+        }
+      }
+    };
+  }
+  return suite;
+}
+
+
 jsunity.run(RestoreCollectionsSuite);
 jsunity.run(IgnoreIllegalTypesSuite);
 jsunity.run(RestoreInOneShardSuite);
+jsunity.run(RestoreOverwriteErrorSuite);
 
 return jsunity.done();
