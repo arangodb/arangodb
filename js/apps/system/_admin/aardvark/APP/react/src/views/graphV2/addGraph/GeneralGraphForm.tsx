@@ -46,6 +46,7 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
     });
     return info;
   };
+  const isEditMode = mode === "edit";
   return (
     <Formik
       initialValues={initialGraph || INITIAL_VALUES}
@@ -58,7 +59,7 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
             <FormField
               field={{
                 ...generalGraphFieldsMap.name,
-                isDisabled: mode === "edit"
+                isDisabled: isEditMode
               }}
             />
             {window.frontendConfig.isCluster && (
@@ -71,7 +72,7 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
               field={{
                 ...generalGraphFieldsMap.orphanCollections,
                 options: documentCollectionOptions,
-                isDisabled: mode === "edit"
+                isDisabled: isEditMode
               }}
             />
           </FieldsGrid>
