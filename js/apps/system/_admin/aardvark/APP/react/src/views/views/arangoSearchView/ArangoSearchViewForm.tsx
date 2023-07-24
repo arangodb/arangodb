@@ -12,6 +12,7 @@ import {
 } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
+import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { FormField } from "../../../components/form/FormField";
 import { IndexInfoTooltip } from "../../collections/indices/addIndex/IndexInfoTooltip";
 import { useEditViewContext } from "../editView/EditViewContext";
@@ -38,24 +39,6 @@ export const ArangoSearchViewForm = () => {
       <PrimarySortAccordionItem />
       <StoredValuesAccordionItem />
     </Accordion>
-  );
-};
-
-const FieldsGrid = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <Box
-      display={"grid"}
-      gridTemplateColumns={"200px 1fr 40px"}
-      rowGap="5"
-      columnGap="3"
-      maxWidth="800px"
-      paddingRight="8"
-      paddingLeft="4"
-      alignItems="center"
-      marginTop="4"
-    >
-      {children}
-    </Box>
   );
 };
 
