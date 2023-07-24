@@ -80,6 +80,15 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   static constexpr std::uint64_t kMinSize = 16384;
   static constexpr std::uint64_t kMinLogSize = 14;
+  // reporting granularity for memory usage increases/decreases by each cache.
+  // only when the value of |_memoryUsageDiff| exceeds this value, the extra
+  // memory used by the cache will be reported to the manager. smaller values
+  // here mean more eager reporting, but this can lead to higher contention on
+  // the cache's global lock. thus by default we only report memory usage
+  // increases/ decreases if a cache has buffered allocations/deallocations >=
+  // this threshold. the other allocations/deallocations by the cache will still
+  // be tracked locally. however, they will only be reported to the manager once
+  // they have reached the threshold value.
   static constexpr std::int64_t kMemoryReportGranularity = 4096;
 
   static constexpr std::uint64_t triesGuarantee =
@@ -93,6 +102,11 @@ class Cache : public std::enable_shared_from_this<Cache> {
   virtual ::ErrorCode remove(void const* key, std::uint32_t keySize) = 0;
   virtual ::ErrorCode banish(void const* key, std::uint32_t keySize) = 0;
 
+  // inform the manager about additional (global) memory usage.
+  // this is necessary so that the cache does not only count its own memory,
+  // but also feeds back larger allocations/deallocations to the manager,
+  // so that the manager can accurately track the global memory usage (by all
+  // caches combined)
   void adjustGlobalAllocation(std::int64_t value, bool force) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -265,8 +279,21 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::uint64_t const _id;
   Metadata _metadata;
 
+  // local buffer for tracking allocations/deallocations by this cache.
+  // this value will be modified locally until the value of |_memoryUsageDiff|
+  // exceeds the reporting granularity threshold.
+  // once the threshold is exceeded, the current value of _memoryUsageDiff will
+  // be reported to the manager, and the value of _memoryUsageDiff will be reset
+  // to zero. that means caches may report their memory usage in a delayed
+  // fashion. additionally, the last kMemoryReportGranularity bytes that were
+  // already used by the cache may not have been reported to the manager. these
+  // bytes will only be missing temporarily though. the missing bytes can be
+  // reported later, when there are additional allocations or deallocations,
+  // or when the cache gets destroyed. they will only be not be missing
+  // completely.
   std::atomic<std::int64_t> _memoryUsageDiff;
 
+  // this struct is allocated on the heap only lazily
   struct FindStats {
     mutable basics::SharedCounter<64> findHits;
     mutable basics::SharedCounter<64> findMisses;
@@ -282,6 +309,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // used to create eviction stats under the lock (so that only a single
   // thread creates them)
   std::mutex _findStatsLock;
+  // this struct is allocated lazily, when the _findStats are first written to
   std::unique_ptr<FindStats> _findStats;
 
  private:
@@ -306,17 +334,19 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // used to create eviction stats under the lock (so that only a single
   // thread creates them)
   std::mutex _evictionStatsLock;
+  // this struct is allocated lazily, when the _evictionStats are first written
+  // to
   std::unique_ptr<EvictionStats> _evictionStats;
 
   // times to wait until requesting is allowed again
   std::atomic<Manager::time_point::rep> _migrateRequestTime;
   std::atomic<Manager::time_point::rep> _resizeRequestTime;
 
-  static constexpr std::uint64_t _evictionMask =
+  static constexpr std::uint64_t kEvictionMask =
       4095;  // check roughly every 4096 insertions
-  static constexpr double _evictionRateThreshold =
+  static constexpr double kEvictionRateThreshold =
       0.01;  // if more than 1%
-             // evictions in past 4096
+             // evictions in past kEvictionMask
              // inserts, migrate
 
   // friend class manager and tasks
