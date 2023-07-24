@@ -900,7 +900,10 @@ void RocksDBEdgeIndex::handleCacheInvalidation(transaction::Methods& trx,
   std::string_view cacheKey =
       buildCompressedCacheKey(cacheKeyCollection, fromToRef);
   if (!cacheKey.empty()) {
-    invalidateCacheEntry(cacheKey);
+    if (!invalidateCacheEntry(cacheKey)) {
+      // shutdown or document not found. no need to auto-reload
+      return;
+    }
 
     if (_cache != nullptr &&
         ((_forceCacheRefill &&

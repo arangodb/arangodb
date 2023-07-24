@@ -221,6 +221,8 @@ template<typename Hasher>
       freeValue(candidate);
       TRI_ASSERT(source != nullptr);
       maybeMigrate = source->slotEmptied();
+    } else {
+      status = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
     }
   }
 

@@ -467,7 +467,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     ::ErrorCode status = TRI_ERROR_INTERNAL;
     do {
       status = cache->banish(s.start(), static_cast<uint32_t>(s.byteSize()));
-    } while (status != TRI_ERROR_NO_ERROR);
+    } while (status != TRI_ERROR_NO_ERROR &&
+             status != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
 
     while (true) {

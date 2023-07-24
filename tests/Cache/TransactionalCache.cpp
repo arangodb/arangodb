@@ -222,7 +222,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
 
   for (std::uint64_t i = 512; i < 1024; i++) {
     auto status = cache->banish(&i, sizeof(std::uint64_t));
-    ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
+    ASSERT_TRUE(status == TRI_ERROR_NO_ERROR ||
+                status == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     auto f = cache->find(&i, sizeof(std::uint64_t));
     ASSERT_FALSE(f.found());
   }

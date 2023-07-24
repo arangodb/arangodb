@@ -192,14 +192,14 @@ class RocksDBIndex : public Index {
 
   virtual std::shared_ptr<cache::Cache> makeCache() const;
 
-  void invalidateCacheEntry(char const* data, std::size_t len);
+  bool invalidateCacheEntry(char const* data, std::size_t len);
 
-  void invalidateCacheEntry(std::string_view ref) {
-    invalidateCacheEntry(ref.data(), ref.size());
+  bool invalidateCacheEntry(std::string_view ref) {
+    return invalidateCacheEntry(ref.data(), ref.size());
   }
 
-  void invalidateCacheEntry(rocksdb::Slice ref) {
-    invalidateCacheEntry(ref.data(), ref.size());
+  bool invalidateCacheEntry(rocksdb::Slice ref) {
+    return invalidateCacheEntry(ref.data(), ref.size());
   }
 
   rocksdb::ColumnFamilyHandle* _cf;

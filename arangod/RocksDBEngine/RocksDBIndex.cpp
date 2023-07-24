@@ -346,12 +346,15 @@ std::shared_ptr<cache::Cache> RocksDBIndex::makeCache() const {
 }
 
 // banish given key from transactional cache
-void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
+bool RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
   if (hasCache()) {
     TRI_ASSERT(_cache != nullptr);
     do {
       auto status = _cache->banish(data, static_cast<uint32_t>(len));
       if (status == TRI_ERROR_NO_ERROR) {
+        return true;
+      }
+      if (status == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         break;
       }
       if (ADB_UNLIKELY(status == TRI_ERROR_SHUTTING_DOWN)) {
@@ -360,6 +363,7 @@ void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
       }
     } while (true);
   }
+  return false;
 }
 
 /// @brief get index estimator, optional
