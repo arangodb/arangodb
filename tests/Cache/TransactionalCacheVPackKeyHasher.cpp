@@ -94,7 +94,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     }
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
@@ -239,7 +239,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     }
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
@@ -425,7 +425,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     }
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
@@ -531,5 +531,5 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   }
 
   manager.endTransaction(tx);
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }

@@ -40,22 +40,12 @@ class Manager;
 /// @brief Class to manage operations on a table of buckets.
 ////////////////////////////////////////////////////////////////////////////////
 class Table : public std::enable_shared_from_this<Table> {
- public:
-  static constexpr std::uint32_t kMinLogSize = 8;
-  static constexpr std::uint32_t kMaxLogSize = 32;
-  static constexpr std::uint32_t standardLogSizeAdjustment = 6;
-  static constexpr std::uint64_t triesGuarantee =
-      std::numeric_limits<std::uint64_t>::max();
-  static constexpr std::uint64_t padding = kBucketSizeInBytes;
-
-  typedef std::function<void(void*)> BucketClearer;
-
  private:
   struct GenericBucket {
     BucketState _state;
-    static constexpr std::size_t paddingSize =
+    static constexpr std::size_t kPaddingSize =
         kBucketSizeInBytes - sizeof(BucketState);
-    std::uint8_t _padding[paddingSize];
+    std::uint8_t _padding[kPaddingSize];
     GenericBucket() noexcept;
     bool lock(std::uint64_t maxTries) noexcept;
     void unlock() noexcept;
@@ -66,6 +56,15 @@ class Table : public std::enable_shared_from_this<Table> {
                 "Expected sizeof(GenericBucket) == kBucketSizeInBytes.");
 
  public:
+  static constexpr std::uint32_t kMinLogSize = 8;
+  static constexpr std::uint32_t kMaxLogSize = 32;
+  static constexpr std::uint32_t standardLogSizeAdjustment = 6;
+  static constexpr std::uint64_t triesGuarantee =
+      std::numeric_limits<std::uint64_t>::max();
+  static constexpr std::uint64_t kPadding = kBucketSizeInBytes;
+
+  using BucketClearer = std::function<void(void*)>;
+
   struct BucketHash {
     std::uint32_t value;
   };
@@ -126,7 +125,6 @@ class Table : public std::enable_shared_from_this<Table> {
     std::uint32_t const _shift;
   };
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Construct a new table of size 2^(logSize) in disabled state.
   //////////////////////////////////////////////////////////////////////////////
@@ -143,7 +141,7 @@ class Table : public std::enable_shared_from_this<Table> {
   static constexpr std::uint64_t allocationSize(std::uint32_t logSize) {
     return sizeof(Table) +
            (kBucketSizeInBytes * (static_cast<std::uint64_t>(1) << logSize)) +
-           padding;
+           kPadding;
   }
 
   //////////////////////////////////////////////////////////////////////////////

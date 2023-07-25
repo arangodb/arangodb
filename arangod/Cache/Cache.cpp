@@ -76,6 +76,7 @@ Cache::Cache(
 
 Cache::~Cache() {
   // report memory usage diff to manager
+  TRI_ASSERT(_memoryUsageDiff == 0);
   adjustGlobalAllocation(/*value*/ 0, /*force*/ true);
   TRI_ASSERT(_memoryUsageDiff == 0);
 
@@ -251,12 +252,6 @@ bool Cache::isMigratingFlagSet() const noexcept {
 bool Cache::isResizingOrMigratingFlagSet() const noexcept {
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.isResizing() || _metadata.isMigrating();
-}
-
-void Cache::destroy(std::shared_ptr<Cache> const& cache) {
-  if (cache != nullptr) {
-    cache->shutdown();
-  }
 }
 
 void Cache::requestGrow() {

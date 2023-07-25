@@ -139,7 +139,7 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destroy the given cache.
   //////////////////////////////////////////////////////////////////////////////
-  static void destroyCache(std::shared_ptr<Cache> const& cache);
+  static void destroyCache(std::shared_ptr<Cache>&& cache);
 
   void adjustGlobalAllocation(std::int64_t value) noexcept;
 
@@ -283,7 +283,7 @@ class Manager {
   // used by caches
 
   // register and unregister individual caches
-  std::tuple<bool, Metadata, std::shared_ptr<Table>> registerCache(
+  std::tuple<bool, Metadata, std::shared_ptr<Table>> createTable(
       std::uint64_t fixedSize, std::uint64_t maxSize);
   void unregisterCache(std::uint64_t id);
 

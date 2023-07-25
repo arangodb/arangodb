@@ -194,7 +194,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   rebalancerThread.join();
 
   for (auto cache : caches) {
-    manager.destroyCache(cache);
+    manager.destroyCache(std::move(cache));
   }
   caches.clear();
 
@@ -340,7 +340,7 @@ TEST(CacheRebalancerTest,
   rebalancerThread.join();
 
   for (auto cache : caches) {
-    manager.destroyCache(cache);
+    manager.destroyCache(std::move(cache));
   }
   caches.clear();
 

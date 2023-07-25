@@ -1925,7 +1925,7 @@ void RocksDBCollection::destroyCache() const {
   if (_cache != nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
-    _cacheManager->destroyCache(_cache);
+    _cacheManager->destroyCache(std::move(_cache));
     _cache.reset();
   }
 }

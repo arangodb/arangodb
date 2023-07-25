@@ -77,24 +77,15 @@ void FreeMemoryTask::run() {
   TRI_ASSERT(_cache->isResizingFlagSet());
 
   if (ran) {
-    std::uint64_t reclaimed = 0;
     SpinLocker guard(SpinLocker::Mode::Write, _manager._lock);
     Metadata& metadata = _cache->metadata();
     {
       SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
       TRI_ASSERT(metadata.isResizing());
-      reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
-      bool ok = metadata.adjustLimits(metadata.softUsageLimit,
-                                      metadata.softUsageLimit);
+      // note: adjustLimits may or may not work
+      metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
       metadata.toggleResizing();
       TRI_ASSERT(!metadata.isResizing());
-
-      if (ok) {
-        TRI_ASSERT(_manager._globalAllocation >=
-                   reclaimed + _manager._fixedAllocation);
-        _manager._globalAllocation -= reclaimed;
-        TRI_ASSERT(_manager._globalAllocation >= _manager._fixedAllocation);
-      }
     }
     // do not toggle the resizing flag twice
     toggleResizingGuard.cancel();

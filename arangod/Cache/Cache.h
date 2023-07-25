@@ -231,9 +231,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
   };
 
  protected:
-  // shutdown cache and let its memory be reclaimed
-  static void destroy(std::shared_ptr<Cache> const& cache);
-
   void requestGrow();
   void requestMigrate(std::uint32_t requestedLogSize = 0);
 

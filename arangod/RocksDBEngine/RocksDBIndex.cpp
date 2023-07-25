@@ -107,12 +107,7 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
 RocksDBIndex::~RocksDBIndex() {
   _engine.removeIndexMapping(_objectId);
   if (hasCache()) {
-    TRI_ASSERT(_cache != nullptr);
-    TRI_ASSERT(_cacheManager != nullptr);
-    try {
-      _cacheManager->destroyCache(_cache);
-    } catch (...) {
-    }
+    destroyCache();
   }
 }
 
@@ -194,11 +189,15 @@ void RocksDBIndex::setupCache() {
 
 void RocksDBIndex::destroyCache() {
   if (_cache != nullptr) {
-    TRI_ASSERT(_cacheManager != nullptr);
-    // must have a cache...
-    LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
-    _cacheManager->destroyCache(_cache);
-    _cache.reset();
+    try {
+      TRI_ASSERT(_cacheManager != nullptr);
+      // must have a cache...
+      LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
+      _cacheManager->destroyCache(std::move(_cache));
+      _cache.reset();
+    } catch (...) {
+      // meh
+    }
   }
 }
 
@@ -213,15 +212,7 @@ Result RocksDBIndex::drop() {
                                           prefixSameAsStart, useRangeDelete);
 
   // Try to drop the cache as well.
-  if (_cache) {
-    TRI_ASSERT(_cacheManager != nullptr);
-    try {
-      _cacheManager->destroyCache(_cache);
-      // Reset flag
-      _cache.reset();
-    } catch (...) {
-    }
-  }
+  destroyCache();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
