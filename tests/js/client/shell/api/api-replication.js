@@ -1076,14 +1076,7 @@ function RestoreCollectionsSuite() {
       ];
       const res = tryRestore({name: collname, computedValues});
       try {
-        if (isCluster) {
-          // Cluster ignores invalid computedValues
-          isAllowed(res, collname, {computedValues});
-          // Assert that computedValues is still default value
-          validateProperties({}, collname, 2);
-        } else {
-          isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {computedValues});
-        }
+        isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {computedValues});
       } finally {
         // Should be noop
         db._drop(collname);
@@ -1160,6 +1153,30 @@ function RestoreCollectionsSuite() {
         db._useDatabase("_system");
         db._dropDatabase("UnitTestConfiguredDB");
       }
+    },
+
+    testDatabaseConfigurationExplicitOverwrite: function () {
+      db._createDatabase("UnitTestConfiguredDB", {replicationFactor: 3, writeConcern: 3});
+      try {
+        db._useDatabase("UnitTestConfiguredDB");
+
+        // Those values are different from the database settings.
+        const res = tryRestore({name: collname, replicationFactor: 2, writeConcern: 2});
+        try {
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+          // No matter what is configured on the Database, explicit values win.
+          if (isCluster) {
+            validateProperties({replicationFactor: 2, writeConcern: 2, minReplicationFactor: 2}, collname, 2);
+          } else {
+            validateProperties({replicationFactor: 2, writeConcern: 2}, collname, 2);
+          }
+        } finally {
+          db._drop(collname);
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase("UnitTestConfiguredDB");
+      }
     }
 
   };
@@ -1195,27 +1212,20 @@ function IgnoreIllegalTypesSuite() {
               }
               break;
             }
-            case "computedValues": {
-              if (isCluster) {
-                // In cluster this is allowed, local it is not, cluster just ignores it.
-                isAllowed(res, collname, testParam);
-                // Assert that computedValues is still default value
-                validateProperties({}, collname, 2);
-              } else {
-                isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
-              }
-              break;
-            }
+            case "computedValues":
             case "shardKeys": {
               isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
               break;
             }
             case "numberOfShards": {
               if (isCluster) {
-                if (typeof ignoredValue === "number" && ignoredValue < 0) {
-                  // This is actually a VPack Error.
-                  // We should consider to make this a non-internal Error.
-                  isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_INTERNAL.code, res, testParam);
+                if (typeof ignoredValue === "number") {
+                  if (ignoredValue < 0) {
+                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+                  } else {
+                    assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(testParam)}`);
+                    validateProperties({numberOfShards: Math.floor(ignoredValue)}, collname, 2);
+                  }
                 } else {
                   isAllowed(res, collname, testParam);
                 }
@@ -1244,11 +1254,12 @@ function IgnoreIllegalTypesSuite() {
               if (isCluster) {
                 if (typeof ignoredValue === "number") {
                   // We take doubles for integers
-                  if (ignoredValue > 2) {
-                    // but they are too large to be allowed
+                  if (prop === "replicationFactor" && ignoredValue > 2) {
+                    // ReplicationFactor is too large for te amount of servers
+                    require("internal").print(db._collection(collname).properties());
                     isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, res, testParam);
                   } else {
-                    // or too low
+                    // all other values violate conditions.
                     isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
                   }
                 } else {
@@ -1256,17 +1267,6 @@ function IgnoreIllegalTypesSuite() {
                 }
               } else {
                 // Just ignore if we are not in cluster.
-                isAllowed(res, collname, testParam);
-              }
-              break;
-            }
-            case "syncByRevision": {
-              if (isCluster) {
-                // This is almost standard, but the default value is different, if we give an illegal value.
-                assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(testParam)}`);
-                validateProperties({syncByRevision: false}, collname, 2);
-                validatePropertiesAreNotEqual(testParam, collname);
-              } else {
                 isAllowed(res, collname, testParam);
               }
               break;
@@ -1338,7 +1338,13 @@ function RestoreInOneShardSuite() {
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
           if (isCluster) {
-            validateProperties(getOneShardShardingValues(), collname, 2);
+            if (v === "minReplicationFactor" || v === "writeConcern") {
+              // On Replication1 writeConcern is allowed to differ per Collection.
+              // On Replication2 it is not.
+              validateProperties({...getOneShardShardingValues(), writeConcern: 2, minReplicationFactor: 2}, collname, 2);
+            } else {
+              validateProperties(getOneShardShardingValues(), collname, 2);
+            }
           } else {
             // OneShard has no meaning in single server, just assert values are taken
             if (v === "minReplicationFactor") {

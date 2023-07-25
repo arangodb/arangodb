@@ -224,12 +224,61 @@ auto handleWriteConcern(std::string_view key, VPackSlice value,
   }
 }
 
+auto handleWriteConcernRestore(std::string_view key, VPackSlice value,
+                        VPackSlice fullBody,
+                        DatabaseConfiguration const& config,
+                        VPackBuilder& result) {
+  if (!isSingleServer()) {
+    // Only take numbers in Cluster
+    handleNumbersOnly(key, value, fullBody, config, result);
+  }
+}
+
 auto handleNumberOfShards(std::string_view key, VPackSlice value,
                           VPackSlice fullBody,
                           DatabaseConfiguration const& config,
                           VPackBuilder& result) {
   if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
     justKeep(key, value, fullBody, config, result);
+  } else if (config.maxNumberOfShards > 0 && value.isNumber() &&
+             value.getNumericValue<uint32_t>() > config.maxNumberOfShards) {
+    // If we restrict the number of Shards, and we get over this limit, we keep
+    // the value, such that we trigger the according error message.
+    result.add(key, value);
+  }
+  // Just ignore if we have distributeShardsLike
+}
+
+auto handleNumberOfShardsRestore(std::string_view key, VPackSlice value,
+                                 VPackSlice fullBody,
+                                 DatabaseConfiguration const& config,
+                                 VPackBuilder& result) {
+  if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
+    if (isSingleServer()) {
+      justKeep(key, value, fullBody, config, result);
+    } else {
+      handleNumbersOnly(key, value, fullBody, config, result);
+    }
+  } else if (config.maxNumberOfShards > 0 && value.isNumber() &&
+             value.getNumericValue<uint32_t>() > config.maxNumberOfShards) {
+    // If we restrict the number of Shards, and we get over this limit, we keep
+    // the value, such that we trigger the according error message.
+    result.add(key, value);
+  }
+  // Just ignore if we have distributeShardsLike
+}
+
+auto handleComputedValuesRestore(std::string_view key, VPackSlice value,
+                                 VPackSlice fullBody,
+                                 DatabaseConfiguration const& config,
+                                 VPackBuilder& result) {
+  if (isSingleServer()) {
+    justKeep(key, value, fullBody, config, result);
+  } else {
+
+  }
+  if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
+    handleNumbersOnly(key, value, fullBody, config, result);
   } else if (config.maxNumberOfShards > 0 && value.isNumber() &&
              value.getNumericValue<uint32_t>() > config.maxNumberOfShards) {
     // If we restrict the number of Shards, and we get over this limit, we keep
@@ -338,6 +387,29 @@ auto logDeprecationMessage(Result const& res) -> void {
       << res;
 }
 
+auto makeRestoreAllowList() -> std::unordered_map<
+    std::string_view,
+    std::function<void(std::string_view key, VPackSlice value,
+                       VPackSlice original, DatabaseConfiguration const& config,
+                       VPackBuilder& result)>> const& {
+  // This is the additional allowList for the restoreCollection request.
+  // It is designed to be used in addition to the general allowList,
+  // where the restoreAllowList takes precedence.
+  static std::unordered_map<
+      std::string_view,
+      std::function<void(
+          std::string_view key, VPackSlice value, VPackSlice original,
+          DatabaseConfiguration const& config, VPackBuilder& result)>>
+      allowListInstance{
+          {StaticStrings::DataSourceType, handleNumbersOnly},
+          {"shards", handleShards},
+          {StaticStrings::MinReplicationFactor, handleWriteConcernRestore},
+          {StaticStrings::WriteConcern, handleWriteConcernRestore},
+          {StaticStrings::NumberOfShards, handleNumberOfShardsRestore},
+          {StaticStrings::ComputedValues, handleComputedValuesRestore},};
+  return allowListInstance;
+}
+
 auto makeAllowList() -> std::unordered_map<
     std::string_view,
     std::function<void(std::string_view key, VPackSlice value,
@@ -436,11 +508,13 @@ auto transformFromBackwardsCompatibleRestoreBody(
   VPackBuilder result;
   {
     VPackObjectBuilder objectGuard(&result);
+    auto preferList = makeRestoreAllowList();
     auto keyAllowList = makeAllowList();
     for (auto const& [key, value] : VPackObjectIterator(body)) {
       // Special handling of some keys that behave differently then in createCollectionAPI.
-      if (key.stringView() == StaticStrings::DataSourceType) {
-        handleNumbersOnly(key.stringView(), value, body, config, result);
+      auto preferHandler = preferList.find(key.stringView());
+      if (preferHandler != preferList.end()) {
+        preferHandler->second(key.stringView(), value, body, config, result);
         continue;
       }
       auto handler = keyAllowList.find(key.stringView());
@@ -600,7 +674,17 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
   auto res = ::parseAndValidate(
       config, input, [](CreateCollectionBody& col) {},
       ::rewriteStatusErrorMessageForRestore,
-      [](CreateCollectionBody& col) {});
+      [&config](CreateCollectionBody& col) {
+        if (!col.shardingStrategy.has_value() &&
+            !col.distributeShardsLike.has_value() &&
+            config.defaultDistributeShardsLike.empty()) {
+#if USE_ENTERPRISE
+          col.shardingStrategy = "enterprise-compat";
+#else
+          col.shardingStrategy = "community-compat";
+#endif
+        }
+      });
 
   if (res.fail()) {
     auto newBody =
@@ -613,7 +697,17 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
     return ::parseAndValidate(
         config, newBody->slice(), [](CreateCollectionBody& col) {},
         ::rewriteStatusErrorMessageForRestore,
-        [](CreateCollectionBody& col) {});
+        [&config](CreateCollectionBody& col) {
+          if (!col.shardingStrategy.has_value() &&
+              !col.distributeShardsLike.has_value() &&
+              config.defaultDistributeShardsLike.empty()) {
+#if USE_ENTERPRISE
+            col.shardingStrategy = "enterprise-compat";
+#else
+            col.shardingStrategy = "community-compat";
+#endif
+          }
+        });
   }
   return res;
 }
