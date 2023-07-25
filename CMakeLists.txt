@@ -309,7 +309,9 @@ if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
       COMMAND ${GIT_EXE} branch --show-current
       OUTPUT_VARIABLE BRANCH_NAME_RAW)
     if (NOT BRANCH_NAME_RAW)
-      message(FATAL_ERROR "Can't extract current branch name with the command: 'git branch --show-current'")
+      # For example, in docker we do 'checkout'. Hence, it is impossible to detect branch
+      set(ARANGODB_BUILD_REPOSITORY "${COMMIT_SHORT}")
+      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
     else()
       string(STRIP ${BRANCH_NAME_RAW} BRANCH_NAME)
       set(ARANGODB_BUILD_REPOSITORY "refs/${BRANCH_NAME} ${COMMIT_SHORT}")
@@ -358,7 +360,9 @@ if (DEFINED GIT_EXE AND USE_ENTERPRISE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/ent
       COMMAND ${GIT_EXE} branch --show-current
       OUTPUT_VARIABLE BRANCH_NAME_RAW)
     if (NOT BRANCH_NAME_RAW)
-      message(FATAL_ERROR "Can't extract current branch name with the command: 'git branch --show-current'")
+      # For example, in docker we do 'checkout'. Hence, it is impossible to detect branch
+      set(ENTERPRISE_BUILD_REPOSITORY "${COMMIT_SHORT}")
+      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
     else()
       string(STRIP ${BRANCH_NAME_RAW} BRANCH_NAME)
       set(ENTERPRISE_BUILD_REPOSITORY "refs/${BRANCH_NAME} ${COMMIT_SHORT}")
