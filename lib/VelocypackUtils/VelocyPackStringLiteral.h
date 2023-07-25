@@ -23,11 +23,10 @@
 
 #pragma once
 
-#include <velocypack/SharedSlice.h>
+#include <velocypack/String.h>
 
 namespace arangodb::velocypack {
 
-SharedSlice vpackFromJsonString(char const* c);
-SharedSlice operator"" _vpack(const char* json, size_t);
+auto operator""_vpack(const char* json, size_t) -> VPackString;
 
 }  // namespace arangodb::velocypack

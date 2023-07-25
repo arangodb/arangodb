@@ -27,6 +27,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Basics/StringHeap.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Aql/Projections.h"
 
 #include <velocypack/HashedStringRef.h>
@@ -69,8 +70,7 @@ class RefactoredTraverserCache {
       arangodb::transaction::Methods* trx, aql::QueryContext* query,
       arangodb::ResourceMonitor& resourceMonitor,
       arangodb::aql::TraversalStats& stats,
-      std::unordered_map<std::string, std::vector<std::string>> const&
-          collectionToShardMap,
+      MonitoredCollectionToShardMap const& collectionToShardMap,
       arangodb::aql::Projections const& vertexProjections,
       arangodb::aql::Projections const& edgeProjections, bool produceVertices);
 
@@ -181,8 +181,7 @@ class RefactoredTraverserCache {
   std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
 
  private:
-  std::unordered_map<std::string, std::vector<std::string>> const&
-      _collectionToShardMap;
+  MonitoredCollectionToShardMap const& _collectionToShardMap;
   arangodb::ResourceMonitor& _resourceMonitor;
 
   /// @brief whether or not to produce vertices

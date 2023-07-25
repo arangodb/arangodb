@@ -92,7 +92,6 @@ TEST_F(CollectionInternalPropertiesTest, test_minimal_user_input) {
   EXPECT_TRUE(testee->usesRevisionsAsDocumentIds);
   EXPECT_EQ(testee->id.id(), 0);
   EXPECT_FALSE(testee->isSmartChild);
-  EXPECT_FALSE(testee->deleted);
   EXPECT_EQ(testee->internalValidatorType, 0);
 }
 
@@ -131,7 +130,6 @@ GenerateBoolAttributeTest(CollectionInternalPropertiesTest,
                           usesRevisionsAsDocumentIds);
 
 GenerateBoolAttributeTest(CollectionInternalPropertiesTest, isSmartChild);
-GenerateBoolAttributeTest(CollectionInternalPropertiesTest, deleted);
 GenerateIntegerAttributeTest(CollectionInternalPropertiesTest,
                              internalValidatorType);
 }  // namespace arangodb::tests
