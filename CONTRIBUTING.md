@@ -151,8 +151,6 @@ The _text_ is interpreted as **Markdown**, allowing formatting like
 `inline code`, fenced code blocks, and even tables.)");
 ```
 
-
-
 See [`lib/ProgramOptions/Option.h`](lib/ProgramOptions/Option.h) for details.
 
 For a feature that is added to v3.9.6, v3.10.2, and devel, you only need to set
@@ -176,6 +174,12 @@ In 3.10 and later:
     .setIntroducedIn(30906)
     .setIntroducedIn(31002)
 ```
+
+These version remarks can be removed again when all of the listed versions for
+an option are obsolete (and removed from the online documentation).
+
+Note that `.setDeprecatedIn()` should not be removed until the startup option is
+obsoleted or fully removed.
 
 ### Adding metrics
 
