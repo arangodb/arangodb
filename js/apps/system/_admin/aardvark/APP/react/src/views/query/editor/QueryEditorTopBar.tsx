@@ -20,6 +20,14 @@ export const QueryEditorTopBar = () => {
     currentQueryName !== "" ||
     queryValue !== "" ||
     JSON.stringify(queryBindParams) !== "{}";
+  const onNewQuery = () => {
+    onQueryChange({
+      value: "",
+      parameter: {},
+      name: ""
+    });
+    setResetEditor(!resetEditor);
+  };
   return (
     <Flex
       gap="2"
@@ -38,18 +46,7 @@ export const QueryEditorTopBar = () => {
         Saved Queries
       </Button>
       {showNewButton && (
-        <Button
-          size="sm"
-          colorScheme="gray"
-          onClick={() => {
-            onQueryChange({
-              value: "",
-              parameter: {},
-              name: ""
-            });
-            setResetEditor(!resetEditor);
-          }}
-        >
+        <Button size="sm" colorScheme="gray" onClick={onNewQuery}>
           New
         </Button>
       )}
