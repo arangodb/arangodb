@@ -1,7 +1,3 @@
-import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
-import { GraphInfo } from "arangojs/graph";
-import React from "react";
-import { GraphsModeProvider, useGraphsModeContext } from "./GraphsModeContext";
 import {
   Button,
   Flex,
@@ -10,11 +6,15 @@ import {
   Stack,
   VStack
 } from "@chakra-ui/react";
-import { FormField } from "../../../components/form/FormField";
+import { GraphInfo } from "arangojs/graph";
 import { Form, Formik } from "formik";
-import { FieldsGrid } from "../addGraph/FieldsGrid";
-import { getCurrentDB } from "../../../utils/arangoClient";
+import React from "react";
 import { mutate } from "swr";
+import { FieldsGrid } from "../../../components/form/FieldsGrid";
+import { FormField } from "../../../components/form/FormField";
+import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
+import { getCurrentDB } from "../../../utils/arangoClient";
+import { GraphsModeProvider, useGraphsModeContext } from "./GraphsModeContext";
 
 export const DeleteGraphModal = ({
   graph,

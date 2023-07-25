@@ -12,6 +12,15 @@ devel
   value. For example, `SORT x` lead to an unexpected order if x was such a
   number. `SORT [x]` however worked as expected.
 
+* FE-301: Unify Users View on web UI.
+
+* Updated ArangoDB Starter to 0.16.0.
+
+* Fixed issue with lock starvation when an AQL insert operation with multiple
+  static documents was executed as part of a streaming transaction.
+
+* Optimize runtime performance of exclusive locks.
+
 * Added deprecation message for parts of createCollection API. So far
   this API ignored unknown options, and therefore did not warn about
   typos. Furthermore some combinations of values that are not sensible
@@ -20,6 +29,8 @@ devel
   for an error with logid: ee638, this indicates you call deprecated parts.
 
 * Avoid recursive lock during agency startup.
+
+* Remove TTL and Observe/Unobserve from the Agency API.
 
 * FE-290: Unify Graphs View on web UI.
 
@@ -143,7 +154,7 @@ devel
 * Remove temporary `CREATING_{number}` directories from hot backup in case a
   hot backup runs into an error.
 
-* Added new startup options `--cache.ideal-lower-fill-ratio` and 
+* Added new startup options `--cache.ideal-lower-fill-ratio` and
   `--cache.ideal-upper-fill-ratio` to control the minimum and maximum fill
   ratios for cache tables that trigger shrinking and growing of the table
   by the cache rebalancer. The default values are:
@@ -153,14 +164,14 @@ devel
 
   These values were hard-coded in previous versions of ArangoDB.
 
-* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in 
-  case the update AQL is of the pattern 
+* BTS-1490: Allow performing AQL updates locally without using DISTRIBUTE in
+  case the update AQL is of the pattern
 
       FOR doc IN collection
         UPDATE <doc> IN collection
 
   Previously the optimization was only possible if the update AQL was of the
-  pattern 
+  pattern
 
       FOR doc IN collection
         UPDATE <key> WITH <doc> IN collection

@@ -51,7 +51,6 @@
       'users': 'userManagement',
       'user/:name': 'userView',
       'user/:name/permission': 'userPermission',
-      'userProfile': 'userProfile',
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
@@ -1260,30 +1259,10 @@
     userManagement: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.userManagementView) {
-          this.userManagementView.remove();
-        }
-
-        this.userManagementView = new window.UserManagementView({
-          collection: this.userCollection
-        });
-        this.userManagementView.render();
-      });
+      this.init.then(() => ReactDOM.render(React.createElement(window.UsersReactView),
+        document.getElementById('content-react')));
     },
 
-    userProfile: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (!this.userManagementView) {
-          this.userManagementView = new window.UserManagementView({
-            collection: this.userCollection
-          });
-        }
-        this.userManagementView.render(true);
-      });
-    },
     viewSettings: function (name) {
       this.checkUser();
 
