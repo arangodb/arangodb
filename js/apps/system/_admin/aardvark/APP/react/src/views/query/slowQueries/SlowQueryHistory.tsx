@@ -1,57 +1,54 @@
-import {
-  Button,
-  ModalFooter,
-  ModalHeader,
-  Table,
-  TableCaption,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from "@chakra-ui/react";
+import { Box, Button, Flex, ModalFooter, ModalHeader } from "@chakra-ui/react";
 import { QueryInfo } from "arangojs/database";
 import React from "react";
 import moment from "../../../../../frontend/js/lib/moment.min";
 import { Modal } from "../../../components/modal";
+import { ReactTable } from "../../../components/table/ReactTable";
+import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { useFetchSlowQueries } from "./useFetchSlowQueries";
 
 const TABLE_COLUMNS = [
   {
-    Header: "ID",
-    accessor: "id"
+    header: "ID",
+    accessorKey: "id",
+    id: "id"
   },
   {
-    Header: "Query String",
-    accessor: "query"
+    header: "Query String",
+    accessorKey: "query",
+    id: "query"
   },
   {
-    Header: "Bind Parameters",
-    accessor: "bindVars",
+    header: "Bind Parameters",
+    accessorKey: "bindVars",
+    id: "bindVars",
     accessorFn: (row: any) => {
       return JSON.stringify(row.bindVars);
     }
   },
   {
-    Header: "User",
-    accessor: "user"
+    header: "User",
+    accessorKey: "user",
+    id: "user"
   },
   {
-    Header: "Peak Memory Usage",
-    accessor: "peakMemoryUsage"
+    header: "Peak Memory Usage",
+    accessorKey: "peakMemoryUsage",
+    id: "peakMemoryUsage"
   },
   {
-    Header: "Runtime",
-    accessor: "runTime",
+    header: "Runtime",
+    accessorKey: "runTime",
+    id: "runTime",
     accessorFn: (row: any) => {
       return row.runTime.toFixed(2) + "s";
     }
   },
   {
-    Header: "Started",
-    accessor: "started",
+    header: "Started",
+    accessorKey: "started",
+    id: "started",
     accessorFn: (row: any) => {
       return moment(row.started).format("YYYY-MM-DD HH:mm:ss");
     }
@@ -60,54 +57,26 @@ const TABLE_COLUMNS = [
 export const SlowQueryHistory = () => {
   const { runningQueries, refetchQueries } = useFetchSlowQueries();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const tableInstance = useSortableReactTable<QueryInfo>({
+    data: runningQueries || [],
+    columns: TABLE_COLUMNS
+  });
+
   return (
-    <>
-      <TableContainer backgroundColor="white">
-        <Table>
-          <Thead>
-            {TABLE_COLUMNS.map(column => {
-              return (
-                <Th width="100px" key={column.accessor} whiteSpace="normal">
-                  {column.Header}
-                </Th>
-              );
-            })}
-          </Thead>
-          <Tbody>
-            {runningQueries.map(query => {
-              return (
-                <Tr key={query.id}>
-                  {TABLE_COLUMNS.map(column => {
-                    return (
-                      <Td whiteSpace="normal" key={column.accessor}>
-                        {column.accessorFn
-                          ? column.accessorFn(query)
-                          : query[column.accessor as keyof QueryInfo]}
-                      </Td>
-                    );
-                  })}
-                </Tr>
-              );
-            })}
-            {runningQueries.length === 0 && (
-              <Tr>
-                <Td colSpan={TABLE_COLUMNS.length}>No slow queries.</Td>
-              </Tr>
-            )}
-          </Tbody>
-          <TableCaption marginBottom="2" textAlign="right">
-            <Button
-              size="sm"
-              onClick={() => {
-                setShowDeleteModal(true);
-              }}
-              colorScheme="red"
-            >
-              Delete History
-            </Button>
-          </TableCaption>
-        </Table>
-      </TableContainer>
+    <Flex direction="column">
+      <ReactTable table={tableInstance} />
+      <Box alignSelf="flex-end" paddingX="6" paddingY="2" marginY="4">
+        <Button
+          size="sm"
+          onClick={() => {
+            setShowDeleteModal(true);
+          }}
+          colorScheme="red"
+        >
+          Delete History
+        </Button>
+      </Box>
+
       <DeleteSlowQueryHistoryModal
         isOpen={showDeleteModal}
         onClose={() => {
@@ -115,7 +84,7 @@ export const SlowQueryHistory = () => {
         }}
         refetchQueries={refetchQueries}
       />
-    </>
+    </Flex>
   );
 };
 

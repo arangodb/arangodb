@@ -12,5 +12,5 @@ export const useFetchRunningQueries = () => {
   useEffect(() => {
     fetchRunningQueries();
   }, []);
-  return { runningQueries, refetchQueries: fetchRunningQueries };
+  return { runningQueries, refetchRunningQueries: fetchRunningQueries };
 };

@@ -1,120 +1,84 @@
 import { DeleteIcon } from "@chakra-ui/icons";
-import {
-  Button,
-  IconButton,
-  ModalFooter,
-  ModalHeader,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from "@chakra-ui/react";
+import { Button, IconButton, ModalFooter, ModalHeader } from "@chakra-ui/react";
+import { CellContext } from "@tanstack/react-table";
 import { QueryInfo } from "arangojs/database";
-import React from "react";
+import React, { useEffect } from "react";
 import moment from "../../../../../frontend/js/lib/moment.min";
 import { Modal } from "../../../components/modal";
+import { ReactTable } from "../../../components/table/ReactTable";
+import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { getCurrentDB } from "../../../utils/arangoClient";
-import { useFetchRunningQueries } from "./useFetchRunningQueries";
+import { useQueryContext } from "../QueryContextProvider";
 
 const TABLE_COLUMNS = [
   {
-    Header: "ID",
-    accessor: "id"
+    header: "ID",
+    id: "id",
+    accessorKey: "id"
   },
   {
-    Header: "Query String",
-    accessor: "query"
+    header: "Query String",
+    id: "query",
+    accessorKey: "query"
   },
   {
-    Header: "Bind Parameters",
-    accessor: "bindVars",
+    header: "Bind Parameters",
+    id: "bindVars",
+    accessorKey: "bindVars",
     accessorFn: (row: any) => {
       return JSON.stringify(row.bindVars);
     }
   },
   {
-    Header: "User",
-    accessor: "user"
+    header: "User",
+    id: "user",
+    accessorKey: "user"
   },
   {
-    Header: "Peak Memory Usage",
-    accessor: "peakMemoryUsage"
+    header: "Peak Memory Usage",
+    id: "peakMemoryUsage",
+    accessorKey: "peakMemoryUsage"
   },
   {
-    Header: "Runtime",
-    accessor: "runTime",
+    header: "Runtime",
+    id: "runTime",
+    accessorKey: "runTime",
     accessorFn: (row: any) => {
       return row.runTime.toFixed(2) + "s";
     }
   },
   {
-    Header: "Started",
-    accessor: "started",
+    header: "Started",
+    accessorKey: "started",
     accessorFn: (row: any) => {
       return moment(row.started).format("YYYY-MM-DD HH:mm:ss");
     }
+  },
+  {
+    header: "Actions",
+    id: "actions",
+    cell: (info: CellContext<QueryInfo, string>) => <ActionCell info={info} />
   }
 ];
-export const RunningQueries = () => {
-  const { runningQueries, refetchQueries } = useFetchRunningQueries();
+const ActionCell = ({ info }: { info: CellContext<QueryInfo, string> }) => {
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [queryToDelete, setQueryToDelete] = React.useState<string | null>(null);
   const onDeleteClick = (queryId: string) => {
     setShowDeleteModal(true);
     setQueryToDelete(queryId);
   };
+  const { refetchRunningQueries } = useQueryContext();
+
+  const id = info.row.original.id;
   return (
     <>
-      <TableContainer backgroundColor="white">
-        <Table>
-          <Thead>
-            {TABLE_COLUMNS.map(column => {
-              return (
-                <Th width="100px" key={column.accessor} whiteSpace="normal">
-                  {column.Header}
-                </Th>
-              );
-            })}
-            <Th width="100px" whiteSpace="normal">
-              Actions
-            </Th>
-          </Thead>
-          <Tbody>
-            {runningQueries.map(query => {
-              return (
-                <Tr>
-                  {TABLE_COLUMNS.map(column => {
-                    return (
-                      <Td whiteSpace="normal" key={column.accessor}>
-                        {column.accessorFn
-                          ? column.accessorFn(query)
-                          : query[column.accessor as keyof QueryInfo]}
-                      </Td>
-                    );
-                  })}
-                  <Td>
-                    <IconButton
-                      aria-label="Kill Query"
-                      icon={<DeleteIcon />}
-                      colorScheme="red"
-                      variant="ghost"
-                      onClick={() => onDeleteClick(query.id)}
-                    />
-                  </Td>
-                </Tr>
-              );
-            })}
-            {runningQueries.length === 0 && (
-              <Tr>
-                <Td colSpan={TABLE_COLUMNS.length}>No running queries.</Td>
-              </Tr>
-            )}
-          </Tbody>
-        </Table>
-      </TableContainer>
+      <IconButton
+        aria-label="Kill Query"
+        icon={<DeleteIcon />}
+        colorScheme="red"
+        variant="ghost"
+        onClick={() => onDeleteClick(id)}
+      />
       <DeleteQueryModal
         isOpen={showDeleteModal}
         onClose={() => {
@@ -122,10 +86,23 @@ export const RunningQueries = () => {
           setQueryToDelete(null);
         }}
         queryToDelete={queryToDelete}
-        refetchQueries={refetchQueries}
+        refetchQueries={refetchRunningQueries}
       />
     </>
   );
+};
+export const RunningQueries = () => {
+  const { runningQueries, refetchRunningQueries } = useQueryContext();
+  useEffect(() => {
+    refetchRunningQueries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const tableInstance = useSortableReactTable<QueryInfo>({
+    data: runningQueries || [],
+    columns: TABLE_COLUMNS
+  });
+
+  return <ReactTable table={tableInstance} />;
 };
 
 const DeleteQueryModal = ({

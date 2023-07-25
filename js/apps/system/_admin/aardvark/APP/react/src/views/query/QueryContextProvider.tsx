@@ -1,9 +1,11 @@
 import { useDisclosure } from "@chakra-ui/react";
+import { QueryInfo } from "arangojs/database";
 import React, { useState } from "react";
 import { QueryResultType } from "./ArangoQuery.types";
 import { QueryType } from "./editor/useFetchUserSavedQueries";
 import { QueryKeyboardShortcutProvider } from "./QueryKeyboardShortcutProvider";
 import { QueryNavigationPrompt } from "./QueryNavigationPrompt";
+import { useFetchRunningQueries } from "./runningQueries/useFetchRunningQueries";
 import { useQueryEditorHandlers } from "./useQueryEditorHandlers";
 import { useQueryExecutors } from "./useQueryExecutors";
 import { useQueryResultHandlers } from "./useQueryResultHandlers";
@@ -63,6 +65,8 @@ type QueryContextType = {
   setQueryGraphResult: React.Dispatch<React.SetStateAction<QueryResultType>>;
   queryLimit: number | "all";
   setQueryLimit: (value: number | "all") => void;
+  runningQueries?: QueryInfo[];
+  refetchRunningQueries: () => Promise<void>;
 };
 
 const QueryContext = React.createContext<QueryContextType>(
@@ -126,6 +130,7 @@ export const QueryContextProvider = ({
     onOpen: onOpenSpotlight,
     onClose: onCloseSpotlight
   } = useDisclosure();
+  const { runningQueries, refetchRunningQueries } = useFetchRunningQueries();
   return (
     <QueryContext.Provider
       value={{
@@ -165,7 +170,9 @@ export const QueryContextProvider = ({
         queryLimit,
         setQueryLimit,
         onRemoveAllResults,
-        onSaveQueryList
+        onSaveQueryList,
+        runningQueries,
+        refetchRunningQueries
       }}
     >
       <QueryKeyboardShortcutProvider>
