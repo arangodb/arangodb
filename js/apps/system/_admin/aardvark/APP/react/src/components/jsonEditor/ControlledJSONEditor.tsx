@@ -41,21 +41,22 @@ export const ControlledJSONEditor = React.forwardRef(
     useSetupReadOnly({ jsonEditorRef, isDisabled, isReadOnly });
     useSetupValueUpdate({ jsonEditorRef, value });
     useSetupDefaultValueUpdate({ jsonEditorRef, defaultValue });
+    const setRef = (node: JsonEditor | null) => {
+      if (node) {
+        jsonEditorRef.current = node;
+      }
+      if (typeof ref === "function") {
+        ref(node);
+      } else if (ref) {
+        ref.current = node;
+      }
+    };
     return (
       <ClassNames>
         {({ css }) => (
           <JsonEditor
             schema={schema}
-            ref={node => {
-              if (node) {
-                jsonEditorRef.current = node;
-              }
-              if (typeof ref === "function") {
-                ref(node);
-              } else if (ref) {
-                ref.current = node;
-              }
-            }}
+            ref={setRef}
             value={value || {}}
             onChange={onChange}
             htmlElementProps={{
@@ -67,6 +68,7 @@ export const ControlledJSONEditor = React.forwardRef(
                 : ""
             }}
             {...rest}
+            // need to ts-ignore as the interface is controlled by jsoneditor-react
             // @ts-ignore
             mainMenuBar={mainMenuBar}
           />
@@ -86,14 +88,10 @@ const useSetupReadOnly = ({
   isReadOnly: boolean | undefined;
 }) => {
   useEffect(() => {
-    const editor = (jsonEditorRef?.current as any)?.jsonEditor;
+    const editor = jsonEditorRef?.current?.jsonEditor;
     const ace = editor?.aceEditor;
     if (!editor || !ace) return;
-    if (isDisabled || isReadOnly) {
-      ace.setReadOnly(true);
-    } else {
-      ace.setReadOnly(false);
-    }
+    ace.setReadOnly(isDisabled || isReadOnly);
   }, [isDisabled, isReadOnly, jsonEditorRef]);
 };
 
@@ -105,7 +103,7 @@ const useSetupDefaultValueUpdate = ({
   defaultValue: any;
 }) => {
   useEffect(() => {
-    const editor = (jsonEditorRef?.current as any)?.jsonEditor;
+    const editor = jsonEditorRef?.current?.jsonEditor;
     if (editor && defaultValue) {
       editor.update(defaultValue);
     }
@@ -121,7 +119,7 @@ const useSetupValueUpdate = ({
   value: any;
 }) => {
   useEffect(() => {
-    const editor = (jsonEditorRef?.current as any)?.jsonEditor;
+    const editor = jsonEditorRef?.current?.jsonEditor;
     if (
       editor &&
       value &&

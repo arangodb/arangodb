@@ -69,7 +69,7 @@ export const AQLEditor = ({
       />
       <JsonEditor
         ref={aqlJsonEditorRef}
-        mode={"code" as any}
+        mode={"code"}
         onChange={onChange}
         value={undefined}
         htmlElementProps={{

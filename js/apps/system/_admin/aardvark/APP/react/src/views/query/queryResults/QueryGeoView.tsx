@@ -25,9 +25,6 @@ export const QueryGeoView = ({
 }: {
   queryResult: QueryResultType<GeometryResultType>;
 }) => {
-  // const geometry = queryResult.result?.hasOwnProperty("geometry").map
-  //   ? (queryResult.result as NestedGeometryType)?.geometry
-  //   : (queryResult.result as GeoJSONType);
   const newResult = queryResult.result?.map(item => {
     if (item.hasOwnProperty("geometry")) {
       return (item as NestedGeometryType).geometry;
@@ -45,7 +42,6 @@ export const QueryGeoView = ({
           height: "500px"
         }}
         scrollWheelZoom={false}
-        // @ts-ignore
         gestureHandling={true}
       >
         <MapInner geometryResult={newResult} />
@@ -67,7 +63,8 @@ const MapInner = ({
     if (areAllPoints) {
       const markers = geometryResult
         .map(geometry => {
-          if (geometry.type === "Point" || geometry.type === "MultiPoint") {
+          const { type } = geometry;
+          if (type === "Point" || type === "MultiPoint") {
             return new L.CircleMarker(
               L.latLng(
                 (geometry.coordinates as any)[1],
@@ -103,12 +100,11 @@ const SingleGeometry = ({ geometry }: { geometry: GeoJSONUnionType }) => {
   const map = useMap();
 
   const [markers, setMarkers] = React.useState<any[]>([]);
-  const isPointGeometry =
-    geometry.type === "Point" || geometry.type === "MultiPoint";
-  const isPolygonGeometry =
-    geometry.type === "Polygon" || geometry.type === "MultiPolygon";
+  const { type } = geometry;
+  const isPointGeometry = type === "Point" || type === "MultiPoint";
+  const isPolygonGeometry = type === "Polygon" || type === "MultiPolygon";
   const isLineStringGeometry =
-    geometry.type === "MultiLineString" || geometry.type === "LineString";
+    type === "MultiLineString" || type === "LineString";
   React.useEffect(() => {
     if (markers.length > 0 && !isPointGeometry) {
       const featureGroup = new L.FeatureGroup(markers);

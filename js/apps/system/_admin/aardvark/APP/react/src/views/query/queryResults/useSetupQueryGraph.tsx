@@ -49,13 +49,10 @@ export const getLayout = (layout: LayoutType) => {
       solver: "forceAtlas2Based"
     }
   };
-  switch (layout) {
-    case "hierarchical":
-      return hierarchicalOptions;
-    case "forceAtlas2":
-    default:
-      return forceAtlas2BasedOptions;
+  if (layout === "hierarchical") {
+    return hierarchicalOptions;
   }
+  return forceAtlas2BasedOptions;
 };
 type ObjectDataInputType = {
   vertices: {

@@ -32,9 +32,6 @@ export const QueryOptionsPane = () => {
           <TabPanel padding="0" height="full">
             <BindVariablesTab mode={mode} />
           </TabPanel>
-          {/* <TabPanel>
-              <QueryOptions />
-            </TabPanel> */}
         </TabPanels>
       </Tabs>
     </Box>

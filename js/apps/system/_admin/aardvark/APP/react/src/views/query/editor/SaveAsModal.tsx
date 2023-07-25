@@ -21,6 +21,17 @@ export const SaveAsModal = () => {
   const queryExists = !!savedQueries?.find(
     query => query.name === newQueryName
   );
+  const handleSave = async () => {
+    if (queryExists) {
+      await onSave(newQueryName);
+      setCurrentQueryName(newQueryName);
+      onCloseSaveAsModal();
+      return;
+    }
+    await onSaveAs(newQueryName);
+    setCurrentQueryName(newQueryName);
+    onCloseSaveAsModal();
+  };
   return (
     <Modal isOpen={isSaveAsModalOpen} onClose={onCloseSaveAsModal}>
       <ModalHeader>Save Query</ModalHeader>
@@ -41,17 +52,7 @@ export const SaveAsModal = () => {
           <Button
             isDisabled={newQueryName === ""}
             colorScheme="green"
-            onClick={async () => {
-              if (queryExists) {
-                await onSave(newQueryName);
-                setCurrentQueryName(newQueryName);
-                onCloseSaveAsModal();
-                return;
-              }
-              await onSaveAs(newQueryName);
-              setCurrentQueryName(newQueryName);
-              onCloseSaveAsModal();
-            }}
+            onClick={handleSave}
           >
             {queryExists ? "Update" : "Save"}
           </Button>

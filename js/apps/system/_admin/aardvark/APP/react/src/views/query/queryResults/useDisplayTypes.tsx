@@ -30,12 +30,9 @@ export const useDisplayTypes = ({
     if (isGraph && graphDataType) {
       setDisplayTypes(["graph"]);
       setGraphDataType(graphDataType);
-      setCurrentDisplayType(prevView => {
-        if (prevView !== "graph") {
-          return "graph";
-        }
-        return prevView;
-      });
+      setCurrentDisplayType(prevView =>
+        prevView !== "graph" ? "graph" : prevView
+      );
       return;
     }
     const { isGeo, isTable } = detectGeo({
@@ -47,20 +44,14 @@ export const useDisplayTypes = ({
         displayTypes = ["table", ...displayTypes];
       }
       setDisplayTypes(displayTypes as DisplayType[]);
-      setCurrentDisplayType(prevView => {
-        if (prevView !== "geo") {
-          return "geo";
-        }
-        return prevView;
-      });
+      setCurrentDisplayType(prevView =>
+        prevView !== "geo" ? "geo" : prevView
+      );
     } else if (isTable) {
       setDisplayTypes(["table"]);
-      setCurrentDisplayType(prevView => {
-        if (prevView !== "table") {
-          return "table";
-        }
-        return prevView;
-      });
+      setCurrentDisplayType(prevView =>
+        prevView !== "table" ? "table" : prevView
+      );
     }
   }, [queryResult]);
   return {
@@ -115,7 +106,7 @@ export const detectGraph = ({
     (result as ObjectGraphType[]).forEach(obj => {
       if (obj.edges) {
         obj.edges.forEach(edge => {
-          if (edge !== null) {
+          if (edge) {
             if (edge._from && edge._to) {
               totalValidEdges++;
             }

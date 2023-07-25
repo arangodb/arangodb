@@ -1,5 +1,6 @@
 import { CollectionMetadata, CollectionType } from "arangojs/collection";
 import useSWR from "swr";
+import { OptionType } from "../../../components/select/SelectBase";
 import {
   getApiRouteForCurrentDB,
   getCurrentDB
@@ -74,40 +75,36 @@ const useCollectionOptions = () => {
   const { data, isLoading: isCollectionsLoading } = useSWR<
     CollectionMetadata[]
   >(`/collections`, fetchCollections);
-  const edgeCollectionOptions = data
-    ?.filter(collection => {
-      return (
-        collection.type === CollectionType.EDGE_COLLECTION &&
-        !collection.isSystem
-      );
-    })
-    .map(collection => ({
-      label: collection.name,
-      value: collection.name
-    }));
-  const documentCollectionOptions = data
-    ?.filter(collection => {
-      return (
-        collection.type === CollectionType.DOCUMENT_COLLECTION &&
-        !collection.isSystem
-      );
-    })
-    .map(collection => ({
-      label: collection.name,
-      value: collection.name
-    }));
-  const systemCollectionOptions = data
-    ?.filter(collection => {
-      return collection.isSystem;
-    })
-    .map(collection => ({
-      label: collection.name,
-      value: collection.name
-    }));
+  const result = data?.reduce(
+    (acc, collection) => {
+      if (collection.type === CollectionType.EDGE_COLLECTION) {
+        acc.edgeCollectionOptions.push({
+          label: collection.name,
+          value: collection.name
+        });
+      } else if (collection.type === CollectionType.DOCUMENT_COLLECTION) {
+        acc.documentCollectionOptions.push({
+          label: collection.name,
+          value: collection.name
+        });
+      } else if (collection.isSystem) {
+        acc.systemCollectionOptions.push({
+          label: collection.name,
+          value: collection.name
+        });
+      }
+      return acc;
+    },
+    {
+      edgeCollectionOptions: [] as OptionType[],
+      documentCollectionOptions: [] as OptionType[],
+      systemCollectionOptions: [] as OptionType[]
+    }
+  );
   return {
-    edgeCollectionOptions,
-    documentCollectionOptions,
-    systemCollectionOptions,
+    edgeCollectionOptions: result?.edgeCollectionOptions,
+    documentCollectionOptions: result?.documentCollectionOptions,
+    systemCollectionOptions: result?.systemCollectionOptions,
     isCollectionsLoading
   };
 };

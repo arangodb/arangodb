@@ -32,6 +32,7 @@ import { ParameterEdgeColorByCollectionComponent } from "../../graphV2/graphSett
 import { ParameterNodeColorComponent } from "../../graphV2/graphSettings/ParameterNodeColor";
 import { ParameterNodeColorByCollectionComponent } from "../../graphV2/graphSettings/ParameterNodeColorByCollection";
 import { LayoutType } from "../../graphV2/UrlParametersContext";
+import { QueryResultType } from "../ArangoQuery.types";
 import { useQueryContext } from "../QueryContextProvider";
 import { detectGraph } from "../queryResults/useDisplayTypes";
 import { convertToGraphData } from "../queryResults/useSetupQueryGraph";
@@ -65,7 +66,7 @@ const QueryGraphHeader = () => {
     <Flex padding="2" alignItems="center">
       <Button
         onClick={() => {
-          setQueryGraphResult({} as any);
+          setQueryGraphResult({} as QueryResultType);
         }}
         size="sm"
         leftIcon={<ArrowBackIcon />}

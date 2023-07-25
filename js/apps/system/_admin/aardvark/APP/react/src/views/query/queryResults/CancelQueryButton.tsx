@@ -11,23 +11,24 @@ export const CancelQueryButton = ({
   asyncJobId?: string;
 }) => {
   const { onRemoveResult } = useQueryContext();
+  const onCancel = async () => {
+    const route = getApiRouteForCurrentDB();
+    try {
+      await route.request({
+        method: "PUT",
+        path: `/job/${asyncJobId}/cancel`
+      });
+      onRemoveResult(index);
+      window.arangoHelper.arangoNotification("Query cancelled");
+    } catch (e) {}
+  };
   return (
     <Button
       marginLeft="auto"
       colorScheme="red"
       size="sm"
       aria-label="Close"
-      onClick={async () => {
-        const route = getApiRouteForCurrentDB();
-        try {
-          await route.request({
-            method: "PUT",
-            path: `/job/${asyncJobId}/cancel`
-          });
-          onRemoveResult(index);
-          window.arangoHelper.arangoNotification("Query cancelled");
-        } catch (e) {}
-      }}
+      onClick={onCancel}
     >
       Cancel
     </Button>

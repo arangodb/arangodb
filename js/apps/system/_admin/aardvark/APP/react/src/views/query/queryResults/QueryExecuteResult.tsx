@@ -11,8 +11,8 @@ import {
 import React, { useMemo } from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { downloadPost } from "../../../utils/downloadHelper";
-import { useQueryContext } from "../QueryContextProvider";
 import { QueryResultType } from "../ArangoQuery.types";
+import { useQueryContext } from "../QueryContextProvider";
 import { CSVDownloadButton } from "./CSVDownloadButton";
 import { QueryGeoView } from "./QueryGeoView";
 import { QueryGraphView } from "./QueryGraphView";
@@ -256,7 +256,19 @@ const QueryExecuteResultFooter = ({
       }
     });
   };
-
+  const onCopyToQueryEditor = () => {
+    onQueryChange({
+      value: queryValue,
+      parameter: queryBindParams || {}
+    });
+    setCurrentView("editor");
+    setResetEditor(!resetEditor);
+    aqlJsonEditorRef.current?.jsonEditor?.focus();
+    const containerDiv = document.querySelector("#content-react > div");
+    if (containerDiv) {
+      containerDiv.scrollTop = 0;
+    }
+  };
   return (
     <Flex padding="2" alignItems="center" justifyContent="end">
       <Stack direction="row">
@@ -267,22 +279,7 @@ const QueryExecuteResultFooter = ({
         <Button size="sm" onClick={onDownload}>
           Download JSON
         </Button>
-        <Button
-          size="sm"
-          onClick={() => {
-            onQueryChange({
-              value: queryValue,
-              parameter: queryBindParams || {}
-            });
-            setCurrentView("editor");
-            setResetEditor(!resetEditor);
-            aqlJsonEditorRef.current?.jsonEditor?.focus();
-            const containerDiv = document.querySelector("#content-react > div");
-            if (containerDiv) {
-              containerDiv.scrollTop = 0;
-            }
-          }}
-        >
+        <Button size="sm" onClick={onCopyToQueryEditor}>
           Copy query to editor
         </Button>
       </Stack>

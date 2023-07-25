@@ -38,6 +38,7 @@ const DEFINED_TYPES = ["string", "number", "array", "object", "boolean"];
 export const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
   const { queryBindParams, onBindParamsChange, bindVariablesJsonEditorRef } =
     useQueryContext();
+  const queryBindParamKeys = Object.keys(queryBindParams);
   const [errors, setErrors] = React.useState<ValidationError[]>([]);
   if (mode === "table") {
     return (
@@ -50,14 +51,15 @@ export const BindVariablesTab = ({ mode }: { mode: "json" | "table" }) => {
             </Tr>
           </Thead>
           <Tbody>
-            {Object.keys(queryBindParams).map(key => {
-              return <BindVariableRow key={key} bindParamKey={key} />;
-            })}
-            {Object.keys(queryBindParams).length === 0 ? (
+            {queryBindParamKeys.length > 0 ? (
+              queryBindParamKeys.map(key => {
+                return <BindVariableRow key={key} bindParamKey={key} />;
+              })
+            ) : (
               <Tr>
                 <Td colSpan={2}>No bind parameters found in query.</Td>
               </Tr>
-            ) : null}
+            )}
           </Tbody>
         </Table>
       </TableContainer>
@@ -108,6 +110,15 @@ const BindVariableRow = ({ bindParamKey }: { bindParamKey: string }) => {
   if (typeof value === "object") {
     parsedValue = JSON.stringify(value);
   }
+  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setType(detectType(e.target.value) as any);
+    const parsedValue = parseInput(e.target.value);
+    const newQueryBindParams = {
+      ...queryBindParams,
+      [bindParamKey]: parsedValue
+    };
+    onBindParamsChange(newQueryBindParams);
+  };
   return (
     <Tr>
       <Td>
@@ -125,15 +136,7 @@ const BindVariableRow = ({ bindParamKey }: { bindParamKey: string }) => {
           size="sm"
           placeholder="Value"
           value={parsedValue}
-          onChange={e => {
-            setType(detectType(e.target.value) as any);
-            const parsedValue = parseInput(e.target.value);
-            const newQueryBindParams = {
-              ...queryBindParams,
-              [bindParamKey]: parsedValue
-            };
-            onBindParamsChange(newQueryBindParams);
-          }}
+          onChange={handleValueChange}
         />
       </Td>
     </Tr>
