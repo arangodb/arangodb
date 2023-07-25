@@ -1283,7 +1283,6 @@ function IgnoreIllegalTypesSuite() {
                   // We take doubles for integers
                   if (prop === "replicationFactor" && ignoredValue > 2) {
                     // ReplicationFactor is too large for te amount of servers
-                    require("internal").print(db._collection(collname).properties());
                     isDisallowed(ERROR_HTTP_SERVER_ERROR.code, ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, res, testParam);
                   } else {
                     // all other values violate conditions.

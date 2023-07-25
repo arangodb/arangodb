@@ -64,8 +64,7 @@ Result EvenDistribution::planShardsOnServers(
                      }),
       availableServers.end());
 
-  if (_enforceReplicationFactor &&
-      availableServers.size() < _replicationFactor) {
+  if (availableServers.size() < _replicationFactor) {
     // Check if enough servers are left
     LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
         << "Do not have enough DBServers for requested "

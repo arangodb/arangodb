@@ -196,6 +196,26 @@ auto handleReplicationFactor(std::string_view key, VPackSlice value,
   // Ignore if we have distributeShardsLike
 }
 
+auto handleReplicationFactorRestore(std::string_view key, VPackSlice value,
+                             VPackSlice fullBody,
+                             DatabaseConfiguration const& config,
+                             VPackBuilder& result) {
+  if (shouldConsiderClusterAttribute(fullBody, config)) {
+    if (value.isNumber()) {
+      if (value.getNumericValue<int64_t>() == 0) {
+        result.add(key, VPackValue(StaticStrings::Satellite));
+      } else {
+        // All others numbers just forward
+        result.add(key, value);
+      }
+    } else if (value.isString() && value.isEqualString(StaticStrings::Satellite)) {
+      // Keep Satellite
+      result.add(key, value);
+    }
+  }
+  // Ignore if we have distributeShardsLike, or if none of above conditions matches
+}
+
 auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice,
                     DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isBoolean()) {
@@ -435,7 +455,8 @@ auto makeRestoreAllowList() -> std::unordered_map<
           {StaticStrings::WriteConcern, handleWriteConcernRestore},
           {StaticStrings::NumberOfShards, handleNumberOfShardsRestore},
           {StaticStrings::ComputedValues, handleComputedValuesRestore},
-          {StaticStrings::ShardingStrategy, handleShardingStrategyRestore}
+          {StaticStrings::ShardingStrategy, handleShardingStrategyRestore},
+          {StaticStrings::ReplicationFactor, handleReplicationFactorRestore}
       };
   return allowListInstance;
 }
