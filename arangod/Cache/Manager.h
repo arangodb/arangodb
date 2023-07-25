@@ -26,7 +26,6 @@
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/SharedCounter.h"
 #include "Basics/SpinLocker.h"
-#include "Cache/CachedValue.h"
 #include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/FrequencyBuffer.h"

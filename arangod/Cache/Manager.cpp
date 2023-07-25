@@ -40,7 +40,6 @@
 #include "Basics/voc-errors.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/Cache.h"
-#include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/ManagerTasks.h"

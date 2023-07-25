@@ -75,11 +75,12 @@ Cache::Cache(
 }
 
 Cache::~Cache() {
-  // report memory usage diff to manager
-  TRI_ASSERT(_memoryUsageDiff == 0);
-  adjustGlobalAllocation(/*value*/ 0, /*force*/ true);
+  // derived classes should have called shutdown() in their dtors,
+  // so no memory usage diff should be left here now.
   TRI_ASSERT(_memoryUsageDiff == 0);
 
+  // now subtract potential memory usages for find stats and
+  // eviction stats
   std::uint64_t memoryUsage = 0;
 
   if (_haveFindStats.load(std::memory_order_relaxed)) {
