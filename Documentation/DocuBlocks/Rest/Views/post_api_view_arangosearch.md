@@ -27,8 +27,7 @@ sort direction (`"asc` for ascending, `"desc"` for descending):
 `[ { "field": "attr", "direction": "asc"}, … ]`
 
 @RESTBODYPARAM{primarySortCompression,string,optional,string}
-Defines how to compress the primary sort data (introduced in v3.7.1).
-ArangoDB v3.5 and v3.6 always compress the index using LZ4.
+Defines how to compress the primary sort data.
 
 This option is immutable.
 
@@ -65,7 +64,7 @@ cache in cluster deployments by only using the cache for leader shards, see the
 
 @RESTBODYPARAM{storedValues,array,optional,object}
 An array of objects to describe which document attributes to store in the View
-index (introduced in v3.7.1). It can then cover search queries, which means the
+index. It can then cover search queries, which means the
 data can be taken from the index directly and accessing the storage engine can
 be avoided.
 

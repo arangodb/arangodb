@@ -18,24 +18,24 @@ The TTL is used to calculate the expiration date for the job's results.
 
 @RESTSTRUCT{state,get_api_control_pregel_struct,string,required,string}
 The state of the execution. The following values can be returned:
-- `"none"`: The Pregel run did not yet start.
-- `"loading"`: The graph is loaded from the database into memory before the execution of the algorithm.
+- `"none"`: The Pregel run has not started yet.
+- `"loading"`: The graph is being loaded from the database into memory before
+  executing the algorithm.
 - `"running"`: The algorithm is executing normally.
 - `"storing"`: The algorithm finished, but the results are still being written
-  back into the collections. Occurs only if the store parameter is set to true.
-- `"done"`: The execution is done. In version 3.7.1 and later, this means that
-  storing is also done. In earlier versions, the results may not be written back
-  into the collections yet. This event is announced in the server log (requires
-  at least info log level for the `pregel` log topic).
+  back into the collections. Only occurs if the `store` parameter is set to `true`.
+- `"done"`: The execution is done. This means that storing is also done.
+  This event is announced in the server log (requires at least `info` log level
+  for the `pregel` log topic).
 - `"canceled"`: The execution was permanently canceled, either by the user or by
   an error.
-- `"fatal error"`: The execution has failed and cannot recover.
-- `"in error"`: The execution is in an error state. This can be
-  caused by DB-Servers being not reachable or being non responsive. The execution
-  might recover later, or switch to `"canceled"` if it was not able to recover
+- `"in error"`: The execution is in an error state. This can be caused by
+  primary DB-Servers being unreachable or unresponsive. The execution
+  might recover later, or switch to `"canceled"` if it is not able to recover
   successfully. 
-- `"recovering"` (currently unused): The execution is actively recovering and
+- `"recovering"`: The execution is actively recovering and
   switches back to `running` if the recovery is successful.
+- `"fatal error"`: The execution has failed and cannot recover.
 
 @RESTSTRUCT{gss,get_api_control_pregel_struct,integer,required,int64}
 The number of global supersteps executed.
