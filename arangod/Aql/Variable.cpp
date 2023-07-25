@@ -50,8 +50,9 @@ Variable::Variable(velocypack::Slice slice,
       name(basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
       isFullDocumentFromCollection(basics::VelocyPackHelper::getBooleanValue(
           slice, "isFullDocumentFromCollection", false)),
-      _resourceMonitor(resourceMonitor),
-      _constantValue(slice.get("constantValue")) {}
+      _resourceMonitor(resourceMonitor) {
+  setConstantValue(AqlValue{slice.get("constantValue")});
+}
 
 /// @brief destroy the variable
 Variable::~Variable() {
