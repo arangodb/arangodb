@@ -42,6 +42,7 @@ export const QueryGeoView = ({
           height: "500px"
         }}
         scrollWheelZoom={false}
+        // @ts-ignore
         gestureHandling={true}
       >
         <MapInner geometryResult={newResult} />
