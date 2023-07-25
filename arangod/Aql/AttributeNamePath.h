@@ -46,7 +46,8 @@ struct AttributeNamePath {
     MultiAttribute    // sub-attribute, e.g. a.b.c
   };
 
-  explicit AttributeNamePath(arangodb::ResourceMonitor& resourceMonitor) noexcept;
+  explicit AttributeNamePath(
+      arangodb::ResourceMonitor& resourceMonitor) noexcept;
 
   /// @brief construct an attribute path from a single attribute (e.g. _key)
   AttributeNamePath(std::string attribute,
