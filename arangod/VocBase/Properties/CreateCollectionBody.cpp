@@ -101,7 +101,6 @@ auto rewriteStatusErrorMessageForRestore(inspection::Status const& status)
           (status.path().empty() ? "" : " on attribute " + status.path())};
 }
 
-#if false
 auto handleShards(std::string_view, VPackSlice value, VPackSlice fullBody,
                 DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isObject() && !value.isEmptyObject() &&
@@ -383,6 +382,20 @@ auto handleShardingStrategyRestore(std::string_view key, VPackSlice value,
                             DatabaseConfiguration const& config,
                             VPackBuilder& result) {
   if (!isSingleServer()) {
+    if (value.isString()) {
+      // We only handle strings here.
+#ifndef USE_ENTERPRISE
+      if (value.isEqualString("enterprise-hash-smart-edge")) {
+        // Only enterprise can use this strategy, on community we ignore it.
+        return;
+      }
+      if (value.isEqualString("enterprise-hex-smart-vertex")) {
+        // Only enterprise can use this strategy, on community we use "hash" here,
+        // but not the general default of community-compat
+        result.add(key, "hash");
+      }
+#endif
+    }
     handleStringsOnly(key, value, fullBody, config, result);
   } else {
     if (value.isString() && value.isEqualString("enterprise-hex-smart-vertex")) {

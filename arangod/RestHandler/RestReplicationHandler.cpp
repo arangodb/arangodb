@@ -117,8 +117,16 @@ bool ignoreHiddenEnterpriseCollection(std::string const& name,
   return false;
 }
 
+/**
+ * Handle existing collections for restore.
+ *
+ * @param vocbase Database we work in
+ * @param name  Name of the collection
+ * @param dropExisting Flag if we are allowed to drop or truncate the collection
+ * @return An error if the original lookup failed or we attempted do truncate or drop the collection and the operation failed, otherwise it returns true if the collection exists after this call, and false if it does not.
+ */
 auto handlingOfExistingCollection(TRI_vocbase_t& vocbase, std::string const& name,
-                                  bool dropExisting) -> Result {
+                                  bool dropExisting) -> ResultT<bool> {
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
       (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
@@ -138,9 +146,14 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase, std::string const& nam
           // properly notified analyzers are gone.
           // The single server and DBServer case is handled after restore of
           // data.
-          return vocbase.server()
+          auto res = vocbase.server()
               .getFeature<iresearch::IResearchAnalyzerFeature>()
               .removeAllAnalyzers(vocbase);
+          if (res.ok()) {
+            // Analyzers are only truncated, never dropped, so collection still exists.
+            return {true};
+          }
+          return res;
         }
 
         auto dropResult = methods::Collections::drop(*col, true, true);
@@ -165,7 +178,12 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase, std::string const& nam
             OperationOptions options;
             OperationResult opRes = trx.truncate(name, options);
 
-            return trx.finish(opRes.result);
+            auto res = trx.finish(opRes.result);
+            if (!res.ok()) {
+              return res;
+            }
+            // After a truncate the collection still exists.
+            return {true};
           }
 
           return Result(dropResult.errorNumber(),
@@ -183,11 +201,15 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase, std::string const& nam
             << "could not drop collection: " << ex.what();
       } catch (...) {
       }
+    } else {
+      // Found a collection, and we are not allowed to drop it, so it exists.
+      return {true};
     }
   } else if (lookupResult.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     return lookupResult;
   }
-  return {TRI_ERROR_NO_ERROR};
+  // If we end up here the collection does not exist.
+  return {false};
 }
 
 
@@ -1193,6 +1215,18 @@ Result RestReplicationHandler::processRestoreCollection(
     auto result = handlingOfExistingCollection(_vocbase, input->name, dropExisting);
     if (result.fail()) {
       return result.errorNumber();
+    }
+    if (result.get()) {
+      // Collection still exists.
+      // No point in trying to recreate it, it will fail with duplicate name.
+      if (dropExisting) {
+        // Overwrite mode, we have successfully truncated the collection
+        // Consider this process successful.
+        return {TRI_ERROR_NO_ERROR};
+      } else {
+        return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                      std::string("duplicate collection name '") + input->name + "'");
+      }
     }
   }
 

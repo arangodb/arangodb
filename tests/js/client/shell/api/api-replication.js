@@ -1103,10 +1103,10 @@ function RestoreCollectionsSuite() {
 
     testRestoreSystemCollection: function () {
       const systemName = "_pregel_queries";
-      const idBeforeRestore = db._collection(systemName)._id;
+      const idBeforeRestore = getCollectionId(systemName);
       const propsBeforeRestore = db._collection(systemName).properties();
       const res = tryRestore({name: systemName, isSystem: true});
-      const idAfterRestore = db._collection(systemName)._id;
+      const idAfterRestore = getCollectionId(systemName);
       assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
       // We do not want to change any properties
       validateProperties(propsBeforeRestore, systemName, 2);
@@ -1120,14 +1120,41 @@ function RestoreCollectionsSuite() {
         db._useDatabase("UnitTestDB");
         // Graph is leading, cannot be dropped, will be truncated
         const systemName = "_graphs";
-        const idBeforeRestore = db._collection(systemName)._id;
+        const idBeforeRestore = getCollectionId(systemName);
         const propsBeforeRestore = db._collection(systemName).properties();
         const res = tryRestore({name: systemName, isSystem: true});
-        const idAfterRestore = db._collection(systemName)._id;
+        const idAfterRestore = getCollectionId(systemName);
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
         // We do not want to change any properties
         validateProperties(propsBeforeRestore, systemName, 2);
         assertEqual(idBeforeRestore, idAfterRestore, `Did drop the collection, not just truncated`);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase("UnitTestDB");
+      }
+    },
+
+    testRestoreLeadingSystemCollectionOverwrite: function () {
+      // We cannot restore a leading system collection.
+      db._createDatabase("UnitTestDB");
+      try {
+        db._useDatabase("UnitTestDB");
+        // Graph is leading, cannot be dropped, will be truncated
+        const systemName = "_graphs";
+        const idBeforeRestore = getCollectionId(systemName);
+        const propsBeforeRestore = db._collection(systemName).properties();
+        const res = tryRestore({name: systemName, isSystem: true}, {overwrite: true});
+        const idAfterRestore = getCollectionId(systemName);
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        // We do not want to change any properties
+        validateProperties(propsBeforeRestore, systemName, 2);
+        if (isCluster) {
+          // Leading system Collection cannot be dropped on Cluster (violates distributeShardsLike)
+          assertEqual(idBeforeRestore, idAfterRestore, `Did drop the collection, not just truncated`);
+        } else {
+          // Leading system Collection can be dropped on SingleServer
+          assertNotEqual(idBeforeRestore, idAfterRestore, `Did not drop the collection, just truncated`);
+        }
       } finally {
         db._useDatabase("_system");
         db._dropDatabase("UnitTestDB");
