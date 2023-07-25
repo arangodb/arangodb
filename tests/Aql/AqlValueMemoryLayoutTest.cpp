@@ -140,7 +140,6 @@ void runChecksForSlice(velocypack::Slice value, std::uint8_t const* expected) {
     EXPECT_EQ(ival != 0, aqlValue.toBoolean());
     EXPECT_EQ(ival, aqlValue.slice().getNumber<std::int64_t>());
     EXPECT_EQ(ival, aqlValue.toInt64());
-    EXPECT_EQ(ival, aqlValue.slice().getNumber<std::int64_t>());
   } else {
     TRI_ASSERT(false) << "Unexpected type " << value.typeName();
   }
