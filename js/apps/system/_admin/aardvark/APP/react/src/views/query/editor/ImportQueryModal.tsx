@@ -114,7 +114,7 @@ export const ImportQueryModal = ({
       </ModalBody>
       <ModalFooter>
         <Stack direction="row">
-          <Button colorScheme="gray" onClick={() => onClose()}>
+          <Button colorScheme="gray" onClick={onClose}>
             Cancel
           </Button>
           <Button

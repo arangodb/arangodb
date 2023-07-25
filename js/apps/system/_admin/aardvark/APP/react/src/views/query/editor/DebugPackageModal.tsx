@@ -82,7 +82,7 @@ export const DebugPackageModal = ({
       </ModalBody>
       <ModalFooter>
         <Stack direction="row">
-          <Button colorScheme="gray" onClick={() => onCloseDebugPackageModal()}>
+          <Button colorScheme="gray" onClick={onCloseDebugPackageModal}>
             Cancel
           </Button>
           <Button
