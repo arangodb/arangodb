@@ -111,7 +111,6 @@ auto handleShards(std::string_view, VPackSlice value, VPackSlice fullBody,
     result.add(StaticStrings::NumberOfShards, VPackValue(value.length()));
   }
 }
-#endif
 
 auto isSingleServer() -> bool {
   return ServerState::instance()->isSingleServer();
@@ -379,6 +378,22 @@ auto handleShardingStrategy(std::string_view key, VPackSlice value,
   // Just ignore on SingleServer
 }
 
+auto handleShardingStrategyRestore(std::string_view key, VPackSlice value,
+                            VPackSlice fullBody,
+                            DatabaseConfiguration const& config,
+                            VPackBuilder& result) {
+  if (!isSingleServer()) {
+    handleStringsOnly(key, value, fullBody, config, result);
+  } else {
+    if (value.isString() && value.isEqualString("enterprise-hex-smart-vertex")) {
+      // We need to keep exactly this strategy to trigger a BAD_PARAMETER error.
+      // All others are ignored.
+      justKeep(key, value, fullBody, config, result);
+    }
+  }
+  // Just ignore on SingleServer
+}
+
 auto logDeprecationMessage(Result const& res) -> void {
   LOG_TOPIC("ee638", ERR, arangodb::Logger::DEPRECATION)
       << "The createCollection request contains an illegal combination "
@@ -406,7 +421,9 @@ auto makeRestoreAllowList() -> std::unordered_map<
           {StaticStrings::MinReplicationFactor, handleWriteConcernRestore},
           {StaticStrings::WriteConcern, handleWriteConcernRestore},
           {StaticStrings::NumberOfShards, handleNumberOfShardsRestore},
-          {StaticStrings::ComputedValues, handleComputedValuesRestore},};
+          {StaticStrings::ComputedValues, handleComputedValuesRestore},
+          {StaticStrings::ShardingStrategy, handleShardingStrategyRestore}
+      };
   return allowListInstance;
 }
 
