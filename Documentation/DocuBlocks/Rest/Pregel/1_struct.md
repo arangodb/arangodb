@@ -25,8 +25,8 @@ The state of the execution. The following values can be returned:
 - `"storing"`: The algorithm finished, but the results are still being written
   back into the collections. Only occurs if the `store` parameter is set to `true`.
 - `"done"`: The execution is done. This means that storing is also done.
-  This event is announced in the server log (requires at least `info` log level
-  for the `pregel` log topic).
+  This event is announced in the server log (requires at least the `info`
+  log level for the `pregel` log topic).
 - `"canceled"`: The execution was permanently canceled, either by the user or by
   an error.
 - `"in error"`: The execution is in an error state. This can be caused by
