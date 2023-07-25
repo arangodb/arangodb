@@ -930,8 +930,8 @@ bool IResearchInvertedIndex::covers(aql::Projections& projections) const {
     aql::latematerialized::AttributeAndField<
         aql::latematerialized::IndexFieldData>
         af;
-    af.attr.reserve(projections[i].path.path.size());
-    for (auto const& a : projections[i].path.path) {
+    af.attr.reserve(projections[i].path._path.size());
+    for (auto const& a : projections[i].path._path) {
       af.attr.emplace_back(a, false);  // TODO: false?
     }
     attrs.emplace_back(af);
