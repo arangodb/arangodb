@@ -102,11 +102,11 @@ auto rewriteStatusErrorMessageForRestore(inspection::Status const& status)
 }
 
 auto handleShards(std::string_view, VPackSlice value, VPackSlice fullBody,
-                DatabaseConfiguration const& config, VPackBuilder& result) {
+                  DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isObject() && !value.isEmptyObject() &&
       !fullBody.hasKey(StaticStrings::NumberOfShards)) {
-    // If we get a valid list of Shards we use them to define the number of shards.
-    // unless they are explicitly given in the input.
+    // If we get a valid list of Shards we use them to define the number of
+    // shards. unless they are explicitly given in the input.
     result.add(StaticStrings::NumberOfShards, VPackValue(value.length()));
   }
 }
@@ -197,9 +197,9 @@ auto handleReplicationFactor(std::string_view key, VPackSlice value,
 }
 
 auto handleReplicationFactorRestore(std::string_view key, VPackSlice value,
-                             VPackSlice fullBody,
-                             DatabaseConfiguration const& config,
-                             VPackBuilder& result) {
+                                    VPackSlice fullBody,
+                                    DatabaseConfiguration const& config,
+                                    VPackBuilder& result) {
   if (shouldConsiderClusterAttribute(fullBody, config)) {
     if (value.isNumber()) {
       if (value.getNumericValue<int64_t>() == 0) {
@@ -208,12 +208,14 @@ auto handleReplicationFactorRestore(std::string_view key, VPackSlice value,
         // All others numbers just forward
         result.add(key, value);
       }
-    } else if (value.isString() && value.isEqualString(StaticStrings::Satellite)) {
+    } else if (value.isString() &&
+               value.isEqualString(StaticStrings::Satellite)) {
       // Keep Satellite
       result.add(key, value);
     }
   }
-  // Ignore if we have distributeShardsLike, or if none of above conditions matches
+  // Ignore if we have distributeShardsLike, or if none of above conditions
+  // matches
 }
 
 auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice,
@@ -243,9 +245,9 @@ auto handleWriteConcern(std::string_view key, VPackSlice value,
 }
 
 auto handleWriteConcernRestore(std::string_view key, VPackSlice value,
-                        VPackSlice fullBody,
-                        DatabaseConfiguration const& config,
-                        VPackBuilder& result) {
+                               VPackSlice fullBody,
+                               DatabaseConfiguration const& config,
+                               VPackBuilder& result) {
   if (!isSingleServer()) {
     // Only take numbers in Cluster
     handleNumbersOnly(key, value, fullBody, config, result);
@@ -293,7 +295,6 @@ auto handleComputedValuesRestore(std::string_view key, VPackSlice value,
   if (isSingleServer()) {
     justKeep(key, value, fullBody, config, result);
   } else {
-
   }
   if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
     handleNumbersOnly(key, value, fullBody, config, result);
@@ -398,9 +399,9 @@ auto handleShardingStrategy(std::string_view key, VPackSlice value,
 }
 
 auto handleShardingStrategyRestore(std::string_view key, VPackSlice value,
-                            VPackSlice fullBody,
-                            DatabaseConfiguration const& config,
-                            VPackBuilder& result) {
+                                   VPackSlice fullBody,
+                                   DatabaseConfiguration const& config,
+                                   VPackBuilder& result) {
   if (!isSingleServer()) {
     if (value.isString()) {
       // We only handle strings here.
@@ -410,15 +411,16 @@ auto handleShardingStrategyRestore(std::string_view key, VPackSlice value,
         return;
       }
       if (value.isEqualString("enterprise-hex-smart-vertex")) {
-        // Only enterprise can use this strategy, on community we use "hash" here,
-        // but not the general default of community-compat
+        // Only enterprise can use this strategy, on community we use "hash"
+        // here, but not the general default of community-compat
         result.add(key, "hash");
       }
 #endif
     }
     handleStringsOnly(key, value, fullBody, config, result);
   } else {
-    if (value.isString() && value.isEqualString("enterprise-hex-smart-vertex")) {
+    if (value.isString() &&
+        value.isEqualString("enterprise-hex-smart-vertex")) {
       // We need to keep exactly this strategy to trigger a BAD_PARAMETER error.
       // All others are ignored.
       justKeep(key, value, fullBody, config, result);
@@ -456,8 +458,7 @@ auto makeRestoreAllowList() -> std::unordered_map<
           {StaticStrings::NumberOfShards, handleNumberOfShardsRestore},
           {StaticStrings::ComputedValues, handleComputedValuesRestore},
           {StaticStrings::ShardingStrategy, handleShardingStrategyRestore},
-          {StaticStrings::ReplicationFactor, handleReplicationFactorRestore}
-      };
+          {StaticStrings::ReplicationFactor, handleReplicationFactorRestore}};
   return allowListInstance;
 }
 
@@ -543,7 +544,6 @@ auto transformFromBackwardsCompatibleBody(VPackSlice body,
   return result;
 }
 
-
 /**
  * Transform an illegal inbound body into a legal one, honoring the exact
  * behaviour of 3.11 version, for Restore api
@@ -562,7 +562,8 @@ auto transformFromBackwardsCompatibleRestoreBody(
     auto preferList = makeRestoreAllowList();
     auto keyAllowList = makeAllowList();
     for (auto const& [key, value] : VPackObjectIterator(body)) {
-      // Special handling of some keys that behave differently then in createCollectionAPI.
+      // Special handling of some keys that behave differently then in
+      // createCollectionAPI.
       auto preferHandler = preferList.find(key.stringView());
       if (preferHandler != preferList.end()) {
         preferHandler->second(key.stringView(), value, body, config, result);
@@ -595,7 +596,6 @@ Result validateEnterpriseFeaturesNotUsed(CreateCollectionBody const& body) {
   return {TRI_ERROR_NO_ERROR};
 }
 #endif
-
 
 ResultT<CreateCollectionBody> parseAndValidate(
     DatabaseConfiguration const& config, VPackSlice input,
@@ -630,7 +630,7 @@ ResultT<CreateCollectionBody> parseAndValidate(
   }
 }
 
-}
+}  // namespace
 
 CreateCollectionBody::CreateCollectionBody() = default;
 
@@ -644,8 +644,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
   }
   auto res = ::parseAndValidate(
       config, input, [](CreateCollectionBody& col) {},
-      ::rewriteStatusErrorMessage,
-      [](CreateCollectionBody& col) {});
+      ::rewriteStatusErrorMessage, [](CreateCollectionBody& col) {});
   if (activateBackwardsCompatibility && res.fail()) {
     auto newBody =
         transformFromBackwardsCompatibleBody(input, config, res.result());
@@ -654,8 +653,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     }
     auto compatibleRes = ::parseAndValidate(
         config, newBody->slice(), [](CreateCollectionBody& col) {},
-        ::rewriteStatusErrorMessage,
-        [](CreateCollectionBody& col) {});
+        ::rewriteStatusErrorMessage, [](CreateCollectionBody& col) {});
     if (compatibleRes.ok()) {
       logDeprecationMessage(res.result());
     }
@@ -679,7 +677,8 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
         // separate parameter
         col.type = type;
         col.name = name;
-      },::rewriteStatusErrorMessage,
+      },
+      ::rewriteStatusErrorMessage,
       [](CreateCollectionBody& col) {
 #ifdef USE_ENTERPRISE
         if (col.isDisjoint) {
@@ -702,7 +701,8 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
           // separate parameter
           col.type = type;
           col.name = name;
-        }, ::rewriteStatusErrorMessage,
+        },
+        ::rewriteStatusErrorMessage,
         [](CreateCollectionBody& col) {
 #ifdef USE_ENTERPRISE
           if (col.isDisjoint) {
@@ -738,13 +738,13 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
       });
 
   if (res.fail()) {
-    auto newBody =
-        transformFromBackwardsCompatibleRestoreBody(input, config, res.result());
+    auto newBody = transformFromBackwardsCompatibleRestoreBody(input, config,
+                                                               res.result());
     if (newBody.fail()) {
       return newBody.result();
     }
-    // NOTE: We do not log a deprecation message here. The restore API is forever backwards
-    // compatible.
+    // NOTE: We do not log a deprecation message here. The restore API is
+    // forever backwards compatible.
     return ::parseAndValidate(
         config, newBody->slice(), [](CreateCollectionBody& col) {},
         ::rewriteStatusErrorMessageForRestore,

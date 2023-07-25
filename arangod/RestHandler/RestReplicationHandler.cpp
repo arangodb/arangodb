@@ -97,8 +97,7 @@ namespace {
 std::string const dataString("data");
 std::string const typeString("type");
 
-bool ignoreHiddenEnterpriseCollection(std::string const& name,
-                                             bool force) {
+bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force) {
 #ifdef USE_ENTERPRISE
   if (!force && name[0] == '_') {
     if (name.starts_with(StaticStrings::FullLocalPrefix) ||
@@ -123,10 +122,13 @@ bool ignoreHiddenEnterpriseCollection(std::string const& name,
  * @param vocbase Database we work in
  * @param name  Name of the collection
  * @param dropExisting Flag if we are allowed to drop or truncate the collection
- * @return An error if the original lookup failed or we attempted do truncate or drop the collection and the operation failed, otherwise it returns true if the collection exists after this call, and false if it does not.
+ * @return An error if the original lookup failed or we attempted do truncate or
+ * drop the collection and the operation failed, otherwise it returns true if
+ * the collection exists after this call, and false if it does not.
  */
-auto handlingOfExistingCollection(TRI_vocbase_t& vocbase, std::string const& name,
-                                  bool dropExisting) -> ResultT<bool> {
+auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
+                                  std::string const& name, bool dropExisting)
+    -> ResultT<bool> {
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
       (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
@@ -140,17 +142,19 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase, std::string const& nam
       try {
         if (ServerState::instance()->isCoordinator() &&
             name == StaticStrings::AnalyzersCollection &&
-            vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+            vocbase.server()
+                .hasFeature<iresearch::IResearchAnalyzerFeature>()) {
           // We have ArangoSearch here. So process analyzers accordingly.
           // We can`t just recreate/truncate collection. Agency should be
           // properly notified analyzers are gone.
           // The single server and DBServer case is handled after restore of
           // data.
           auto res = vocbase.server()
-              .getFeature<iresearch::IResearchAnalyzerFeature>()
-              .removeAllAnalyzers(vocbase);
+                         .getFeature<iresearch::IResearchAnalyzerFeature>()
+                         .removeAllAnalyzers(vocbase);
           if (res.ok()) {
-            // Analyzers are only truncated, never dropped, so collection still exists.
+            // Analyzers are only truncated, never dropped, so collection still
+            // exists.
             return {true};
           }
           return res;
@@ -211,7 +215,6 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase, std::string const& nam
   // If we end up here the collection does not exist.
   return {false};
 }
-
 
 }  // namespace
 
@@ -1206,7 +1209,8 @@ Result RestReplicationHandler::processRestoreCollection(
   }
 
   {
-    auto result = handlingOfExistingCollection(_vocbase, input->name, dropExisting);
+    auto result =
+        handlingOfExistingCollection(_vocbase, input->name, dropExisting);
     if (result.fail()) {
       return result.errorNumber();
     }
@@ -1218,8 +1222,9 @@ Result RestReplicationHandler::processRestoreCollection(
         // Consider this process successful.
         return {TRI_ERROR_NO_ERROR};
       } else {
-        return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
-                      std::string("duplicate collection name '") + input->name + "'");
+        return Result(
+            TRI_ERROR_ARANGO_DUPLICATE_NAME,
+            std::string("duplicate collection name '") + input->name + "'");
       }
     }
   }
@@ -1236,7 +1241,6 @@ Result RestReplicationHandler::processRestoreCollection(
     allowEnterpriseCollectionsOnSingleServer = true;
     enforceReplicationFactor = true;
   }
-
 
   std::vector<CreateCollectionBody> collections{std::move(input.get())};
   auto result = methods::Collections::create(
