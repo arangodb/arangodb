@@ -34,8 +34,8 @@ import { ParameterNodeColorByCollectionComponent } from "../../graphV2/graphSett
 import { LayoutType } from "../../graphV2/UrlParametersContext";
 import { QueryResultType } from "../ArangoQuery.types";
 import { useQueryContext } from "../QueryContextProvider";
+import { convertToGraphData } from "../queryResults/QueryGraphHelper";
 import { detectGraph } from "../queryResults/useDisplayTypes";
-import { convertToGraphData } from "../queryResults/useSetupQueryGraph";
 import {
   QueryFullGraphContextProvider,
   useQueryFullGraph

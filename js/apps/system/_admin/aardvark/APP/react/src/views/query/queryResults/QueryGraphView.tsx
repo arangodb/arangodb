@@ -1,7 +1,8 @@
 import { Box, Button, Progress } from "@chakra-ui/react";
 import React, { useMemo, useRef } from "react";
 import { QueryResultType } from "../ArangoQuery.types";
-import { convertToGraphData, useSetupQueryGraph } from "./useSetupQueryGraph";
+import { convertToGraphData } from "./QueryGraphHelper";
+import { useSetupQueryGraph } from "./useSetupQueryGraph";
 
 export const QueryGraphView = ({
   queryResult,
