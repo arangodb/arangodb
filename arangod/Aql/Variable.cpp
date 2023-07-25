@@ -56,8 +56,8 @@ Variable::Variable(velocypack::Slice slice,
 
 /// @brief destroy the variable
 Variable::~Variable() {
-  _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage()),
-      _constantValue.destroy();
+  _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage());
+  _constantValue.destroy();
 }
 
 Variable* Variable::clone() const {
