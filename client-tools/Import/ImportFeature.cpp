@@ -97,8 +97,7 @@ void ImportFeature::collectOptions(
       ->addOption("--auto-rate-limit",
                   "Adjust the data loading rate automatically, starting at "
                   "`--batch-size` bytes per thread per second.",
-                  new BooleanParameter(&_autoChunkSize))
-      .setIntroducedIn(30711);
+                  new BooleanParameter(&_autoChunkSize));
 
   options->addOption("--backslash-escape",
                      "Use backslash as the escape character for quotes. Used "
@@ -250,8 +249,7 @@ void ImportFeature::collectOptions(
   options
       ->addOption("--skip-validation",
                   "Skip document schema validation during import.",
-                  new BooleanParameter(&_skipValidation))
-      .setIntroducedIn(30700);
+                  new BooleanParameter(&_skipValidation));
 }
 
 void ImportFeature::validateOptions(

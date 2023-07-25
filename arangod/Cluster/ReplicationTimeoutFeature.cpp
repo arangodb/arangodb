@@ -65,7 +65,6 @@ void ReplicationTimeoutFeature::collectOptions(
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::OnDBServer))
-      .setIntroducedIn(30501)
       .setLongDescription(R"(**Warning**: This option should generally remain
 untouched and only be changed with great care!
 

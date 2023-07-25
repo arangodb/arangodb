@@ -351,8 +351,6 @@ allowed memory usage but not increase it.)");
           "The runtime threshold for AQL queries (in seconds, 0 = no limit).",
           new DoubleParameter(&_queryMaxRuntime, /*base*/ 1.0,
                               /*minValue*/ 0.0))
-      .setIntroducedIn(30607)
-      .setIntroducedIn(30703)
       .setLongDescription(R"(Sets a default maximum runtime for AQL queries.
 
 The default value is `0`, meaning that the runtime of AQL queries is not
@@ -374,14 +372,12 @@ issued for administration and database-internal purposes.)");
   options
       ->addOption("--query.tracking-slow-queries",
                   "Whether to track slow queries.",
-                  new BooleanParameter(&_trackSlowQueries))
-      .setIntroducedIn(30704);
+                  new BooleanParameter(&_trackSlowQueries));
 
   options
       ->addOption("--query.tracking-with-querystring",
                   "Whether to track the query string.",
-                  new BooleanParameter(&_trackQueryString))
-      .setIntroducedIn(30704);
+                  new BooleanParameter(&_trackQueryString));
 
   options
       ->addOption("--query.tracking-with-bindvars",
@@ -399,8 +395,7 @@ option to `false`.)");
   options
       ->addOption("--query.tracking-with-datasources",
                   "Whether to track data sources of AQL queries.",
-                  new BooleanParameter(&_trackDataSources))
-      .setIntroducedIn(30704);
+                  new BooleanParameter(&_trackDataSources));
 
   options
       ->addOption("--query.fail-on-warning",
@@ -559,8 +554,7 @@ The value can still be adjusted on a per-query basis by setting the
                   new BooleanParameter(&_smartJoins),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30405);
+                      arangodb::options::Flags::Enterprise));
 
   options
       ->addOption("--query.parallelize-traversals",
@@ -568,8 +562,7 @@ The value can still be adjusted on a per-query basis by setting the
                   new BooleanParameter(&_parallelizeTraversals),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30701);
+                      arangodb::options::Flags::Enterprise));
 
   // this is an Enterprise-only option
   // in Community Edition, _maxParallelism will stay at its default value
@@ -582,8 +575,7 @@ The value can still be adjusted on a per-query basis by setting the
           new UInt64Parameter(&_maxParallelism),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30701);
+              arangodb::options::Flags::Enterprise));
 #endif
 
   options

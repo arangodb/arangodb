@@ -151,26 +151,22 @@ void NetworkFeature::collectOptions(
       ->addOption("--network.io-threads",
                   "The number of network I/O threads for cluster-internal "
                   "communication.",
-                  new UInt32Parameter(&_numIOThreads))
-      .setIntroducedIn(30600);
+                  new UInt32Parameter(&_numIOThreads));
   options
       ->addOption("--network.max-open-connections",
                   "The maximum number of open TCP connections for "
                   "cluster-internal communication per endpoint",
-                  new UInt64Parameter(&_maxOpenConnections))
-      .setIntroducedIn(30600);
+                  new UInt64Parameter(&_maxOpenConnections));
   options
       ->addOption("--network.idle-connection-ttl",
                   "The default time-to-live of idle connections for "
                   "cluster-internal communication (in milliseconds).",
-                  new UInt64Parameter(&_idleTtlMilli))
-      .setIntroducedIn(30600);
+                  new UInt64Parameter(&_idleTtlMilli));
   options
       ->addOption("--network.verify-hosts",
                   "Verify peer certificates when using TLS in cluster-internal "
                   "communication.",
-                  new BooleanParameter(&_verifyHosts))
-      .setIntroducedIn(30600);
+                  new BooleanParameter(&_verifyHosts));
 
   std::unordered_set<std::string> protos = {"", "http", "http2", "h2", "vst"};
 
@@ -182,7 +178,6 @@ void NetworkFeature::collectOptions(
           "The network protocol to use for cluster-internal communication.",
           new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
           options::makeDefaultFlags(options::Flags::Uncommon))
-      .setIntroducedIn(30700)
       .setDeprecatedIn(30900);
 
   options

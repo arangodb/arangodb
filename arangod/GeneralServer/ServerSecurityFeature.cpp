@@ -50,8 +50,7 @@ void ServerSecurityFeature::collectOptions(
           "--server.harden",
           "Lock down REST APIs that reveal version information or server "
           "internals for non-admin users.",
-          new BooleanParameter(&_hardenedRestApi))
-      .setIntroducedIn(30500);
+          new BooleanParameter(&_hardenedRestApi));
 
   options
       ->addOption("--foxx.api",
@@ -60,8 +59,7 @@ void ServerSecurityFeature::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30500);
+                      arangodb::options::Flags::OnSingle));
 
   options
       ->addOption("--foxx.store",
@@ -70,8 +68,7 @@ void ServerSecurityFeature::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30500);
+                      arangodb::options::Flags::OnSingle));
 
   options
       ->addOption(

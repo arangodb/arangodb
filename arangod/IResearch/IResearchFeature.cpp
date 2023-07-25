@@ -954,7 +954,6 @@ then the commit and consolidation thread counts are calculated as follows:
           "The upper limit to the allowed number of consolidation threads "
           "(0 = auto-detect).",
           new options::UInt32Parameter(&_consolidationThreads))
-      .setIntroducedIn(30705)
       .setLongDescription(R"(The option value must fall in the range
 `[ 1..arangosearch.consolidation-threads ]`. Set it to `0` to automatically
 choose a sensible number based on the number of cores in the system.)");
@@ -964,15 +963,13 @@ choose a sensible number based on the number of cores in the system.)");
           CONSOLIDATION_THREADS_IDLE_PARAM,
           "The upper limit to the allowed number of idle threads to use "
           "for consolidation tasks (0 = auto-detect).",
-          new options::UInt32Parameter(&_consolidationThreadsIdle))
-      .setIntroducedIn(30705);
+          new options::UInt32Parameter(&_consolidationThreadsIdle));
 
   options
       ->addOption(COMMIT_THREADS_PARAM,
                   "The upper limit to the allowed number of commit threads "
                   "(0 = auto-detect).",
                   new options::UInt32Parameter(&_commitThreads))
-      .setIntroducedIn(30705)
       .setLongDescription(R"(The option value must fall in the range
 `[ 1..4 * NumberOfCores ]`. Set it to `0` to automatically choose a sensible
 number based on the number of cores in the system.)");
@@ -983,7 +980,6 @@ number based on the number of cores in the system.)");
           "The upper limit to the allowed number of idle threads to use "
           "for commit tasks (0 = auto-detect)",
           new options::UInt32Parameter(&_commitThreadsIdle))
-      .setIntroducedIn(30705)
       .setLongDescription(R"(The option value must fall in the range
 `[ 1..arangosearch.commit-threads ]`. Set it to `0` to automatically choose a
 sensible number based on the number of cores in the system.)");

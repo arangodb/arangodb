@@ -209,8 +209,6 @@ requests.)");
           "0 = disable)",
           new DoubleParameter(&_unavailabilityQueueFillGrade, /*base*/ 1.0,
                               /*minValue*/ 0.0, /*maxValue*/ 1.0))
-      .setIntroducedIn(30610)
-      .setIntroducedIn(30706)
       .setLongDescription(R"(You can use this option to set a high-watermark
 for the scheduler's queue fill grade, from which onwards the server starts
 reporting unavailability via its availability API.

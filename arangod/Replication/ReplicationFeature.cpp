@@ -152,23 +152,18 @@ void ReplicationFeature::collectOptions(
           "(0 = unlimited).",
           new UInt64Parameter(&_maxParallelTailingInvocations),
           arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30500);
+              arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--replication.connect-timeout",
                   "The default timeout value for replication connection "
                   "attempts (in seconds).",
-                  new DoubleParameter(&_connectTimeout))
-      .setIntroducedIn(30409)
-      .setIntroducedIn(30504);
+                  new DoubleParameter(&_connectTimeout));
   options
       ->addOption("--replication.request-timeout",
                   "The default timeout value for replication requests "
                   "(in seconds).",
-                  new DoubleParameter(&_requestTimeout))
-      .setIntroducedIn(30409)
-      .setIntroducedIn(30504);
+                  new DoubleParameter(&_requestTimeout));
 
   options
       ->addOption(
@@ -177,15 +172,13 @@ void ReplicationFeature::collectOptions(
           "only the document count for the second run.",
           new UInt64Parameter(&_quickKeysLimit),
           arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30709);
+              arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(
           "--replication.sync-by-revision",
           "Whether to use the newer revision-based replication protocol.",
-          new BooleanParameter(&_syncByRevision))
-      .setIntroducedIn(30700);
+          new BooleanParameter(&_syncByRevision));
 
   options
       ->addOption("--replication.auto-repair-revision-trees",

@@ -360,8 +360,7 @@ void RocksDBOptionFeature::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701);
+                      arangodb::options::Flags::OnSingle));
 
   options
       ->addOption(
@@ -374,8 +373,7 @@ void RocksDBOptionFeature::collectOptions(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701);
+              arangodb::options::Flags::OnSingle));
 
   TRI_ASSERT(::compressionTypes.contains(_compressionType));
   options
@@ -485,7 +483,6 @@ be flushed, writes are slowed or stalled.)");
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30703)
       .setLongDescription(R"(The default value `0` restores the memory usage
 pattern of version 3.6. This makes RocksDB not keep any flushed immutable
 write-buffers in memory.)");
@@ -894,7 +891,6 @@ recommended to set this option to `true`.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701)
       .setLongDescription(R"(If you set this option to `true`, RocksDB tracks
 all loaded index and filter blocks in the block cache, so that they count
 towards RocksDB's block cache memory limit.
@@ -924,8 +920,7 @@ the overall size of the block cache.)");
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701);
+              arangodb::options::Flags::OnSingle));
 
   options
       ->addOption(
@@ -939,8 +934,7 @@ the overall size of the block cache.)");
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701);
+              arangodb::options::Flags::OnSingle));
 
   options
       ->addOption(
@@ -955,8 +949,7 @@ the overall size of the block cache.)");
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701);
+              arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.table-block-size",
                      "The approximate size (in bytes) of the user data packed "
@@ -1041,8 +1034,7 @@ RocksDB internals and performance.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30405);
+                      arangodb::options::Flags::OnSingle));
 
   options
       ->addOption("--rocksdb.allow-fallocate",
@@ -1056,7 +1048,6 @@ RocksDB internals and performance.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30405)
       .setLongDescription(R"(Preallocation is turned on by default, but you can
 turn it off for operating system versions that are known to have issues with it.
 This option only has an effect on operating systems that support
@@ -1075,7 +1066,6 @@ This option only has an effect on operating systems that support
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30504)
       .setDeprecatedIn(30800)
       .setLongDescription(R"(This option allows you to make all writes to the
 RocksDB storage exclusive and therefore avoid write-write conflicts.

@@ -491,8 +491,7 @@ RAM than this threshold value are aborted automatically with error 32
   options
       ->addOption("--rocksdb.max-parallel-compactions",
                   "The maximum number of parallel compactions jobs.",
-                  new UInt64Parameter(&_maxParallelCompactions))
-      .setIntroducedIn(30711);
+                  new UInt64Parameter(&_maxParallelCompactions));
 
   options
       ->addOption(
@@ -520,9 +519,7 @@ attribute.)");
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30608)
-      .setIntroducedIn(30705);
+              arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--rocksdb.wal-file-timeout",
@@ -717,7 +714,6 @@ RocksDB internals and performance.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30604)
       .setDeprecatedIn(31000);
 
   options

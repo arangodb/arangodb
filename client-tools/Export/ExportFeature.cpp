@@ -171,9 +171,7 @@ void ExportFeature::collectOptions(
       ->addOption("--compress-output",
                   "Compress files containing collection contents using the "
                   "gzip format.",
-                  new BooleanParameter(&_useGzip))
-      .setIntroducedIn(30408)
-      .setIntroducedIn(30501);
+                  new BooleanParameter(&_useGzip));
 }
 
 void ExportFeature::validateOptions(

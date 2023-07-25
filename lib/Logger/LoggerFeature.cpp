@@ -310,7 +310,6 @@ appropriate log topics to the `info` log level.)");
       ->addOption("--log.max-entry-length",
                   "The maximum length of a log entry (in bytes).",
                   new UInt32Parameter(&_maxEntryLength))
-      .setIntroducedIn(30709)
       .setLongDescription(R"(**Note**: This option does not include audit log
 messages. See `--audit.max-entry-length` instead.
 
@@ -350,7 +349,6 @@ Use `--log.time-format timestamp-micros` instead.)");
           "--log.time-format", "The time format to use in logs.",
           new DiscreteValuesParameter<StringParameter>(
               &_timeFormatString, LogTimeFormats::getAvailableFormatNames()))
-      .setIntroducedIn(30500)
       .setLongDescription(R"(Overview over the different options:
 
 Format                  | Example                  | Description
@@ -368,7 +366,6 @@ Format                  | Example                  | Description
   options
       ->addOption("--log.ids", "Log unique message IDs.",
                   new BooleanParameter(&_showIds))
-      .setIntroducedIn(30500)
       .setLongDescription(R"(Each log invocation in the ArangoDB source code
 contains a unique log ID, which can be used to quickly find the location in the
 source code that produced a specific log message.
@@ -394,8 +391,7 @@ contains a single character with the server's role. The roles are:
   options
       ->addOption("--log.file-mode",
                   "mode to use for new log file, umask will be applied as well",
-                  new StringParameter(&_fileMode))
-      .setIntroducedIn(30405);
+                  new StringParameter(&_fileMode));
 
   if (_threaded) {
     // this option only makes sense for arangod, not for arangosh etc.
@@ -404,9 +400,6 @@ contains a single character with the server's role. The roles are:
                     "Whether the log API is enabled (true) or not (false), or "
                     "only enabled for superuser JWT (jwt).",
                     new StringParameter(&_apiSwitch))
-        .setIntroducedIn(30411)
-        .setIntroducedIn(30506)
-        .setIntroducedIn(30605)
         .setLongDescription(R"(Credentials are not written to log files.
 Nevertheless, some logged data might be sensitive depending on the context of
 the deployment. For example, if request logging is switched on, user requests
@@ -459,8 +452,7 @@ The object attributes produced for each log message are:
       ->addOption(
           "--log.file-group",
           "group to use for new log file, user must be a member of this group",
-          new StringParameter(&_fileGroup))
-      .setIntroducedIn(30405);
+          new StringParameter(&_fileGroup));
 #endif
 
   options

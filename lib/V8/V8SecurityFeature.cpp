@@ -176,8 +176,7 @@ void V8SecurityFeature::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30500);
+                      arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--javascript.allow-external-process-control",
@@ -188,8 +187,7 @@ void V8SecurityFeature::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30500);
+                      arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--javascript.harden",
@@ -199,8 +197,7 @@ void V8SecurityFeature::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30500);
+                      arangodb::options::Flags::OnSingle));
 
   options
       ->addOption(
@@ -211,8 +208,7 @@ void V8SecurityFeature::collectOptions(
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30500);
+              arangodb::options::Flags::OnSingle));
 
   options
       ->addOption(
@@ -224,8 +220,7 @@ void V8SecurityFeature::collectOptions(
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30500);
+              arangodb::options::Flags::OnSingle));
 
   options
       ->addOption("--javascript.environment-variables-allowlist",
@@ -235,8 +230,7 @@ void V8SecurityFeature::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30500);
+                      arangodb::options::Flags::OnSingle));
 
   options
       ->addOption("--javascript.environment-variables-denylist",
@@ -247,8 +241,7 @@ void V8SecurityFeature::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30500);
+                      arangodb::options::Flags::OnSingle));
 
   options
       ->addOption("--javascript.endpoints-allowlist",
@@ -258,8 +251,7 @@ void V8SecurityFeature::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30500);
+                      arangodb::options::Flags::OnSingle));
 
   options
       ->addOption("--javascript.endpoints-denylist",
@@ -270,8 +262,7 @@ void V8SecurityFeature::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30500);
+                      arangodb::options::Flags::OnSingle));
 
   options
       ->addOption("--javascript.files-allowlist",
@@ -281,8 +272,7 @@ void V8SecurityFeature::collectOptions(
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30500);
+                      arangodb::options::Flags::OnSingle));
 
   options->addOldOption("--javascript.startup-options-whitelist",
                         "--javascript.startup-options-allowlist");

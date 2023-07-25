@@ -315,14 +315,12 @@ server automatically when the timeout is reached. A keep-alive-timeout value of
 
   options
       ->addOption("--http.redirect-root-to", "Redirect of the root URL.",
-                  new StringParameter(&_redirectRootTo))
-      .setIntroducedIn(30712);
+                  new StringParameter(&_redirectRootTo));
 
   options
       ->addOption("--http.permanently-redirect-root",
                   "Whether to use a permanent or temporary redirect.",
-                  new BooleanParameter(&_permanentRootRedirect))
-      .setIntroducedIn(30712);
+                  new BooleanParameter(&_permanentRootRedirect));
 
   options
       ->addOption("--http.return-queue-time-header",

@@ -1820,8 +1820,7 @@ void RestoreFeature::collectOptions(
                   "The maximum number of collections to process in parallel.",
                   new UInt32Parameter(&_options.threadCount),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Dynamic))
-      .setIntroducedIn(30400);
+                      arangodb::options::Flags::Dynamic));
 
   options
       ->addOption("--initial-connect-retries",
@@ -1845,8 +1844,7 @@ void RestoreFeature::collectOptions(
 
   options
       ->addOption("--all-databases", "Restore the data of all databases.",
-                  new BooleanParameter(&_options.allDatabases))
-      .setIntroducedIn(30500);
+                  new BooleanParameter(&_options.allDatabases));
 
   options->addOption("--input-directory", "The input directory.",
                      new StringParameter(&_options.inputPath));
@@ -1858,9 +1856,7 @@ void RestoreFeature::collectOptions(
           "documents instead of making the restore operation fail.",
           new BooleanParameter(&_options.cleanupDuplicateAttributes),
           arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30322)
-      .setIntroducedIn(30402);
+              arangodb::options::Flags::Uncommon));
 
   options->addOption("--import-data", "Import data into collection.",
                      new BooleanParameter(&_options.importData));
@@ -1905,9 +1901,7 @@ void RestoreFeature::collectOptions(
           "Override the `numberOfShards` value (can be specified multiple "
           "times, e.g. --number-of-shards 2 --number-of-shards "
           "myCollection=3).",
-          new VectorParameter<StringParameter>(&_options.numberOfShards))
-      .setIntroducedIn(30322)
-      .setIntroducedIn(30402);
+          new VectorParameter<StringParameter>(&_options.numberOfShards));
 
   options
       ->addOption(
@@ -1915,9 +1909,7 @@ void RestoreFeature::collectOptions(
           "Override the `replicationFactor` value (can be specified "
           "multiple times, e.g. --replication-factor 2 "
           "--replication-factor myCollection=3).",
-          new VectorParameter<StringParameter>(&_options.replicationFactor))
-      .setIntroducedIn(30322)
-      .setIntroducedIn(30402);
+          new VectorParameter<StringParameter>(&_options.replicationFactor));
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",

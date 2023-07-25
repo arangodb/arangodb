@@ -136,8 +136,7 @@ void ShellConsoleFeature::collectOptions(
   options
       ->addOption("--console.history",
                   "Whether to load and persist command-line history.",
-                  new BooleanParameter(&_useHistory))
-      .setIntroducedIn(30405);
+                  new BooleanParameter(&_useHistory));
 
   options->addOption("--console.pager", "Enable paging.",
                      new BooleanParameter(&_pager));

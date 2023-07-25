@@ -68,8 +68,7 @@ void ClusterUpgradeFeature::collectOptions(
                                               "online"}),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600);
+              arangodb::options::Flags::OnCoordinator));
 }
 
 void ClusterUpgradeFeature::validateOptions(

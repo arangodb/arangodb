@@ -142,8 +142,7 @@ arangosh without connecting to a server.)");
                     "Force to not use VelocyPack for easier debugging.",
                     new BooleanParameter(&_forceJson),
                     arangodb::options::makeDefaultFlags(
-                        arangodb::options::Flags::Uncommon))
-        .setIntroducedIn(30600);
+                        arangodb::options::Flags::Uncommon));
   }
 
   if (_allowJwtSecret) {

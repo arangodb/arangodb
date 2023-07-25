@@ -90,8 +90,7 @@ another mode.)");
           "data.",
           new BooleanParameter(&_validateUtf8Strings),
           arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30700);
+              arangodb::options::Flags::Uncommon));
 
   options->addOption("--javascript.script", "Run the script and exit.",
                      new VectorParameter<StringParameter>(&_scripts));

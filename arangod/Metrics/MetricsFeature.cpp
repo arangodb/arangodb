@@ -66,16 +66,14 @@ void MetricsFeature::collectOptions(
                   "Whether to enable the metrics API.",
                   new options::BooleanParameter(&_export),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30600);
+                      arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--server.export-read-write-metrics",
                   "Whether to enable metrics for document reads and writes.",
                   new options::BooleanParameter(&_exportReadWriteMetrics),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30707);
+                      arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(

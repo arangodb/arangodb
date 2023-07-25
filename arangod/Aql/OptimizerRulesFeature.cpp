@@ -66,7 +66,6 @@ void OptimizerRulesFeature::collectOptions(
                       arangodb::options::StringParameter>(&_optimizerRules),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30600)
       .setLongDescription(R"(You can use this option to selectively enable or
 disable AQL query optimizer rules by default. You can specify the option
 multiple times.
@@ -86,7 +85,6 @@ state.)");
       ->addObsoleteOption(
           "--query.parallelize-gather-writes",
           "Whether to enable write parallelization for gather nodes.", false)
-      .setIntroducedIn(30600)
       .setLongDescription(
           "Starting with 3.11 almost all queries support parallelization of "
           "gather nodes, making this option obsolete.");
