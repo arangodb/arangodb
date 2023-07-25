@@ -76,6 +76,20 @@ export const FormField = ({
           )}
         </>
       );
+    case "password":
+      return (
+        <>
+          <FormLabel margin="0" htmlFor={field.name}>
+            {field.label}
+          </FormLabel>
+          <InputControl {...commonProps} inputProps={inputProps} />
+          {field.tooltip ? (
+            <IndexInfoTooltip label={field.tooltip} />
+          ) : (
+            <Spacer />
+          )}
+        </>
+      );
     case "number":
       return (
         <>

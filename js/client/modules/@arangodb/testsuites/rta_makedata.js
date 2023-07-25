@@ -89,7 +89,7 @@ function makeDataWrapper (options) {
       return true;
     }
     runOneTest(file) {
-      let res = {'total':0, 'duration':0.0, 'status':true};
+      let res = {'total':0, 'duration':0.0, 'status':true, message: ''};
       let tests = [
         fs.join(this.options.rtasource, 'test_data', 'makedata.js'),
         fs.join(this.options.rtasource, 'test_data', 'checkdata.js'),
@@ -109,6 +109,7 @@ function makeDataWrapper (options) {
         count += 1;
         let args = pu.makeArgs.arangosh(this.options);
         args['server.endpoint'] = this.instanceManager.findEndpoint();
+        args['log.file'] = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
         args['javascript.execute'] = file;
         if (this.options.forceJson) {
           args['server.force-json'] = true;
@@ -158,10 +159,15 @@ function makeDataWrapper (options) {
           print(argv);
         }
         let rc = pu.executeAndWait(pu.ARANGOSH_BIN, argv, this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
+        if (!rc.status) {
+          let rx = new RegExp(/\\n/g);
+          res.message += file + ':\n' + fs.read(args['log.file']).replace(rx, '\n');
+        } else {
+          fs.remove(args['log.file']);
+        }
         res.total++;
         res.duration += rc.duration;
         res.status &= rc.status;
-
         if ((this.options.cluster) && (count === 3)) {
           print('relaunching dbserver');
           stoppedDbServerInstance.restartOneInstance({});
