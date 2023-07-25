@@ -34,6 +34,7 @@
       'collection/:colid/:docid': 'document',
       'queries': 'query',
       'databases': 'databases',
+      'databases/:name': 'databases',
       'settings': 'databases',
       'services': 'applications',
       'services/install': 'installService',
@@ -50,7 +51,6 @@
       'users': 'userManagement',
       'user/:name': 'userView',
       'user/:name/permission': 'userPermission',
-      'userProfile': 'userProfile',
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
@@ -1002,28 +1002,8 @@
     databases: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        const callback = function (error) {
-          if (error) {
-            arangoHelper.arangoError('DB', 'Could not get list of allowed databases');
-            this.navigate('#', { trigger: true });
-            $('#databaseNavi').css('display', 'none');
-            $('#databaseNaviSelect').css('display', 'none');
-          } else {
-            if (this.databaseView) {
-              // cleanup events and view
-              this.databaseView.remove();
-            }
-            this.databaseView = new window.DatabaseView({
-              users: this.userCollection,
-              collection: this.arangoDatabase
-            });
-            this.databaseView.render();
-          }
-        }.bind(this);
-
-        arangoHelper.databaseAllowed(callback);
-      });
+      this.init.then(() => ReactDOM.render(React.createElement(window.DatabasesReactView),
+        document.getElementById('content-react')));
     },
 
     dashboard: function () {
@@ -1068,19 +1048,8 @@
     graphManagement: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.graphManagementView) {
-          this.graphManagementView.undelegateEvents();
-        }
-        this.graphManagementView =
-          new window.GraphManagementView(
-            {
-              collection: new window.GraphCollection(),
-              collectionCollection: this.arangoCollectionsStore
-            }
-          );
-        this.graphManagementView.render();
-      });
+      this.init.then(() => ReactDOM.render(React.createElement(window.GraphsListReactView),
+        document.getElementById('content-react')));
     },
 
     showGraph: function (name) {
@@ -1233,9 +1202,6 @@
       if (this.dashboardView) {
         this.dashboardView.resize();
       }
-      if (this.graphManagementView && Backbone.history.getFragment() === 'graphs') {
-        this.graphManagementView.handleResize($('#content').width());
-      }
       if (this.queryView && Backbone.history.getFragment() === 'queries') {
         this.queryView.resize();
       }
@@ -1292,30 +1258,10 @@
     userManagement: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.userManagementView) {
-          this.userManagementView.remove();
-        }
-
-        this.userManagementView = new window.UserManagementView({
-          collection: this.userCollection
-        });
-        this.userManagementView.render();
-      });
+      this.init.then(() => ReactDOM.render(React.createElement(window.UsersReactView),
+        document.getElementById('content-react')));
     },
 
-    userProfile: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (!this.userManagementView) {
-          this.userManagementView = new window.UserManagementView({
-            collection: this.userCollection
-          });
-        }
-        this.userManagementView.render(true);
-      });
-    },
     views: function () {
       this.checkUser();
       

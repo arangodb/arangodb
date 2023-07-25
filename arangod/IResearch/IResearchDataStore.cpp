@@ -948,14 +948,14 @@ Result IResearchDataStore::commitUnsafeImpl(
     auto const docsCount = reader->docs_count();
     auto const liveDocsCount = reader->live_docs_count();
 
-    _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
-        std::move(reader), std::move(engineSnapshot)));
+    auto data = std::make_shared<DataSnapshot>(std::move(reader),
+                                               std::move(engineSnapshot));
+    _dataStore.storeSnapshot(data);
 
     // update last committed tick
     subscription.tick(_lastCommittedTick);
 
-    // update stats
-    updateStatsUnsafe();
+    updateStatsUnsafe(std::move(data));
 
     invalidateQueryCache(&index().collection().vocbase());
 
@@ -1055,10 +1055,11 @@ void IResearchDataStore::shutdownDataStore() noexcept {
   // the data-store is being deallocated, link use is no longer valid
   _asyncSelf->reset();         // wait for all the view users to finish
   _flushSubscription.reset();  // reset together with _asyncSelf
+  _recoveryRemoves.reset();
+  _recoveryTrx.Abort();
+  _dataStore.resetDataStore();
   try {
-    if (_dataStore) {
-      removeMetrics();  // TODO(MBkkt) Should be noexcept?
-    }
+    removeMetrics();  // TODO(MBkkt) Should be noexcept?
   } catch (std::exception const& e) {
     LOG_TOPIC("bad00", ERR, TOPIC)
         << "caught exception while removeMetrics arangosearch data store '"
@@ -1068,9 +1069,6 @@ void IResearchDataStore::shutdownDataStore() noexcept {
         << "caught something while removeMetrics arangosearch data store '"
         << index().id().id() << "'";
   }
-  _recoveryRemoves.reset();
-  _recoveryTrx.Abort();
-  _dataStore.resetDataStore();
 }
 
 Result IResearchDataStore::deleteDataStore() noexcept {
@@ -1209,7 +1207,7 @@ Result IResearchDataStore::initDataStore(
     bool sorted, bool nested,
     std::span<const IResearchViewStoredValues::StoredColumn> storedColumns,
     irs::type_info::type_id primarySortCompression,
-    irs::IndexReaderOptions const& readerOptions) {
+    irs::IndexReaderOptions& readerOptions) {
   // The data-store is being deallocated, link use is no longer valid
   // (wait for all the view users to finish)
   _asyncSelf->reset();
@@ -1268,9 +1266,17 @@ Result IResearchDataStore::initDataStore(
     }
   }
 
+  // Register metrics before starting any background threads
+  insertMetrics();
+  readerOptions.resource_manager.transactions = _writersMemory;
+  readerOptions.resource_manager.readers = _readersMemory;
+  readerOptions.resource_manager.consolidations = _consolidationsMemory;
+  readerOptions.resource_manager.file_descriptors = _fileDescriptorsCount;
+
   _dataStore._directory = std::make_unique<irs::MMapDirectory>(
       _dataStore._path,
-      initCallback ? initCallback() : irs::directory_attributes{});
+      initCallback ? initCallback() : irs::directory_attributes{},
+      readerOptions.resource_manager);
 
   switch (_engine->recoveryState()) {
     case RecoveryState::BEFORE:  // Link is being opened before recovery
@@ -1326,8 +1332,9 @@ Result IResearchDataStore::initDataStore(
                          "ArangoSearch index '",
                          index().id().id(), "'")};
   }
-  _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
-      std::move(reader), std::move(engineSnapshot)));
+  auto data = std::make_shared<DataSnapshot>(std::move(reader),
+                                             std::move(engineSnapshot));
+  _dataStore.storeSnapshot(data);
 
   _flushSubscription = std::make_shared<IResearchFlushSubscription>(
       _dataStore._recoveryTickLow,
@@ -1348,9 +1355,7 @@ Result IResearchDataStore::initDataStore(
   TRI_ASSERT(_asyncSelf->empty());
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 
-  // Register metrics before starting any background threads
-  insertMetrics();
-  updateStatsUnsafe();
+  updateStatsUnsafe(std::move(data));
 
   // ...........................................................................
   // Set up in-recovery insertion hooks
@@ -1362,7 +1367,7 @@ Result IResearchDataStore::initDataStore(
   auto& dbFeature = server.getFeature<DatabaseFeature>();
 
   if (_engine->inRecovery()) {
-    _recoveryRemoves = makePrimaryKeysFilter(_hasNestedFields);
+    _recoveryRemoves = makePrimaryKeysFilter(_hasNestedFields, *_writersMemory);
     _recoveryTrx = _dataStore._writer->GetBatch();
   }
 
@@ -1432,11 +1437,25 @@ Result IResearchDataStore::initDataStore(
           linkLock->finishCreation();
         }
 
-        auto progress = [id = index.id(), asyncFeature](std::string_view phase,
-                                                        size_t current,
-                                                        size_t total) {
-          // forward progress reporting to asyncFeature
-          asyncFeature->reportRecoveryProgress(id, phase, current, total);
+        std::chrono::time_point<std::chrono::steady_clock>
+            lastRecoveryProgressReportTime{};
+        auto progress = [id = index.id(), &lastRecoveryProgressReportTime](
+                            std::string_view phase, size_t current,
+                            size_t total) {
+          TRI_ASSERT(total != 0);
+          auto now = std::chrono::steady_clock::now();
+
+          if (now - lastRecoveryProgressReportTime >= std::chrono::minutes(1)) {
+            // report progress only when index/link id changes or one minute
+            // has passed
+
+            auto progress = static_cast<size_t>(100.0 * current / total);
+            LOG_TOPIC("d1f18", INFO, TOPIC)
+                << "recovering arangosearch index " << id << ", " << phase
+                << ": operation " << (current + 1) << "/" << total << " ("
+                << progress << "%)...";
+            lastRecoveryProgressReportTime = now;
+          }
         };
 
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
@@ -1520,7 +1539,8 @@ IResearchTrxState* IResearchDataStore::getContext(TransactionState& state) {
   }
   TRI_ASSERT(_dataStore);
   auto ptr = std::make_unique<IResearchTrxState>(
-      std::move(linkLock), *_dataStore._writer, _hasNestedFields);
+      std::move(linkLock), *_dataStore._writer,
+      makePrimaryKeysFilter(_hasNestedFields, *_writersMemory));
   context = ptr.get();
   TRI_ASSERT(context);
   state.cookie(key, std::move(ptr));
@@ -1659,7 +1679,7 @@ void IResearchDataStore::recoveryInsert(uint64_t recoveryTick,
   }
   if (!_recoveryRemoves->empty()) {
     _recoveryTrx.Remove(std::move(_recoveryRemoves));
-    _recoveryRemoves = makePrimaryKeysFilter(_hasNestedFields);
+    _recoveryRemoves = makePrimaryKeysFilter(_hasNestedFields, *_writersMemory);
   }
   _recoveryTrx.Commit(recoveryTick);
   // TODO(MBkkt) IndexWriter::Commit? Probably makes sense only if were removes
@@ -1684,6 +1704,7 @@ void IResearchDataStore::truncateCommit(TruncateGuard&& guard,
   };
 
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
+    CrashHandler::setHardKill();
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -1732,10 +1753,11 @@ void IResearchDataStore::truncateCommit(TruncateGuard&& guard,
     TRI_ASSERT(reader);
 
     // update reader
-    _dataStore.storeSnapshot(
-        std::make_shared<DataSnapshot>(std::move(reader), std::move(snapshot)));
+    auto data =
+        std::make_shared<DataSnapshot>(std::move(reader), std::move(snapshot));
+    _dataStore.storeSnapshot(data);
 
-    updateStatsUnsafe();
+    updateStatsUnsafe(std::move(data));
 
     auto& subscription =
         basics::downCast<IResearchFlushSubscription>(*_flushSubscription);
@@ -1763,15 +1785,17 @@ IResearchDataStore::Stats IResearchDataStore::stats() const {
   if (_metricStats) {
     return _metricStats->load();
   }
-  return updateStatsUnsafe();
+  TRI_ASSERT(_dataStore);
+  return updateStatsUnsafe(_dataStore.loadSnapshot());
 }
 
-IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe() const {
-  TRI_ASSERT(_dataStore);
-  // copy of 'reader' is important to hold reference to the current snapshot
-  auto reader = _dataStore.loadSnapshot()->_reader;
-  if (!reader) {
-    return {};
+IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe(
+    DataSnapshotPtr data) const {
+  TRI_ASSERT(data);
+  auto& reader = data->_reader;
+  TRI_ASSERT(reader);
+  if (_mappedMemory) {
+    _mappedMemory->store(reader.CountMappedMemory(), std::memory_order_relaxed);
   }
   Stats stats;
   stats.numSegments = reader->size();
