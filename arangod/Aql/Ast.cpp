@@ -191,8 +191,7 @@ bool translateNodeStackToAttributePath(
     }
 
     TRI_ASSERT(!path.empty());
-    state.attributes.emplace(
-        AttributeNamePath(std::move(path), resourceMonitor));
+    state.attributes.emplace(AttributeNamePath(std::move(path)));
   }
 
   return true;

@@ -47,7 +47,7 @@ auto createAttributeNamePath = [](std::vector<std::string>&& vec,
   for (auto& s : vec) {
     myVector.emplace_back(s);
   }
-  return AttributeNamePath(std::move(myVector), resMonitor);
+  return AttributeNamePath(std::move(myVector));
 };
 }
 

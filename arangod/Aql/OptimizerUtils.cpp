@@ -1019,9 +1019,7 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           }
           // insert attribute name into the set of attributes that we need for
           // our projection
-          attributes.emplace(AttributeNamePath(
-              it.attributePath,
-              gn->plan()->getAst()->query().resourceMonitor()));
+          attributes.emplace(AttributeNamePath(it.attributePath));
         }
       }
     } else if (current->getType() == EN::ENUMERATE_COLLECTION) {

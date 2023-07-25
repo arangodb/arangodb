@@ -45,12 +45,8 @@ AttributeNamePath::AttributeNamePath(std::string attribute,
   _path.emplace_back(std::move(attribute));
 }
 
-AttributeNamePath::AttributeNamePath(MonitoredStringVector p,
-                                     arangodb::ResourceMonitor& resourceMonitor)
-    : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
-          resourceMonitor}) {
-  _path = std::move(p);
-}
+AttributeNamePath::AttributeNamePath(MonitoredStringVector p) noexcept
+    : _path(std::move(p)) {}
 
 bool AttributeNamePath::empty() const noexcept { return _path.empty(); }
 
