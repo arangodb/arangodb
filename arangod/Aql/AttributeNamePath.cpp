@@ -49,9 +49,7 @@ AttributeNamePath::AttributeNamePath(MonitoredStringVector p,
                                      arangodb::ResourceMonitor& resourceMonitor)
     : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
           resourceMonitor}) {
-  for (auto const& pathString : p) {
-    _path.emplace_back(pathString);
-  }
+  _path = std::move(p);
 }
 
 bool AttributeNamePath::empty() const noexcept { return _path.empty(); }
