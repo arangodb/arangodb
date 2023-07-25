@@ -441,12 +441,8 @@ function RestoreCollectionsSuite() {
       const res = tryRestore({name: collname, globallyUniqueId});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        if (isCluster) {
-          validateProperties({}, collname, 2);
-          validatePropertiesAreNotEqual({globallyUniqueId}, collname);
-        } else {
-          validateProperties({globallyUniqueId}, collname, 2);
-        }
+        validateProperties({}, collname, 2);
+        validatePropertiesAreNotEqual({globallyUniqueId}, collname);
       } finally {
         db._drop(collname);
       }
@@ -456,12 +452,8 @@ function RestoreCollectionsSuite() {
       const res = tryRestore({name: collname, globallyUniqueId: "test"});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        if (isCluster) {
-          validateProperties({}, collname, 2);
-          validatePropertiesAreNotEqual({globallyUniqueId: "test"}, collname);
-        } else {
-          validateProperties({globallyUniqueId: "test"}, collname, 2);
-        }
+        validateProperties({}, collname, 2);
+        validatePropertiesAreNotEqual({globallyUniqueId: "test"}, collname);
       } finally {
         db._drop(collname);
       }
@@ -484,26 +476,17 @@ function RestoreCollectionsSuite() {
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
         // Make sure first collection have this id
-        if (isCluster) {
-          validateProperties({}, collname, 2);
-          validatePropertiesAreNotEqual({globallyUniqueId}, collname);
-        } else {
-          validateProperties({globallyUniqueId}, collname, 2);
-        }
+        validateProperties({}, collname, 2);
+        validatePropertiesAreNotEqual({globallyUniqueId}, collname);
         const otherCollName = `${collname}_2`;
         const res2 = tryRestore({name: otherCollName, globallyUniqueId});
-        if (isCluster) {
-          try {
-            // Cluster regenerates a new id.
-            assertTrue(res2.result, `Result: ${JSON.stringify(res2)}`);
-            validateProperties({}, otherCollName, 2);
-            validatePropertiesAreNotEqual({globallyUniqueId}, otherCollName);
-          } finally {
-            db._drop(otherCollName);
-          }
-        } else {
-          // SingleServer does not generate a new id.
-          assertFalse(res2.result, `Result: ${JSON.stringify(res2)}`);
+        try {
+          // Cluster regenerates a new id.
+          assertTrue(res2.result, `Result: ${JSON.stringify(res2)}`);
+          validateProperties({}, otherCollName, 2);
+          validatePropertiesAreNotEqual({globallyUniqueId}, otherCollName);
+        } finally {
+          db._drop(otherCollName);
         }
       } finally {
         db._drop(collname);
@@ -1169,9 +1152,12 @@ function RestoreCollectionsSuite() {
         const res = tryRestore({name: collname});
         try {
           assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-          // It seems that those configurations on the database are just ignored...
-          // So assert that we do not have replicationFactor: 3 and writeConcern: 2.
-          validateProperties({}, collname, 2);
+          // Assert that default values are taken.
+          if (isCluster) {
+            validateProperties({replicationFactor: 3, writeConcern: 2, minReplicationFactor: 2}, collname, 2);
+          } else {
+            validateProperties({replicationFactor: 3, writeConcern: 2}, collname, 2);
+          }
         } finally {
           db._drop(collname);
         }
