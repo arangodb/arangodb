@@ -1692,11 +1692,14 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       // sort operand is a variable
       auto v = static_cast<Variable*>(expression->getData());
       TRI_ASSERT(v != nullptr);
-      elements.emplace_back(v, isAscending);
+      auto elem = SortElement{v, isAscending, _ast->query().resourceMonitor()};
+      elements.emplace_back(std::move(elem));
     } else {
       // sort operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
-      elements.emplace_back(getOutVariable(calc), isAscending);
+      auto elem = SortElement{getOutVariable(calc), isAscending,
+                              _ast->query().resourceMonitor()};
+      elements.emplace_back(std::move(elem));
       previous = calc;
     }
   }
@@ -2218,7 +2221,8 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 
     // add a sort on rangeVariable in front of the WINDOW
     SortElementVector elements;
-    elements.emplace_back(rangeVar, /*isAscending*/ true);
+    elements.emplace_back(SortElement{rangeVar, /*isAscending*/ true,
+                                      _ast->query().resourceMonitor()});
     auto en = registerNode(
         std::make_unique<SortNode>(this, nextId(), elements, false));
     previous = addDependency(previous, en);

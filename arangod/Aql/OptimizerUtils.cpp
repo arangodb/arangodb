@@ -37,6 +37,8 @@
 #include "Aql/SortCondition.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/QueryContext.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/LogMacros.h"
@@ -918,7 +920,8 @@ bool findProjections(ExecutionNode* n, Variable const* v,
 
     if (vars.find(v) != vars.end() &&
         !Ast::getReferencedAttributesRecursive(
-            node, v, /*expectedAttribute*/ expectedAttribute, attributes)) {
+            node, v, /*expectedAttribute*/ expectedAttribute, attributes,
+            current->plan()->getAst()->query().resourceMonitor())) {
       // cannot use projections for this variable
       return false;
     }
@@ -944,7 +947,10 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       if (traversalNode->usesInVariable() && traversalNode->inVariable() == v) {
         // start vertex of traversal is our input variable.
         // we need at least the _id attribute from the variable.
-        attributes.emplace(StaticStrings::IdString);
+        AttributeNamePath anp{
+            StaticStrings::IdString,
+            traversalNode->plan()->getAst()->query().resourceMonitor()};
+        attributes.emplace(std::move(anp));
       }
 
       // prune condition has to be treated in a special way, because the
@@ -955,11 +961,11 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       if (pruneExpression != nullptr) {
         std::vector<Variable const*> pruneVars;
         traversalNode->getPruneVariables(pruneVars);
-
         if (std::find(pruneVars.begin(), pruneVars.end(), v) !=
                 pruneVars.end() &&
             !Ast::getReferencedAttributesRecursive(
-                pruneExpression->node(), v, expectedAttribute, attributes)) {
+                pruneExpression->node(), v, expectedAttribute, attributes,
+                traversalNode->plan()->getAst()->query().resourceMonitor())) {
           // cannot use projections for this variable
           return false;
         }
@@ -975,7 +981,9 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           ExecutionNode::castTo<RemoveNode const*>(current);
       if (removeNode->inVariable() == v) {
         // FOR doc IN collection REMOVE doc IN ...
-        attributes.emplace(aql::AttributeNamePath(StaticStrings::KeyString));
+        attributes.emplace(aql::AttributeNamePath(
+            StaticStrings::KeyString,
+            removeNode->plan()->getAst()->query().resourceMonitor()));
       } else {
         doRegularCheck = true;
       }
@@ -987,7 +995,9 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       if (modificationNode->inKeyVariable() == v &&
           modificationNode->inDocVariable() != v) {
         // FOR doc IN collection UPDATE/REPLACE doc IN ...
-        attributes.emplace(aql::AttributeNamePath(StaticStrings::KeyString));
+        attributes.emplace(aql::AttributeNamePath(
+            StaticStrings::KeyString,
+            modificationNode->plan()->getAst()->query().resourceMonitor()));
       } else {
         doRegularCheck = true;
       }
@@ -1020,7 +1030,8 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           en->hasFilter()) {
         if (!Ast::getReferencedAttributesRecursive(
                 en->filter()->node(), v,
-                /*expectedAttribute*/ expectedAttribute, attributes)) {
+                /*expectedAttribute*/ expectedAttribute, attributes,
+                en->plan()->getAst()->query().resourceMonitor())) {
           return false;
         }
       }
@@ -1039,7 +1050,8 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           indexNode->hasFilter()) {
         if (!Ast::getReferencedAttributesRecursive(
                 indexNode->filter()->node(), v,
-                /*expectedAttribute*/ expectedAttribute, attributes)) {
+                /*expectedAttribute*/ expectedAttribute, attributes,
+                indexNode->plan()->getAst()->query().resourceMonitor())) {
           return false;
         }
       }
