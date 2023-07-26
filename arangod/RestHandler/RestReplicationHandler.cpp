@@ -1235,11 +1235,10 @@ Result RestReplicationHandler::processRestoreCollection(
   bool isRestore = true;
 
   bool allowEnterpriseCollectionsOnSingleServer = false;
-  bool enforceReplicationFactor = false;
+  bool enforceReplicationFactor = true;
 
   if (input->isSmart || input->isSatellite()) {
     allowEnterpriseCollectionsOnSingleServer = true;
-    enforceReplicationFactor = true;
   }
 
   std::vector<CreateCollectionBody> collections{std::move(input.get())};
