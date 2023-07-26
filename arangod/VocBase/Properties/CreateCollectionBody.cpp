@@ -713,6 +713,9 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
       config, input, [](CreateCollectionBody& col) {},
       ::rewriteStatusErrorMessageForRestore,
       [&config](CreateCollectionBody& col) {
+        // By all means, we cannot take an id from the outside. We need to generate an ID here.
+        // So better waste one ID than having a collision.
+        col.id = config.idGenerator();
         if (!col.shardingStrategy.has_value() &&
             !col.distributeShardsLike.has_value() &&
             config.defaultDistributeShardsLike.empty()) {
@@ -736,6 +739,9 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
         config, newBody->slice(), [](CreateCollectionBody& col) {},
         ::rewriteStatusErrorMessageForRestore,
         [&config](CreateCollectionBody& col) {
+          // By all means, we cannot take an id from the outside. We need to generate an ID here.
+          // So better waste one ID than having a collision.
+          col.id = config.idGenerator();
           if (!col.shardingStrategy.has_value() &&
               !col.distributeShardsLike.has_value() &&
               config.defaultDistributeShardsLike.empty()) {

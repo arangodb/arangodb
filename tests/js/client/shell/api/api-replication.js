@@ -290,6 +290,17 @@ function RestoreCollectionsSuite() {
       }
     },
 
+    testRestoreId: function () {
+      const res = tryRestore({name: collname, id: "1337"});
+      try {
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        validateProperties({}, collname, 2);
+        assertNotEqual(getCollectionId(collname), "1337", "We are not allowed to reuse the given ID.");
+      } finally {
+        db._drop(collname);
+      }
+    },
+
     testRestoreIllegalType: function () {
       const illegalType = [
         0,
