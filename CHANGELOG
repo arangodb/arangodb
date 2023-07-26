@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added metric `rocksdb_cache_edge_empty_inserts_total` to count the number
+  of inserts into the edge cache for non-connected edges.
+
 * Renamed two edge-cache related metrics to improve naming consistency:
   - `rocksdb_cache_edge_effective_entries_size` was renamed to 
     `rocksdb_cache_edge_inserts_effective_entries_size_total` and was changed

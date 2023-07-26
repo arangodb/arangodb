@@ -500,10 +500,11 @@ class RocksDBEngine final : public StorageEngine {
   std::shared_ptr<StorageSnapshot> currentSnapshot() override;
 
   void addCacheMetrics(uint64_t initial, uint64_t effective,
-                       uint64_t totalInserts,
-                       uint64_t totalCompressedInserts) noexcept;
+                       uint64_t totalInserts, uint64_t totalCompressedInserts,
+                       uint64_t totalEmptyInserts) noexcept;
 
-  std::tuple<uint64_t, uint64_t, uint64_t, uint64_t> getCacheMetrics();
+  std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>
+  getCacheMetrics();
 
  private:
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
@@ -755,8 +756,12 @@ class RocksDBEngine final : public StorageEngine {
   // initial size because of compression)
   metrics::Counter& _metricsEdgeCacheEntriesSizeEffective;
 
+  // total number of inserts into edge cache
   metrics::Counter& _metricsEdgeCacheInserts;
+  // total number of inserts into edge cache that were compressed
   metrics::Counter& _metricsEdgeCacheCompressedInserts;
+  // total number of inserts into edge cache that stored an empty array
+  metrics::Counter& _metricsEdgeCacheEmptyInserts;
 
   // @brief persistor for replicated logs
   std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>

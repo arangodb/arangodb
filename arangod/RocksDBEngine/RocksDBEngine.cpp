@@ -195,6 +195,9 @@ DECLARE_COUNTER(rocksdb_cache_edge_inserts_total,
                 "Number of inserts into the edge cache");
 DECLARE_COUNTER(rocksdb_cache_edge_compressed_inserts_total,
                 "Number of compressed inserts into the edge cache");
+DECLARE_COUNTER(
+    rocksdb_cache_edge_empty_inserts_total,
+    "Number of inserts into the edge cache that were an empty array");
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
@@ -338,7 +341,10 @@ RocksDBEngine::RocksDBEngine(Server& server,
           rocksdb_cache_edge_inserts_total{})),
       _metricsEdgeCacheCompressedInserts(
           server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_compressed_inserts_total{})) {
+              rocksdb_cache_edge_compressed_inserts_total{})),
+      _metricsEdgeCacheEmptyInserts(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_cache_edge_empty_inserts_total{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -4076,22 +4082,25 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
   }
 }
 
-std::tuple<uint64_t, uint64_t, uint64_t, uint64_t>
+std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>
 RocksDBEngine::getCacheMetrics() {
   return {_metricsEdgeCacheEntriesSizeInitial.load(),
           _metricsEdgeCacheEntriesSizeEffective.load(),
           _metricsEdgeCacheInserts.load(),
-          _metricsEdgeCacheCompressedInserts.load()};
+          _metricsEdgeCacheCompressedInserts.load(),
+          _metricsEdgeCacheEmptyInserts.load()};
 }
 
 void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
                                     uint64_t totalInserts,
-                                    uint64_t totalCompressedInserts) noexcept {
+                                    uint64_t totalCompressedInserts,
+                                    uint64_t totalEmptyInserts) noexcept {
   if (totalInserts > 0) {
     _metricsEdgeCacheEntriesSizeInitial.count(initial);
     _metricsEdgeCacheEntriesSizeEffective.count(effective);
     _metricsEdgeCacheInserts.count(totalInserts);
     _metricsEdgeCacheCompressedInserts.count(totalCompressedInserts);
+    _metricsEdgeCacheEmptyInserts.count(totalEmptyInserts);
   }
 }
 
