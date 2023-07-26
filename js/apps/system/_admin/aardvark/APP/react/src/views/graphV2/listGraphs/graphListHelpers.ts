@@ -180,6 +180,12 @@ export const GRAPH_VALIDATION_SCHEMA = Yup.object({
     )
 });
 
+/**
+ * Handles updates for
+ * - Orphans
+ * - Edge definitions
+ * - Satellite collections
+ */
 export const updateGraph = async ({
   values,
   onSuccess,
@@ -231,6 +237,7 @@ const updateOrphans = async ({
     );
   }
 };
+
 const removeOrphanCollection = async ({
   collectionName,
   graphName
