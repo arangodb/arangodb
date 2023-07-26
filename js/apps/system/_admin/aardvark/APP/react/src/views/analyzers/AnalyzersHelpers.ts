@@ -155,6 +155,21 @@ export const TYPE_TO_INITIAL_VALUES_MAP: {
     }
   },
   minhash: {
-    type: "minhash"
+    type: "minhash",
+    properties: {
+      analyzer: {
+        type: "identity"
+      },
+      numHashes: undefined
+    }
   }
 };
+
+export const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP).map(
+  type => {
+    return {
+      value: type,
+      label: TYPE_TO_LABEL_MAP[type as AnalyzerTypes]
+    };
+  }
+);

@@ -14,19 +14,8 @@ import { InputControl } from "../../../components/form/InputControl";
 import { SelectControl } from "../../../components/form/SelectControl";
 import { AnalyzerTypes } from "../Analyzer.types";
 import { useAnalyzersContext } from "../AnalyzersContext";
-import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
+import { ANALYZER_TYPE_OPTIONS } from "../AnalyzersHelpers";
 import { AnalyzerTypeForm } from "./AnalyzerTypeForm";
-
-const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP)
-  .map(type => {
-    const excludedTypes = ["minhash"];
-    if (excludedTypes.includes(type)) return null;
-    return {
-      value: type,
-      label: TYPE_TO_LABEL_MAP[type as AnalyzerTypes]
-    };
-  })
-  .filter(Boolean) as { label: string; value: string }[];
 
 export const AddAnalyzerForm = ({
   initialFocusRef
@@ -58,16 +47,14 @@ export const AddAnalyzerForm = ({
               }}
             />
             <Link
-              spacing="1"
-              as={Stack}
-              alignItems="center"
-              direction="row"
               marginLeft="2"
               marginBottom="2"
               target="_blank"
               href={`https://www.arangodb.com/docs/stable/analyzers.html#${analyzerTypeValue}`}
             >
-              <Text>Docs</Text> <ExternalLinkIcon />
+              <Stack spacing="1" alignItems="center" direction="row">
+                <Text>Docs</Text> <ExternalLinkIcon />
+              </Stack>
             </Link>
           </Flex>
         </Grid>
