@@ -292,19 +292,7 @@ auto handleComputedValuesRestore(std::string_view key, VPackSlice value,
                                  VPackSlice fullBody,
                                  DatabaseConfiguration const& config,
                                  VPackBuilder& result) {
-  if (isSingleServer()) {
-    justKeep(key, value, fullBody, config, result);
-  } else {
-  }
-  if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
-    handleNumbersOnly(key, value, fullBody, config, result);
-  } else if (config.maxNumberOfShards > 0 && value.isNumber() &&
-             value.getNumericValue<uint32_t>() > config.maxNumberOfShards) {
-    // If we restrict the number of Shards, and we get over this limit, we keep
-    // the value, such that we trigger the according error message.
-    result.add(key, value);
-  }
-  // Just ignore if we have distributeShardsLike
+  justKeep(key, value, fullBody, config, result);
 }
 
 auto handleOnlyObjects(std::string_view key, VPackSlice value, VPackSlice,
@@ -330,7 +318,7 @@ auto handleDistributeShardsLike(std::string_view key, VPackSlice value,
                                 DatabaseConfiguration const& config,
                                 VPackBuilder& result) {
   if (!config.isOneShardDB) {
-    if (isSingleServer()) {
+    if (isSingleServer() && !isSmart(fullBody)) {
       // Community can not use distributeShardsLike on SingleServer
       return;
     }
@@ -371,7 +359,7 @@ auto handleShardKeys(std::string_view key, VPackSlice value,
   if (!isSingleServer()) {
     // Cluster needs to handle all shardKeys and eventually reject
     justKeep(key, value, fullBody, config, result);
-  } else if (!value.isArray()) {
+  } else if (!value.isArray() || isSmart(fullBody)) {
     // Single server checks if shardKeys look valid.
     // But it will never take their value.
     // Hence we keep invalid one, to produce errors,
@@ -419,8 +407,7 @@ auto handleShardingStrategyRestore(std::string_view key, VPackSlice value,
     }
     handleStringsOnly(key, value, fullBody, config, result);
   } else {
-    if (value.isString() &&
-        value.isEqualString("enterprise-hex-smart-vertex")) {
+    if (isSmart(fullBody)) {
       // We need to keep exactly this strategy to trigger a BAD_PARAMETER error.
       // All others are ignored.
       justKeep(key, value, fullBody, config, result);
