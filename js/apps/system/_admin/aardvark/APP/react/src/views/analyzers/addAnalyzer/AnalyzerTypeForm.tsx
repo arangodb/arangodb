@@ -33,7 +33,8 @@ const ANALYZER_TYPE_TO_CONFIG_MAP = {
   pipeline: PipelineConfig,
   geojson: GeoJSONConfig,
   geopoint: GeopointConfig,
-  geo_s2: GeoS2Config
+  geo_s2: GeoS2Config,
+  minhash: null
 };
 
 export const AnalyzerTypeForm = ({
