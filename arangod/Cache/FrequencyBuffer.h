@@ -109,11 +109,16 @@ class FrequencyBuffer {
     for (auto f : frequencies) {
       data.emplace_back(std::pair<T, std::size_t>(f.first, f.second));
     }
-    std::sort(data.begin(), data.end(),
-              [](std::pair<T, std::uint64_t> const& left,
-                 std::pair<T, std::size_t> const& right) {
-                return left.second < right.second;
-              });
+    std::sort(
+        data.begin(), data.end(),
+        [](std::pair<T, std::uint64_t> const& left,
+           std::pair<T, std::size_t> const& right) {
+          // in case of equal frequencies, we use the key as an arbiter,
+          // so that repeated calls produce the same result for keys
+          // with equal values
+          return (left.second < right.second) ||
+                 (left.second == right.second && left.first < right.first);
+        });
 
     return data;  // RVO moves this out
   }

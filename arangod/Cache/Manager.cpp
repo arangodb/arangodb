@@ -49,6 +49,7 @@
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
 #include "Cache/VPackKeyHasher.h"
+#include "Containers/FlatHashSet.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -262,8 +263,11 @@ void Manager::shutdown() {
   }
 }
 
-// change global cache limit
+// change global cache limit.
 bool Manager::resize(std::uint64_t newGlobalLimit) {
+  // note: this method is currently not called by ArangoDB
+  TRI_ASSERT(false);
+
   SpinLocker guard(SpinLocker::Mode::Write, _lock);
 
   if ((newGlobalLimit < kMinSize) ||
@@ -292,7 +296,8 @@ bool Manager::resize(std::uint64_t newGlobalLimit) {
       done = adjustGlobalLimitsIfAllowed(newGlobalLimit);
       if (!done) {
         rebalance(true);
-        shrinkOvergrownCaches(TaskEnvironment::resizing);
+        PriorityList cacheList = priorityList();
+        shrinkOvergrownCaches(TaskEnvironment::kResizing, cacheList);
       }
     }
   }
@@ -446,7 +451,7 @@ void Manager::unregisterCache(std::uint64_t id) {
 }
 
 std::pair<bool, Manager::time_point> Manager::requestGrow(Cache* cache) {
-  Manager::time_point nextRequest = futureTime(100);
+  time_point nextRequest = futureTime(100);
   bool allowed = false;
 
   SpinLocker guard(SpinLocker::Mode::Write, _lock,
@@ -473,8 +478,9 @@ std::pair<bool, Manager::time_point> Manager::requestGrow(Cache* cache) {
 
         if (allowed) {
           nextRequest = std::chrono::steady_clock::now();
-          resizeCache(TaskEnvironment::none, std::move(metaGuard), cache,
-                      metadata.newLimit());  // unlocks metadata
+          resizeCache(TaskEnvironment::kNone, std::move(metaGuard), cache,
+                      metadata.newLimit(),
+                      /*allowShrinking*/ false);  // unlocks metadata
         }
       }
     }
@@ -485,7 +491,7 @@ std::pair<bool, Manager::time_point> Manager::requestGrow(Cache* cache) {
 
 std::pair<bool, Manager::time_point> Manager::requestMigrate(
     Cache* cache, std::uint32_t requestedLogSize) {
-  Manager::time_point nextRequest = futureTime(100);
+  time_point nextRequest = futureTime(100);
   bool allowed = false;
 
   SpinLocker guard(SpinLocker::Mode::Write, _lock,
@@ -526,7 +532,7 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
         allowed = (table != nullptr);
         if (allowed) {
           nextRequest = std::chrono::steady_clock::now();
-          migrateCache(TaskEnvironment::none, std::move(metaGuard), cache,
+          migrateCache(TaskEnvironment::kNone, std::move(metaGuard), cache,
                        std::move(table));  // unlocks metadata
         }
       }
@@ -572,42 +578,45 @@ void Manager::prepareTask(Manager::TaskEnvironment environment) {
 
   ++_outstandingTasks;
   switch (environment) {
-    case TaskEnvironment::rebalancing: {
-      ++_rebalancingTasks;
+    case TaskEnvironment::kRebalancing: {
+      _rebalancingTasks.fetch_add(1, std::memory_order_relaxed);
       break;
     }
-    case TaskEnvironment::resizing: {
-      ++_resizingTasks;
+    case TaskEnvironment::kResizing: {
+      _resizingTasks.fetch_add(1, std::memory_order_relaxed);
       break;
     }
-    case TaskEnvironment::none:
-    default: {
+    case TaskEnvironment::kNone: {
       break;
     }
   }
 }
 
-void Manager::unprepareTask(Manager::TaskEnvironment environment) noexcept {
+void Manager::unprepareTask(Manager::TaskEnvironment environment,
+                            bool internal) noexcept {
   switch (environment) {
-    case TaskEnvironment::rebalancing: {
-      TRI_ASSERT(_rebalancingTasks > 0);
-      if (--_rebalancingTasks == 0) {
-        SpinLocker guard(SpinLocker::Mode::Write, _lock);
+    case TaskEnvironment::kRebalancing: {
+      auto value = _rebalancingTasks.fetch_sub(1, std::memory_order_relaxed);
+      TRI_ASSERT(value > 0);
+      if (value == 1) {
+        // we counted from 1 to 0
+        SpinLocker guard(SpinLocker::Mode::Write, _lock, !internal);
         _rebalancing = false;
         _rebalanceCompleted = std::chrono::steady_clock::now();
       }
       break;
     }
-    case TaskEnvironment::resizing: {
-      TRI_ASSERT(_resizingTasks > 0);
-      if (--_resizingTasks == 0) {
-        SpinLocker guard(SpinLocker::Mode::Write, _lock);
+    case TaskEnvironment::kResizing: {
+      auto value = _resizingTasks.fetch_sub(1, std::memory_order_relaxed);
+      TRI_ASSERT(value > 0);
+      if (value == 1) {
+        // we counted from 1 to 0
+        SpinLocker guard(SpinLocker::Mode::Write, _lock, !internal);
         _resizing = false;
       }
       break;
     }
-    case TaskEnvironment::none:
-    default: {
+    case TaskEnvironment::kNone: {
       break;
     }
   }
@@ -645,42 +654,59 @@ ErrorCode Manager::rebalance(bool onlyCalculate) {
     _rebalancing = true;
   }
 
+  PriorityList cacheList;
+
   // adjust deservedSize for each cache
-  std::shared_ptr<PriorityList> cacheList = priorityList();
-  for (auto pair : (*cacheList)) {
-    std::shared_ptr<Cache>& cache = pair.first;
-    double weight = pair.second;
-    auto newDeserved = static_cast<std::uint64_t>(
-        std::ceil(weight * static_cast<double>(_globalHighwaterMark)));
+  try {
+    cacheList = priorityList();
+
+    for (auto& pair : cacheList) {
+      std::shared_ptr<Cache>& cache = pair.first;
+      double weight = pair.second;
+      auto newDeserved = static_cast<std::uint64_t>(
+          std::ceil(weight * static_cast<double>(_globalHighwaterMark)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    if (newDeserved < minCacheAllocation) {
-      LOG_TOPIC("eabec", DEBUG, Logger::CACHE)
-          << "Deserved limit of " << newDeserved << " from weight " << weight
-          << " and highwater " << _globalHighwaterMark
-          << ". Should be at least " << minCacheAllocation;
-      TRI_ASSERT(newDeserved >= minCacheAllocation);
-    }
+      if (newDeserved < minCacheAllocation) {
+        LOG_TOPIC("eabec", DEBUG, Logger::CACHE)
+            << "Deserved limit of " << newDeserved << " from weight " << weight
+            << " and highwater " << _globalHighwaterMark
+            << ". Should be at least " << minCacheAllocation;
+        TRI_ASSERT(newDeserved >= minCacheAllocation);
+      }
 #endif
-    Metadata& metadata = cache->metadata();
-    SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+      Metadata& metadata = cache->metadata();
+      SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    std::uint64_t fixed =
-        metadata.fixedSize + metadata.tableSize + kCacheRecordOverhead;
-    if (newDeserved < fixed) {
-      LOG_TOPIC("e63e4", DEBUG, Logger::CACHE)
-          << "Setting deserved cache size " << newDeserved
-          << " below usage: " << fixed << " ; Using weight  " << weight;
-    }
+      std::uint64_t fixed =
+          metadata.fixedSize + metadata.tableSize + kCacheRecordOverhead;
+      if (newDeserved < fixed) {
+        LOG_TOPIC("e63e4", DEBUG, Logger::CACHE)
+            << "Setting deserved cache size " << newDeserved
+            << " below usage: " << fixed << " ; Using weight  " << weight;
+      }
 #endif
-    metadata.adjustDeserved(newDeserved);
+      metadata.adjustDeserved(newDeserved);
+    }
+  } catch (std::exception const& ex) {
+    // we must not throw an exception from here without cleaning up
+    // the _rebalancing attribute
+    LOG_TOPIC("c03b9", WARN, Logger::CACHE)
+        << "Caught exception during cache rebalancing: " << ex.what();
   }
 
   if (!onlyCalculate) {
-    if (_globalAllocation >= _globalHighwaterMark * 0.7) {
-      shrinkOvergrownCaches(TaskEnvironment::rebalancing);
+    if (_globalAllocation >= _globalHighwaterMark) {
+      try {
+        shrinkOvergrownCaches(TaskEnvironment::kRebalancing, cacheList);
+      } catch (std::exception const& ex) {
+        // we must not throw an exception from here without cleaning up
+        // the _rebalancing attribute
+        LOG_TOPIC("687d6", WARN, Logger::CACHE)
+            << "Caught exception during cache shrinking: " << ex.what();
+      }
     }
 
-    if (_rebalancingTasks.load() == 0) {
+    if (_rebalancingTasks.load(std::memory_order_relaxed) == 0) {
       _rebalanceCompleted = std::chrono::steady_clock::now();
       _rebalancing = false;
     }
@@ -689,21 +715,32 @@ ErrorCode Manager::rebalance(bool onlyCalculate) {
   return TRI_ERROR_NO_ERROR;
 }
 
-void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
+void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment,
+                                    Manager::PriorityList const& cacheList) {
   TRI_ASSERT(_lock.isLockedWrite());
-  for (auto& [_, cache] : _caches) {
-    // skip this cache if it is already resizing or shutdown!
-    if (!cache->canResize()) {
-      continue;
+  std::size_t i = 0;
+  for (auto& [cache, _] : cacheList) {
+    // skip this cache if it is already resizing or shut down!
+    if (cache->canResize()) {
+      Metadata& metadata = cache->metadata();
+      SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+
+      if (metadata.allocatedSize > metadata.deservedSize) {
+        // by default, resizeCache() will only free memory from caches by
+        // eviciting cache entries. it will not shrink the hash table sizes
+        bool allowShrinking = false;
+        if (static_cast<double>(i) / static_cast<double>(cacheList.size()) <=
+            kCachesToShrinkRatio) {
+          // for the bottom kCachesToShrinkRation caches we will also trigger a
+          // shrinking of the hash table size if possible
+          allowShrinking = true;
+        }
+        resizeCache(environment, std::move(metaGuard), cache.get(),
+                    metadata.newLimit(), allowShrinking);  // unlocks metadata
+      }
     }
 
-    Metadata& metadata = cache->metadata();
-    SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
-
-    if (metadata.allocatedSize > metadata.deservedSize) {
-      resizeCache(environment, std::move(metaGuard), cache.get(),
-                  metadata.newLimit());  // unlocks metadata
-    }
+    ++i;
   }
 }
 
@@ -752,7 +789,7 @@ bool Manager::adjustGlobalLimitsIfAllowed(std::uint64_t newGlobalLimit) {
 
 void Manager::resizeCache(Manager::TaskEnvironment environment,
                           SpinLocker&& metaGuard, Cache* cache,
-                          std::uint64_t newLimit) {
+                          std::uint64_t newLimit, bool allowShrinking) {
   TRI_ASSERT(_lock.isLockedWrite());
   TRI_ASSERT(metaGuard.isLocked());
   TRI_ASSERT(cache != nullptr);
@@ -775,8 +812,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   bool dispatched = false;
   if (!cache->isShutdown()) {
     try {
-      auto task = std::make_shared<FreeMemoryTask>(environment, *this,
-                                                   cache->shared_from_this());
+      auto task = std::make_shared<FreeMemoryTask>(
+          environment, *this, cache->shared_from_this(), allowShrinking);
       dispatched = task->dispatch();
     } catch (...) {
       dispatched = false;
@@ -799,6 +836,7 @@ void Manager::migrateCache(Manager::TaskEnvironment environment,
   TRI_ASSERT(_lock.isLockedWrite());
   TRI_ASSERT(metaGuard.isLocked());
   TRI_ASSERT(cache != nullptr);
+  TRI_ASSERT(table != nullptr);
   Metadata& metadata = cache->metadata();
 
   TRI_ASSERT(!metadata.isMigrating());
@@ -908,87 +946,90 @@ bool Manager::increaseAllowed(std::uint64_t increase,
   return (increase <= (_globalHighwaterMark - _globalAllocation));
 }
 
-std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
+Manager::PriorityList Manager::priorityList() {
   TRI_ASSERT(_lock.isLockedWrite());
-  double minimumWeight = static_cast<double>(minCacheAllocation) /
-                         static_cast<double>(_globalHighwaterMark);
-  while (static_cast<std::uint64_t>(std::ceil(
-             minimumWeight * static_cast<double>(_globalHighwaterMark))) <
-         minCacheAllocation) {
-    minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
-  }
 
-  double uniformMarginalWeight = 0.2 / static_cast<double>(_caches.size());
-  double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
+  PriorityList list;
+  if (!_caches.empty()) {
+    double minimumWeight = static_cast<double>(minCacheAllocation) /
+                           static_cast<double>(_globalHighwaterMark);
+    while (static_cast<std::uint64_t>(std::ceil(
+               minimumWeight * static_cast<double>(_globalHighwaterMark))) <
+           minCacheAllocation) {
+      minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
+    }
+
+    double uniformMarginalWeight = 0.2 / static_cast<double>(_caches.size());
+    double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC("7eac8", DEBUG, Logger::CACHE)
-      << "uniformMarginalWeight " << uniformMarginalWeight;
-  LOG_TOPIC("108e6", DEBUG, Logger::CACHE) << "baseWeight " << baseWeight;
-  if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
-    LOG_TOPIC("b2f55", FATAL, Logger::CACHE)
-        << "weight: " << baseWeight << ", count: " << _caches.size();
-    TRI_ASSERT(1.0 >= (baseWeight * static_cast<double>(_caches.size())));
-  }
+    LOG_TOPIC("7eac8", DEBUG, Logger::CACHE)
+        << "uniformMarginalWeight " << uniformMarginalWeight;
+    LOG_TOPIC("108e6", DEBUG, Logger::CACHE) << "baseWeight " << baseWeight;
+    if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
+      LOG_TOPIC("b2f55", FATAL, Logger::CACHE)
+          << "weight: " << baseWeight << ", count: " << _caches.size();
+      TRI_ASSERT(1.0 >= (baseWeight * static_cast<double>(_caches.size())));
+    }
 #endif
-  double remainingWeight =
-      1.0 - (baseWeight * static_cast<double>(_caches.size()));
+    double remainingWeight =
+        1.0 - (baseWeight * static_cast<double>(_caches.size()));
 
-  auto list = std::make_shared<PriorityList>();
-  list->reserve(_caches.size());
+    list.reserve(_caches.size());
 
-  // catalog accessed caches and count total accesses
-  // to get basis for comparison
-  typename AccessStatBuffer::stats_t stats = _accessStats.getFrequencies();
-  std::set<std::uint64_t> accessed;
-  std::uint64_t totalAccesses = 0;
-  std::uint64_t globalUsage = 0;
-  for (auto const& s : stats) {
-    auto c = _caches.find(s.first);
-    if (c != _caches.end()) {
-      totalAccesses += s.second;
-      accessed.emplace(c->second->id());
+    // catalog accessed caches and count total accesses
+    // to get basis for comparison
+    auto stats = _accessStats.getFrequencies();
+
+    arangodb::containers::FlatHashSet<std::uint64_t> accessed;
+    std::uint64_t totalAccesses = 0;
+    for (auto const& s : stats) {
+      auto c = _caches.find(s.first);
+      if (c != _caches.end()) {
+        totalAccesses += s.second;
+        accessed.emplace(c->second->id());
+      }
     }
-  }
-  totalAccesses = std::max(static_cast<std::uint64_t>(1), totalAccesses);
+    totalAccesses = std::max(std::uint64_t(1), totalAccesses);
 
-  double allocFrac =
-      0.8 * std::min(1.0, static_cast<double>(_globalAllocation) /
-                              static_cast<double>(_globalHighwaterMark));
-  // calculate global data usage
-  for (auto const& it : _caches) {
-    globalUsage += it.second->usage();
-  }
-  globalUsage = std::max(globalUsage,
-                         static_cast<std::uint64_t>(1));  // avoid div-by-zero
-
-  // gather all unaccessed caches at beginning of list
-  for (auto it = _caches.begin(); it != _caches.end(); it++) {
-    std::shared_ptr<Cache>& cache = it->second;
-    auto found = accessed.find(cache->id());
-    if (found == accessed.end()) {
-      double weight = baseWeight + (cache->usage() / globalUsage) * allocFrac;
-      list->emplace_back(cache, weight);
+    double allocFrac =
+        0.8 * std::min(1.0, static_cast<double>(_globalAllocation) /
+                                static_cast<double>(_globalHighwaterMark));
+    // calculate global data usage
+    std::uint64_t globalUsage = 0;
+    for (auto const& it : _caches) {
+      globalUsage += it.second->usage();
     }
-  }
+    // avoid div-by-zero
+    globalUsage = std::max(globalUsage, std::uint64_t(1));
 
-  double accessNormalizer = ((1.0 - allocFrac) * remainingWeight) /
-                            static_cast<double>(totalAccesses);
-  double usageNormalizer =
-      (allocFrac * remainingWeight) / static_cast<double>(globalUsage);
+    // gather all unaccessed caches at beginning of list
+    for (auto& c : _caches) {
+      auto& cache = c.second;
+      if (!accessed.contains(cache->id())) {
+        double weight = baseWeight + (cache->usage() / globalUsage) * allocFrac;
+        list.emplace_back(cache, weight);
+      }
+    }
 
-  // gather all accessed caches in order
-  for (auto s : stats) {
-    auto it = accessed.find(s.first);
-    if (it != accessed.end()) {
-      std::shared_ptr<Cache>& cache = _caches.find(s.first)->second;
-      double accessWeight = static_cast<double>(s.second) * accessNormalizer;
-      double usageWeight =
-          static_cast<double>(cache->usage()) * usageNormalizer;
+    double accessNormalizer = ((1.0 - allocFrac) * remainingWeight) /
+                              static_cast<double>(totalAccesses);
+    double usageNormalizer =
+        (allocFrac * remainingWeight) / static_cast<double>(globalUsage);
 
-      TRI_ASSERT(accessWeight >= 0.0);
-      TRI_ASSERT(usageWeight >= 0.0);
-      list->emplace_back(cache, (baseWeight + accessWeight + usageWeight));
+    // gather all accessed caches in order
+    for (auto const& s : stats) {
+      TRI_ASSERT(accessed.contains(s.first) == _caches.contains(s.first));
+      if (accessed.contains(s.first)) {
+        auto& cache = _caches.find(s.first)->second;
+        double accessWeight = static_cast<double>(s.second) * accessNormalizer;
+        double usageWeight =
+            static_cast<double>(cache->usage()) * usageNormalizer;
+
+        TRI_ASSERT(accessWeight >= 0.0);
+        TRI_ASSERT(usageWeight >= 0.0);
+        list.emplace_back(cache, (baseWeight + accessWeight + usageWeight));
+      }
     }
   }
 

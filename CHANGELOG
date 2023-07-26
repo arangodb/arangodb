@@ -1,6 +1,15 @@
 devel
 -----
 
+* Changed default values for the following options related to the in-memory
+  cache subsystem:
+
+  - `--cache.ideal-lower-fill-ratio` changed from 0.04 to 0.08
+  - `--cache.ideal-upper-fill-ratio` changed from 0.25 to 0.33
+
+  This allows slightly better hash table utilization and earlier memory
+  reclamation.
+
 * Added metric `rocksdb_cache_edge_empty_inserts_total` to count the number
   of inserts into the edge cache for non-connected edges.
 
@@ -19,14 +28,26 @@ devel
 
 * Properly track memory usage for allocated objects in the in-memory cache
   (e.g. the edge cache or the in-memory cache for other persistent indexes).
-  Previously only the memory used for the underlying hash tables was accounted
-  for, but not the value of the cache payloads (keys and values).
+  Previously the memory used for the underlying hash tables was accounted for
+  correctly, but the sizes of the cache payloads (keys and values) were not
+  accounted for under all circumstances (at least for the initial entries in
+  the caches).
   This change leads to more accurate memory usage tracking and reporting by the 
-  in-memory cache subsystem, and the subsystem not exceeding its configured
-  limit. However, as memory usage by the in-memory cache subsystem was 
-  previously (inaccurately) underreported, it also means that the limit will 
-  now be hit more quickly. It may be necessary to increase the value of the
-  startup option `--cache.size` to counter this effect.
+  in-memory cache subsystem, and to the cache subsystem not exceeding its 
+  configured memory usage limit. 
+  The cache subsystem was also changed so that it can use as much memory as
+  configured by the global cache memory limit (configurable via startup option
+  `--cache.size`). Previously the cache subsystem was freeing memory as soon
+  as it hit 56% of the configured limit.
+  Overall, the effective memory usage of the cache subsystem will be very
+  different to the memory usage in previous versions. In previous versions the
+  configured memory usage limit could be temporarily exceeded, but in most
+  cases the cache used considerably less memory than allowed by the limit.
+  Now the cache will try to use up to as much memory as allowed by the
+  configured memory usage limit.
+  If that leads to an overall overallocation of resources (i.e. too high total
+  memory of the system), it may be necessary to lower the value of the startup
+  option `--cache.size`, so that the cache memory usage is decreased.
 
 * Reduce memory usage for empty in-memory edge caches by ~40%. This is achieved
   by allocating each cache's statistics objects only lazily, when actually 

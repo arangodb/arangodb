@@ -102,8 +102,8 @@ class Manager {
 
   using AccessStatBuffer = FrequencyBuffer<std::uint64_t>;
   using FindStatBuffer = FrequencyBuffer<std::uint8_t>;
-  typedef std::vector<std::pair<std::shared_ptr<Cache>&, double>> PriorityList;
-  typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
+  using PriorityList = std::vector<std::pair<std::shared_ptr<Cache>&, double>>;
+  using time_point = std::chrono::time_point<std::chrono::steady_clock>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize the manager with a scheduler post method and global
@@ -261,12 +261,12 @@ class Manager {
   TransactionManager _transactions;
 
   // task management
-  enum TaskEnvironment { none, rebalancing, resizing };
+  enum TaskEnvironment { kNone, kRebalancing, kResizing };
   PostFn _schedulerPost;
   std::atomic<std::uint64_t> _outstandingTasks;
   std::atomic<std::uint64_t> _rebalancingTasks;
   std::atomic<std::uint64_t> _resizingTasks;
-  Manager::time_point _rebalanceCompleted;
+  time_point _rebalanceCompleted;
 
   // friend class tasks and caches to allow access
   friend class Cache;
@@ -287,17 +287,22 @@ class Manager {
   void unregisterCache(std::uint64_t id);
 
   // allow individual caches to request changes to their allocations
-  std::pair<bool, Manager::time_point> requestGrow(Cache* cache);
-  std::pair<bool, Manager::time_point> requestMigrate(
-      Cache* cache, uint32_t requestedLogSize);
+  std::pair<bool, time_point> requestGrow(Cache* cache);
+  std::pair<bool, time_point> requestMigrate(Cache* cache,
+                                             std::uint32_t requestedLogSize);
 
   // stat reporting
   void reportAccess(std::uint64_t id) noexcept;
   void reportHit() noexcept;
   void reportMiss() noexcept;
 
-  // used internally and by tasks
-  static constexpr double kHighwaterMultiplier = 0.8;
+  // used internally and by tasks. this multiplier is used with the
+  // cache's memory limit, and if exceeded, triggers a shrinking of the
+  // least frequently accessed kCachesToShrinkRatio caches
+  static constexpr double kHighwaterMultiplier = 0.95;
+  // ratio of caches for which a shrinking attempt will be made if we
+  // reach the cache's high water mark (memory limit plus safety buffer)
+  static constexpr double kCachesToShrinkRatio = 0.20;
   static constexpr std::chrono::milliseconds rebalancingGracePeriod{10};
   static const std::uint64_t minCacheAllocation;
 
@@ -308,19 +313,20 @@ class Manager {
 
   // coordinate state with task lifecycles
   void prepareTask(TaskEnvironment environment);
-  void unprepareTask(TaskEnvironment environment) noexcept;
+  void unprepareTask(TaskEnvironment environment, bool internal) noexcept;
 
   // periodically run to rebalance allocations globally
   ErrorCode rebalance(bool onlyCalculate = false);
 
   // helpers for global resizing
-  void shrinkOvergrownCaches(TaskEnvironment environment);
+  void shrinkOvergrownCaches(TaskEnvironment environment,
+                             PriorityList const& cacheList);
   void freeUnusedTables();
   bool adjustGlobalLimitsIfAllowed(std::uint64_t newGlobalLimit);
 
   // methods to adjust individual caches
   void resizeCache(TaskEnvironment environment, basics::SpinLocker&& metaGuard,
-                   Cache* cache, uint64_t newLimit);
+                   Cache* cache, std::uint64_t newLimit, bool allowShrinking);
   void migrateCache(TaskEnvironment environment, basics::SpinLocker&& metaGuard,
                     Cache* cache, std::shared_ptr<Table> table);
   std::shared_ptr<Table> leaseTable(std::uint32_t logSize);
@@ -331,7 +337,7 @@ class Manager {
                                      bool privileged = false) const noexcept;
 
   // helper for lr-accessed heuristics
-  std::shared_ptr<PriorityList> priorityList();
+  PriorityList priorityList();
 
   // helper for wait times
   [[nodiscard]] static Manager::time_point futureTime(

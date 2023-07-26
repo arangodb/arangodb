@@ -315,7 +315,9 @@ void Cache::freeValue(CachedValue* value) noexcept {
 }
 
 bool Cache::reclaimMemory(std::uint64_t size) noexcept {
-  adjustGlobalAllocation(-static_cast<std::int64_t>(size), /*force*/ false);
+  if (size != 0) {
+    adjustGlobalAllocation(-static_cast<std::int64_t>(size), /*force*/ false);
+  }
 
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   _metadata.adjustUsageIfAllowed(-static_cast<std::int64_t>(size));
@@ -506,23 +508,22 @@ bool Cache::freeMemory() {
     return false;
   }
 
-  auto cb = [this](std::uint64_t reclaimed) -> bool {
-    if (reclaimed > 0) {
-      bool underLimit = reclaimMemory(reclaimed);
-      if (underLimit) {
-        // we have free enough memory.
-        // don't continue
-        return false;
-      }
-    }
-    // check if shutdown is in progress. then give up
-    return !isShutdown();
-  };
-
   bool underLimit = reclaimMemory(0ULL);
   if (!underLimit) {
-    underLimit = freeMemoryWhile(cb);
+    underLimit = freeMemoryWhile([this](std::uint64_t reclaimed) -> bool {
+      if (reclaimed > 0) {
+        bool underLimit = reclaimMemory(reclaimed);
+        if (underLimit) {
+          // we have free enough memory.
+          // don't continue
+          return false;
+        }
+      }
+      // check if shutdown is in progress. then give up
+      return !isShutdown();
+    });
   }
+
   return underLimit;
 }
 

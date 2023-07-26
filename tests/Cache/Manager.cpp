@@ -30,6 +30,7 @@
 #include <thread>
 #include <vector>
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/CacheManagerFeatureThreads.h"
@@ -83,7 +84,7 @@ TEST(CacheManagerTest, test_memory_usage_for_cache_creation) {
 }
 
 TEST(CacheManagerTest, test_memory_usage_for_cache_reusage) {
-  std::uint64_t requestLimit = 1024 * 1024;
+  std::uint64_t requestLimit = 1024 * 1024 * 256;
 
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
@@ -154,62 +155,55 @@ TEST(CacheManagerTest,
   ASSERT_TRUE(0ULL < manager.globalAllocation());
   ASSERT_TRUE(requestLimit > manager.globalAllocation());
 
-  try {
-    {
-      TRI_ClearFailurePointsDebugging();
-      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
 
-      TRI_AddFailurePointDebugging("CacheAllocation::fail1");
-      auto cache =
-          manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
-      ASSERT_EQ(nullptr, cache);
-
-      TRI_ClearFailurePointsDebugging();
-      cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
-      ASSERT_NE(nullptr, cache);
-
-      manager.destroyCache(std::move(cache));
-
-      manager.freeUnusedTablesForTesting();
-
-      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
-      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
-    }
-
-    {
-      TRI_ClearFailurePointsDebugging();
-      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
-
-      TRI_AddFailurePointDebugging("CacheAllocation::fail2");
-      ASSERT_ANY_THROW(
-          manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
-
-      manager.freeUnusedTablesForTesting();
-
-      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
-      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
-    }
-
-    {
-      TRI_ClearFailurePointsDebugging();
-      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
-
-      TRI_AddFailurePointDebugging("CacheAllocation::fail3");
-      ASSERT_ANY_THROW(
-          manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
-
-      manager.freeUnusedTablesForTesting();
-
-      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
-      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
-    }
-
-  } catch (...) {
+  {
     TRI_ClearFailurePointsDebugging();
-    throw;
+    auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+    TRI_AddFailurePointDebugging("CacheAllocation::fail1");
+    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    ASSERT_EQ(nullptr, cache);
+
+    TRI_ClearFailurePointsDebugging();
+    cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    ASSERT_NE(nullptr, cache);
+
+    manager.destroyCache(std::move(cache));
+
+    manager.freeUnusedTablesForTesting();
+
+    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
   }
 
-  TRI_ClearFailurePointsDebugging();
+  {
+    TRI_ClearFailurePointsDebugging();
+    auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+    TRI_AddFailurePointDebugging("CacheAllocation::fail2");
+    ASSERT_ANY_THROW(
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+
+    manager.freeUnusedTablesForTesting();
+
+    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+  }
+
+  {
+    TRI_ClearFailurePointsDebugging();
+    auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+    TRI_AddFailurePointDebugging("CacheAllocation::fail3");
+    ASSERT_ANY_THROW(
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+
+    manager.freeUnusedTablesForTesting();
+
+    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+  }
 }
 #endif
 
@@ -231,53 +225,46 @@ TEST(CacheManagerTest,
   ASSERT_TRUE(0ULL < manager.globalAllocation());
   ASSERT_TRUE(requestLimit > manager.globalAllocation());
 
-  try {
-    {
-      TRI_ClearFailurePointsDebugging();
-      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
 
-      TRI_AddFailurePointDebugging("CacheAllocation::fail1");
-      auto cache =
-          manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
-      ASSERT_EQ(nullptr, cache);
-
-      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
-      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
-      ASSERT_EQ(beforeStats->activeTables, afterStats->activeTables);
-    }
-
-    {
-      TRI_ClearFailurePointsDebugging();
-      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
-
-      TRI_AddFailurePointDebugging("CacheAllocation::fail2");
-      ASSERT_ANY_THROW(
-          manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
-
-      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
-      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
-      ASSERT_EQ(beforeStats->activeTables, afterStats->activeTables);
-    }
-
-    {
-      TRI_ClearFailurePointsDebugging();
-      auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
-
-      TRI_AddFailurePointDebugging("CacheAllocation::fail3");
-      ASSERT_ANY_THROW(
-          manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
-
-      auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
-      ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
-      ASSERT_EQ(beforeStats->activeTables, afterStats->activeTables);
-    }
-
-  } catch (...) {
+  {
     TRI_ClearFailurePointsDebugging();
-    throw;
+    auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+    TRI_AddFailurePointDebugging("CacheAllocation::fail1");
+    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    ASSERT_EQ(nullptr, cache);
+
+    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+    ASSERT_EQ(beforeStats->activeTables, afterStats->activeTables);
   }
 
-  TRI_ClearFailurePointsDebugging();
+  {
+    TRI_ClearFailurePointsDebugging();
+    auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+    TRI_AddFailurePointDebugging("CacheAllocation::fail2");
+    ASSERT_ANY_THROW(
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+
+    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+    ASSERT_EQ(beforeStats->activeTables, afterStats->activeTables);
+  }
+
+  {
+    TRI_ClearFailurePointsDebugging();
+    auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+
+    TRI_AddFailurePointDebugging("CacheAllocation::fail3");
+    ASSERT_ANY_THROW(
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+
+    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(beforeStats->globalAllocation, afterStats->globalAllocation);
+    ASSERT_EQ(beforeStats->activeTables, afterStats->activeTables);
+  }
 }
 #endif
 
@@ -393,59 +380,59 @@ TEST(CacheManagerTest, test_memory_usage_for_data) {
 
   // create an initially large table
   TRI_AddFailurePointDebugging("Cache::createTable.large");
-  try {
-    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
-    TRI_ClearFailurePointsDebugging();
 
-    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
-    ASSERT_LT(beforeStats->globalAllocation, afterStats->globalAllocation);
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
 
-    std::string key;
-    std::string value;
-    std::size_t totalSize = 0;
-    for (std::size_t i = 0; i < n; ++i) {
-      key.clear();
-      key.append("testkey").append(std::to_string(i));
-      totalSize += key.size();
+  auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
 
-      value.clear();
-      value.append("testvalue").append(std::to_string(i));
-      totalSize += value.size();
+  // clear failure point
+  guard.fire();
 
-      CachedValue* cv = CachedValue::construct(key.data(), key.size(),
-                                               value.data(), value.size());
-      TRI_ASSERT(cv != nullptr);
-      do {
-        auto status = cache->insert(cv);
-        if (status == TRI_ERROR_NO_ERROR) {
-          break;
-        }
-      } while (true);
+  auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+  ASSERT_LT(beforeStats->globalAllocation, afterStats->globalAllocation);
 
-      // add overhead:
-      // - uint32 for padding
-      // - atomic uint32 for ref count
-      // - uint32 for key size
-      // - uint32 for value size
-      totalSize += 4 + 4 + 4 + 4;
-    }
+  std::string key;
+  std::string value;
+  std::size_t totalSize = 0;
+  for (std::size_t i = 0; i < n; ++i) {
+    key.clear();
+    key.append("testkey").append(std::to_string(i));
+    totalSize += key.size();
 
-    auto afterStats2 = manager.memoryStats(cache::Cache::triesGuarantee);
-    ASSERT_LT(beforeStats->globalAllocation + totalSize,
-              afterStats2->globalAllocation);
+    value.clear();
+    value.append("testvalue").append(std::to_string(i));
+    totalSize += value.size();
 
-    manager.destroyCache(std::move(cache));
+    CachedValue* cv = CachedValue::construct(key.data(), key.size(),
+                                             value.data(), value.size());
+    TRI_ASSERT(cv != nullptr);
+    do {
+      auto status = cache->insert(cv);
+      if (status == TRI_ERROR_NO_ERROR) {
+        break;
+      }
+    } while (true);
 
-    manager.freeUnusedTablesForTesting();
-
-    auto afterStats3 = manager.memoryStats(cache::Cache::triesGuarantee);
-    ASSERT_EQ(0, afterStats3->activeTables);
-    ASSERT_EQ(0, afterStats3->spareTables);
-    ASSERT_EQ(beforeStats->globalAllocation, afterStats3->globalAllocation);
-  } catch (...) {
-    TRI_ClearFailurePointsDebugging();
-    throw;
+    // add overhead:
+    // - uint32 for padding
+    // - atomic uint32 for ref count
+    // - uint32 for key size
+    // - uint32 for value size
+    totalSize += 4 + 4 + 4 + 4;
   }
+
+  auto afterStats2 = manager.memoryStats(cache::Cache::triesGuarantee);
+  ASSERT_LT(beforeStats->globalAllocation + totalSize,
+            afterStats2->globalAllocation);
+
+  manager.destroyCache(std::move(cache));
+
+  manager.freeUnusedTablesForTesting();
+
+  auto afterStats3 = manager.memoryStats(cache::Cache::triesGuarantee);
+  ASSERT_EQ(0, afterStats3->activeTables);
+  ASSERT_EQ(0, afterStats3->spareTables);
+  ASSERT_EQ(beforeStats->globalAllocation, afterStats3->globalAllocation);
 }
 #endif
 
