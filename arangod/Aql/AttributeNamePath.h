@@ -23,11 +23,12 @@
 
 #pragma once
 
+#include "Basics/MemoryTypes/MemoryTypes.h"
+
 #include <cstdint>
 #include <functional>
 #include <iosfwd>
 #include <string>
-#include <vector>
 
 namespace arangodb::aql {
 
@@ -45,13 +46,15 @@ struct AttributeNamePath {
     MultiAttribute    // sub-attribute, e.g. a.b.c
   };
 
-  AttributeNamePath() noexcept {}
+  explicit AttributeNamePath(
+      arangodb::ResourceMonitor& resourceMonitor) noexcept;
 
   /// @brief construct an attribute path from a single attribute (e.g. _key)
-  AttributeNamePath(std::string attribute);
+  AttributeNamePath(std::string attribute,
+                    arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief construct an attribute path from a nested attribute (e.g. a.b.c)
-  AttributeNamePath(std::vector<std::string> path);
+  explicit AttributeNamePath(MonitoredStringVector path) noexcept;
 
   AttributeNamePath(AttributeNamePath const& other) = default;
   AttributeNamePath& operator=(AttributeNamePath const& other) = default;
@@ -71,7 +74,7 @@ struct AttributeNamePath {
   size_t hash() const noexcept;
 
   /// @brief get attribute at level
-  std::string const& operator[](size_t index) const noexcept;
+  std::string_view operator[](size_t index) const noexcept;
 
   bool operator==(AttributeNamePath const& other) const noexcept;
   bool operator!=(AttributeNamePath const& other) const noexcept {
@@ -81,7 +84,7 @@ struct AttributeNamePath {
   bool operator<(AttributeNamePath const& other) const noexcept;
 
   /// @brief get the full path
-  std::vector<std::string> const& get() const noexcept;
+  [[nodiscard]] MonitoredStringVector const& get() const noexcept;
 
   /// @brief clear all path attributes
   void clear() noexcept;
@@ -96,7 +99,7 @@ struct AttributeNamePath {
   static size_t commonPrefixLength(AttributeNamePath const& lhs,
                                    AttributeNamePath const& rhs);
 
-  std::vector<std::string> path;
+  MonitoredStringVector _path;
 };
 
 std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path);
