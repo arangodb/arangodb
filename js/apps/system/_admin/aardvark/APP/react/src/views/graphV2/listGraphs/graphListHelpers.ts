@@ -179,3 +179,94 @@ export const GRAPH_VALIDATION_SCHEMA = Yup.object({
       "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %"
     )
 });
+
+export const updateGraph = async ({
+  values,
+  onSuccess,
+  initialGraph
+}: {
+  values: any;
+  onSuccess: () => void;
+  initialGraph?: GraphInfo;
+}) => {
+  await updateOrphans({
+    values,
+    initialGraph
+  });
+  onSuccess();
+};
+
+const updateOrphans = async ({
+  values,
+  initialGraph
+}: {
+  values: any;
+  initialGraph?: GraphInfo;
+}) => {
+  if (initialGraph?.orphanCollections) {
+    const addedOrphanCollections = values.orphanCollections.filter(
+      (collection: string) =>
+        !initialGraph.orphanCollections.includes(collection)
+    );
+    const removedOrphanColletions = initialGraph.orphanCollections.filter(
+      (collection: string) =>
+        !values.orphanCollections.includes(collection) &&
+        !addedOrphanCollections.includes(collection)
+    );
+    await Promise.all(
+      addedOrphanCollections.map((collection: any) =>
+        addOrphanCollection({
+          collectionName: collection,
+          graphName: values.name
+        })
+      )
+    );
+    await Promise.all(
+      removedOrphanColletions.map((collection: any) =>
+        removeOrphanCollection({
+          collectionName: collection,
+          graphName: values.name
+        })
+      )
+    );
+  }
+};
+const removeOrphanCollection = async ({
+  collectionName,
+  graphName
+}: {
+  collectionName: string;
+  graphName: string;
+}) => {
+  const currentDB = getCurrentDB();
+  try {
+    const graph = currentDB.graph(graphName);
+    await graph.removeVertexCollection(collectionName);
+  } catch (e: any) {
+    const errorMessage = e.response.body.errorMessage;
+    notifyError(`Could not remove collection: ${errorMessage}`);
+    return {
+      error: errorMessage
+    };
+  }
+};
+
+const addOrphanCollection = async ({
+  collectionName,
+  graphName
+}: {
+  collectionName: string;
+  graphName: string;
+}) => {
+  const currentDB = getCurrentDB();
+  try {
+    const graph = currentDB.graph(graphName);
+    await graph.addVertexCollection(collectionName);
+  } catch (e: any) {
+    const errorMessage = e.response.body.errorMessage;
+    notifyError(`Could not add collection: ${errorMessage}`);
+    return {
+      error: errorMessage
+    };
+  }
+};
