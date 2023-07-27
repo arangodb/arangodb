@@ -826,8 +826,13 @@ void DatabaseFeature::recoveryDone() {
   std::vector<futures::Future<Result>> futures;
   futures.reserve(_pendingRecoveryCallbacks.size());
   for (auto& entry : _pendingRecoveryCallbacks) {
-    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
-        RequestLane::CLIENT_SLOW, std::move(entry)));
+    futures::Promise<Result> p;
+    futures.emplace_back(p.getFuture());
+    SchedulerFeature::SCHEDULER->queue(
+        RequestLane::CLIENT_SLOW,
+        [p = std::move(p), f = std::move(entry)]() mutable {
+          p.setValue(f());
+        });
   }
   _pendingRecoveryCallbacks.clear();
   // TODO(MBkkt) use single wait with early termination
