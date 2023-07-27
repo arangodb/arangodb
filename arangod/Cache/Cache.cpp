@@ -80,7 +80,7 @@ Cache::~Cache() {
   // eviction stats
   std::uint64_t memoryUsage = 0;
 
-  if (_findStatsCreated.load(std::memory_order_relaxed)) {
+  if (_findStatsCreated.load(std::memory_order_acquire)) {
     TRI_ASSERT(_findStats != nullptr);
     memoryUsage += sizeof(decltype(_findStats)::element_type);
     if (_findStats->findStats) {
@@ -88,7 +88,7 @@ Cache::~Cache() {
     }
   }
 
-  if (_evictionStatsCreated.load(std::memory_order_relaxed)) {
+  if (_evictionStatsCreated.load(std::memory_order_acquire)) {
     TRI_ASSERT(_evictionStats != nullptr);
     memoryUsage += sizeof(decltype(_evictionStats)::element_type);
   }
@@ -183,7 +183,7 @@ std::pair<double, double> Cache::hitRates() {
   double lifetimeRate = std::nan("");
   double windowedRate = std::nan("");
 
-  if (_findStatsCreated.load(std::memory_order_relaxed)) {
+  if (_findStatsCreated.load(std::memory_order_acquire)) {
     TRI_ASSERT(_findStats != nullptr);
 
     std::uint64_t currentMisses =
@@ -418,7 +418,7 @@ void Cache::ensureFindStats() {
         sizeof(decltype(_findStats)::element_type) +
         (_enableWindowedStats ? _findStats->findStats->memoryUsage() : 0));
 
-    _findStatsCreated.store(true);
+    _findStatsCreated.store(true, std::memory_order_release);
   });
   TRI_ASSERT(_findStats != nullptr);
 }
@@ -432,7 +432,7 @@ void Cache::ensureEvictionStats() {
     _manager->adjustGlobalAllocation(
         sizeof(decltype(_evictionStats)::element_type));
 
-    _evictionStatsCreated.store(true);
+    _evictionStatsCreated.store(true, std::memory_order_release);
   });
 
   TRI_ASSERT(_evictionStats != nullptr);
