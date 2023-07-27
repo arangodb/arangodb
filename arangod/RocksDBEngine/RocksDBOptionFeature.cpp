@@ -1487,7 +1487,7 @@ limited number of edge collections/shards.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200)
+      .setIntroducedIn(31103)
       .setLongDescription(R"(Enabling this option will make RocksDB's
 compaction write the persistent index data for different persistent
 indexes (also indexes from different collections/shards) into different 
