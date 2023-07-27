@@ -46,6 +46,11 @@ class HybridLogicalClockWithFixedTime final
  public:
   explicit HybridLogicalClockWithFixedTime(uint64_t t) : _fixed(t) {}
 
+  void goBack() noexcept {
+    // make time go backwards 🚀
+    --_fixed;
+  }
+
  protected:
   uint64_t getPhysicalTime() override {
     // arbitrary timestamp from Sep 30, 2022.
@@ -251,5 +256,22 @@ TEST(
     ASSERT_GT(stamp, initialPing);
     ASSERT_GT(stamp, initialPong);
     initialPong = stamp;
+  }
+}
+
+TEST(HybridLogicalClockTest,
+     test_values_increase_even_if_physical_time_goes_backwards) {
+  ::HybridLogicalClockWithFixedTime hlc(1664561862434ULL);
+
+  uint64_t initial = hlc.getTimeStamp();
+  ASSERT_EQ(1664561862434ULL << 20ULL, initial);
+
+  for (size_t i = 0; i < 10'000'000; ++i) {
+    uint64_t stamp = hlc.getTimeStamp();
+    // stamps must be ever-increasing
+    ASSERT_GT(stamp, initial);
+    initial = stamp;
+
+    hlc.goBack();
   }
 }
