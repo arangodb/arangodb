@@ -1456,7 +1456,7 @@ limited number of collections/shards.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200)
+      .setIntroducedIn(31103)
       .setLongDescription(R"(Enabling this option will make RocksDB's
 compaction write the edge index data for different edge collections/shards
 into different .sst files. Otherwise the edge index data from different 
