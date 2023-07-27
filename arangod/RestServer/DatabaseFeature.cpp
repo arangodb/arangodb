@@ -540,7 +540,7 @@ collections (e.g. test suites).)");
       .setLongDescription(R"(If the maximum number of databases is reached, no
 additional databases can be created in the deployment. In order to create additional
 databases, other databases need to be removed first.")")
-      .setIntroducedIn(31120);
+      .setIntroducedIn(31010);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
