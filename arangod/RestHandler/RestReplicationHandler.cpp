@@ -3786,9 +3786,10 @@ Result RestReplicationHandler::createBlockingTransaction(
     return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
   }
 
-  TRI_ASSERT(isLockHeld(id).ok());
+  auto lockHeld = isLockHeld(id);
+  TRI_ASSERT(lockHeld.ok() || _vocbase.server().isStopping());
 
-  return Result();
+  return lockHeld;
 }
 
 Result RestReplicationHandler::isLockHeld(TransactionId id) const {
@@ -3796,7 +3797,7 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
   // there it should return false.
   // In all other cases it is released quickly.
   if (_vocbase.isDropped()) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
