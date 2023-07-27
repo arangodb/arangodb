@@ -69,7 +69,7 @@ struct IAsyncLogWriteBatcher;
 }  // namespace rocksdb
 
 namespace wal {
-struct IWalManager;
+struct WalManager;
 }
 }  // namespace replication2::storage
 
@@ -782,7 +782,7 @@ class RocksDBEngine final : public StorageEngine {
 
   std::unique_ptr<RocksDBDumpManager> _dumpManager;
 
-  std::shared_ptr<replication2::storage::wal::IWalManager> _walManager;
+  std::shared_ptr<replication2::storage::wal::WalManager> _walManager;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

@@ -24,8 +24,8 @@
 #include "FileIterator.h"
 
 #include "Basics/Exceptions.h"
-#include "Replication2/Storage/WAL/Entry.h"
 #include "Replication2/Storage/WAL/IFileReader.h"
+#include "Replication2/Storage/WAL/Record.h"
 #include "Replication2/Storage/WAL/ReadHelpers.h"
 
 #include "velocypack/Buffer.h"
@@ -36,7 +36,9 @@ FileIterator::FileIterator(IteratorPosition position,
                            std::unique_ptr<IFileReader> reader)
     : _pos(position), _reader(std::move(reader)) {
   _reader->seek(_pos.fileOffset());
-  moveToFirstEntry();
+  if (_pos.index().value != 0) {
+    moveToFirstEntry();
+  }
 }
 
 void FileIterator::moveToFirstEntry() {
@@ -45,51 +47,17 @@ void FileIterator::moveToFirstEntry() {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
 
-  TRI_ASSERT(Entry::Header::fromCompressed(res.get()).index >=
-             _pos.index().value);
+  TRI_ASSERT(res.get().index() >= _pos.index().value);
   _pos = IteratorPosition::withFileOffset(_pos.index(), _reader->position());
 }
 
 auto FileIterator::next() -> std::optional<PersistedLogEntry> {
-  auto startPos = _reader->position();
-
-  Entry::CompressedHeader compressedHeader;
-  if (!_reader->read(compressedHeader)) {
+  auto res = readLogEntry(*_reader);
+  if (res.fail()) {
     return std::nullopt;
   }
 
-  auto header = Entry::Header::fromCompressed(compressedHeader);
-
-  auto paddedSize = Entry::paddedPayloadSize(header.size);
-  velocypack::UInt8Buffer buffer(paddedSize);
-  if (_reader->read(buffer.data(), paddedSize) != paddedSize) {
-    return std::nullopt;
-  }
-  buffer.resetTo(header.size);
-
-  auto entry = [&]() -> LogEntry {
-    if (header.type == EntryType::wMeta) {
-      auto payload =
-          LogMetaPayload::fromVelocyPack(velocypack::Slice(buffer.data()));
-      return LogEntry(LogTerm(header.term), LogIndex(header.index),
-                      std::move(payload));
-    } else {
-      LogPayload payload(std::move(buffer));
-      return LogEntry(LogTerm(header.term), LogIndex(header.index),
-                      std::move(payload));
-    }
-  }();
-
-  Entry::Footer footer;
-  if (!_reader->read(footer)) {
-    return std::nullopt;
-  }
-  TRI_ASSERT(footer.size % 8 == 0);
-  TRI_ASSERT(footer.size == _reader->position() - startPos);
-
-  _pos = IteratorPosition::withFileOffset(entry.logIndex(), startPos);
-
-  return PersistedLogEntry(std::move(entry), _pos);
+  return {std::move(res.get())};
 }
 
 }  // namespace arangodb::replication2::storage::wal

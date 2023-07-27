@@ -23,12 +23,25 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace arangodb::replication2::storage::wal {
 
-enum class EntryType {
-  wMeta = 0,
-  wNormal = 1,
-  // in the future we can add more (e.g., compressed?)
+struct IFileReader;
+struct IFileWriter;
+
+struct IFileManager {
+  virtual ~IFileManager() = default;
+  virtual auto listFiles() -> std::vector<std::string> = 0;
+
+  virtual auto createReader(std::string const& filename)
+      -> std::unique_ptr<IFileReader> = 0;
+  virtual auto createWriter(std::string const& filename)
+      -> std::unique_ptr<IFileWriter> = 0;
+
+  virtual auto removeAll() -> bool = 0;
 };
 
 }  // namespace arangodb::replication2::storage::wal

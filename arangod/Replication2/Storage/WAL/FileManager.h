@@ -23,21 +23,26 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Storage/WAL/IFileManager.h"
 
-namespace arangodb {
-class Result;
-}
+#include <filesystem>
 
 namespace arangodb::replication2::storage::wal {
 
-struct IFileWriter;
+struct FileManager : IFileManager {
+  explicit FileManager(std::filesystem::path folderPath);
 
-struct IWalManager {
-  virtual ~IWalManager() = default;
+  auto listFiles() -> std::vector<std::string> override;
 
-  virtual auto openLog(LogId) -> std::unique_ptr<IFileWriter> = 0;
-  virtual auto dropLog(LogId) -> Result = 0;
+  auto createReader(std::string const& filename)
+      -> std::unique_ptr<IFileReader> override;
+  auto createWriter(std::string const& filename)
+      -> std::unique_ptr<IFileWriter> override;
+
+  auto removeAll() -> bool override;
+
+ private:
+  std::filesystem::path _folderPath;
 };
 
 }  // namespace arangodb::replication2::storage::wal

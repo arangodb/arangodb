@@ -22,34 +22,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WalManager.h"
+#include <filesystem>
 
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
-#include "Replication2/Storage/WAL/FileWriterImpl.h"
+#include "Replication2/Storage/WAL/FileManager.h"
+#include "Replication2/Storage/WAL/IFileManager.h"
 
 namespace arangodb::replication2::storage::wal {
 
 WalManager::WalManager(std::string folderPath)
     : _folderPath(std::move(folderPath)) {
-  if (auto res = basics::FileUtils::createDirectory(_folderPath); !res) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "failed to create folder for replicated log files");
-  }
+  std::filesystem::create_directories(_folderPath);
 }
 
-std::unique_ptr<IFileWriter> WalManager::openLog(LogId log) {
-  return std::make_unique<FileWriterImpl>(getLogPath(log));
+auto WalManager::createFileManager(LogId log) -> std::unique_ptr<IFileManager> {
+  auto path = getLogPath(log);
+  std::filesystem::create_directories(path);
+  return std::make_unique<FileManager>(std::move(path));
 }
 
-Result WalManager::dropLog(LogId log) {
-  auto error = basics::FileUtils::remove(getLogPath(log));
-  return Result{error};
-}
-
-std::string WalManager::getLogPath(LogId log) const {
-  return basics::FileUtils::buildFilename(_folderPath,
-                                          std::to_string(log.id()) + ".log");
+auto WalManager::getLogPath(LogId log) const -> std::filesystem::path {
+  return _folderPath / std::to_string(log.id());
 }
 
 }  // namespace arangodb::replication2::storage::wal

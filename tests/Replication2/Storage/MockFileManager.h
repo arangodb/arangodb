@@ -23,24 +23,22 @@
 
 #pragma once
 
-#include <filesystem>
-#include <memory>
-#include <string>
+#include <gmock/gmock.h>
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Basics/Result.h"
+#include "Replication2/Storage/WAL/IFileReader.h"
+#include "Replication2/Storage/WAL/IFileWriter.h"
+#include "Replication2/Storage/WAL/IFileManager.h"
 
-namespace arangodb::replication2::storage::wal {
+namespace arangodb::replication2::storage::wal::test {
 
-struct IFileManager;
-
-struct WalManager {
-  explicit WalManager(std::string folderPath);
-
-  auto createFileManager(LogId) -> std::unique_ptr<IFileManager>;
-
- private:
-  auto getLogPath(LogId log) const -> std::filesystem::path;
-  std::filesystem::path _folderPath;
+struct MockFileManager : IFileManager {
+  MOCK_METHOD(std::vector<std::string>, listFiles, (), (override));
+  MOCK_METHOD(std::unique_ptr<IFileReader>, createReader, (std::string const&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<IFileWriter>, createWriter, (std::string const&),
+              (override));
+  MOCK_METHOD(bool, removeAll, (), (override));
 };
 
-}  // namespace arangodb::replication2::storage::wal
+}  // namespace arangodb::replication2::storage::wal::test

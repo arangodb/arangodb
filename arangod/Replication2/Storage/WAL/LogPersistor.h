@@ -23,17 +23,18 @@
 
 #pragma once
 
+#include <set>
 #include <memory>
 
 #include "Replication2/Storage/ILogPersistor.h"
 
 namespace arangodb::replication2::storage::wal {
 
-struct IWalManager;
+struct IFileManager;
 struct IFileWriter;
 
 struct LogPersistor : ILogPersistor {
-  LogPersistor(LogId logId, std::shared_ptr<IWalManager> walManager);
+  LogPersistor(LogId logId, std::shared_ptr<IFileManager> fileManager);
 
   [[nodiscard]] auto getIterator(IteratorPosition position)
       -> std::unique_ptr<PersistedLogIterator> override;
@@ -57,9 +58,20 @@ struct LogPersistor : ILogPersistor {
   auto drop() -> Result override;
 
  private:
+  struct LogFile {
+    std::string filename;
+    TermIndexPair first;
+    TermIndexPair last;
+
+    bool operator<(LogFile const& other) const {
+      return first.index < other.first.index;
+    }
+  };
+
   LogId const _logId;
-  std::shared_ptr<IWalManager> const _walManager;
-  std::unique_ptr<IFileWriter> _fileWriter;
+  std::shared_ptr<IFileManager> const _fileManager;
+  std::set<LogFile> _fileSet;
+  std::unique_ptr<IFileWriter> _activeFile;
   std::optional<TermIndexPair> _lastWrittenEntry;
 };
 

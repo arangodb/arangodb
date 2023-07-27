@@ -34,12 +34,11 @@
 #include "Logger/LogMacros.h"
 #include "Replication2/Storage/IteratorPosition.h"
 #include "Replication2/Storage/WAL/Buffer.h"
-#include "Replication2/Storage/WAL/Entry.h"
-#include "Replication2/Storage/WAL/EntryType.h"
 #include "Replication2/Storage/WAL/FileIterator.h"
+#include "Replication2/Storage/WAL/IFileManager.h"
 #include "Replication2/Storage/WAL/IFileReader.h"
 #include "Replication2/Storage/WAL/IFileWriter.h"
-#include "Replication2/Storage/WAL/IWalManager.h"
+#include "Replication2/Storage/WAL/Record.h"
 #include "Replication2/Storage/WAL/ReadHelpers.h"
 #include "velocypack/Builder.h"
 
@@ -71,50 +70,50 @@ struct BufferWriter {
  private:
   std::uint32_t writeNormalEntry(LogEntry const& entry) {
     TRI_ASSERT(entry.hasPayload());
-    Entry::Header header;
+    Record::Header header;
     header.index = entry.logIndex().value;
     header.term = entry.logTerm().value;
-    header.type = EntryType::wNormal;
+    header.type = RecordType::wNormal;
 
     auto* payload = entry.logPayload();
     TRI_ASSERT(payload != nullptr);
     header.size = payload->byteSize();
-    _buffer.append(header.compress());
+    _buffer.append(Record::CompressedHeader{header});
     _buffer.append(payload->slice().getDataPtr(), payload->byteSize());
     return header.size;
   }
 
   std::uint32_t writeMetaEntry(LogEntry const& entry) {
     TRI_ASSERT(entry.hasMeta());
-    Entry::Header header;
+    Record::Header header;
     header.index = entry.logIndex().value;
     header.term = entry.logTerm().value;
-    header.type = EntryType::wMeta;
+    header.type = RecordType::wMeta;
     header.size = 0;  // we initialize this to zero so the compiler is happy,
                       // but will update it later
 
     // the meta entry is directly encoded into the buffer, so we have to write
     // the header beforehand and update the size afterwards
-    _buffer.append(header.compress());
-    auto pos = _buffer.size() - sizeof(Entry::CompressedHeader::size);
+    _buffer.append(Record::CompressedHeader{header});
+    auto pos = _buffer.size() - sizeof(Record::CompressedHeader::size);
 
     auto* payload = entry.meta();
     TRI_ASSERT(payload != nullptr);
     VPackBuilder builder(_buffer.buffer());
     payload->toVelocyPack(builder);
-    header.size = _buffer.size() - pos - sizeof(Entry::CompressedHeader::size);
+    header.size = _buffer.size() - pos - sizeof(Record::CompressedHeader::size);
 
     // reset to the saved position so we can write the actual size
     _buffer.resetTo(pos);
     _buffer.append(
-        static_cast<decltype(Entry::CompressedHeader::size)>(header.size));
+        static_cast<decltype(Record::CompressedHeader::size)>(header.size));
     _buffer.advance(header.size);
     return header.size;
   }
 
   void writePaddingBytes(
       std::uint32_t payloadSize) {  // write zeroed out padding bytes
-    auto numPaddingBytes = Entry::paddedPayloadSize(payloadSize) - payloadSize;
+    auto numPaddingBytes = Record::paddedPayloadSize(payloadSize) - payloadSize;
     TRI_ASSERT(numPaddingBytes < 8);
     std::uint64_t const zero = 0;
     _buffer.append(&zero, numPaddingBytes);
@@ -122,10 +121,10 @@ struct BufferWriter {
 
   void writeFooter(std::size_t startPos) {
     auto size = _buffer.size() - startPos;
-    Entry::Footer footer{
+    Record::Footer footer{
         .crc32 = static_cast<std::uint32_t>(absl::ComputeCrc32c(
             {reinterpret_cast<char const*>(_buffer.data() + startPos), size})),
-        .size = static_cast<std::uint32_t>(size + sizeof(Entry::Footer))};
+        .size = static_cast<std::uint32_t>(size + sizeof(Record::Footer))};
     TRI_ASSERT(footer.size % 8 == 0);
     _buffer.append(footer);
   }
@@ -135,16 +134,18 @@ struct BufferWriter {
 
 }  // namespace
 
-LogPersistor::LogPersistor(LogId logId, std::shared_ptr<IWalManager> walManager)
-    : _logId(logId),
-      _walManager(std::move(walManager)),
-      _fileWriter(_walManager->openLog(_logId)) {
-  ;
+LogPersistor::LogPersistor(LogId logId,
+                           std::shared_ptr<IFileManager> fileManager)
+    : _logId(logId), _fileManager(std::move(fileManager)) {
+  // TODO - implement segmented logs
+  auto filename = std::to_string(logId.id()) + ".log";
+  _fileSet.emplace(LogFile{.filename = filename});
+  _activeFile = _fileManager->createWriter(filename);
 }
 
 auto LogPersistor::getIterator(IteratorPosition position)
     -> std::unique_ptr<PersistedLogIterator> {
-  return std::make_unique<FileIterator>(position, _fileWriter->getReader());
+  return std::make_unique<FileIterator>(position, _activeFile->getReader());
 }
 
 auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
@@ -175,7 +176,7 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
   }
 
   auto& buffer = bufferWriter.buffer();
-  auto res = _fileWriter->append(
+  auto res = _activeFile->append(
       {reinterpret_cast<char const*>(buffer.data()), buffer.size()});
   if (res.fail()) {
     return res;
@@ -183,7 +184,7 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
   _lastWrittenEntry = lastWrittenEntry;
 
   if (writeOptions.waitForSync) {
-    _fileWriter->sync();
+    _activeFile->sync();
   }
 
   return ResultT<SequenceNumber>::success(seq);
@@ -198,7 +199,7 @@ auto LogPersistor::removeFront(LogIndex stop, WriteOptions const&)
 
 auto LogPersistor::removeBack(LogIndex start, WriteOptions const&)
     -> futures::Future<ResultT<SequenceNumber>> {
-  auto reader = _fileWriter->getReader();
+  auto reader = _activeFile->getReader();
   reader->seek(reader->size());
 
   auto res = seekLogIndexBackward(*reader, start);
@@ -206,24 +207,22 @@ auto LogPersistor::removeBack(LogIndex start, WriteOptions const&)
     return res.result();
   }
 
-  auto header = Entry::Header::fromCompressed(res.get());
-  TRI_ASSERT(header.index == start.value);
+  TRI_ASSERT(res.get().index() == start.value);
 
   auto pos = reader->position();
   // TODO - refactor and check that we actually have one more entry to read!
-  Entry::Footer footer;
-  reader->seek(pos - sizeof(Entry::Footer));
+  Record::Footer footer;
+  reader->seek(pos - sizeof(Record::Footer));
   reader->read(footer);
   reader->seek(pos - footer.size);
 
-  Entry::CompressedHeader compressedHeader;
-  reader->read(compressedHeader);
-  header = Entry::Header::fromCompressed(compressedHeader);
+  Record::CompressedHeader header;
+  reader->read(header);
 
   _lastWrittenEntry =
-      TermIndexPair(LogTerm{header.term}, LogIndex{header.index});
+      TermIndexPair(LogTerm{header.term()}, LogIndex{header.index()});
 
-  _fileWriter->truncate(pos);
+  _activeFile->truncate(pos);
   return ResultT<SequenceNumber>::success(start.value);
 }
 
@@ -244,6 +243,11 @@ auto LogPersistor::compact() -> Result {
   return Result{};
 }
 
-auto LogPersistor::drop() -> Result { return _walManager->dropLog(_logId); }
+auto LogPersistor::drop() -> Result {
+  // TODO - error handling
+  _activeFile.reset();
+  _fileManager->removeAll();
+  return Result{};
+}
 
 }  // namespace arangodb::replication2::storage::wal

@@ -21,19 +21,35 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "FileManager.h"
+#include <filesystem>
 
-#include <gmock/gmock.h>
+#include "Replication2/Storage/WAL/FileReaderImpl.h"
+#include "Replication2/Storage/WAL/FileWriterImpl.h"
 
-#include "Basics/Result.h"
-#include "Replication2/Storage/WAL/IFileWriter.h"
-#include "Replication2/Storage/WAL/IWalManager.h"
+namespace arangodb::replication2::storage::wal {
 
-namespace arangodb::replication2::storage::wal::test {
+FileManager::FileManager(std::filesystem::path folderPath)
+    : _folderPath(std::move(folderPath)) {}
 
-struct MockWalManager : IWalManager {
-  MOCK_METHOD(std::unique_ptr<IFileWriter>, openLog, (LogId), (override));
-  MOCK_METHOD(Result, dropLog, (LogId), (override));
-};
+auto FileManager::listFiles() -> std::vector<std::string> {
+  // TODO
+  return {};
+}
 
-}  // namespace arangodb::replication2::storage::wal::test
+auto FileManager::createReader(std::string const& filename)
+    -> std::unique_ptr<IFileReader> {
+  return std::make_unique<FileReaderImpl>(_folderPath / filename);
+}
+
+auto FileManager::createWriter(std::string const& filename)
+    -> std::unique_ptr<IFileWriter> {
+  return std::make_unique<FileWriterImpl>(_folderPath / filename);
+}
+
+auto FileManager::removeAll() -> bool {
+  // TODO
+  return {};
+}
+
+}  // namespace arangodb::replication2::storage::wal

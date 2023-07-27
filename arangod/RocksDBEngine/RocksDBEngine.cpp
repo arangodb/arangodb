@@ -74,6 +74,7 @@
 #include "Replication2/Storage/RocksDB/StatePersistor.h"
 #include "Replication2/Storage/RocksDB/Metrics.h"
 #include "Replication2/Storage/RocksDB/ReplicatedStateInfo.h"
+#include "Replication2/Storage/WAL/IFileManager.h"
 #include "Replication2/Storage/WAL/IFileWriter.h"
 #include "Replication2/Storage/WAL/LogPersistor.h"
 #include "Replication2/Storage/WAL/WalManager.h"
@@ -3289,8 +3290,8 @@ auto RocksDBEngine::makeLogStorageMethods(
     -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
 #if defined(USE_CUSTOM_WAL)
   auto logPersistor =
-      std::make_unique<replication2::storage::wal::LogPersistor>(logId,
-                                                                 _walManager);
+      std::make_unique<replication2::storage::wal::LogPersistor>(
+          logId, _walManager->createFileManager(logId));
 #else
   auto logPersistor =
       std::make_unique<replication2::storage::rocksdb::LogPersistor>(

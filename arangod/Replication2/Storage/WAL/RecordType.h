@@ -23,30 +23,12 @@
 
 #pragma once
 
-#include "Basics/ResultT.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/PersistedLogEntry.h"
-#include "Replication2/Storage/WAL/Record.h"
-
 namespace arangodb::replication2::storage::wal {
 
-struct IFileReader;
-
-// Seek to the entry with the specified index in the file, starting from the
-// current position of the reader, either forward or backward
-// In case of success, the reader is positioned at the start of the matching
-// entry.
-auto seekLogIndexForward(IFileReader& reader, LogIndex index)
-    -> ResultT<Record::CompressedHeader>;
-auto seekLogIndexBackward(IFileReader& reader, LogIndex index)
-    -> ResultT<Record::CompressedHeader>;
-
-auto getFirstRecordHeader(IFileReader& reader)
-    -> ResultT<Record::CompressedHeader>;
-auto getLastRecordHeader(IFileReader& reader)
-    -> ResultT<Record::CompressedHeader>;
-
-// read the next entry, starting from the current position of the reader
-auto readLogEntry(IFileReader& reader) -> ResultT<PersistedLogEntry>;
+enum class RecordType {
+  wMeta = 0,
+  wNormal = 1,
+  // in the future we can add more (e.g., compressed?)
+};
 
 }  // namespace arangodb::replication2::storage::wal
