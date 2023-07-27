@@ -178,7 +178,7 @@ TEST(HybridLogicalClockTest, test_extract_time_and_count) {
 
 TEST(HybridLogicalClockTest, test_get_timestamp) {
   // arbitrary timestamp from Sep 30, 2022, that is supposed to
-  // be in the past whenever this test runs
+  // be in the past whenever this test runs.
   constexpr uint64_t dateInThePast = 1664561862434ULL;
 
   basics::HybridLogicalClock hlc;
@@ -196,6 +196,12 @@ TEST(HybridLogicalClockTest, test_get_timestamp) {
 }
 
 TEST(HybridLogicalClockTest, test_values_increase_for_same_physical_time) {
+  // arbitrary timestamp from Sep 30, 2022.
+  // this timestamp is returned as the clock's physical time.
+  // it is intentionally kept constant, so when the clock is
+  // asked for its physical time multiple times, we intentionally
+  // return the same timestamp. we still expect the HLC values
+  // to be ever-increasing.
   ::HybridLogicalClockWithFixedTime hlc(1664561862434ULL);
 
   uint64_t initial = hlc.getTimeStamp();
@@ -211,6 +217,16 @@ TEST(HybridLogicalClockTest, test_values_increase_for_same_physical_time) {
 
 TEST(HybridLogicalClockTest,
      test_values_increase_when_two_clocks_play_ping_pong) {
+  // arbitrary timestamp from Sep 30, 2022.
+  // this timestamp is returned as the clock's physical time.
+  // it is intentionally kept constant, so when the clock is
+  // asked for its physical time multiple times, we intentionally
+  // return the same timestamp. we still expect the HLC values
+  // to be ever-increasing.
+  // here we use two clocks, and we ask one clock for an HLC
+  // value using the HLC value of the other, and vice versa.
+  // the expected behavior is that we never get the same HLC
+  // value ever, and the HLC values are ever-increasing.
   ::HybridLogicalClockWithFixedTime ping(1664561862434ULL);
   ::HybridLogicalClockWithFixedTime pong(1664561862434ULL);
 
@@ -236,6 +252,11 @@ TEST(HybridLogicalClockTest,
 TEST(
     HybridLogicalClockTest,
     test_values_increase_when_two_clocks_play_ping_pong_and_one_clock_is_far_behind) {
+  // arbitrary timestamp values from 2022 and 2021.
+  // these timestamps are returned as the clocks physical times.
+  // one clock is significantly behind the other.
+  // we still expect ever-increasing HLC values to come out of
+  // both, even if one clock is severely behind.
   ::HybridLogicalClockWithFixedTime ping(1664561862434ULL);
   // pong has a lag of more than 1 year...
   ::HybridLogicalClockWithFixedTime pong(1640482451649ULL);
@@ -261,6 +282,14 @@ TEST(
 
 TEST(HybridLogicalClockTest,
      test_values_increase_even_if_physical_time_goes_backwards) {
+  // arbitrary timestamp value from 2022.
+  // these timestamps is returned as the clock's initial physical
+  // time.
+  // the clock is also faked in a way that whenever we ask it for
+  // the physical time again, it returns a timestamp that is more
+  // in the past than the previous one. in other words: this clock
+  // intentionally goes backwards.
+  // we still expect ever-increasing HLC values to come out of it.
   ::HybridLogicalClockWithFixedTime hlc(1664561862434ULL);
 
   uint64_t initial = hlc.getTimeStamp();
