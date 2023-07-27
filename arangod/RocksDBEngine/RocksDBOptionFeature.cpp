@@ -1393,7 +1393,24 @@ option to `0`.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Enabling this option will make RocksDB's
+compaction write the document data for different collections/shards
+into different .sst files. Otherwise the document data from different 
+collections/shards can be mixed and written into the same .sst files.
+
+Enabling this option usually has the benefit of making the RocksDB
+compaction more efficient when a lot of different collections/shards
+are written to in parallel.
+The disavantage of enabling this option is that there can be more .sst
+files than when the option is turned off, and the disk space used by
+these .sst files can be higher than if there are fewer .sst files (this
+is because there is some per-.sst file overhead).
+In particular on deployments with many collections/shards
+this can lead to a very high number of .sst files, with the potential
+of outgrowing the maximum number of file descriptors the ArangoDB process 
+can open. Thus the option should only be enabled on deployments with a
+limited number of collections/shards.)");
 
   options
       ->addOption("--rocksdb.partition-files-for-primary-index",
@@ -1408,7 +1425,24 @@ option to `0`.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Enabling this option will make RocksDB's
+compaction write the primary index data for different collections/shards
+into different .sst files. Otherwise the primary index data from different 
+collections/shards can be mixed and written into the same .sst files.
+
+Enabling this option usually has the benefit of making the RocksDB
+compaction more efficient when a lot of different collections/shards
+are written to in parallel.
+The disavantage of enabling this option is that there can be more .sst
+files than when the option is turned off, and the disk space used by
+these .sst files can be higher than if there are fewer .sst files (this
+is because there is some per-.sst file overhead).
+In particular on deployments with many collections/shards
+this can lead to a very high number of .sst files, with the potential
+of outgrowing the maximum number of file descriptors the ArangoDB process 
+can open. Thus the option should only be enabled on deployments with a
+limited number of collections/shards.)");
 
   options
       ->addOption("--rocksdb.partition-files-for-edge-index",
@@ -1422,7 +1456,24 @@ option to `0`.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Enabling this option will make RocksDB's
+compaction write the edge index data for different edge collections/shards
+into different .sst files. Otherwise the edge index data from different 
+edge collections/shards can be mixed and written into the same .sst files.
+
+Enabling this option usually has the benefit of making the RocksDB
+compaction more efficient when a lot of different edge collections/shards
+are written to in parallel.
+The disavantage of enabling this option is that there can be more .sst
+files than when the option is turned off, and the disk space used by
+these .sst files can be higher than if there are fewer .sst files (this
+is because there is some per-.sst file overhead).
+In particular on deployments with many edge collections/shards
+this can lead to a very high number of .sst files, with the potential
+of outgrowing the maximum number of file descriptors the ArangoDB process 
+can open. Thus the option should only be enabled on deployments with a
+limited number of edge collections/shards.)");
 
   options
       ->addOption("--rocksdb.partition-files-for-persistent-index",
@@ -1436,7 +1487,25 @@ option to `0`.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Enabling this option will make RocksDB's
+compaction write the persistent index data for different persistent
+indexes (also indexes from different collections/shards) into different 
+.sst files. Otherwise the persistent index data from different 
+collections/shards/indexes can be mixed and written into the same .sst files.
+
+Enabling this option usually has the benefit of making the RocksDB
+compaction more efficient when a lot of different collections/shards/indexes
+are written to in parallel.
+The disavantage of enabling this option is that there can be more .sst
+files than when the option is turned off, and the disk space used by
+these .sst files can be higher than if there are fewer .sst files (this
+is because there is some per-.sst file overhead).
+In particular on deployments with many collections/shards/indexes
+this can lead to a very high number of .sst files, with the potential
+of outgrowing the maximum number of file descriptors the ArangoDB process 
+can open. Thus the option should only be enabled on deployments with a
+limited number of edge collections/shards/indexes.)");
 
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now
