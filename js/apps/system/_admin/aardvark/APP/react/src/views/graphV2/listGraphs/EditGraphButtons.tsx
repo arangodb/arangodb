@@ -13,7 +13,11 @@ export const EditGraphButtons = ({
   graph?: GraphInfo;
   onClose: () => void;
 }) => {
-  const { isOpen: isDeleteModalOpen, onOpen: onOpenDeleteModal, onClose: onCloseDeleteModal } = useDisclosure();
+  const {
+    isOpen: isDeleteModalOpen,
+    onOpen: onOpenDeleteModal,
+    onClose: onCloseDeleteModal
+  } = useDisclosure();
   const resetDisplaySettings = async () => {
     try {
       const fullConfig = await fetchUserConfig();
@@ -41,7 +45,14 @@ export const EditGraphButtons = ({
   };
   return (
     <>
-      <DeleteGraphModal isOpen={isDeleteModalOpen} onClose={onCloseDeleteModal} graph={graph} />
+      <DeleteGraphModal
+        isOpen={isDeleteModalOpen}
+        onClose={onCloseDeleteModal}
+        onSuccess={() => {
+          onClose();
+        }}
+        currentGraph={graph}
+      />
       <Button colorScheme="red" type="button" onClick={onOpenDeleteModal}>
         Delete
       </Button>

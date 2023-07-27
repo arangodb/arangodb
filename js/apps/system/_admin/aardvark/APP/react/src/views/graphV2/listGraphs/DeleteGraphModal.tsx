@@ -1,11 +1,4 @@
-import {
-  Button,
-  Flex,
-  Heading,
-  ModalFooter,
-  Stack,
-  VStack
-} from "@chakra-ui/react";
+import { Button, Flex, Heading, ModalFooter, Stack } from "@chakra-ui/react";
 import { GraphInfo } from "arangojs/graph";
 import { Form, Formik } from "formik";
 import React from "react";
@@ -14,40 +7,35 @@ import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { FormField } from "../../../components/form/FormField";
 import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
-import { GraphsModeProvider, useGraphsModeContext } from "./GraphsModeContext";
 
 export const DeleteGraphModal = ({
-  graph,
+  currentGraph,
   isOpen,
-  onClose
+  onClose,
+  onSuccess
 }: {
-  graph?: GraphInfo;
+  currentGraph?: GraphInfo;
   isOpen: boolean;
   onClose: () => void;
+  onSuccess: () => void;
 }) => {
-  const { initialGraph } = useGraphsModeContext();
-
-  const INITIAL_VALUES: any = {
-    name: ""
+  const INITIAL_VALUES = {
+    dropCollections: false
   };
 
-  const dropCollectionsField = {
-    name: "dropCollections",
-    type: "boolean",
-    label: "Also drop collections"
-  };
-
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: { dropCollections: boolean }) => {
+    if (!currentGraph) return;
     const currentDB = getCurrentDB();
-    const graph = currentDB.graph(values.name);
+    const graph = currentDB.graph(currentGraph.name);
     try {
       const info = await graph.drop(values.dropCollections);
       window.arangoHelper.arangoNotification(
         "Graph",
-        `"${values.name}" successfully deleted`
+        `"${currentGraph.name}" successfully deleted`
       );
       mutate("/graphs");
       onClose();
+      onSuccess();
       return info;
     } catch (e: any) {
       const errorMessage = e.response.body.errorMessage;
@@ -56,44 +44,39 @@ export const DeleteGraphModal = ({
   };
 
   return (
-    <Formik
-      initialValues={initialGraph || INITIAL_VALUES}
-      onSubmit={handleSubmit}
-    >
-      <GraphsModeProvider mode="edit" initialGraph={graph}>
-        <Modal size="6xl" isOpen={isOpen} onClose={onClose}>
-          <ModalHeader fontSize="sm" fontWeight="normal">
-            <Flex direction="row" alignItems="center">
-              <Heading marginRight="4" size="md">
-                Really delete graph "{graph?.name}"
-              </Heading>
-            </Flex>
-          </ModalHeader>
-          <Form>
-            <ModalBody>
-              <VStack spacing={4} align="stretch">
-                <FieldsGrid maxWidth="full">
-                  <FormField
-                    field={{
-                      ...dropCollectionsField
-                    }}
-                  />
-                </FieldsGrid>
-              </VStack>
-            </ModalBody>
-            <ModalFooter>
-              <Stack direction="row" spacing={4} align="center">
-                <Button onClick={onClose} colorScheme="gray">
-                  Cancel
-                </Button>
-                <Button colorScheme="red" type="submit">
-                  Delete
-                </Button>
-              </Stack>
-            </ModalFooter>
-          </Form>
-        </Modal>
-      </GraphsModeProvider>
+    <Formik initialValues={INITIAL_VALUES} onSubmit={handleSubmit}>
+      <Modal size="lg" isOpen={isOpen} onClose={onClose}>
+        <ModalHeader fontSize="sm" fontWeight="normal">
+          <Flex direction="row" alignItems="center">
+            <Heading marginRight="4" size="md">
+              Really delete graph "{currentGraph?.name}"
+            </Heading>
+          </Flex>
+        </ModalHeader>
+        <Form>
+          <ModalBody>
+            <FieldsGrid maxWidth="full">
+              <FormField
+                field={{
+                  name: "dropCollections",
+                  type: "boolean",
+                  label: "Also drop collections"
+                }}
+              />
+            </FieldsGrid>
+          </ModalBody>
+          <ModalFooter>
+            <Stack direction="row" spacing={4} align="center">
+              <Button onClick={onClose} colorScheme="gray">
+                Cancel
+              </Button>
+              <Button colorScheme="red" type="submit">
+                Delete
+              </Button>
+            </Stack>
+          </ModalFooter>
+        </Form>
+      </Modal>
     </Formik>
   );
 };
