@@ -1425,7 +1425,7 @@ limited number of collections/shards.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200)
+      .setIntroducedIn(31103)
       .setLongDescription(R"(Enabling this option will make RocksDB's
 compaction write the primary index data for different collections/shards
 into different .sst files. Otherwise the primary index data from different 
