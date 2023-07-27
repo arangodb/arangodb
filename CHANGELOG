@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.19.0-preview-2.
+
 * Added experimental startup options for RocksDB .sst file partitioning:
 
   - `--rocksdb.partition-files-for-documents`
