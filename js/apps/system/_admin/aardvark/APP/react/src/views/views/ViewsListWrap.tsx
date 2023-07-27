@@ -5,10 +5,9 @@ import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
 import { SingleViewView } from "./editView/SingleViewView";
 import { SearchViewsCustomStyleReset } from "./SearchViewsCustomStyleReset";
-import { ViewsProvider } from "./ViewsContext";
-import { ViewsView } from "./ViewsView";
+import { ViewsList } from "./ViewsList";
 
-export const ViewsViewWrap = () => {
+export const ViewsListWrap = () => {
   useDisableNavBar();
   useGlobalStyleReset();
   return (
@@ -17,14 +16,10 @@ export const ViewsViewWrap = () => {
         <HashRouter basename="/" hashType={"noslash"}>
           <Switch>
             <Route path="/views" exact>
-              <ViewsProvider>
-                <ViewsView />
-              </ViewsProvider>
+              <ViewsList />
             </Route>
             <Route path="/views/:viewName">
-              <ViewsProvider isFormDisabled>
-                <SingleViewView />
-              </ViewsProvider>
+              <SingleViewView />
             </Route>
           </Switch>
         </HashRouter>

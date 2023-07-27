@@ -38,7 +38,8 @@ export const ArangoSearchViewSettingsInner = () => {
       onChange={() => {
         setChanged(true);
       }}
-      backgroundColor="white" width="100%"
+      backgroundColor="white"
+      width="100%"
       height="calc(100vh - 80px)"
       gridTemplateRows="120px 1fr"
     >

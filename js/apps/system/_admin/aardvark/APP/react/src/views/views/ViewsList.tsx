@@ -4,18 +4,18 @@ import React from "react";
 import { AddNewViewModal } from "./viewsList/addNewViewForm/AddNewViewModal";
 import { ViewsTable } from "./viewsList/ViewsTable";
 
-export const ViewsView = () => {
+export const ViewsList = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   return (
     <Box padding="4" width="100%">
-      <ViewViewHeader onOpen={onOpen} />
+      <ViewListHeader onOpen={onOpen} />
       <ViewsTable />
       <AddNewViewModal isOpen={isOpen} onClose={onClose} />
     </Box>
   );
 };
 
-const ViewViewHeader = ({ onOpen }: { onOpen: () => void }) => {
+const ViewListHeader = ({ onOpen }: { onOpen: () => void }) => {
   return (
     <Stack direction="row" marginBottom="4" alignItems="center">
       <Heading size="lg">Views</Heading>
@@ -23,9 +23,7 @@ const ViewViewHeader = ({ onOpen }: { onOpen: () => void }) => {
         size="sm"
         leftIcon={<AddIcon />}
         colorScheme="blue"
-        onClick={() => {
-          onOpen();
-        }}
+        onClick={onOpen}
       >
         Add view
       </Button>

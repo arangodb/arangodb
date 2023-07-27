@@ -58,9 +58,15 @@ export const EditableViewNameField = ({
       <Heading as="h1" size="lg" isTruncated title={view.name}>
         View: {view.name}
       </Heading>
-      {!isAdminUser ? <Text flexShrink={0} color="gray.700" fontWeight="600" fontSize="lg">(read only)</Text> : null}
+      {!isAdminUser ? (
+        <Text flexShrink={0} color="gray.700" fontWeight="600" fontSize="lg">
+          (read only)
+        </Text>
+      ) : null}
       {!isCluster && isAdminUser ? (
-        <IconButton flexShrink={0}
+        <IconButton
+          flexShrink={0}
+          marginLeft="2"
           aria-label="Open edit name input"
           icon={<EditIcon />}
           onClick={onOpen}

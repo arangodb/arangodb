@@ -1,10 +1,11 @@
-import { Box, Link, Stack } from "@chakra-ui/react";
+import { Link, Spinner, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
-import { Link as RouterLink, useHistory } from "react-router-dom";
+import { useHistory } from "react-router-dom";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
+import { createEncodedUrl } from "../../../utils/urlHelper";
 import { LockableViewDescription, useFetchViews } from "../useFetchViews";
 
 const columnHelper = createColumnHelper<LockableViewDescription>();
@@ -15,10 +16,10 @@ const TABLE_COLUMNS = [
     id: "name",
     cell: info => {
       const cellValue = info.cell.getValue();
+      const href = createEncodedUrl({ path: "views", value: cellValue });
       return (
         <Link
-          as={RouterLink}
-          to={`/views/${encodeURIComponent(cellValue)}`}
+          href={href}
           textDecoration="underline"
           color="blue.500"
           _hover={{
@@ -27,12 +28,7 @@ const TABLE_COLUMNS = [
         >
           {cellValue}
           {info.row.getValue("isLocked") && (
-            <Box
-              as="i"
-              fontSize={"sm"}
-              className={"fa fa-spinner fa-spin"}
-              marginLeft={1}
-            />
+            <Spinner size={"xs"} marginLeft={1} />
           )}
         </Link>
       );

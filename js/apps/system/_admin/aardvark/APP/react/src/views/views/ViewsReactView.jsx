@@ -1,7 +1,7 @@
 import React from "react";
-import { ViewsViewWrap } from "./ViewsViewWrap";
+import { ViewsListWrap } from "./ViewsListWrap";
 
 const ViewsReactView = () => {
-  return <ViewsViewWrap />;
+  return <ViewsListWrap />;
 };
 window.ViewsReactView = ViewsReactView;

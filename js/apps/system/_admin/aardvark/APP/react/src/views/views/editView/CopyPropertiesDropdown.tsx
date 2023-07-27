@@ -1,6 +1,5 @@
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import { Box, Button, Spinner, Stack, Text } from "@chakra-ui/react";
-import { ViewDescription } from "../View.types";
 import { omit } from "lodash";
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
@@ -10,7 +9,7 @@ import SingleSelect from "../../../components/select/SingleSelect";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { useEditViewContext } from "../editView/EditViewContext";
-import { SearchAliasViewPropertiesType } from "../View.types";
+import { SearchAliasViewPropertiesType, ViewDescription } from "../View.types";
 
 export const CopyPropertiesDropdown = () => {
   const { data, isLoading: isLoadingList } = useSWR("/view", path =>
@@ -77,8 +76,7 @@ const CopyPropertiesInner = ({ views }: { views: ViewDescription[] }) => {
           onCopy({
             selectedView
           });
-          // TODO: remove this once there are forms in search-alias view
-          if ((initialView.type as any) === "search-alias") {
+          if (initialView.type === "search-alias") {
             setChanged(true);
           }
         }}

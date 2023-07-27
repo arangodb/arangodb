@@ -10,9 +10,8 @@ import { DeleteViewModal } from "./DeleteViewModal";
 import { EditableViewNameField } from "./EditableViewNameField";
 
 export const EditViewHeader = () => {
-  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const history = useHistory();
-  const { isAdminUser, initialView } = useEditViewContext();
+  const { isAdminUser } = useEditViewContext();
   return (
     <Box padding="4" borderBottomWidth="2px" borderColor="gray.200">
       <Flex direction="row" alignItems="center">
@@ -27,30 +26,9 @@ export const EditViewHeader = () => {
           }}
         />
         <EditableViewHeading />
-        <Button
-          size="xs"
-          marginLeft="auto"
-          leftIcon={<DeleteIcon />}
-          colorScheme="red"
-          onClick={() => {
-            setShowDeleteModal(true);
-          }}
-        >
-          Delete
-        </Button>
+        <DeleteViewButton />
       </Flex>
       {isAdminUser && <ViewActions />}
-      {showDeleteModal && (
-        <DeleteViewModal
-          view={initialView}
-          onSuccess={() => {
-            history.push("/views");
-          }}
-          onClose={() => {
-            setShowDeleteModal(false);
-          }}
-        />
-      )}
     </Box>
   );
 };
@@ -89,5 +67,37 @@ const EditableViewHeading = () => {
         helpers.setValue(name);
       }}
     />
+  );
+};
+
+const DeleteViewButton = () => {
+  const history = useHistory();
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const { initialView } = useEditViewContext();
+  return (
+    <>
+      <Button
+        size="xs"
+        marginLeft="auto"
+        leftIcon={<DeleteIcon />}
+        colorScheme="red"
+        onClick={() => {
+          setShowDeleteModal(true);
+        }}
+      >
+        Delete
+      </Button>
+      {showDeleteModal && (
+        <DeleteViewModal
+          view={initialView}
+          onSuccess={() => {
+            history.push("/views");
+          }}
+          onClose={() => {
+            setShowDeleteModal(false);
+          }}
+        />
+      )}
+    </>
   );
 };

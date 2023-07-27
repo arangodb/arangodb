@@ -26,7 +26,7 @@ export const DeleteViewModal = ({
     setIsLoading(true);
     try {
       await currentDB.view(view.name).drop();
-      mutate("/views");
+      await mutate("/views");
       setIsLoading(false);
       onSuccess();
     } catch (e: any) {
@@ -46,7 +46,7 @@ export const DeleteViewModal = ({
           <Button
             isDisabled={isLoading}
             colorScheme="gray"
-            onClick={() => onClose()}
+            onClick={onClose}
           >
             Cancel
           </Button>
