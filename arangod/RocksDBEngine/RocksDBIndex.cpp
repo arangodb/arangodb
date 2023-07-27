@@ -246,7 +246,7 @@ ResultT<TruncateGuard> RocksDBIndex::truncateBegin(rocksdb::WriteBatch& batch) {
   if (!r.ok()) {
     return r;
   }
-  return {};
+  return TruncateGuard{};
 }
 
 void RocksDBIndex::truncateCommit(TruncateGuard&& guard,
