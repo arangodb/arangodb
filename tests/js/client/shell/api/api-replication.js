@@ -1201,47 +1201,53 @@ function RestoreCollectionsSuite() {
       // Special case handling, if we are a satellite collection we can have writeConcern 0.
       for (const replicationFactor of ["satellite", 0]) {
         for (const wcKey of ["minReplicationFactor", "writeConcern"]) {
-          const input = { replicationFactor, [wcKey]: 0};
-          const res = tryRestore({name: collname, ...input});
-          try {
-            if (isCluster && !isEnterprise) {
-              // Satellite is not allowed in community.
-              // Hence writeConcern 0 cannot be allowed.
-              // Therefore we expect an error here.
-              isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, input);
-            } else {
-              assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-              if (isCluster) {
-                validateProperties({
-                  replicationFactor: "satellite",
-                  writeConcern: 0,
-                  minReplicationFactor: 0
-                }, collname, 2);
+          for (const includeIllegal of [false, true]) {
+            // We include shards key, to trigger rewrite of input.
+            const input = includeIllegal ? {
+              replicationFactor,
+              [wcKey]: 0,
+              shards: {"s01": ["PRMR_01", "PRMR_02"]}
+            } : {replicationFactor, [wcKey]: 0};
+            const res = tryRestore({name: collname, ...input});
+            try {
+              if (isCluster && !isEnterprise) {
+                // Satellite is not allowed in community.
+                // Hence writeConcern 0 cannot be allowed.
+                // Therefore we expect an error here.
+                isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, input);
               } else {
-                if (replicationFactor === 0 || !isEnterprise) {
-                  // Well on EE Single Server, satellite is allowed, but 0 is not considered like satellite
-                  // Hence we get a normal collection, just ignoring all of the above
-                  // In Community SingleServer all of the above is ignored.
-                  isAllowed(res, collname, input);
-                } else {
+                assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+                if (isCluster) {
                   validateProperties({
                     replicationFactor: "satellite",
-                    minReplicationFactor: 0,
                     writeConcern: 0,
-                    isSmart: false,
-                    shardKeys: ["_key"],
-                    numberOfShards: 1,
-                    isDisjoint: false
-                  }, collname, 2, true);
+                    minReplicationFactor: 0
+                  }, collname, 2);
+                } else {
+                  if (replicationFactor === 0 || !isEnterprise) {
+                    // Well on EE Single Server, satellite is allowed, but 0 is not considered like satellite
+                    // Hence we get a normal collection, just ignoring all of the above
+                    // In Community SingleServer all of the above is ignored.
+                    isAllowed(res, collname, input);
+                  } else {
+                    validateProperties({
+                      replicationFactor: "satellite",
+                      minReplicationFactor: 0,
+                      writeConcern: 0,
+                      isSmart: false,
+                      shardKeys: ["_key"],
+                      numberOfShards: 1,
+                      isDisjoint: false
+                    }, collname, 2, true);
+                  }
                 }
               }
+            } finally {
+              db._drop(collname);
             }
-          } finally {
-            db._drop(collname);
           }
         }
       }
-
     }
   };
 }

@@ -141,6 +141,15 @@ bool shouldConsiderClusterAttribute(VPackSlice fullBody,
   if (isSingleServer()) {
     // To simulate smart collections on SingleServer we need to consider cluster
     // attributes distributeShardsLike will be ignored anyway
+#ifdef USE_ENTERPRISE
+    // On Single Server Enterprise we need to consider Satellite collections
+    // For SmartGraph simulations.
+    if (fullBody.get(StaticStrings::ReplicationFactor).isString() &&
+        fullBody.get(StaticStrings::ReplicationFactor)
+            .isEqualString(StaticStrings::Satellite)) {
+      return true;
+    }
+#endif
     return isSmart(fullBody);
   } else {
     // DistributeShardsLike does superseed cluster attributes
