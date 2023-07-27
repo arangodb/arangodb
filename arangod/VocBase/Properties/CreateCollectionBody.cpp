@@ -726,16 +726,16 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
 #endif
         }
       });
-
   if (res.fail()) {
     auto newBody = transformFromBackwardsCompatibleRestoreBody(input, config,
                                                                res.result());
     if (newBody.fail()) {
       return newBody.result();
     }
+
     // NOTE: We do not log a deprecation message here. The restore API is
     // forever backwards compatible.
-    return ::parseAndValidate(
+    res = ::parseAndValidate(
         config, newBody->slice(), [](CreateCollectionBody& col) {},
         ::rewriteStatusErrorMessageForRestore,
         [&config](CreateCollectionBody& col) {
@@ -753,6 +753,12 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
 #endif
           }
         });
+    if (res.fail() && res.is(TRI_ERROR_ONLY_ENTERPRISE)) {
+      // This API always returns BAD_PARAMETER for community, so we need to
+      // rewrite the message
+      return Result{TRI_ERROR_BAD_PARAMETER, std::move(res.errorMessage())};
+    }
+    return res;
   }
   return res;
 }

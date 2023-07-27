@@ -194,7 +194,7 @@ const validateProperties = (overrides, colName, type, keepClusterSpecificAttribu
     expectedProps.minReplicationFactor = expectedProps.writeConcern;
   }
   for (const [key, value] of Object.entries(expectedProps)) {
-    assertEqual(props[key], value, `Differ on key ${key} ${JSON.stringify(props)} vs ${JSON.stringify(expectedProps)}`);
+    assertEqual(props[key], value, `Differ on key ${key}, Returned: ${JSON.stringify(props)} , Expected: ${JSON.stringify(expectedProps)}`);
   }
   // Note we add +1 on expected for the globallyUniqueId.
   const expectedKeys = Object.keys(expectedProps);
@@ -1195,8 +1195,54 @@ function RestoreCollectionsSuite() {
         db._useDatabase("_system");
         db._dropDatabase("UnitTestConfiguredDB");
       }
-    }
+    },
 
+    testRestoreSatelliteWithWriteConcernZero: function () {
+      // Special case handling, if we are a satellite collection we can have writeConcern 0.
+      for (const replicationFactor of ["satellite", 0]) {
+        for (const wcKey of ["minReplicationFactor", "writeConcern"]) {
+          const input = { replicationFactor, [wcKey]: 0};
+          const res = tryRestore({name: collname, ...input});
+          try {
+            if (isCluster && !isEnterprise) {
+              // Satellite is not allowed in community.
+              // Hence writeConcern 0 cannot be allowed.
+              // Therefore we expect an error here.
+              isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, input);
+            } else {
+              assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+              if (isCluster) {
+                validateProperties({
+                  replicationFactor: "satellite",
+                  writeConcern: 0,
+                  minReplicationFactor: 0
+                }, collname, 2);
+              } else {
+                if (replicationFactor === 0 || !isEnterprise) {
+                  // Well on EE Single Server, satellite is allowed, but 0 is not considered like satellite
+                  // Hence we get a normal collection, just ignoring all of the above
+                  // In Community SingleServer all of the above is ignored.
+                  isAllowed(res, collname, input);
+                } else {
+                  validateProperties({
+                    replicationFactor: "satellite",
+                    minReplicationFactor: 0,
+                    writeConcern: 0,
+                    isSmart: false,
+                    shardKeys: ["_key"],
+                    numberOfShards: 1,
+                    isDisjoint: false
+                  }, collname, 2, true);
+                }
+              }
+            }
+          } finally {
+            db._drop(collname);
+          }
+        }
+      }
+
+    }
   };
 }
 

@@ -1194,7 +1194,7 @@ Result RestReplicationHandler::processRestoreCollection(
   // Original
   auto input = CreateCollectionBody::fromRestoreAPIBody(parameters, config);
   if (input.fail()) {
-    return input.errorNumber();
+    return input.result();
   }
   OperationOptions options(_context);
 
@@ -1212,7 +1212,7 @@ Result RestReplicationHandler::processRestoreCollection(
     auto result =
         handlingOfExistingCollection(_vocbase, input->name, dropExisting);
     if (result.fail()) {
-      return result.errorNumber();
+      return result.result();
     }
     if (result.get()) {
       // Collection still exists.
@@ -1247,8 +1247,7 @@ Result RestReplicationHandler::processRestoreCollection(
       enforceReplicationFactor, isNewDatabase,
       allowEnterpriseCollectionsOnSingleServer, isRestore);
 
-  // NOTE: ErrorNumber can be NO_ERROR which is a success.
-  return result.errorNumber();
+  return result.result();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
