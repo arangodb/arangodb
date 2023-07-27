@@ -27,6 +27,7 @@
 #include <type_traits>
 
 #include "Assertions/Assert.h"
+#include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
@@ -141,6 +142,17 @@ LogPersistor::LogPersistor(LogId logId,
   auto filename = std::to_string(logId.id()) + ".log";
   _fileSet.emplace(LogFile{.filename = filename});
   _activeFile = _fileManager->createWriter(filename);
+
+  auto reader = _activeFile->getReader();
+  if (reader->size() > 0) {
+    auto res = getLastRecordHeader(*reader);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
+    auto header = res.get();
+    _lastWrittenEntry =
+        TermIndexPair(LogTerm{header.term()}, LogIndex{header.index()});
+  }
 }
 
 auto LogPersistor::getIterator(IteratorPosition position)
