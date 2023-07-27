@@ -207,6 +207,8 @@ class DatabaseFeature : public ArangodFeature {
     std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
   };
 
+  size_t maxDatabases() const noexcept { return _maxDatabases; }
+
   static TRI_vocbase_t& getCalculationVocbase();
 
  private:
@@ -257,6 +259,8 @@ class DatabaseFeature : public ArangodFeature {
   // arangodb::basics::DataProtector<64>
   mutable arangodb::basics::DataProtector _databasesProtector;
   mutable arangodb::Mutex _databasesMutex;
+
+  size_t _maxDatabases{SIZE_MAX};
 
   std::atomic<bool> _started;
 
