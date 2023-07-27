@@ -105,11 +105,7 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
   ~IResearchViewCoordinatorTest() = default;
 };
 
-#ifdef USE_ENTERPRISE
-static constexpr size_t kEnterpriseFields = 1;
-#else
 static constexpr size_t kEnterpriseFields = 0;
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -1412,12 +1408,6 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
                   0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
       ASSERT_TRUE(tmpSlice2.isArray());
@@ -1788,12 +1778,6 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
                   0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
       ASSERT_TRUE(tmpSlice2.isArray());
@@ -2162,12 +2146,6 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
                   0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
       ASSERT_TRUE(tmpSlice2.isArray());
@@ -2538,12 +2516,6 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
                   0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
       ASSERT_TRUE(tmpSlice2.isArray());

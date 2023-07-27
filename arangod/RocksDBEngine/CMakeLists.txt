@@ -7,6 +7,8 @@ add_library(arango_rocksdb STATIC
   RocksDBCommon.cpp
   RocksDBComparator.cpp
   RocksDBCuckooIndexEstimator.cpp
+  RocksDBDumpContext.cpp
+  RocksDBDumpManager.cpp
   RocksDBEdgeIndex.cpp
   RocksDBEngine.cpp
   RocksDBFormat.cpp

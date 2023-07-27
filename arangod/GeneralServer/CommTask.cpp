@@ -261,11 +261,22 @@ CommTask::Flow CommTask::prepareExecution(
     }
       [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
+      bool allowReconnect = false;
+      TRI_IF_FAILURE("CommTask::allowReconnectRequests") {
+        // allow special requests that are necessary to reconnect to an endpoint
+        // from inside tests. these are currently:
+        // - GET /_api/version
+        // - GET /_api/database/current
+        // we need to allow such requests from a specific test even in TRYAGAIN
+        // mode. these are normally disallowed even in TRYAGAIN mode.
+        allowReconnect = true;
+      }
       // the following paths are allowed on followers in active failover
       if (!path.starts_with("/_admin/shutdown") &&
           !path.starts_with("/_admin/cluster/health") &&
           !path.starts_with("/_admin/cluster/maintenance") &&
           path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
+          !path.starts_with("/_admin/debug/") &&
           !path.starts_with("/_admin/log") &&
           !path.starts_with("/_admin/metrics") &&
           !path.starts_with("/_admin/server/") &&
@@ -277,12 +288,16 @@ CommTask::Flow CommTask::prepareExecution(
           !(req.requestType() == RequestType::GET &&
             path.starts_with("/_api/collection")) &&
           !path.starts_with("/_api/cluster/") &&
+          path != "/_api/database/current" &&
           !path.starts_with("/_api/engine/stats") &&
           !path.starts_with("/_api/replication") &&
           !path.starts_with("/_api/ttl/statistics") &&
+          !(req.requestType() == RequestType::GET && path == "/_api/user") &&
           (mode == ServerState::Mode::TRYAGAIN ||
            !path.starts_with("/_api/version")) &&
-          !path.starts_with("/_api/wal")) {
+          !path.starts_with("/_api/wal") &&
+          !(allowReconnect && (path.starts_with("/_api/version") ||
+                               path.starts_with("/_api/database/current")))) {
         LOG_TOPIC("a5119", TRACE, arangodb::Logger::FIXME)
             << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
@@ -524,6 +539,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     RequestStatistics::Item stats = stealStatistics(messageId);
     stats.SET_ASYNC();
     handler->setStatistics(std::move(stats));
+    handler->setIsAsyncRequest();
 
     uint64_t jobId = 0;
 
@@ -857,7 +873,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
                  path.starts_with(std::string{::pathPrefixApiUser} + username +
                                   '/')) {
         // simon: unauthorized users should be able to call
-        // `/_api/users/<name>` to check their passwords
+        // `/_api/user/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
       } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {

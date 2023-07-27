@@ -76,6 +76,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
@@ -168,6 +169,15 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
+DECLARE_GAUGE(rocksdb_cache_edge_uncompressed_entries_size, uint64_t,
+              "Total gross memory size of all edge cache entries ever stored "
+              "in memory");
+DECLARE_GAUGE(rocksdb_cache_edge_effective_entries_size, uint64_t,
+              "Total effective memory size of all edge cache entries ever "
+              "stored in memory (after compression)");
+DECLARE_GAUGE(rocksdb_cache_edge_compression_ratio, double,
+              "Overall compression ratio for all edge cache entries ever "
+              "stored in memory");
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
@@ -238,6 +248,8 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _maxParallelCompactions(2),
+      _minValueSizeForEdgeCompression(1073741824ULL),
+      _accelerationFactorForEdgeCompression(1),
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(60.0),
       _maxWalArchiveSizeLimit(0),
@@ -294,7 +306,13 @@ RocksDBEngine::RocksDBEngine(Server& server,
           arangodb_revision_tree_hibernations_total{})),
       _metricsTreeResurrections(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_revision_tree_resurrections_total{})) {
+              arangodb_revision_tree_resurrections_total{})),
+      _metricsEdgeCacheEntriesSizeInitial(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_cache_edge_uncompressed_entries_size{})),
+      _metricsEdgeCacheEntriesSizeEffective(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_cache_edge_effective_entries_size{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -754,6 +772,46 @@ replication doing a resync, however.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
 
+  options
+      ->addOption("--cache.min-value-size-for-edge-compression",
+                  "The size threshold (in bytes) from which on payloads in the "
+                  "edge index cache transparently get LZ4-compressed.",
+                  new SizeTParameter(&_minValueSizeForEdgeCompression, 1, 0,
+                                     1073741824ULL),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(
+          R"(By transparently compressing values in the in-memory
+edge index cache, more data can be held in memory than without compression.  
+Storing compressed values can increase CPU usage for the on-the-fly compression 
+and decompression. In case compression is undesired, this option can be set to a 
+very high value, which will effectively disable it. To use compression, set the
+option to a value that is lower than medium-to-large average payload sizes.
+It is normally not that useful to compress values that are smaller than 100 bytes.)")
+      .setIntroducedIn(31102);
+
+  options
+      ->addOption(
+          "--cache.acceleration-factor-for-edge-compression",
+          "The acceleration factor for the LZ4 compression of in-memory "
+          "edge cache entries.",
+          new UInt32Parameter(&_accelerationFactorForEdgeCompression, 1, 1,
+                              65537),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setLongDescription(
+          R"(This value controls the LZ4-internal acceleration factor for the 
+LZ4 compression. Higher values typically yield less compression in exchange
+for faster compression and decompression speeds. An increase of 1 commonly leads
+to a compression speed increase of 3%, and could slightly increase decompression
+speed.)")
+      .setIntroducedIn(31102);
+
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
 #endif
@@ -942,13 +1000,6 @@ void RocksDBEngine::start() {
     // we will not return from here
     verifySstFiles(options);
     TRI_ASSERT(false);
-  }
-
-  if (!createdEngineDir) {
-    // database directory already existed before.
-    // now check if we have journal files of size 0 in the archive.
-    // these are useless, so we can as well delete them from the archive.
-    removeEmptyJournalFilesFromArchive();
   }
 
   if (_createShaFiles) {
@@ -1144,6 +1195,7 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
+  _dumpManager = std::make_unique<RocksDBDumpManager>(*this);
 
   struct SchedulerExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
     explicit SchedulerExecutor(ArangodServer& server)
@@ -1203,6 +1255,11 @@ void RocksDBEngine::beginShutdown() {
   // block the creation of new replication contexts
   if (_replicationManager != nullptr) {
     _replicationManager->beginShutdown();
+  }
+
+  // block the creation of new dump contexts
+  if (_dumpManager != nullptr) {
+    _dumpManager->beginShutdown();
   }
 
   // from now on, all started compactions can be canceled.
@@ -1677,6 +1734,7 @@ Result RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) {
 
 Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
   replicationManager()->drop(database);
+  dumpManager()->dropDatabase(database);
 
   return dropDatabase(database.id());
 }
@@ -3187,11 +3245,13 @@ DECLARE_GAUGE(rocksdb_total_sst_files_size, uint64_t,
 DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t,
               "rocksdb_engine_throttle_bps");
 DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
+DECLARE_GAUGE(rocksdb_total_sst_files, uint64_t, "rocksdb_total_sst_files");
 
 void RocksDBEngine::getStatistics(std::string& result) const {
   VPackBuilder stats;
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
+
   TRI_ASSERT(sslice.isObject());
   for (auto a : VPackObjectIterator(sslice)) {
     if (a.value.isNumber()) {
@@ -3199,11 +3259,11 @@ void RocksDBEngine::getStatistics(std::string& result) const {
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
       if (!name.empty() && name.front() != 'r') {
-        name = std::string{kEngineName}.append("_").append(name);
+        name = absl::StrCat(kEngineName, "_", name);
       }
-      result += "\n# HELP " + name + " " + name + "\n# TYPE " + name +
-                " gauge\n" + name + " " +
-                std::to_string(a.value.getNumber<uint64_t>()) + "\n";
+      result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
+                             " gauge\n", name, " ",
+                             a.value.getNumber<uint64_t>(), "\n");
     }
   }
 }
@@ -3229,18 +3289,20 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   // get string property from each column family and return sum;
   auto addIntAllCf = [&](std::string const& s) {
     int64_t sum = 0;
+    std::string v;
     for (auto cfh : RocksDBColumnFamilyManager::allHandles()) {
-      std::string v;
+      v.clear();
       if (_db->GetProperty(cfh, s, &v)) {
         int64_t temp = basics::StringUtils::int64(v);
 
-        // -1 returned for somethings that are valid property but no value
+        // -1 returned for some things that are valid property but no value
         if (0 < temp) {
           sum += temp;
         }
       }
     }
     builder.add(s, VPackValue(sum));
+    return sum;
   };
 
   // add column family properties
@@ -3274,14 +3336,16 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   };
 
   builder.openObject();
+  int64_t numSstFilesOnAllLevels = 0;
   for (int i = 0; i < _optionsProvider.getOptions().num_levels; ++i) {
-    addIntAllCf(rocksdb::DB::Properties::kNumFilesAtLevelPrefix +
-                std::to_string(i));
+    numSstFilesOnAllLevels += addIntAllCf(
+        absl::StrCat(rocksdb::DB::Properties::kNumFilesAtLevelPrefix, i));
     // ratio needs new calculation with all cf, not a simple add operation
-    addIntAllCf(rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix +
-                std::to_string(i));
+    addIntAllCf(absl::StrCat(
+        rocksdb::DB::Properties::kCompressionRatioAtLevelPrefix, i));
   }
-  // caution:  you must read rocksdb/db/interal_stats.cc carefully to
+  builder.add("rocksdb.total-sst-files", VPackValue(numSstFilesOnAllLevels));
+  // caution:  you must read rocksdb/db/internal_stats.cc carefully to
   //           determine if a property is for whole database or one column
   //           family
   addIntAllCf(rocksdb::DB::Properties::kNumImmutableMemTable);
@@ -3382,6 +3446,16 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     builder.add("cache.active-tables", VPackValue(stats->activeTables));
     builder.add("cache.unused-memory", VPackValue(stats->spareAllocation));
     builder.add("cache.unused-tables", VPackValue(stats->spareTables));
+
+    // edge cache compression ratio
+    double compressionRatio = 0.0;
+    auto initial = _metricsEdgeCacheEntriesSizeInitial.load();
+    auto effective = _metricsEdgeCacheEntriesSizeEffective.load();
+    if (initial != 0) {
+      compressionRatio = 100.0 * (1.0 - (static_cast<double>(effective) /
+                                         static_cast<double>(initial)));
+    }
+    builder.add("cache.edge-compression-ratio", VPackValue(compressionRatio));
 
     std::pair<double, double> rates;
     if (manager != nullptr) {
@@ -3869,42 +3943,18 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
   }
 }
 
-void RocksDBEngine::removeEmptyJournalFilesFromArchive() {
-  LOG_TOPIC("50812", DEBUG, Logger::ENGINES)
-      << "scanning WAL archive directory for empty files...";
+void RocksDBEngine::addCacheMetrics(uint64_t initial,
+                                    uint64_t effective) noexcept {
+  _metricsEdgeCacheEntriesSizeInitial.fetch_add(initial);
+  _metricsEdgeCacheEntriesSizeEffective.fetch_add(effective);
+}
 
-  std::string archiveDirectory =
-      basics::FileUtils::buildFilename(_dbOptions.wal_dir, "archive");
+size_t RocksDBEngine::minValueSizeForEdgeCompression() const noexcept {
+  return _minValueSizeForEdgeCompression;
+}
 
-  try {
-    for (auto const& f : basics::FileUtils::listFiles(archiveDirectory)) {
-      if (!f.ends_with(".log")) {
-        // we only care about .log files in there
-        continue;
-      }
-
-      std::string fn = basics::FileUtils::buildFilename(archiveDirectory, f);
-      int64_t size = TRI_SizeFile(fn.c_str());
-      if (size == 0) {
-        // file size is exactly 0 bytes
-        LOG_TOPIC("e79dd", DEBUG, Logger::ENGINES)
-            << "found empty WAL file in archive at startup: '" << f
-            << "', scheduling this file for later deletion";
-
-        WRITE_LOCKER(lock, _walFileLock);
-        _prunableWalFiles.emplace(
-            basics::FileUtils::buildFilename("archive", f),
-            TRI_microtime() + _pruneWaitTime);
-      }
-    }
-
-    _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
-                                   std::memory_order_relaxed);
-  } catch (...) {
-    // we can continue even if an exception occurs here.
-    // it is possible that during hot backup restore the archive directory
-    // does not exist.
-  }
+int RocksDBEngine::accelerationFactorForEdgeCompression() const noexcept {
+  return static_cast<int>(_accelerationFactorForEdgeCompression);
 }
 
 }  // namespace arangodb

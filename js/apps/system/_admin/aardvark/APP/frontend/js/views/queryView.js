@@ -647,12 +647,12 @@
       var query = this.queriesHistory[counter].sentQuery;
 
       if (query !== '' && query !== undefined && query !== null) {
-        var toEncode = { query: query };
+        var queryBody = { query: query };
         if (Object.keys(this.queriesHistory[counter].bindParam).length !== 0) {
-          toEncode.bindVars = this.queriesHistory[counter].bindParam;
+          queryBody.bindVars = this.queriesHistory[counter].bindParam;
         }
-        var url = 'query/result/download/' + encodeURIComponent(arangoHelper.toBinary(JSON.stringify(toEncode)));
-        arangoHelper.download(url);
+        var url = 'query/result/download';
+        arangoHelper.downloadQuery(url, queryBody);
       } else {
         arangoHelper.arangoError('Query error', 'Could not download the result.');
       }
@@ -1303,7 +1303,10 @@
 
       var newObject = {};
       _.each(foundBindParams, function (word) {
-        if (self.bindParamTableObj[word]) {
+        if (
+          self.bindParamTableObj[word] !== undefined &&
+          self.bindParamTableObj[word] !== null
+        ) {
           newObject[word] = self.bindParamTableObj[word];
         } else if (self.bindParamTableObj[word] === null) {
           newObject[word] = null;
@@ -2863,7 +2866,7 @@
       }
 
       if (toReturn.defaultType === 'geo' || toReturn.defaultType === 'geotable') {
-        if (!window.activeInternetConnection) {
+        if (!window.navigator.onLine) {
           // mark the type we wanted to render
           toReturn.fallback = toReturn.defaultType;
 

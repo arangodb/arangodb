@@ -60,11 +60,6 @@ struct TransactionalBucket {
   std::uint32_t _cachedHashes[slotsData];
   CachedValue* _cachedData[slotsData];
 
-  // padding, if necessary?
-#ifdef TRI_PADDING_32
-  uint32_t _padding[slotsData];
-#endif
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize an empty bucket.
   //////////////////////////////////////////////////////////////////////////////
@@ -179,7 +174,7 @@ struct TransactionalBucket {
   /// Returns the size of the evicted value in case a value was evicted.
   /// Returns 0 otherwise.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t evictCandidate() noexcept;
+  std::uint64_t evictCandidate(bool moveToFront) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Evicts the given value from the bucket. Requires state to be
@@ -207,8 +202,8 @@ struct TransactionalBucket {
   bool haveOpenTransaction() const noexcept;
 };
 
-// ensure that TransactionalBucket is exactly BUCKET_SIZE
-static_assert(sizeof(TransactionalBucket) == BUCKET_SIZE,
-              "Expected sizeof(TransactionalBucket) == BUCKET_SIZE.");
+// ensure that TransactionalBucket is exactly kBucketSizeInBytes
+static_assert(sizeof(TransactionalBucket) == kBucketSizeInBytes,
+              "Expected sizeof(TransactionalBucket) == kBucketSizeInBytes.");
 
 };  // end namespace arangodb::cache

@@ -239,8 +239,20 @@ Result RocksDBIndex::drop() {
   return r;
 }
 
-void RocksDBIndex::afterTruncate(TRI_voc_tick_t,
-                                 arangodb::transaction::Methods*) {
+ResultT<TruncateGuard> RocksDBIndex::truncateBegin(rocksdb::WriteBatch& batch) {
+  auto bounds = getBounds();
+  auto s =
+      batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+  auto r = rocksutils::convertStatus(s);
+  if (!r.ok()) {
+    return r;
+  }
+  return {};
+}
+
+void RocksDBIndex::truncateCommit(TruncateGuard&& guard,
+                                  TRI_voc_tick_t /*tick*/,
+                                  transaction::Methods* /*trx*/) {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();

@@ -4757,6 +4757,50 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the scheduler priority of an external process
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_SetPriority(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract the arguments
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "setPriorityExternal(<external-identifier>, <priority>)");
+  }
+
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_v8security;
+
+  if (!v8security.isAllowedToControlProcesses(isolate)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        "not allowed to execute or modify state of external processes");
+  }
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  ExternalId pid;
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+
+  uint32_t priority =
+      static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[1], true));
+
+  auto ret = TRI_SetPriority(pid, priority);
+
+  if (ret.length() != 0) {
+    TRI_V8_THROW_ERROR(ret);
+  }
+
+  // return the result
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a external program
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4986,6 +5030,10 @@ static void JS_SuspendExternal(
 #else
   pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
 #endif
+  if (pid._pid == 0) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to suspend the invoking process!");
+  }
 
   // return the result
   if (TRI_SuspendExternalProcess(pid)) {
@@ -6018,6 +6066,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_STATUS_EXTERNAL"),
       JS_StatusExternal);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SET_PRIORITY_EXTERNAL"),
+      JS_SetPriority);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_LOAD"), JS_Load);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_LOG"),

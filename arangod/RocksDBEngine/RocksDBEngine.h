@@ -66,6 +66,7 @@ struct RocksDBAsyncLogWriteBatcher;
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
+class RocksDBDumpManager;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -441,6 +442,11 @@ class RocksDBEngine final : public StorageEngine {
     return _replicationManager.get();
   }
 
+  RocksDBDumpManager* dumpManager() const {
+    TRI_ASSERT(_dumpManager);
+    return _dumpManager.get();
+  }
+
   /// @brief returns a pointer to the sync thread
   /// note: returns a nullptr if automatic syncing is turned off!
   RocksDBSyncThread* syncThread() const { return _syncThread.get(); }
@@ -477,6 +483,12 @@ class RocksDBEngine final : public StorageEngine {
   };
 
   std::shared_ptr<StorageSnapshot> currentSnapshot() override;
+
+  void addCacheMetrics(uint64_t initial, uint64_t effective) noexcept;
+
+  size_t minValueSizeForEdgeCompression() const noexcept;
+
+  int accelerationFactorForEdgeCompression() const noexcept;
 
  private:
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
@@ -521,8 +533,6 @@ class RocksDBEngine final : public StorageEngine {
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
 
-  void removeEmptyJournalFilesFromArchive();
-
   RocksDBOptionsProvider const& _optionsProvider;
 
   /// single rocksdb database used in this storage engine
@@ -553,6 +563,9 @@ class RocksDBEngine final : public StorageEngine {
                                       // for intermediate commit
 
   uint64_t _maxParallelCompactions;
+
+  size_t _minValueSizeForEdgeCompression;
+  uint32_t _accelerationFactorForEdgeCompression;
 
   // hook-ins for recovery process
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
@@ -721,6 +734,12 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeHibernations;
   metrics::Counter& _metricsTreeResurrections;
 
+  // total size of uncompressed values for the edge cache
+  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeInitial;
+  // total size of values stored in the edge cache (can be smaller than the
+  // initial size because of compression)
+  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeEffective;
+
   // @brief persistor for replicated logs
   std::shared_ptr<RocksDBAsyncLogWriteBatcher> _logPersistor;
 
@@ -728,6 +747,8 @@ class RocksDBEngine final : public StorageEngine {
   // this is for when encryption is enabled, sha files will be created
   // after the encryption of the .sst and .blob files
   std::unique_ptr<rocksdb::Env> _checksumEnv;
+
+  std::unique_ptr<RocksDBDumpManager> _dumpManager;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

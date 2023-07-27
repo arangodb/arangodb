@@ -487,7 +487,8 @@ class TestingRunner:
                 core_max_count,
             )
             return
-
+        self.crashed = True
+        self.success = False
         core_zip_dir = get_workspace() / "coredumps"
         core_zip_dir.mkdir(parents=True, exist_ok=True)
         zip_slots = psutil.cpu_count(logical=False)

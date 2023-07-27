@@ -73,6 +73,12 @@ std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::Compact("compact");
 std::string const StaticStrings::DontWaitForCommit("dontWaitForCommit");
 
+// dump headers
+std::string const StaticStrings::DumpAuthUser("x-arango-dump-auth-user");
+std::string const StaticStrings::DumpBlockCounts("x-arango-dump-block-counts");
+std::string const StaticStrings::DumpId("x-arango-dump-id");
+std::string const StaticStrings::DumpShardId("x-arango-dump-shard-id");
+
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore(
     "x-arango-replication-checkmore");
@@ -243,11 +249,15 @@ std::string const StaticStrings::HSTS("strict-transport-security");
 // mime types
 std::string const StaticStrings::MimeTypeDump(
     "application/x-arango-dump; charset=utf-8");
+std::string const StaticStrings::MimeTypeDumpNoEncoding(
+    "application/x-arango-dump");
 std::string const StaticStrings::MimeTypeHtml("text/html; charset=utf-8");
+std::string const StaticStrings::MimeTypeHtmlNoEncoding("text/html");
 std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
 std::string const StaticStrings::MimeTypeJsonNoEncoding("application/json");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
+std::string const StaticStrings::MimeTypeTextNoEncoding("text/plain");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 

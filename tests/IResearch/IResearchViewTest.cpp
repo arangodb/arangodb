@@ -96,11 +96,7 @@
 
 namespace {
 
-#ifdef USE_ENTERPRISE
-static constexpr size_t kEnterpriseFields = 1;
-#else
 static constexpr size_t kEnterpriseFields = 0;
-#endif
 
 struct DocIdScorer final : public irs::ScorerBase<void> {
   static constexpr std::string_view type_name() noexcept {
@@ -703,12 +699,6 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1039,12 +1029,6 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1374,12 +1358,6 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1710,12 +1688,6 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      auto valueTopK = tmpSlice2.get("optimizeTopK");
-#ifdef USE_ENTERPRISE
-      EXPECT_TRUE(valueTopK.isEmptyArray());
-#else
-      EXPECT_TRUE(valueTopK.isNone());
-#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1877,8 +1849,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE(
-        (link->remove(trx, arangodb::LocalDocumentId(0), false, nullptr).ok()));
+    EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0)).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
   }
@@ -3274,37 +3245,29 @@ TEST_F(IResearchViewTest, test_insert) {
       auto docJson =
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(1),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                             arangodb::LocalDocumentId(1), docJson->slice());
+      }
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
-
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                             arangodb::LocalDocumentId(2), docJson->slice());
+      }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(1),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
-
-      EXPECT_TRUE(trx.commit().ok());
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                             arangodb::LocalDocumentId(1), docJson->slice());
+        link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                             arangodb::LocalDocumentId(2), docJson->slice());
+      }
+      link->recoveryCommit(StorageEngineMock::recoveryTickResult);
       EXPECT_TRUE(link->commit().ok());
     }
 
@@ -3357,9 +3320,6 @@ TEST_F(IResearchViewTest, test_insert) {
       auto docJson =
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
 
       std::vector<
           std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
@@ -3369,25 +3329,30 @@ TEST_F(IResearchViewTest, test_insert) {
           };
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
       StorageEngineMock::recoveryTickResult = 42;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
-      EXPECT_TRUE((trx.commit().ok()));
+      link->recoveryCommit(StorageEngineMock::recoveryTickResult);
       EXPECT_TRUE(link->commit().ok());
     }
 
@@ -3712,9 +3677,9 @@ TEST_F(IResearchViewTest, test_remove_within_trx) {
                              empty, empty, empty, transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(link->insert(trx, LocalDocumentId(0), doc0->slice()).ok());
-    EXPECT_TRUE(link->remove(trx, LocalDocumentId(0), false, nullptr).ok());
+    EXPECT_TRUE(link->remove(trx, LocalDocumentId(0)).ok());
     EXPECT_TRUE(link->insert(trx, LocalDocumentId(1), doc1->slice()).ok());
-    EXPECT_TRUE(link->remove(trx, LocalDocumentId(1), false, nullptr).ok());
+    EXPECT_TRUE(link->remove(trx, LocalDocumentId(1)).ok());
     EXPECT_TRUE(link->insert(trx, LocalDocumentId(2), doc2->slice()).ok());
     EXPECT_TRUE(trx.commit().ok());
     EXPECT_TRUE(link->commit().ok());
@@ -3797,46 +3762,37 @@ TEST_F(IResearchViewTest, test_remove) {
       auto docJson =
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
 
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(1),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(3),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
+      link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                           arangodb::LocalDocumentId(1), docJson->slice());
+      link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                           arangodb::LocalDocumentId(2), docJson->slice());
+      link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                           arangodb::LocalDocumentId(3), docJson->slice());
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1), false,
-                               &StorageEngineMock::recoveryTickResult)
-                      .ok());
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryRemove(arangodb::LocalDocumentId(1));
+      }
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
-                                         VPackSlice::noneSlice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                             arangodb::LocalDocumentId(2),
+                             VPackSlice::noneSlice());
+      }
 
       // apply remove after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3), false,
-                               &StorageEngineMock::recoveryTickResult)
-                      .ok());
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryRemove(arangodb::LocalDocumentId(3));
+      }
 
-      EXPECT_TRUE(trx.commit().ok());
+      link->recoveryCommit(StorageEngineMock::recoveryTickResult);
       EXPECT_TRUE(link->commit().ok());
     }
 
@@ -3888,9 +3844,6 @@ TEST_F(IResearchViewTest, test_remove) {
       auto docJson =
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
 
       std::vector<
           std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
@@ -3900,25 +3853,30 @@ TEST_F(IResearchViewTest, test_remove) {
           };
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
-      StorageEngineMock::recoveryTickResult = 42;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        StorageEngineMock::recoveryTickResult = 42;
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
-      EXPECT_TRUE((trx.commit().ok()));
+      link->recoveryCommit(StorageEngineMock::recoveryTickResult);
       EXPECT_TRUE(link->commit().ok());
     }
 

@@ -33,7 +33,7 @@ void ReadWriteLock::lockWrite() {
     return;
   }
 
-  // the lock is either hold by another writer or we have active readers
+  // the lock is either held by another writer or we have active readers
   // -> announce that we want to write
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
@@ -59,22 +59,21 @@ void ReadWriteLock::lockWrite() {
 }
 
 /// @brief lock for writes with microsecond timeout
-bool ReadWriteLock::lockWrite(std::chrono::microseconds timeout) {
+bool ReadWriteLock::tryLockWriteFor(std::chrono::microseconds timeout) {
   if (tryLockWrite()) {
     return true;
   }
 
-  // the lock is either hold by another writer or we have active readers
+  // the lock is either held by another writer or we have active readers
   // -> announce that we want to write
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
-  std::chrono::time_point<std::chrono::steady_clock> end_time;
-  end_time = std::chrono::steady_clock::now() + timeout;
+  auto end_time = std::chrono::steady_clock::now() + timeout;
 
   std::cv_status status(std::cv_status::no_timeout);
   {
     std::unique_lock<std::mutex> guard(_writer_mutex);
-    while (std::cv_status::no_timeout == status) {
+    do {
       auto state = _state.load(std::memory_order_relaxed);
       // try to acquire write lock as long as no readers or writers are active,
       while ((state & ~QUEUED_WRITER_MASK) == 0) {
@@ -85,16 +84,25 @@ bool ReadWriteLock::lockWrite(std::chrono::microseconds timeout) {
           return true;
         }
       }
-      // TODO: it seems this may repeatedly wait for the timeout
-      // it is not guaranteed to finish within timeout
       status = _writers_bell.wait_until(guard, end_time);
-    }
+    } while (std::cv_status::no_timeout == status);
   }
 
   // Undo the counting of us as queued writer:
-  _state.fetch_sub(QUEUED_WRITER_INC, std::memory_order_relaxed);
-  { std::lock_guard<std::mutex> guard(_reader_mutex); }
-  _readers_bell.notify_all();
+  auto state = _state.fetch_sub(QUEUED_WRITER_INC, std::memory_order_relaxed) -
+               QUEUED_WRITER_INC;
+
+  if (state == 0) {
+    // no queued writers and no locks acquired
+    // no more writers -> wake up any waiting readings
+    { std::lock_guard<std::mutex> guard(_reader_mutex); }
+    _readers_bell.notify_all();
+  } else if ((state & QUEUED_WRITER_MASK) != 0 && (state & WRITE_LOCK) == 0) {
+    // there are other writers waiting and the lock is not acquired -> wake up
+    // one of them
+    { std::lock_guard<std::mutex> guard(_writer_mutex); }
+    _writers_bell.notify_one();
+  }
 
   return false;
 }
@@ -128,6 +136,22 @@ void ReadWriteLock::lockRead() {
 
     _readers_bell.wait(guard);
   }
+}
+
+bool ReadWriteLock::tryLockReadFor(std::chrono::microseconds timeout) {
+  if (tryLockRead()) {
+    return true;
+  }
+  auto end_time = std::chrono::steady_clock::now() + timeout;
+  std::cv_status status(std::cv_status::no_timeout);
+  std::unique_lock<std::mutex> guard(_reader_mutex);
+  do {
+    if (tryLockRead()) {
+      return true;
+    }
+    status = _readers_bell.wait_until(guard, end_time);
+  } while (std::cv_status::no_timeout == status);
+  return false;
 }
 
 /// @brief locks for reading, tries only

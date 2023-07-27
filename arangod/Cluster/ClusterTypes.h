@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "velocypack/Builder.h"
 #include <iosfwd>
 #include <limits>
 #include <memory>

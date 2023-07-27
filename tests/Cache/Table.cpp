@@ -28,36 +28,63 @@
 #include <memory>
 
 #include "Cache/Common.h"
+#include "Cache/Manager.h"
 #include "Cache/PlainBucket.h"
 #include "Cache/Table.h"
+#include "RestServer/SharedPRNGFeature.h"
 
+#include "Mocks/Servers.h"
+#include "MockScheduler.h"
+
+using namespace arangodb;
 using namespace arangodb::cache;
+using namespace tests::mocks;
 
 TEST(CacheTableTest, test_static_allocation_size_method) {
   for (std::uint32_t i = Table::kMinLogSize; i <= Table::kMaxLogSize; i++) {
     ASSERT_TRUE(Table::allocationSize(i) ==
-                (sizeof(Table) + (BUCKET_SIZE << i) + Table::padding));
+                (sizeof(Table) + (kBucketSizeInBytes << i) + Table::padding));
   }
 }
 
 TEST(CacheTableTest, test_basic_constructor_behavior) {
+  MockScheduler scheduler(4);
+  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    scheduler.post(fn);
+    return true;
+  };
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 16ULL * 1024ULL * 1024ULL, true, 0.04,
+                  0.25);
+
   for (std::uint32_t i = Table::kMinLogSize; i <= 20; i++) {
-    auto table = std::make_shared<Table>(i);
+    auto table = std::make_shared<Table>(i, &manager);
     ASSERT_NE(table.get(), nullptr);
     ASSERT_EQ(table->memoryUsage(),
-              (sizeof(Table) + (BUCKET_SIZE << i) + Table::padding));
+              (sizeof(Table) + (kBucketSizeInBytes << i) + Table::padding));
     ASSERT_EQ(table->logSize(), i);
     ASSERT_EQ(table->size(), (static_cast<std::uint64_t>(1) << i));
   }
 }
 
 TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
-  auto table = std::make_shared<Table>(Table::kMinLogSize);
+  MockScheduler scheduler(4);
+  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    scheduler.post(fn);
+    return true;
+  };
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 16ULL * 1024ULL * 1024ULL, true, 0.04,
+                  0.25);
+
+  auto table = std::make_shared<Table>(Table::kMinLogSize, &manager);
   ASSERT_NE(table.get(), nullptr);
   table->enable();
   for (std::uint64_t i = 0; i < table->size(); i++) {
-    std::uint32_t hash =
-        static_cast<std::uint32_t>(i << (32 - Table::kMinLogSize));
+    Table::BucketHash hash{
+        static_cast<std::uint32_t>(i << (32 - Table::kMinLogSize))};
     Table::BucketLocker guard = table->fetchAndLockBucket(hash, -1);
     ASSERT_TRUE(guard.isValid());
     ASSERT_TRUE(guard.isLocked());
@@ -76,14 +103,25 @@ TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
 
 class CacheTableMigrationTest : public ::testing::Test {
  protected:
+  MockScheduler scheduler;
+  MockMetricsServer server;
+  Manager manager;
   std::shared_ptr<Table> small;
   std::shared_ptr<Table> large;
   std::shared_ptr<Table> huge;
 
   CacheTableMigrationTest()
-      : small(std::make_shared<Table>(Table::kMinLogSize)),
-        large(std::make_shared<Table>(Table::kMinLogSize + 2)),
-        huge(std::make_shared<Table>(Table::kMinLogSize + 4)) {
+      : scheduler(4),
+        manager(
+            server.getFeature<SharedPRNGFeature>(),
+            [this](std::function<void()> fn) -> bool {
+              scheduler.post(fn);
+              return true;
+            },
+            16ULL * 1024ULL * 1024ULL, true, 0.04, 0.25),
+        small(std::make_shared<Table>(Table::kMinLogSize, &manager)),
+        large(std::make_shared<Table>(Table::kMinLogSize + 2, &manager)),
+        huge(std::make_shared<Table>(Table::kMinLogSize + 4, &manager)) {
     small->enable();
     large->enable();
     huge->enable();
@@ -106,7 +144,7 @@ TEST_F(CacheTableMigrationTest,
 
   std::uint32_t indexSmall = 17;  // picked something at "random"
   std::uint32_t indexLarge = indexSmall << 2;
-  std::uint32_t hash = indexSmall << (32 - small->logSize());
+  Table::BucketHash hash{indexSmall << (32 - small->logSize())};
 
   {
     Table::BucketLocker guard = small->fetchAndLockBucket(hash, -1);

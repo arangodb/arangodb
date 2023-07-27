@@ -71,8 +71,7 @@ struct ThreadGuard {
 // test is temporarily disabled because there are currently memory-accounting
 // assertion failures in the cache manager. TODO: fix assertion failures and
 // reactivate test
-TEST(CacheRebalancerTest,
-     DISABLED_test_rebalancing_with_plaincache_LongRunning) {
+TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
   auto postFn = [&scheduler](std::function<void()> fn) -> bool {
@@ -81,7 +80,7 @@ TEST(CacheRebalancerTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
+  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024, true, 0.04, 0.25);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -198,11 +197,8 @@ TEST(CacheRebalancerTest,
   RandomGenerator::shutdown();
 }
 
-// test is temporarily disabled because there are currently memory-accounting
-// assertion failures in the cache manager. TODO: fix assertion failures and
-// reactivate test
 TEST(CacheRebalancerTest,
-     DISABLED_test_rebalancing_with_transactionalcache_LongRunning) {
+     test_rebalancing_with_transactionalcache_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
   auto postFn = [&scheduler](std::function<void()> fn) -> bool {
@@ -211,7 +207,7 @@ TEST(CacheRebalancerTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024);
+  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024, true, 0.04, 0.25);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;

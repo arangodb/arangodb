@@ -14,10 +14,15 @@ Allow moving leaders. (Default: `false`)
 Allow moving followers. (Default: `false`)
 
 @RESTSTRUCT{excludeSystemCollections,rebalance_compute,boolean,optional,}
-Remove system collections from the rebalance plan. (Default: `false`)
+Ignore system collections in the rebalance plan. (Default: `false`)
 
 @RESTSTRUCT{piFactor,rebalance_compute,number,optional,}
-(Default: `256e6`)
+A weighting factor that should remain untouched. (Default: `256e6`)
+
+If a collection has more shards than there are DB-Servers, there can be a subtle
+form of leader imbalance. Some DB-Servers may be responsible for more shards as
+leader than others. The `piFactor` adjusts how much weight such imbalances get
+in the overall imbalance score.
 
 @RESTSTRUCT{databasesExcluded,rebalance_compute,array,optional,string}
 A list of database names to exclude from the analysis. (Default: `[]`)
@@ -66,6 +71,9 @@ The sum of the sizes.
 
 @RESTSTRUCT{totalShards,shard_imbalance_struct,integer,required,}
 The sum of shards, counting leader and follower shards.
+
+@RESTSTRUCT{totalShardsFromSystemCollections,shard_imbalance_struct,integer,required,}
+The sum of system collection shards, counting leader shards only.
 
 @RESTSTRUCT{imbalance,shard_imbalance_struct,integer,required,}
 The measure of the total imbalance. A high value indicates a high imbalance.

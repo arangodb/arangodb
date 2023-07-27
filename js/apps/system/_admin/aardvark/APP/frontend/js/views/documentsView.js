@@ -234,11 +234,11 @@
     },
 
     startDownload: function () {
-      var query = this.collection.buildDownloadDocumentQuery();
+      var queryBody = this.collection.buildDownloadDocumentQuery();
 
-      if (query !== '' || query !== undefined || query !== null) {
-        var url = 'query/result/download/' + encodeURIComponent(arangoHelper.toBinary(JSON.stringify(query)));
-        arangoHelper.download(url);
+      if (queryBody !== '' || queryBody !== undefined || queryBody !== null) {
+        var url = 'query/result/download';
+        arangoHelper.downloadQuery(url, queryBody);
       } else {
         arangoHelper.arangoError('Document error', 'could not download documents');
       }

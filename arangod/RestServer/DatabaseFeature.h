@@ -111,11 +111,11 @@ class DatabaseFeature final : public ArangodFeature {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  ///        if StorageEngine.inRecovery() -> call at start of recoveryDone()
-  ///                                         and fail recovery if callback
-  ///                                         !ok()
-  ///        if !StorageEngine.inRecovery() -> call immediately and return
-  ///                                          result
+  ///   if StorageEngine.inRecovery() ->
+  ///     call at start of recoveryDone() in parallel with other callbacks
+  ///     and fail recovery if callback !ok()
+  ///   else ->
+  ///     call immediately and return result
   //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
 
@@ -172,6 +172,8 @@ class DatabaseFeature final : public ArangodFeature {
   void disableUpgrade() noexcept { _upgrade = false; }
   void isInitiallyEmpty(bool value) noexcept { _isInitiallyEmpty = value; }
 
+  size_t maxDatabases() const noexcept { return _maxDatabases; }
+
   static TRI_vocbase_t& getCalculationVocbase();
 
  private:
@@ -205,6 +207,8 @@ class DatabaseFeature final : public ArangodFeature {
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
+
+  size_t _maxDatabases{SIZE_MAX};
 
   using DatabasesList = containers::FlatHashMap<std::string, TRI_vocbase_t*>;
   class DatabasesListGuard {

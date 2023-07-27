@@ -139,7 +139,7 @@ class IResearchLinkTest
 // -----------------------------------------------------------------------------
 
 static_assert("1_3simd" == getFormat(arangodb::iresearch::LinkVersion::MIN));
-static_assert("1_5simd" == getFormat(arangodb::iresearch::LinkVersion::MAX));
+static_assert("1_4simd" == getFormat(arangodb::iresearch::LinkVersion::MAX));
 
 TEST_F(IResearchLinkTest, test_defaults) {
   // no view specified
@@ -1051,9 +1051,7 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2),
-                           l->meta().hasNested(), nullptr)
-                     .ok()));
+    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2)).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
@@ -1088,6 +1086,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
@@ -1193,7 +1192,9 @@ TEST_F(IResearchLinkTest,
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
+    \"primarySortCompression\":\"test\",\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"}, {\"fields\":[\"abc2\"], \"compression\":\"test\"}]\
   }");
   std::set<std::string> compressedValues;
@@ -1303,6 +1304,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
                       {\"fields\":[\"abc2\"], \"compression\":\"lz4\"},\
@@ -1412,6 +1414,7 @@ TEST_F(IResearchLinkTest,
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
@@ -1534,6 +1537,7 @@ TEST_F(
     \"id\": 42, \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\", \
+    \"consolidationIntervalMsec\": 0, \
     \"primarySort\":[{\"field\":\"sort\", \"direction\":\"asc\"}],\
     \"primarySortCompression\":\"test\",\
     \"storedValues\":[{\"fields\":[\"abc\"], \"compression\":\"test\"},\
@@ -2339,9 +2343,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
-      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin),
-                            l->meta().hasNested(), nullptr)
-                      .ok());
+      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());
     }
 
     EXPECT_TRUE(trx.commit().ok());
