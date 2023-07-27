@@ -2584,24 +2584,10 @@ void RocksDBEngine::pruneWalFiles() {
   for (auto it = _prunableWalFiles.begin(); it != _prunableWalFiles.end();
        /* no hoisting */) {
     // check if WAL file is expired
-    bool deleteFile = false;
-
-    if ((*it).second <= 0.0) {
-      // file can be deleted because we outgrew the configured max archive size,
-      // but only if there are no other threads currently inside the WAL tailing
-      // section
-      deleteFile = purgeEnabler.canPurge();
-      LOG_TOPIC("817bc", TRACE, Logger::ENGINES)
-          << "pruneWalFiles checking overflowed file '" << (*it).first
-          << "', canPurge: " << deleteFile;
-    } else if ((*it).second < TRI_microtime()) {
-      // file has expired, and it is always safe to delete it
-      deleteFile = true;
-      LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
-          << "pruneWalFiles checking expired file '" << (*it).first
-          << "', canPurge: " << deleteFile;
-    }
-
+    auto deleteFile = purgeEnabler.canPurge();
+    LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
+        << "pruneWalFiles checking expired file '" << (*it).first
+        << "', canPurge: " << deleteFile;
     if (deleteFile) {
       LOG_TOPIC("68e4a", DEBUG, Logger::ENGINES)
           << "deleting RocksDB WAL file '" << (*it).first << "'";
