@@ -1248,7 +1248,73 @@ function RestoreCollectionsSuite() {
           }
         }
       }
-    }
+    },
+
+    testRestoreDistributeShardsLikeSatellites: function () {
+      for (const includeIllegal of [false, true]) {
+        const input = {
+          writeConcern: 0,
+          replicationFactor: "satellite",
+          numberOfShards: 1
+        };
+        if (includeIllegal) {
+          input.shards = {"s01": ["PRMR_01", "PRMR_02"]};
+        }
+        const followerName = `${collname}Follower`;
+        const resLeader = tryRestore({name: collname, ...input});
+        try {
+          if (isEnterprise || !isCluster) {
+            assertTrue(resLeader.result, `Result: ${JSON.stringify(resLeader)}`);
+            if (isEnterprise) {
+              validateProperties({
+                replicationFactor: "satellite",
+                writeConcern: 0,
+                minReplicationFactor: 0,
+                isSmart: false,
+                shardKeys: ["_key"],
+                numberOfShards: 1,
+                isDisjoint: false
+              }, collname, 2, true);
+            } else {
+              // SingleServer does not care for clustering attributes
+              validateProperties({
+                writeConcern: 1
+              }, collname, 2);
+            }
+
+            // Try to restore another satellite collection that is distributeShardsLike to the leader.
+            const resFollower = tryRestore({name: followerName, distributeShardsLike: collname, ...input});
+            try {
+              assertTrue(resFollower.result, `Result: ${JSON.stringify(resFollower)}`);
+              if (isEnterprise) {
+                validateProperties({
+                  replicationFactor: "satellite",
+                  writeConcern: 0,
+                  minReplicationFactor: 0,
+                  distributeShardsLike: collname,
+                  isSmart: false,
+                  shardKeys: ["_key"],
+                  numberOfShards: 1,
+                  isDisjoint: false
+                }, followerName, 2, true);
+              } else {
+                // SingleServer does not care for clustering attributes
+                validateProperties({
+                  writeConcern: 1
+                }, collname, 2, false);
+              }
+            } finally {
+              db._drop(followerName);
+            }
+          } else {
+            // Cannot create a writeConcern 0 in cluster community, so also no follower
+            isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, resLeader, input);
+          }
+        } finally {
+          db._drop(collname);
+        }
+      }
+    },
   };
 }
 

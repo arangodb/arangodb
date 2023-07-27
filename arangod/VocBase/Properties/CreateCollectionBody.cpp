@@ -259,7 +259,15 @@ auto handleWriteConcernRestore(std::string_view key, VPackSlice value,
                                VPackBuilder& result) {
   if (!isSingleServer()) {
     // Only take numbers in Cluster
-    handleNumbersOnly(key, value, fullBody, config, result);
+    if (value.isNumber()) {
+      if (value.isInteger() && value.getNumericValue<int64_t>() == 0) {
+        if (!hasDistributeShardsLike(fullBody, config)) {
+          result.add(key, value);
+        }
+      } else {
+        result.add(key, value);
+      }
+    }
   }
 }
 
@@ -329,6 +337,16 @@ auto handleDistributeShardsLike(std::string_view key, VPackSlice value,
   if (!config.isOneShardDB) {
     if (isSingleServer() && !isSmart(fullBody)) {
       // Community can not use distributeShardsLike on SingleServer
+
+#ifdef USE_ENTERPRISE
+      // On Single Server Enterprise we need to consider distributeShardsLike
+      // on Satellite collections for SmartGraph simulations.
+      if (fullBody.get(StaticStrings::ReplicationFactor).isString() &&
+          fullBody.get(StaticStrings::ReplicationFactor)
+              .isEqualString(StaticStrings::Satellite)) {
+        justKeep(key, value, fullBody, config, result);
+      }
+#endif
       return;
     }
     justKeep(key, value, fullBody, config, result);
