@@ -61,8 +61,6 @@ Cache::Cache(
       _table(std::move(table)),
       _bucketClearer(bucketClearer(this, &_metadata)),
       _slotsPerBucket(slotsPerBucket),
-      _haveFindStats(false),
-      _haveEvictionStats(false),
       _migrateRequestTime(
           std::chrono::steady_clock::now().time_since_epoch().count()),
       _resizeRequestTime(
@@ -82,7 +80,7 @@ Cache::~Cache() {
   // eviction stats
   std::uint64_t memoryUsage = 0;
 
-  if (_haveFindStats.load(std::memory_order_relaxed)) {
+  if (_findStatsCreated.load(std::memory_order_relaxed)) {
     TRI_ASSERT(_findStats != nullptr);
     memoryUsage += sizeof(decltype(_findStats)::element_type);
     if (_findStats->findStats) {
@@ -90,7 +88,7 @@ Cache::~Cache() {
     }
   }
 
-  if (_haveEvictionStats.load(std::memory_order_relaxed)) {
+  if (_evictionStatsCreated.load(std::memory_order_relaxed)) {
     TRI_ASSERT(_evictionStats != nullptr);
     memoryUsage += sizeof(decltype(_evictionStats)::element_type);
   }
@@ -185,7 +183,9 @@ std::pair<double, double> Cache::hitRates() {
   double lifetimeRate = std::nan("");
   double windowedRate = std::nan("");
 
-  if (_haveFindStats.load(std::memory_order_relaxed)) {
+  if (_findStatsCreated.load(std::memory_order_relaxed)) {
+    TRI_ASSERT(_findStats != nullptr);
+
     std::uint64_t currentMisses =
         _findStats->findMisses.value(std::memory_order_relaxed);
     std::uint64_t currentHits =
@@ -335,6 +335,8 @@ void Cache::recordHit() {
     return;
   }
 
+  TRI_ASSERT(_findStats != nullptr);
+
   _findStats->findHits.add(1, std::memory_order_relaxed);
   if (_findStats->findStats) {
     _findStats->findStats->insertRecord(
@@ -353,6 +355,8 @@ void Cache::recordMiss() {
   } catch (...) {
     return;
   }
+
+  TRI_ASSERT(_findStats != nullptr);
 
   _findStats->findMisses.add(1, std::memory_order_relaxed);
   if (_findStats->findStats) {
@@ -401,45 +405,36 @@ bool Cache::reportInsert(bool hadEviction) {
 }
 
 void Cache::ensureFindStats() {
-  // the happy path is that we already have find stats ready
-  if (ADB_UNLIKELY(!_haveFindStats.load(std::memory_order_relaxed))) {
-    // if we want a single thread to be responsible to create them
-    {
-      std::unique_lock<std::mutex> lock(_findStatsLock);
-      if (!_haveFindStats.load(std::memory_order_relaxed)) {
-        TRI_ASSERT(_findStats == nullptr);
-        _findStats = std::make_unique<FindStats>();
-        if (_enableWindowedStats) {
-          _findStats->findStats = std::make_unique<StatBuffer>(
-              _manager->sharedPRNG(), Manager::kFindStatsCapacity);
-        }
-        _haveFindStats.store(true);
-        lock.unlock();
-        _manager->adjustGlobalAllocation(
-            sizeof(decltype(_findStats)::element_type) +
-            (_enableWindowedStats ? _findStats->findStats->memoryUsage() : 0));
-      }
+  absl::call_once(_findStatsOnceFlag, [this]() {
+    TRI_ASSERT(!_findStatsCreated.load(std::memory_order_relaxed));
+    TRI_ASSERT(_findStats == nullptr);
+
+    _findStats = std::make_unique<FindStats>();
+    if (_enableWindowedStats) {
+      _findStats->findStats = std::make_unique<StatBuffer>(
+          _manager->sharedPRNG(), Manager::kFindStatsCapacity);
     }
-  }
+    _manager->adjustGlobalAllocation(
+        sizeof(decltype(_findStats)::element_type) +
+        (_enableWindowedStats ? _findStats->findStats->memoryUsage() : 0));
+
+    _findStatsCreated.store(true);
+  });
   TRI_ASSERT(_findStats != nullptr);
 }
 
 void Cache::ensureEvictionStats() {
-  // the happy path is that we already have eviction stats ready
-  if (ADB_UNLIKELY(!_haveEvictionStats.load(std::memory_order_relaxed))) {
-    // if we want a single thread to be responsible to create them
-    {
-      std::unique_lock<std::mutex> lock(_evictionStatsLock);
-      if (!_haveEvictionStats.load(std::memory_order_relaxed)) {
-        TRI_ASSERT(_evictionStats == nullptr);
-        _evictionStats = std::make_unique<EvictionStats>();
-        _haveEvictionStats.store(true);
-        lock.unlock();
-        _manager->adjustGlobalAllocation(
-            sizeof(decltype(_evictionStats)::element_type));
-      }
-    }
-  }
+  absl::call_once(_evictionStatsOnceFlag, [this]() {
+    TRI_ASSERT(!_evictionStatsCreated.load(std::memory_order_relaxed));
+    TRI_ASSERT(_evictionStats == nullptr);
+
+    _evictionStats = std::make_unique<EvictionStats>();
+    _manager->adjustGlobalAllocation(
+        sizeof(decltype(_evictionStats)::element_type));
+
+    _evictionStatsCreated.store(true);
+  });
+
   TRI_ASSERT(_evictionStats != nullptr);
 }
 

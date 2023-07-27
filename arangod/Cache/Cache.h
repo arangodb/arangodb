@@ -35,11 +35,13 @@
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <limits>
 #include <memory>
-#include <mutex>
+
+#include <absl/base/call_once.h>
 
 namespace arangodb::cache {
 
@@ -307,30 +309,28 @@ class Cache : public std::enable_shared_from_this<Cache> {
     std::unique_ptr<StatBuffer> findStats;
   };
 
-  // this will only flip from false to true, when the eviction stats
-  // are created
-  std::atomic<bool> _haveFindStats;
-
-  // used to create eviction stats under the lock (so that only a single
-  // thread creates them)
-  std::mutex _findStatsLock;
-  // this struct is allocated lazily, when the _findStats are first written to
-  std::unique_ptr<FindStats> _findStats;
-
   // manage eviction rate
   struct EvictionStats {
     basics::SharedCounter<64> insertsTotal;
     basics::SharedCounter<64> insertEvictions;
   };
 
-  // this will only flip from false to true, when the eviction stats
-  // are created
-  std::atomic<bool> _haveEvictionStats;
-  // used to create eviction stats under the lock (so that only a single
-  // thread creates them)
-  std::mutex _evictionStatsLock;
-  // this struct is allocated lazily, when the _evictionStats are first written
-  // to
+  // this is a control variable that ensures that the _findStats
+  // are created lazily and exactly once per Cache object.
+  absl::once_flag _findStatsOnceFlag;
+  // this variable flips from false to true only once when the
+  // _findStats object is lazily created.
+  std::atomic<bool> _findStatsCreated = false;
+  // the actual find stats object
+  std::unique_ptr<FindStats> _findStats;
+
+  // this is a control variable that ensures that the _evictionStats
+  // are created lazily and exactly once per Cache object.
+  absl::once_flag _evictionStatsOnceFlag;
+  // this variable flips from false to true only once when the
+  // _evictionStats object is lazily created.
+  std::atomic<bool> _evictionStatsCreated = false;
+  // the actual eviction stats object
   std::unique_ptr<EvictionStats> _evictionStats;
 
   // times to wait until requesting is allowed again
