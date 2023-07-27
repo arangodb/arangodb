@@ -39,6 +39,25 @@
 
 using namespace arangodb;
 
+namespace {
+
+class HybridLogicalClockWithFixedTime final
+    : public basics::HybridLogicalClock {
+ public:
+  explicit HybridLogicalClockWithFixedTime(uint64_t t) : _fixed(t) {}
+
+ protected:
+  uint64_t getPhysicalTime() override {
+    // arbitrary timestamp from Sep 30, 2022.
+    return _fixed;
+  }
+
+ private:
+  uint64_t _fixed;
+};
+
+}  // namespace
+
 TEST(HybridLogicalClockTest, test_encode_decode_timestamp) {
   std::vector<std::pair<uint64_t, std::string_view>> values = {
       {0ULL, ""},
@@ -168,5 +187,69 @@ TEST(HybridLogicalClockTest, test_get_timestamp) {
     // stamps must be increasing
     ASSERT_GT(stamp, initial);
     initial = stamp;
+  }
+}
+
+TEST(HybridLogicalClockTest, test_values_increase_for_same_physical_time) {
+  ::HybridLogicalClockWithFixedTime hlc(1664561862434ULL);
+
+  uint64_t initial = hlc.getTimeStamp();
+  ASSERT_EQ(1664561862434ULL << 20ULL, initial);
+
+  for (size_t i = 0; i < 10'000'000; ++i) {
+    uint64_t stamp = hlc.getTimeStamp();
+    // stamps must be ever-increasing
+    ASSERT_GT(stamp, initial);
+    initial = stamp;
+  }
+}
+
+TEST(HybridLogicalClockTest,
+     test_values_increase_when_two_clocks_play_ping_pong) {
+  ::HybridLogicalClockWithFixedTime ping(1664561862434ULL);
+  ::HybridLogicalClockWithFixedTime pong(1664561862434ULL);
+
+  uint64_t initialPing = ping.getTimeStamp();
+  uint64_t initialPong = pong.getTimeStamp();
+  ASSERT_EQ(1664561862434ULL << 20ULL, initialPing);
+  ASSERT_EQ(1664561862434ULL << 20ULL, initialPong);
+
+  for (size_t i = 0; i < 10'000'000; ++i) {
+    uint64_t stamp = ping.getTimeStamp(initialPong);
+    // stamps must be ever-increasing
+    ASSERT_GT(stamp, initialPing);
+    ASSERT_GT(stamp, initialPong);
+    initialPing = stamp;
+
+    stamp = pong.getTimeStamp(initialPing);
+    ASSERT_GT(stamp, initialPing);
+    ASSERT_GT(stamp, initialPong);
+    initialPong = stamp;
+  }
+}
+
+TEST(
+    HybridLogicalClockTest,
+    test_values_increase_when_two_clocks_play_ping_pong_and_one_clock_is_far_behind) {
+  ::HybridLogicalClockWithFixedTime ping(1664561862434ULL);
+  // pong has a lag of more than 1 year...
+  ::HybridLogicalClockWithFixedTime pong(1640482451649ULL);
+
+  uint64_t initialPing = ping.getTimeStamp();
+  uint64_t initialPong = pong.getTimeStamp();
+  ASSERT_EQ(1664561862434ULL << 20ULL, initialPing);
+  ASSERT_EQ(1640482451649ULL << 20ULL, initialPong);
+
+  for (size_t i = 0; i < 10'000'000; ++i) {
+    uint64_t stamp = ping.getTimeStamp(initialPong);
+    // stamps must be ever-increasing
+    ASSERT_GT(stamp, initialPing);
+    ASSERT_GT(stamp, initialPong);
+    initialPing = stamp;
+
+    stamp = pong.getTimeStamp(initialPing);
+    ASSERT_GT(stamp, initialPing);
+    ASSERT_GT(stamp, initialPong);
+    initialPong = stamp;
   }
 }
