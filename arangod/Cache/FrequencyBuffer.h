@@ -27,11 +27,11 @@
 #include <atomic>
 #include <cmath>
 #include <cstdint>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "Basics/debugging.h"
+#include "Containers/FlatHashMap.h"
 #include "RestServer/SharedPRNGFeature.h"
 
 namespace arangodb::cache {
@@ -95,11 +95,12 @@ class FrequencyBuffer {
   typename FrequencyBuffer::stats_t getFrequencies() const {
     T const empty{};
     // calculate frequencies
-    std::unordered_map<T, std::size_t, Hasher, Comparator> frequencies;
+    arangodb::containers::FlatHashMap<T, std::size_t, Hasher, Comparator>
+        frequencies;
     for (std::size_t i = 0; i < _capacity; i++) {
       T const entry = _buffer[i].load(std::memory_order_relaxed);
       if (!_cmp(entry, empty)) {
-        frequencies[entry]++;
+        ++frequencies[entry];
       }
     }
 
@@ -107,12 +108,12 @@ class FrequencyBuffer {
     stats_t data;
     data.reserve(frequencies.size());
     for (auto f : frequencies) {
-      data.emplace_back(std::pair<T, std::size_t>(f.first, f.second));
+      data.emplace_back(f.first, f.second);
     }
     std::sort(
         data.begin(), data.end(),
         [](std::pair<T, std::uint64_t> const& left,
-           std::pair<T, std::size_t> const& right) {
+           std::pair<T, std::uint64_t> const& right) {
           // in case of equal frequencies, we use the key as an arbiter,
           // so that repeated calls produce the same result for keys
           // with equal values

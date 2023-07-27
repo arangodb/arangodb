@@ -290,6 +290,16 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // completely.
   std::atomic<std::int64_t> _memoryUsageDiff;
 
+ private:
+  void ensureEvictionStats();
+
+  // manage the actual table - note: MUST be used only with atomic_load and
+  // atomic_store!
+  std::shared_ptr<Table> _table;
+
+  Table::BucketClearer _bucketClearer;
+  std::size_t const _slotsPerBucket;
+
   // this struct is allocated on the heap only lazily
   struct FindStats {
     mutable basics::SharedCounter<64> findHits;
@@ -301,23 +311,11 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // are created
   std::atomic<bool> _haveFindStats;
 
-  bool const _enableWindowedStats;
-
   // used to create eviction stats under the lock (so that only a single
   // thread creates them)
   std::mutex _findStatsLock;
   // this struct is allocated lazily, when the _findStats are first written to
   std::unique_ptr<FindStats> _findStats;
-
- private:
-  void ensureEvictionStats();
-
-  // manage the actual table - note: MUST be used only with atomic_load and
-  // atomic_store!
-  std::shared_ptr<Table> _table;
-
-  Table::BucketClearer _bucketClearer;
-  std::size_t const _slotsPerBucket;
 
   // manage eviction rate
   struct EvictionStats {
@@ -338,6 +336,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // times to wait until requesting is allowed again
   std::atomic<Manager::time_point::rep> _migrateRequestTime;
   std::atomic<Manager::time_point::rep> _resizeRequestTime;
+
+  bool const _enableWindowedStats;
 
   static constexpr std::uint64_t kEvictionMask =
       4095;  // check roughly every 4096 insertions

@@ -58,16 +58,16 @@ Cache::Cache(
       _id(id),
       _metadata(std::move(metadata)),
       _memoryUsageDiff(0),
-      _haveFindStats(false),
-      _enableWindowedStats(enableWindowedStats),
       _table(std::move(table)),
       _bucketClearer(bucketClearer(this, &_metadata)),
       _slotsPerBucket(slotsPerBucket),
+      _haveFindStats(false),
       _haveEvictionStats(false),
       _migrateRequestTime(
           std::chrono::steady_clock::now().time_since_epoch().count()),
       _resizeRequestTime(
-          std::chrono::steady_clock::now().time_since_epoch().count()) {
+          std::chrono::steady_clock::now().time_since_epoch().count()),
+      _enableWindowedStats(enableWindowedStats) {
   TRI_ASSERT(_table != nullptr);
   _table->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
   _table->enable();

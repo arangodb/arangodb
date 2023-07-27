@@ -651,9 +651,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     _totalCachedSizeEffective +=
         cache::kCachedValueHeaderSize + key.size() + size;
     ++_totalInserts;
-    if (isEmpty) {
-      ++_totalEmptyInserts;
-    }
+    _totalEmptyInserts += static_cast<uint64_t>(isEmpty);
     _totalCompressed += didCompress ? 1 : 0;
   }
 

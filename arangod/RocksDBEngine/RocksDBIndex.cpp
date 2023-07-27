@@ -187,7 +187,7 @@ void RocksDBIndex::setupCache() {
   }
 }
 
-void RocksDBIndex::destroyCache() {
+void RocksDBIndex::destroyCache() noexcept {
   if (_cache != nullptr) {
     try {
       TRI_ASSERT(_cacheManager != nullptr);

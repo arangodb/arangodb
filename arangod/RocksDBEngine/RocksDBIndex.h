@@ -108,7 +108,7 @@ class RocksDBIndex : public Index {
   }
 
   void setupCache();
-  void destroyCache();
+  void destroyCache() noexcept;
 
   /// performs a preflight check for an insert operation, not carrying out any
   /// modifications to the index.
