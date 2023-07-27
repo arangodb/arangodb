@@ -1432,7 +1432,7 @@ Result IResearchDataStore::initDataStore(
 
         std::chrono::time_point<std::chrono::steady_clock>
             lastRecoveryProgressReportTime{};
-        auto progress = [id = index.id(), &lastRecoveryProgressReportTime](
+        auto progress = [id, &lastRecoveryProgressReportTime](
                             std::string_view phase, size_t current,
                             size_t total) {
           TRI_ASSERT(total != 0);
