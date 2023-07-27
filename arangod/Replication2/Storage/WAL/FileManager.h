@@ -39,7 +39,7 @@ struct FileManager : IFileManager {
   auto createWriter(std::string const& filename)
       -> std::unique_ptr<IFileWriter> override;
 
-  auto removeAll() -> bool override;
+  void removeAll() override;
 
  private:
   std::filesystem::path _folderPath;

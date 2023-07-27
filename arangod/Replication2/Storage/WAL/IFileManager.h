@@ -41,7 +41,7 @@ struct IFileManager {
   virtual auto createWriter(std::string const& filename)
       -> std::unique_ptr<IFileWriter> = 0;
 
-  virtual auto removeAll() -> bool = 0;
+  virtual void removeAll() = 0;
 };
 
 }  // namespace arangodb::replication2::storage::wal

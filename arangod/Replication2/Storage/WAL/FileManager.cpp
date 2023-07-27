@@ -23,7 +23,9 @@
 
 #include "FileManager.h"
 #include <filesystem>
+#include <vector>
 
+#include "Assertions/Assert.h"
 #include "Replication2/Storage/WAL/FileReaderImpl.h"
 #include "Replication2/Storage/WAL/FileWriterImpl.h"
 
@@ -33,8 +35,14 @@ FileManager::FileManager(std::filesystem::path folderPath)
     : _folderPath(std::move(folderPath)) {}
 
 auto FileManager::listFiles() -> std::vector<std::string> {
-  // TODO
-  return {};
+  std::vector<std::string> result;
+  for (auto const& e : std::filesystem::directory_iterator{_folderPath}) {
+    TRI_ASSERT(e.is_regular_file());
+    if (e.is_regular_file()) {
+      result.emplace_back(e.path().filename().string());
+    }
+  }
+  return result;
 }
 
 auto FileManager::createReader(std::string const& filename)
@@ -47,9 +55,6 @@ auto FileManager::createWriter(std::string const& filename)
   return std::make_unique<FileWriterImpl>(_folderPath / filename);
 }
 
-auto FileManager::removeAll() -> bool {
-  // TODO
-  return {};
-}
+void FileManager::removeAll() { std::filesystem::remove_all(_folderPath); }
 
 }  // namespace arangodb::replication2::storage::wal

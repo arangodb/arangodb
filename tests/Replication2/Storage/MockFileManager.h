@@ -38,7 +38,7 @@ struct MockFileManager : IFileManager {
               (override));
   MOCK_METHOD(std::unique_ptr<IFileWriter>, createWriter, (std::string const&),
               (override));
-  MOCK_METHOD(bool, removeAll, (), (override));
+  MOCK_METHOD(void, removeAll, (), (override));
 };
 
 }  // namespace arangodb::replication2::storage::wal::test
