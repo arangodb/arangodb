@@ -876,6 +876,7 @@ Result IResearchDataStore::commitUnsafeImpl(
     absl::Cleanup commitGuard = [&, last = _lastCommittedTick]() noexcept {
       _lastCommittedTick = last;
     };
+
 #ifdef USE_ENTERPRISE
     auto forceOpen = [&]() -> bool {
       bool force{false};
