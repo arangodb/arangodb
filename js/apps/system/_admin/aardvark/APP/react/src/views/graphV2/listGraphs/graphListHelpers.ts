@@ -224,22 +224,18 @@ const updateOrphans = async ({
         !values.orphanCollections?.includes(collection) &&
         !addedOrphanCollections.includes(collection)
     );
-    await Promise.all(
-      addedOrphanCollections.map((collection: any) =>
-        addOrphanCollection({
-          collectionName: collection,
-          graphName: values.name
-        })
-      )
-    );
-    await Promise.all(
-      removedOrphanColletions.map((collection: any) =>
-        removeOrphanCollection({
-          collectionName: collection,
-          graphName: values.name
-        })
-      )
-    );
+    for (const collection of addedOrphanCollections) {
+      await addOrphanCollection({
+        collectionName: collection,
+        graphName: values.name
+      });
+    }
+    for (const collection of removedOrphanColletions) {
+      await removeOrphanCollection({
+        collectionName: collection,
+        graphName: values.name
+      });
+    }
   }
 };
 
@@ -253,7 +249,7 @@ const removeOrphanCollection = async ({
   const currentDB = getCurrentDB();
   try {
     const graph = currentDB.graph(graphName);
-    await graph.removeVertexCollection(collectionName);
+    return graph.removeVertexCollection(collectionName);
   } catch (e: any) {
     const errorMessage = e.response.body.errorMessage;
     notifyError(`Could not remove collection: ${errorMessage}`);
@@ -273,7 +269,7 @@ const addOrphanCollection = async ({
   const currentDB = getCurrentDB();
   try {
     const graph = currentDB.graph(graphName);
-    await graph.addVertexCollection(collectionName);
+    return graph.addVertexCollection(collectionName);
   } catch (e: any) {
     const errorMessage = e.response.body.errorMessage;
     notifyError(`Could not add collection: ${errorMessage}`);
@@ -329,30 +325,25 @@ const updateEdgeDefinitions = async ({
             edgeDefinition.collection === initialEdgeDefinition.collection
         )
     );
-    await Promise.all(
-      result.addedEdgeDefinitions.map(edgeDefinition =>
-        addEdgeDefinition({
-          edgeDefinition,
-          graphName: values.name
-        })
-      )
-    );
-    await Promise.all(
-      removedEdgeDefinitions.map(edgeDefinition =>
-        removeEdgeDefinition({
-          edgeDefinition,
-          graphName: values.name
-        })
-      )
-    );
-    await Promise.all(
-      result.modifiedEdgeDefinitions.map(edgeDefinition =>
-        modifyEdgeDefinition({
-          edgeDefinition,
-          graphName: values.name
-        })
-      )
-    );
+
+    for (const edgeDefinition of result.addedEdgeDefinitions) {
+      await addEdgeDefinition({
+        edgeDefinition,
+        graphName: values.name
+      });
+    }
+    for (const edgeDefinition of removedEdgeDefinitions) {
+      await removeEdgeDefinition({
+        edgeDefinition,
+        graphName: values.name
+      });
+    }
+    for (const edgeDefinition of result.modifiedEdgeDefinitions) {
+      await modifyEdgeDefinition({
+        edgeDefinition,
+        graphName: values.name
+      });
+    }
   }
 };
 
