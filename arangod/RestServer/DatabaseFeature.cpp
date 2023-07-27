@@ -921,7 +921,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
       }
 
       if (ServerState::instance()->isSingleServerOrCoordinator() &&
-          databases->size() >= maxDatabases()) {
+          theLists->_databases.size() >= maxDatabases()) {
         // intentionally do not validate number of databases on DB servers,
         // because they only carry out operations that are initiated by
         // coordinators
