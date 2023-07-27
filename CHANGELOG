@@ -1,3 +1,11 @@
+v3.11.3 (XXXX-XX-XX)
+--------------------
+
+* Fixed potential deadlock() in cache::Manager::unprepareTask() in case a 
+  MigrateTask could not be scheduled successfully (in case of a full scheduler 
+  queue on DB servers).
+
+
 v3.11.2 (2023-07-21)
 --------------------
 
