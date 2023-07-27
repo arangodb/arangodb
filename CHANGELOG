@@ -10,6 +10,8 @@ devel
     `arangodb_scheduler_stack_memory_usage`
   These metrics were introduced in 3.12, so no previous versions are affected.
 
+* Updated arangosync to v2.19.0-preview-2.
+
 * Added experimental startup options for RocksDB .sst file partitioning:
 
   - `--rocksdb.partition-files-for-documents`
