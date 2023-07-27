@@ -876,38 +876,26 @@ Result IResearchDataStore::commitUnsafeImpl(
     absl::Cleanup commitGuard = [&, last = _lastCommittedTick]() noexcept {
       _lastCommittedTick = last;
     };
-
 #ifdef USE_ENTERPRISE
-    bool const reopenColumnstore = [&] {
-      if (!_asyncFeature->columnsCacheOnlyLeaders()) {
-        return false;
+    auto forceOpen = [&]() -> bool {
+      bool force{false};
+      if (_asyncFeature->columnsCacheOnlyLeaders()) {
+        auto& ci = _collection.vocbase()
+                       .server()
+                       .getFeature<ClusterFeature>()
+                       .clusterInfo();
+        auto newUseSearchCache =
+            _useSearchCache.load(std::memory_order_relaxed);
+        auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                       _collection.name());
+        if (r != ClusterInfo::ShardLeadership::kUnclear) {
+          newUseSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+        }
+        force = _useSearchCache.load(std::memory_order_relaxed) !=
+                newUseSearchCache;
+        _useSearchCache = newUseSearchCache;
       }
-      auto& ci = collection()
-                     .vocbase()
-                     .server()
-                     .getFeature<ClusterFeature>()
-                     .clusterInfo();
-      auto r = ci.getShardLeadership(ServerState::instance()->getId(),
-                                     collection().name());
-      if (r == ClusterInfo::ShardLeadership::kUnclear) {
-        return false;
-      }
-      bool curr = r == ClusterInfo::ShardLeadership::kLeader;
-      bool prev = _useSearchCache.exchange(curr, std::memory_order_relaxed);
-      return prev != curr;
-    }();
-#endif
-    auto engineSnapshot = _engine->currentSnapshot();
-    if (ADB_UNLIKELY(!engineSnapshot)) {
-      return {TRI_ERROR_INTERNAL,
-              absl::StrCat("Failed to get engine snapshot while committing "
-                           "ArangoSearch index '",
-                           id().id(), "'")};
-    }
-    auto const beforeCommit = engineSnapshot->tick();
-    TRI_ASSERT(_lastCommittedTick <= beforeCommit);
-    absl::Cleanup commitGuard = [&, last = _lastCommittedTick]() noexcept {
-      _lastCommittedTick = last;
+      return force;
     };
 #endif
     auto const wereChanges = _dataStore._writer->Commit(

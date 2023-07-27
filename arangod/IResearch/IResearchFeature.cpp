@@ -1232,27 +1232,6 @@ void IResearchFeature::unprepare() {
   _running.store(false);
 }
 
-std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                       TRI_vocbase_t& database) {
-  std::filesystem::path path{dbPathFeature.directory()};
-  path /= "databases";
-  path /= absl::StrCat("database-", database.id());
-  return path;
-}
-
-void cleanupDatabase(TRI_vocbase_t& database) {
-  auto const& feature = database.server().getFeature<DatabasePathFeature>();
-  auto path = getPersistedPath(feature, database);
-  std::error_code error;
-  std::filesystem::remove_all(path);
-  if (error) {
-    LOG_TOPIC("bad02", ERR, TOPIC)
-        << "Failed to remove arangosearch path for database (id '"
-        << database.id() << "' name: '" << database.name() << "') with error '"
-        << error.message() << "'";
-  }
-}
-
 bool IResearchFeature::queue(ThreadGroup id,
                              std::chrono::steady_clock::duration delay,
                              std::function<void()>&& fn) {
