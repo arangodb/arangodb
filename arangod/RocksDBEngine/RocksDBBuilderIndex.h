@@ -107,6 +107,10 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
 
   Result drop() override { return _wrapped->drop(); }
 
+  ResultT<TruncateGuard> truncateBegin(rocksdb::WriteBatch& batch) final {
+    return _wrapped->truncateBegin(batch);
+  }
+
   void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                       transaction::Methods* trx) final {
     _wrapped->truncateCommit(std::move(guard), tick, trx);
