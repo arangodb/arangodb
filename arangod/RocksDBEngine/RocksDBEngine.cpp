@@ -2586,7 +2586,7 @@ void RocksDBEngine::pruneWalFiles() {
     // check if WAL file is expired
     auto deleteFile = purgeEnabler.canPurge();
     LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
-        << "pruneWalFiles checking expired file '" << (*it).first
+        << "pruneWalFiles checking file '" << (*it).first
         << "', canPurge: " << deleteFile;
     if (deleteFile) {
       LOG_TOPIC("68e4a", DEBUG, Logger::ENGINES)
