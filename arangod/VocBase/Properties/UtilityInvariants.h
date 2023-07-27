@@ -47,11 +47,6 @@ struct UtilityInvariants {
   [[nodiscard]] static auto isGreaterZeroIfPresent(
       std::optional<uint64_t> const& value) -> inspection::Status;
 
-  [[nodiscard]] static auto isGreaterOrEqualZero(uint64_t const& value)
-      -> inspection::Status;
-  [[nodiscard]] static auto isGreaterOrEqualZeroIfPresent(
-      std::optional<uint64_t> const& value) -> inspection::Status;
-
   [[nodiscard]] static auto isValidShardingStrategy(std::string const& value)
       -> inspection::Status;
   [[nodiscard]] static auto isValidShardingStrategyIfPresent(

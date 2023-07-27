@@ -60,22 +60,6 @@ auto UtilityInvariants::isGreaterZeroIfPresent(
   return inspection::Status::Success{};
 }
 
-auto UtilityInvariants::isGreaterOrEqualZero(uint64_t const& value)
-    -> inspection::Status {
-  if (value >= 0) {
-    return inspection::Status::Success{};
-  }
-  return {"Value has to be >= 0"};
-}
-
-auto UtilityInvariants::isGreaterOrEqualZeroIfPresent(
-    std::optional<uint64_t> const& value) -> inspection::Status {
-  if (value.has_value()) {
-    return isGreaterOrEqualZero(value.value());
-  }
-  return inspection::Status::Success{};
-}
-
 auto UtilityInvariants::isValidShardingStrategy(std::string const& strat)
     -> inspection::Status {
   // Note we may be better off with a lookup list here

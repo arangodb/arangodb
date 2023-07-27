@@ -87,11 +87,8 @@ auto inspect(Inspector& f, ClusteringMutableProperties& props) {
           // Now check the new attribute, if it is not there,
           // fallback to minReplicationFactor / default, whatever
           // is set already.
-          // Then do the invariant check, this should now cover both
-          // values.
           f.field(StaticStrings::WriteConcern, props.writeConcern)
-              .fallback(f.keep())
-              .invariant(UtilityInvariants::isGreaterOrEqualZeroIfPresent),
+              .fallback(f.keep()),
           f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
               .transformWith(ClusteringMutableProperties::Transformers::
                                  ReplicationSatellite{}))
