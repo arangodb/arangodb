@@ -100,9 +100,6 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   void load() override {}
   void unload() override;
 
-  void load() final {}
-  void unload() final /*noexcept*/ { shutdownDataStore(); }
-
   ResultT<TruncateGuard> truncateBegin(rocksdb::WriteBatch& batch) final {
     auto r = RocksDBIndex::truncateBegin(batch);
     if (!r.ok()) {
