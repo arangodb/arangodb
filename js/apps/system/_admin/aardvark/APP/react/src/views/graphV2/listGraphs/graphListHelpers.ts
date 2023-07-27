@@ -1,8 +1,9 @@
-import { GraphInfo } from "arangojs/graph";
+import { EdgeDefinition, GraphInfo } from "arangojs/graph";
 import * as Yup from "yup";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { notifyError, notifySuccess } from "../../../utils/notifications";
 import { getNormalizedByteLengthTest } from "../../../utils/yupHelper";
+import { GeneralGraphCreateValues } from "../addGraph/CreateGraph.types";
 
 export const createGraph = async <
   ValuesType extends {
@@ -191,11 +192,15 @@ export const updateGraph = async ({
   onSuccess,
   initialGraph
 }: {
-  values: any;
+  values: GeneralGraphCreateValues;
   onSuccess: () => void;
   initialGraph?: GraphInfo;
 }) => {
   await updateOrphans({
+    values,
+    initialGraph
+  });
+  await updateEdgeDefinitions({
     values,
     initialGraph
   });
@@ -206,17 +211,17 @@ const updateOrphans = async ({
   values,
   initialGraph
 }: {
-  values: any;
+  values: GeneralGraphCreateValues;
   initialGraph?: GraphInfo;
 }) => {
-  if (initialGraph?.orphanCollections) {
-    const addedOrphanCollections = values.orphanCollections.filter(
+  if (initialGraph?.orphanCollections && values.orphanCollections) {
+    const addedOrphanCollections = values.orphanCollections?.filter(
       (collection: string) =>
         !initialGraph.orphanCollections.includes(collection)
     );
     const removedOrphanColletions = initialGraph.orphanCollections.filter(
       (collection: string) =>
-        !values.orphanCollections.includes(collection) &&
+        !values.orphanCollections?.includes(collection) &&
         !addedOrphanCollections.includes(collection)
     );
     await Promise.all(
@@ -272,6 +277,142 @@ const addOrphanCollection = async ({
   } catch (e: any) {
     const errorMessage = e.response.body.errorMessage;
     notifyError(`Could not add collection: ${errorMessage}`);
+    return {
+      error: errorMessage
+    };
+  }
+};
+
+const updateEdgeDefinitions = async ({
+  values,
+  initialGraph
+}: {
+  values: GeneralGraphCreateValues;
+  initialGraph?: GraphInfo;
+}) => {
+  if (initialGraph?.edgeDefinitions) {
+    const result = values.edgeDefinitions.reduce(
+      (
+        acc: {
+          addedEdgeDefinitions: EdgeDefinition[];
+          modifiedEdgeDefinitions: EdgeDefinition[];
+        },
+        edgeDefinition
+      ) => {
+        // find the current edge definition in the initial graph
+        const initialEdgeDefinition = initialGraph.edgeDefinitions.find(
+          initialEdgeDefinition =>
+            initialEdgeDefinition.collection === edgeDefinition.collection
+        );
+
+        if (!initialEdgeDefinition) {
+          acc.addedEdgeDefinitions.push(edgeDefinition);
+        } else if (
+          initialEdgeDefinition.collection === edgeDefinition.collection &&
+          (initialEdgeDefinition.from !== edgeDefinition.from ||
+            initialEdgeDefinition.to !== edgeDefinition.to)
+        ) {
+          // same collection but different from/to
+          acc.modifiedEdgeDefinitions.push(edgeDefinition);
+        }
+        return acc;
+      },
+      {
+        addedEdgeDefinitions: [],
+        modifiedEdgeDefinitions: []
+      }
+    );
+    const removedEdgeDefinitions = initialGraph.edgeDefinitions.filter(
+      initialEdgeDefinition =>
+        !values.edgeDefinitions.find(
+          edgeDefinition =>
+            edgeDefinition.collection === initialEdgeDefinition.collection
+        )
+    );
+    await Promise.all(
+      result.addedEdgeDefinitions.map(edgeDefinition =>
+        addEdgeDefinition({
+          edgeDefinition,
+          graphName: values.name
+        })
+      )
+    );
+    await Promise.all(
+      removedEdgeDefinitions.map(edgeDefinition =>
+        removeEdgeDefinition({
+          edgeDefinition,
+          graphName: values.name
+        })
+      )
+    );
+    await Promise.all(
+      result.modifiedEdgeDefinitions.map(edgeDefinition =>
+        modifyEdgeDefinition({
+          edgeDefinition,
+          graphName: values.name
+        })
+      )
+    );
+  }
+};
+
+const addEdgeDefinition = async ({
+  edgeDefinition,
+  graphName
+}: {
+  edgeDefinition: EdgeDefinition;
+  graphName: string;
+}) => {
+  const currentDB = getCurrentDB();
+  try {
+    const graph = currentDB.graph(graphName);
+    await graph.addEdgeDefinition(edgeDefinition);
+  } catch (e: any) {
+    const errorMessage = e.response.body.errorMessage;
+    notifyError(`Could not add edge definition: ${errorMessage}`);
+    return {
+      error: errorMessage
+    };
+  }
+};
+
+const removeEdgeDefinition = async ({
+  edgeDefinition,
+  graphName
+}: {
+  edgeDefinition: EdgeDefinition;
+  graphName: string;
+}) => {
+  const currentDB = getCurrentDB();
+  try {
+    const graph = currentDB.graph(graphName);
+    await graph.removeEdgeDefinition(edgeDefinition.collection);
+  } catch (e: any) {
+    const errorMessage = e.response.body.errorMessage;
+    notifyError(`Could not remove edge definition: ${errorMessage}`);
+    return {
+      error: errorMessage
+    };
+  }
+};
+
+const modifyEdgeDefinition = async ({
+  edgeDefinition,
+  graphName
+}: {
+  edgeDefinition: EdgeDefinition;
+  graphName: string;
+}) => {
+  const currentDB = getCurrentDB();
+  try {
+    const graph = currentDB.graph(graphName);
+    await graph.replaceEdgeDefinition(
+      edgeDefinition.collection,
+      edgeDefinition
+    );
+  } catch (e: any) {
+    const errorMessage = e.response.body.errorMessage;
+    notifyError(`Could not modify edge definition: ${errorMessage}`);
     return {
       error: errorMessage
     };
