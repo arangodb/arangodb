@@ -1,8 +1,8 @@
 set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   #Helper/WaitForQueue.cpp
-  #Mocks/AsyncFollower.cpp
-  #Mocks/AsyncFollower.h
+  #Mocks/AsyncFollower.cpp Mocks/AsyncFollower.h
   #Mocks/AsyncLeader.cpp
+  Mocks/DelayedLogFollower.h
   #Mocks/FakeAbstractFollower.h
   Mocks/FakeFollower.cpp
   Mocks/FakeFollower.h
@@ -31,7 +31,8 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   Mocks/LogLeaderMock.h
   Mocks/LogFollowerMock.h
   Mocks/ReplicatedStateHandleMock.h
-  Mocks/FakeFollowerFactory.h)
+  Mocks/FakeFollowerFactory.h
+  )
 
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
@@ -114,6 +115,8 @@ add_library(arango_tests_replication2_pure OBJECT
   ReplicatedLog/Supervision/SupervisionSimulationTest.cpp
   ReplicatedLog/Supervision/SupervisionTest.cpp
   ReplicatedLog/Components/SnapshotManagerTest.cpp
+
+  ReplicatedLog/RewriteLogTest.cpp
   )
 
 

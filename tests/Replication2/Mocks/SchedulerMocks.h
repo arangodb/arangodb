@@ -120,10 +120,13 @@ struct DelayedScheduler : IScheduler {
     f.operator()();
   }
 
-  void runAll() noexcept {
+  auto runAll() noexcept {
+    auto iters = std::size_t{0};
     while (not _queue.empty()) {
       runOnce();
+      ++iters;
     }
+    return iters;
   }
 
   auto hasWork() const noexcept -> bool { return not _queue.empty(); }

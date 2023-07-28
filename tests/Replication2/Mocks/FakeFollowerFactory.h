@@ -33,6 +33,12 @@ struct FakeFollowerFactory : replicated_log::IAbstractFollowerFactory {
 
   auto constructFollower(ParticipantId const& participantId) -> std::shared_ptr<
       replication2::replicated_log::AbstractFollower> override {
+    auto it = followerThunks.find(participantId);
+    if (it != followerThunks.end()) {
+      auto ret = it->second.operator()();
+      followerThunks.erase(it);
+      return ret;
+    }
     return nullptr;
   }
 
@@ -42,5 +48,9 @@ struct FakeFollowerFactory : replicated_log::IAbstractFollowerFactory {
   }
 
   std::shared_ptr<replicated_log::ILeaderCommunicator> leaderComm;
+  std::unordered_map<ParticipantId,
+                     std::function<std::shared_ptr<
+                         replication2::replicated_log::AbstractFollower>()>>
+      followerThunks;
 };
 }  // namespace arangodb::replication2::test
