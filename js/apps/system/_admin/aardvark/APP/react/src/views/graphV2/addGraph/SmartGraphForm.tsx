@@ -9,7 +9,8 @@ import {
   createGraph,
   GENERAL_GRAPH_FIELDS_MAP,
   GRAPH_VALIDATION_SCHEMA,
-  SMART_GRAPH_FIELDS_MAP
+  SMART_GRAPH_FIELDS_MAP,
+  updateGraph
 } from "../listGraphs/graphListHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
@@ -39,6 +40,7 @@ const INITIAL_VALUES: SmartGraphCreateValues = {
 };
 export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
+  const isEditMode = mode === "edit";
   const handleSubmit = async (values: SmartGraphCreateValues) => {
     try {
       const sanitizedValues = {
@@ -55,6 +57,17 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
           smartGraphAttribute: values.smartGraphAttribute
         }
       };
+      if (isEditMode) {
+        const info = await updateGraph({
+          values: sanitizedValues,
+          initialGraph,
+          onSuccess: () => {
+            mutate("/graphs");
+            onClose();
+          }
+        });
+        return info;
+      }
       const info = await createGraph({
         values: sanitizedValues,
         onSuccess: () => {
@@ -68,7 +81,6 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
       window.arangoHelper.arangoError("Could not add graph", errorMessage);
     }
   };
-  const isDisabled = mode === "edit";
   return (
     <Formik
       initialValues={initialGraph || INITIAL_VALUES}
@@ -82,7 +94,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
             <FormField
               field={{
                 ...smartGraphFieldsMap.name,
-                isDisabled
+                isDisabled: isEditMode
               }}
             />
             <ClusterFields isShardsRequired />
@@ -90,7 +102,6 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
               <FormField
                 field={{
                   ...CLUSTER_GRAPH_FIELDS_MAP.satellites,
-                  isDisabled: mode === "edit",
                   noOptionsMessage: () =>
                     "Please enter a new and valid collection name"
                 }}
@@ -99,13 +110,13 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
             <FormField
               field={{
                 ...smartGraphFieldsMap.isDisjoint,
-                isDisabled
+                isDisabled: isEditMode
               }}
             />
             <FormField
               field={{
                 ...smartGraphFieldsMap.smartGraphAttribute,
-                isDisabled
+                isDisabled: isEditMode
               }}
             />
             <EdgeDefinitionsField
@@ -114,12 +125,7 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
               }
               allowExistingCollections={false}
             />
-            <FormField
-              field={{
-                ...smartGraphFieldsMap.orphanCollections,
-                isDisabled
-              }}
-            />
+            <FormField field={smartGraphFieldsMap.orphanCollections} />
           </FieldsGrid>
           <GraphModalFooter onClose={onClose} />
         </VStack>

@@ -3,7 +3,10 @@ import * as Yup from "yup";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { notifyError, notifySuccess } from "../../../utils/notifications";
 import { getNormalizedByteLengthTest } from "../../../utils/yupHelper";
-import { GeneralGraphCreateValues } from "../addGraph/CreateGraph.types";
+import {
+  AllGraphCreateValues,
+  GeneralGraphCreateValues
+} from "../addGraph/CreateGraph.types";
 
 export const createGraph = async <
   ValuesType extends {
@@ -192,18 +195,31 @@ export const updateGraph = async ({
   onSuccess,
   initialGraph
 }: {
-  values: GeneralGraphCreateValues;
+  values: AllGraphCreateValues;
   onSuccess: () => void;
   initialGraph?: GraphInfo;
 }) => {
-  await updateOrphans({
-    values,
-    initialGraph
-  });
-  await updateEdgeDefinitions({
-    values,
-    initialGraph
-  });
+  try {
+    await updateOrphans({
+      values,
+      initialGraph
+    });
+  } catch (e: any) {
+    const errorMessage = e.response.body.errorMessage;
+    notifyError(`Could not update orphans: ${errorMessage}`);
+    return;
+  }
+  try {
+    await updateEdgeDefinitions({
+      values,
+      initialGraph
+    });
+  } catch (e: any) {
+    const errorMessage = e.response.body.errorMessage;
+    notifyError(`Could not update edge definitions: ${errorMessage}`);
+    return;
+  }
+  notifySuccess(`Successfully updated the graph: ${values.name}`);
   onSuccess();
 };
 
@@ -247,16 +263,8 @@ const removeOrphanCollection = async ({
   graphName: string;
 }) => {
   const currentDB = getCurrentDB();
-  try {
-    const graph = currentDB.graph(graphName);
-    return graph.removeVertexCollection(collectionName);
-  } catch (e: any) {
-    const errorMessage = e.response.body.errorMessage;
-    notifyError(`Could not remove collection: ${errorMessage}`);
-    return {
-      error: errorMessage
-    };
-  }
+  const graph = currentDB.graph(graphName);
+  return graph.removeVertexCollection(collectionName);
 };
 
 const addOrphanCollection = async ({
@@ -267,16 +275,8 @@ const addOrphanCollection = async ({
   graphName: string;
 }) => {
   const currentDB = getCurrentDB();
-  try {
-    const graph = currentDB.graph(graphName);
-    return graph.addVertexCollection(collectionName);
-  } catch (e: any) {
-    const errorMessage = e.response.body.errorMessage;
-    notifyError(`Could not add collection: ${errorMessage}`);
-    return {
-      error: errorMessage
-    };
-  }
+  const graph = currentDB.graph(graphName);
+  return graph.addVertexCollection(collectionName);
 };
 
 const updateEdgeDefinitions = async ({
@@ -325,11 +325,14 @@ const updateEdgeDefinitions = async ({
             edgeDefinition.collection === initialEdgeDefinition.collection
         )
     );
-
+    const satellites = (values as any).options?.satellites as
+      | string[]
+      | undefined;
     for (const edgeDefinition of result.addedEdgeDefinitions) {
       await addEdgeDefinition({
         edgeDefinition,
-        graphName: values.name
+        graphName: values.name,
+        satellites
       });
     }
     for (const edgeDefinition of removedEdgeDefinitions) {
@@ -341,7 +344,8 @@ const updateEdgeDefinitions = async ({
     for (const edgeDefinition of result.modifiedEdgeDefinitions) {
       await modifyEdgeDefinition({
         edgeDefinition,
-        graphName: values.name
+        graphName: values.name,
+        satellites
       });
     }
   }
@@ -349,22 +353,18 @@ const updateEdgeDefinitions = async ({
 
 const addEdgeDefinition = async ({
   edgeDefinition,
-  graphName
+  graphName,
+  satellites
 }: {
   edgeDefinition: EdgeDefinition;
   graphName: string;
+  satellites?: string[];
 }) => {
   const currentDB = getCurrentDB();
-  try {
-    const graph = currentDB.graph(graphName);
-    await graph.addEdgeDefinition(edgeDefinition);
-  } catch (e: any) {
-    const errorMessage = e.response.body.errorMessage;
-    notifyError(`Could not add edge definition: ${errorMessage}`);
-    return {
-      error: errorMessage
-    };
-  }
+  const graph = currentDB.graph(graphName);
+  await graph.addEdgeDefinition(edgeDefinition, {
+    satellites
+  });
 };
 
 const removeEdgeDefinition = async ({
@@ -375,37 +375,22 @@ const removeEdgeDefinition = async ({
   graphName: string;
 }) => {
   const currentDB = getCurrentDB();
-  try {
-    const graph = currentDB.graph(graphName);
-    await graph.removeEdgeDefinition(edgeDefinition.collection);
-  } catch (e: any) {
-    const errorMessage = e.response.body.errorMessage;
-    notifyError(`Could not remove edge definition: ${errorMessage}`);
-    return {
-      error: errorMessage
-    };
-  }
+  const graph = currentDB.graph(graphName);
+  await graph.removeEdgeDefinition(edgeDefinition.collection);
 };
 
 const modifyEdgeDefinition = async ({
   edgeDefinition,
-  graphName
+  graphName,
+  satellites
 }: {
   edgeDefinition: EdgeDefinition;
   graphName: string;
+  satellites?: string[];
 }) => {
   const currentDB = getCurrentDB();
-  try {
-    const graph = currentDB.graph(graphName);
-    await graph.replaceEdgeDefinition(
-      edgeDefinition.collection,
-      edgeDefinition
-    );
-  } catch (e: any) {
-    const errorMessage = e.response.body.errorMessage;
-    notifyError(`Could not modify edge definition: ${errorMessage}`);
-    return {
-      error: errorMessage
-    };
-  }
+  const graph = currentDB.graph(graphName);
+  await graph.replaceEdgeDefinition(edgeDefinition.collection, edgeDefinition, {
+    satellites
+  });
 };
