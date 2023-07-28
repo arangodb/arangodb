@@ -1633,13 +1633,13 @@ function CreateCollectionsInOneShardSuite() {
         const value = v === "replicationFactor" ? 3 : 2;
         const res = tryCreate({name: collname, [v]: value});
         try {
-          if (isWindows && v === 'writeConcern') {
+          if (isWindows && isCluster && (v === 'writeConcern' || v === 'minReplicationFactor')) {
             // NOTE: On windows we inject a replicationFactor of 1 (which will be ignored later)
             // this however prohibits to set writeConcern to anything other then 1.
             isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, {[v]: value});
             // Raising the replicationFactor for windows would modify the test case, as it does not
             // do a standalone test on writeConcern anymore.
-	  } else {
+	        } else {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
             if (isCluster) {
               validateProperties(getOneShardShardingValues(), collname, 2);
