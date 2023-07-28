@@ -2671,11 +2671,11 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
   auto* lhsIt = reinterpret_cast<irs::byte_type const*>(subStr.data());
   auto* rhsIt = lhsIt + subStr.size();
   for (; left > 0 && lhsIt != begin; --left) {
-    while ((*--lhsIt & 0xC0) != 0x80) {
+    while ((*--lhsIt & 0xC0U) != 0x80U) {
     }
   }
   for (; right > 0; --right) {
-    while (rhsIt != end && (*++rhsIt & 0xC0) != 0x80) {
+    while (rhsIt != end && (*++rhsIt & 0xC0U) != 0x80U) {
     }
   }
   return AqlValue{std::string_view{reinterpret_cast<char const*>(lhsIt),
