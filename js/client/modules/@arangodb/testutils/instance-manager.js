@@ -75,7 +75,8 @@ class instanceManager {
     this.protocol = protocol;
     this.options = options;
     this.addArgs = addArgs;
-    this.rootDir = fs.join(tmpDir || fs.getTempPath(), testname);
+    this.tmpDir = tmpDir || fs.getTempPath();
+    this.rootDir = fs.join(this.tmpDir, testname);
     this.options.agency = this.options.agency || this.options.cluster || this.options.activefailover;
     this.agencyConfig = new inst.agencyConfig(options, this);
     this.leader = null;
@@ -106,6 +107,9 @@ class instanceManager {
   destructor(cleanup) {
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
+      if (arangod.serverCrashedLocal) {
+        cleanup = false;
+      }
     });
     this.stopTcpDump();
     if (this.cleanup && cleanup) {
@@ -153,7 +157,7 @@ class instanceManager {
     this.tcpdump = struct['tcpdump'];
     this.cleanup = struct['cleanup'];
     struct['arangods'].forEach(arangodStruct => {
-      let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyConfig);
+      let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyConfig, this.tmpDir);
       this.arangods.push(oneArangod);
       oneArangod.setFromStructure(arangodStruct);
       if (oneArangod.isAgent()) {
@@ -205,7 +209,8 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.agent + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir));
       }
       
       for (let count = 0;
@@ -218,7 +223,8 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir));
       }
       
       for (let count = 0;
@@ -231,7 +237,8 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir));
         frontendCount ++;
       }
       
@@ -245,7 +252,8 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.failover + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir));
         this.urls.push(this.arangods[this.arangods.length -1].url);
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
         frontendCount ++;
@@ -262,7 +270,8 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.single + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir));
         this.urls.push(this.arangods[this.arangods.length -1].url);
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
         frontendCount ++;
@@ -654,11 +663,15 @@ class instanceManager {
       }
     } catch (ex) {
       let timeout = internal.SetGlobalExecutionDeadlineTo(0.0);
-      print(RED + 'netstat gathering has thrown: ' + (timeout? "because of timeout in execution":""));
+      let moreReason = ": " + ex.message;
+      if (timeout) {
+        moreReason = "because of :" + ex.message;
+      }
+      print(RED + 'netstat gathering has thrown: ' + moreReason);
       print(ex, ex.stack);
       print(RESET);
       this.cleanup = false;
-      return this._forceTerminate(ex.message + " during health check");
+      return this._forceTerminate("Abort during Health Check SUT netstat gathering " + moreReason);
     }
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
@@ -826,6 +839,7 @@ class instanceManager {
         print(e.stack);
       }
     }
+    return false;
   }
 
   _forceTerminate(moreReason="") {
@@ -1052,6 +1066,10 @@ class instanceManager {
     return shutdownSuccess;
   }
 
+  getAgency(path, method, body = null) {
+    return this.agencyConfig.agencyInstances[0].getAgent(path, method, body);
+  }
+
   detectAgencyAlive() {
     let count = 20;
     while (count > 0) {
@@ -1098,7 +1116,7 @@ class instanceManager {
     }
   }
 
-  detectCurrentLeader(instanceInfo) {
+  detectCurrentLeader() {
     let opts = {
       method: 'POST',
       jwt: crypto.jwtEncode(this.arangods[0].args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),

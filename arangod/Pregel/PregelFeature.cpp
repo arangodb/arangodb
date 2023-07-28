@@ -657,13 +657,16 @@ void PregelFeature::beginShutdown() {
   std::unique_lock guard{_mutex};
   _gcHandle.reset();
 
+  for (auto& it : _conductors) {
+    it.second.conductor->_shutdown = true;
+  }
+
   auto cs = _conductors;
   auto ws = _workers;
   guard.unlock();
 
   // cancel all conductors and workers
   for (auto& it : cs) {
-    it.second.conductor->_shutdown = true;
     it.second.conductor->cancel();
   }
   for (auto it : ws) {
