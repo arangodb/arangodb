@@ -893,9 +893,11 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
   }
 
   // delete index values
+  std::vector<std::shared_ptr<Index>> indexes;
   std::vector<TruncateGuard> guards;
   {
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    indexes.reserve(_indexes.size());
     guards.reserve(_indexes.size());
     for (auto const& idx : _indexes) {
       auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
@@ -903,6 +905,7 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
       if (!r.ok()) {
         return std::move(r).result();
       }
+      indexes.push_back(idx);
       guards.push_back(std::move(r.get()));
     }
   }
@@ -934,14 +937,11 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
                                 /*revision*/ _logicalCollection.newRevisionId(),
                                 -static_cast<int64_t>(numDocs));
 
-    {
-      RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-      auto it = guards.begin();
-      for (auto const& idx : _indexes) {
-        // clears caches / clears links (if applicable)
-        auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
-        rIdx->truncateCommit(std::move(*it++), seq, &trx);
-      }
+    auto it = guards.begin();
+    for (auto const& idx : indexes) {
+      // clears caches / clears links (if applicable)
+      auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+      rIdx->truncateCommit(std::move(*it++), seq, &trx);
     }
 
     bufferTruncate(seq);
