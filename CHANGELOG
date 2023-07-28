@@ -1,6 +1,17 @@
 v3.11.3 (XXXX-XX-XX)
 --------------------
 
+* BTS-1511: AQL: Fixed access of integers in the ranges
+  [-36028797018963968, -281474976710657] and
+  [281474976710656, 36028797018963968], i.e. those whose representation require
+  7 bytes. These values were misinterpreted as different integers.
+  Simple passing of values (i.e. writing to or reading from documents) was not
+  affected: Only accesses of those values as numbers by AQL was. E.g. arithmetic
+  (addition, multiplication, ...), certain AQL functions, comparing/sorting -
+  the latter only if the numbers are compared directly, but not as part of a
+  value. For example, `SORT x` lead to an unexpected order if x was such a
+  number. `SORT [x]` however worked as expected.
+
 * Added experimental startup options for RocksDB .sst file partitioning:
 
   - `--rocksdb.partition-files-for-documents`
