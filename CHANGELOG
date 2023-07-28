@@ -1,6 +1,33 @@
 devel
 -----
 
+* Updated arangosync to v2.19.0-preview-2.
+
+* Added experimental startup options for RocksDB .sst file partitioning:
+
+  - `--rocksdb.partition-files-for-documents`
+  - `--rocksdb.partition-files-for-primary-index`
+  - `--rocksdb.partition-files-for-edge-index`
+  - `--rocksdb.partition-files-for-persistent-index`
+
+  Enabling any of these options will make RocksDB's compaction write the 
+  data for different collections/shards/indexes into different .sst files. 
+  Otherwise the document data from different collections/shards/indexes 
+  can be mixed and written into the same .sst files.
+
+  Enabling these options usually has the benefit of making the RocksDB
+  compaction more efficient when a lot of different collections/shards/indexes
+  are written to in parallel.
+  The disavantage of enabling this option is that there can be more .sst
+  files than when the option is turned off, and the disk space used by
+  these .sst files can be higher than if there are fewer .sst files (this
+  is because there is some per-.sst file overhead).
+  In particular on deployments with many collections/shards/indexes this can 
+  lead to a very high number of .sst files, with the potential of outgrowing 
+  the maximum number of file descriptors the ArangoDB process can open. 
+  Thus the option should only be enabled on deployments with a limited number
+  of collections/shards/indexes.
+
 * BTS-1511: AQL: Fixed access of integers in the ranges
   [-36028797018963968, -281474976710657] and
   [281474976710656, 36028797018963968], i.e. those whose representation require
