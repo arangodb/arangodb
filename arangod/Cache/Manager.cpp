@@ -563,12 +563,13 @@ void Manager::prepareTask(Manager::TaskEnvironment environment) {
   }
 }
 
-void Manager::unprepareTask(Manager::TaskEnvironment environment) noexcept {
+void Manager::unprepareTask(Manager::TaskEnvironment environment,
+                            bool internal) noexcept {
   switch (environment) {
     case TaskEnvironment::rebalancing: {
       TRI_ASSERT(_rebalancingTasks > 0);
       if (--_rebalancingTasks == 0) {
-        SpinLocker guard(SpinLocker::Mode::Write, _lock);
+        SpinLocker guard(SpinLocker::Mode::Write, _lock, !internal);
         _rebalancing = false;
         _rebalanceCompleted = std::chrono::steady_clock::now();
       }
@@ -577,7 +578,7 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) noexcept {
     case TaskEnvironment::resizing: {
       TRI_ASSERT(_resizingTasks > 0);
       if (--_resizingTasks == 0) {
-        SpinLocker guard(SpinLocker::Mode::Write, _lock);
+        SpinLocker guard(SpinLocker::Mode::Write, _lock, !internal);
         _resizing = false;
       }
       break;
