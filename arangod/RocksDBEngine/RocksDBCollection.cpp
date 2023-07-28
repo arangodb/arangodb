@@ -1925,7 +1925,7 @@ void RocksDBCollection::destroyCache() const {
   if (_cache != nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
-    _cacheManager->destroyCache(_cache);
+    _cacheManager->destroyCache(std::move(_cache));
     _cache.reset();
   }
 }
@@ -1934,17 +1934,17 @@ void RocksDBCollection::destroyCache() const {
 void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
-    bool banished = false;
-    while (!banished) {
+    do {
       auto status = _cache->banish(k.buffer()->data(),
                                    static_cast<uint32_t>(k.buffer()->size()));
-      if (status == TRI_ERROR_NO_ERROR) {
-        banished = true;
+      if (status == TRI_ERROR_NO_ERROR ||
+          status == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        break;
       } else if (status == TRI_ERROR_SHUTTING_DOWN) {
         destroyCache();
         break;
       }
-    }
+    } while (true);
   }
 }
 

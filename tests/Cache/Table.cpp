@@ -44,7 +44,7 @@ using namespace tests::mocks;
 TEST(CacheTableTest, test_static_allocation_size_method) {
   for (std::uint32_t i = Table::kMinLogSize; i <= Table::kMaxLogSize; i++) {
     ASSERT_TRUE(Table::allocationSize(i) ==
-                (sizeof(Table) + (kBucketSizeInBytes << i) + Table::padding));
+                (sizeof(Table) + (kBucketSizeInBytes << i) + Table::kPadding));
   }
 }
 
@@ -64,7 +64,7 @@ TEST(CacheTableTest, test_basic_constructor_behavior) {
     auto table = std::make_shared<Table>(i, &manager);
     ASSERT_NE(table.get(), nullptr);
     ASSERT_EQ(table->memoryUsage(),
-              (sizeof(Table) + (kBucketSizeInBytes << i) + Table::padding));
+              (sizeof(Table) + (kBucketSizeInBytes << i) + Table::kPadding));
     ASSERT_EQ(table->logSize(), i);
     ASSERT_EQ(table->size(), (static_cast<std::uint64_t>(1) << i));
   }

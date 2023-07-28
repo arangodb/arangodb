@@ -3795,9 +3795,7 @@ Result RestReplicationHandler::createBlockingTransaction(
     return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
   }
 
-  TRI_ASSERT(isLockHeld(id).ok());
-
-  return Result();
+  return isLockHeld(id);
 }
 
 Result RestReplicationHandler::isLockHeld(TransactionId id) const {
@@ -3805,7 +3803,7 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
   // there it should return false.
   // In all other cases it is released quickly.
   if (_vocbase.isDropped()) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -3813,9 +3811,8 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
 
   transaction::Status stats = mgr->getManagedTrxStatus(id, _vocbase.name());
   if (stats == transaction::Status::UNDEFINED) {
-    return Result(
-        TRI_ERROR_HTTP_NOT_FOUND,
-        "no hold read lock job found for id " + std::to_string(id.id()));
+    return {TRI_ERROR_HTTP_NOT_FOUND,
+            "no hold read lock job found for id " + std::to_string(id.id())};
   }
 
   return {};

@@ -16,6 +16,67 @@ devel
   memory limit settings, turn on intermediate commits for the query, or adjust
   the query so that it uses less memory.
 
+* Changed default values for the following options related to the in-memory
+  cache subsystem:
+
+  - `--cache.ideal-lower-fill-ratio` changed from 0.04 to 0.08
+  - `--cache.ideal-upper-fill-ratio` changed from 0.25 to 0.33
+
+  This allows slightly better hash table utilization and earlier memory
+  reclamation.
+
+* Added metric `rocksdb_cache_edge_empty_inserts_total` to count the number
+  of inserts into the edge cache for non-connected edges.
+
+* Renamed two edge-cache related metrics to improve naming consistency:
+  - `rocksdb_cache_edge_effective_entries_size` was renamed to 
+    `rocksdb_cache_edge_inserts_effective_entries_size_total` and was changed
+    from a gauge to a counter.
+  - `rocksdb_cache_edge_uncompressed_entries_size` was renamed to 
+    `rocksdb_cache_edge_inserts_uncompressed_entries_size_total` and is now
+    also a counter instead of a gauge.
+
+* Do not auto-reload entries into in-memory edge cache for edge index entries
+  that were previously not contained in the in-memory edge cache. This change
+  will help to keep the hot set in memory rather than evicting it in favor of
+  "random" other index entries.
+
+* Properly track memory usage for allocated objects in the in-memory cache
+  (e.g. the edge cache or the in-memory cache for other persistent indexes).
+  Previously the memory used for the underlying hash tables was accounted for
+  correctly, but the sizes of the cache payloads (keys and values) were not
+  accounted for under all circumstances (at least for the initial entries in
+  the caches).
+  This change leads to more accurate memory usage tracking and reporting by the 
+  in-memory cache subsystem, and to the cache subsystem not exceeding its 
+  configured memory usage limit. 
+  The cache subsystem was also changed so that it can use as much memory as
+  configured by the global cache memory limit (configurable via startup option
+  `--cache.size`). Previously the cache subsystem was freeing memory as soon
+  as it hit 56% of the configured limit.
+  Overall, the effective memory usage of the cache subsystem will be very
+  different to the memory usage in previous versions. In previous versions the
+  configured memory usage limit could be temporarily exceeded, but in most
+  cases the cache used considerably less memory than allowed by the limit.
+  Now the cache will try to use up to as much memory as allowed by the
+  configured memory usage limit.
+  If that leads to an overall overallocation of resources (i.e. too high total
+  memory of the system), it may be necessary to lower the value of the startup
+  option `--cache.size`, so that the cache memory usage is decreased.
+
+* Reduce memory usage for empty in-memory edge caches by ~40%. This is achieved
+  by allocating each cache's statistics objects only lazily, when actually 
+  needed.
+  
+* Renamed memory usage metrics for better naming consistency:
+  - `arangodb_internal_index_estimates_memory` was renamed to 
+    `arangodb_index_estimates_memory_usage`
+  - `arangodb_scheduler_queue_memory` was renamed to 
+    `arangodb_scheduler_queue_memory_usage`
+  - `arangodb_scheduler_stack_memory` was renamed to 
+    `arangodb_scheduler_stack_memory_usage`
+  These metrics were introduced in 3.12, so no previous versions are affected.
+
 * Updated arangosync to v2.19.0-preview-2.
 
 * Added experimental startup options for RocksDB .sst file partitioning:
