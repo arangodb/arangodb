@@ -2654,21 +2654,21 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
   auto* rhsIt = lhsIt + subStr.size();
 
   static constexpr auto kMaskBits = 0xC0U;
-  static constexpr auto kSupportByte = 0x80U;
+  static constexpr auto kHelpByte = 0x80U;
 
-  if ((*lhsIt & kMaskBits) == kSupportByte ||
-      (rhsIt != end && (*rhsIt & kMaskBits) == kSupportByte)) {
+  if ((*lhsIt & kMaskBits) == kHelpByte ||
+      (rhsIt != end && (*rhsIt & kMaskBits) == kHelpByte)) {
     registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
     return AqlValue{AqlValueHintNull{}};
   }
 
   for (; left > 0 && lhsIt != begin; --left) {
-    while ((*--lhsIt & kMaskBits) == kSupportByte) {
+    while ((*--lhsIt & kMaskBits) == kHelpByte) {
     }
   }
 
   for (; right > 0; --right) {
-    while (rhsIt != end && (*++rhsIt & kMaskBits) == kSupportByte) {
+    while (rhsIt != end && (*++rhsIt & kMaskBits) == kHelpByte) {
     }
   }
 
