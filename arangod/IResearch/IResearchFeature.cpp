@@ -830,6 +830,7 @@ class IResearchAsync {
 #endif
   {
     TRI_IF_FAILURE("IResearchFeature::testGroupAccess") {
+      // cppcheck-suppress throwInNoexceptFunction
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -870,6 +871,7 @@ bool isFilter(aql::Function const& func) noexcept {
 }
 
 bool isScorer(aql::Function const& func) noexcept {
+  // cppcheck-suppress throwInNoexceptFunction
   return func.implementation == &dummyScorerFunc;
 }
 
