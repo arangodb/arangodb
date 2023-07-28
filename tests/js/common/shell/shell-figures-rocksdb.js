@@ -475,7 +475,7 @@ function FiguresSuite () {
         });
         try {
           for (let i = 0; i < 100; ++i) {
-            c.insert({ _from: `${vertexCollectionName}/1:1`, _to: `${vertexCollectionName}/2:2`, value1: i });
+            c.insert({ _from: `${vertexCollectionName}/1:1`, _to: `${vertexCollectionName}/1:2`, value1: i });
           }
           let figures = c.figures(true).engine;
           assertEqual(100, figures.documents);
