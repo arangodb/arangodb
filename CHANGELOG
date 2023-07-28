@@ -1,3 +1,47 @@
+v3.11.3 (XXXX-XX-XX)
+--------------------
+
+* BTS-1511: AQL: Fixed access of integers in the ranges
+  [-36028797018963968, -281474976710657] and
+  [281474976710656, 36028797018963968], i.e. those whose representation require
+  7 bytes. These values were misinterpreted as different integers.
+  Simple passing of values (i.e. writing to or reading from documents) was not
+  affected: Only accesses of those values as numbers by AQL was. E.g. arithmetic
+  (addition, multiplication, ...), certain AQL functions, comparing/sorting -
+  the latter only if the numbers are compared directly, but not as part of a
+  value. For example, `SORT x` lead to an unexpected order if x was such a
+  number. `SORT [x]` however worked as expected.
+
+* Added experimental startup options for RocksDB .sst file partitioning:
+
+  - `--rocksdb.partition-files-for-documents`
+  - `--rocksdb.partition-files-for-primary-index`
+  - `--rocksdb.partition-files-for-edge-index`
+  - `--rocksdb.partition-files-for-persistent-index`
+
+  Enabling any of these options will make RocksDB's compaction write the data
+  for different collections/shards/indexes into different .sst files.
+  Otherwise the document data from different collections/shards/indexes can be
+  mixed and written into the same .sst files.
+
+  Enabling these options usually has the benefit of making the RocksDB
+  compaction more efficient when a lot of different collections/shards/indexes
+  are written to in parallel.
+  The disavantage of enabling this option is that there can be more .sst files
+  than when the option is turned off, and the disk space used by these .sst
+  files can be higher than if there are fewer .sst files (this is because there
+  is some per-.sst file overhead).
+  In particular on deployments with many collections/shards/indexes this can
+  lead to a very high number of .sst files, with the potential of outgrowing the
+  maximum number of file descriptors the ArangoDB process can open.
+  Thus the option should only be enabled on deployments with a limited number of
+  collections/shards/indexes.
+
+* Fixed potential deadlock() in cache::Manager::unprepareTask() in case a
+  MigrateTask could not be scheduled successfully (in case of a full scheduler
+  queue on DB servers).
+
+
 v3.11.2 (2023-07-21)
 --------------------
 
