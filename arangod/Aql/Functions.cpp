@@ -2655,21 +2655,22 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
   auto* lhsIt = reinterpret_cast<irs::byte_type const*>(subStr.data());
   auto* rhsIt = lhsIt + subStr.size();
 
-  static constexpr auto kHighBit = 0x80U;
+  static constexpr auto kMaskBits = 0xC0U;
+  static constexpr auto kSupportByte = 0x80U;
 
-  if ((*lhsIt & kHighBit) != 0U ||
-      (rhsIt != end && (*rhsIt & kHighBit) != 0U)) {
+  if ((*lhsIt & kMaskBits) == kSupportByte ||
+      (rhsIt != end && (*rhsIt & kMaskBits) == kSupportByte)) {
     registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
     return AqlValue{AqlValueHintNull{}};
   }
 
   for (; left > 0 && lhsIt != begin; --left) {
-    while ((*--lhsIt & kHighBit) != 0U) {
+    while ((*--lhsIt & kMaskBits) == kSupportByte) {
     }
   }
 
   for (; right > 0; --right) {
-    while (rhsIt != end && (*++rhsIt & kHighBit) != 0U) {
+    while (rhsIt != end && (*++rhsIt & kMaskBits) == kSupportByte) {
     }
   }
 
