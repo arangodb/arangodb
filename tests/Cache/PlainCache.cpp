@@ -65,8 +65,8 @@ TEST(CachePlainCacheTest, test_basic_cache_creation) {
   ASSERT_EQ(0, cache2->usage());
   ASSERT_TRUE(512 * 1024 >= cache2->size());
 
-  manager.destroyCache(cache1);
-  manager.destroyCache(cache2);
+  manager.destroyCache(std::move(cache1));
+  manager.destroyCache(std::move(cache2));
 }
 
 TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
@@ -122,7 +122,7 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
   }
   ASSERT_TRUE(cache->size() <= 128 * 1024);
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
@@ -188,7 +188,7 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
     ASSERT_FALSE(f.found());
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CachePlainCacheTest,
@@ -219,7 +219,7 @@ TEST(CachePlainCacheTest,
   EXPECT_GT(cache->usageLimit(), minimumUsage);
   EXPECT_GT(cache->usage(), minimumUsage);
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
@@ -323,7 +323,7 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
     delete t;
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
   RandomGenerator::shutdown();
 }
 
@@ -413,7 +413,7 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
     EXPECT_LT(managerStats.second, 60.0);
   }
 
-  manager.destroyCache(cacheHit);
-  manager.destroyCache(cacheMiss);
-  manager.destroyCache(cacheMixed);
+  manager.destroyCache(std::move(cacheHit));
+  manager.destroyCache(std::move(cacheMiss));
+  manager.destroyCache(std::move(cacheMixed));
 }

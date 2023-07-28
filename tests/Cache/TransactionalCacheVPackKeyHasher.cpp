@@ -95,7 +95,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     }
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
@@ -240,7 +240,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     }
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
@@ -426,7 +426,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     }
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
@@ -468,8 +468,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
     Result status;
     do {
       status = cache->banish(s.start(), static_cast<uint32_t>(s.byteSize()));
-    } while (!status.ok());
-    ASSERT_TRUE(status.ok());
+    } while (status != TRI_ERROR_NO_ERROR &&
+             status != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
 
     while (true) {
       auto f = cache->find(s.start(), static_cast<uint32_t>(s.byteSize()));
@@ -531,5 +532,5 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   }
 
   manager.endTransaction(tx);
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }

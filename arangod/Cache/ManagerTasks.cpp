@@ -34,12 +34,19 @@
 namespace arangodb::cache {
 
 FreeMemoryTask::FreeMemoryTask(Manager::TaskEnvironment environment,
-                               Manager& manager, std::shared_ptr<Cache> cache)
-    : _environment(environment), _manager(manager), _cache(std::move(cache)) {}
+                               Manager& manager, std::shared_ptr<Cache> cache,
+                               bool triggerShrinking)
+    : _environment(environment),
+      _manager(manager),
+      _cache(std::move(cache)),
+      _triggerShrinking(triggerShrinking) {}
 
 FreeMemoryTask::~FreeMemoryTask() = default;
 
 bool FreeMemoryTask::dispatch() {
+  // task is dispatched under the manager's lock
+  TRI_ASSERT(_manager._lock.isLockedWrite());
+
   // prepareTask counts a counter up
   _manager.prepareTask(_environment);
 
@@ -93,27 +100,22 @@ void FreeMemoryTask::run() {
   TRI_ASSERT(_cache->isResizingFlagSet());
 
   if (ran) {
-    std::uint64_t reclaimed = 0;
     SpinLocker guard(SpinLocker::Mode::Write, _manager._lock);
     Metadata& metadata = _cache->metadata();
     {
       SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
       TRI_ASSERT(metadata.isResizing());
-      reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
-      bool ok = metadata.adjustLimits(metadata.softUsageLimit,
-                                      metadata.softUsageLimit);
+      // note: adjustLimits may or may not work
+      metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
       metadata.toggleResizing();
       TRI_ASSERT(!metadata.isResizing());
-
-      if (ok) {
-        TRI_ASSERT(_manager._globalAllocation >=
-                   reclaimed + _manager._fixedAllocation);
-        _manager._globalAllocation -= reclaimed;
-        TRI_ASSERT(_manager._globalAllocation >= _manager._fixedAllocation);
-      }
     }
     // do not toggle the resizing flag twice
     toggleResizingGuard.cancel();
+  }
+
+  if (_triggerShrinking) {
+    _cache->requestMigrate(_cache->table()->idealSize());
   }
 }
 
@@ -128,6 +130,9 @@ MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager& manager,
 MigrateTask::~MigrateTask() = default;
 
 bool MigrateTask::dispatch() {
+  // task is dispatched under the manager's lock
+  TRI_ASSERT(_manager._lock.isLockedWrite());
+
   // prepareTask counts a counter up
   _manager.prepareTask(_environment);
 

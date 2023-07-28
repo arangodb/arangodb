@@ -252,7 +252,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _totalCachedSizeInitial(0),
         _totalCachedSizeEffective(0),
         _totalInserts(0),
-        _totalCompressed(0) {
+        _totalCompressed(0),
+        _totalEmptyInserts(0) {
     TRI_ASSERT(_keys.slice().isArray());
     TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "BinaryKeyHasher");
     TRI_ASSERT(_builder.size() == 0);
@@ -271,7 +272,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         .getFeature<EngineSelectorFeature>()
         .engine<RocksDBEngine>()
         .addCacheMetrics(_totalCachedSizeInitial, _totalCachedSizeEffective,
-                         _totalInserts, _totalCompressed);
+                         _totalInserts, _totalCompressed, _totalEmptyInserts);
   }
 
   std::string_view typeName() const noexcept final {
@@ -619,6 +620,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   void insertIntoCache(std::string_view key, velocypack::Slice slice) {
     TRI_ASSERT(_cache != nullptr);
+    TRI_ASSERT(slice.isArray());
+
+    bool const isEmpty = slice.length() == 0;
 
     auto& cmf =
         _collection->vocbase().server().getFeature<CacheManagerFeature>();
@@ -647,6 +651,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     _totalCachedSizeEffective +=
         cache::kCachedValueHeaderSize + key.size() + size;
     ++_totalInserts;
+    _totalEmptyInserts += static_cast<uint64_t>(isEmpty);
     _totalCompressed += didCompress ? 1 : 0;
   }
 
@@ -682,6 +687,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   uint64_t _totalInserts;
   // total cache compressions
   uint64_t _totalCompressed;
+  // total cache inserts that contained an empty array
+  uint64_t _totalEmptyInserts;
 };
 
 }  // namespace arangodb
@@ -895,7 +902,10 @@ void RocksDBEdgeIndex::handleCacheInvalidation(transaction::Methods& trx,
   std::string_view cacheKey =
       buildCompressedCacheKey(cacheKeyCollection, fromToRef);
   if (!cacheKey.empty()) {
-    invalidateCacheEntry(cacheKey);
+    if (!invalidateCacheEntry(cacheKey)) {
+      // shutdown or document not found. no need to auto-reload
+      return;
+    }
 
     if (_cache != nullptr &&
         ((_forceCacheRefill &&
@@ -1012,7 +1022,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   options.prefix_same_as_start = false;  // key-prefix includes edge
   options.total_order_seek = true;  // otherwise full-index-scan does not work
   options.verify_checksums = false;
-  options.fill_cache = EdgeIndexFillBlockCache;
+  options.fill_cache = false;
   std::unique_ptr<rocksdb::Iterator> it(
       _engine.db()->NewIterator(options, _cf));
 
@@ -1162,7 +1172,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       .getFeature<EngineSelectorFeature>()
       .engine<RocksDBEngine>()
       .addCacheMetrics(totalCachedSizeInitial, totalCachedSizeEffective,
-                       totalInserts, totalCompressed);
+                       totalInserts, totalCompressed, /*totalEmpty*/ 0);
 }
 
 // ===================== Helpers ==================

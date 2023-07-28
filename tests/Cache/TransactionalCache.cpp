@@ -65,8 +65,8 @@ TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
   ASSERT_EQ(0, cache2->usage());
   ASSERT_TRUE(512 * 1024 >= cache2->size());
 
-  manager.destroyCache(cache1);
-  manager.destroyCache(cache2);
+  manager.destroyCache(std::move(cache1));
+  manager.destroyCache(std::move(cache2));
 }
 
 TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
@@ -122,7 +122,7 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
   }
   ASSERT_TRUE(cache->size() <= 128 * 1024);
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
@@ -188,7 +188,7 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
     ASSERT_FALSE(f.found());
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
@@ -222,7 +222,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
 
   for (std::uint64_t i = 512; i < 1024; i++) {
     auto status = cache->banish(&i, sizeof(std::uint64_t));
-    ASSERT_TRUE(status.ok());
+    ASSERT_TRUE(status == TRI_ERROR_NO_ERROR ||
+                status == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     auto f = cache->find(&i, sizeof(std::uint64_t));
     ASSERT_FALSE(f.found());
   }
@@ -258,7 +259,7 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   ASSERT_TRUE(reinserted >= 256);
 
   manager.endTransaction(tx);
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheTest,
@@ -289,7 +290,7 @@ TEST(CacheTransactionalCacheTest,
   EXPECT_GT(cache->usageLimit(), minimumUsage);
   EXPECT_GT(cache->usage(), minimumUsage);
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
@@ -403,6 +404,6 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
     delete t;
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
   RandomGenerator::shutdown();
 }

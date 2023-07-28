@@ -1,0 +1,18 @@
+name: rocksdb_cache_edge_empty_inserts_total
+introducedIn: "3.11.3"
+help: |
+  Total number of insertions into the in-memory edge cache
+  for non-connected edges.
+unit: number
+type: counter
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of insertions into the in-memory edge cache for edges that
+  were not connected to other edges.
+  In this case, the edge case will store the information that there are no
+  connected edges.

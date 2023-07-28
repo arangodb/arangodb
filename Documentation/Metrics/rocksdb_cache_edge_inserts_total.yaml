@@ -1,5 +1,5 @@
 name: rocksdb_cache_edge_inserts_total
-introducedIn: "3.12.0"
+introducedIn: "3.11.3"
 help: |
   Total number of insertions into the in-memory edge cache.
   in the edge cache.
