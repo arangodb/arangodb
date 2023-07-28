@@ -774,7 +774,27 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
               !col.distributeShardsLike.has_value() &&
               config.defaultDistributeShardsLike.empty()) {
 #if USE_ENTERPRISE
-            col.shardingStrategy = "enterprise-compat";
+            if (col.getType() == TRI_COL_TYPE_DOCUMENT) {
+              if (col.isSmart) {
+                if (col.smartGraphAttribute.has_value()) {
+                  // SmartGraphs need  to have shardingStrategy "hash"
+                  col.shardingStrategy = "hash";
+                } else {
+                  // EnterpriseGraphs need  to have shardingStrategy
+                  // "enterprise-hex-smart-vertex"
+                  col.shardingStrategy = "enterprise-hex-smart-vertex";
+                }
+              } else {
+                col.shardingStrategy = "enterprise-compat";
+              }
+            } else {
+              if (col.isSmart) {
+                // Smart Edge Collections always have hash-smart-edge sharding
+                col.shardingStrategy = "enterprise-hash-smart-edge";
+              } else {
+                col.shardingStrategy = "enterprise-compat";
+              }
+            }
 #else
             col.shardingStrategy = "community-compat";
 #endif
