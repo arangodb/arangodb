@@ -55,6 +55,8 @@
 #include <chrono>
 #include <thread>
 
+#include <absl/strings/str_cat.h>
+
 #include <v8.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -183,12 +185,38 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  bool extendedNames =
-      info.server().getFeature<DatabaseFeature>().extendedNamesForDatabases();
+  DatabaseFeature& databaseFeature =
+      info.server().getFeature<DatabaseFeature>();
+
+  bool extendedNames = databaseFeature.extendedNamesForDatabases();
 
   if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false,
                                             extendedNames, info.getName())) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+  }
+
+  auto& agencyCache = info.server().getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.read(
+      std::vector<std::string>{AgencyCommHelper::path("Plan/Databases")});
+
+  velocypack::Slice databaseSlice =
+      acb->slice()[0].get(std::initializer_list<std::string_view>{
+          AgencyCommHelper::path(), "Plan", "Databases"});
+
+  // databases are stored in an object with database names as keys.
+  if (databaseSlice.isObject() &&
+      databaseSlice.length() >= databaseFeature.maxDatabases()) {
+    // we already have reached the maximum number of databases and we
+    // cannot create an additional one.
+    // note: when more than one coordinator is used, it is possible to
+    // exceed the maximum number of databases during the time window in
+    // which the number of databases stored in the agency is below the
+    // limit, but multiple coordinators are creating new databases.
+    return {
+        TRI_ERROR_RESOURCE_LIMIT,
+        absl::StrCat("unable to create additional database because it would "
+                     "exceed the configured maximum number of databases (",
+                     databaseFeature.maxDatabases(), ")")};
   }
 
   LOG_TOPIC("56372", DEBUG, Logger::CLUSTER)
