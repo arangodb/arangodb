@@ -58,6 +58,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionNameResolver.h"
@@ -820,9 +821,24 @@ void DatabaseFeature::recoveryDone() {
 
   // '_pendingRecoveryCallbacks' will not change because
   // !StorageEngine.inRecovery()
+  // It's single active thread before recovery done,
+  // so we could use general purpose thread pool for this
+  std::vector<futures::Future<Result>> futures;
+  futures.reserve(_pendingRecoveryCallbacks.size());
   for (auto& entry : _pendingRecoveryCallbacks) {
-    auto result = entry();
-
+    futures::Promise<Result> p;
+    futures.emplace_back(p.getFuture());
+    SchedulerFeature::SCHEDULER->queue(
+        RequestLane::CLIENT_SLOW,
+        [p = std::move(p), f = std::move(entry)]() mutable {
+          p.setValue(f());
+        });
+  }
+  _pendingRecoveryCallbacks.clear();
+  // TODO(MBkkt) use single wait with early termination
+  // when it would be available
+  for (auto& future : futures) {
+    auto result = std::move(future).get();
     if (!result.ok()) {
       LOG_TOPIC("772a7", ERR, arangodb::Logger::FIXME)
           << "recovery failure due to error from callback, error '"
