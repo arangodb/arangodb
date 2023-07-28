@@ -172,7 +172,7 @@ DECLARE_GAUGE(arangodb_revision_tree_memory_usage, uint64_t,
 DECLARE_GAUGE(
     arangodb_revision_tree_buffered_memory_usage, uint64_t,
     "Total memory consumed by buffered updates for all revision trees");
-DECLARE_GAUGE(arangodb_internal_index_estimates_memory, uint64_t,
+DECLARE_GAUGE(arangodb_index_estimates_memory_usage, uint64_t,
               "Total memory consumed by all index selectivity estimates");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total,
                 "Number of successful revision tree rebuilds");
@@ -292,7 +292,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _autoFlushMinWalFiles(20),
       _metricsIndexEstimatorMemoryUsage(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_internal_index_estimates_memory{})),
+              arangodb_index_estimates_memory_usage{})),
       _metricsWalReleasedTickFlush(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_wal_released_tick_flush{})),
