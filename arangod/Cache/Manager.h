@@ -295,7 +295,7 @@ class Manager {
 
   // coordinate state with task lifecycles
   void prepareTask(TaskEnvironment environment);
-  void unprepareTask(TaskEnvironment environment);
+  void unprepareTask(TaskEnvironment environment, bool internal) noexcept;
 
   // periodically run to rebalance allocations globally
   ErrorCode rebalance(bool onlyCalculate = false);
