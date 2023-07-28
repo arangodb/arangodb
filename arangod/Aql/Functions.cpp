@@ -2637,10 +2637,8 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
         offset = std::max(int64_t{0}, strLen + offset);
       }
       break;
-    case 1:
-      registerWarning(ctx, getFunctionName(node).data(),
-                      TRI_ERROR_BAD_PARAMETER);
-      return AqlValue{AqlValueHintNull{}};
+    default:
+      ADB_UNREACHABLE;
   }
 
   if (length <= 0 || offset >= strLen) {
