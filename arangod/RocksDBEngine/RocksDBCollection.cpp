@@ -893,16 +893,20 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
   }
 
   // delete index values
+  std::vector<std::shared_ptr<Index>> indexes;
+  std::vector<TruncateGuard> guards;
   {
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    for (std::shared_ptr<Index> const& idx : _indexes) {
-      RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-      bounds = ridx->getBounds();
-      s = batch.DeleteRange(bounds.columnFamily(), bounds.start(),
-                            bounds.end());
-      if (!s.ok()) {
-        return rocksutils::convertStatus(s);
+    indexes.reserve(_indexes.size());
+    guards.reserve(_indexes.size());
+    for (auto const& idx : _indexes) {
+      auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+      auto r = rIdx->truncateBegin(batch);
+      if (!r.ok()) {
+        return std::move(r).result();
       }
+      indexes.push_back(idx);
+      guards.push_back(std::move(r.get()));
     }
   }
 
@@ -922,25 +926,28 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
   }
+  // we need crash server if any failure in order to trigger recovery,
+  // as rocksdb truncate already committed here
+  [&]() noexcept {
+    // post commit sequence
+    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber() - 1;
 
-  rocksdb::SequenceNumber seq =
-      db->GetLatestSequenceNumber() - 1;  // post commit sequence
+    uint64_t numDocs = _meta.numberDocuments();
+    _meta.adjustNumberDocuments(seq,
+                                /*revision*/ _logicalCollection.newRevisionId(),
+                                -static_cast<int64_t>(numDocs));
 
-  uint64_t numDocs = _meta.numberDocuments();
-  _meta.adjustNumberDocuments(seq,
-                              /*revision*/ _logicalCollection.newRevisionId(),
-                              -static_cast<int64_t>(numDocs));
-
-  {
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    for (std::shared_ptr<Index> const& idx : _indexes) {
-      idx->afterTruncate(seq,
-                         &trx);  // clears caches / clears links (if applicable)
+    auto it = guards.begin();
+    for (auto const& idx : indexes) {
+      // clears caches / clears links (if applicable)
+      auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+      rIdx->truncateCommit(std::move(*it++), seq, &trx);
     }
-  }
-  bufferTruncate(seq);
 
-  TRI_ASSERT(!state->hasOperations());  // not allowed
+    bufferTruncate(seq);
+
+    TRI_ASSERT(!state->hasOperations());  // not allowed
+  }();
   return {};
 }
 
