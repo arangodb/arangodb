@@ -52,6 +52,17 @@ devel
 * Reduce memory usage for empty in-memory edge caches by ~40%. This is achieved
   by allocating each cache's statistics objects only lazily, when actually 
   needed.
+  
+* Renamed memory usage metrics for better naming consistency:
+  - `arangodb_internal_index_estimates_memory` was renamed to 
+    `arangodb_index_estimates_memory_usage`
+  - `arangodb_scheduler_queue_memory` was renamed to 
+    `arangodb_scheduler_queue_memory_usage`
+  - `arangodb_scheduler_stack_memory` was renamed to 
+    `arangodb_scheduler_stack_memory_usage`
+  These metrics were introduced in 3.12, so no previous versions are affected.
+
+* Updated arangosync to v2.19.0-preview-2.
 
 * Added experimental startup options for RocksDB .sst file partitioning:
 
