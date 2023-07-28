@@ -273,18 +273,26 @@ struct TruncateTimeTracker final : public TimeTracker {
   }
 };
 
-void reportPrimaryIndexInconsistencyIfNotFound(Result const& res,
-                                               std::string_view key,
-                                               LocalDocumentId const& rev) {
-  if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-    // Scandal! A primary index entry is pointing to nowhere! Let's report
-    // this to the authorities immediately:
-    LOG_TOPIC("42536", ERR, arangodb::Logger::ENGINES)
-        << "Found primary index entry for which there is no actual "
-           "document: _key="
-        << key << ", _rev=" << rev.id();
-    TRI_ASSERT(false);
-  }
+void reportPrimaryIndexInconsistencyIfNotFound(
+    Result const& res, LogicalCollection const& collection,
+    std::string_view key, LocalDocumentId const& rev,
+    ReadOwnWrites readOwnWrites, RocksDBTransactionState const* state) {
+  TRI_ASSERT(res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
+  // Scandal! A primary index entry is pointing to nowhere! Let's report
+  // this to the authorities immediately:
+  LOG_TOPIC("42536", ERR, arangodb::Logger::ENGINES)
+      << "Found primary index entry for which there is no actual "
+         "document: "
+      << res.errorMessage() << ", collection: " << collection.vocbase().name()
+      << "/" << collection.name() << ", type: "
+      << (collection.type() == TRI_COL_TYPE_EDGE ? "edge" : "document")
+      << ", smart: " << (collection.isSmart() ? "yes" : "no")
+      << ", _key=" << key << ", _rev=" << RevisionId(rev).toHLC() << " ("
+      << rev.id() << "), read own writes: "
+      << (readOwnWrites == ReadOwnWrites::yes ? "yes" : "no")
+      << ", state: " << state->debugInfo()
+      << ", hlc: " << TRI_HybridLogicalClock();
+  TRI_ASSERT(false);
 }
 
 size_t getParallelism(velocypack::Slice slice) {
@@ -1043,7 +1051,11 @@ Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->ensureSnapshot());
-  ::reportPrimaryIndexInconsistencyIfNotFound(res, key, documentId);
+  if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    ::reportPrimaryIndexInconsistencyIfNotFound(
+        res, _logicalCollection, key, documentId, readOwnWrites,
+        RocksDBTransactionState::toState(trx));
+  }
   return res;
 }
 
@@ -1405,11 +1417,27 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
     return res.reset(TRI_ERROR_DEBUG);
   }
 
-  rocksdb::Status s = mthds->PutUntracked(
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Documents),
-      key.ref(),
-      rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
+  rocksdb::Status s;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // use Put() instead of PutUntracked()
+  if (options.isRestore) {
+    s = mthds->Put(RocksDBColumnFamilyManager::get(
+                       RocksDBColumnFamilyManager::Family::Documents),
+                   key.ref(),
+                   rocksdb::Slice(doc.startAs<char>(),
+                                  static_cast<size_t>(doc.byteSize())),
+                   /*assume_tracked*/ false);
+  } else
+#endif
+  {
+    s = mthds->PutUntracked(
+        RocksDBColumnFamilyManager::get(
+            RocksDBColumnFamilyManager::Family::Documents),
+        key.ref(),
+        rocksdb::Slice(doc.startAs<char>(),
+                       static_cast<size_t>(doc.byteSize())));
+  }
+
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&doc](result::Error& err) {
@@ -1505,6 +1533,27 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
   TRI_IF_FAILURE("RocksDBCollection::removeFail1Always") {
     return res.reset(TRI_ERROR_DEBUG);
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (options.isRestore) {
+    // lock the underlying RocksDB key and validate that it exists
+    rocksdb::PinnableSlice ps;
+    rocksdb::Status s =
+        mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
+                                RocksDBColumnFamilyManager::Family::Documents),
+                            key->string(), &ps);
+    if (s.IsNotFound()) {
+      res.reset(rocksutils::convertStatus(s, rocksutils::document));
+      res.withError([&doc](result::Error& err) {
+        TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
+        err.appendErrorMessage("; key: ");
+        err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
+      });
+      TRI_ASSERT(false) << "remove: " << res.errorMessage()
+                        << ", options: " << options;
+    }
+  }
+#endif
 
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
@@ -1633,6 +1682,32 @@ Result RocksDBCollection::modifyDocument(
     return res.reset(TRI_ERROR_DEBUG);
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (options.isRestore) {
+    // lock the underlying RocksDB key and validate that it exists
+    rocksdb::PinnableSlice ps;
+    rocksdb::Status s =
+        mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
+                                RocksDBColumnFamilyManager::Family::Documents),
+                            key->string(), &ps);
+    if (s.IsNotFound()) {
+      res.reset(rocksutils::convertStatus(s, rocksutils::document));
+      res.withError([&oldDoc, &newDoc](result::Error& err) {
+        TRI_ASSERT(oldDoc.get(StaticStrings::KeyString).isString());
+        TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
+        err.appendErrorMessage("; old key: ");
+        err.appendErrorMessage(
+            oldDoc.get(StaticStrings::KeyString).copyString());
+        err.appendErrorMessage("; new key: ");
+        err.appendErrorMessage(
+            newDoc.get(StaticStrings::KeyString).copyString());
+      });
+      TRI_ASSERT(false) << "modify: " << res.errorMessage()
+                        << ", options: " << options;
+    }
+  }
+#endif
+
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
                               RocksDBColumnFamilyManager::Family::Documents),
@@ -1663,12 +1738,27 @@ Result RocksDBCollection::modifyDocument(
 
   key->constructDocument(objectId(), newDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
-  s = mthds->PutUntracked(
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Documents),
-      key.ref(),
-      rocksdb::Slice(newDoc.startAs<char>(),
-                     static_cast<size_t>(newDoc.byteSize())));
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (options.isRestore) {
+    // use Put() instead of PutUntracked()
+    s = mthds->Put(RocksDBColumnFamilyManager::get(
+                       RocksDBColumnFamilyManager::Family::Documents),
+                   key.ref(),
+                   rocksdb::Slice(newDoc.startAs<char>(),
+                                  static_cast<size_t>(newDoc.byteSize())),
+                   /*assume_tracked*/ false);
+  } else
+#endif
+  {
+    s = mthds->PutUntracked(
+        RocksDBColumnFamilyManager::get(
+            RocksDBColumnFamilyManager::Family::Documents),
+        key.ref(),
+        rocksdb::Slice(newDoc.startAs<char>(),
+                       static_cast<size_t>(newDoc.byteSize())));
+  }
+
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
