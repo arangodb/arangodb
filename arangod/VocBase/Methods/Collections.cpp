@@ -627,16 +627,27 @@ Collections::create(         // create collection
   for (size_t i = 0; i < numberOfPublicCollections; ++i) {
     auto& col = collections[i];
     {
-      // Only validate computed values
-      // we do not make use of the actual ComputedValueExecutor here
-      // TODO: Can be replaced by a two step way inspect -> ComputedValuesInput
-      // -> ComputedValues
+      // TODO: Can be replaced inspection for computed values
+      // We use this here to validate the format.
+      // But also to include optional properties as default values.
       TRI_ASSERT(col.shardKeys.has_value());
       auto result = ComputedValues::buildInstance(
           vocbase, col.shardKeys.value(), col.computedValues.slice(),
           transaction::TrxType::kInternal);
       if (result.fail()) {
         return result.result();
+      }
+
+      {
+        if (result.get() != nullptr) {
+          // The constructor of ComputedValues wil introduce some internal
+          // default properties. Hence we will take the valid output generated
+          // by the parsed computed values instance to write into the
+          // collection.
+          VPackBuilder builder;
+          result.get()->toVelocyPack(builder);
+          col.computedValues = std::move(builder);
+        }
       }
 
       if (ServerState::instance()->isCoordinator()) {
