@@ -349,10 +349,11 @@ TEST_F(LogPersistorTest, removeBack_fails_no_matching_entry_found) {
 }
 
 TEST_F(LogPersistorTest, removeBack_fails_if_log_file_corrupt) {
+  LogPersistor persistor{LogId{42}, fileManager};
+
   // we simulate some corrupt log file by writing some garbage to the in memory
   // buffer
   buffer = "xxxxyyyyzzzz";
-  LogPersistor persistor{LogId{42}, fileManager};
 
   auto res = persistor.removeBack(LogIndex{2}, {}).get();
   ASSERT_TRUE(res.fail());
