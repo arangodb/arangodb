@@ -1,4 +1,4 @@
-v3.11.2 (XXXX-XX-XX)
+v3.11.3 (XXXX-XX-XX)
 --------------------
 
 * BTS-1511: AQL: Fixed access of integers in the ranges
@@ -11,6 +11,10 @@ v3.11.2 (XXXX-XX-XX)
   the latter only if the numbers are compared directly, but not as part of a
   value. For example, `SORT x` lead to an unexpected order if x was such a
   number. `SORT [x]` however worked as expected.
+
+
+v3.11.2 (XXXX-XX-XX)
+--------------------
 
 * Fix SEARCH-465: Truncate on ArangoSearch index could release a WAL if commit
   passed.
