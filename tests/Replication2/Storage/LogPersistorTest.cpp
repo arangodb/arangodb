@@ -30,9 +30,9 @@
 #include "Replication2/ReplicatedLog/LogMetaPayload.h"
 #include "Replication2/Storage/WAL/LogPersistor.h"
 #include "Replication2/Storage/WAL/Record.h"
-#include "Replication2/Storage/WAL/StreamReader.h"
 
 #include "Replication2/Storage/InMemoryLogFile.h"
+#include "Replication2/Storage/StreamReader.h"
 #include "Replication2/Storage/MockFileManager.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
