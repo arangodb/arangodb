@@ -1,6 +1,10 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
+* Fixed potential deadlock() in cache::Manager::unprepareTask() in case a 
+  MigrateTask could not be scheduled successfully (in case of a full scheduler 
+  queue on DB servers).
+
 * Added startup option `--database.max-databases` to limit the maximum number
   of databases that can exist in parallel on a deployment. This option can be
   used to limit resources used by database objects. If the option is used and
