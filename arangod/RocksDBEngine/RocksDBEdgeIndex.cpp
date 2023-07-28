@@ -960,13 +960,14 @@ void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
   }
 }
 
-void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick,
-                                     transaction::Methods* trx) {
+void RocksDBEdgeIndex::truncateCommit(TruncateGuard&& guard,
+                                      TRI_voc_tick_t tick,
+                                      transaction::Methods* trx) {
   TRI_ASSERT(!unique());
   if (_estimator != nullptr) {
     _estimator->bufferTruncate(tick);
   }
-  RocksDBIndex::afterTruncate(tick, trx);
+  RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
 
 RocksDBCuckooIndexEstimatorType* RocksDBEdgeIndex::estimator() {
