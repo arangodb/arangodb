@@ -2649,35 +2649,30 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
 
   auto* const begin = reinterpret_cast<irs::byte_type const*>(str.data());
   auto* const end = begin + str.size();
-  auto validate = [&](std::string_view str) noexcept {
-    auto it = begin;
-    while (it != end) {
-      const auto c = irs::utf8_utils::next_checked(it, end);
-
-      if (irs::utf8_utils::INVALID_CODE_POINT == c) {
-        return false;
-      }
-    }
-    return true;
-  };
 
   auto const subStr = str.substr(offset, length);
 
-  if (!validate(subStr)) {
+  auto* lhsIt = reinterpret_cast<irs::byte_type const*>(subStr.data());
+  auto* rhsIt = lhsIt + subStr.size();
+
+  static constexpr auto kHighBit = 0x80U;
+
+  if ((*lhsIt & kHighBit) != 0U ||
+      (rhsIt != end && (*rhsIt & kHighBit) != 0U)) {
     registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
     return AqlValue{AqlValueHintNull{}};
   }
 
-  auto* lhsIt = reinterpret_cast<irs::byte_type const*>(subStr.data());
-  auto* rhsIt = lhsIt + subStr.size();
   for (; left > 0 && lhsIt != begin; --left) {
-    while ((*--lhsIt & 0xC0U) != 0x80U) {
+    while ((*--lhsIt & kHighBit) != 0U) {
     }
   }
+
   for (; right > 0; --right) {
-    while (rhsIt != end && (*++rhsIt & 0xC0U) != 0x80U) {
+    while (rhsIt != end && (*++rhsIt & kHighBit) != 0U) {
     }
   }
+
   return AqlValue{std::string_view{reinterpret_cast<char const*>(lhsIt),
                                    reinterpret_cast<char const*>(rhsIt)}};
 }
