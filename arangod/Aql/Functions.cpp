@@ -2613,6 +2613,10 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
   }
 
   auto const str = value.slice().stringView();
+  if (str.empty()) {
+    return AqlValue{velocypack::Slice::emptyStringSlice()};
+  }
+
   auto const strLen = static_cast<int64_t>(str.size());
   int64_t offset = 0;
   int64_t length = strLen;
@@ -2630,46 +2634,46 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
       [[fallthrough]];
     case 3:
       length = extractFunctionParameterValue(parameters, 2).toInt64();
+      if (length < 0) {
+        length = 0;
+      }
       [[fallthrough]];
     case 2:
       offset = extractFunctionParameterValue(parameters, 1).toInt64();
       if (offset < 0) {
         offset = std::max(int64_t{0}, strLen + offset);
+      } else {
+        offset = std::min(offset, strLen);
       }
       break;
     default:
       ADB_UNREACHABLE;
   }
 
-  if (length <= 0 || offset >= strLen) {
-    return AqlValue{velocypack::Slice::emptyStringSlice()};
-  }
-
   auto* const begin = reinterpret_cast<irs::byte_type const*>(str.data());
   auto* const end = begin + str.size();
 
-  auto const subStr = str.substr(offset, length);
-
-  auto* lhsIt = reinterpret_cast<irs::byte_type const*>(subStr.data());
-  auto* rhsIt = lhsIt + subStr.size();
+  auto* lhsIt = begin + offset;
+  auto* rhsIt = lhsIt + std::min(length, strLen - offset);
 
   static constexpr auto kMaskBits = 0xC0U;
   static constexpr auto kHelpByte = 0x80U;
 
-  if ((*lhsIt & kMaskBits) == kHelpByte ||
+  if ((lhsIt != end && (*lhsIt & kMaskBits) == kHelpByte) ||
       (rhsIt != end && (*rhsIt & kMaskBits) == kHelpByte)) {
     registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
     return AqlValue{AqlValueHintNull{}};
   }
 
-  for (; left > 0 && lhsIt != begin; --left) {
-    while ((*--lhsIt & kMaskBits) == kHelpByte) {
-    }
+  while (left > 0 && lhsIt != begin) {
+    left -= static_cast<int64_t>((*--lhsIt & kMaskBits) == kHelpByte);
   }
+  TRI_ASSERT(lhsIt == end || (*lhsIt & kMaskBits) != kHelpByte);
 
-  for (; right > 0; --right) {
-    while (rhsIt != end && (*++rhsIt & kMaskBits) == kHelpByte) {
-    }
+  while (right > 0 && rhsIt != end) {
+    right -= static_cast<int64_t>((*rhsIt++ & kMaskBits) != kHelpByte);
+  }
+  for (; rhsIt != end && (*rhsIt & kMaskBits) == kHelpByte; ++rhsIt) {
   }
 
   return AqlValue{std::string_view{reinterpret_cast<char const*>(lhsIt),
