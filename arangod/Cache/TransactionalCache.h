@@ -84,7 +84,7 @@ class TransactionalCache final : public Cache {
   /// value if it fails to acquire a lock in a timely fashion. Should not block
   /// for long.
   //////////////////////////////////////////////////////////////////////////////
-  Result insert(CachedValue* value) override;
+  ::ErrorCode insert(CachedValue* value) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to remove the given key.
@@ -95,7 +95,7 @@ class TransactionalCache final : public Cache {
   /// before quitting, so may block for longer than find or insert. Client may
   /// re-try.
   //////////////////////////////////////////////////////////////////////////////
-  Result remove(void const* key, std::uint32_t keySize) override;
+  ::ErrorCode remove(void const* key, std::uint32_t keySize) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to banish the given key.
@@ -106,7 +106,7 @@ class TransactionalCache final : public Cache {
   /// before quitting, so may block for longer than find or insert. Client
   /// should re-try.
   //////////////////////////////////////////////////////////////////////////////
-  Result banish(void const* key, std::uint32_t keySize) override;
+  ::ErrorCode banish(void const* key, std::uint32_t keySize) override;
 
   /// @brief returns the name of the hasher
   std::string_view hasherName() const noexcept;

@@ -85,7 +85,7 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
     } else {
@@ -99,7 +99,7 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
       ASSERT_EQ(0, memcmp(f.value()->value(), &j, sizeof(std::uint64_t)));
@@ -113,7 +113,7 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
     } else {
@@ -141,7 +141,7 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
       ASSERT_NE(f.value(), nullptr);
@@ -165,7 +165,7 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   // test removal of bogus keys
   for (std::uint64_t i = 1024; i < 1088; i++) {
     auto status = cache->remove(&i, sizeof(std::uint64_t));
-    ASSERT_TRUE(status.ok());
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
     // ensure existing keys not removed
     std::uint64_t found = 0;
     for (std::uint64_t j = 0; j < 1024; j++) {
@@ -183,7 +183,7 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   // remove actual keys
   for (std::uint64_t i = 0; i < 1024; i++) {
     auto status = cache->remove(&i, sizeof(std::uint64_t));
-    ASSERT_TRUE(status.ok());
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
     auto f = cache->find(&i, sizeof(std::uint64_t));
     ASSERT_FALSE(f.found());
   }
@@ -209,7 +209,7 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
       ASSERT_NE(f.value(), nullptr);
@@ -233,7 +233,7 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    ASSERT_TRUE(status.fail());
+    ASSERT_NE(TRI_ERROR_NO_ERROR, status);
     delete value;
     auto f = cache->find(&i, sizeof(std::uint64_t));
     ASSERT_FALSE(f.found());
@@ -248,7 +248,7 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       reinserted++;
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
@@ -282,7 +282,7 @@ TEST(CacheTransactionalCacheTest,
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.fail()) {
+    if (status != TRI_ERROR_NO_ERROR) {
       delete value;
     }
   }
@@ -324,7 +324,7 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
                                                   &item, sizeof(std::uint64_t));
       TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
-      if (status.fail()) {
+      if (status != TRI_ERROR_NO_ERROR) {
         delete value;
       }
     }
@@ -360,7 +360,7 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
             &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = cache->insert(value);
-        if (status.fail()) {
+        if (status != TRI_ERROR_NO_ERROR) {
           delete value;
         }
       } else if (r >= 80) {  // banish something

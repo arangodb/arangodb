@@ -299,10 +299,10 @@ class Manager {
   // used internally and by tasks. this multiplier is used with the
   // cache's memory limit, and if exceeded, triggers a shrinking of the
   // least frequently accessed kCachesToShrinkRatio caches
-  static constexpr double kHighwaterMultiplier = 0.95;
+  static constexpr double kHighwaterMultiplier = 0.56;
   // ratio of caches for which a shrinking attempt will be made if we
   // reach the cache's high water mark (memory limit plus safety buffer)
-  static constexpr double kCachesToShrinkRatio = 0.20;
+  static constexpr double kCachesToShrinkRatio = 0.00;
   static constexpr std::chrono::milliseconds rebalancingGracePeriod{10};
   static const std::uint64_t minCacheAllocation;
 

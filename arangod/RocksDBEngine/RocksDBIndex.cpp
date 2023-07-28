@@ -348,7 +348,7 @@ bool RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
       if (status == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         break;
       }
-      if (ADB_UNLIKELY(status.errorNumber() == TRI_ERROR_SHUTTING_DOWN)) {
+      if (ADB_UNLIKELY(status == TRI_ERROR_SHUTTING_DOWN)) {
         destroyCache();
         break;
       }
