@@ -66,6 +66,7 @@ export const AddAnalyzerForm = ({
           <FeatureSwitch name="frequency" />
           <FeatureSwitch name="norm" />
           <FeatureSwitch name="position" />
+          <FeatureSwitch name="offset" />
         </Grid>
       </Stack>
       <AnalyzerTypeForm analyzerType={analyzerTypeValue} />
@@ -76,7 +77,8 @@ export const AddAnalyzerForm = ({
 const FEATURE_NAME_TO_LABEL_MAP = {
   frequency: "Frequency",
   norm: "Norm",
-  position: "Position"
+  position: "Position",
+  offset: "Offset"
 };
 
 const FeatureSwitch = ({ name }: { name: string }) => {
