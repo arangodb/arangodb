@@ -1,7 +1,7 @@
 devel
 -----
 
-* FE-291: Refactory Query screen on web UI.
+* FE-291: Refactor Query screen on web UI to React.
 
 * FE-301: Unify Users View on web UI.
 
