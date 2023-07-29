@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-291: Refactory Query screen on web UI.
+
 * FE-301: Unify Users View on web UI.
 
 * Updated ArangoDB Starter to 0.16.0.
