@@ -2387,6 +2387,7 @@ IResearchAnalyzerFeature::splitAnalyzerName(
               : irs::kEmptyStringView<char>;
       auto name = i < count - 1  // have suffix
                       ? std::string_view(
+                            // cppcheck-suppress invalidLifetime
                             analyzer.data() + i + 1,
                             count - i - 1)  // +-1 for the suffix after '::'
                       : irs::kEmptyStringView<char>;  // do not point after end
