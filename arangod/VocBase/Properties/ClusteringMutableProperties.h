@@ -78,7 +78,7 @@ auto inspect(Inspector& f, ClusteringMutableProperties& props) {
       .fields(
           f.field(StaticStrings::WaitForSyncString, props.waitForSync)
               .fallback(f.keep()),
-          // Deprecated, and not documented anymore
+          // minReplicationFactor is deprecated, and not documented anymore
           // The ordering is important here, minReplicationFactor
           // has to be before writeConcern, this way we ensure that writeConcern
           // will overwrite the minReplicationFactor value if present
