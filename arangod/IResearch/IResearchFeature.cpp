@@ -881,6 +881,7 @@ bool isFilter(aql::Function const& func) noexcept {
 }
 
 bool isScorer(aql::Function const& func) noexcept {
+  // cppcheck-suppress throwInNoexceptFunction
   return func.implementation == &dummyScorerFunc;
 }
 
