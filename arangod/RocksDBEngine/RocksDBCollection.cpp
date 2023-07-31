@@ -1612,6 +1612,9 @@ Result RocksDBCollection::modifyDocument(
     velocypack::Slice oldDoc, LocalDocumentId newDocumentId,
     velocypack::Slice newDoc, RevisionId oldRevisionId,
     RevisionId newRevisionId, OperationOptions const& options) const {
+  TRI_ASSERT(oldDoc.get(StaticStrings::KeyString).stringView() ==
+             newDoc.get(StaticStrings::KeyString).stringView());
+
   savepoint.prepareOperation(newRevisionId);
 
   // Coordinator doesn't know index internals
@@ -1698,6 +1701,35 @@ Result RocksDBCollection::modifyDocument(
 
   key->constructDocument(objectId(), newDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (options.isRestore) {
+    rocksdb::PinnableSlice ps;
+    rocksdb::Status s =
+        mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
+                                RocksDBColumnFamilyManager::Family::Documents),
+                            key->string(), &ps);
+    if (s.ok()) {
+      // the LocalDocumentId should not have existed before...
+      res.reset(TRI_ERROR_ARANGO_CONFLICT,
+                "conflict with existing LocalDocumentId while trying to modify "
+                "document on follower");
+      res.withError([&oldDoc, &newDoc](result::Error& err) {
+        TRI_ASSERT(oldDoc.get(StaticStrings::KeyString).isString());
+        TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
+        err.appendErrorMessage("; old key: ");
+        err.appendErrorMessage(
+            oldDoc.get(StaticStrings::KeyString).copyString());
+        err.appendErrorMessage("; new key: ");
+        err.appendErrorMessage(
+            newDoc.get(StaticStrings::KeyString).copyString());
+      });
+      TRI_ASSERT(false) << "modify: " << res.errorMessage()
+                        << ", options: " << options;
+    }
+  }
+#endif
+
   s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Documents),
