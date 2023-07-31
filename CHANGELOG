@@ -1,6 +1,10 @@
 devel
 -----
 
+* Wrap imports into SmartGraph edge collections via the REST import API
+  (POST `/_api/import`) into a managed transaction, so that edge data is
+  either completely inserted or not at all.
+
 * Changed default values for the following options related to the in-memory
   cache subsystem:
 
