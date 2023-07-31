@@ -6022,7 +6022,7 @@ geo::Ellipsoid const* detEllipsoid(ExpressionContext* expressionContext,
                    "invalid ellipsoid {} specified, falling back to \"sphere\"",
                    slice.stringView())));
   } else {
-    registerWarning(expressionContext, "GEO_AREA",
+    registerWarning(expressionContext, functionName,
                     Result(TRI_ERROR_BAD_PARAMETER,
                            "invalid value for ellipsoid specified, falling "
                            "back to \"sphere\""));
