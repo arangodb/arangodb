@@ -112,18 +112,6 @@ struct Collections {
       std::shared_ptr<LogicalCollection>& ret  // ReturnValue: created Shard
   );
 
-  /// Create many collections, ownership of collections in callback is
-  /// transferred to callee
-  static Result create(TRI_vocbase_t&, OperationOptions const&,
-                       std::vector<CollectionCreationInfo> const& infos,
-                       bool createWaitsForSyncReplication,
-                       bool enforceReplicationFactor, bool isNewDatabase,
-                       std::shared_ptr<LogicalCollection> const& colPtr,
-                       std::vector<std::shared_ptr<LogicalCollection>>& ret,
-                       bool allowSystem = false,
-                       bool allowEnterpriseCollectionsOnSingleServer = false,
-                       bool isRestore = false);
-
   static Result createSystem(TRI_vocbase_t& vocbase, OperationOptions const&,
                              std::string const& name, bool isNewDatabase,
                              std::shared_ptr<LogicalCollection>& ret);
