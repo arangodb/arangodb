@@ -82,8 +82,13 @@ const ADVANCED_QUERY_OPTIONS = {
   }
 };
 export const QueryOptionsTab = ({ mode }: { mode: "json" | "table" }) => {
-  const { queryOptions, setQueryOptions, bindVariablesJsonEditorRef } =
-    useQueryContext();
+  const {
+    queryOptions,
+    setQueryOptions,
+    setDisabledRules,
+    disabledRules,
+    bindVariablesJsonEditorRef
+  } = useQueryContext();
   const [errors, setErrors] = React.useState<ValidationError[]>([]);
   if (mode === "table") {
     return <QueryOptionForm />;
@@ -93,9 +98,21 @@ export const QueryOptionsTab = ({ mode }: { mode: "json" | "table" }) => {
       <ControlledJSONEditor
         ref={bindVariablesJsonEditorRef}
         mode="code"
-        defaultValue={queryOptions}
+        defaultValue={{
+          ...queryOptions,
+          optimizer: {
+            rules: disabledRules
+          }
+        }}
         onChange={updatedValue => {
-          !errors.length && setQueryOptions(updatedValue || {});
+          const updatedOptions = {
+            ...updatedValue,
+            optimizer: undefined
+          };
+          if (!errors.length) {
+            setQueryOptions(updatedOptions || {});
+            setDisabledRules(updatedValue.optimizer?.rules);
+          }
         }}
         htmlElementProps={{
           style: {
@@ -212,6 +229,11 @@ const QueryOptionRow = ({
       <Input
         size="xs"
         value={value}
+        // this is required to override bootstrap styles
+        css={{
+          height: "24px !important"
+        }}
+        type={option.type}
         onChange={e => {
           const updatedValue = e.target.value;
           setQueryOptions(prev => {
