@@ -203,7 +203,22 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
         LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
             << "processRestoreCollection "
             << "could not drop collection: " << ex.what();
+        // We return false (collection does not exist) here
+        // in order to trigger a creation step later, which should produce
+        // a duplicate name error. (Unless someone raced and dropped the
+        // collection)
+        // Returning true would yield a success of this method.
+        return {false};
       } catch (...) {
+        // We return false (collection does not exist) here
+        // in order to trigger a creation step later, which should produce
+        // a duplicate name error. (Unless someone raced and dropped the
+        // collection)
+        // Returning true would yield a success of this method.
+        LOG_TOPIC("41580", DEBUG, Logger::REPLICATION)
+            << "processRestoreCollection "
+            << "could not drop collection: unknown error";
+        return {false};
       }
     } else {
       // Found a collection, and we are not allowed to drop it, so it exists.
@@ -3435,9 +3450,7 @@ Result RestReplicationHandler::createBlockingTransaction(
     return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
   }
 
-  TRI_ASSERT(isLockHeld(id).ok());
-
-  return Result();
+  return isLockHeld(id);
 }
 
 Result RestReplicationHandler::isLockHeld(TransactionId id) const {
@@ -3445,7 +3458,7 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
   // there it should return false.
   // In all other cases it is released quickly.
   if (_vocbase.isDropped()) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -3453,9 +3466,8 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
 
   transaction::Status stats = mgr->getManagedTrxStatus(id, _vocbase.name());
   if (stats == transaction::Status::UNDEFINED) {
-    return Result(
-        TRI_ERROR_HTTP_NOT_FOUND,
-        "no hold read lock job found for id " + std::to_string(id.id()));
+    return {TRI_ERROR_HTTP_NOT_FOUND,
+            "no hold read lock job found for id " + std::to_string(id.id())};
   }
 
   return {};
