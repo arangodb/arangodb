@@ -203,7 +203,22 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
         LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
             << "processRestoreCollection "
             << "could not drop collection: " << ex.what();
+        // We return false (collection does not exist) here
+        // in order to trigger a creation step later, which should produce
+        // a duplicate name error. (Unless someone raced and dropped the
+        // collection)
+        // Returning true would yield a success of this method.
+        return {false};
       } catch (...) {
+        // We return false (collection does not exist) here
+        // in order to trigger a creation step later, which should produce
+        // a duplicate name error. (Unless someone raced and dropped the
+        // collection)
+        // Returning true would yield a success of this method.
+        LOG_TOPIC("41580", DEBUG, Logger::REPLICATION)
+            << "processRestoreCollection "
+            << "could not drop collection: unknown error";
+        return {false};
       }
     } else {
       // Found a collection, and we are not allowed to drop it, so it exists.
