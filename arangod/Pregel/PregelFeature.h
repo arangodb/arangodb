@@ -83,6 +83,7 @@ class PregelFeature final : public ArangodFeature {
   explicit PregelFeature(Server& server);
   ~PregelFeature();
 
+  Result persistExecution(TRI_vocbase_t& vocbase, ExecutionNumber en);
   ResultT<ExecutionNumber> startExecution(TRI_vocbase_t& vocbase,
                                           PregelOptions options);
 
