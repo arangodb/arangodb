@@ -62,7 +62,8 @@ class EdgeConditionBuilder {
   bool _containsCondition;
 
   EdgeConditionBuilder(Ast*, EdgeConditionBuilder const&);
-  explicit EdgeConditionBuilder(AstNode*);
+  explicit EdgeConditionBuilder(AstNode*,
+                                arangodb::ResourceMonitor& resourceMonitor);
 
   // Create the _fromCondition for the first time.
   virtual void buildFromCondition() = 0;
@@ -86,16 +87,21 @@ class EdgeConditionBuilder {
   // Get the complete condition for inbound edges
   AstNode* getInboundCondition();
 
+  // Get the resource monitor
+  arangodb::ResourceMonitor& resourceMonitor();
+
  private:
   // Internal helper to swap _from and _to parts
   void swapSides(AstNode* condition);
+
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 
 // Wrapper around EdgeConditionBuilder that takes responsibility for all
 // AstNodes created with it. Can be used outside of an AQL query.
 class EdgeConditionBuilderContainer final : public EdgeConditionBuilder {
  public:
-  EdgeConditionBuilderContainer();
+  EdgeConditionBuilderContainer(arangodb::ResourceMonitor& resourceMonitor);
 
   ~EdgeConditionBuilderContainer() override;
 

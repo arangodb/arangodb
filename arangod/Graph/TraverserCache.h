@@ -172,6 +172,7 @@ class TraverserCache {
   /// @brief Stringheap to take care of _id strings, s.t. they stay valid
   ///        during the entire traversal.
   //////////////////////////////////////////////////////////////////////////////
+  // (already monitored as monitor is required during construction)
   arangodb::StringHeap _stringHeap;
 
   //////////////////////////////////////////////////////////////////////////////

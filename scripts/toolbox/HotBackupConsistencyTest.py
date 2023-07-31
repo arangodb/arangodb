@@ -11,7 +11,7 @@ import json
 
 from pathlib import Path
 from termcolor import colored
-from arango import ArangoClient, DocumentGetError
+from arango import ArangoClient, DocumentGetError, AQLQueryExecuteError, ServerConnectionError
 from modules import ArangoDBInstanceManager
 from modules.ArangodEnvironment.ArangodEnvironment import ArangodEnvironment
 from modules.ArangodEnvironment.Agent import Agent
@@ -39,12 +39,13 @@ def start_cluster(binary, topdir, workdir, initial_port):
 
 def wait_for_cluster(client):
     while True:
-        time.sleep(1)
         try:
             client.db('_system', username='root', verify=True)
             return True
         except ServerConnectionError:
             time.sleep(1)
+        except Exception as err:
+            print(f"Unexpected exception in wait_for_cluster: {err=}, {type(err)}")
 
 
 def ensure_workdir(desired_workdir):
@@ -63,7 +64,7 @@ def assert_after_restore(func):
         try:
             func()
             return
-        except DocumentGetError as e:
+        except (DocumentGetError, AQLQueryExecuteError) as e:
             print(f"cluster not yet ready, got {e}")
         # add more exceptions here if necessary
         time.sleep(2)
