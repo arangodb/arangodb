@@ -1541,30 +1541,6 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
     return res.reset(TRI_ERROR_DEBUG);
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (options.isRestore) {
-    // lock the underlying RocksDB key and validate that it exists
-    rocksdb::PinnableSlice ps;
-    rocksdb::Status s =
-        mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
-                                RocksDBColumnFamilyManager::Family::Documents),
-                            key->string(), &ps);
-    if (s.IsNotFound()) {
-      res.reset(TRI_ERROR_ARANGO_CONFLICT,
-                "conflict with non-existing LocalDocumentId while trying to "
-                "remove document on follower");
-      res.reset(rocksutils::convertStatus(s, rocksutils::document));
-      res.withError([&doc](result::Error& err) {
-        TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
-        err.appendErrorMessage("; key: ");
-        err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
-      });
-      TRI_ASSERT(false) << "remove: " << res.errorMessage()
-                        << ", options: " << options;
-    }
-  }
-#endif
-
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
                               RocksDBColumnFamilyManager::Family::Documents),
@@ -1692,34 +1668,6 @@ Result RocksDBCollection::modifyDocument(
     return res.reset(TRI_ERROR_DEBUG);
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (options.isRestore) {
-    // lock the underlying RocksDB key and validate that it exists
-    rocksdb::PinnableSlice ps;
-    rocksdb::Status s =
-        mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
-                                RocksDBColumnFamilyManager::Family::Documents),
-                            key->string(), &ps);
-    if (s.IsNotFound()) {
-      res.reset(TRI_ERROR_ARANGO_CONFLICT,
-                "conflict with existing LocalDocumentId while trying to modify "
-                "document on follower");
-      res.withError([&oldDoc, &newDoc](result::Error& err) {
-        TRI_ASSERT(oldDoc.get(StaticStrings::KeyString).isString());
-        TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
-        err.appendErrorMessage("; old key: ");
-        err.appendErrorMessage(
-            oldDoc.get(StaticStrings::KeyString).copyString());
-        err.appendErrorMessage("; new key: ");
-        err.appendErrorMessage(
-            newDoc.get(StaticStrings::KeyString).copyString());
-      });
-      TRI_ASSERT(false) << "modify: " << res.errorMessage()
-                        << ", options: " << options;
-    }
-  }
-#endif
-
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
                               RocksDBColumnFamilyManager::Family::Documents),
@@ -1750,40 +1698,12 @@ Result RocksDBCollection::modifyDocument(
 
   key->constructDocument(objectId(), newDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (options.isRestore) {
-    rocksdb::PinnableSlice ps;
-    s = mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
-                                RocksDBColumnFamilyManager::Family::Documents),
-                            key->string(), &ps);
-    if (s.ok()) {
-      // the LocalDocumentId should not have existed before...
-      res.reset(TRI_ERROR_ARANGO_CONFLICT,
-                "conflict with existing LocalDocumentId while trying to modify "
-                "document on follower");
-      res.withError([&oldDoc, &newDoc](result::Error& err) {
-        TRI_ASSERT(oldDoc.get(StaticStrings::KeyString).isString());
-        TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
-        err.appendErrorMessage("; old key: ");
-        err.appendErrorMessage(
-            oldDoc.get(StaticStrings::KeyString).copyString());
-        err.appendErrorMessage("; new key: ");
-        err.appendErrorMessage(
-            newDoc.get(StaticStrings::KeyString).copyString());
-      });
-      TRI_ASSERT(false) << "modify: " << res.errorMessage()
-                        << ", options: " << options;
-    }
-  }
-#endif
   s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Documents),
       key.ref(),
       rocksdb::Slice(newDoc.startAs<char>(),
                      static_cast<size_t>(newDoc.byteSize())));
-
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
