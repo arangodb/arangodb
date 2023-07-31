@@ -43,7 +43,7 @@ def wait_for_cluster(client):
         try:
             client.db('_system', username='root', verify=True)
             return True
-        except ServerConnectionError:
+        except ConnectionError:
             time.sleep(1)
 
 
