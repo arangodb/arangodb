@@ -39,12 +39,13 @@ def start_cluster(binary, topdir, workdir, initial_port):
 
 def wait_for_cluster(client):
     while True:
-        time.sleep(1)
         try:
             client.db('_system', username='root', verify=True)
             return True
         except ConnectionError:
             time.sleep(1)
+        except Exception as err:
+            print(f"Unexpected exception in wait_for_cluster: {err=}, {type(err)}")
 
 
 def ensure_workdir(desired_workdir):
