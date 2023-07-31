@@ -151,7 +151,7 @@ LogPersistor::LogPersistor(LogId logId,
     }
     auto header = res.get();
     _lastWrittenEntry =
-        TermIndexPair(LogTerm{header.term()}, LogIndex{header.index()});
+        TermIndexPair(LogTerm{header.term()}, LogIndex{header.index});
   }
 }
 
@@ -219,7 +219,7 @@ auto LogPersistor::removeBack(LogIndex start, WriteOptions const&)
     return res.result();
   }
 
-  TRI_ASSERT(res.get().index() == start.value);
+  TRI_ASSERT(res.get().index == start.value);
 
   auto pos = reader->position();
   // TODO - refactor and check that we actually have one more entry to read!
@@ -232,7 +232,7 @@ auto LogPersistor::removeBack(LogIndex start, WriteOptions const&)
   reader->read(header);
 
   _lastWrittenEntry =
-      TermIndexPair(LogTerm{header.term()}, LogIndex{header.index()});
+      TermIndexPair(LogTerm{header.term()}, LogIndex{header.index});
 
   _activeFile->truncate(pos);
   return ResultT<SequenceNumber>::success(start.value);

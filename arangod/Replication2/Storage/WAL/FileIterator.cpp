@@ -47,7 +47,7 @@ void FileIterator::moveToFirstEntry() {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
 
-  TRI_ASSERT(res.get().index() >= _pos.index().value);
+  TRI_ASSERT(res.get().index >= _pos.index().value);
   _pos = IteratorPosition::withFileOffset(_pos.index(), _reader->position());
 }
 

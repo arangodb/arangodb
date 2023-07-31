@@ -32,11 +32,12 @@ namespace arangodb::replication2::storage::wal {
 // An record in the WAL consists of a (compressed) header, the payload and a
 // footer.
 // We want everything to be 8 byte aligned, so we squeeze the index, term,
-// type and size into the 16 byte CompressedHeader with the following structure
-//   index = 48bits
-//   term  = 42bits
-//   type  = 6bits
-//   size  = 32bits
+// type and size into the 24 byte CompressedHeader with the following structure
+//   index = 64bits
+//   term  = 44bits
+//   tag   = 16bits
+//   type  = 4bits
+//   size  = 64bits
 struct Record {
   struct CompressedHeader;
 
@@ -44,45 +45,41 @@ struct Record {
     Header() = default;
     explicit Header(CompressedHeader);
 
-    std::uint64_t index;
-    std::uint64_t term;
+    std::uint64_t index = 0;
+    std::uint64_t term = 0;
+    std::uint16_t tag = 0;
     RecordType type;
-    std::uint32_t size;
+    std::uint64_t size = 0;
   };
 
   struct CompressedHeader {
     CompressedHeader() = default;
     explicit CompressedHeader(Header);
 
-    std::uint64_t indexAndTerm;
-    std::uint32_t termAndType;
-    std::uint32_t size;
+    std::uint64_t index;
+    std::uint64_t termTagAndType;
+    std::uint64_t size;
 
-    static constexpr unsigned indexBits = 48;
+    static constexpr unsigned indexBits = 64;
     static constexpr unsigned termBits = 44;
+    static constexpr unsigned tagBits = 16;
     static constexpr unsigned typeBits = 4;
-    static constexpr unsigned sizeBits = 32;
-    static_assert(indexBits + termBits + typeBits + sizeBits == 128);
+    static constexpr unsigned sizeBits = 64;
 
-    std::uint64_t index() const noexcept {
-      return indexAndTerm >> numTermBitsInIndexAndTerm;
-    }
+    static_assert(termBits + tagBits + typeBits == 64);
+    static_assert(indexBits + termBits + tagBits + typeBits + sizeBits == 192);
+
     std::uint64_t term() const noexcept {
-      return ((indexAndTerm & termMask)
-              << (CompressedHeader::termBits - numTermBitsInIndexAndTerm)) |
-             (termAndType >> CompressedHeader::typeBits);
+      return termTagAndType >> (tagBits + typeBits);
+    }
+    std::uint16_t tag() const noexcept {
+      return (termTagAndType >> typeBits) & ((1 << tagBits) - 1);
     }
     RecordType type() const noexcept {
-      return static_cast<RecordType>(termAndType & ((1 << typeBits) - 1));
+      return static_cast<RecordType>(termTagAndType & ((1 << typeBits) - 1));
     }
-
-   private:
-    static constexpr unsigned numTermBitsInIndexAndTerm =
-        (64 - CompressedHeader::indexBits);
-    static constexpr std::uint64_t termMask =
-        (1 << numTermBitsInIndexAndTerm) - 1;
   };
-  static_assert(sizeof(CompressedHeader) == 16);
+  static_assert(sizeof(CompressedHeader) == 24);
 
   static std::uint32_t paddedPayloadSize(std::uint32_t size) {
     // we round to the next multiple of 8
@@ -90,19 +87,23 @@ struct Record {
   }
 
   struct Footer {
-    std::uint32_t crc32;
-    std::uint32_t size;
+    std::uint32_t crc32 = 0;
+    std::uint32_t padding = 0;
+    std::uint64_t size = 0;
   };
 };
 
 inline Record::Header::Header(CompressedHeader h)
-    : index(h.index()), term(h.term()), type(h.type()), size(h.size) {}
+    : index(h.index),
+      term(h.term()),
+      tag(h.tag()),
+      type(h.type()),
+      size(h.size) {}
 
 inline Record::CompressedHeader::CompressedHeader(Header h)
-    : indexAndTerm((h.index << numTermBitsInIndexAndTerm) |
-                   (h.term >> (termBits - numTermBitsInIndexAndTerm))),
-      termAndType(static_cast<std::uint32_t>(h.term << typeBits) |
-                  static_cast<std::uint32_t>(h.type)),
+    : index(h.index),
+      termTagAndType((h.term << (tagBits + typeBits)) | (h.tag << typeBits) |
+                     static_cast<std::uint64_t>(h.type)),
       size(h.size) {}
 
 }  // namespace arangodb::replication2::storage::wal
