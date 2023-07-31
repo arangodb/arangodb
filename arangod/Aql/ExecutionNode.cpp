@@ -509,7 +509,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
 
       varsUsedLater.reserve(stackEntrySlice.length());
       for (auto it : VPackArrayIterator(stackEntrySlice)) {
-        Variable oneVarUsedLater(it);
+        Variable oneVarUsedLater(it, plan->getAst()->query().resourceMonitor());
         Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
 
         if (oneVariable == nullptr) {
@@ -541,7 +541,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
 
       varsValid.reserve(stackEntrySlice.length());
       for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
-        Variable oneVarValid(it);
+        Variable oneVarValid(it, plan->getAst()->query().resourceMonitor());
         Variable* oneVariable = allVars->getVariable(oneVarValid.id);
 
         if (oneVariable == nullptr) {
