@@ -272,7 +272,7 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateWithSameRev: function () {
-      if (isCluster()) {
+      if (isCluster) {
         // running this test in cluster will trigger an assertion failure
         return;
       }
@@ -284,7 +284,7 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateWithSameRevTransaction: function () {
-      if (isCluster()) {
+      if (isCluster) {
         // running this test in cluster will trigger an assertion failure
         return;
       }
