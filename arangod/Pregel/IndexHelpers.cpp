@@ -26,6 +26,7 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
@@ -53,8 +54,12 @@ EdgeCollectionInfo::EdgeCollectionInfo(ResourceMonitor& monitor,
   _trx->addCollectionAtRuntime(_collectionName, AccessMode::Type::READ);
 
   // projections we need to cover
-  aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
-      {StaticStrings::FromString, StaticStrings::ToString}));
+  std::vector<aql::AttributeNamePath> paths = {};
+  paths.emplace_back(
+      aql::AttributeNamePath({StaticStrings::FromString}, monitor));
+  paths.emplace_back(
+      aql::AttributeNamePath({StaticStrings::ToString}, monitor));
+  aql::Projections edgeProjections(std::move(paths));
 
   _collection = _trx->documentCollection(_collectionName);
   TRI_ASSERT(_collection != nullptr);

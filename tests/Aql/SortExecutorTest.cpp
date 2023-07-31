@@ -66,13 +66,16 @@ using SortInputParam = std::tuple<SortSplitType>;
 
 class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
  protected:
+  arangodb::GlobalResourceMonitor _globalResourceMonitor{};
+  arangodb::ResourceMonitor _resMonitor{_globalResourceMonitor};
+
   auto getSplit() -> SortSplitType {
     auto const& [split] = GetParam();
     return split;
   }
 
   auto makeRegisterInfos(size_t nestingLevel = 1) -> RegisterInfos {
-    SortElement sl{&sortVar, true};
+    SortElement sl{&sortVar, true, _resMonitor};
     SortRegister sortReg{0, sl};
     std::vector<SortRegister> sortRegisters;
     sortRegisters.emplace_back(std::move(sortReg));
@@ -90,7 +93,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
       tempStorage = std::make_unique<TemporaryStorageFeature>(
           fakedQuery->vocbase().server());
     }
-    SortElement sl{&sortVar, true};
+    SortElement sl{&sortVar, true, _resMonitor};
     SortRegister sortReg{0, sl};
     std::vector<SortRegister> sortRegisters;
     sortRegisters.emplace_back(std::move(sortReg));
