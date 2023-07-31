@@ -411,7 +411,7 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"GEO_CONTAINS", ".,.", flags, &functions::GeoContains});
   add({"GEO_INTERSECTS", ".,.", flags, &functions::GeoIntersects});
   add({"GEO_EQUALS", ".,.", flags, &functions::GeoEquals});
-  add({"GEO_AREA", ".|.", flags, &functions::GeoArea});
+  // add({"GEO_AREA", ".|.", flags, &functions::GeoArea});
 
   // (point0, point1, lower, upper[, includeLower = true, includeUpper = true,
   // ellipsoid = "shpere"])
