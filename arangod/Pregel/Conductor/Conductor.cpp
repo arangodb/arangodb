@@ -832,34 +832,15 @@ void Conductor::persistPregelState(ExecutionState state) {
   }
 
   TRI_ASSERT(state != ExecutionState::DEFAULT);
-  if (state == ExecutionState::LOADING) {
-    // During state LOADING we need to initially create the document in the
-    // collection
-    auto storeResult = cWriter.createResult(stateBuilder.slice());
-    if (storeResult.ok()) {
-      LOG_PREGEL("063x1", INFO)
-          << "Stored result into: \"" << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    } else {
-      LOG_PREGEL("063x2", INFO)
-          << "Could not store result into: \""
-          << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    }
+  auto updateResult = cWriter.updateResult(stateBuilder.slice());
+  if (updateResult.ok()) {
+    LOG_PREGEL("063x3", INFO)
+        << "Updated state into: \"" << StaticStrings::PregelCollection
+        << "\" collection for PID: " << executionNumber();
   } else {
-    // During all other states, we will just simply update the already created
-    // document
-    auto updateResult = cWriter.updateResult(stateBuilder.slice());
-    if (updateResult.ok()) {
-      LOG_PREGEL("063x3", INFO)
-          << "Updated state into: \"" << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    } else {
-      LOG_PREGEL("063x4", INFO)
-          << "Could not store result into: \""
-          << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    }
+    LOG_PREGEL("063x4", INFO)
+        << "Could not store result into: \"" << StaticStrings::PregelCollection
+        << "\" collection for PID: " << executionNumber();
   }
 }
 
