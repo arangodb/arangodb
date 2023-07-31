@@ -117,6 +117,16 @@ struct Collections {
       bool allowEnterpriseCollectionsOnSingleServer = false,
       bool isRestore = false);  // whether this is being called during restore
 
+  /// Create shard, ownership of collection in callback is
+  /// transferred to callee
+  [[nodiscard]] static arangodb::Result createShard(  // create shard
+      TRI_vocbase_t& vocbase,                         // collection vocbase
+      OperationOptions const& options,
+      std::string const& name,                 // collection name
+      TRI_col_type_e collectionType,           // collection type
+      arangodb::velocypack::Slice properties,  // collection properties
+      std::shared_ptr<LogicalCollection>& ret);
+
   /// Create many collections, ownership of collections in callback is
   /// transferred to callee
   static Result create(TRI_vocbase_t&, OperationOptions const&,
