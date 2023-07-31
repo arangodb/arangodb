@@ -11,7 +11,7 @@ import json
 
 from pathlib import Path
 from termcolor import colored
-from arango import ArangoClient, DocumentGetError, AQLQueryExecuteError
+from arango import ArangoClient, DocumentGetError, AQLQueryExecuteError, ServerConnectionError
 from modules import ArangoDBInstanceManager
 from modules.ArangodEnvironment.ArangodEnvironment import ArangodEnvironment
 from modules.ArangodEnvironment.Agent import Agent
@@ -42,7 +42,7 @@ def wait_for_cluster(client):
         try:
             client.db('_system', username='root', verify=True)
             return True
-        except ConnectionError:
+        except ServerConnectionError:
             time.sleep(1)
         except Exception as err:
             print(f"Unexpected exception in wait_for_cluster: {err=}, {type(err)}")
