@@ -45,6 +45,13 @@ struct CacheOptions {
   std::uint64_t rebalancingInterval = 2'000'000ULL;  // 2s
   // maximum memory usage for spare hash tables kept around by the cache.
   std::uint64_t maxSpareAllocation = 67'108'864ULL;  // 64MB
+  // used internally and by tasks. this multiplier is used with the
+  // cache's memory limit, and if exceeded, triggers a shrinking of the
+  // least frequently accessed kCachesToShrinkRatio caches.
+  // it is set to 56% of the configured memory limit by default only because
+  // of compatibility reasons. the value was set to 0.7 * 0.8 of the memory
+  // limit, i.e. 0.56.
+  double highwaterMultiplier = 0.56;
   // whether or not we want recent hit rates. if this is turned off,
   // we only get global hit rates over the entire lifetime of a cache
   bool enableWindowedStats = true;
