@@ -964,9 +964,33 @@ void Collections::applySystemCollectionProperties(
     DatabaseConfiguration const& config, bool isLegacyDatabase) {
   col.isSystem = true;
   // that forces all collections to be on the same physical DBserver
-  auto const& designatedLeaderName = vocbase.isSystem() && !isLegacyDatabase
+  auto designatedLeaderName = vocbase.isSystem() && !isLegacyDatabase
                                          ? StaticStrings::UsersCollection
                                          : StaticStrings::GraphsCollection;
+
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // This implements some stunt to figure out if we are in a mock environment.
+  // If that is the case we may not have all System collections.
+  // So we better not enforce distributeShardsLike.
+  bool isMock = false;
+  if (vocbase.server().hasFeature<EngineSelectorFeature>()) {
+    StorageEngine& engine = vocbase
+                                .server()
+                                .template getFeature<EngineSelectorFeature>()
+                                .engine();
+
+    isMock = (engine.typeName() == "Mock");
+  } else {
+    // We do not even have a full server, can only be a mock.
+    isMock = true;
+  }
+
+  if (isMock) {
+    designatedLeaderName = col.name;
+  }
+#endif
+
   if (col.name == designatedLeaderName) {
     // The leading collection needs to define sharding
     col.replicationFactor = vocbase.replicationFactor();
@@ -981,6 +1005,7 @@ void Collections::applySystemCollectionProperties(
     // Others only follow
     col.distributeShardsLike = designatedLeaderName;
   }
+
   [[maybe_unused]] auto res =
       col.applyDefaultsAndValidateDatabaseConfiguration(config);
   ADB_PROD_ASSERT(!res.fail())
@@ -1033,19 +1058,21 @@ void Collections::createSystemCollectionProperties(
   Result res = methods::Collections::lookup(vocbase, name, createdCollection);
 
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-    VPackBuilder bb;
-    createSystemCollectionProperties(name, bb, vocbase);
+    CreateCollectionBody newCollection;
+    newCollection.name = name;
+    methods::Collections::applySystemCollectionProperties(
+        newCollection, vocbase, vocbase.getDatabaseConfiguration(), false);
 
-    res =
-        Collections::create(vocbase,  // vocbase to create in
-                            options,
-                            name,  // collection name top create
-                            TRI_COL_TYPE_DOCUMENT,  // collection type to create
-                            bb.slice(),  // collection definition to create
-                            true,        // waitsForSyncReplication
-                            true,        // enforceReplicationFactor
-                            isNewDatabase, createdCollection,
-                            true /* allow system collection creation */);
+    auto collection = Collections::create(vocbase, options, {newCollection},
+                                          true,  // waitsForSyncReplication
+                                          true,  // enforceReplicationFactor
+                                          isNewDatabase);
+    // Operation either failed, or we have created exactly one collection.
+    TRI_ASSERT(collection.fail() || collection.get().size() == 1);
+    if (collection.ok()) {
+      createdCollection = collection.get().front();
+    }
+    return collection.result();
   }
 
   TRI_ASSERT(res.fail() || createdCollection);
