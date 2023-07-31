@@ -773,40 +773,6 @@ Collections::create(         // create collection
   return results;
 }
 
-/*static*/ arangodb::Result Collections::create(  // create collection
-    TRI_vocbase_t& vocbase,                       // collection vocbase
-    OperationOptions const& options,
-    std::string const& name,                 // collection name
-    TRI_col_type_e collectionType,           // collection type
-    arangodb::velocypack::Slice properties,  // collection properties
-    bool createWaitsForSyncReplication,      // replication wait flag
-    bool enforceReplicationFactor,           // replication factor flag
-    bool isNewDatabase,
-    std::shared_ptr<LogicalCollection>& ret,  // invoke on collection creation
-    bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer,
-    bool isRestore) {
-  if (name.empty()) {
-    events::CreateCollection(vocbase.name(), name,
-                             TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return TRI_ERROR_ARANGO_ILLEGAL_NAME;
-  } else if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
-             collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-    events::CreateCollection(vocbase.name(), name,
-                             TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-    return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
-  }
-  std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
-  std::vector<std::shared_ptr<LogicalCollection>> collections;
-  Result res =
-      create(vocbase, options, infos, createWaitsForSyncReplication,
-             enforceReplicationFactor, isNewDatabase, nullptr, collections,
-             allowSystem, allowEnterpriseCollectionsOnSingleServer, isRestore);
-  if (res.ok() && collections.size() > 0) {
-    ret = std::move(collections[0]);
-  }
-  return res;
-}
-
 /*static*/ arangodb::Result Collections::createShard(  // create shard
     TRI_vocbase_t& vocbase,                            // collection vocbase
     OperationOptions const& options,

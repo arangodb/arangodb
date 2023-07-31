@@ -101,31 +101,16 @@ struct Collections {
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
       bool isRestore = false);  // whether this is being called during restore
 
-  /// Create collection, ownership of collection in callback is
-  /// transferred to callee
-  [[nodiscard]] static arangodb::Result create(  // create collection
-      TRI_vocbase_t& vocbase,                    // collection vocbase
+  /// Create shard, can only be used on DBServers.
+  /// Should only be called by Maintenance.
+  [[nodiscard]] static arangodb::Result createShard(
+      TRI_vocbase_t& vocbase,                  // shard database
       OperationOptions const& options,
-      std::string const& name,                 // collection name
-      TRI_col_type_e collectionType,           // collection type
-      arangodb::velocypack::Slice properties,  // collection properties
-      bool createWaitsForSyncReplication,      // replication wait flag
-      bool enforceReplicationFactor,           // replication factor flag
-      bool isNewDatabase,
-      std::shared_ptr<LogicalCollection>& ret,  // invoke on collection creation
-      bool allowSystem = false,
-      bool allowEnterpriseCollectionsOnSingleServer = false,
-      bool isRestore = false);  // whether this is being called during restore
-
-  /// Create shard, ownership of collection in callback is
-  /// transferred to callee
-  [[nodiscard]] static arangodb::Result createShard(  // create shard
-      TRI_vocbase_t& vocbase,                         // collection vocbase
-      OperationOptions const& options,
-      std::string const& name,                 // collection name
-      TRI_col_type_e collectionType,           // collection type
-      arangodb::velocypack::Slice properties,  // collection properties
-      std::shared_ptr<LogicalCollection>& ret);
+      std::string const& name,                 // shard name
+      TRI_col_type_e collectionType,           // shard type
+      arangodb::velocypack::Slice properties,  // shard properties
+      std::shared_ptr<LogicalCollection>& ret  // ReturnValue: created Shard
+  );
 
   /// Create many collections, ownership of collections in callback is
   /// transferred to callee
