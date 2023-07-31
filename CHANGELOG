@@ -27,18 +27,27 @@ v3.11.3 (XXXX-XX-XX)
   in-memory cache subsystem, and to the cache subsystem not exceeding its 
   configured memory usage limit. 
   The cache subsystem was also changed so that it can use as much memory as
-  configured by the global cache memory limit (configurable via startup option
-  `--cache.size`). Previously the cache subsystem was freeing memory as soon
-  as it hit 56% of the configured limit.
-  Overall, the effective memory usage of the cache subsystem will be very
-  different to the memory usage in previous versions. In previous versions the
+  configured by the global cache memory limit (configurable via startup options
+  `--cache.size` and `--cache.high-water-multiplier`). Previously the cache 
+  subsystem was freeing memory as soon as it hit 56% of the configured limit.
+  Overall, the effective memory usage of the cache subsystem can be different 
+  to the cache memory usage in previous versions. In previous versions the
   configured memory usage limit could be temporarily exceeded, but in most
   cases the cache used considerably less memory than allowed by the limit.
+  Effectively the memory usage was capped at 56% of the configured limit.
   Now the cache will try to use up to as much memory as allowed by the
-  configured memory usage limit.
-  If that leads to an overall overallocation of resources (i.e. too high total
-  memory of the system), it may be necessary to lower the value of the startup
-  option `--cache.size`, so that the cache memory usage is decreased.
+  configured memory usage limit (i.e. `--cache.size` multiplied by the high
+  water multiplier `--cache.high-water-multiplier`). The default value for
+  the high water multiplier is set to 56% in this version to keep compatibility
+  with previous versions.
+
+* Expose the "high water multiplier" for the in-memory cache subsystem. The
+  high water multiplier is used to calculate the effective memory usage limit
+  for the in-memory cache subsystem. The cache's configured memory usage limit
+  (`--cache.size`) is multiplied by the high water multiplier, and the 
+  resulting value is used as the effective memory limit. It defaults to 56%
+  to ensure compatibility with previous versions, in which the threshold was
+  effectively hard-coded to the same value.
 
 * Reduce memory usage for empty in-memory edge caches by ~40%. This is achieved
   by allocating each cache's statistics objects only lazily, when actually 
