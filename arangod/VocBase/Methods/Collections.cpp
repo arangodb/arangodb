@@ -814,6 +814,7 @@ Collections::create(         // create collection
     TRI_col_type_e collectionType,           // collection type
     arangodb::velocypack::Slice properties,  // collection properties
     std::shared_ptr<LogicalCollection>& ret) {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
   // NOTE: This is original Collections::create but we stripped of
   // everything that is not relevant on DBServers.
 
@@ -864,7 +865,6 @@ Collections::create(         // create collection
   TRI_ASSERT(infoSlice.length() == infos.size());
 
   try {
-    TRI_ASSERT(ServerState::instance()->isDBServer());
     auto collections = vocbase.createCollections(
         infoSlice, allowEnterpriseCollectionsOnSingleServer);
 
