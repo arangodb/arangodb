@@ -1280,6 +1280,7 @@ void RocksDBCollection::figuresSpecific(
         auto type = it->type();
         if (type == Index::TRI_IDX_TYPE_UNKNOWN ||
             type == Index::TRI_IDX_TYPE_IRESEARCH_LINK ||
+            type == Index::TRI_IDX_TYPE_INVERTED_INDEX ||
             type == Index::TRI_IDX_TYPE_NO_ACCESS_INDEX) {
           continue;
         }
