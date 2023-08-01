@@ -1563,7 +1563,7 @@ void ClusterInfo::loadPlan() {
                 ClusterInfo::NewStuffByDatabase,
                 ClusterInfoResourceAllocator<ClusterInfo::NewStuffByDatabase>>);
 
-  auto allocate = [&]<typename T, typename... Args>(Args&&... args) {
+  auto allocate = [&]<typename T, typename... Args>(Args && ... args) {
     return std::allocate_shared<T>(
         ClusterInfoResourceAllocator<T>(_resourceMonitor),
         std::forward<Args>(args)...);
