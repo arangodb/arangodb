@@ -104,7 +104,7 @@ struct Collections {
   /// Create shard, can only be used on DBServers.
   /// Should only be called by Maintenance.
   [[nodiscard]] static arangodb::Result createShard(
-      TRI_vocbase_t& vocbase,                  // shard database
+      TRI_vocbase_t& vocbase,  // shard database
       OperationOptions const& options,
       std::string const& name,                 // shard name
       TRI_col_type_e collectionType,           // shard type

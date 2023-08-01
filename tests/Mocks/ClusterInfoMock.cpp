@@ -89,9 +89,10 @@ inline arangodb::AgencyOperation CreateCollectionSuccess(
                                    info};
 }
 
-auto createDocumentStateSpec(
-    std::string const& shardId, std::vector<std::string> const& serverIds,
-    ClusterCollectionCreationInfo const& info, std::string const& databaseName)
+auto createDocumentStateSpec(std::string const& shardId,
+                             std::vector<std::string> const& serverIds,
+                             ClusterCollectionCreationInfo const& info,
+                             std::string const& databaseName)
     -> replication2::agency::LogTarget {
   using namespace replication2::replicated_state;
 
@@ -119,9 +120,7 @@ auto createDocumentStateSpec(
   return spec;
 }
 
-
-}
-
+}  // namespace
 
 /// @brief this method does an atomic check of the preconditions for the
 /// collections to be created, using the currently loaded plan.
@@ -230,7 +229,6 @@ auto ClusterInfo::deleteReplicatedStates(
       });
 }
 
-
 auto ClusterInfo::waitForReplicatedStatesCreation(
     std::string const& databaseName,
     std::vector<replication2::agency::LogTarget> const& replicatedStates)
@@ -306,7 +304,6 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
                                       isNewDatabase, colToDistributeShardsLike,
                                       replicationVersion);
 }
-
 
 Result ClusterInfo::createCollectionsCoordinator(
     std::string const& databaseName,
@@ -990,4 +987,3 @@ Result ClusterInfo::createCollectionsCoordinator(
   }
   return Result{TRI_ERROR_SHUTTING_DOWN};
 }
-

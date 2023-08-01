@@ -321,10 +321,12 @@ Result createSystemStatisticsCollections(
     for (auto const& collection : systemCollections) {
       // No need to batch this.
       // Fresh databases will have a batch run for those collections already.
-      // We only hit this on databases that do not have statistics collections yet.
-      // Which have to be somewhere from the 2.X series, and never had an upgrade task.
+      // We only hit this on databases that do not have statistics collections
+      // yet. Which have to be somewhere from the 2.X series, and never had an
+      // upgrade task.
       std::shared_ptr<LogicalCollection> col;
-      res = methods::Collections::createSystem(vocbase, options, collection, false, col);
+      res = methods::Collections::createSystem(vocbase, options, collection,
+                                               false, col);
       if (res.fail()) {
         return res;
       }

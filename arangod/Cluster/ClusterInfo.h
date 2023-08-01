@@ -529,7 +529,6 @@ class ClusterInfo final {
       double timeout               // request timeout
   );
 
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   /***
    * This section of methods is only required for our C++ UnitTests
