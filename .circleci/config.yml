@@ -15,7 +15,8 @@ parameters:
 
 # our defined job, and its steps
 jobs:
-  check-build:
+  # this is in a separate job from "setup" to make it as cheap as possible (because it uses the bare base image)
+  check-build-trigger:
     docker:
       - image: cimg/base:current
     resource_class: small
@@ -65,8 +66,10 @@ jobs:
 workflows:
   setup:
     jobs:
-      - check-build
+      # we always create a workflow and let the build fail in check-build-trigger unless it has been triggered manually
+      # or runs on the devel branch (see condition in check-build-trigger)
+      - check-build-trigger
       - generate-config:
           definitions: "tests/test-definitions.txt"
           requires:
-            - check-build
+            - check-build-trigger
