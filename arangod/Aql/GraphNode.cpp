@@ -37,6 +37,7 @@
 #include "Aql/TraversalExecutor.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
@@ -572,7 +573,11 @@ void GraphNode::setGraphInfoAndCopyColls(
   if (_graphObj == nullptr) {
     _graphInfo.openArray();
     for (auto& it : edgeColls) {
-      TRI_ASSERT(it != nullptr);
+      if (it == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "access to non-existing collection in AQL graph traversal");
+      }
       _edgeColls.emplace_back(it);
       _graphInfo.add(VPackValue(it->name()));
     }
@@ -580,7 +585,11 @@ void GraphNode::setGraphInfoAndCopyColls(
   } else {
     _graphInfo.add(VPackValue(_graphObj->name()));
     for (auto& it : edgeColls) {
-      TRI_ASSERT(it != nullptr);
+      if (it == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "access to non-existing collection in AQL graph traversal");
+      }
       _edgeColls.emplace_back(it);
     }
   }
@@ -825,8 +834,19 @@ void GraphNode::getConditionVariables(std::vector<Variable const*>& res) const {
 
 Collection const* GraphNode::getShardingPrototype() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
+  if (_edgeColls.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "AQL graph traversal without edge collections");
+  }
+
   TRI_ASSERT(!_edgeColls.empty());
   for (auto const* c : _edgeColls) {
+    if (c == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "access to non-existing collection in AQL graph traversal");
+    }
     // We are required to valuate non-satellites above
     // satellites, as the collection is used as the prototype
     // for this graphs sharding.
