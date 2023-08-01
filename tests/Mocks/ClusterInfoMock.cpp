@@ -45,18 +45,18 @@ using namespace arangodb;
 using namespace arangodb::cluster;
 
 namespace {
-inline arangodb::AgencyOperation IncreaseVersion() {
+arangodb::AgencyOperation IncreaseVersion() {
   return arangodb::AgencyOperation{
       "Plan/Version", arangodb::AgencySimpleOperationType::INCREMENT_OP};
 }
 
-inline std::string collectionPath(std::string_view dbName,
+std::string collectionPath(std::string_view dbName,
                                   std::string_view collection) {
   return "Plan/Collections/" + std::string{dbName} + "/" +
          std::string{collection};
 }
 
-inline arangodb::AgencyOperation CreateCollectionOrder(
+arangodb::AgencyOperation CreateCollectionOrder(
     std::string_view dbName, std::string_view collection, VPackSlice info) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (!info.get("shards").isEmptyObject() &&
@@ -68,20 +68,18 @@ inline arangodb::AgencyOperation CreateCollectionOrder(
                true);
   }
 #endif
-  arangodb::AgencyOperation op{collectionPath(dbName, collection),
+  return arangodb::AgencyOperation{collectionPath(dbName, collection),
                                arangodb::AgencyValueOperationType::SET, info};
-  return op;
 }
 
-inline arangodb::AgencyPrecondition CreateCollectionOrderPrecondition(
+arangodb::AgencyPrecondition CreateCollectionOrderPrecondition(
     std::string_view dbName, std::string_view collection, VPackSlice info) {
-  arangodb::AgencyPrecondition prec{collectionPath(dbName, collection),
+  return arangodb::AgencyPrecondition{collectionPath(dbName, collection),
                                     arangodb::AgencyPrecondition::Type::VALUE,
                                     info};
-  return prec;
 }
 
-inline arangodb::AgencyOperation CreateCollectionSuccess(
+arangodb::AgencyOperation CreateCollectionSuccess(
     std::string_view dbName, std::string_view collection, VPackSlice info) {
   TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::AttrIsBuilding));
   return arangodb::AgencyOperation{collectionPath(dbName, collection),
@@ -328,8 +326,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   auto nrDone = std::make_shared<std::atomic<size_t>>(0);
   auto errMsg = std::make_shared<std::string>();
-  auto cacheMutex = std::make_shared<std::mutex>();
-  auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
+  auto cacheMutex = std::make_shared<std::recursive_mutex>();
   auto isCleaned = std::make_shared<bool>(false);
 
   AgencyComm ac(_server);
@@ -347,7 +344,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // owned by the callback d) info might be deleted, so we cannot use it. e)
       // If the callback is ongoing during cleanup, the callback will
       //    hold the Mutex and delay the cleanup.
-      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+      std::lock_guard lock{*cacheMutex};
       *isCleaned = true;
       for (auto& cb : agencyCallbacks) {
         _agencyCallbackRegistry->unregisterCallback(cb);
@@ -401,14 +398,14 @@ Result ClusterInfo::createCollectionsCoordinator(
     // this here is ok as ClusterInfo is not destroyed
     // for &info it should have ensured lifetime somehow. OR ensured that
     // callback is noop in case it is triggered too late.
-    auto closure = [cacheMutex, cacheMutexOwner, &info, dbServerResult, errMsg,
+    auto closure = [cacheMutex, &info, dbServerResult, errMsg,
                     nrDone, isCleaned, shardServers, this](VPackSlice result) {
       // NOTE: This ordering here is important to cover against a race in
       // cleanup. a) The Guard get's the Mutex, sets isCleaned == true, then
       // removes the callback b) If the callback is acquired it is saved in a
       // shared_ptr, the Mutex will be acquired first, then it will check if it
       // isCleaned
-      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+      std::lock_guard lock{*cacheMutex};
       if (*isCleaned) {
         return true;
       }
@@ -758,7 +755,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // using loadPlan, this is necessary for the callback closure to
       // see the new planned state for this collection. Otherwise it cannot
       // recognize completion of the create collection operation properly:
-      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+      std::lock_guard lock{*cacheMutex};
       auto res = ac.sendTransactionWithFailover(transaction);
       // Only if not precondition failed
       if (!res.successful()) {

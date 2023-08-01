@@ -317,7 +317,7 @@ Result createSystemStatisticsCollections(
     };
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
     Result res;
-    OperationOptions options(ExecContext::current());
+    OperationOptions options{};
     for (auto const& collection : systemCollections) {
       // No need to batch this.
       // Fresh databases will have a batch run for those collections already.
@@ -333,7 +333,6 @@ Result createSystemStatisticsCollections(
       TRI_ASSERT(col) << "Create system collection did not fail but also did "
                          "not create a collection.";
       createdCollections.emplace_back(std::move(col));
-      res = methods::Collections::lookup(vocbase, collection, col);
     }
   }
   return {TRI_ERROR_NO_ERROR};
@@ -342,8 +341,8 @@ Result createSystemStatisticsCollections(
 Result createSystemPregelCollection(TRI_vocbase_t& vocbase) {
   auto const& cname = StaticStrings::PregelCollection;
   std::shared_ptr<LogicalCollection> col;
-  OperationOptions operationOptions(ExecContext::current());
-  return Collections::createSystem(vocbase, operationOptions, cname, true, col);
+  OperationOptions options{};
+  return Collections::createSystem(vocbase, options, cname, true, col);
 }
 
 Result createIndex(
