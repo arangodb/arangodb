@@ -15,16 +15,10 @@ parameters:
 
 # our defined job, and its steps
 jobs:
-  generate-config:
+  check-build:
     docker:
-      - image: cimg/python:3.11.1
-    executor: continuation/default
-    parameters:
-      definitions:
-        type: string
-      default-enterprise-branch:
-        type: string
-        default: "devel"
+      - image: cimg/base:current
+    resource_class: small
     steps:
       - when:
           condition:
@@ -37,7 +31,19 @@ jobs:
             - run: |
                 echo "Intentional build failure - to run an actual build please trigger a pipeline manually."
                 exit 1
+      - run: echo "Check successful - generating config."
 
+  generate-config:
+    docker:
+      - image: cimg/python:3.11.1
+    executor: continuation/default
+    parameters:
+      definitions:
+        type: string
+      default-enterprise-branch:
+        type: string
+        default: "devel"
+    steps:
       - run:
           name: Checkout
           command: |
@@ -59,5 +65,8 @@ jobs:
 workflows:
   setup:
     jobs:
+      - check-build
       - generate-config:
           definitions: "tests/test-definitions.txt"
+          requires:
+            - check-build
