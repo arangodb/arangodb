@@ -962,12 +962,14 @@ void GraphNode::addEdgeCollection(aql::Collection& collection,
       if (dir != TRI_EDGE_IN) {
         add(collection, TRI_EDGE_OUT);
       }
+      return;
     } else if (n.starts_with(StaticStrings::FullToPrefix)) {
       if (dir != TRI_EDGE_OUT) {
         add(collection, TRI_EDGE_IN);
       }
+      return;
     }
-    return;
+    // fallthrough intentional
   }
 
   if (dir == TRI_EDGE_ANY) {
