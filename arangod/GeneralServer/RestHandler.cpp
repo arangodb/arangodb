@@ -658,11 +658,11 @@ RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
         if (t.hasException()) {
           self->handleExceptionPtr(std::move(t).exception());
         }
-        if (--self->_executionCounter == 1) {
+        if (--self->_executionCounter == 0) {
           self->wakeupHandler();
         }
       }));
-  return --_executionCounter == 1 ? RestStatus::DONE : RestStatus::WAITING;
+  return --_executionCounter == 0 ? RestStatus::DONE : RestStatus::WAITING;
 }
 
 // -----------------------------------------------------------------------------
