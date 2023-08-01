@@ -82,6 +82,7 @@ if (isEnterprise) {
   };
 }
 collection123.ensureIndex(indexMetaGlobal);
+collection123.figures(true)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
