@@ -354,6 +354,8 @@ class IndexReadBuffer {
              sizeof(typename decltype(_heapOnlyStoredValuesBuffer)::value_type);
       res += _heapOnlyColumnsCount *
              sizeof(typename decltype(_currentDocumentBuffer)::value_type);
+      res += (maxSize * _heapSort.size()) *
+             sizeof(typename decltype(_heapSortValues)::value_type);
     }
     return res;
   }
@@ -375,6 +377,7 @@ class IndexReadBuffer {
         _rows.reserve(atMost);
         _heapOnlyStoredValuesBuffer.reserve(_heapOnlyColumnsCount * atMost);
         _currentDocumentBuffer.reserve(_heapOnlyColumnsCount);
+        _heapSortValues.reserve(atMost * _heapSort.size());
       }
     }
     _maxSize = atMost;

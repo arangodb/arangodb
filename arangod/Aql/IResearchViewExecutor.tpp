@@ -480,11 +480,10 @@ template<typename ColumnReaderProvider>
 void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
     size_t idx, irs::doc_id_t doc, std::span<float_t const> scores,
     ColumnReaderProvider& readerProvider) {
-  size_t i = 0;
-  size_t j = 0;
   auto const heapSortSize = _heapSort.size();
+  size_t heapSortValuesIndex = idx * heapSortSize;
+  size_t j = 0;
   for (auto const& cmp : _heapSort) {
-    auto const heapSortValuesIndex = idx * heapSortSize + i;
     if (cmp.isScore()) {
       _heapSortValues[heapSortValuesIndex].score = scores[cmp.source];
     } else {
@@ -525,7 +524,7 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
       }
       ++j;
     }
-    ++i;
+    ++heapSortValuesIndex;
   }
 }
 
