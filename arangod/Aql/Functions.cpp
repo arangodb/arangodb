@@ -2665,16 +2665,21 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
     return AqlValue{AqlValueHintNull{}};
   }
 
-  while (left > 0 && lhsIt != begin) {
-    left -= static_cast<int64_t>((*--lhsIt & kMaskBits) == kHelpByte);
-  }
-  TRI_ASSERT(lhsIt == end || (*lhsIt & kMaskBits) != kHelpByte);
+  auto shift = [&](auto limit, auto& it, auto to, auto update) {
+    while (limit > 0 && it != to) {
+      limit -= static_cast<int64_t>((*it & kMaskBits) != kHelpByte);
+      it += update;
+    }
+    if (it == end) {
+      return;
+    }
+    for (; it != to && (*it & kMaskBits) == kHelpByte;) {
+      it += update;
+    }
+  };
 
-  while (right > 0 && rhsIt != end) {
-    right -= static_cast<int64_t>((*rhsIt++ & kMaskBits) != kHelpByte);
-  }
-  for (; rhsIt != end && (*rhsIt & kMaskBits) == kHelpByte; ++rhsIt) {
-  }
+  shift(left, lhsIt, begin, -1);
+  shift(right, rhsIt, end, 1);
 
   return AqlValue{std::string_view{reinterpret_cast<char const*>(lhsIt),
                                    reinterpret_cast<char const*>(rhsIt)}};
