@@ -43,14 +43,34 @@ jobs:
           configuration_path: generated_config.yml # use newly generated config to continue
           parameters: '{"default-enterprise-branch": "<< parameters.default-enterprise-branch >>"}'
 
+  fail:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Fail
+          command: |
+            echo "Intentional build failure - to run an actual build please trigger a pipeline manually."
+            exit 1
+
 # our single workflow, that triggers the setup job defined above
 workflows:
   setup:
     when:
       or:
-        - equal: [ devel, << pipeline.git.branch >> ]
-        - equal: [ api, << pipeline.trigger_source >> ]
-        - equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
+        - equal: [devel, << pipeline.git.branch >>]
+        - equal: [api, << pipeline.trigger_source >>]
+        - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
     jobs:
       - generate-config:
           definitions: "tests/test-definitions.txt"
+  fail-build:
+    when:
+      not:
+        or:
+          - equal: [devel, << pipeline.git.branch >>]
+          - equal: [api, << pipeline.trigger_source >>]
+          - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
+    jobs:
+      - fail
