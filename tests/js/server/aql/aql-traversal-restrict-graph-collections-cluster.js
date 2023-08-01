@@ -31,6 +31,7 @@ const { deriveTestSuite } = require('@arangodb/test-helper');
 const isEnterprise = require("internal").isEnterprise();
   
 const vn = "UnitTestsVertex";
+const on = "UnitTestsOrphan";
 const en = "UnitTestsEdges";
 const gn = "UnitTestsGraph";
 const smartGraphAttribute = 'smart';
@@ -55,6 +56,60 @@ function BaseTestConfig() {
       
       try {
         db._query(`FOR v IN ANY "${vn}/A1" GRAPH "${gn}" OPTIONS { edgeCollections: "${en}2" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
+    testWithDroppedOrphanCollection : function () {
+      db._drop(on);
+      
+      try {
+        db._query(`FOR v IN ANY "${on}/A1" GRAPH "${gn}" OPTIONS { vertexCollections: "${on}" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
+    testWithDroppedOrphanCollection2 : function () {
+      db._drop(on);
+      
+      try {
+        db._query(`FOR v IN ANY "${vn}/A1" GRAPH "${gn}" OPTIONS { vertexCollections: "${on}" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
+    testWithDroppedVertexCollection : function () {
+      try {
+        db._drop(vn);
+      } catch (err) {
+        // in SmartGraphs, we cannot drop a vertex collection because of 
+        // distributeShardsLike
+        assertEqual(errors.ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE.code, err.errorNum);
+        return;
+      }
+      
+      try {
+        db._query(`FOR v IN ANY "${vn}/A1" GRAPH "${gn}" OPTIONS { vertexCollections: "${vn}" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
+    testWithDroppedVertexAndEdgeCollection : function () {
+      db._drop(en + "1");
+      db._drop(en + "2");
+      db._drop(on);
+      db._drop(vn);
+      
+      try {
+        db._query(`FOR v IN ANY "${vn}/A1" GRAPH "${gn}" OPTIONS { vertexCollections: "${vn}" } RETURN v`);
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
@@ -87,7 +142,7 @@ function GraphCollectionRestrictionGeneralGraph() {
 
   let suite = {
     setUp: function () {
-      graphs._create(gn, [graphs._relation(en + "1", vn, vn), graphs._relation(en + "2", vn, vn)], null, { numberOfShards: 4 });
+      graphs._create(gn, [graphs._relation(en + "1", vn, vn), graphs._relation(en + "2", vn, vn)], [on], { numberOfShards: 4 });
     },
 
     tearDown : function () {
@@ -96,6 +151,7 @@ function GraphCollectionRestrictionGeneralGraph() {
       } catch (err) {}
 
       db._drop(vn);
+      db._drop(on);
       db._drop(en + "1");
       db._drop(en + "2");
     },
@@ -112,7 +168,7 @@ function GraphCollectionRestrictionSmartGraph() {
 
   let suite = {
     setUp: function () {
-      graphs._create(gn, [graphs._relation(en + "1", vn, vn), graphs._relation(en + "2", vn, vn)], null, { numberOfShards: 4, smartGraphAttribute });
+      graphs._create(gn, [graphs._relation(en + "1", vn, vn), graphs._relation(en + "2", vn, vn)], [on], { numberOfShards: 4, smartGraphAttribute });
     },
 
     tearDown : function () {
@@ -121,6 +177,7 @@ function GraphCollectionRestrictionSmartGraph() {
       } catch (err) {}
 
       db._drop(vn);
+      db._drop(on);
       db._drop(en + "1");
       db._drop(en + "2");
     },
@@ -137,7 +194,7 @@ function GraphCollectionRestrictionDisjointSmartGraph() {
 
   let suite = {
     setUp: function () {
-      graphs._create(gn, [graphs._relation(en + "1", vn, vn), graphs._relation(en + "2", vn, vn)], null, { numberOfShards: 4, smartGraphAttribute, isDisjoint: true });
+      graphs._create(gn, [graphs._relation(en + "1", vn, vn), graphs._relation(en + "2", vn, vn)], [on], { numberOfShards: 4, smartGraphAttribute, isDisjoint: true });
     },
 
     tearDown : function () {
@@ -146,6 +203,7 @@ function GraphCollectionRestrictionDisjointSmartGraph() {
       } catch (err) {}
 
       db._drop(vn);
+      db._drop(on);
       db._drop(en + "1");
       db._drop(en + "2");
     },
