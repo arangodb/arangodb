@@ -82,7 +82,6 @@ if (isEnterprise) {
   };
 }
 collection123.ensureIndex(indexMetaGlobal);
-collection123.figures(true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -97,6 +96,7 @@ function IResearchFeatureDDLTestSuite1() {
     tearDownAll: function () {
       db._useDatabase("_system");
 
+      db._drop("FiguresCollection");
       db._dropView("TestView");
       db._dropView("TestView1");
       db._dropView("TestView2");
@@ -111,6 +111,33 @@ function IResearchFeatureDDLTestSuite1() {
         db._dropDatabase("TestDB");
       } catch (_) {
       }
+    },
+
+    testInvertedIndexFigures: function() {
+      let c = db._create("FiguresCollection");
+      let sync = 'FOR d in FiguresCollection OPTIONS { indexHint: "i", forceIndexHint: true, waitForSync:true } FILTER d.a == "a" RETURN d';
+      let doc = {"a": "b", "_key": "1"};
+
+      c.save({"a": "a"});
+      c.ensureIndex({"name": "i", "type": "inverted", "fields": ["a"]});
+      let figures = c.figures(true);
+      print(figures);
+      assertEqual(figures.engine.indexes[1].type, "inverted");
+      assertEqual(figures.engine.indexes[1].count, 1);
+
+      c.save(doc);
+      db._query(sync);
+      figures = c.figures(true);
+      print(figures);
+      assertEqual(figures.engine.indexes[1].type, "inverted");
+      assertEqual(figures.engine.indexes[1].count, 2);
+
+      c.remove(doc)
+      db._query(sync);
+      figures = c.figures(true);
+      print(figures);
+      assertEqual(figures.engine.indexes[1].type, "inverted");
+      assertEqual(figures.engine.indexes[1].count, 1);
     },
 
     testViewIsBuilding: function () {
