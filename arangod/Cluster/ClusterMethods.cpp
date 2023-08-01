@@ -381,16 +381,17 @@ OperationResult handleCRUDShardResponsesFast(
       VPackSlice result = res.slice();
       // we expect an array of baby-documents, but the response might
       // also be an error, if the DBServer threw a hissy fit
-      if (result.isObject() && result.get(StaticStrings::Error).isBoolean() &&
-          result.get(StaticStrings::Error).getBoolean()) {
-        // an error occurred, now rethrow the error
-        auto code = ::ErrorCode{
-            result.get(StaticStrings::ErrorNum).getNumericValue<int>()};
-        VPackSlice msg = result.get(StaticStrings::ErrorMessage);
-        if (msg.isString()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(code, msg.copyString());
-        } else {
-          THROW_ARANGO_EXCEPTION(code);
+      if (result.isObject()) {
+        if (auto error = result.get(StaticStrings::Error); error.isTrue()) {
+          // an error occurred, now rethrow the error
+          auto code = ::ErrorCode{
+              result.get(StaticStrings::ErrorNum).getNumericValue<int>()};
+          VPackSlice msg = result.get(StaticStrings::ErrorMessage);
+          if (msg.isString()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(code, msg.copyString());
+          } else {
+            THROW_ARANGO_EXCEPTION(code);
+          }
         }
       }
       resultMap.try_emplace(std::move(sId), result);
@@ -435,7 +436,13 @@ OperationResult handleCRUDShardResponsesFast(
       resultBody.close();
     } else {
       VPackSlice arr = it->second;
-      resultBody.add(arr.at(pair.second));
+      VPackSlice doc = arr.at(pair.second);
+      TRI_ASSERT(doc.isObject());
+
+      if (!opCtx.options.silent || doc.get(StaticStrings::Error).isTrue()) {
+        // in silent mode we suppress all non-errors
+        resultBody.add(arr.at(pair.second));
+      }
     }
   }
   resultBody.close();
@@ -1555,7 +1562,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> createDocumentOnCoordinator(
+futures::Future<OperationResult> insertDocumentOnCoordinator(
     transaction::Methods const& trx, LogicalCollection& coll, VPackSlice slice,
     OperationOptions const& options, transaction::MethodsApi api) {
   // create vars used in this function
@@ -1628,6 +1635,9 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
                (options.mergeObjects ? "true" : "false"))
         .param(StaticStrings::SkipDocumentValidation,
                (options.validate ? "false" : "true"));
+
+    // note: the "silent" flag is not forwarded to the leader by the
+    // coordinator. the coordinator handles the "silent" flag on its own.
 
     if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
       // this attribute can have 3 values: default, true and false. only
@@ -1774,6 +1784,9 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
              (options.returnOld ? "true" : "false"))
       .param(StaticStrings::IgnoreRevsString,
              (options.ignoreRevs ? "true" : "false"));
+
+  // note: the "silent" flag is not forwarded to the leader by the
+  // coordinator. the coordinator handles the "silent" flag on its own.
 
   if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
     // this attribute can have 3 values: default, true and false. only
@@ -2050,9 +2063,8 @@ Future<OperationResult> getDocumentOnCoordinator(
     restVerb = options.silent ? fuerte::RestVerb::Head : fuerte::RestVerb::Get;
   } else {
     restVerb = fuerte::RestVerb::Put;
-    if (options.silent) {
-      reqOpts.param(StaticStrings::SilentString, "true");
-    }
+    reqOpts.param(StaticStrings::SilentString,
+                  options.silent ? "true" : "false");
     reqOpts.param("onlyget", "true");
   }
 
@@ -2614,6 +2626,9 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
              (options.validate ? "false" : "true"))
       .param(StaticStrings::IsRestoreString,
              (options.isRestore ? "true" : "false"));
+
+  // note: the "silent" flag is not forwarded to the leader by the
+  // coordinator. the coordinator handles the "silent" flag on its own.
 
   if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
     // this attribute can have 3 values: default, true and false. only

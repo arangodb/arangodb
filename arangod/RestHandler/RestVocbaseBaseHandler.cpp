@@ -274,34 +274,13 @@ RestVocbaseBaseHandler::forwardingTarget() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string RestVocbaseBaseHandler::assembleDocumentId(
-    std::string const& collectionName, std::string const& key, bool urlEncode) {
+    std::string_view collectionName, std::string_view key,
+    bool urlEncode) const {
   if (urlEncode) {
-    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +
-           StringUtils::urlEncode(key);
+    return absl::StrCat(collectionName, TRI_DOCUMENT_HANDLE_SEPARATOR_STR,
+                        StringUtils::urlEncode(key));
   }
-  return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Generate a result for successful save
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateSaved(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
-  generate20x(result, collectionName, type, options, isMultiple,
-              rest::ResponseCode::CREATED);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Generate a result for successful delete
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateDeleted(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
-  generate20x(result, collectionName, type, options, isMultiple,
-              rest::ResponseCode::OK);
+  return absl::StrCat(collectionName, TRI_DOCUMENT_HANDLE_SEPARATOR_STR, key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -309,9 +288,9 @@ void RestVocbaseBaseHandler::generateDeleted(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generate20x(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options, bool isMultiple,
-    rest::ResponseCode waitForSyncResponseCode) {
+    OperationResult const& result, std::string_view collectionName,
+    TRI_col_type_e type, velocypack::Options const* options, bool isMultiple,
+    bool silent, rest::ResponseCode waitForSyncResponseCode) {
   if (result.options.waitForSync) {
     resetResponse(waitForSyncResponseCode);
   } else {
@@ -330,23 +309,24 @@ void RestVocbaseBaseHandler::generate20x(
 
   VPackSlice slice = result.slice();
   if (slice.isNone()) {
-    // will happen if silent == true
-    slice = arangodb::velocypack::Slice::emptyObjectSlice();
+    // slice::none case will happen if silent == true on single server
+    slice = velocypack::Slice::emptyObjectSlice();
   } else {
     TRI_ASSERT(slice.isObject() || slice.isArray());
     if (slice.isObject()) {
       _response->setHeaderNC(
           StaticStrings::Etag,
-          "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
+          absl::StrCat("\"", slice.get(StaticStrings::RevString).stringView(),
+                       "\""));
       // pre 1.4 location headers withdrawn for >= 3.0
       std::string escapedHandle(assembleDocumentId(
-          collectionName, slice.get(StaticStrings::KeyString).copyString(),
+          collectionName, slice.get(StaticStrings::KeyString).stringView(),
           true));
       _response->setHeaderNC(
           StaticStrings::Location,
-          std::string("/_db/" +
-                      StringUtils::urlEncode(_request->databaseName()) +
-                      DOCUMENT_PATH + "/" + escapedHandle));
+          absl::StrCat("/_db/",
+                       StringUtils::urlEncode(_request->databaseName()),
+                       DOCUMENT_PATH, "/", escapedHandle));
     }
   }
 
@@ -366,9 +346,10 @@ void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
 
   VPackSlice slice = opres.slice();
   if (slice.isObject()) {  // single document case
-    std::string const rev =
-        VelocyPackHelper::getStringValue(slice, StaticStrings::RevString, "");
-    _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
+    _response->setHeaderNC(
+        StaticStrings::Etag,
+        absl::StrCat("\"", slice.get(StaticStrings::RevString).stringView(),
+                     "\""));
   }
   VPackBuilder builder;
   {
@@ -400,30 +381,27 @@ void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
 
 void RestVocbaseBaseHandler::generateNotModified(RevisionId rid) {
   resetResponse(rest::ResponseCode::NOT_MODIFIED);
-  _response->setHeaderNC(StaticStrings::Etag, "\"" + rid.toString() + "\"");
+  _response->setHeaderNC(StaticStrings::Etag,
+                         absl::StrCat("\"", rid.toString(), "\""));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
-                                              bool generateBody,
-                                              VPackOptions const* options) {
-  VPackSlice document = input.resolveExternal();
-
-  std::string rev;
-  if (document.isObject()) {
-    rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString,
-                                           "");
-  }
-
+void RestVocbaseBaseHandler::generateDocument(
+    velocypack::Slice input, bool generateBody,
+    velocypack::Options const* options) {
   // and generate a response
   resetResponse(rest::ResponseCode::OK);
 
+  VPackSlice document = input.resolveExternal();
   // set ETAG header
-  if (!rev.empty()) {
-    _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
+  if (document.isObject()) {
+    _response->setHeaderNC(
+        StaticStrings::Etag,
+        absl::StrCat("\"", document.get(StaticStrings::RevString).stringView(),
+                     "\""));
   }
   if (_potentialDirtyReads) {
     _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
@@ -445,8 +423,8 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateTransactionError(
-    std::string const& collectionName, OperationResult const& result,
-    std::string const& key, RevisionId rev) {
+    std::string_view collectionName, OperationResult const& result,
+    std::string_view key, RevisionId rev) {
   auto const code = result.errorNumber();
   switch (static_cast<int>(code)) {
     case static_cast<int>(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND):
@@ -456,8 +434,9 @@ void RestVocbaseBaseHandler::generateTransactionError(
                       "no collection name specified");
       } else {
         // collection name specified but collection not found
-        generateError(rest::ResponseCode::NOT_FOUND, code,
-                      "collection '" + collectionName + "' not found");
+        generateError(
+            rest::ResponseCode::NOT_FOUND, code,
+            absl::StrCat("collection '", collectionName, "' not found"));
       }
       return;
 
@@ -484,7 +463,8 @@ void RestVocbaseBaseHandler::generateTransactionError(
       }
       return;
     case static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND):
-      generateDocumentNotFound(collectionName, key);
+      generateError(rest::ResponseCode::NOT_FOUND,
+                    TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       return;
 
     case static_cast<int>(TRI_ERROR_ARANGO_CONFLICT):

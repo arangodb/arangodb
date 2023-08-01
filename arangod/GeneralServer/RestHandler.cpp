@@ -23,6 +23,7 @@
 
 #include "RestHandler.h"
 
+#include <absl/strings/str_cat.h>
 #include <fuerte/jwt.h>
 #include <velocypack/Exception.h>
 
@@ -325,54 +326,46 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 }
 
 void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
+  auto buildException = [this](ErrorCode code, std::string message,
+                               char const* file, int line) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("b6302", WARN, arangodb::Logger::FIXME)
+        << "maintainer mode: " << message;
+#endif
+    Exception err(code, std::move(message), file, line);
+    handleError(err);
+  };
+
   try {
     if (eptr) {
       std::rethrow_exception(eptr);
     }
   } catch (Exception const& ex) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught exception in " << name() << ": "
-        << ex.what();
-#endif
-    handleError(ex);
-  } catch (arangodb::velocypack::Exception const& ex) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("fdcbc", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught velocypack exception in " << name() << ": "
-        << ex.what();
-#endif
+    std::string message =
+        absl::StrCat("caught exception in ", name(), ": ", ex.what());
+    buildException(ex.code(), std::move(message), __FILE__, __LINE__);
+  } catch (velocypack::Exception const& ex) {
     bool const isParseError =
         (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
          ex.errorCode() ==
              arangodb::velocypack::Exception::UnexpectedControlCharacter);
-    Exception err(
+    std::string message =
+        absl::StrCat("caught velocypack error in ", name(), ": ", ex.what());
+    buildException(
         isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
-        std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
-    handleError(err);
+        std::move(message), __FILE__, __LINE__);
   } catch (std::bad_alloc const& ex) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("5c9f6", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught memory exception in " << name() << ": "
-        << ex.what();
-#endif
-    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
-    handleError(err);
+    std::string message =
+        absl::StrCat("caught memory exception in ", name(), ": ", ex.what());
+    buildException(TRI_ERROR_OUT_OF_MEMORY, std::move(message), __FILE__,
+                   __LINE__);
   } catch (std::exception const& ex) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught exception in " << name() << ": "
-        << ex.what();
-#endif
-    Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
-    handleError(err);
+    std::string message =
+        absl::StrCat("caught exception in ", name(), ": ", ex.what());
+    buildException(TRI_ERROR_INTERNAL, std::move(message), __FILE__, __LINE__);
   } catch (...) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught unknown exception in " << name();
-#endif
-    Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
+    std::string message = absl::StrCat("caught unknown exception in ", name());
+    buildException(TRI_ERROR_INTERNAL, std::move(message), __FILE__, __LINE__);
   }
 } catch (...) {
   // we can only get here if putting together an error response or an
