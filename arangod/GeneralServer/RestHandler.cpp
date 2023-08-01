@@ -658,11 +658,7 @@ RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
         if (t.hasException()) {
           self->handleExceptionPtr(std::move(t).exception());
         }
-        if (std::this_thread::get_id() == self->_executionMutexOwner.load()) {
-          done = true;
-        } else {
-          self->wakeupHandler();
-        }
+        done = !self->wakeupHandler();
       }));
   return done ? RestStatus::DONE : RestStatus::WAITING;
 }
