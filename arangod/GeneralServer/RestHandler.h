@@ -204,7 +204,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  private:
   mutable std::recursive_mutex _executionMutex;
-  mutable std::thread::id _executionThread{};
+  mutable std::atomic_uint8_t _executionCounter{0};
 
   std::function<void(rest::RestHandler*)> _callback;
 

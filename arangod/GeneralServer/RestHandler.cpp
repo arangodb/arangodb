@@ -651,16 +651,18 @@ RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
     f.result().throwIfFailed();  // just throw the error upwards
     return RestStatus::DONE;
   }
-  bool done = false;
-  std::move(f).thenFinal(
-      withLogContext([self = shared_from_this(),
-                      &done](futures::Try<futures::Unit>&& t) -> void {
+  TRI_ASSERT(_executionCounter == 0);
+  _executionCounter = 2;
+  std::move(f).thenFinal(withLogContext(
+      [self = shared_from_this()](futures::Try<futures::Unit>&& t) -> void {
         if (t.hasException()) {
           self->handleExceptionPtr(std::move(t).exception());
         }
-        done = !self->wakeupHandler();
+        if (--self->_executionCounter == 1) {
+          self->wakeupHandler();
+        }
       }));
-  return done ? RestStatus::DONE : RestStatus::WAITING;
+  return --_executionCounter == 1 ? RestStatus::DONE : RestStatus::WAITING;
 }
 
 // -----------------------------------------------------------------------------
