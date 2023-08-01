@@ -122,7 +122,8 @@ struct InsertDocuments::ThreadOptions {
 };
 
 struct InsertDocuments::Thread : ExecutionThread {
-  Thread(ThreadOptions options, Execution& exec, Server& server);
+  Thread(ThreadOptions options, std::uint32_t id, Execution& exec,
+         Server& server);
   ~Thread();
 
   void run() override;

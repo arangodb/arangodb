@@ -31,7 +31,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#include "Enterprise/RocksDBEngine/RocksDBHotBackup/RocksDBHotBackup.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 

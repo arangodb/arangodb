@@ -172,7 +172,7 @@ DECLARE_GAUGE(arangodb_revision_tree_memory_usage, uint64_t,
 DECLARE_GAUGE(
     arangodb_revision_tree_buffered_memory_usage, uint64_t,
     "Total memory consumed by buffered updates for all revision trees");
-DECLARE_GAUGE(arangodb_internal_index_estimates_memory, uint64_t,
+DECLARE_GAUGE(arangodb_index_estimates_memory_usage, uint64_t,
               "Total memory consumed by all index selectivity estimates");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total,
                 "Number of successful revision tree rebuilds");
@@ -182,15 +182,22 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
-DECLARE_GAUGE(rocksdb_cache_edge_uncompressed_entries_size, uint64_t,
-              "Total gross memory size of all edge cache entries ever stored "
-              "in memory");
-DECLARE_GAUGE(rocksdb_cache_edge_effective_entries_size, uint64_t,
-              "Total effective memory size of all edge cache entries ever "
-              "stored in memory (after compression)");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_uncompressed_entries_size_total,
+                "Total gross memory size of all edge cache entries ever stored "
+                "in memory");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_effective_entries_size_total,
+                "Total effective memory size of all edge cache entries ever "
+                "stored in memory (after compression)");
 DECLARE_GAUGE(rocksdb_cache_edge_compression_ratio, double,
               "Overall compression ratio for all edge cache entries ever "
               "stored in memory");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_total,
+                "Number of inserts into the edge cache");
+DECLARE_COUNTER(rocksdb_cache_edge_compressed_inserts_total,
+                "Number of compressed inserts into the edge cache");
+DECLARE_COUNTER(
+    rocksdb_cache_edge_empty_inserts_total,
+    "Number of inserts into the edge cache that were an empty array");
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
@@ -261,8 +268,6 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _maxParallelCompactions(2),
-      _minValueSizeForEdgeCompression(1073741824ULL),
-      _accelerationFactorForEdgeCompression(1),
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(60.0),
       _maxWalArchiveSizeLimit(0),
@@ -290,7 +295,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _autoFlushMinWalFiles(20),
       _metricsIndexEstimatorMemoryUsage(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_internal_index_estimates_memory{})),
+              arangodb_index_estimates_memory_usage{})),
       _metricsWalReleasedTickFlush(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_wal_released_tick_flush{})),
@@ -328,10 +333,18 @@ RocksDBEngine::RocksDBEngine(Server& server,
               arangodb_revision_tree_resurrections_total{})),
       _metricsEdgeCacheEntriesSizeInitial(
           server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_uncompressed_entries_size{})),
+              rocksdb_cache_edge_inserts_uncompressed_entries_size_total{})),
       _metricsEdgeCacheEntriesSizeEffective(
           server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_effective_entries_size{})) {
+              rocksdb_cache_edge_inserts_effective_entries_size_total{})),
+      _metricsEdgeCacheInserts(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_edge_inserts_total{})),
+      _metricsEdgeCacheCompressedInserts(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_cache_edge_compressed_inserts_total{})),
+      _metricsEdgeCacheEmptyInserts(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_cache_edge_empty_inserts_total{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -795,46 +808,6 @@ when disk size is very constrained and no replication is used.)");
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
-
-  options
-      ->addOption("--cache.min-value-size-for-edge-compression",
-                  "The size threshold (in bytes) from which on payloads in the "
-                  "edge index cache transparently get LZ4-compressed.",
-                  new SizeTParameter(&_minValueSizeForEdgeCompression, 1, 0,
-                                     1073741824ULL),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setLongDescription(
-          R"(By transparently compressing values in the in-memory
-edge index cache, more data can be held in memory than without compression.  
-Storing compressed values can increase CPU usage for the on-the-fly compression 
-and decompression. In case compression is undesired, this option can be set to a 
-very high value, which will effectively disable it. To use compression, set the
-option to a value that is lower than medium-to-large average payload sizes.
-It is normally not that useful to compress values that are smaller than 100 bytes.)")
-      .setIntroducedIn(31102);
-
-  options
-      ->addOption(
-          "--cache.acceleration-factor-for-edge-compression",
-          "The acceleration factor for the LZ4 compression of in-memory "
-          "edge cache entries.",
-          new UInt32Parameter(&_accelerationFactorForEdgeCompression, 1, 1,
-                              65537),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setLongDescription(
-          R"(This value controls the LZ4-internal acceleration factor for the 
-LZ4 compression. Higher values typically yield less compression in exchange
-for faster compression and decompression speeds. An increase of 1 commonly leads
-to a compression speed increase of 3%, and could slightly increase decompression
-speed.)")
-      .setIntroducedIn(31102);
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -2786,24 +2759,10 @@ void RocksDBEngine::pruneWalFiles() {
   for (auto it = _prunableWalFiles.begin(); it != _prunableWalFiles.end();
        /* no hoisting */) {
     // check if WAL file is expired
-    bool deleteFile = false;
-
-    if ((*it).second <= 0.0) {
-      // file can be deleted because we outgrew the configured max archive size,
-      // but only if there are no other threads currently inside the WAL tailing
-      // section
-      deleteFile = purgeEnabler.canPurge();
-      LOG_TOPIC("817bc", TRACE, Logger::ENGINES)
-          << "pruneWalFiles checking overflowed file '" << (*it).first
-          << "', canPurge: " << deleteFile;
-    } else if ((*it).second < TRI_microtime()) {
-      // file has expired, and it is always safe to delete it
-      deleteFile = true;
-      LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
-          << "pruneWalFiles checking expired file '" << (*it).first
-          << "', canPurge: " << deleteFile;
-    }
-
+    auto deleteFile = purgeEnabler.canPurge();
+    LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
+        << "pruneWalFiles checking file '" << (*it).first
+        << "', canPurge: " << deleteFile;
     if (deleteFile) {
       LOG_TOPIC("68e4a", DEBUG, Logger::ENGINES)
           << "deleting RocksDB WAL file '" << (*it).first << "'";
@@ -3618,6 +3577,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                                          static_cast<double>(initial)));
     }
     builder.add("cache.edge-compression-ratio", VPackValue(compressionRatio));
+    builder.add("cache.edge-inserts",
+                VPackValue(_metricsEdgeCacheInserts.load()));
+    builder.add("cache.edge-compressed-inserts",
+                VPackValue(_metricsEdgeCacheCompressedInserts.load()));
 
     std::pair<double, double> rates;
     if (manager != nullptr) {
@@ -4105,18 +4068,26 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
   }
 }
 
-void RocksDBEngine::addCacheMetrics(uint64_t initial,
-                                    uint64_t effective) noexcept {
-  _metricsEdgeCacheEntriesSizeInitial.fetch_add(initial);
-  _metricsEdgeCacheEntriesSizeEffective.fetch_add(effective);
+std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>
+RocksDBEngine::getCacheMetrics() {
+  return {_metricsEdgeCacheEntriesSizeInitial.load(),
+          _metricsEdgeCacheEntriesSizeEffective.load(),
+          _metricsEdgeCacheInserts.load(),
+          _metricsEdgeCacheCompressedInserts.load(),
+          _metricsEdgeCacheEmptyInserts.load()};
 }
 
-size_t RocksDBEngine::minValueSizeForEdgeCompression() const noexcept {
-  return _minValueSizeForEdgeCompression;
-}
-
-int RocksDBEngine::accelerationFactorForEdgeCompression() const noexcept {
-  return static_cast<int>(_accelerationFactorForEdgeCompression);
+void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
+                                    uint64_t totalInserts,
+                                    uint64_t totalCompressedInserts,
+                                    uint64_t totalEmptyInserts) noexcept {
+  if (totalInserts > 0) {
+    _metricsEdgeCacheEntriesSizeInitial.count(initial);
+    _metricsEdgeCacheEntriesSizeEffective.count(effective);
+    _metricsEdgeCacheInserts.count(totalInserts);
+    _metricsEdgeCacheCompressedInserts.count(totalCompressedInserts);
+    _metricsEdgeCacheEmptyInserts.count(totalEmptyInserts);
+  }
 }
 
 }  // namespace arangodb

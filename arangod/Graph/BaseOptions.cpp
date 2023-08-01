@@ -33,7 +33,9 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
@@ -270,6 +272,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _expressionCtx(_trx, query, _aqlFunctionsInternalCache),
       _query(query),
       _tmpVar(nullptr),
+      _collectionToShard{resourceMonitor()},
       _parallelism(1),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
@@ -285,9 +288,10 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _maxProjections{other._maxProjections},
-      _vertexProjections{other._vertexProjections},
-      _edgeProjections{other._edgeProjections} {
+      _maxProjections{other._maxProjections} {
+  setVertexProjections(other._vertexProjections);
+  setEdgeProjections(other._edgeProjections);
+
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(other._baseLookupInfos.empty());
     TRI_ASSERT(other._tmpVar == nullptr);
@@ -327,7 +331,17 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
   parseShardIndependentFlags(info);
 }
 
-BaseOptions::~BaseOptions() = default;
+BaseOptions::~BaseOptions() {
+  if (!getVertexProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
+
+  if (!getEdgeProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getEdgeProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
+}
 
 arangodb::ResourceMonitor& BaseOptions::resourceMonitor() const {
   return _query.resourceMonitor();
@@ -473,7 +487,12 @@ void BaseOptions::setCollectionToShard(
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
   for (auto const& [key, value] : in) {
-    _collectionToShard.emplace(key, std::vector{value});
+    ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor>
+        alloc = {_query.resourceMonitor()};
+    auto myVec = MonitoredStringVector{alloc};
+    auto myString = MonitoredString{value, alloc};
+    myVec.emplace_back(std::move(myString));
+    _collectionToShard.emplace(key, std::move(myVec));
   }
 }
 
@@ -582,11 +601,6 @@ void BaseOptions::activateCache(
       CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
 }
 
-void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
-  TRI_ASSERT(_cache == nullptr);
-  _cache = std::move(testCache);
-}
-
 arangodb::aql::FixedVarExpressionContext& BaseOptions::getExpressionCtx() {
   return _expressionCtx;
 }
@@ -605,11 +619,33 @@ void BaseOptions::isQueryKilledCallback() const {
 }
 
 void BaseOptions::setVertexProjections(Projections projections) {
-  _vertexProjections = std::move(projections);
+  if (!getVertexProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
+  try {
+    resourceMonitor().increaseMemoryUsage(projections.size() *
+                                          sizeof(aql::Projections::Projection));
+    _vertexProjections = std::move(projections);
+  } catch (...) {
+    _vertexProjections.clear();
+    throw;
+  }
 }
 
 void BaseOptions::setEdgeProjections(Projections projections) {
-  _edgeProjections = std::move(projections);
+  if (!getEdgeProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getEdgeProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
+  try {
+    resourceMonitor().increaseMemoryUsage(projections.size() *
+                                          sizeof(aql::Projections::Projection));
+    _edgeProjections = std::move(projections);
+  } catch (...) {
+    _edgeProjections.clear();
+    throw;
+  }
 }
 
 void BaseOptions::setMaxProjections(size_t projections) noexcept {
@@ -658,6 +694,39 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
   setMaxProjections(VPackHelper::getNumericValue<size_t>(
       info, StaticStrings::MaxProjections,
       DocumentProducingNode::kMaxProjections));
-  _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
-  _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
+
+  {
+    if (!getVertexProjections().empty()) {
+      resourceMonitor().decreaseMemoryUsage(
+          getVertexProjections().size() * sizeof(aql::Projections::Projection));
+      _vertexProjections.clear();
+    }
+
+    _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections",
+                                                     resourceMonitor());
+    try {
+      resourceMonitor().increaseMemoryUsage(
+          getVertexProjections().size() * sizeof(aql::Projections::Projection));
+    } catch (...) {
+      _vertexProjections.clear();
+      throw;
+    }
+  }
+
+  {
+    if (!getEdgeProjections().empty()) {
+      resourceMonitor().decreaseMemoryUsage(
+          getEdgeProjections().size() * sizeof(aql::Projections::Projection));
+      _edgeProjections.clear();
+    }
+    _edgeProjections =
+        Projections::fromVelocyPack(info, "edgeProjections", resourceMonitor());
+    try {
+      resourceMonitor().increaseMemoryUsage(
+          getEdgeProjections().size() * sizeof(aql::Projections::Projection));
+    } catch (...) {
+      _edgeProjections.clear();
+      throw;
+    }
+  }
 }
