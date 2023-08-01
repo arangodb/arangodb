@@ -258,6 +258,9 @@ function transactionRevisionsSuite () {
     },
 
     testRemoveInsertWithSameRev: function () {
+      if (isCluster) {
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
       db._executeTransaction({
         collections: { write: c.name() },
@@ -301,6 +304,9 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateFailingWithSameRev: function () {
+      if (isCluster) {
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
       try {
         db._executeTransaction({

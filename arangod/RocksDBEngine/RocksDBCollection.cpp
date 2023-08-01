@@ -1418,7 +1418,7 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (options.isRestore) {
+  if (options.isRestore && ServerState::instance()->isDBServer()) {
     rocksdb::PinnableSlice ps;
     rocksdb::Status s =
         mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
@@ -1703,7 +1703,7 @@ Result RocksDBCollection::modifyDocument(
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (options.isRestore) {
+  if (options.isRestore && ServerState::instance()->isDBServer()) {
     rocksdb::PinnableSlice ps;
     rocksdb::Status s =
         mthds->GetForUpdate(RocksDBColumnFamilyManager::get(

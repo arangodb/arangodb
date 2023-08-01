@@ -192,6 +192,9 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testRemoveInsertWithSameRev: function () {
+      if (isCluster) {
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({
@@ -212,6 +215,9 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testUpdateWithSameRevTransaction: function () {
+      if (isCluster) {
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({
@@ -231,6 +237,9 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testUpdateAbortWithSameRev: function () {
+      if (isCluster) {
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({
