@@ -130,7 +130,7 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual(figures.engine.indexes[1].type, "inverted");
       assertEqual(figures.engine.indexes[1].count, 2);
 
-      c.remove(doc)
+      c.remove(doc);
       db._query(sync);
       figures = c.figures(true);
       assertEqual(figures.engine.indexes[1].type, "inverted");
