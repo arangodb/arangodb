@@ -1,6 +1,10 @@
 devel
 -----
 
+* ES-1566: instead of potentially accessing a nullptr inside graph traversal
+  setup, throw an exception. This will be handled properly and returned with
+  a proper error message.
+
 * Wrap imports into SmartGraph edge collections via the REST import API
   (POST `/_api/import`) into a managed transaction, so that edge data is
   either completely inserted or not at all.
