@@ -36,6 +36,81 @@ using namespace arangodb;
 
 namespace {
 
+auto rewriteStatusErrorMessage(inspection::Status const& status) -> Result {
+  TRI_ASSERT(!status.ok());
+
+  if (status.path() == StaticStrings::DataSourceName) {
+    // Special handling to be backwards compatible error reporting
+    // on "name"
+    return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+
+  if (status.path().rfind(StaticStrings::KeyOptions, 0) == 0) {
+    // Special handling to be backwards compatible error reporting
+    // on "keyOptions"
+    return Result{TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, status.error()};
+  }
+  if (status.path() == StaticStrings::SmartJoinAttribute) {
+    return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
+  }
+
+  if (status.path() == StaticStrings::Schema) {
+    // Schema should return a validation bad parameter, not only bad parameter
+    return Result{TRI_ERROR_VALIDATION_BAD_PARAMETER, status.error()};
+  }
+
+  return Result{
+      TRI_ERROR_BAD_PARAMETER,
+      status.error() +
+          (status.path().empty() ? "" : " on attribute " + status.path())};
+}
+
+auto rewriteStatusErrorMessageForRestore(inspection::Status const& status)
+    -> Result {
+  TRI_ASSERT(!status.ok());
+
+  if (status.path() == StaticStrings::DataSourceName) {
+    // Special handling to be backwards compatible error reporting
+    // on "name"
+    return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+
+  if (status.path() == StaticStrings::DataSourceType) {
+    // Special handling to be backwards compatible error reporting
+    // on "name"
+    return Result{TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID};
+  }
+
+  if (status.path().rfind(StaticStrings::KeyOptions, 0) == 0) {
+    // Special handling to be backwards compatible error reporting
+    // on "keyOptions"
+    return Result{TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, status.error()};
+  }
+  if (status.path() == StaticStrings::SmartJoinAttribute) {
+    return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
+  }
+
+  if (status.path() == StaticStrings::Schema) {
+    // Schema should return a validation bad parameter, not only bad parameter
+    return Result{TRI_ERROR_VALIDATION_BAD_PARAMETER, status.error()};
+  }
+
+  return Result{
+      TRI_ERROR_BAD_PARAMETER,
+      status.error() +
+          (status.path().empty() ? "" : " on attribute " + status.path())};
+}
+
+auto handleShards(std::string_view, VPackSlice value, VPackSlice fullBody,
+                  DatabaseConfiguration const& config, VPackBuilder& result) {
+  if (value.isObject() && !value.isEmptyObject() &&
+      !fullBody.hasKey(StaticStrings::NumberOfShards)) {
+    // If we get a valid list of Shards we use them to define the number of
+    // shards. unless they are explicitly given in the input.
+    result.add(StaticStrings::NumberOfShards, VPackValue(value.length()));
+  }
+}
+
 auto isSingleServer() -> bool {
   return ServerState::instance()->isSingleServer();
 }
@@ -66,6 +141,15 @@ bool shouldConsiderClusterAttribute(VPackSlice fullBody,
   if (isSingleServer()) {
     // To simulate smart collections on SingleServer we need to consider cluster
     // attributes distributeShardsLike will be ignored anyway
+#ifdef USE_ENTERPRISE
+    // On Single Server Enterprise we need to consider Satellite collections
+    // For SmartGraph simulations.
+    if (fullBody.get(StaticStrings::ReplicationFactor).isString() &&
+        fullBody.get(StaticStrings::ReplicationFactor)
+            .isEqualString(StaticStrings::Satellite)) {
+      return true;
+    }
+#endif
     return isSmart(fullBody);
   } else {
     // DistributeShardsLike does superseed cluster attributes
@@ -121,9 +205,39 @@ auto handleReplicationFactor(std::string_view key, VPackSlice value,
   // Ignore if we have distributeShardsLike
 }
 
+auto handleReplicationFactorRestore(std::string_view key, VPackSlice value,
+                                    VPackSlice fullBody,
+                                    DatabaseConfiguration const& config,
+                                    VPackBuilder& result) {
+  if (shouldConsiderClusterAttribute(fullBody, config)) {
+    if (value.isNumber()) {
+      if (value.getNumericValue<int64_t>() == 0) {
+        result.add(key, VPackValue(StaticStrings::Satellite));
+      } else {
+        // All others numbers just forward
+        result.add(key, value);
+      }
+    } else if (value.isString() &&
+               value.isEqualString(StaticStrings::Satellite)) {
+      // Keep Satellite
+      result.add(key, value);
+    }
+  }
+  // Ignore if we have distributeShardsLike, or if none of above conditions
+  // matches
+}
+
 auto handleBoolOnly(std::string_view key, VPackSlice value, VPackSlice,
                     DatabaseConfiguration const& config, VPackBuilder& result) {
   if (value.isBoolean()) {
+    result.add(key, value);
+  }
+  // Ignore anything else
+}
+
+auto handleNumbersOnly(std::string_view key, VPackSlice value, VPackSlice,
+                       DatabaseConfiguration const&, VPackBuilder& result) {
+  if (value.isNumber()) {
     result.add(key, value);
   }
   // Ignore anything else
@@ -136,6 +250,24 @@ auto handleWriteConcern(std::string_view key, VPackSlice value,
   if (!isSingleServer()) {
     // Just take in cluster
     result.add(key, value);
+  }
+}
+
+auto handleWriteConcernRestore(std::string_view key, VPackSlice value,
+                               VPackSlice fullBody,
+                               DatabaseConfiguration const& config,
+                               VPackBuilder& result) {
+  if (!isSingleServer()) {
+    // Only take numbers in Cluster
+    if (value.isNumber()) {
+      if (value.isInteger() && value.getNumericValue<int64_t>() == 0) {
+        if (!hasDistributeShardsLike(fullBody, config)) {
+          result.add(key, value);
+        }
+      } else {
+        result.add(key, value);
+      }
+    }
   }
 }
 
@@ -152,6 +284,32 @@ auto handleNumberOfShards(std::string_view key, VPackSlice value,
     result.add(key, value);
   }
   // Just ignore if we have distributeShardsLike
+}
+
+auto handleNumberOfShardsRestore(std::string_view key, VPackSlice value,
+                                 VPackSlice fullBody,
+                                 DatabaseConfiguration const& config,
+                                 VPackBuilder& result) {
+  if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
+    if (isSingleServer()) {
+      justKeep(key, value, fullBody, config, result);
+    } else {
+      handleNumbersOnly(key, value, fullBody, config, result);
+    }
+  } else if (config.maxNumberOfShards > 0 && value.isNumber() &&
+             value.getNumericValue<uint32_t>() > config.maxNumberOfShards) {
+    // If we restrict the number of Shards, and we get over this limit, we keep
+    // the value, such that we trigger the according error message.
+    result.add(key, value);
+  }
+  // Just ignore if we have distributeShardsLike
+}
+
+auto handleComputedValuesRestore(std::string_view key, VPackSlice value,
+                                 VPackSlice fullBody,
+                                 DatabaseConfiguration const& config,
+                                 VPackBuilder& result) {
+  justKeep(key, value, fullBody, config, result);
 }
 
 auto handleOnlyObjects(std::string_view key, VPackSlice value, VPackSlice,
@@ -177,8 +335,18 @@ auto handleDistributeShardsLike(std::string_view key, VPackSlice value,
                                 DatabaseConfiguration const& config,
                                 VPackBuilder& result) {
   if (!config.isOneShardDB) {
-    if (isSingleServer()) {
+    if (isSingleServer() && !isSmart(fullBody)) {
       // Community can not use distributeShardsLike on SingleServer
+
+#ifdef USE_ENTERPRISE
+      // On Single Server Enterprise we need to consider distributeShardsLike
+      // on Satellite collections for SmartGraph simulations.
+      if (fullBody.get(StaticStrings::ReplicationFactor).isString() &&
+          fullBody.get(StaticStrings::ReplicationFactor)
+              .isEqualString(StaticStrings::Satellite)) {
+        justKeep(key, value, fullBody, config, result);
+      }
+#endif
       return;
     }
     justKeep(key, value, fullBody, config, result);
@@ -218,7 +386,7 @@ auto handleShardKeys(std::string_view key, VPackSlice value,
   if (!isSingleServer()) {
     // Cluster needs to handle all shardKeys and eventually reject
     justKeep(key, value, fullBody, config, result);
-  } else if (!value.isArray()) {
+  } else if (!value.isArray() || isSmart(fullBody)) {
     // Single server checks if shardKeys look valid.
     // But it will never take their value.
     // Hence we keep invalid one, to produce errors,
@@ -245,12 +413,67 @@ auto handleShardingStrategy(std::string_view key, VPackSlice value,
   // Just ignore on SingleServer
 }
 
+auto handleShardingStrategyRestore(std::string_view key, VPackSlice value,
+                                   VPackSlice fullBody,
+                                   DatabaseConfiguration const& config,
+                                   VPackBuilder& result) {
+  if (!isSingleServer()) {
+    if (value.isString()) {
+      // We only handle strings here.
+#ifndef USE_ENTERPRISE
+      if (value.isEqualString("enterprise-hash-smart-edge")) {
+        // Only enterprise can use this strategy, on community we ignore it.
+        return;
+      }
+      if (value.isEqualString("enterprise-hex-smart-vertex")) {
+        // Only enterprise can use this strategy, on community we use "hash"
+        // here, but not the general default of community-compat
+        result.add(key, "hash");
+      }
+#endif
+    }
+    handleStringsOnly(key, value, fullBody, config, result);
+  } else {
+    if (isSmart(fullBody)) {
+      // We need to keep exactly this strategy to trigger a BAD_PARAMETER error.
+      // All others are ignored.
+      justKeep(key, value, fullBody, config, result);
+    }
+  }
+  // Just ignore on SingleServer
+}
+
 auto logDeprecationMessage(Result const& res) -> void {
   LOG_TOPIC("ee638", ERR, arangodb::Logger::DEPRECATION)
       << "The createCollection request contains an illegal combination "
          "and "
          "will be rejected in the future: "
       << res;
+}
+
+auto makeRestoreAllowList() -> std::unordered_map<
+    std::string_view,
+    std::function<void(std::string_view key, VPackSlice value,
+                       VPackSlice original, DatabaseConfiguration const& config,
+                       VPackBuilder& result)>> const& {
+  // This is the additional allowList for the restoreCollection request.
+  // It is designed to be used in addition to the general allowList,
+  // where the restoreAllowList takes precedence.
+  static std::unordered_map<
+      std::string_view,
+      std::function<void(
+          std::string_view key, VPackSlice value, VPackSlice original,
+          DatabaseConfiguration const& config, VPackBuilder& result)>>
+      allowListInstance{
+          {StaticStrings::DataSourceType, handleNumbersOnly},
+          {"shards", handleShards},
+          {StaticStrings::MinReplicationFactor, handleWriteConcernRestore},
+          {StaticStrings::WriteConcern, handleWriteConcernRestore},
+          {StaticStrings::NumberOfShards, handleNumberOfShardsRestore},
+          {StaticStrings::ComputedValues, handleComputedValuesRestore},
+          {StaticStrings::ShardingStrategy, handleShardingStrategyRestore},
+          {StaticStrings::ReplicationFactor, handleReplicationFactorRestore}};
+  return allowListInstance;
 }
 
 auto makeAllowList() -> std::unordered_map<
@@ -335,6 +558,44 @@ auto transformFromBackwardsCompatibleBody(VPackSlice body,
   return result;
 }
 
+/**
+ * Transform an illegal inbound body into a legal one, honoring the exact
+ * behaviour of 3.11 version, for Restore api
+ *
+ * @param body The original body
+ * @param parsingResult The error result returned by
+ * @return
+ */
+auto transformFromBackwardsCompatibleRestoreBody(
+    VPackSlice body, DatabaseConfiguration const& config, Result parsingResult)
+    -> ResultT<VPackBuilder> {
+  TRI_ASSERT(parsingResult.fail());
+  VPackBuilder result;
+  {
+    VPackObjectBuilder objectGuard(&result);
+    auto preferList = makeRestoreAllowList();
+    auto keyAllowList = makeAllowList();
+    for (auto const& [key, value] : VPackObjectIterator(body)) {
+      // Special handling of some keys that behave differently then in
+      // createCollectionAPI.
+      auto preferHandler = preferList.find(key.stringView());
+      if (preferHandler != preferList.end()) {
+        preferHandler->second(key.stringView(), value, body, config, result);
+        continue;
+      }
+      auto handler = keyAllowList.find(key.stringView());
+      if (handler == keyAllowList.end()) {
+        // We ignore all keys we are not aware of
+        continue;
+      } else {
+        // All others have implemented a handler
+        handler->second(key.stringView(), value, body, config, result);
+      }
+    }
+  }
+  return result;
+}
+
 #ifndef USE_ENTERPRISE
 Result validateEnterpriseFeaturesNotUsed(CreateCollectionBody const& body) {
   if (body.isSatellite()) {
@@ -349,13 +610,11 @@ Result validateEnterpriseFeaturesNotUsed(CreateCollectionBody const& body) {
   return {TRI_ERROR_NO_ERROR};
 }
 #endif
-}  // namespace
-
-CreateCollectionBody::CreateCollectionBody() {}
 
 ResultT<CreateCollectionBody> parseAndValidate(
     DatabaseConfiguration const& config, VPackSlice input,
     std::function<void(CreateCollectionBody&)> applyDefaults,
+    std::function<Result(inspection::Status const&)> const& statusToResult,
     std::function<void(CreateCollectionBody&)> applyCompatibilityHacks) {
   try {
     CreateCollectionBody res;
@@ -377,35 +636,17 @@ ResultT<CreateCollectionBody> parseAndValidate(
 #endif
       return res;
     }
-    if (status.path() == "name") {
-      // Special handling to be backwards compatible error reporting
-      // on "name"
-      return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
-    }
-
-    if (status.path().rfind("keyOptions", 0) == 0) {
-      // Special handling to be backwards compatible error reporting
-      // on "keyOptions"
-      return Result{TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, status.error()};
-    }
-    if (status.path() == StaticStrings::SmartJoinAttribute) {
-      return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
-    }
-
-    if (status.path() == StaticStrings::Schema) {
-      // Schema should return a validation bad parameter, not only bad parameter
-      return Result{TRI_ERROR_VALIDATION_BAD_PARAMETER, status.error()};
-    }
-    return Result{
-        TRI_ERROR_BAD_PARAMETER,
-        status.error() +
-            (status.path().empty() ? "" : " on path " + status.path())};
+    return statusToResult(status);
   } catch (basics::Exception const& e) {
     return Result{e.code(), e.message()};
   } catch (std::exception const& e) {
     return Result{TRI_ERROR_INTERNAL, e.what()};
   }
 }
+
+}  // namespace
+
+CreateCollectionBody::CreateCollectionBody() = default;
 
 ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     VPackSlice input, DatabaseConfiguration const& config,
@@ -417,7 +658,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
   }
   auto res = ::parseAndValidate(
       config, input, [](CreateCollectionBody& col) {},
-      [](CreateCollectionBody& col) {});
+      ::rewriteStatusErrorMessage, [](CreateCollectionBody& col) {});
   if (activateBackwardsCompatibility && res.fail()) {
     auto newBody =
         transformFromBackwardsCompatibleBody(input, config, res.result());
@@ -426,7 +667,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     }
     auto compatibleRes = ::parseAndValidate(
         config, newBody->slice(), [](CreateCollectionBody& col) {},
-        [](CreateCollectionBody& col) {});
+        ::rewriteStatusErrorMessage, [](CreateCollectionBody& col) {});
     if (compatibleRes.ok()) {
       logDeprecationMessage(res.result());
     }
@@ -451,6 +692,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
         col.type = type;
         col.name = name;
       },
+      ::rewriteStatusErrorMessage,
       [](CreateCollectionBody& col) {
 #ifdef USE_ENTERPRISE
         if (col.isDisjoint) {
@@ -474,6 +716,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
           col.type = type;
           col.name = name;
         },
+        ::rewriteStatusErrorMessage,
         [](CreateCollectionBody& col) {
 #ifdef USE_ENTERPRISE
           if (col.isDisjoint) {
@@ -487,6 +730,82 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
       logDeprecationMessage(res.result());
     }
     return compatibleRes;
+  }
+  return res;
+}
+
+ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
+    VPackSlice input, DatabaseConfiguration const& config) {
+  auto res = ::parseAndValidate(
+      config, input, [](CreateCollectionBody& col) {},
+      ::rewriteStatusErrorMessageForRestore,
+      [&config](CreateCollectionBody& col) {
+        // By all means, we cannot take an id from the outside. We need to
+        // generate an ID here. So better waste one ID than having a collision.
+        col.id = config.idGenerator();
+        if (!col.shardingStrategy.has_value() &&
+            !col.distributeShardsLike.has_value() &&
+            config.defaultDistributeShardsLike.empty()) {
+#if USE_ENTERPRISE
+          col.shardingStrategy = "enterprise-compat";
+#else
+          col.shardingStrategy = "community-compat";
+#endif
+        }
+      });
+  if (res.fail()) {
+    auto newBody = transformFromBackwardsCompatibleRestoreBody(input, config,
+                                                               res.result());
+    if (newBody.fail()) {
+      return newBody.result();
+    }
+
+    // NOTE: We do not log a deprecation message here. The restore API is
+    // forever backwards compatible.
+    res = ::parseAndValidate(
+        config, newBody->slice(), [](CreateCollectionBody& col) {},
+        ::rewriteStatusErrorMessageForRestore,
+        [&config](CreateCollectionBody& col) {
+          // By all means, we cannot take an id from the outside. We need to
+          // generate an ID here. So better waste one ID than having a
+          // collision.
+          col.id = config.idGenerator();
+          if (!col.shardingStrategy.has_value() &&
+              !col.distributeShardsLike.has_value() &&
+              config.defaultDistributeShardsLike.empty()) {
+#if USE_ENTERPRISE
+            if (col.getType() == TRI_COL_TYPE_DOCUMENT) {
+              if (col.isSmart) {
+                if (col.smartGraphAttribute.has_value()) {
+                  // SmartGraphs need  to have shardingStrategy "hash"
+                  col.shardingStrategy = "hash";
+                } else {
+                  // EnterpriseGraphs need  to have shardingStrategy
+                  // "enterprise-hex-smart-vertex"
+                  col.shardingStrategy = "enterprise-hex-smart-vertex";
+                }
+              } else {
+                col.shardingStrategy = "enterprise-compat";
+              }
+            } else {
+              if (col.isSmart) {
+                // Smart Edge Collections always have hash-smart-edge sharding
+                col.shardingStrategy = "enterprise-hash-smart-edge";
+              } else {
+                col.shardingStrategy = "enterprise-compat";
+              }
+            }
+#else
+            col.shardingStrategy = "community-compat";
+#endif
+          }
+        });
+    if (res.fail() && res.is(TRI_ERROR_ONLY_ENTERPRISE)) {
+      // This API always returns BAD_PARAMETER for community, so we need to
+      // rewrite the message
+      return Result{TRI_ERROR_BAD_PARAMETER, std::move(res.errorMessage())};
+    }
+    return res;
   }
   return res;
 }

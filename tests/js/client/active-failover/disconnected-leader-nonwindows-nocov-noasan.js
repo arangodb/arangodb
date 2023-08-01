@@ -338,8 +338,12 @@ function LeaderDisconnectedSuite() {
       assertNotEqual(currentLead.name, oldLead.name);
 
       try {
+        // this may or may not succeed.
+        // collection creation will fail if the agency has not yet
+        // elected a new leader. if the agency has already elected
+        // a new leader, this collection creation however will succeed.
+        // unfortunately we cannot reliably test this here.
         db._create(cname + "2");
-        fail("did not throw; failing test now");
       } catch (err) {
         assertEqual(errors.ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING.code, err.errorNum, err);
       }
