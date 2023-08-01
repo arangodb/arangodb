@@ -76,13 +76,13 @@ enum class CountApproximate {
 
 struct HeapSortElement {
 
-  bool IsScore() const noexcept {
+  bool isScore() const noexcept {
+    // if fieldNumber is max then it is scored idx.
+    // Stored Column idx otherwise.
     return fieldNumber == std::numeric_limits<size_t>::max();
   }
 
   std::string postfix;
-  // if fieldNumber is max then it is scored idx.
-  // Stored Column idx otherwise.
   ptrdiff_t source{0};
   size_t fieldNumber{std::numeric_limits<size_t>::max()};
   bool ascending{true};

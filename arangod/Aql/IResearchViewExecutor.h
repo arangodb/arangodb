@@ -30,6 +30,7 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/VarInfoMap.h"
+#include "Containers/FlatHashSet.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchExpressionContext.h"
@@ -248,7 +249,13 @@ class ScoreIterator {
   size_t _numScores;
 };
 
-// Holds and encapsulates the data read from the iresearch index.
+
+union HeapSortValue {
+  irs::score_t score;
+  velocypack::Slice slice;
+};
+
+  // Holds and encapsulates the data read from the iresearch index.
 template<typename ValueType, bool copyStored>
 class IndexReadBuffer {
  public:
@@ -276,10 +283,24 @@ class IndexReadBuffer {
 
   ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
 
-  void setHeapSort(
-      std::span<iresearch::HeapSortElement const>
-          s) noexcept {
+  void setHeapSort(std::span<iresearch::HeapSortElement const> s,
+                   iresearch::IResearchViewNode::ViewValuesRegisters const&
+                       storedValues) noexcept {
     _heapSort = s;
+    TRI_ASSERT(_heapUsedStoredColumns.empty());
+    TRI_ASSERT(_heapOnlyColumnsCount == 0);
+    for (auto const& c : _heapSort) {
+      if (c.isScore()) {
+        continue;
+      }
+      auto it = storedValues.find(c.source);
+      if (it != storedValues.end()) {
+        _heapUsedStoredColumns.emplace(c.source,
+                                      static_cast<size_t>(std::distance(storedValues.begin(), it)));
+      } else {
+        ++_heapOnlyColumnsCount;
+      }
+    }
   }
 
   irs::score_t* pushNoneScores(size_t count);
@@ -292,8 +313,10 @@ class IndexReadBuffer {
     _searchDocs.emplace_back(segment, docId);
   }
 
-  void pushSortedValue(StorageSnapshot const& snapshot, ValueType&& value,
-                       std::span<float_t const> scores,
+  template<typename ColumnReaderProvider>
+  void pushSortedValue(ColumnReaderProvider& columnReader,
+                       StorageSnapshot const& snapshot,
+                       ValueType&& value, std::span<float_t const> scores,
                        irs::score_threshold* threshold);
 
   void finalizeHeapSort();
@@ -319,14 +342,18 @@ class IndexReadBuffer {
   // before and after.
   void assertSizeCoherence() const noexcept;
 
-  size_t memoryUsage(size_t maxSize) const noexcept {
+  size_t memoryUsage(size_t maxSize, size_t scores,  size_t stored) const noexcept {
     auto res =
         maxSize * sizeof(typename decltype(_keyBuffer)::value_type) +
-        maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
+        scores* maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
         maxSize * sizeof(typename decltype(_searchDocs)::value_type) +
-        maxSize * sizeof(typename decltype(_storedValuesBuffer)::value_type);
+        stored * maxSize * sizeof(typename decltype(_storedValuesBuffer)::value_type);
     if (!_heapSort.empty()) {
       res += maxSize * sizeof(typename decltype(_rows)::value_type);
+      res += _heapOnlyColumnsCount* maxSize *
+             sizeof(typename decltype(_heapOnlyStoredValuesBuffer)::value_type);
+      res += _heapOnlyColumnsCount *
+             sizeof(typename decltype(_currentDocumentBuffer)::value_type);
     }
     return res;
   }
@@ -335,7 +362,7 @@ class IndexReadBuffer {
                                      size_t stored) {
     TRI_ASSERT(_storedValuesBuffer.empty());
     if (_keyBuffer.capacity() < atMost) {
-      auto newMemoryUsage = memoryUsage(atMost);
+      auto newMemoryUsage = memoryUsage(atMost, scores, stored);
       auto tracked = _memoryTracker.tracked();
       if (newMemoryUsage > tracked) {
         _memoryTracker.increase(newMemoryUsage - tracked);
@@ -346,6 +373,8 @@ class IndexReadBuffer {
       _storedValuesBuffer.reserve(atMost * stored);
       if (!_heapSort.empty()) {
         _rows.reserve(atMost);
+        _heapOnlyStoredValuesBuffer.reserve(_heapOnlyColumnsCount * atMost);
+        _currentDocumentBuffer.reserve(_heapOnlyColumnsCount);
       }
     }
     _maxSize = atMost;
@@ -394,14 +423,41 @@ class IndexReadBuffer {
     StorageSnapshot const* snapshot;
     ValueType value;
   };
+
+  template<typename ColumnReaderProvider>
+  velocypack::Slice readHeapSortColumn(iresearch::HeapSortElement const& cmp,
+                                       irs::doc_id_t doc, ColumnReaderProvider& readerProvider,
+                                       size_t readerSlot);
+  template<typename ColumnReaderProvider>
+  void finalizeHeapSortDocument(
+      size_t idx, irs::doc_id_t,
+      std::span<float_t const> scores,
+      ColumnReaderProvider& readerProvider);
+
   std::vector<BufferValueType> _keyBuffer;
   // FIXME(gnusi): compile time
   std::vector<iresearch::SearchDoc> _searchDocs;
   std::vector<irs::score_t> _scoreBuffer;
-  StoredValuesContainer _storedValuesBuffer;
+  StoredValuesContainer _storedValuesBuffer; // FIXME: ensure atMost rows are allocated from the beginning!
+
+  // Heap Sort facilities
+  // maps stored column to index in _storedValuesBuffer
+  containers::FlatHashMap<ptrdiff_t, size_t> _heapUsedStoredColumns;
+  // atMost * <num heap only values>
+  StoredValuesContainer _heapOnlyStoredValuesBuffer;
+  // <num heap only values>
+  std::vector<ColumnIterator> _heapOnlyStoredValuesReaders;
+  // <num heap only values>
+  StoredValuesContainer _currentDocumentBuffer;
+  std::vector<velocypack::Slice> _currentDocumentSlices;
+  std::vector<HeapSortValue> _heapSortValues;
+  std::span<iresearch::HeapSortElement const> _heapSort;
+  size_t _notFilledHeapStoredValues{0};
+  size_t _heapOnlyColumnsCount{0};
+  size_t _currentReaderOffset{std::numeric_limits<size_t>::max()};
+
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;
-  std::span<iresearch::HeapSortElement const> _heapSort;
   std::vector<size_t> _rows;
   size_t _maxSize;
   size_t _heapSizeLeft;
@@ -589,6 +645,7 @@ class IResearchViewExecutorBase {
   irs::Scorers _scorers;
   irs::WandContext _wand;
   std::vector<ColumnIterator> _storedValuesReaders;
+  containers::FlatHashSet<ptrdiff_t> _storedColumnsMask;
   std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
   bool _isInitialized;
   // new mangling only:
