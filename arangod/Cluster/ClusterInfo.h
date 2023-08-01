@@ -529,6 +529,37 @@ class ClusterInfo final {
       double timeout               // request timeout
   );
 
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  /***
+   * This section of methods is only required for our C++ UnitTests
+   * They have been using very low level APIs and cannot be trivially
+   * moved to new higher level APIs.
+   */
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a future which can be used to wait for the successful
+  /// creation of replicated states
+  //////////////////////////////////////////////////////////////////////////////
+  auto waitForReplicatedStatesCreation(
+      std::string const& databaseName,
+      std::vector<replication2::agency::LogTarget> const& replicatedStates)
+      -> futures::Future<Result>;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief deletes replicated states corresponding to shards
+  //////////////////////////////////////////////////////////////////////////////
+  auto deleteReplicatedStates(
+      std::string const& databaseName,
+      std::vector<replication2::LogId> const& replicatedStatesIds)
+      -> futures::Future<Result>;
+
+  /// @brief this method does an atomic check of the preconditions for the
+  /// collections to be created, using the currently loaded plan.
+  Result checkCollectionPreconditions(
+      std::string const& databaseName,
+      std::vector<ClusterCollectionCreationInfo> const& infos);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -542,12 +573,6 @@ class ClusterInfo final {
       std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
       replication::Version replicationVersion);
 
-  /// @brief this method does an atomic check of the preconditions for the
-  /// collections to be created, using the currently loaded plan.
-  Result checkCollectionPreconditions(
-      std::string const& databaseName,
-      std::vector<ClusterCollectionCreationInfo> const& infos);
-
   /// @brief create multiple collections in coordinator
   ///        If any one of these collections fails, all creations will be
   ///        rolled back.
@@ -559,6 +584,8 @@ class ClusterInfo final {
       bool isNewDatabase,
       std::shared_ptr<LogicalCollection const> const& colToDistributeShardsLike,
       replication::Version replicationVersion);
+
+#endif
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -1011,33 +1038,6 @@ class ClusterInfo final {
   /// @brief triggers a new background thread to obtain the next batch of ids
   //////////////////////////////////////////////////////////////////////////////
   void triggerBackgroundGetIds();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a replicated state is created for each shard, only when using
-  /// Replication2
-  //////////////////////////////////////////////////////////////////////////////
-  static auto createDocumentStateSpec(std::string const& shardId,
-                                      std::vector<std::string> const& serverIds,
-                                      ClusterCollectionCreationInfo const& info,
-                                      std::string const& databaseName)
-      -> replication2::agency::LogTarget;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns a future which can be used to wait for the successful
-  /// creation of replicated states
-  //////////////////////////////////////////////////////////////////////////////
-  auto waitForReplicatedStatesCreation(
-      std::string const& databaseName,
-      std::vector<replication2::agency::LogTarget> const& replicatedStates)
-      -> futures::Future<Result>;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief deletes replicated states corresponding to shards
-  //////////////////////////////////////////////////////////////////////////////
-  auto deleteReplicatedStates(
-      std::string const& databaseName,
-      std::vector<replication2::LogId> const& replicatedStatesIds)
-      -> futures::Future<Result>;
 
   /// underlying application server
   ArangodServer& _server;
