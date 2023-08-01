@@ -1580,7 +1580,7 @@ void HeartbeatThread::sendServerStateAsync() {
                 .count());
 
         if (timeDiff > std::chrono::seconds(2) && !self->isStopping()) {
-          LOG_TOPIC("77655", WARN, Logger::HEARTBEAT)
+          LOG_TOPIC("776a5", WARN, Logger::HEARTBEAT)
               << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
                  "this might be causing trouble with health checks. Please "
                  "contact ArangoDB Support.";
@@ -1593,7 +1593,7 @@ void HeartbeatThread::sendServerStateAsync() {
               self->_heartbeat_failure_counter.count();
               std::string const endpoints =
                   AsyncAgencyCommManager::INSTANCE->endpointsString();
-              LOG_TOPIC("3e2f5", WARN, Logger::HEARTBEAT)
+              LOG_TOPIC("4e2f5", WARN, Logger::HEARTBEAT)
                   << "heartbeat could not be sent to agency endpoints ("
                   << endpoints << "): error code: " << result.errorMessage();
               self->_numFails = 0;
@@ -1602,10 +1602,10 @@ void HeartbeatThread::sendServerStateAsync() {
             self->_numFails = 0;
           }
         } catch (std::exception const& e) {
-          LOG_TOPIC("cfc83", WARN, Logger::HEARTBEAT)
+          LOG_TOPIC("cfd83", WARN, Logger::HEARTBEAT)
               << "failed to send heartbeat - exception occurred: " << e.what();
         } catch (...) {
-          LOG_TOPIC("cfc83", WARN, Logger::HEARTBEAT)
+          LOG_TOPIC("cfe83", WARN, Logger::HEARTBEAT)
               << "failed to send heartbeat - unknown exception occurred.";
         }
       });
