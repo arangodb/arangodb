@@ -15,6 +15,25 @@ parameters:
 
 # our defined job, and its steps
 jobs:
+  # this is in a separate job from "setup" to make it as cheap as possible (because it uses the bare base image)
+  check-build-trigger:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - when:
+          condition:
+            not:
+              or:
+                - equal: [devel, << pipeline.git.branch >>]
+                - equal: [api, << pipeline.trigger_source >>]
+                - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
+          steps:
+            - run: |
+                echo "Intentional build failure - to run an actual build please trigger a pipeline manually."
+                exit 1
+      - run: echo "Check successful - generating config."
+
   generate-config:
     docker:
       - image: cimg/python:3.11.1
@@ -46,11 +65,11 @@ jobs:
 # our single workflow, that triggers the setup job defined above
 workflows:
   setup:
-    when:
-      or:
-        - equal: [ devel, << pipeline.git.branch >> ]
-        - equal: [ api, << pipeline.trigger_source >> ]
-        - equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
     jobs:
+      # we always create a workflow and let the build fail in check-build-trigger unless it has been triggered manually
+      # or runs on the devel branch (see condition in check-build-trigger)
+      - check-build-trigger
       - generate-config:
           definitions: "tests/test-definitions.txt"
+          requires:
+            - check-build-trigger
