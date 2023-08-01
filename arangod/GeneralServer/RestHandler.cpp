@@ -381,8 +381,8 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
 }
 
 void RestHandler::runHandlerStateMachine() {
+  std::lock_guard lock{_executionMutex};
   TRI_ASSERT(_callback);
-  RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
 
   while (true) {
     switch (_state) {
@@ -491,7 +491,7 @@ void RestHandler::shutdownExecute(bool isFinalized) noexcept {
 /// Execute the rest handler state machine. Retry the wakeup,
 /// returns true if _state == PAUSED, false otherwise
 bool RestHandler::wakeupHandler() {
-  RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
+  std::lock_guard lock{_executionMutex};
   if (_state == HandlerState::PAUSED) {
     runHandlerStateMachine();  // may change _state
     return _state == HandlerState::PAUSED;
