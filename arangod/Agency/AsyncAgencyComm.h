@@ -258,6 +258,10 @@ class AsyncAgencyComm final {
   [[nodiscard]] FutureResult sendTransaction(
       network::Timeout timeout, AgencyWriteTransaction const&) const;
 
+  [[nodiscard]] FutureResult setTransientValue(
+      std::string const& key, arangodb::velocypack::Slice const& slice,
+      network::Timeout timeout);
+
   enum class RequestType {
     READ,    // send the transaction again in the case of no response
     WRITE,   // does not send the transaction again but instead tries to do
