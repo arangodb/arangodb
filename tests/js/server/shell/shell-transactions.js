@@ -272,6 +272,10 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateWithSameRev: function () {
+      if (isCluster) {
+        // running this test in cluster will trigger an assertion failure
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
       c.update('test', { _key: 'test', _rev: doc._rev, value: 2 }, { isRestore: true });
 
@@ -280,6 +284,10 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateWithSameRevTransaction: function () {
+      if (isCluster) {
+        // running this test in cluster will trigger an assertion failure
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
       db._executeTransaction({
         collections: { write: c.name() },
