@@ -121,21 +121,18 @@ function IResearchFeatureDDLTestSuite1() {
       c.save({"a": "a"});
       c.ensureIndex({"name": "i", "type": "inverted", "fields": ["a"]});
       let figures = c.figures(true);
-      print(figures);
       assertEqual(figures.engine.indexes[1].type, "inverted");
       assertEqual(figures.engine.indexes[1].count, 1);
 
       c.save(doc);
       db._query(sync);
       figures = c.figures(true);
-      print(figures);
       assertEqual(figures.engine.indexes[1].type, "inverted");
       assertEqual(figures.engine.indexes[1].count, 2);
 
       c.remove(doc)
       db._query(sync);
       figures = c.figures(true);
-      print(figures);
       assertEqual(figures.engine.indexes[1].type, "inverted");
       assertEqual(figures.engine.indexes[1].count, 1);
     },
