@@ -372,12 +372,11 @@ class IndexReadBuffer {
       _keyBuffer.reserve(atMost);
       _searchDocs.reserve(atMost);
       _scoreBuffer.reserve(atMost * scores);
-      _storedValuesBuffer.reserve(atMost * stored);
+      _storedValuesBuffer.resize(atMost * stored);
       if (!_heapSort.empty()) {
         _rows.reserve(atMost);
-        _heapOnlyStoredValuesBuffer.reserve(_heapOnlyColumnsCount * atMost);
+        _heapOnlyStoredValuesBuffer.resize(_heapOnlyColumnsCount * atMost);
         _currentDocumentBuffer.reserve(_heapOnlyColumnsCount);
-        _heapSortValues.reserve(atMost * _heapSort.size());
       }
     }
     _maxSize = atMost;
@@ -431,7 +430,7 @@ class IndexReadBuffer {
   velocypack::Slice readHeapSortColumn(iresearch::HeapSortElement const& cmp,
                                        irs::doc_id_t doc, ColumnReaderProvider& readerProvider,
                                        size_t readerSlot);
-  template<typename ColumnReaderProvider>
+  template<bool fullHeap, typename ColumnReaderProvider>
   void finalizeHeapSortDocument(
       size_t idx, irs::doc_id_t,
       std::span<float_t const> scores,
@@ -455,7 +454,6 @@ class IndexReadBuffer {
   std::vector<velocypack::Slice> _currentDocumentSlices;
   std::vector<HeapSortValue> _heapSortValues;
   std::span<iresearch::HeapSortElement const> _heapSort;
-  size_t _notFilledHeapStoredValues{0};
   size_t _heapOnlyColumnsCount{0};
   size_t _currentReaderOffset{std::numeric_limits<size_t>::max()};
 

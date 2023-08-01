@@ -142,8 +142,10 @@ class BufferHeapSortContext {
         _heapSort(heapSort) {}
 
   bool operator()(size_t a, size_t b) const noexcept {
-    TRI_ASSERT(_heapSortValues.size() < a * _heapSort.size());
-    TRI_ASSERT(_heapSortValues.size() < b * _heapSort.size());
+    TRI_ASSERT(_heapSortValues.size() > a * _heapSort.size())
+      << "Size:" << _heapSortValues.size() << " Index:" << a;
+    TRI_ASSERT(_heapSortValues.size() > b * _heapSort.size())
+      << "Size:" << _heapSortValues.size() << " Index:" << b;
     auto lhs_stored = &_heapSortValues[a * _heapSort.size()];
     auto rhs_stored = &_heapSortValues[b * _heapSort.size()];
     for (auto const& cmp : _heapSort) {
@@ -158,16 +160,16 @@ class BufferHeapSortContext {
         if (res != 0) {
           return kSortMultiplier[size_t{cmp.ascending}] * res;
         }
-        ++lhs_stored;
-        ++rhs_stored;
       }
+      ++lhs_stored;
+      ++rhs_stored;
     }
     return false;
   }
 
   template<typename StoredValueProvider>
   bool compareInput(size_t lhsIdx, float_t const* rhs_scores, StoredValueProvider const& stored) const noexcept {
-    TRI_ASSERT(_heapSortValues.size() < lhsIdx * _heapSort.size());
+    TRI_ASSERT(_heapSortValues.size() > lhsIdx * _heapSort.size());
     auto lhs_values = &_heapSortValues[lhsIdx * _heapSort.size()];
     for (auto const& cmp : _heapSort) {
       if (cmp.isScore()) {
@@ -469,23 +471,33 @@ velocypack::Slice IndexReadBuffer<ValueType, copySorted>::readHeapSortColumn(
   } else {
     val = ref<irs::byte_type>(VPackSlice::nullSlice());
   }
-  _currentDocumentBuffer[_notFilledHeapStoredValues] = val;
-  _currentDocumentSlices[_notFilledHeapStoredValues] =
-      getStoredValue(_currentDocumentBuffer[_notFilledHeapStoredValues], cmp);
-  return _currentDocumentSlices[_notFilledHeapStoredValues++];
+  _currentDocumentBuffer.emplace_back(val);
+  _currentDocumentSlices.push_back(
+      getStoredValue(_currentDocumentBuffer.back(), cmp));
+  return _currentDocumentSlices.back();
 }
 
 template<typename ValueType, bool copySorted>
-template<typename ColumnReaderProvider>
+template<bool fullHeap, typename ColumnReaderProvider>
 void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
     size_t idx, irs::doc_id_t doc, std::span<float_t const> scores,
     ColumnReaderProvider& readerProvider) {
   auto const heapSortSize = _heapSort.size();
   size_t heapSortValuesIndex = idx * heapSortSize;
   size_t j = 0;
+  TRI_ASSERT(_currentDocumentSlices.size() == _currentDocumentBuffer.size());
+  if constexpr (fullHeap) {
+    TRI_ASSERT(heapSortValuesIndex < _heapSortValues.size());
+  } else {
+    TRI_ASSERT(heapSortValuesIndex == _heapSortValues.size());
+  }
   for (auto const& cmp : _heapSort) {
     if (cmp.isScore()) {
-      _heapSortValues[heapSortValuesIndex].score = scores[cmp.source];
+      if constexpr (fullHeap) {
+        _heapSortValues[heapSortValuesIndex].score = scores[cmp.source];
+      } else {
+        _heapSortValues.push_back(HeapSortValue{.score = scores[cmp.source]});
+      }
     } else {
       auto columnMap = _heapUsedStoredColumns.find(cmp.source);
       auto& valueSlot =
@@ -493,16 +505,26 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
               ? _heapOnlyStoredValuesBuffer[idx * _heapOnlyColumnsCount + j]
               : _storedValuesBuffer[idx * _storedValuesCount +
                                     columnMap->second];
-      if (j < _notFilledHeapStoredValues) {
+      if (j < _currentDocumentBuffer.size()) {
         valueSlot = std::move(_currentDocumentBuffer[j]);
         if constexpr (copySorted) {
           // if SSO engaged we must re-request Slice as address in memory may
           // change for bstring.
-          _heapSortValues[heapSortValuesIndex].slice =
-              getStoredValue(valueSlot, cmp);
+          auto slice = getStoredValue(valueSlot, cmp);
+          if constexpr (fullHeap) {
+            _heapSortValues[heapSortValuesIndex].slice = slice;
+          } else {
+            _heapSortValues.push_back(
+                HeapSortValue{.slice = slice});
+          }
         } else {
-          _heapSortValues[heapSortValuesIndex].slice =
-              _currentDocumentSlices[j];
+          if constexpr (fullHeap) {
+            _heapSortValues[heapSortValuesIndex].slice =
+                _currentDocumentSlices[j];
+          } else {
+            _heapSortValues.push_back(
+                HeapSortValue{.slice = _currentDocumentSlices[j]});
+          }
           TRI_ASSERT(getStoredValue(valueSlot, cmp).begin() ==
                      _heapSortValues[heapSortValuesIndex].slice.begin());
         }
@@ -519,8 +541,13 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
           val = ref<irs::byte_type>(VPackSlice::nullSlice());
         }
         valueSlot = val;
-        _heapSortValues[heapSortValuesIndex].slice =
-            getStoredValue(valueSlot, cmp);
+        if constexpr (fullHeap) {
+          _heapSortValues[heapSortValuesIndex].slice =
+              getStoredValue(valueSlot, cmp);
+        } else {
+          _heapSortValues.push_back(
+              HeapSortValue{.slice = getStoredValue(valueSlot, cmp)});
+        }
       }
       ++j;
     }
@@ -534,16 +561,17 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     ColumnReaderProvider& columnReader,
     StorageSnapshot const& snapshot, ValueType&& value,
     std::span<float_t const> scores, irs::score_threshold* threshold) {
-  BufferHeapSortContext<typename StoredValuesContainer::value_type> sortContext(
-      _heapSortValues, _heapSort);
   TRI_ASSERT(_maxSize);
   TRI_ASSERT(threshold == nullptr || !scores.empty());
-  _notFilledHeapStoredValues = 0;
+  _currentDocumentSlices.clear();
+  _currentDocumentBuffer.clear();
   if (_currentReaderOffset != value.readerOffset()) {
     _currentReaderOffset = value.readerOffset();
     _heapOnlyStoredValuesReaders.clear();
   }
   if (ADB_LIKELY(!_heapSizeLeft)) {
+    BufferHeapSortContext<typename StoredValuesContainer::value_type>
+        sortContext(_heapSortValues, _heapSort);
     size_t readerSlot{0};
     if (sortContext.compareInput(_rows.front(), scores.data(),
             [this, &value, &readerSlot, &columnReader](iresearch::HeapSortElement const& cmp) {
@@ -553,7 +581,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     }
     std::pop_heap(_rows.begin(), _rows.end(), sortContext);
     // now last contains "free" index in the buffer
-    finalizeHeapSortDocument(_rows.back(), value.irsDocId(), scores, columnReader);
+    finalizeHeapSortDocument<true>(_rows.back(), value.irsDocId(), scores, columnReader);
     _keyBuffer[_rows.back()] = BufferValueType{snapshot, std::move(value)};
     auto const base = _rows.back() * _numScoreRegisters;
     size_t i{0};
@@ -573,7 +601,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
       threshold->min = _scoreBuffer[_rows.front() * _numScoreRegisters];
     }
   } else {
-    finalizeHeapSortDocument(_rows.size(), value.irsDocId(), scores,
+    finalizeHeapSortDocument<false>(_rows.size(), value.irsDocId(), scores,
                              columnReader);
     _keyBuffer.emplace_back(snapshot, std::move(value));
     size_t i = 0;
@@ -585,6 +613,8 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
                         std::numeric_limits<float_t>::quiet_NaN());
     _rows.push_back(_rows.size());
     if ((--_heapSizeLeft) == 0) {
+      BufferHeapSortContext<typename StoredValuesContainer::value_type>
+          sortContext(_heapSortValues, _heapSort);
       _storedValuesBuffer.resize(_keyBuffer.size() * _storedValuesCount);
       std::make_heap(_rows.begin(), _rows.end(), sortContext);
     }
