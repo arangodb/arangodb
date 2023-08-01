@@ -84,8 +84,9 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _nextCacheId(1),
       _globalSoftLimit(_options.cacheSize),
       _globalHardLimit(_options.cacheSize),
-      _globalHighwaterMark(static_cast<std::uint64_t>(
-          kHighwaterMultiplier * static_cast<double>(_globalSoftLimit))),
+      _globalHighwaterMark(
+          static_cast<std::uint64_t>(_options.highwaterMultiplier *
+                                     static_cast<double>(_globalSoftLimit))),
       _fixedAllocation(sizeof(Manager) + kTableListsOverhead +
                        _accessStats.memoryUsage()),
       _spareTableAllocation(0),
@@ -271,10 +272,10 @@ bool Manager::resize(std::uint64_t newGlobalLimit) {
   SpinLocker guard(SpinLocker::Mode::Write, _lock);
 
   if ((newGlobalLimit < kMinSize) ||
-      (static_cast<std::uint64_t>(0.5 * (1.0 - kHighwaterMultiplier) *
+      (static_cast<std::uint64_t>(0.5 * (1.0 - _options.highwaterMultiplier) *
                                   static_cast<double>(newGlobalLimit)) <
        _fixedAllocation) ||
-      (static_cast<std::uint64_t>(kHighwaterMultiplier *
+      (static_cast<std::uint64_t>(_options.highwaterMultiplier *
                                   static_cast<double>(newGlobalLimit)) <
        (_caches.size() * minCacheAllocation))) {
     return false;
@@ -291,7 +292,7 @@ bool Manager::resize(std::uint64_t newGlobalLimit) {
       _resizing = true;
       _globalSoftLimit = newGlobalLimit;
       _globalHighwaterMark = static_cast<std::uint64_t>(
-          kHighwaterMultiplier * static_cast<double>(_globalSoftLimit));
+          _options.highwaterMultiplier * static_cast<double>(_globalSoftLimit));
       freeUnusedTables();
       done = adjustGlobalLimitsIfAllowed(newGlobalLimit);
       if (!done) {
@@ -780,7 +781,7 @@ bool Manager::adjustGlobalLimitsIfAllowed(std::uint64_t newGlobalLimit) {
   }
 
   _globalHighwaterMark = static_cast<std::uint64_t>(
-      kHighwaterMultiplier * static_cast<double>(newGlobalLimit));
+      _options.highwaterMultiplier * static_cast<double>(newGlobalLimit));
   _globalSoftLimit = newGlobalLimit;
   _globalHardLimit = newGlobalLimit;
 
