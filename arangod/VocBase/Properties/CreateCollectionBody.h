@@ -60,6 +60,10 @@ struct CreateCollectionBody : public UserInputCollectionProperties,
       arangodb::velocypack::Slice properties, std::string const& name,
       TRI_col_type_e type, DatabaseConfiguration const& config);
 
+  static ResultT<CreateCollectionBody> fromRestoreAPIBody(
+      arangodb::velocypack::Slice properties,
+      DatabaseConfiguration const& config);
+
   static arangodb::velocypack::Builder toCreateCollectionProperties(
       std::vector<CreateCollectionBody> const& collections);
 

@@ -319,7 +319,9 @@ TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_forbidden) {
   ASSERT_FALSE(res.ok()) << "Allowed illegal: " << body.toJson();
 }
 
-TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_forbidden_0) {
+TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_allowed_0) {
+  // As satellite is replicationFactor=0, writeConcern=0 is allowed
+  // as WC has been defined to be at most replicationFactor.
   VPackBuilder body;
   {
     VPackObjectBuilder bodyBuilder{&body};
@@ -327,7 +329,7 @@ TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_forbidden_0) {
     body.add("writeConcern", VPackValue(0));
   }
   auto testee = parse(body.slice());
-  EXPECT_FALSE(testee.ok()) << "Allowed illegal: " << body.toJson();
+  EXPECT_TRUE(testee.ok()) << "Did not allow legal body: " << body.toJson();
 }
 
 TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_allowed) {
