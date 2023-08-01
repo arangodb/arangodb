@@ -576,7 +576,7 @@ void GraphNode::setGraphInfoAndCopyColls(
       if (it == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "access to non-existing collection in AQL graph traversal");
+            "access to non-existing edge collection in AQL graph traversal");
       }
       _edgeColls.emplace_back(it);
       _graphInfo.add(VPackValue(it->name()));
@@ -588,14 +588,18 @@ void GraphNode::setGraphInfoAndCopyColls(
       if (it == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "access to non-existing collection in AQL graph traversal");
+            "access to non-existing edge collection in AQL graph traversal");
       }
       _edgeColls.emplace_back(it);
     }
   }
 
   for (auto& it : vertexColls) {
-    TRI_ASSERT(it != nullptr);
+    if (it == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "access to non-existing vertex collection in AQL graph traversal");
+    }
     addVertexCollection(*it);
   }
 }
