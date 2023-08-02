@@ -23,6 +23,7 @@
 
 #include "Basics/Common.h"
 
+#include "VocBase/Identifiers/TransactionId.h"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <condition_variable>
@@ -64,40 +65,35 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
+  auto trxId = static_cast<TransactionId>(1);
   ArangodServer server{nullptr, nullptr};
   server.addFeature<metrics::MetricsFeature>();
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 
   std::chrono::milliseconds five(5);
-  std::mutex mu;
-  std::condition_variable cv;
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
   EXPECT_TRUE(tm.holdTransactions(500));
 
-  std::unique_lock<std::mutex> lock(mu);
+  std::atomic<bool> done;
 
   auto getReadLock = [&]() -> void {
-    {
-      std::unique_lock<std::mutex> innerLock(mu);
-      cv.notify_all();
-    }
-
-    tm.registerTransaction(static_cast<TransactionId>(1), false, false);
-    EXPECT_EQ(tm.getActiveTransactionCount(), 1);
+    tm.commitManagedTrx(trxId, "foo");
+    done = true;
   };
 
   std::thread reader(getReadLock);
 
-  cv.wait(lock);
-  EXPECT_EQ(tm.getActiveTransactionCount(), 0);
+  EXPECT_EQ(tm.getActiveTransactionCount(), 1);
   std::this_thread::sleep_for(five);
-  EXPECT_EQ(tm.getActiveTransactionCount(), 0);
+  EXPECT_FALSE(done);
+
   tm.releaseTransactions();
 
   reader.join();
+
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction(static_cast<TransactionId>(1), false, false);
+  tm.unregisterTransaction(trxId, false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 }
