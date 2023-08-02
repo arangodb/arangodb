@@ -2,6 +2,7 @@ import { VStack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { mutate } from "swr";
+import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { FormField } from "../../../components/form/FormField";
 import {
   createGraph,
@@ -11,7 +12,6 @@ import {
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { SatelliteGraphCreateValues } from "./CreateGraph.types";
 import { EdgeDefinitionsField } from "./EdgeDefinitionsField";
-import { FieldsGrid } from "./FieldsGrid";
 import { GraphModalFooter } from "./GraphModalFooter";
 import { GraphWarnings } from "./GraphWarnings";
 

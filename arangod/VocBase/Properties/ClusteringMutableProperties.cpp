@@ -63,6 +63,19 @@ auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
   return {"Only an integer number or 'satellite' is allowed"};
 }
 
+[[nodiscard]] auto ClusteringMutableProperties::Invariants::
+    writeConcernAllowedToBeZeroForSatellite(
+        ClusteringMutableProperties const& props) -> inspection::Status {
+  if (props.writeConcern.has_value() && props.writeConcern.value() == 0) {
+    // Special case: We are allowed to give writeConcern 0 for satellites
+    if (props.replicationFactor.has_value() && props.isSatellite()) {
+      return inspection::Status::Success{};
+    }
+    return {"writeConcern has to be > 0"};
+  }
+  return inspection::Status::Success{};
+}
+
 [[nodiscard]] bool ClusteringMutableProperties::isSatellite() const noexcept {
   TRI_ASSERT(replicationFactor.has_value());
   return replicationFactor.has_value() && replicationFactor.value() == 0;

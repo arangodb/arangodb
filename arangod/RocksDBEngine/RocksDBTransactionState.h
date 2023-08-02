@@ -131,6 +131,9 @@ class RocksDBTransactionState : public TransactionState {
   /// @brief whether or not a transaction only has exclusive or read accesses
   bool isOnlyExclusiveTransaction() const noexcept;
 
+  /// @brief provide debug info for transaction state
+  virtual std::string debugInfo() const;
+
   [[nodiscard]] virtual rocksdb::SequenceNumber beginSeq() const = 0;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

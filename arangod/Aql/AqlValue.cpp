@@ -23,19 +23,15 @@
 
 #include "AqlValue.h"
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/Arithmetic.h"
 #include "Aql/Range.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Endian.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
 #include "V8/v8-vpack.h"
 
 #include <velocypack/Buffer.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <type_traits>
 
@@ -725,7 +721,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
 
 /// @brief get the (object) element(s) by name
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
-                       std::vector<std::string> const& names, bool& mustDestroy,
+                       MonitoredStringVector const& names, bool& mustDestroy,
                        bool doCopy) const {
   mustDestroy = false;
   if (names.empty()) {
@@ -900,7 +896,8 @@ int64_t AqlValue::toInt64() const {
           _data.longNumberMeta.data.intLittleEndian.val);
     case VPACK_INLINE_UINT64:
       if (ADB_UNLIKELY(
-              _data.longNumberMeta.data.uintLittleEndian.val >
+              basics::littleToHost(
+                  _data.longNumberMeta.data.uintLittleEndian.val) >
               static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))) {
         throw velocypack::Exception(velocypack::Exception::NumberOutOfRange);
       }
@@ -1674,6 +1671,31 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice,
                                : AqlValueType::VPACK_INLINE_INT64);
         memcpy(_data.longNumberMeta.data.slice.slice, slice.begin(),
                static_cast<size_t>(length));
+        // If length == 9, we're done;
+        // If length == 8, there's one byte left to fill.
+
+        if (length == 8) {
+          // For correct sign extent, we need 0xff for negative, and 0x00 for
+          // all nonnegative integers.
+          auto const filler =
+              slice.isUInt() || std::int8_t(slice.begin()[length - 1]) >= 0
+                  ? 0x00
+                  : 0xff;
+
+          _data.longNumberMeta.data.slice.slice[length] = filler;
+        } else {
+          TRI_ASSERT(length == 9);
+        }
+
+        TRI_ASSERT(
+            slice.isUInt()
+                ? slice.getUInt() >
+                          static_cast<uint64_t>(
+                              std::numeric_limits<std::int64_t>().max()) ||
+                      slice.getUInt() == static_cast<uint64_t>(this->toInt64())
+                : slice.getInt() == this->toInt64())
+            << (slice.isUInt() ? "uint " : "int ") << slice.toJson()
+            << " != " << this->toInt64();
       } else {
         memcpy(_data.shortNumberMeta.data.slice.slice, slice.begin(),
                static_cast<size_t>(length));

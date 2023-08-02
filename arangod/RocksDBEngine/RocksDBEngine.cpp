@@ -172,7 +172,7 @@ DECLARE_GAUGE(arangodb_revision_tree_memory_usage, uint64_t,
 DECLARE_GAUGE(
     arangodb_revision_tree_buffered_memory_usage, uint64_t,
     "Total memory consumed by buffered updates for all revision trees");
-DECLARE_GAUGE(arangodb_internal_index_estimates_memory, uint64_t,
+DECLARE_GAUGE(arangodb_index_estimates_memory_usage, uint64_t,
               "Total memory consumed by all index selectivity estimates");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total,
                 "Number of successful revision tree rebuilds");
@@ -182,12 +182,12 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
-DECLARE_GAUGE(rocksdb_cache_edge_uncompressed_entries_size, uint64_t,
-              "Total gross memory size of all edge cache entries ever stored "
-              "in memory");
-DECLARE_GAUGE(rocksdb_cache_edge_effective_entries_size, uint64_t,
-              "Total effective memory size of all edge cache entries ever "
-              "stored in memory (after compression)");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_uncompressed_entries_size_total,
+                "Total gross memory size of all edge cache entries ever stored "
+                "in memory");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_effective_entries_size_total,
+                "Total effective memory size of all edge cache entries ever "
+                "stored in memory (after compression)");
 DECLARE_GAUGE(rocksdb_cache_edge_compression_ratio, double,
               "Overall compression ratio for all edge cache entries ever "
               "stored in memory");
@@ -195,6 +195,9 @@ DECLARE_COUNTER(rocksdb_cache_edge_inserts_total,
                 "Number of inserts into the edge cache");
 DECLARE_COUNTER(rocksdb_cache_edge_compressed_inserts_total,
                 "Number of compressed inserts into the edge cache");
+DECLARE_COUNTER(
+    rocksdb_cache_edge_empty_inserts_total,
+    "Number of inserts into the edge cache that were an empty array");
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
@@ -292,7 +295,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _autoFlushMinWalFiles(20),
       _metricsIndexEstimatorMemoryUsage(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_internal_index_estimates_memory{})),
+              arangodb_index_estimates_memory_usage{})),
       _metricsWalReleasedTickFlush(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_wal_released_tick_flush{})),
@@ -330,15 +333,18 @@ RocksDBEngine::RocksDBEngine(Server& server,
               arangodb_revision_tree_resurrections_total{})),
       _metricsEdgeCacheEntriesSizeInitial(
           server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_uncompressed_entries_size{})),
+              rocksdb_cache_edge_inserts_uncompressed_entries_size_total{})),
       _metricsEdgeCacheEntriesSizeEffective(
           server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_effective_entries_size{})),
+              rocksdb_cache_edge_inserts_effective_entries_size_total{})),
       _metricsEdgeCacheInserts(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_edge_inserts_total{})),
       _metricsEdgeCacheCompressedInserts(
           server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_compressed_inserts_total{})) {
+              rocksdb_cache_edge_compressed_inserts_total{})),
+      _metricsEdgeCacheEmptyInserts(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_cache_edge_empty_inserts_total{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -2810,24 +2816,10 @@ void RocksDBEngine::pruneWalFiles() {
   for (auto it = _prunableWalFiles.begin(); it != _prunableWalFiles.end();
        /* no hoisting */) {
     // check if WAL file is expired
-    bool deleteFile = false;
-
-    if ((*it).second <= 0.0) {
-      // file can be deleted because we outgrew the configured max archive size,
-      // but only if there are no other threads currently inside the WAL tailing
-      // section
-      deleteFile = purgeEnabler.canPurge();
-      LOG_TOPIC("817bc", TRACE, Logger::ENGINES)
-          << "pruneWalFiles checking overflowed file '" << (*it).first
-          << "', canPurge: " << deleteFile;
-    } else if ((*it).second < TRI_microtime()) {
-      // file has expired, and it is always safe to delete it
-      deleteFile = true;
-      LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
-          << "pruneWalFiles checking expired file '" << (*it).first
-          << "', canPurge: " << deleteFile;
-    }
-
+    auto deleteFile = purgeEnabler.canPurge();
+    LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
+        << "pruneWalFiles checking file '" << (*it).first
+        << "', canPurge: " << deleteFile;
     if (deleteFile) {
       LOG_TOPIC("68e4a", DEBUG, Logger::ENGINES)
           << "deleting RocksDB WAL file '" << (*it).first << "'";
@@ -4133,22 +4125,25 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
   }
 }
 
-std::tuple<uint64_t, uint64_t, uint64_t, uint64_t>
+std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>
 RocksDBEngine::getCacheMetrics() {
   return {_metricsEdgeCacheEntriesSizeInitial.load(),
           _metricsEdgeCacheEntriesSizeEffective.load(),
           _metricsEdgeCacheInserts.load(),
-          _metricsEdgeCacheCompressedInserts.load()};
+          _metricsEdgeCacheCompressedInserts.load(),
+          _metricsEdgeCacheEmptyInserts.load()};
 }
 
 void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
                                     uint64_t totalInserts,
-                                    uint64_t totalCompressedInserts) noexcept {
+                                    uint64_t totalCompressedInserts,
+                                    uint64_t totalEmptyInserts) noexcept {
   if (totalInserts > 0) {
-    _metricsEdgeCacheEntriesSizeInitial.fetch_add(initial);
-    _metricsEdgeCacheEntriesSizeEffective.fetch_add(effective);
+    _metricsEdgeCacheEntriesSizeInitial.count(initial);
+    _metricsEdgeCacheEntriesSizeEffective.count(effective);
     _metricsEdgeCacheInserts.count(totalInserts);
     _metricsEdgeCacheCompressedInserts.count(totalCompressedInserts);
+    _metricsEdgeCacheEmptyInserts.count(totalEmptyInserts);
   }
 }
 

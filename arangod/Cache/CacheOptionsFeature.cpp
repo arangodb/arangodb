@@ -150,6 +150,24 @@ speed.)")
 
   options
       ->addOption(
+          "--cache.high-water-multiplier",
+          "The multiplier to be used for calculating the in-memory cache's "
+          "effective memory usage limit.",
+          new DoubleParameter(&_options.highwaterMultiplier, 1.0, 0.1, 1.0),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setLongDescription(
+          R"(This value controls the cache's effective memory usage limit.
+The user-defined memory limit (i.e. `--cache.size`) is multipled with this
+value to create the effective memory limit, from which on the cache will 
+try to free up memory by evicting the oldest entries.)")
+      .setIntroducedIn(31200);
+
+  options
+      ->addOption(
           "--cache.max-spare-memory-usage",
           "The maximum memory usage for spare tables in the in-memory cache.",
           new UInt64Parameter(&_options.maxSpareAllocation),
