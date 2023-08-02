@@ -50,9 +50,14 @@ auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
     result = 0;
     return {};
   } else if (v.isNumber()) {
-    result = v.getNumber<MemoryType>();
-    if (result != 0) {
-      return {};
+    try {
+      result = v.getNumber<MemoryType>();
+      if (result != 0) {
+        return {};
+      }
+    } catch (...) {
+      // intentionally fall through. We got disallowed number type (e.g.
+      // negative value)
     }
   }
   return {"Only an integer number or 'satellite' is allowed"};
@@ -125,5 +130,11 @@ ClusteringMutableProperties::validateDatabaseConfiguration(
             "Collection in a 'oneShardDatabase' cannot be a "
             "'satellite'"};
   }
+#ifndef USE_ENTERPRISE
+  if (isSatellite()) {
+    return {TRI_ERROR_ONLY_ENTERPRISE,
+            "'satellite' collections only allowed in enterprise edition"};
+  }
+#endif
   return {TRI_ERROR_NO_ERROR};
 }

@@ -11,7 +11,7 @@ import json
 
 from pathlib import Path
 from termcolor import colored
-from arango import ArangoClient, DocumentGetError
+from arango import ArangoClient, DocumentGetError, AQLQueryExecuteError
 from modules import ArangoDBInstanceManager
 from modules.ArangodEnvironment.ArangodEnvironment import ArangodEnvironment
 from modules.ArangodEnvironment.Agent import Agent
@@ -63,7 +63,7 @@ def assert_after_restore(func):
         try:
             func()
             return
-        except DocumentGetError as e:
+        except (DocumentGetError, AQLQueryExecuteError) as e:
             print(f"cluster not yet ready, got {e}")
         # add more exceptions here if necessary
         time.sleep(2)

@@ -719,6 +719,11 @@ class RocksDBEngine final : public StorageEngine {
   // Lower bound for computed write bandwidth of throttle:
   uint64_t _throttleLowerBoundBps = 10 * 1024 * 1024;
 
+  double _fileDescriptorsSlowdownTrigger = 0.5;
+  double _fileDescriptorsStopTrigger = 0.9;
+  double _mappedMemorySlowdownTrigger = 0.5;
+  double _mappedMemoryStopTrigger = 0.9;
+
   // sequence number from which WAL recovery was started. used only
   // for testing
 #ifdef ARANGODB_USE_GOOGLE_TESTS

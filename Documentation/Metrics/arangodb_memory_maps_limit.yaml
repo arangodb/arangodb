@@ -1,0 +1,19 @@
+name: arangodb_file_descriptors_limit
+introducedIn: "3.11.0"
+help: |
+  System limit for the number of held memory maps for the arangod process.
+unit: number
+type: gauge
+category: Statistics
+complexity: medium
+exposedBy:
+  - agent
+  - coordinator
+  - dbserver
+  - single
+description: |
+  System limit for the number of memory maps for the arangod process.
+  It is only available on platforms that support it. The limit is imposed by
+  the operating system or system configuration.
+  The value of this metric will remain constant for the entire lifetime of
+  the process.

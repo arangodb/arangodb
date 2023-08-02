@@ -34,6 +34,7 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
@@ -70,6 +71,15 @@ void MaxMapCountFeature::collectOptions(
   options->addObsoleteOption(
       "--server.check-max-memory-mappings",
       "check the maximum number of memory mappings at startup", true);
+
+  options->addOption(
+      "--server.check-memory-maps-interval",
+      "Controls the interval (in milliseconds) in which the number of held "
+      "memory maps for the process is determined "
+      "(0 = disable counting).",
+      new UInt64Parameter(&_countInterval),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsLinux));
 }
 
 uint64_t MaxMapCountFeature::actualMaxMappings() {
@@ -112,7 +122,7 @@ void MaxMapCountFeature::countMemoryMaps() {
 #ifdef __linux__
   try {
     size_t numLines = FileUtils::countLines("/proc/self/maps");
-    _memoryMapsCurrent.store(numFiles, std::memory_order_relaxed);
+    _memoryMapsCurrent.store(numLines, std::memory_order_relaxed);
   } catch (std::exception const& ex) {
     LOG_TOPIC("bee41", DEBUG, Logger::SYSCALL)
         << "unable to count number of open files for arangod process: "
