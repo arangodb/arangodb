@@ -3489,8 +3489,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   auto nrDone = std::make_shared<std::atomic<size_t>>(0);
   auto errMsg = std::make_shared<std::string>();
-  auto cacheMutex = std::make_shared<std::mutex>();
-  auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
+  auto cacheMutex = std::make_shared<std::recursive_mutex>();
   auto isCleaned = std::make_shared<bool>(false);
 
   AgencyComm ac(_server);
@@ -3508,7 +3507,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // owned by the callback d) info might be deleted, so we cannot use it. e)
       // If the callback is ongoing during cleanup, the callback will
       //    hold the Mutex and delay the cleanup.
-      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+      std::lock_guard lock{*cacheMutex};
       *isCleaned = true;
       for (auto& cb : agencyCallbacks) {
         _agencyCallbackRegistry->unregisterCallback(cb);
@@ -3562,14 +3561,14 @@ Result ClusterInfo::createCollectionsCoordinator(
     // this here is ok as ClusterInfo is not destroyed
     // for &info it should have ensured lifetime somehow. OR ensured that
     // callback is noop in case it is triggered too late.
-    auto closure = [cacheMutex, cacheMutexOwner, &info, dbServerResult, errMsg,
-                    nrDone, isCleaned, shardServers, this](VPackSlice result) {
+    auto closure = [cacheMutex, &info, dbServerResult, errMsg, nrDone,
+                    isCleaned, shardServers, this](VPackSlice result) {
       // NOTE: This ordering here is important to cover against a race in
       // cleanup. a) The Guard get's the Mutex, sets isCleaned == true, then
       // removes the callback b) If the callback is acquired it is saved in a
       // shared_ptr, the Mutex will be acquired first, then it will check if it
       // isCleaned
-      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+      std::lock_guard lock{*cacheMutex};
       if (*isCleaned) {
         return true;
       }
@@ -3915,11 +3914,12 @@ Result ClusterInfo::createCollectionsCoordinator(
 
     AgencyWriteTransaction transaction(opers, precs);
 
-    {  // we hold this mutex from now on until we have updated our cache
+    {
+      std::lock_guard lock{*cacheMutex};
+      // we hold this mutex from now on until we have updated our cache
       // using loadPlan, this is necessary for the callback closure to
       // see the new planned state for this collection. Otherwise it cannot
       // recognize completion of the create collection operation properly:
-      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
       auto res = ac.sendTransactionWithFailover(transaction);
       // Only if not precondition failed
       if (!res.successful()) {

@@ -184,6 +184,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   RocksDBBlockerGuard blocker(&_logicalCollection);
 
   uint64_t snapNumberOfDocuments = 0;
+  uint64_t ticket = 0;
   {
     // fetch number docs and snapshot under exclusive lock
     // this should enable us to correct the count later
@@ -198,8 +199,9 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     blocker.placeBlocker();
 
     snapshot = _engine.db()->GetSnapshot();
+    TRI_ASSERT(snapshot != nullptr);
     snapNumberOfDocuments = _meta.numberDocuments();
-    TRI_ASSERT(snapshot);
+    ticket = _meta.documentCountAdjustmentTicket();
   }
 
   auto snapSeq = snapshot->GetSequenceNumber();
@@ -208,7 +210,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   bool set = false;
   {
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    for (auto it : _indexes) {
+    for (auto const& it : _indexes) {
       if (it->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         bounds = RocksDBKeyBounds::PrimaryIndex(rix->objectId());
@@ -272,7 +274,8 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
       adjustSeq = ::forceWrite(_engine);
       TRI_ASSERT(adjustSeq > snapSeq);
     }
-    _meta.adjustNumberDocuments(adjustSeq, RevisionId::none(), adjustment);
+    _meta.adjustNumberDocumentsWithTicket(ticket, adjustSeq, RevisionId::none(),
+                                          adjustment);
   } else {
     LOG_TOPIC("55df5", INFO, Logger::REPLICATION)
         << "no collection count adjustment needs to be applied for "

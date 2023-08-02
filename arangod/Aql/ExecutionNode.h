@@ -68,6 +68,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/TypeTraits.h"
 #include "Basics/Identifier.h"
 #include "Containers/HashSet.h"
@@ -105,12 +106,12 @@ size_t estimateListLength(ExecutionPlan const* plan, Variable const* var);
 struct SortElement {
   Variable const* var;
   bool ascending;
-  std::vector<std::string> attributePath;
+  MonitoredStringVector attributePath;
 
-  SortElement(Variable const* v, bool asc);
+  SortElement(Variable const* v, bool asc, arangodb::ResourceMonitor& monitor);
 
-  SortElement(Variable const* v, bool asc,
-              std::vector<std::string> const& path);
+  SortElement(Variable const* v, bool asc, MonitoredStringVector const& path,
+              arangodb::ResourceMonitor& monitor);
 
   /// @brief stringify a sort element. note: the output of this should match the
   /// stringification output of an AstNode for an attribute access

@@ -1,4 +1,4 @@
-name: arangodb_scheduler_stack_memory
+name: arangodb_scheduler_stack_memory_usage
 introducedIn: "3.12.0"
 help: |
   Approximate stack memory usage of worker threads.

@@ -143,13 +143,15 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     }
   }
 
-  [[nodiscard]] bool waitForSync() const { return _options.waitForSync; }
-  void waitForSync(bool value) { _options.waitForSync = value; }
+  [[nodiscard]] bool waitForSync() const noexcept {
+    return _options.waitForSync;
+  }
+  void waitForSync(bool value) noexcept { _options.waitForSync = value; }
 
-  [[nodiscard]] bool allowImplicitCollectionsForRead() const {
+  [[nodiscard]] bool allowImplicitCollectionsForRead() const noexcept {
     return _options.allowImplicitCollectionsForRead;
   }
-  void allowImplicitCollectionsForRead(bool value) {
+  void allowImplicitCollectionsForRead(bool value) noexcept {
     _options.allowImplicitCollectionsForRead = value;
   }
 
@@ -223,14 +225,14 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] virtual bool ensureSnapshot() = 0;
 
   /// @brief begin a transaction
-  virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
+  virtual Result beginTransaction(transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
-  virtual futures::Future<arangodb::Result> commitTransaction(
+  virtual futures::Future<Result> commitTransaction(
       transaction::Methods* trx) = 0;
 
   /// @brief abort a transaction
-  virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
+  virtual Result abortTransaction(transaction::Methods* trx) = 0;
 
   virtual Result triggerIntermediateCommit() = 0;
 
