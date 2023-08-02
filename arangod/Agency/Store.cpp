@@ -33,8 +33,6 @@
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/arangod.h"
-#include "Network/Methods.h"
-#include "Network/NetworkFeature.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Compare.h>

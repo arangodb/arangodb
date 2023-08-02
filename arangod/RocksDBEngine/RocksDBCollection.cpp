@@ -351,6 +351,22 @@ void RocksDBCollection::deferDropCollection(
     } catch (...) {
     }
   }
+
+  // remove all indexes from the collection object.
+  // we do this because the objects of deleted collections will be
+  // retained in memory until the server is shut down.
+  // deleting the collection's attached index objects saves
+  // memory for caches etc.
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  auto it = _indexes.begin();
+  while (it != _indexes.end()) {
+    auto const& idx = (*it);
+    if (idx->type() != Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      it = _indexes.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
