@@ -188,6 +188,11 @@ class AsyncAgencyCommManager final {
   std::atomic<uint64_t> _nextRequestId = 0;
 };
 
+struct SetTransientOptions {
+  bool skipScheduler = false;
+  network::Timeout timeout = std::chrono::seconds{20};
+};
+
 class AsyncAgencyComm final {
  public:
   using FutureResult = arangodb::futures::Future<AsyncAgencyCommResult>;
@@ -260,7 +265,7 @@ class AsyncAgencyComm final {
 
   [[nodiscard]] FutureResult setTransientValue(
       std::string const& key, arangodb::velocypack::Slice const& slice,
-      network::Timeout timeout);
+      SetTransientOptions const& opts = {});
 
   enum class RequestType {
     READ,    // send the transaction again in the case of no response

@@ -679,7 +679,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::setTransientValue(
     std::string const& key, velocypack::Slice const& slice,
-    network::Timeout timeout) {
+    SetTransientOptions const& opts) {
   VPackBuffer<uint8_t> transaction;
   {
     VPackBuilder trxBuilder(transaction);
@@ -702,8 +702,8 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::setTransientValue(
   meta.method = RestVerb::Post;
   meta.type = RequestType::CUSTOM;
   meta.url = AGENCY_URL_TRANSIENT;
-  meta.timeout = timeout;
-  meta.skipScheduler = false;
+  meta.timeout = opts.timeout;
+  meta.skipScheduler = opts.skipScheduler;
   meta.startTime = clock::now();
   meta.tries = 0;
   return agencyAsyncSend(_manager, std::move(meta), std::move(transaction));

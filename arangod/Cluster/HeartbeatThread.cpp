@@ -1555,6 +1555,7 @@ void HeartbeatThread::sendServerStateAsync() {
   } catch (std::exception const& e) {
     LOG_TOPIC("b109f", WARN, Logger::HEARTBEAT)
         << "failed to construct heartbeat agency transaction: " << e.what();
+    return;
   } catch (...) {
     LOG_TOPIC("06781", WARN, Logger::HEARTBEAT)
         << "failed to construct heartbeat agency transaction";
@@ -1568,8 +1569,8 @@ void HeartbeatThread::sendServerStateAsync() {
 
   AsyncAgencyComm ac;
   auto f = ac.setTransientValue(
-      "Sync/ServerStates/" + ServerState::instance()->getId(), builder.slice(),
-      timeout);
+      "arango/Sync/ServerStates/" + ServerState::instance()->getId(),
+      builder.slice(), {.skipScheduler = true, .timeout = timeout});
 
   std::move(f).thenFinal(
       [self = shared_from_this(),
