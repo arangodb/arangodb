@@ -55,7 +55,7 @@ arangodb::Result HotBackup::execute(std::string const& command,
                                     VPackBuilder& report) {
   switch (_engine) {
     case BACKUP_ENGINE::ROCKSDB:
-      return executeRocksDB(command, payload, report);
+      return executeDBServer(command, payload, report);
     case BACKUP_ENGINE::CLUSTER:
       return executeCoordinator(command, payload, report);
   }
