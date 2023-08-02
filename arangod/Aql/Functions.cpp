@@ -6007,6 +6007,30 @@ AqlValue functions::Distance(ExpressionContext* expressionContext,
   return ::numberValue(EARTHRADIAN * c, true);
 }
 
+namespace {
+geo::Ellipsoid const* detEllipsoid(ExpressionContext* expressionContext,
+                                   AqlValue const& p,
+                                   std::string_view functionName) {
+  if (auto slice = p.slice(); slice.isString()) {
+    if (auto ell = geo::utils::ellipsoidFromString(slice.stringView()); ell) {
+      return ell;
+    }
+    registerWarning(
+        expressionContext, functionName,
+        Result(TRI_ERROR_BAD_PARAMETER,
+               fmt::format(
+                   "invalid ellipsoid {} specified, falling back to \"sphere\"",
+                   slice.stringView())));
+  } else {
+    registerWarning(expressionContext, functionName,
+                    Result(TRI_ERROR_BAD_PARAMETER,
+                           "invalid value for ellipsoid specified, falling "
+                           "back to \"sphere\""));
+  }
+  return &geo::SPHERE;
+}
+}  // namespace
+
 /// @brief function GEO_DISTANCE
 AqlValue functions::GeoDistance(ExpressionContext* exprCtx, AstNode const&,
                                 VPackFunctionParametersView parameters) {
@@ -6030,11 +6054,9 @@ AqlValue functions::GeoDistance(ExpressionContext* exprCtx, AstNode const&,
   }
 
   if (parameters.size() > 2) {
-    if (auto slice = parameters[2].slice(); slice.isString()) {
-      auto const& e = geo::utils::ellipsoidFromString(slice.stringView());
-      return ::numberValue(shape1.distanceFromCentroid(shape2.centroid(), e),
-                           true);
-    }
+    auto e = detEllipsoid(exprCtx, parameters[2], AFN);
+    return ::numberValue(shape1.distanceFromCentroid(shape2.centroid(), *e),
+                         true);
   }
   return ::numberValue(shape1.distanceFromCentroid(shape2.centroid()), true);
 }
@@ -6120,9 +6142,7 @@ AqlValue functions::GeoInRange(ExpressionContext* ctx, AstNode const& node,
 
     if (argc > 6) {
       auto const& value = extractFunctionParameterValue(args, 6);
-      if (auto slice = value.slice(); slice.isString()) {
-        ellipsoid = &geo::utils::ellipsoidFromString(slice.stringView());
-      }
+      ellipsoid = detEllipsoid(ctx, value, impl->name);
     }
   }
 
@@ -6196,6 +6216,7 @@ AqlValue functions::GeoEquals(ExpressionContext* expressionContext,
 AqlValue functions::GeoArea(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
+  std::string_view const functionName = "GEO_AREA";
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue p1 = extractFunctionParameterValue(parameters, 0);
@@ -6208,17 +6229,12 @@ AqlValue functions::GeoArea(ExpressionContext* expressionContext,
                                     /*legacy=*/false);
 
   if (res.fail()) {
-    registerWarning(expressionContext, "GEO_AREA", res);
+    registerWarning(expressionContext, functionName, res);
     return AqlValue(AqlValueHintNull());
   }
 
-  auto detEllipsoid = [](AqlValue const& p) {
-    if (auto slice = p.slice(); slice.isString()) {
-      return geo::utils::ellipsoidFromString(slice.stringView());
-    }
-    return geo::SPHERE;
-  };
-  return AqlValue(AqlValueHintDouble(shape.area(detEllipsoid(p2))));
+  return AqlValue(AqlValueHintDouble(
+      shape.area(*detEllipsoid(expressionContext, p2, functionName))));
 }
 
 /// @brief function IS_IN_POLYGON

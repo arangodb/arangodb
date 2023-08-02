@@ -203,13 +203,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestStatistics::Item _statistics;
 
  private:
-  mutable std::mutex _executionMutex;
+  mutable std::recursive_mutex _executionMutex;
+  mutable std::atomic_uint8_t _executionCounter{0};
 
   std::function<void(rest::RestHandler*)> _callback;
 
   uint64_t _handlerId;
-
-  std::atomic<std::thread::id> _executionMutexOwner;
 
   HandlerState _state;
   // whether or not we have tracked this task as ongoing.

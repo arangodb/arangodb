@@ -1,6 +1,26 @@
 devel
 -----
 
+* Expose the "high water multiplier" for the in-memory cache subsystem via a
+  new startup option `--cache.high-water-multiplier`.
+  The high water multiplier is used to calculate the effective memory usage 
+  limit for the in-memory cache subsystem. The cache's configured memory usage 
+  limit (`--cache.size`) is multiplied by the high water multiplier, and the 
+  resulting value is used as the effective memory limit. It defaults to 95%
+  of the configured cache size.
+
+  Note that this is a behavior change. Previous versions of ArangoDB set the
+  high water multiplier to effectively 56% of the configured memory. The value
+  was hard-coded in versions before 3.11.3, and is exposed since then with a
+  default value of 56%. 
+  3.12 now sets the default value for the high water multiplier to 95%, so that
+  the configured memory limit for the cache subsystem is actually better
+  honored than before.
+
+* Wrap imports into SmartGraph edge collections via the REST import API
+  (POST `/_api/import`) into a managed transaction, so that edge data is
+  either completely inserted or not at all.
+
 * Changed default values for the following options related to the in-memory
   cache subsystem:
 

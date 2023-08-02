@@ -68,12 +68,14 @@ using namespace arangodb::traverser;
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn)
     : EdgeConditionBuilder(tn->_plan->getAst()->createNodeNaryOperator(
-          NODE_TYPE_OPERATOR_NARY_AND)),
+                               NODE_TYPE_OPERATOR_NARY_AND),
+                           tn->_plan->getAst()->query().resourceMonitor()),
       _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, arangodb::velocypack::Slice const& condition)
-    : EdgeConditionBuilder(tn->_plan->getAst()->createNode(condition)),
+    : EdgeConditionBuilder(tn->_plan->getAst()->createNode(condition),
+                           tn->_plan->getAst()->query().resourceMonitor()),
       _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
