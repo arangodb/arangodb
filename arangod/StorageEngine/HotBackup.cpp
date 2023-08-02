@@ -64,9 +64,11 @@ arangodb::Result HotBackup::execute(std::string const& command,
                           "hot backup not implemented for this storage engine");
 }
 
-arangodb::Result HotBackup::executeRocksDB(std::string const& command,
-                                           VPackSlice const payload,
-                                           VPackBuilder& report) {
+arangodb::Result HotBackup::executeDBServer(std::string const& command,
+                                            VPackSlice const payload,
+                                            VPackBuilder& report) {
+  TRI_ASSERT(_engine != BACKUP_ENGINE::CLUSTER || command == "lock" ||
+             command == "unlock");
 #ifdef USE_ENTERPRISE
   auto& feature = _server.getFeature<HotBackupFeature>();
   auto operation =
@@ -94,9 +96,8 @@ arangodb::Result HotBackup::executeCoordinator(std::string const& command,
   auto& feature = _server.getFeature<ClusterFeature>();
   if (command == "create") {
     return hotBackupCoordinator(feature, payload, report);
-  } else if (command == "lock") {
-    return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED,
-                            "backup locks not implemented on coordinators");
+  } else if (command == "lock" || command == "unlock") {
+    return executeDBServer(command, payload, report);
   } else if (command == "restore") {
     return hotRestoreCoordinator(feature, payload, report);
   } else if (command == "delete") {
