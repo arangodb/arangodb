@@ -43,6 +43,7 @@
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "CrashHandler/CrashHandler.h"
 #endif
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Random/RandomGenerator.h"
@@ -1298,6 +1299,12 @@ void RocksDBCollection::figuresSpecific(
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         size_t count = 0;
         switch (type) {
+          case Index::TRI_IDX_TYPE_INVERTED_INDEX: {
+            auto snapshot =
+                basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*rix)
+                    .snapshot();
+            count = snapshot.getDirectoryReader().live_docs_count();
+          } break;
           case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::PrimaryIndex(rix->objectId()), snapshot,
