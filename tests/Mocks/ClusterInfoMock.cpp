@@ -51,13 +51,14 @@ arangodb::AgencyOperation IncreaseVersion() {
 }
 
 std::string collectionPath(std::string_view dbName,
-                                  std::string_view collection) {
+                           std::string_view collection) {
   return "Plan/Collections/" + std::string{dbName} + "/" +
          std::string{collection};
 }
 
-arangodb::AgencyOperation CreateCollectionOrder(
-    std::string_view dbName, std::string_view collection, VPackSlice info) {
+arangodb::AgencyOperation CreateCollectionOrder(std::string_view dbName,
+                                                std::string_view collection,
+                                                VPackSlice info) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (!info.get("shards").isEmptyObject() &&
       !arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -69,18 +70,20 @@ arangodb::AgencyOperation CreateCollectionOrder(
   }
 #endif
   return arangodb::AgencyOperation{collectionPath(dbName, collection),
-                               arangodb::AgencyValueOperationType::SET, info};
+                                   arangodb::AgencyValueOperationType::SET,
+                                   info};
 }
 
 arangodb::AgencyPrecondition CreateCollectionOrderPrecondition(
     std::string_view dbName, std::string_view collection, VPackSlice info) {
   return arangodb::AgencyPrecondition{collectionPath(dbName, collection),
-                                    arangodb::AgencyPrecondition::Type::VALUE,
-                                    info};
+                                      arangodb::AgencyPrecondition::Type::VALUE,
+                                      info};
 }
 
-arangodb::AgencyOperation CreateCollectionSuccess(
-    std::string_view dbName, std::string_view collection, VPackSlice info) {
+arangodb::AgencyOperation CreateCollectionSuccess(std::string_view dbName,
+                                                  std::string_view collection,
+                                                  VPackSlice info) {
   TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::AttrIsBuilding));
   return arangodb::AgencyOperation{collectionPath(dbName, collection),
                                    arangodb::AgencyValueOperationType::SET,
@@ -398,8 +401,8 @@ Result ClusterInfo::createCollectionsCoordinator(
     // this here is ok as ClusterInfo is not destroyed
     // for &info it should have ensured lifetime somehow. OR ensured that
     // callback is noop in case it is triggered too late.
-    auto closure = [cacheMutex, &info, dbServerResult, errMsg,
-                    nrDone, isCleaned, shardServers, this](VPackSlice result) {
+    auto closure = [cacheMutex, &info, dbServerResult, errMsg, nrDone,
+                    isCleaned, shardServers, this](VPackSlice result) {
       // NOTE: This ordering here is important to cover against a race in
       // cleanup. a) The Guard get's the Mutex, sets isCleaned == true, then
       // removes the callback b) If the callback is acquired it is saved in a
