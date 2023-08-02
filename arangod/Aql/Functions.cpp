@@ -2605,7 +2605,7 @@ AqlValue functions::Substring(ExpressionContext* ctx, AstNode const&,
 
 AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
                                    VPackFunctionParametersView parameters) {
-  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  auto const& value = extractFunctionParameterValue(parameters, 0);
 
   if (!value.isString()) {
     registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
@@ -2613,55 +2613,76 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
   }
 
   auto const str = value.slice().stringView();
-
-  uint32_t const offset = [&]() {
-    auto offset = static_cast<int32_t>(
-        extractFunctionParameterValue(parameters, 1).toInt64());
-
-    if (offset < 0) {
-      offset = std::max(0, static_cast<int32_t>(str.size() + offset));
-    }
-
-    return offset;
-  }();
-
-  int32_t const length = [&]() {
-    if (parameters.size() >= 3) {
-      return static_cast<int32_t>(
-          extractFunctionParameterValue(parameters, 2).toInt64());
-    } else {
-      return static_cast<int32_t>(str.size());
-    }
-  }();
-
-  if (length <= 0 || offset >= str.size()) {
+  if (str.empty()) {
     return AqlValue{velocypack::Slice::emptyStringSlice()};
   }
 
-  auto validate = [](std::string_view str) noexcept {
-    auto* begin = reinterpret_cast<irs::byte_type const*>(str.data());
-    auto* end = begin + str.size();
-
-    while (begin != end) {
-      const auto c = irs::utf8_utils::next_checked(begin, end);
-
-      if (irs::utf8_utils::INVALID_CODE_POINT == c) {
-        return false;
+  auto const strLen = static_cast<int64_t>(str.size());
+  int64_t offset = 0;
+  int64_t length = strLen;
+  int64_t left = 0;
+  int64_t right = 0;
+  switch (parameters.size()) {
+    case 5:
+      right = extractFunctionParameterValue(parameters, 4).toInt64();
+      [[fallthrough]];
+    case 4:
+      left = extractFunctionParameterValue(parameters, 3).toInt64();
+      if (parameters.size() == 4) {
+        right = left;
       }
-    }
-    return true;
-  };
+      [[fallthrough]];
+    case 3:
+      length = extractFunctionParameterValue(parameters, 2).toInt64();
+      if (length < 0) {
+        length = 0;
+      }
+      [[fallthrough]];
+    case 2:
+      offset = extractFunctionParameterValue(parameters, 1).toInt64();
+      if (offset < 0) {
+        offset = std::max(int64_t{0}, strLen + offset);
+      } else {
+        offset = std::min(offset, strLen);
+      }
+      break;
+    default:
+      ADB_UNREACHABLE;
+  }
 
-  auto const subStr =
-      str.substr(offset, std::min(static_cast<uint32_t>(length),
-                                  static_cast<uint32_t>(str.size()) - offset));
+  auto* const begin = reinterpret_cast<irs::byte_type const*>(str.data());
+  auto* const end = begin + str.size();
 
-  if (!validate(subStr)) {
+  auto* lhsIt = begin + offset;
+  auto* rhsIt = lhsIt + std::min(length, strLen - offset);
+
+  static constexpr auto kMaskBits = 0xC0U;
+  static constexpr auto kHelpByte = 0x80U;
+
+  if ((lhsIt != end && (*lhsIt & kMaskBits) == kHelpByte) ||
+      (rhsIt != end && (*rhsIt & kMaskBits) == kHelpByte)) {
     registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
     return AqlValue{AqlValueHintNull{}};
   }
 
-  return AqlValue{subStr};
+  auto shift = [&](auto limit, auto& it, auto to, auto update) {
+    while (limit > 0 && it != to) {
+      limit -= static_cast<int64_t>((*it & kMaskBits) != kHelpByte);
+      it += update;
+    }
+    if (it == end) {
+      return;
+    }
+    for (; it != to && (*it & kMaskBits) == kHelpByte;) {
+      it += update;
+    }
+  };
+
+  shift(left, lhsIt, begin, -1);
+  shift(right, rhsIt, end, 1);
+
+  return AqlValue{std::string_view{reinterpret_cast<char const*>(lhsIt),
+                                   reinterpret_cast<char const*>(rhsIt)}};
 }
 
 AqlValue functions::Substitute(ExpressionContext* expressionContext,
