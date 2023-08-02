@@ -4600,7 +4600,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
     // In the case we left the above loop with a negative result,
     // and we are in the case of a force backup we want to continue here
     if (!gotLocks && !allowInconsistent) {
-      unlockDBServerTransactions(pool, backupId, dbServers);
+      unlockServersTrxCommit(pool, backupId, serversToBeLocked);
       // release the lock
       releaseAgencyLock.fire();
       result.reset(
