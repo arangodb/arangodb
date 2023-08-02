@@ -118,10 +118,6 @@ class IResearchDataStore {
       return _reader;
     }
 
-    [[nodiscard]] TRI_voc_tick_t tick() const noexcept {
-      return 0;
-    }
-
    private:
     // lock preventing data store deallocation
     LinkLock _lock;
