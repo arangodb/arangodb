@@ -32,6 +32,7 @@
 #include "Metrics/Fwd.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 
 #include "store/directory_attributes.hpp"
@@ -115,6 +116,11 @@ class IResearchDataStore {
 
     [[nodiscard]] auto const& getDirectoryReader() const noexcept {
       return _reader;
+    }
+
+    [[nodiscard]] TRI_voc_tick_t tick() const noexcept {
+      TRI_ASSERT(false);
+      return 0;
     }
 
    private:
