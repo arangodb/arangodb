@@ -308,8 +308,12 @@ void RestVocbaseBaseHandler::generate20x(
   }
 
   VPackSlice slice = result.slice();
-  if (slice.isNone()) {
-    // slice::none case will happen if silent == true on single server
+  if (slice.isNone() || (!isMultiple && silent && result.ok())) {
+    // slice::none case will happen if silent == true on single server.
+    // in the cluster (coordinator case), we may get the actual operation
+    // result here for _single_ operations even if silent === true.
+    // thus we fake the result here to be empty again, so that no data
+    // is returned if silent === true.
     slice = velocypack::Slice::emptyObjectSlice();
   } else {
     TRI_ASSERT(slice.isObject() || slice.isArray());

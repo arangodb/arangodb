@@ -305,7 +305,7 @@ const char* notFoundSlice =
 void mergeResultsAllShards(
     std::vector<VPackSlice> const& results, VPackBuilder& resultBody,
     std::unordered_map<::ErrorCode, size_t>& errorCounter,
-    VPackValueLength const expectedResults) {
+    VPackValueLength expectedResults, bool silent) {
   // errorCounter is not allowed to contain any NOT_FOUND entry.
   TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
              errorCounter.end());
@@ -321,16 +321,19 @@ void mergeResultsAllShards(
       oneRes = oneRes.at(currentIndex);
 
       auto errorNum = TRI_ERROR_NO_ERROR;
-      VPackSlice errorNumSlice = oneRes.get(StaticStrings::ErrorNum);
-      if (errorNumSlice.isNumber()) {
+      if (auto errorNumSlice = oneRes.get(StaticStrings::ErrorNum);
+          errorNumSlice.isNumber()) {
         errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
       }
       if ((errorNum != TRI_ERROR_NO_ERROR &&
            errorNum != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ||
           oneRes.hasKey(StaticStrings::KeyString)) {
         // This is the correct result: Use it
-        resultBody.add(oneRes);
         foundRes = true;
+        if (!silent || (errorNum != TRI_ERROR_NO_ERROR &&
+                        errorNum != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+          resultBody.add(oneRes);
+        }
         break;
       }
     }
@@ -511,7 +514,8 @@ OperationResult handleCRUDShardResponsesSlow(
   VPackBuilder resultBody;
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == responses.size());
-  mergeResultsAllShards(allResults, resultBody, errorCounter, expectedLen);
+  mergeResultsAllShards(allResults, resultBody, errorCounter, expectedLen,
+                        options.silent);
   return OperationResult(Result(), resultBody.steal(), std::move(options),
                          std::move(errorCounter));
 }
@@ -664,7 +668,8 @@ struct InsertOperationCtx {
     if (userSpecifiedKey &&
         (!usesDefaultShardingAttributes || !collinfo.allowUserKeys()) &&
         !isRestore) {
-      return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
+      addLocalError(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+      return TRI_ERROR_NO_ERROR;
     }
   }
 
@@ -2593,9 +2598,6 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
     for (VPackSlice value : VPackArrayIterator(slice)) {
       auto res = distributeBabyOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
-        if (!isPatch) {  // shard keys cannot be changed, error out early
-          return makeFuture(OperationResult(res, options));
-        }
         canUseFastPath = false;
         break;
       }
@@ -2603,9 +2605,6 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   } else {
     auto res = distributeBabyOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
-      if (!isPatch) {  // shard keys cannot be changed, error out early
-        return makeFuture(OperationResult(res, options));
-      }
       canUseFastPath = false;
     }
   }
