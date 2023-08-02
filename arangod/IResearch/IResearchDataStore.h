@@ -119,7 +119,6 @@ class IResearchDataStore {
     }
 
     [[nodiscard]] TRI_voc_tick_t tick() const noexcept {
-      TRI_ASSERT(false);
       return 0;
     }
 
