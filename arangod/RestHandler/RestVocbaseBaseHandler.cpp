@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
@@ -344,16 +343,19 @@ void RestVocbaseBaseHandler::generate20x(
 void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
                                                    bool precFailed) {
   TRI_ASSERT(opres.errorNumber() == TRI_ERROR_ARANGO_CONFLICT);
-  const auto code =
+  auto code =
       precFailed ? ResponseCode::PRECONDITION_FAILED : ResponseCode::CONFLICT;
   resetResponse(code);
 
   VPackSlice slice = opres.slice();
   if (slice.isObject()) {  // single document case
-    _response->setHeaderNC(
-        StaticStrings::Etag,
-        absl::StrCat("\"", slice.get(StaticStrings::RevString).stringView(),
-                     "\""));
+    if (auto rev = slice.get(StaticStrings::RevString); rev.isString()) {
+      // we need to check whether we actually have a revision id here.
+      // this method is called not only for returned documents, but also
+      // from code locations that do not return documents!
+      _response->setHeaderNC(StaticStrings::Etag,
+                             absl::StrCat("\"", rev.stringView(), "\""));
+    }
   }
   VPackBuilder builder;
   {
@@ -402,10 +404,13 @@ void RestVocbaseBaseHandler::generateDocument(
   VPackSlice document = input.resolveExternal();
   // set ETAG header
   if (document.isObject()) {
-    _response->setHeaderNC(
-        StaticStrings::Etag,
-        absl::StrCat("\"", document.get(StaticStrings::RevString).stringView(),
-                     "\""));
+    // we need to check whether we actually have a revision id here.
+    // this method is called not only for returned documents, but also
+    // from code locations that do not return documents!
+    if (auto rev = document.get(StaticStrings::RevString); rev.isString()) {
+      _response->setHeaderNC(StaticStrings::Etag,
+                             absl::StrCat("\"", rev.stringView(), "\""));
+    }
   }
   if (_potentialDirtyReads) {
     _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
