@@ -1875,6 +1875,11 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
     testSubstringBytes: function () {
+      assertEqual([ '🤡a'  ], getQueryResults(`RETURN SUBSTRING_BYTES('aa🤡aa', 6, 1, 1, 0)`));
+      assertEqual([ 'a🤡'  ], getQueryResults(`RETURN SUBSTRING_BYTES('aa🤡aa', 1, 1, 0, 1)`));
+      assertEqual([ '💩🤡ユ'  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡💩🤡ユ🤡', 8, 4, 1, 1)`));
+      assertEqual([ 'bcx🤡ユf'  ], getQueryResults(`RETURN SUBSTRING_BYTES('abcx🤡ユf🤡', 4, 4, 3, 2)`));
+      assertEqual([ 'abcde'  ], getQueryResults(`RETURN SUBSTRING_BYTES('abcde', 2, 1, 10)`));
       assertEqual([ '🤡'  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 0, 4)`));
       assertEqual([ '🤡'  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 0)`));
       assertEqual([ '🤡f' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 0, 5)`));
@@ -1911,7 +1916,7 @@ function ahuacatlStringFunctionsTestSuite () {
       // invalid number of arguments
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUBSTRING_BYTES()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN SUBSTRING_BYTES("yes")`);
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN SUBSTRING_BYTES("yes", 0, 2, "yes")`);
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN SUBSTRING_BYTES("yes", 0, 2, "yes", 9, 3)`);
     },
 
 // //////////////////////////////////////////////////////////////////////////////

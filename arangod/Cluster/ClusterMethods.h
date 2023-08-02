@@ -339,25 +339,6 @@ class ClusterMethods {
   ClusterMethods() = delete;
   ~ClusterMethods() = delete;
 
-  /// @brief Create many new collections on coordinator from a Array of VPack
-  /// parameter Note that this returns a vector of newly allocated objects
-  /// @param vocbase the actual database
-  /// @param parametersOfCollections array of parameters of collections to be
-  /// created
-  /// @param ignoreDistributeShardsLikeErrors
-  /// @param waitForSyncReplication
-  /// @param enforceReplicationFactor
-  /// @param isNewDatabase
-  /// @param colToDistributeShardsLike
-
-  static std::vector<std::shared_ptr<LogicalCollection>>
-  createCollectionsOnCoordinator(
-      TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice parametersOfCollections,
-      bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor, bool isNewDatabase,
-      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Enterprise Relevant code to filter out hidden collections
   ///        that should not be triggered directly by operations.
@@ -375,18 +356,6 @@ class ClusterMethods {
   /// @param possiblySmartName  collection name with possible smart suffixes.
   /// Will be modified inplace
   static void realNameFromSmartName(std::string& possiblySmartName);
-
- private:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Persist collection in Agency and trigger shard creation process
-  ////////////////////////////////////////////////////////////////////////////////
-
-  static std::vector<std::shared_ptr<LogicalCollection>>
-  persistCollectionsInAgency(
-      ClusterFeature&, std::vector<std::shared_ptr<LogicalCollection>>& col,
-      bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor, bool isNewDatabase,
-      std::shared_ptr<LogicalCollection> const& colPtr);
 };
 
 }  // namespace arangodb
