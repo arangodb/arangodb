@@ -589,7 +589,7 @@ function SilentTestCustomShardingSuite () {
       assertEqual(99, db[cn].count());
 
       docs.forEach((doc, i) => { doc.value = "foo"; doc._key = keys[i]; });
-      docs.push({ _key: "doesnotexist" });
+      docs.push({ _key: "doesnotexist", sk: "test0" });
 
       let result = arango.PUT_RAW("/_api/document/" + cn + "?silent=true", docs);
       assertEqual(202, result.code);
