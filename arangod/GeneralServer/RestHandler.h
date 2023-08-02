@@ -30,6 +30,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 #include "Futures/Unit.h"
+#include "Metrics/GaugeCounterGuard.h"
 
 #include <atomic>
 #include <memory>
@@ -97,6 +98,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
   RequestStatistics::Item&& stealStatistics();
   void setStatistics(RequestStatistics::Item&& stat);
+
+  void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
 
   /// Execute the rest handler state machine
   void runHandler(std::function<void(rest::RestHandler*)> cb) {
@@ -200,13 +203,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestStatistics::Item _statistics;
 
  private:
-  mutable std::mutex _executionMutex;
+  mutable std::recursive_mutex _executionMutex;
+  mutable std::atomic_uint8_t _executionCounter{0};
 
   std::function<void(rest::RestHandler*)> _callback;
 
   uint64_t _handlerId;
-
-  std::atomic<std::thread::id> _executionMutexOwner;
 
   HandlerState _state;
   // whether or not we have tracked this task as ongoing.
@@ -214,12 +216,18 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // low priority tasks
   bool _trackedAsOngoingLowPrio;
 
+  // whether or not the handler handles a request for the async
+  // job api (/_api/job) or the batch API (/_api/batch)
+  bool _isAsyncRequest = false;
+
   RequestLane _lane;
 
   std::shared_ptr<LogContext::Values> _logContextScopeValues;
   LogContext::EntryPtr _logContextEntry;
 
  protected:
+  metrics::GaugeCounterGuard<std::uint64_t> _requestBodySizeTracker;
+
   std::atomic<bool> _canceled;
 };
 

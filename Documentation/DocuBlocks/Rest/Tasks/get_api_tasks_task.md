@@ -1,14 +1,13 @@
 
 @startDocuBlock get_api_tasks_task
-@brief Retrieves one currently active server task
 
-@RESTHEADER{GET /_api/tasks/{id}, Fetch one task with id, getTask}
+@RESTHEADER{GET /_api/tasks/{id}, Get a task, getTask}
 
 @RESTURLPARAM{id,string,required}
 The id of the task to fetch.
 
 @RESTDESCRIPTION
-fetches one existing task on the server specified by *id*
+fetches one existing task on the server specified by `id`
 
 @RESTRETURNCODE{200}
 The requested task

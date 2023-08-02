@@ -14,7 +14,6 @@
     foxxApiEnabled: undefined,
     statisticsInAllDatabases: undefined,
     lastRoute: undefined,
-    maxNumberOfMoveShards: undefined,
 
     routes: {
       '': 'cluster',
@@ -23,6 +22,7 @@
       'replication/applier/:endpoint/:database': 'applier',
       'collections': 'collections',
       'analyzers': 'analyzers',
+      'analyzers/:name': 'analyzers',
       'new': 'newCollection',
       'login': 'login',
       'collection/:colid/documents/:pageid': 'documents',
@@ -34,6 +34,7 @@
       'collection/:colid/:docid': 'document',
       'queries': 'query',
       'databases': 'databases',
+      'databases/:name': 'databases',
       'settings': 'databases',
       'services': 'applications',
       'services/install': 'installService',
@@ -50,11 +51,9 @@
       'users': 'userManagement',
       'user/:name': 'userView',
       'user/:name/permission': 'userPermission',
-      'userProfile': 'userProfile',
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
-      'rebalanceShards': 'rebalanceShards',
       'maintenance': 'maintenance',
       'distribution': 'distribution',
       'node/:name': 'node',
@@ -263,8 +262,6 @@
         this.statisticsInAllDatabases = frontendConfig.statisticsInAllDatabases;
       }
 
-      this.maxNumberOfMoveShards = frontendConfig.maxNumberOfMoveShards;
-
       document.addEventListener('keyup', this.listener, false);
 
       // This should be the only global object
@@ -376,14 +373,14 @@
       this.checkUser();
 
       this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
-        document.getElementById('content')));
+        document.getElementById('content-react')));
     },
 
     showV2Graph: function (name) {
       this.checkUser();
 
       this.init.then(() => ReactDOM.render(React.createElement(window.GraphV2ReactView),
-        document.getElementById('content'))
+        document.getElementById('content-react'))
       );
     },
 
@@ -462,10 +459,6 @@
           this.navigate('#dashboard', { trigger: true });
           return;
         }
-        // TODO re-enable React View, for now use old view:
-        // ReactDOM.render(React.createElement(window.ShardsReactView),
-        //   document.getElementById('content'));
-        // Below code needs to be removed then again.
         if (this.shardsView) {
           this.shardsView.remove();
         }
@@ -473,32 +466,6 @@
           dbServers: this.dbServers
         });
         this.shardsView.render();
-      });
-    },
-
-    rebalanceShards: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (this.isCluster === false || isCurrentCoordinator === false || this.maxNumberOfMoveShards === 0) {
-          this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', { trigger: true });
-          return;
-        }
-        // this below is for when Rebalance Shards tab is not clickable, but user enters it through its URL
-        else if (this.userCollection.authOptions.ro) { // if user can't edit the database,
-          // it goes back to the Overview page
-          this.routes[''] = 'nodes';
-          this.navigate('#nodes', { trigger: true });
-          return;
-        }
-        if (this.rebalanceShardsView) {
-          this.rebalanceShardsView.remove();
-        }
-        this.rebalanceShardsView = new window.RebalanceShardsView({
-          maxNumberOfMoveShards: this.maxNumberOfMoveShards
-        });
-        this.rebalanceShardsView.render();
       });
     },
 
@@ -517,11 +484,14 @@
           return;
         }
 
-        if (this.shardDistributionView) {
-          this.shardDistributionView.remove();
-        }
-        this.shardDistributionView = new window.ShardDistributionView({});
-        this.shardDistributionView.render();
+        ReactDOM.render(
+          React.createElement(window.ShardDistributionReactView, {
+            readOnly: this.userCollection.authOptions.ro
+          }),
+          document.getElementById("content")
+        );
+
+        arangoHelper.buildClusterSubNav('Distribution');
       });
     },
 
@@ -1033,28 +1003,8 @@
     databases: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        const callback = function (error) {
-          if (error) {
-            arangoHelper.arangoError('DB', 'Could not get list of allowed databases');
-            this.navigate('#', { trigger: true });
-            $('#databaseNavi').css('display', 'none');
-            $('#databaseNaviSelect').css('display', 'none');
-          } else {
-            if (this.databaseView) {
-              // cleanup events and view
-              this.databaseView.remove();
-            }
-            this.databaseView = new window.DatabaseView({
-              users: this.userCollection,
-              collection: this.arangoDatabase
-            });
-            this.databaseView.render();
-          }
-        }.bind(this);
-
-        arangoHelper.databaseAllowed(callback);
-      });
+      this.init.then(() => ReactDOM.render(React.createElement(window.DatabasesReactView),
+        document.getElementById('content-react')));
     },
 
     dashboard: function () {
@@ -1099,19 +1049,8 @@
     graphManagement: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.graphManagementView) {
-          this.graphManagementView.undelegateEvents();
-        }
-        this.graphManagementView =
-          new window.GraphManagementView(
-            {
-              collection: new window.GraphCollection(),
-              collectionCollection: this.arangoCollectionsStore
-            }
-          );
-        this.graphManagementView.render();
-      });
+      this.init.then(() => ReactDOM.render(React.createElement(window.GraphsListReactView),
+        document.getElementById('content-react')));
     },
 
     showGraph: function (name) {
@@ -1264,9 +1203,6 @@
       if (this.dashboardView) {
         this.dashboardView.resize();
       }
-      if (this.graphManagementView && Backbone.history.getFragment() === 'graphs') {
-        this.graphManagementView.handleResize($('#content').width());
-      }
       if (this.queryView && Backbone.history.getFragment() === 'queries') {
         this.queryView.resize();
       }
@@ -1323,30 +1259,10 @@
     userManagement: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.userManagementView) {
-          this.userManagementView.remove();
-        }
-
-        this.userManagementView = new window.UserManagementView({
-          collection: this.userCollection
-        });
-        this.userManagementView.render();
-      });
+      this.init.then(() => ReactDOM.render(React.createElement(window.UsersReactView),
+        document.getElementById('content-react')));
     },
 
-    userProfile: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (!this.userManagementView) {
-          this.userManagementView = new window.UserManagementView({
-            collection: this.userCollection
-          });
-        }
-        this.userManagementView.render(true);
-      });
-    },
     viewSettings: function (name) {
       this.checkUser();
 

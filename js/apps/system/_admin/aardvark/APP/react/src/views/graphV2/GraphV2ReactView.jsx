@@ -5,6 +5,7 @@ import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
 import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
 import "./graph.css";
+import "./vis-network.css";
 import { GraphDisplay } from "./GraphDisplay.tsx";
 
 const GraphV2ReactView = () => {

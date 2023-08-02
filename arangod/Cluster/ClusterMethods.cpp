@@ -72,7 +72,7 @@
 #include "VocBase/vocbase.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#include "Enterprise/RocksDBEngine/RocksDBHotBackup/RocksDBHotBackup.h"
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 #include <velocypack/Buffer.h>
@@ -102,13 +102,13 @@ using Helper = arangodb::basics::VelocyPackHelper;
 namespace {
 std::string const edgeUrl = "/_internal/traverser/edge/";
 std::string const vertexUrl = "/_internal/traverser/vertex/";
+
 }  // namespace
 
 // Timeout for write operations, note that these are used for communication
 // with a shard leader and we always have to assume that some follower has
 // stopped writes for some time to get in sync:
 static double const CL_DEFAULT_LONG_TIMEOUT = 900.0;
-static double const CL_PERSIST_COLLECTION_TIMEOUT = 240.0;
 
 namespace {
 template<typename T>
@@ -346,6 +346,9 @@ void mergeResultsAllShards(
   }
 }
 
+const ShardID LocalErrorsShard = "#ERRORS";
+struct InsertOperationCtx;
+
 /// @brief handle CRUD api shard responses, fast path
 template<typename F, typename CT>
 OperationResult handleCRUDShardResponsesFast(
@@ -355,8 +358,16 @@ OperationResult handleCRUDShardResponsesFast(
   std::map<ShardID, int> shardError;
   std::unordered_map<::ErrorCode, size_t> errorCounter;
 
-  fuerte::StatusCode code = fuerte::StatusInternalError;
-  // If none of the shards responded we return a SERVER_ERROR;
+  fuerte::StatusCode code =
+      results.empty() ? fuerte::StatusOK : fuerte::StatusInternalError;
+  // If the list of shards is not empty and none of the shards responded we
+  // return a SERVER_ERROR;
+  if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
+    if (opCtx.reverseMapping.size() == opCtx.localErrors.size()) {
+      // all batch operations failed because of key errors, return Accepted
+      code = fuerte::StatusAccepted;
+    }
+  }
 
   for (Try<arangodb::network::Response> const& tryRes : results) {
     network::Response const& res = tryRes.get();  // throws exceptions upwards
@@ -399,8 +410,22 @@ OperationResult handleCRUDShardResponsesFast(
   resultBody.openArray();
   for (auto const& pair : opCtx.reverseMapping) {
     ShardID const& sId = pair.first;
-    auto const& it = resultMap.find(sId);
-    if (it == resultMap.end()) {  // no answer from this shard
+    if constexpr (std::is_same_v<CT, InsertOperationCtx>) {
+      if (sId == LocalErrorsShard) {
+        Result const& res = opCtx.localErrors[pair.second];
+        resultBody.openObject(
+            /*unindexed*/ true);
+        resultBody.add(StaticStrings::Error, VPackValue(true));
+        resultBody.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
+        resultBody.add(StaticStrings::ErrorMessage,
+                       VPackValue(res.errorMessage()));
+        resultBody.close();
+        ++errorCounter[res.errorNumber()];
+        continue;
+      }
+    }
+    if (auto const& it = resultMap.find(sId);
+        it == resultMap.end()) {  // no answer from this shard
       auto const& it2 = shardError.find(sId);
       TRI_ASSERT(it2 != shardError.end());
       resultBody.openObject(/*unindexed*/ true);
@@ -539,6 +564,7 @@ struct InsertOperationCtx {
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   std::map<ShardID, std::vector<std::pair<VPackSlice, std::string>>> shardMap;
   arangodb::OperationOptions options;
+  std::vector<Result> localErrors;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,6 +583,13 @@ struct InsertOperationCtx {
   bool isRestore = opCtx.options.isRestore;
   ShardID shardID;
   std::string key;
+
+  auto addLocalError = [&](Result err) {
+    TRI_ASSERT(err.fail());
+    auto idx = opCtx.localErrors.size();
+    opCtx.localErrors.emplace_back(std::move(err));
+    opCtx.reverseMapping.emplace_back(LocalErrorsShard, idx);
+  };
 
   if (!value.isObject()) {
     // We have invalid input at this point.
@@ -594,7 +627,8 @@ struct InsertOperationCtx {
           auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
                                                       value, isRestore);
           if (res != TRI_ERROR_NO_ERROR) {
-            return res;
+            addLocalError(res);
+            return TRI_ERROR_NO_ERROR;
           }
         }
       }
@@ -669,133 +703,6 @@ bool ClusterMethods::includeHiddenCollectionInLink(std::string const& name) {
 #ifndef USE_ENTERPRISE
 void ClusterMethods::realNameFromSmartName(std::string&) {}
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute a shard distribution for a new collection, the list
-/// dbServers must be a list of DBserver ids to distribute across.
-////////////////////////////////////////////////////////////////////////////////
-
-static std::shared_ptr<ShardMap> DistributeShardsEvenly(
-    ClusterInfo& ci, uint64_t numberOfShards, uint64_t replicationFactor,
-    std::vector<std::string> const& dbServers,
-    bool warnAboutReplicationFactor) {
-  auto shards = std::make_shared<ShardMap>();
-  ADB_PROD_ASSERT(not dbServers.empty());
-
-  // mop: distribute SatelliteCollections on all servers
-  if (replicationFactor == 0) {
-    replicationFactor = dbServers.size();
-  }
-
-  // fetch a unique id for each shard to create
-  uint64_t const id = ci.uniqid(numberOfShards);
-
-  // Example: Servers: A B C D E F G H I (9)
-  // Replication Factor 3, k = 9 / gcd(3, 9) = 3
-  // A B C
-  // D E F
-  // G H I  <- now we do an additional shift
-  // B C D
-  // E F G
-  // H I A  <- shift
-  // C D E
-  // F G H
-  // I A B
-
-  size_t k = dbServers.size() / std::gcd(replicationFactor, dbServers.size());
-  size_t offset = 0;
-  for (uint64_t i = 0; i < numberOfShards; ++i) {
-    if (i % k == 0) {
-      offset += 1;
-    }
-    // determine responsible server(s)
-    std::vector<std::string> serverIds;
-    for (uint64_t j = 0; j < replicationFactor; ++j) {
-      if (j >= dbServers.size()) {
-        if (warnAboutReplicationFactor) {
-          LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
-              << "createCollectionCoordinator: replicationFactor is "
-              << "too large for the number of DBservers";
-        }
-        break;
-      }
-
-      auto const& candidate = dbServers[offset % dbServers.size()];
-      offset += 1;
-      serverIds.push_back(candidate);
-    }
-
-    // determine shard id
-    std::string shardId = "s" + StringUtils::itoa(id + i);
-    shards->try_emplace(shardId, serverIds);
-  }
-
-  return shards;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Clone shard distribution from other collection
-////////////////////////////////////////////////////////////////////////////////
-
-static std::shared_ptr<ShardMap> CloneShardDistribution(
-    ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
-    std::shared_ptr<LogicalCollection> const& other) {
-  TRI_ASSERT(col);
-  TRI_ASSERT(other);
-
-  if (!other->distributeShardsLike().empty()) {
-    CollectionNameResolver resolver(col->vocbase());
-    std::string name = other->distributeShardsLike();
-    DataSourceId cid{arangodb::basics::StringUtils::uint64(name)};
-    if (cid.isSet()) {
-      name = resolver.getCollectionNameCluster(cid);
-    }
-    std::string const errorMessage =
-        "Cannot distribute shards like '" + other->name() +
-        "' it is already distributed like '" + name + "'.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, errorMessage);
-  }
-
-  auto result = std::make_shared<ShardMap>();
-
-  // We need to replace the distribute with the cid.
-  auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id().id());
-  col->distributeShardsLike(cidString, other->shardingInfo());
-
-  if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
-    return result;
-  }
-
-  auto numberOfShards = static_cast<uint64_t>(col->numberOfShards());
-
-  // Here we need to make sure that we put the shards and
-  // shard distribution in the correct order: shards need
-  // to be sorted alphabetically by ID
-  //
-  // shardIds() returns an unordered_map<ShardID, std::vector<ServerID>>
-  // so the method is a bit mis-named.
-  auto otherShardsMap = other->shardIds();
-
-  // TODO: This should really be a utility function, possibly in ShardingInfo?
-  std::vector<ShardID> otherShards;
-  for (auto& it : *otherShardsMap) {
-    otherShards.push_back(it.first);
-  }
-  ShardingInfo::sortShardNamesNumerically(otherShards);
-
-  TRI_ASSERT(numberOfShards == otherShards.size());
-
-  // fetch a unique id for each shard to create
-  uint64_t const id = ci.uniqid(numberOfShards);
-  for (uint64_t i = 0; i < numberOfShards; ++i) {
-    // determine responsible server(s)
-    std::string shardId = "s" + StringUtils::itoa(id + i);
-    result->try_emplace(std::move(shardId),
-                        otherShardsMap->at(otherShards.at(i)));
-  }
-  return result;
-}
 
 namespace arangodb {
 
@@ -930,8 +837,8 @@ futures::Future<OperationResult> revisionOnCoordinator(
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
@@ -991,8 +898,8 @@ futures::Future<OperationResult> checksumOnCoordinator(
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
@@ -1079,8 +986,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, cid);
+  std::shared_ptr<LogicalCollection> collinfo = ci.getCollectionNT(dbname, cid);
   if (collinfo == nullptr) {
     return futures::makeFuture(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
@@ -1177,8 +1083,8 @@ futures::Future<OperationResult> figuresOnCoordinator(
   ClusterInfo& ci = feature.clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
@@ -1243,8 +1149,8 @@ futures::Future<OperationResult> countOnCoordinator(
 
   std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, cname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, cname);
   if (collinfo == nullptr) {
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
@@ -1267,11 +1173,12 @@ futures::Future<OperationResult> countOnCoordinator(
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
-  if (NameValidator::isSystemName(cname)) {
-    // system collection (e.g. _apps, _jobs, _graphs...
+  if (NameValidator::isSystemName(cname) &&
+      !(collinfo->isSmartChild() || collinfo->isSmartEdgeCollection())) {
+    // system collection (e.g. _apps, _jobs, _graphs...) that is not
     // very likely this is an internal request that should not block other
     // processing in case we don't get a timely response
-    reqOpts.timeout = network::Timeout(5.0);
+    reqOpts.timeout = network::Timeout(10.0);
   }
 
   std::vector<Future<network::Response>> futures;
@@ -1389,6 +1296,7 @@ futures::Future<metrics::LeaderResponse> metricsFromLeader(
   headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJsonNoEncoding);
   auto options = network::RequestOptions{}
                      .param("type", metrics::kCDJson)
+                     // cppcheck-suppress accessMoved
                      .param("MetricsServerId", std::move(serverId))
                      .param("MetricsRebootId", std::to_string(rebootId))
                      .param("MetricsVersion", std::to_string(version));
@@ -1418,8 +1326,8 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
   result.clear();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(dbname, collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
@@ -1432,11 +1340,12 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = true;
 
-  if (NameValidator::isSystemName(collname)) {
-    // system collection (e.g. _apps, _jobs, _graphs...
+  if (NameValidator::isSystemName(collname) &&
+      !(collinfo->isSmartChild() || collinfo->isSmartEdgeCollection())) {
+    // system collection (e.g. _apps, _jobs, _graphs...) that is not
     // very likely this is an internal request that should not block other
     // processing in case we don't get a timely response
-    reqOpts.timeout = network::Timeout(5.0);
+    reqOpts.timeout = network::Timeout(10.0);
   }
 
   std::vector<Future<network::Response>> futures;
@@ -1545,6 +1454,15 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     if (res != TRI_ERROR_NO_ERROR) {
       return makeFuture(OperationResult(res, options));
     }
+    if (!opCtx.localErrors.empty()) {
+      return makeFuture(OperationResult(opCtx.localErrors.front(), options));
+    }
+  }
+
+  if (opCtx.shardMap.empty()) {
+    return handleCRUDShardResponsesFast(network::clusterResultInsert, opCtx,
+                                        {});
+    // all operations failed with a local error
   }
 
   bool const isJobsCollection =
@@ -1891,8 +1809,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
       trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo;
-  collinfo = ci.getCollectionNT(trx.vocbase().name(), collname);
+  std::shared_ptr<LogicalCollection> collinfo =
+      ci.getCollectionNT(trx.vocbase().name(), collname);
   if (collinfo == nullptr) {
     return futures::makeFuture(OperationResult(
         res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), options));
@@ -2878,236 +2796,6 @@ Result compactOnAllDBServers(ClusterFeature& feature, bool changeLevel,
   return {};
 }
 
-#ifndef USE_ENTERPRISE
-std::vector<std::shared_ptr<LogicalCollection>>
-ClusterMethods::createCollectionsOnCoordinator(
-    TRI_vocbase_t& vocbase, velocypack::Slice parameters,
-    bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-    bool enforceReplicationFactor, bool isNewDatabase,
-    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
-  TRI_ASSERT(parameters.isArray());
-  // Collections are temporary collections object that undergoes integrity
-  // checks etc. It is not used anywhere and will be cleaned up after this call.
-  std::vector<std::shared_ptr<LogicalCollection>> cols;
-  for (VPackSlice p : VPackArrayIterator(parameters)) {
-    cols.emplace_back(std::make_shared<LogicalCollection>(vocbase, p, true));
-  }
-
-  // Persist collection will return the real object.
-  auto& feature = vocbase.server().getFeature<ClusterFeature>();
-  auto usableCollectionPointers = persistCollectionsInAgency(
-      feature, cols, ignoreDistributeShardsLikeErrors, waitForSyncReplication,
-      enforceReplicationFactor, isNewDatabase, colToDistributeShardsLike);
-  TRI_ASSERT(usableCollectionPointers.size() == cols.size());
-  return usableCollectionPointers;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Persist collection in Agency and trigger shard creation process
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<std::shared_ptr<LogicalCollection>>
-ClusterMethods::persistCollectionsInAgency(
-    ClusterFeature& feature,
-    std::vector<std::shared_ptr<LogicalCollection>>& collections,
-    bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-    bool enforceReplicationFactor, bool isNewDatabase,
-    std::shared_ptr<LogicalCollection> const& colToDistributeLike) {
-  TRI_ASSERT(!collections.empty());
-  if (collections.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Trying to create an empty list of collections on coordinator.");
-  }
-
-  double const realTimeout =
-      ClusterInfo::getTimeout(CL_PERSIST_COLLECTION_TIMEOUT);
-  double const endTime = TRI_microtime() + realTimeout;
-
-  // We have at least one, take this collection's DB name
-  // (if there are multiple collections to create, the assumption is that
-  // all collections have the same database name - ArangoDB does not
-  // support cross-database operations and they cannot be triggered by
-  // users)
-  auto const dbName = collections[0]->vocbase().name();
-  auto const replicationVersion =
-      collections[0]->vocbase().replicationVersion();
-  ClusterInfo& ci = feature.clusterInfo();
-
-  std::vector<ClusterCollectionCreationInfo> infos;
-
-  while (true) {
-    infos.clear();
-
-    ci.loadCurrentDBServers();
-    std::vector<std::string> dbServers = ci.getCurrentDBServers();
-    infos.reserve(collections.size());
-
-    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
-    vpackData.reserve(collections.size());
-
-    for (auto& col : collections) {
-      // We can only serve on Database at a time with this call.
-      // We have the vocbase context around this calls anyways, so this is safe.
-      TRI_ASSERT(col->vocbase().name() == dbName);
-      std::string distributeShardsLike = col->distributeShardsLike();
-      std::vector<std::string> avoid = col->avoidServers();
-      std::shared_ptr<ShardMap> shards;
-
-      if (!distributeShardsLike.empty()) {
-        std::shared_ptr<LogicalCollection> myColToDistributeLike;
-
-        if (colToDistributeLike != nullptr) {
-          myColToDistributeLike = colToDistributeLike;
-        } else {
-          CollectionNameResolver resolver(col->vocbase());
-          myColToDistributeLike = resolver.getCollection(distributeShardsLike);
-          if (myColToDistributeLike == nullptr) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                "Collection not found: " + distributeShardsLike +
-                    " in database " + col->vocbase().name());
-          }
-        }
-
-        shards = CloneShardDistribution(ci, col, myColToDistributeLike);
-      } else {
-        // system collections should never enforce replicationfactor
-        // to allow them to come up with 1 dbserver
-        if (col->system()) {
-          enforceReplicationFactor = false;
-        }
-
-        size_t replicationFactor = col->replicationFactor();
-        size_t writeConcern = col->writeConcern();
-        size_t numberOfShards = col->numberOfShards();
-
-        // the default behavior however is to bail out and inform the user
-        // that the requested replicationFactor is not possible right now
-        if (dbServers.size() < replicationFactor) {
-          TRI_ASSERT(writeConcern <= replicationFactor);
-          // => (dbServers.size() < writeConcern) is granted
-          LOG_TOPIC("9ce2e", DEBUG, Logger::CLUSTER)
-              << "Do not have enough DBServers for requested replicationFactor,"
-              << " nrDBServers: " << dbServers.size()
-              << " replicationFactor: " << replicationFactor;
-          if (enforceReplicationFactor) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
-          }
-        }
-
-        if (!avoid.empty()) {
-          // We need to remove all servers that are in the avoid list
-          if (dbServers.size() - avoid.size() < replicationFactor) {
-            LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
-                << "Do not have enough DBServers for requested "
-                   "replicationFactor,"
-                << " (after considering avoid list),"
-                << " nrDBServers: " << dbServers.size()
-                << " replicationFactor: " << replicationFactor
-                << " avoid list size: " << avoid.size();
-            // Not enough DBServers left
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
-          }
-          dbServers.erase(std::remove_if(dbServers.begin(), dbServers.end(),
-                                         [&](const std::string& x) {
-                                           return std::find(avoid.begin(),
-                                                            avoid.end(),
-                                                            x) != avoid.end();
-                                         }),
-                          dbServers.end());
-        }
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(dbServers.begin(), dbServers.end(), g);
-        shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
-                                        dbServers, !col->system());
-      }  // if - distributeShardsLike.empty()
-
-      if (shards->empty() && !col->isSmart()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "no database servers found in cluster");
-      }
-
-      col->setShardMap(shards);
-
-      std::unordered_set<std::string> const ignoreKeys{
-          StaticStrings::AllowUserKeys,    StaticStrings::DataSourceCid,
-          StaticStrings::DataSourceGuid,   "count",
-          StaticStrings::DataSourcePlanId, StaticStrings::Version,
-          StaticStrings::ObjectId};
-      VPackBuilder velocy = col->toVelocyPackIgnore(
-          ignoreKeys, LogicalDataSource::Serialization::List);
-
-      auto const serverState = ServerState::instance();
-      infos.emplace_back(std::to_string(col->id().id()), col->numberOfShards(),
-                         col->replicationFactor(), col->writeConcern(),
-                         waitForSyncReplication, velocy.slice(),
-                         serverState->getId(), serverState->getRebootId());
-      vpackData.emplace_back(velocy.steal());
-    }  // for col : collections
-
-    // pass in the *endTime* here, not a timeout!
-    Result res = ci.createCollectionsCoordinator(
-        dbName, infos, endTime, isNewDatabase, colToDistributeLike,
-        replicationVersion);
-
-    if (res.ok()) {
-      // success! exit the loop and go on
-      break;
-    }
-
-    if (res.is(TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED)) {
-      // special error code indicating that storing the updated plan in the
-      // agency didn't succeed, and that we should try again
-
-      // sleep for a while
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-      if (TRI_microtime() > endTime) {
-        // timeout expired
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_TIMEOUT);
-      }
-
-      if (feature.server().isStopping()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-      }
-
-      // try in next iteration with an adjusted plan change attempt
-      continue;
-
-    } else {
-      // any other error
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
-
-  // ci.loadPlan();
-
-  // Produce list of shared_ptr wrappers
-
-  std::vector<std::shared_ptr<LogicalCollection>> usableCollectionPointers;
-  usableCollectionPointers.reserve(infos.size());
-
-  // quick exit if new database
-  if (isNewDatabase) {
-    for (auto const& col : collections) {
-      usableCollectionPointers.emplace_back(col);
-    }
-  } else {
-    for (auto const& i : infos) {
-      auto c = ci.getCollection(dbName, i.collectionID);
-      TRI_ASSERT(c.get() != nullptr);
-      // We never get a nullptr here because an exception is thrown if the
-      // collection does not exist. Also, the create collection should have
-      // failed before.
-      usableCollectionPointers.emplace_back(std::move(c));
-    }
-  }
-  return usableCollectionPointers;
-}
-
 std::string const apiStr("/_admin/backup/");
 
 arangodb::Result hotBackupList(
@@ -3748,10 +3436,11 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
 std::vector<std::string> lockPath =
     std::vector<std::string>{"result", "lockId"};
 
-arangodb::Result lockDBServerTransactions(
-    network::ConnectionPool* pool, std::string const& backupId,
-    std::vector<ServerID> const& dbServers, double const& lockWait,
-    std::vector<ServerID>& lockedServers) {
+arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
+                                      std::string const& backupId,
+                                      std::vector<ServerID> const& servers,
+                                      double const& lockWait,
+                                      std::vector<ServerID>& lockedServers) {
   using namespace std::chrono;
 
   // Make sure all db servers have the backup with backup Id
@@ -3776,9 +3465,9 @@ arangodb::Result lockDBServerTransactions(
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
 
   std::vector<Future<network::Response>> futures;
-  futures.reserve(dbServers.size());
+  futures.reserve(servers.size());
 
-  for (auto const& dbServer : dbServers) {
+  for (auto const& dbServer : servers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                                    fuerte::RestVerb::Post, url,
                                                    body, reqOpts));
@@ -3872,7 +3561,7 @@ arangodb::Result lockDBServerTransactions(
   return finalRes;
 }
 
-arangodb::Result unlockDBServerTransactions(
+arangodb::Result unlockServersTrxCommit(
     network::ConnectionPool* pool, std::string const& backupId,
     std::vector<ServerID> const& lockedServers) {
   using namespace std::chrono;
@@ -3913,7 +3602,7 @@ std::vector<std::string> idPath{"result", "id"};
 arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
                                     std::string const& backupId,
                                     std::string const& timeStamp,
-                                    std::vector<ServerID> dbServers,
+                                    std::vector<ServerID> servers,
                                     VPackSlice agencyDump, bool force,
                                     BackupMeta& meta) {
   VPackBufferUInt8 body;
@@ -3924,7 +3613,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
     builder.add("agency-dump", agencyDump);
     builder.add("timestamp", VPackValue(timeStamp));
     builder.add("allowInconsistent", VPackValue(force));
-    builder.add("nrDBServers", VPackValue(dbServers.size()));
+    builder.add("nrDBServers", VPackValue(servers.size()));
   }
 
   std::string const url = apiStr + "create";
@@ -3933,9 +3622,9 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
   reqOpts.skipScheduler = true;
 
   std::vector<Future<network::Response>> futures;
-  futures.reserve(dbServers.size());
+  futures.reserve(servers.size());
 
-  for (auto const& dbServer : dbServers) {
+  for (auto const& dbServer : servers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                                    fuerte::RestVerb::Post, url,
                                                    body, reqOpts));
@@ -3965,7 +3654,8 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
       return arangodb::Result(
           TRI_ERROR_HTTP_CORRUPTED_JSON,
           std::string("result to take snapshot on ") + r.destination +
-              " not an object or has no 'result' attribute");
+              " not an object or has no 'result' attribute: " +
+              resSlice.toJson());
     }
     resSlice = resSlice.get("result");
 
@@ -4019,11 +3709,11 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
 
   if (sizeValid) {
     meta = BackupMeta(backupId, version, timeStamp, secretHashes, totalSize,
-                      totalFiles, static_cast<unsigned int>(dbServers.size()),
-                      "", force);
+                      totalFiles, static_cast<unsigned int>(servers.size()), "",
+                      force);
   } else {
     meta = BackupMeta(backupId, version, timeStamp, secretHashes, 0, 0,
-                      static_cast<unsigned int>(dbServers.size()), "", force);
+                      static_cast<unsigned int>(servers.size()), "", force);
     LOG_TOPIC("54265", WARN, Logger::BACKUP)
         << "Could not determine total size of backup with id '" << backupId
         << "'!";
@@ -4039,7 +3729,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
  */
 arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
                                     std::string const& backupId,
-                                    std::vector<ServerID> const& dbServers,
+                                    std::vector<ServerID> const& servers,
                                     std::vector<std::string>& deleted) {
   VPackBufferUInt8 body;
   VPackBuilder builder(body);
@@ -4054,9 +3744,9 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
   reqOpts.skipScheduler = true;
 
   std::vector<Future<network::Response>> futures;
-  futures.reserve(dbServers.size());
+  futures.reserve(servers.size());
 
-  for (auto const& dbServer : dbServers) {
+  for (auto const& dbServer : servers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                                    fuerte::RestVerb::Post, url,
                                                    body, reqOpts));
@@ -4109,9 +3799,9 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
 
   LOG_TOPIC("1b318", DEBUG, Logger::BACKUP)
       << "removeLocalBackups: notFoundCount = " << notFoundCount << " "
-      << dbServers.size();
+      << servers.size();
 
-  if (notFoundCount == dbServers.size()) {
+  if (notFoundCount == servers.size()) {
     return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,
                             "Backup " + backupId + " not found.");
   }
@@ -4129,7 +3819,7 @@ std::vector<std::string> const versionPath =
 arangodb::Result hotbackupAsyncLockDBServersTransactions(
     network::ConnectionPool* pool, std::string const& backupId,
     std::vector<ServerID> const& dbServers, double const& lockWait,
-    std::unordered_map<std::string, std::string>& dbserverLockIds) {
+    std::unordered_map<std::string, std::string>& serverLockIds) {
   std::string const url = apiStr + "lock";
 
   VPackBufferUInt8 body;
@@ -4188,7 +3878,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(
               " when trying to check for lockId for hot backup " + backupId);
     }
 
-    dbserverLockIds[r.serverId()] = jobId;
+    serverLockIds[r.serverId()] = jobId;
   }
 
   return arangodb::Result();
@@ -4196,7 +3886,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(
 
 arangodb::Result hotbackupWaitForLockDBServersTransactions(
     network::ConnectionPool* pool, std::string const& backupId,
-    std::unordered_map<std::string, std::string>& dbserverLockIds,
+    std::unordered_map<std::string, std::string>& serverLockIds,
     std::vector<ServerID>& lockedServers, double const& lockWait) {
   // query all remaining jobs here
 
@@ -4205,10 +3895,10 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
 
   std::vector<Future<network::Response>> futures;
-  futures.reserve(dbserverLockIds.size());
+  futures.reserve(serverLockIds.size());
 
   VPackBufferUInt8 body;  // empty body
-  for (auto const& lock : dbserverLockIds) {
+  for (auto const& lock : serverLockIds) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + lock.first, fuerte::RestVerb::Put,
         "/_api/job/" + lock.second, body, reqOpts));
@@ -4281,7 +3971,7 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
     }
 
     lockedServers.push_back(r.serverId());
-    dbserverLockIds.erase(r.serverId());
+    serverLockIds.erase(r.serverId());
   }
 
   return arangodb::Result();
@@ -4442,8 +4132,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
     // Call lock on all database servers
 
     std::vector<ServerID> dbServers = ci.getCurrentDBServers();
+    std::vector<ServerID> serversToBeLocked = ci.getCurrentCoordinators();
     std::vector<ServerID> lockedServers;
-    // We try to hold all write transactions on all dbservers at the same time.
+    // We try to hold all write transactions on all servers at the same time.
     // The default timeout to get to this state is 120s. We first try for a
     // certain time t, and if not everybody has stopped all transactions within
     // t seconds, we release all locks and try again with t doubled, until the
@@ -4451,10 +4142,10 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
     // 15, 30 and 60 to try before the default timeout of 120s has been reached.
     double lockWait(15.0);
     while (steady_clock::now() < end && !feature.server().isStopping()) {
-      result = lockDBServerTransactions(pool, backupId, dbServers, lockWait,
-                                        lockedServers);
+      result = lockServersTrxCommit(pool, backupId, serversToBeLocked, lockWait,
+                                    lockedServers);
       if (!result.ok()) {
-        unlockDBServerTransactions(pool, backupId, lockedServers);
+        unlockServersTrxCommit(pool, backupId, lockedServers);
         lockedServers.clear();
         if (result.is(TRI_ERROR_LOCAL_LOCK_FAILED)) {  // Unrecoverable
           // release the lock
@@ -4490,7 +4181,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
       auto releaseLocks = scopeGuard([&]() noexcept {
         try {
           hotbackupCancelAsyncLocks(pool, lockJobIds, lockedServers);
-          unlockDBServerTransactions(pool, backupId, lockedServers);
+          unlockServersTrxCommit(pool, backupId, lockedServers);
         } catch (std::exception const& ex) {
           LOG_TOPIC("3449d", ERR, Logger::BACKUP)
               << "Failed to unlock hot backup: " << ex.what();
@@ -4504,7 +4195,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
 
       // send the locks
       result = hotbackupAsyncLockDBServersTransactions(
-          pool, backupId, dbServers, lockWait, lockJobIds);
+          pool, backupId, serversToBeLocked, lockWait, lockJobIds);
       if (result.fail()) {
         events::CreateHotbackup(timeStamp + "_" + backupId,
                                 result.errorNumber());
@@ -4548,7 +4239,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
     // In the case we left the above loop with a negative result,
     // and we are in the case of a force backup we want to continue here
     if (!gotLocks && !allowInconsistent) {
-      unlockDBServerTransactions(pool, backupId, dbServers);
+      unlockServersTrxCommit(pool, backupId, serversToBeLocked);
       // release the lock
       releaseAgencyLock.fire();
       result.reset(
@@ -4562,14 +4253,14 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
     }
 
     BackupMeta meta(backupId, "", timeStamp, std::vector<std::string>{}, 0, 0,
-                    static_cast<unsigned int>(dbServers.size()), "",
+                    static_cast<unsigned int>(serversToBeLocked.size()), "",
                     !gotLocks);  // Temporary
     std::vector<std::string> dummy;
     result = hotBackupDBServers(pool, backupId, timeStamp, dbServers,
                                 agency->slice(),
                                 /* force */ !gotLocks, meta);
     if (!result.ok()) {
-      unlockDBServerTransactions(pool, backupId, dbServers);
+      unlockServersTrxCommit(pool, backupId, serversToBeLocked);
       // release the lock
       releaseAgencyLock.fire();
       result.reset(
@@ -4582,7 +4273,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
       return result;
     }
 
-    unlockDBServerTransactions(pool, backupId, dbServers);
+    unlockServersTrxCommit(pool, backupId, serversToBeLocked);
     // release the lock
     releaseAgencyLock.fire();
 

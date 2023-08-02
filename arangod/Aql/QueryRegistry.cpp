@@ -30,12 +30,14 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Futures/Future.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Status.h"
 
@@ -135,7 +137,8 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
 }
 
 /// @brief open
-void* QueryRegistry::openEngine(EngineId id, EngineType type) {
+ResultT<void*> QueryRegistry::openEngine(EngineId id, EngineType type,
+                                         EngineCallback callback) {
   LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL)
       << "trying to open engine with id " << id;
   // std::cout << "Taking out query with ID " << id << std::endl;
@@ -145,7 +148,7 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
   if (it == _engines.end()) {
     LOG_TOPIC("c3ae4", DEBUG, arangodb::Logger::AQL)
         << "Found no engine with id " << id;
-    return nullptr;
+    return {TRI_ERROR_QUERY_NOT_FOUND};
   }
 
   EngineInfo& ei = it->second;
@@ -153,21 +156,23 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
   if (ei._type != type) {
     LOG_TOPIC("c3af5", DEBUG, arangodb::Logger::AQL)
         << "Engine with id " << id << " has other type";
-    return nullptr;
+    return {TRI_ERROR_QUERY_NOT_FOUND};
   }
 
   if (ei._isOpen) {
     LOG_TOPIC("7c2a3", DEBUG, arangodb::Logger::AQL)
         << "Engine with id " << id << " is already open";
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_LOCKED, "query with given vocbase and id is already open");
+    if (callback) {
+      ei._waitingCallbacks.emplace_back(std::move(callback));
+    }
+    return {TRI_ERROR_LOCKED};
   }
 
   ei._isOpen = true;
   if (ei._queryInfo) {
     if (ei._queryInfo->_expires == 0 || ei._queryInfo->_finished) {
       ei._isOpen = false;
-      return nullptr;
+      return {TRI_ERROR_QUERY_NOT_FOUND};
     }
     TRI_ASSERT(ei._queryInfo->_expires != 0);
     ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
@@ -182,7 +187,20 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
         << "opening engine " << id << ", no query";
   }
 
-  return ei._engine;
+  return {ei._engine};
+}
+
+traverser::BaseEngine* QueryRegistry::openGraphEngine(EngineId eid) {
+  auto res = openEngine(eid, EngineType::Graph, {});
+  if (res.fail()) {
+    if (res.is(TRI_ERROR_LOCKED)) {
+      // To be consistent with the old interface we have to throw in this case
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_LOCKED, "query with given vocbase and id is already open");
+    }
+    return nullptr;
+  }
+  return static_cast<traverser::BaseEngine*>(res.get());
 }
 
 /// @brief close
@@ -214,6 +232,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
     }
 
     ei._isOpen = false;
+    ei.scheduleCallback();
 
     if (ei._queryInfo) {
       TRI_ASSERT(ei._queryInfo->_numOpen > 0);
@@ -333,7 +352,7 @@ auto QueryRegistry::lookupQueryForFinalization(QueryId id, ErrorCode errorCode)
   if (queryInfo._numOpen > 0) {
     TRI_ASSERT(!queryInfo._isTombstone);
     // query in use by another thread/request
-    if (errorCode == TRI_ERROR_QUERY_KILLED) {
+    if (errorCode != TRI_ERROR_NO_ERROR) {
       queryInfo._query->kill();
     }
     queryInfo._expires = 0.0;
@@ -604,3 +623,22 @@ QueryRegistry::QueryInfo::QueryInfo(ErrorCode errorCode, double ttl)
       _isTombstone(true) {}
 
 QueryRegistry::QueryInfo::~QueryInfo() = default;
+
+QueryRegistry::EngineInfo::~EngineInfo() {
+  // If we still have requests waiting for this engine, we need to wake schedule
+  // them so they can abort properly.
+  while (!_waitingCallbacks.empty()) {
+    scheduleCallback();
+  }
+}
+
+void QueryRegistry::EngineInfo::scheduleCallback() {
+  if (!_waitingCallbacks.empty()) {
+    // we have at least one request handler waiting for this engine.
+    // schedule the callback to be executed so request handler can continue
+    auto callback = std::move(_waitingCallbacks.front());
+    _waitingCallbacks.pop_front();
+    SchedulerFeature::SCHEDULER->queue(
+        RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR, std::move(callback));
+  }
+}

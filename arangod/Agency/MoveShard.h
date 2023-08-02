@@ -72,17 +72,18 @@ struct MoveShard : public Job {
 
  private:
   [[nodiscard]] bool isSubJob() const noexcept { return !_parentJobId.empty(); }
-  void addMoveShardToServerLock(Builder& ops) const;
-  void addMoveShardFromServerLock(Builder& ops) const;
+  void addMoveShardToServerLock(velocypack::Builder& ops) const;
+  void addMoveShardFromServerLock(velocypack::Builder& ops) const;
 
-  void addMoveShardToServerCanLock(Builder& precs) const;
-  void addMoveShardFromServerCanLock(Builder& precs) const;
+  void addMoveShardToServerCanLock(velocypack::Builder& precs) const;
+  void addMoveShardFromServerCanLock(velocypack::Builder& precs) const;
 
-  void addMoveShardToServerUnLock(Builder& ops) const;
-  void addMoveShardFromServerUnLock(Builder& ops) const;
-  void addMoveShardToServerCanUnLock(Builder& ops) const;
-  void addMoveShardFromServerCanUnLock(Builder& ops) const;
-  void addUndoMoveShard(Builder& ops, Builder const& job) const;
+  void addMoveShardToServerUnLock(velocypack::Builder& ops) const;
+  void addMoveShardFromServerUnLock(velocypack::Builder& ops) const;
+  void addMoveShardToServerCanUnLock(velocypack::Builder& ops) const;
+  void addMoveShardFromServerCanUnLock(velocypack::Builder& ops) const;
+  void addUndoMoveShard(velocypack::Builder& ops,
+                        velocypack::Builder const& job) const;
 
   bool moveShardFinish(bool unlock, bool success, std::string const& msg);
   bool checkLeaderFollowerCurrent(

@@ -26,21 +26,34 @@
 #include <chrono>
 #include "Basics/TimeString.h"
 #include "Basics/ErrorCode.h"
+#include "Inspection/Status.h"
+
+#include "date/date.h"
+#include "fmt/core.h"
 
 namespace arangodb::inspection {
 
 struct TimeStampTransformer {
   using SerializedType = std::string;
   using clock = std::chrono::system_clock;
+  static constexpr const char* formatString = "%FT%TZ";
   auto toSerialized(clock::time_point source, std::string& target) const
       -> inspection::Status {
-    target = timepointToString(source);
+    target = date::format(formatString, floor<std::chrono::seconds>(source));
     return {};
   }
   auto fromSerialized(std::string const& source,
                       clock::time_point& target) const -> inspection::Status {
-    target = stringToTimepoint(source);
-    return {};
+    auto in = std::istringstream{source};
+    in >> date::parse(formatString, target);
+
+    if (in.fail()) {
+      return inspection::Status(
+          fmt::format("failed to parse timestamp `{}` using format string `{}`",
+                      source, formatString));
+    } else {
+      return {};
+    }
   }
 };
 

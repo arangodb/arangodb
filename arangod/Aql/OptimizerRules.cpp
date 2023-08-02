@@ -945,16 +945,30 @@ bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
         !traversal->isUsedAsSatellite()) {
       // On cluster community variant we will also need the ID value on the
       // coordinator to uniquely identify edges
-      attributes.emplace(arangodb::StaticStrings::IdString);
+      arangodb::aql::AttributeNamePath idElement = {
+          arangodb::StaticStrings::IdString,
+          traversal->plan()->getAst()->query().resourceMonitor()};
+      attributes.emplace(std::move(idElement));
       // Also the community variant needs to transport weight, as the
       // coordinator will do the searching.
       if (traversal->options()->mode ==
           arangodb::traverser::TraverserOptions::Order::WEIGHTED) {
-        attributes.emplace(traversal->options()->weightAttribute);
+        arangodb::aql::AttributeNamePath weightElement = {
+            traversal->options()->weightAttribute,
+            traversal->plan()->getAst()->query().resourceMonitor()};
+        attributes.emplace(std::move(weightElement));
       }
     }
-    attributes.emplace(arangodb::StaticStrings::FromString);
-    attributes.emplace(arangodb::StaticStrings::ToString);
+
+    arangodb::aql::AttributeNamePath fromElement = {
+        arangodb::StaticStrings::FromString,
+        traversal->plan()->getAst()->query().resourceMonitor()};
+    attributes.emplace(std::move(fromElement));
+
+    arangodb::aql::AttributeNamePath toElement = {
+        arangodb::StaticStrings::ToString,
+        traversal->plan()->getAst()->query().resourceMonitor()};
+    attributes.emplace(std::move(toElement));
 
     if (attributes.size() <= maxProjections) {
       traversal->setEdgeProjections(
@@ -1023,7 +1037,8 @@ bool optimizeTraversalPathVariable(
               ExecutionNode::castTo<CalculationNode*>(current)->expression();
           AstNode const* node = exp->node();
           if (!Ast::getReferencedAttributesRecursive(
-                  node, variable, /*expectedAttribute*/ "", attributes)) {
+                  node, variable, /*expectedAttribute*/ "", attributes,
+                  current->plan()->getAst()->query().resourceMonitor())) {
             // full path variable is used, or accessed in a way that we don't
             // understand, e.g. "p" or "p[0]" or "p[*]..."
             return false;
@@ -1051,16 +1066,18 @@ bool optimizeTraversalPathVariable(
   bool producePathsWeights = false;
 
   for (auto const& it : attributes) {
-    TRI_ASSERT(!it.path.empty());
+    TRI_ASSERT(!it._path.empty());
     if (!producePathsVertices &&
-        it.path[0] == StaticStrings::GraphQueryVertices) {
+        it._path[0] == std::string_view{StaticStrings::GraphQueryVertices}) {
       producePathsVertices = true;
     } else if (!producePathsEdges &&
-               it.path[0] == StaticStrings::GraphQueryEdges) {
+               it._path[0] ==
+                   std::string_view{StaticStrings::GraphQueryEdges}) {
       producePathsEdges = true;
     } else if (!producePathsWeights &&
                options->mode == traverser::TraverserOptions::Order::WEIGHTED &&
-               it.path[0] == StaticStrings::GraphQueryWeights) {
+               it._path[0] ==
+                   std::string_view{StaticStrings::GraphQueryWeights}) {
       producePathsWeights = true;
     }
   }
@@ -2182,7 +2199,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
           // add the post-SORT
           SortElementVector sortElements;
           for (auto const& v : collectNode->groupVariables()) {
-            sortElements.emplace_back(v.outVar, true);
+            sortElements.emplace_back(SortElement{
+                v.outVar, true, plan->getAst()->query().resourceMonitor()});
           }
 
           auto sortNode =
@@ -2220,7 +2238,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // add the post-SORT
         SortElementVector sortElements;
         for (auto const& v : newCollectNode->groupVariables()) {
-          sortElements.emplace_back(v.outVar, true);
+          sortElements.emplace_back(SortElement{
+              v.outVar, true, plan->getAst()->query().resourceMonitor()});
         }
 
         auto sortNode =
@@ -2268,7 +2287,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     if (!groupVariables.empty()) {
       SortElementVector sortElements;
       for (auto const& v : groupVariables) {
-        sortElements.emplace_back(v.inVar, true);
+        sortElements.emplace_back(SortElement{
+            v.inVar, true, plan->getAst()->query().resourceMonitor()});
       }
 
       auto sortNode =
@@ -2403,8 +2423,9 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
   }
 
   auto p = plan.get();
+  bool changed = false;
 
-  auto visitor = [p](AstNode* node) {
+  auto visitor = [&changed, p](AstNode* node) {
     again:
       if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         auto const* accessed = node->getMemberUnchecked(0);
@@ -2457,6 +2478,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            changed = true;
             return p->getAst()->createNodeValueNull();
           }
         }
@@ -2530,6 +2552,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            changed = true;
             return p->getAst()->createNodeValueNull();
           }
         } else if (accessed->type == NODE_TYPE_ARRAY) {
@@ -2543,6 +2566,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
                 valid);
             if (!valid) {
               // invalid index
+              changed = true;
               return p->getAst()->createNodeValueNull();
             }
           } else {
@@ -2569,6 +2593,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           }
 
           // index out of bounds
+          changed = true;
           return p->getAst()->createNodeValueNull();
         }
       }
@@ -2591,8 +2616,12 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     AstNode* root = nn->expression()->nodeForModification();
 
     if (root != nullptr) {
+      // the changed variable is captured by reference by the lambda that
+      // traverses the Ast and may modify it. if it performs a modification,
+      // it will set changed=true
+      changed = false;
       AstNode* simplified = plan->getAst()->traverseAndModify(root, visitor);
-      if (simplified != root) {
+      if (simplified != root || changed) {
         nn->expression()->replaceNode(simplified);
         nn->expression()->invalidateAfterReplacements();
         modified = true;
@@ -3855,8 +3884,11 @@ auto insertGatherNode(
       // also check if we actually need to bother about the sortedness of the
       // result, or if we use the index for filtering only
       if (first->isSorted() && idxNode->needsGatherNodeSort()) {
-        for (auto const& path : first->fieldNames()) {
-          elements.emplace_back(sortVariable, isSortAscending, path);
+        for (auto const& path : first->trackedFieldNames(
+                 plan.getAst()->query().resourceMonitor())) {
+          elements.emplace_back(
+              SortElement{sortVariable, isSortAscending, path,
+                          plan.getAst()->query().resourceMonitor()});
         }
         for (auto const& it : allIndexes) {
           if (first != it) {
@@ -5374,8 +5406,18 @@ class RemoveToEnumCollFinder final
           toRemove =
               ExecutionNode::castTo<ReplaceNode const*>(en)->inKeyVariable();
         } else if (en->getType() == EN::UPDATE) {
+          // first try if we have the pattern UPDATE <key> WITH <doc> IN
+          // collection. if so, then toRemove will contain <key>.
           toRemove =
               ExecutionNode::castTo<UpdateNode const*>(en)->inKeyVariable();
+
+          if (toRemove == nullptr) {
+            // if we don't have that pattern, we can if instead have
+            // UPDATE <doc> IN collection.
+            // in this case toRemove will contain <doc>.
+            toRemove =
+                ExecutionNode::castTo<UpdateNode const*>(en)->inDocVariable();
+          }
         } else if (en->getType() == EN::REMOVE) {
           toRemove = ExecutionNode::castTo<RemoveNode const*>(en)->inVariable();
         } else {
@@ -5431,8 +5473,8 @@ class RemoveToEnumCollFinder final
             for (auto const& it : shardKeys) {
               toFind.emplace(it);
             }
-            // for REMOVE, we must also know the _key value, otherwise
-            // REMOVE will not work
+            // for UPDATE/REPLACE/REMOVE, we must also know the _key value,
+            // otherwise they will not work.
             toFind.emplace(arangodb::StaticStrings::KeyString);
 
             // go through the input object attribute by attribute
@@ -5447,14 +5489,17 @@ class RemoveToEnumCollFinder final
                 continue;
               }
 
-              auto it = toFind.find(sub->getString());
+              std::string attributeName = sub->getString();
+              auto it = toFind.find(attributeName);
 
               if (it != toFind.end()) {
                 // we found one of the shard keys!
                 // remove the attribute from our to-do list
                 auto value = sub->getMember(0);
 
-                if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+                // check if we have something like: { key: source.key }
+                if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+                    value->getStringView() == attributeName) {
                   // check if all values for the shard keys are referring to
                   // the same FOR loop variable
                   auto var = value->getMember(0);
@@ -6355,6 +6400,9 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
     bool canOptimize = true;
 
     ExecutionNode* current = ksp->getFirstParent();
+    arangodb::ResourceMonitor& resMonitor =
+        plan->getAst()->query().resourceMonitor();
+
     while (current != nullptr && canOptimize) {
       switch (current->getType()) {
         case EN::CALCULATION: {
@@ -6366,7 +6414,8 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
                 ExecutionNode::castTo<CalculationNode*>(current)->expression();
             AstNode const* node = exp->node();
             if (!Ast::getReferencedAttributesRecursive(
-                    node, variable, /*expectedAttributes*/ "", attributes)) {
+                    node, variable, /*expectedAttributes*/ "", attributes,
+                    resMonitor)) {
               // full path variable is used, or accessed in a way that we don't
               // understand, e.g. "p" or "p[0]" or "p[*]..."
               canOptimize = false;
@@ -6390,7 +6439,7 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
 
     if (canOptimize) {
       bool produceVertices =
-          attributes.contains(StaticStrings::GraphQueryVertices);
+          attributes.contains({StaticStrings::GraphQueryVertices, resMonitor});
 
       if (!produceVertices) {
         auto* options = ksp->options();

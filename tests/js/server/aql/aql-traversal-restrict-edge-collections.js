@@ -2,10 +2,6 @@
 /*global AQL_EXPLAIN, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for regression returning blocks to the manager
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2014 triagens GmbH, Cologne, Germany
@@ -89,7 +85,7 @@ function edgeCollectionRestrictionSuite() {
 
         graphs._create(gn, [graphs._relation(en + "1", vn, vn), graphs._relation(en + "2", vn, vn)]);
 
-        graphHelper.runTraversalRestrictEdgeCollectionTests(vn, en, gn,"cluster-one-shard");
+        graphHelper.runTraversalRestrictEdgeCollectionTests(vn, en, gn, "cluster-one-shard");
       } finally {
         cleanup();
       }

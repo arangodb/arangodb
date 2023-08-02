@@ -56,7 +56,8 @@ struct VertexProcessor {
                   std::unique_ptr<Algorithm<V, E, M>>& algorithm,
                   std::unique_ptr<WorkerContext>& workerContext,
                   std::unique_ptr<MessageCombiner<M>>& messageCombiner,
-                  std::unique_ptr<MessageFormat<M>>& messageFormat);
+                  std::unique_ptr<MessageFormat<M>>& messageFormat,
+                  size_t messageBatchSize);
   ~VertexProcessor();
 
   auto process(Vertex<V, E>* vertexEntry, MessageIterator<M> messages) -> void;
@@ -75,8 +76,6 @@ struct VertexProcessor {
   std::shared_ptr<InCache<M>> localMessageCache;
   std::shared_ptr<VertexComputation<V, E, M>> vertexComputation;
   std::unique_ptr<AggregatorHandler> workerAggregator;
-
-  uint32_t messageBatchSize = 5000;
 };
 
 struct ActorVertexProcessorResult {
@@ -124,7 +123,7 @@ struct ActorVertexProcessor {
   std::shared_ptr<VertexComputation<V, E, M>> vertexComputation;
   std::unique_ptr<AggregatorHandler> workerAggregator;
 
-  uint32_t messageBatchSize = 5000;
+  size_t messageBatchSize = 5000;
 };
 
 }  // namespace arangodb::pregel

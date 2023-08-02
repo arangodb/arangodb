@@ -1,5 +1,4 @@
 @startDocuBlock put_api_gharial_graph_edge_collection_edge
-@brief replace the content of an existing edge
 
 @RESTHEADER{PUT /_api/gharial/{graph}/edge/{collection}/{edge}, Replace an edge, replaceEdge}
 
@@ -15,7 +14,7 @@ The name of the graph.
 The name of the edge collection the edge belongs to.
 
 @RESTURLPARAM{edge,string,required}
-The *_key* attribute of the vertex.
+The `_key` attribute of the vertex.
 
 @RESTQUERYPARAMETERS
 
@@ -23,7 +22,11 @@ The *_key* attribute of the vertex.
 Define if the request should wait until synced to disk.
 
 @RESTQUERYPARAM{keepNull,boolean,optional}
-Define if values set to null should be stored. By default the key is not removed from the document.
+Define if values set to `null` should be stored.
+By default (`true`), the given documents attribute(s) are set to `null`.
+If this parameter is set to `false`, top-level attribute and sub-attributes with
+a `null` value in the request are removed from the document (but not attributes
+of objects that are nested inside of arrays).
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
 Define if a presentation of the deleted document should
@@ -36,9 +39,9 @@ be returned within the response object.
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{if-match,string,optional}
-If the "If-Match" header is given, then it must contain exactly one Etag. The document is updated,
-if it has the same revision as the given Etag. Otherwise a HTTP 412 is returned. As an alternative
-you can supply the Etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one ETag. The document is updated,
+if it has the same revision as the given ETag. Otherwise a HTTP 412 is returned. As an alternative
+you can supply the ETag in an attribute rev in the URL.
 
 @RESTBODYPARAM{_from,string,required,}
 The source vertex of this edge. Has to be valid within

@@ -430,8 +430,8 @@ index_t State::logFollower(VPackSlice transactions) {
     if (useSnapshot) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
-      Store snapshot(_agent->server(), _agent, "snapshot");
-      snapshot = transactions[0];
+      Store snapshot("snapshot");
+      snapshot.setNodeValue(transactions[0]);
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
             << "Could not restore received log snapshot.";
@@ -704,7 +704,7 @@ log_t State::atNoLock(index_t index) const {
   }
 
   auto pos = index - _cur;
-  if (pos > _log.size()) {
+  if (pos >= _log.size()) {
     std::string excMessage =
         std::string(
             "Access beyond the end of the log deque: (last, requested): (") +
@@ -945,6 +945,8 @@ bool State::loadPersisted() {
   // in log and compact cannot be mitigated after this point. We are here
   // because of the above missing / incomplete log / compaction. Including the
   // case of only one of the two collections being present.
+  dropCollection("log");
+  dropCollection("compact");
   ensureCollection("log", true);
   ensureCollection("compact", true);
 
@@ -984,7 +986,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
 
     VPackSlice ii = result[0];
     try {
-      store = ii;
+      store.setNodeValue(ii);
       index = extractIndexFromKey(ii);
       term = ii.get("term").getNumber<uint64_t>();
     } catch (std::exception const& e) {
@@ -1042,16 +1044,20 @@ index_t State::loadCompacted() {
 
 /// Load persisted configuration
 bool State::loadOrPersistConfiguration() {
-  std::string const aql(
-      "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
+  auto loadConfiguration = [&]() -> aql::QueryResult {
+    std::string const aql(
+        "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
 
-  TRI_ASSERT(nullptr !=
-             _vocbase);  // this check was previously in the Query constructor
-  auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+    TRI_ASSERT(nullptr !=
+               _vocbase);  // this check was previously in the Query constructor
+    auto query = arangodb::aql::Query::create(
+        transaction::StandaloneContext::Create(*_vocbase),
+        aql::QueryString(aql), nullptr);
 
-  aql::QueryResult queryResult = query->executeSync();
+    return query->executeSync();
+  };
+
+  aql::QueryResult queryResult = loadConfiguration();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1311,7 +1317,7 @@ bool State::compact(index_t cind, index_t keep) {
       (std::max)(_nextCompactionAfter.load(),
                  cind + _agent->config().compactionStepSize());
 
-  Store snapshot(_agent->server(), _agent, "snapshot");
+  Store snapshot("snapshot");
   index_t index;
   term_t term;
   if (!loadLastCompactedSnapshot(snapshot, index, term)) {
@@ -1328,8 +1334,7 @@ bool State::compact(index_t cind, index_t keep) {
     // Apply log entries to snapshot up to and including index cind:
     auto logs = slices(index + 1, cind);
     log_t last = at(cind);
-    snapshot.applyLogEntries(logs, cind, last.term,
-                             false /* do not perform callbacks */);
+    snapshot.applyLogEntries(logs, cind, last.term);
 
     if (!persistCompactionSnapshot(cind, last.term, snapshot)) {
       LOG_TOPIC("3b34a", ERR, Logger::AGENCY)
@@ -1733,13 +1738,13 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   VPackSlice result = queryResult.data->slice();
   TRI_ASSERT(result.isArray());
 
-  Store store(vocbase.server(), nullptr);
+  Store store;
   index = 0;
   term = 0;
   if (result.length() == 1) {
     // Result can only have length 0 or 1.
     VPackSlice s = result[0];
-    store = s;
+    store.setNodeValue(s);
     index = extractIndexFromKey(s);
     term = s.get("term").getNumber<uint64_t>();
     LOG_TOPIC("d838b", INFO, Logger::AGENCY)
@@ -1801,7 +1806,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
         }
       }
     }
-    store.applyLogEntries(b, index, term, false);
+    store.applyLogEntries(b, index, term);
   }
 
   auto builder = std::make_shared<VPackBuilder>();

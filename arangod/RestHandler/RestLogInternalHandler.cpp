@@ -24,7 +24,6 @@
 #include "RestLogInternalHandler.h"
 
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
-#include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "absl/strings/str_cat.h"
 
@@ -109,8 +108,9 @@ RestStatus RestLogInternalHandler::handleUpdateSnapshotStatus() {
   }
   auto report =
       velocypack::deserialize<replicated_log::SnapshotAvailableReport>(body);
-  auto res = _vocbase.getReplicatedLogLeaderById(logId)->setSnapshotAvailable(
-      participant, report);
+  auto res = std::dynamic_pointer_cast<replicated_log::LogLeader>(
+                 _vocbase.getReplicatedLogLeaderById(logId))
+                 ->setSnapshotAvailable(participant, report);
   if (res.fail()) {
     generateError(res);
   } else {

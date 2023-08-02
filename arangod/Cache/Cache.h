@@ -23,8 +23,8 @@
 
 #pragma once
 
+#include "Basics/ErrorCode.h"
 #include "Basics/ReadWriteSpinLock.h"
-#include "Basics/Result.h"
 #include "Basics/SharedCounter.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -35,9 +35,13 @@
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
 
+#include <atomic>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <memory>
+
+#include <absl/base/call_once.h>
 
 namespace arangodb::cache {
 
@@ -68,16 +72,26 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   Cache(Manager* manager, std::uint64_t id, Metadata&& metadata,
         std::shared_ptr<Table> table, bool enableWindowedStats,
-        std::function<Table::BucketClearer(Metadata*)> bucketClearer,
+        std::function<Table::BucketClearer(Cache*, Metadata*)> bucketClearer,
         std::size_t slotsPerBucket);
 
  public:
-  virtual ~Cache() = default;
+  virtual ~Cache();
 
-  typedef FrequencyBuffer<uint8_t> StatBuffer;
+  using StatBuffer = FrequencyBuffer<std::uint8_t>;
 
   static constexpr std::uint64_t kMinSize = 16384;
   static constexpr std::uint64_t kMinLogSize = 14;
+  // reporting granularity for memory usage increases/decreases by each cache.
+  // only when the value of |_memoryUsageDiff| exceeds this value, the extra
+  // memory used by the cache will be reported to the manager. smaller values
+  // here mean more eager reporting, but this can lead to higher contention on
+  // the cache's global lock. thus by default we only report memory usage
+  // increases/ decreases if a cache has buffered allocations/deallocations >=
+  // this threshold. the other allocations/deallocations by the cache will still
+  // be tracked locally. however, they will only be reported to the manager once
+  // they have reached the threshold value.
+  static constexpr std::int64_t kMemoryReportGranularity = 4096;
 
   static constexpr std::uint64_t triesGuarantee =
       std::numeric_limits<std::uint64_t>::max();
@@ -86,9 +100,16 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   // primary functionality; documented in derived classes
   virtual Finding find(void const* key, std::uint32_t keySize) = 0;
-  virtual Result insert(CachedValue* value) = 0;
-  virtual Result remove(void const* key, std::uint32_t keySize) = 0;
-  virtual Result banish(void const* key, std::uint32_t keySize) = 0;
+  virtual ::ErrorCode insert(CachedValue* value) = 0;
+  virtual ::ErrorCode remove(void const* key, std::uint32_t keySize) = 0;
+  virtual ::ErrorCode banish(void const* key, std::uint32_t keySize) = 0;
+
+  // inform the manager about additional (global) memory usage.
+  // this is necessary so that the cache does not only count its own memory,
+  // but also feeds back larger allocations/deallocations to the manager,
+  // so that the manager can accurately track the global memory usage (by all
+  // caches combined)
+  void adjustGlobalAllocation(std::int64_t value, bool force) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ID for this cache.
@@ -180,18 +201,18 @@ class Cache : public std::enable_shared_from_this<Cache> {
           CachedValue::construct(key, keySize, value, valueSize)};
       if (ADB_LIKELY(cv)) {
         status = cache.insert(cv.get());
-        if (status.ok()) {
+        if (status == TRI_ERROR_NO_ERROR) {
           cv.release();
         }
       } else {
-        status.reset(TRI_ERROR_OUT_OF_MEMORY);
+        status = TRI_ERROR_OUT_OF_MEMORY;
       }
     }
 
     Inserter(Inserter const& other) = delete;
     Inserter& operator=(Inserter const& other) = delete;
 
-    Result status;
+    ::ErrorCode status = TRI_ERROR_NO_ERROR;
   };
 
   // same as Cache::Inserter, but more lightweight. Does not provide
@@ -202,7 +223,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
                    void const* value, std::size_t valueSize) {
       std::unique_ptr<CachedValue> cv{
           CachedValue::construct(key, keySize, value, valueSize)};
-      if (ADB_LIKELY(cv) && cache.insert(cv.get()).ok()) {
+      if (ADB_LIKELY(cv) && cache.insert(cv.get()) == TRI_ERROR_NO_ERROR) {
         cv.release();
       }
     }
@@ -212,16 +233,14 @@ class Cache : public std::enable_shared_from_this<Cache> {
   };
 
  protected:
-  // shutdown cache and let its memory be reclaimed
-  static void destroy(std::shared_ptr<Cache> const& cache);
-
   void requestGrow();
   void requestMigrate(std::uint32_t requestedLogSize = 0);
 
   static void freeValue(CachedValue* value) noexcept;
   bool reclaimMemory(std::uint64_t size) noexcept;
 
-  void recordStat(Stat stat);
+  void recordHit();
+  void recordMiss();
 
   bool reportInsert(bool hadEviction);
 
@@ -241,27 +260,41 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // postcondition: metadata's isMigrating() flag is not set
   bool migrate(std::shared_ptr<Table> newTable);
 
-  virtual std::uint64_t freeMemoryFrom(std::uint32_t hash) = 0;
+  // free memory while callback returns true
+  virtual bool freeMemoryWhile(
+      std::function<bool(std::uint64_t)> const& cb) = 0;
+
   virtual void migrateBucket(void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
                              Table& newTable) = 0;
 
-  static constexpr std::uint64_t findStatsCapacity = 16384;
+  void ensureFindStats();
 
   basics::ReadWriteSpinLock _taskLock;
   std::atomic<bool> _shutdown;
-
-  bool _enableWindowedStats;
-  std::unique_ptr<StatBuffer> _findStats;
-  mutable basics::SharedCounter<64> _findHits;
-  mutable basics::SharedCounter<64> _findMisses;
 
   // allow communication with manager
   Manager* _manager;
   std::uint64_t const _id;
   Metadata _metadata;
 
+  // local buffer for tracking allocations/deallocations by this cache.
+  // this value will be modified locally until the value of |_memoryUsageDiff|
+  // exceeds the reporting granularity threshold.
+  // once the threshold is exceeded, the current value of _memoryUsageDiff will
+  // be reported to the manager, and the value of _memoryUsageDiff will be reset
+  // to zero. that means caches may report their memory usage in a delayed
+  // fashion. additionally, the last kMemoryReportGranularity bytes that were
+  // already used by the cache may not have been reported to the manager. these
+  // bytes will only be missing temporarily though. the missing bytes can be
+  // reported later, when there are additional allocations or deallocations,
+  // or when the cache gets destroyed. they will only be not be missing
+  // completely.
+  std::atomic<std::int64_t> _memoryUsageDiff;
+
  private:
+  void ensureEvictionStats();
+
   // manage the actual table - note: MUST be used only with atomic_load and
   // atomic_store!
   std::shared_ptr<Table> _table;
@@ -269,19 +302,48 @@ class Cache : public std::enable_shared_from_this<Cache> {
   Table::BucketClearer _bucketClearer;
   std::size_t const _slotsPerBucket;
 
+  // this struct is allocated on the heap only lazily
+  struct FindStats {
+    mutable basics::SharedCounter<64> findHits;
+    mutable basics::SharedCounter<64> findMisses;
+    std::unique_ptr<StatBuffer> findStats;
+  };
+
   // manage eviction rate
-  basics::SharedCounter<64> _insertsTotal;
-  basics::SharedCounter<64> _insertEvictions;
+  struct EvictionStats {
+    basics::SharedCounter<64> insertsTotal;
+    basics::SharedCounter<64> insertEvictions;
+  };
+
+  // this is a control variable that ensures that the _findStats
+  // are created lazily and exactly once per Cache object.
+  absl::once_flag _findStatsOnceFlag;
+  // this variable flips from false to true only once when the
+  // _findStats object is lazily created.
+  std::atomic<bool> _findStatsCreated = false;
+  // the actual find stats object
+  std::unique_ptr<FindStats> _findStats;
+
+  // this is a control variable that ensures that the _evictionStats
+  // are created lazily and exactly once per Cache object.
+  absl::once_flag _evictionStatsOnceFlag;
+  // this variable flips from false to true only once when the
+  // _evictionStats object is lazily created.
+  std::atomic<bool> _evictionStatsCreated = false;
+  // the actual eviction stats object
+  std::unique_ptr<EvictionStats> _evictionStats;
 
   // times to wait until requesting is allowed again
   std::atomic<Manager::time_point::rep> _migrateRequestTime;
   std::atomic<Manager::time_point::rep> _resizeRequestTime;
 
-  static constexpr std::uint64_t _evictionMask =
+  bool const _enableWindowedStats;
+
+  static constexpr std::uint64_t kEvictionMask =
       4095;  // check roughly every 4096 insertions
-  static constexpr double _evictionRateThreshold =
+  static constexpr double kEvictionRateThreshold =
       0.01;  // if more than 1%
-             // evictions in past 4096
+             // evictions in past kEvictionMask
              // inserts, migrate
 
   // friend class manager and tasks

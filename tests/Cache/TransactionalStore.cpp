@@ -98,7 +98,7 @@ TransactionalStore::~TransactionalStore() {
   delete _db;
   TRI_ASSERT(_directory.length() > 20);
   TRI_RemoveDirectory(_directory.c_str());
-  _manager->destroyCache(_cache);
+  _manager->destroyCache(std::move(_cache));
 }
 
 Cache* TransactionalStore::cache() { return _cache.get(); }
@@ -258,7 +258,7 @@ TransactionalStore::Document TransactionalStore::lookup(
                                                   &result, sizeof(Document));
       if (value) {
         auto status = _cache->insert(value);
-        if (status.fail()) {
+        if (status != TRI_ERROR_NO_ERROR) {
           delete value;
         }
       }

@@ -270,11 +270,11 @@ void Worker<V, E, M>::startGlobalStep(RunGlobalSuperStep const& data) {
     }
     LOG_PREGEL("d5e44", DEBUG) << fmt::format("Starting GSS: {}", data);
 
-    _workerContext->_writeAggregators->resetValues();
-    _workerContext->_readAggregators->setAggregatedValues(
-        data.aggregators.slice());
     // execute context
     if (_workerContext) {
+      _workerContext->_writeAggregators->resetValues();
+      _workerContext->_readAggregators->setAggregatedValues(
+          data.aggregators.slice());
       _workerContext->_vertexCount = data.vertexCount;
       _workerContext->_edgeCount = data.edgeCount;
       _workerContext->preGlobalSuperstep(data.gss);
@@ -312,11 +312,12 @@ void Worker<V, E, M>::_startProcessing() {
   for (auto futureN = size_t{0}; futureN < _config->parallelism(); ++futureN) {
     futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
         RequestLane::INTERNAL_LOW, [self, this, quiverIdx, futureN]() {
-          LOG_PREGEL("ee2ac", DEBUG)
-              << fmt::format("Starting vertex processor number {}", futureN);
-          auto processor =
-              VertexProcessor<V, E, M>(_config, _algorithm, _workerContext,
-                                       _messageCombiner, _messageFormat);
+          LOG_PREGEL("ee2ac", DEBUG) << fmt::format(
+              "Starting vertex processor number {} with batch size", futureN,
+              _messageBatchSize);
+          auto processor = VertexProcessor<V, E, M>(
+              _config, _algorithm, _workerContext, _messageCombiner,
+              _messageFormat, _messageBatchSize);
 
           while (true) {
             auto myCurrentQuiver = quiverIdx->fetch_add(1);
@@ -362,6 +363,7 @@ void Worker<V, E, M>::_startProcessing() {
           return processor.result();
         }));
   }
+  // cppcheck-suppress accessMoved
   futures::collectAll(std::move(futures))
       .thenFinal([self, this](auto&& tryResults) {
         // TODO: exception handling

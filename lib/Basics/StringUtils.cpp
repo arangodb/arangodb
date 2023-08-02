@@ -2037,7 +2037,7 @@ std::string formatSize(uint64_t value) {
   out = arangodb::basics::StringUtils::replace(out, ",", ".");
   auto pos = out.find('.');
   if (pos != std::string::npos) {
-    out = out.substr(0, pos + 2);
+    out.resize(pos + 2);
   }
   return out + ' ' + label;
 }

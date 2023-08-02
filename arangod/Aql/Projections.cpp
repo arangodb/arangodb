@@ -23,6 +23,7 @@
 
 #include "Aql/Projections.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
@@ -140,7 +141,7 @@ void Projections::toVelocyPackFromDocument(
       // projection for any other top-level attribute
       TRI_ASSERT(levelsOpen == 0);
       TRI_ASSERT(it.path.size() == 1);
-      VPackSlice found = slice.get(it.path.path[0]);
+      VPackSlice found = slice.get(it.path._path.at(0));
       if (found.isNone()) {
         // attribute not found
         b.add(it.path[0], VPackValue(VPackValueType::Null));
@@ -288,7 +289,7 @@ void Projections::toVelocyPack(velocypack::Builder& b,
       // projection on a nested attribute (e.g. a.b.c). will be returned as an
       // array. this kind of projection did not exist before 3.7
       b.openArray();
-      for (auto const& attribute : it.path.path) {
+      for (auto const& attribute : it.path._path) {
         b.add(VPackValue(attribute));
       }
       b.close();
@@ -297,23 +298,26 @@ void Projections::toVelocyPack(velocypack::Builder& b,
   b.close();
 }
 
-/*static*/ Projections Projections::fromVelocyPack(velocypack::Slice slice) {
-  return fromVelocyPack(slice, ::projectionsKey);
+/*static*/ Projections Projections::fromVelocyPack(
+    velocypack::Slice slice, arangodb::ResourceMonitor& resourceMonitor) {
+  return fromVelocyPack(slice, ::projectionsKey, resourceMonitor);
 }
 
-/*static*/ Projections Projections::fromVelocyPack(velocypack::Slice slice,
-                                                   std::string_view key) {
+/*static*/ Projections Projections::fromVelocyPack(
+    velocypack::Slice slice, std::string_view key,
+    arangodb::ResourceMonitor& resourceMonitor) {
   std::vector<AttributeNamePath> projections;
 
   VPackSlice p = slice.get(key);
   if (p.isArray()) {
     for (auto const& it : velocypack::ArrayIterator(p)) {
       if (it.isString()) {
-        projections.emplace_back(AttributeNamePath(it.copyString()));
+        projections.emplace_back(
+            AttributeNamePath(it.copyString(), resourceMonitor));
       } else if (it.isArray()) {
-        AttributeNamePath path;
+        AttributeNamePath path{resourceMonitor};
         for (auto const& it2 : velocypack::ArrayIterator(it)) {
-          path.path.emplace_back(it2.copyString());
+          path._path.emplace_back(it2.copyString());
         }
         projections.emplace_back(std::move(path));
       }

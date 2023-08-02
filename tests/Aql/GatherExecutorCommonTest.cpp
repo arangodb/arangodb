@@ -690,9 +690,13 @@ class CommonGatherExecutorTest
   // Activate result logging
   bool _useLogging{false};
 
+  // Monitors for resource usage
+  arangodb::GlobalResourceMonitor _globalResourceMonitor{};
+  arangodb::ResourceMonitor _resMonitor{_globalResourceMonitor};
+
   // We need to retain the memory of this SortElement. Otherwise we have invalid
   // memory access, for sorting nodes.
-  SortElement _sortElement{nullptr, true};
+  SortElement _sortElement{nullptr, true, _resMonitor};
 
 };  // namespace arangodb::tests::aql
 

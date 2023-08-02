@@ -29,11 +29,13 @@
 #include "Agency/FailedLeader.h"
 #include "Agency/Helpers.h"
 #include "Agency/Job.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,
@@ -110,9 +112,9 @@ bool FailedServer::start(bool& aborts) {
     return true;
   };
 
-  auto dbserverLock = _snapshot.hasAsSlice(blockedServersPrefix + _server);
+  auto dbserverLock = _snapshot.hasAsBuilder(blockedServersPrefix + _server);
   if (dbserverLock) {
-    auto s = *dbserverLock;
+    auto s = dbserverLock->slice();
     if (s.isArray()) {
       for (auto const& m : VPackArrayIterator(s)) {
         if (m.isString()) {
@@ -145,9 +147,9 @@ bool FailedServer::start(bool& aborts) {
   {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      auto const& toDoJob = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& toDoJob = _snapshot.get(toDoPrefix + _jobId);
       if (toDoJob) {
-        toDoJob.value().get().toBuilder(todo);
+        toDoJob->toBuilder(todo);
       } else {
         LOG_TOPIC("729c3", INFO, Logger::SUPERVISION)
             << "Failed to get key " << toDoPrefix << _jobId
@@ -168,10 +170,8 @@ bool FailedServer::start(bool& aborts) {
       VPackObjectBuilder oper(transactions.get());
       // Add pending
 
-      auto const& databaseProperties =
-          _snapshot.hasAsChildren(planDBPrefix).value().get();
-      auto const& databases =
-          _snapshot.hasAsChildren(planColPrefix).value().get();
+      auto const& databaseProperties = *_snapshot.hasAsChildren(planDBPrefix);
+      auto const& databases = *_snapshot.hasAsChildren(planColPrefix);
 
       size_t sub = 0;
 
@@ -184,29 +184,19 @@ bool FailedServer::start(bool& aborts) {
         for (auto const& collptr : database.second->children()) {
           auto const& collection = *(collptr.second);
 
-          auto const& replicationFactorPair =
-              collection.hasAsNode(StaticStrings::ReplicationFactor);
-          if (replicationFactorPair) {
-            VPackSlice const replicationFactor =
-                replicationFactorPair.value().get().slice();
+          auto const& replicationFactor =
+              collection.get(StaticStrings::ReplicationFactor);
+          if (replicationFactor) {
             uint64_t number = 1;
             bool isSatellite = false;
 
-            if (replicationFactor.isString() &&
-                replicationFactor.compareString(StaticStrings::Satellite) ==
-                    0) {
+            if (replicationFactor->getStringView() ==
+                StaticStrings::Satellite) {
               isSatellite = true;  // do nothing - number =
                                    // Job::availableServers(_snapshot).size();
-            } else if (replicationFactor.isNumber()) {
-              try {
-                number = replicationFactor.getNumber<uint64_t>();
-              } catch (...) {
-                LOG_TOPIC("f5290", ERR, Logger::SUPERVISION)
-                    << "Failed to read replicationFactor. job: " << _jobId
-                    << " " << collection.hasAsString("id").value();
-                continue;
-              }
-
+            } else if (auto maybeNumber = replicationFactor->getUInt();
+                       maybeNumber) {
+              number = *maybeNumber;
               if (number == 1) {
                 continue;
               }
@@ -218,11 +208,10 @@ bool FailedServer::start(bool& aborts) {
               continue;  // we only deal with the master
             }
 
-            for (auto const& shard :
-                 collection.hasAsChildren("shards").value().get()) {
+            for (auto const& shard : *collection.hasAsChildren("shards")) {
               size_t pos = 0;
 
-              for (VPackSlice it : VPackArrayIterator(shard.second->slice())) {
+              for (auto it : *shard.second->getArray()) {
                 auto dbs = it.copyString();
 
                 if (dbs == _server || dbs == "_" + _server) {
@@ -385,10 +374,8 @@ JOB_STATUS FailedServer::status() {
 
   std::shared_ptr<Builder> deleteTodos;
 
-  Node::Children const& todos =
-      _snapshot.hasAsChildren(toDoPrefix).value().get();
-  Node::Children const& pends =
-      _snapshot.hasAsChildren(pendingPrefix).value().get();
+  Node::Children const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  Node::Children const& pends = *_snapshot.hasAsChildren(pendingPrefix);
   bool hasOpenChildTasks = false;
 
   for (auto const& subJob : todos) {

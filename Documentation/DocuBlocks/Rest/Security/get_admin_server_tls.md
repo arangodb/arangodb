@@ -1,16 +1,15 @@
 
 @startDocuBlock get_admin_server_tls
-@brief Return the TLS data of this server (server key, client-auth CA)
 
-@RESTHEADER{GET /_admin/server/tls, Return a summary of the TLS data, getServerTls}
+@RESTHEADER{GET /_admin/server/tls, Get the TLS data, getServerTls}
 
 @RESTDESCRIPTION
 Return a summary of the TLS data. The JSON response will contain a field
 `result` with the following components:
 
   - `keyfile`: Information about the key file.
-  - `clientCA`: Information about the CA for client certificate
-    verification.
+  - `clientCA`: Information about the Certificate Authority (CA) for
+    client certificate verification.
 
 If server name indication (SNI) is used and multiple key files are
 configured for different server names, then there is an additional

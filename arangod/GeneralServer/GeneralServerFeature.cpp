@@ -50,6 +50,9 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Pregel/REST/RestControlPregelHandler.h"
 #include "Pregel/REST/RestPregelHandler.h"
 #include "ProgramOptions/Parameters.h"
@@ -75,6 +78,7 @@
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestDocumentStateHandler.h"
+#include "RestHandler/RestDumpHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
@@ -90,7 +94,6 @@
 #include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
-#include "RestHandler/RestPrototypeStateHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -112,6 +115,7 @@
 #include "RestServer/EndpointFeature.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -149,9 +153,13 @@ DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
 DECLARE_COUNTER(arangodb_vst_connections_total,
                 "Total number of VST connections");
+DECLARE_GAUGE(arangodb_request_body_memory_usage, std::uint64_t,
+              "Memory consumed by incoming request bodies.");
 
 GeneralServerFeature::GeneralServerFeature(Server& server)
     : ArangodFeature{server, *this},
+      _requestBodySize(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_request_body_memory_usage{})),
       _telemetricsMaxRequestsPerInterval(3),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _startedListening(false),
@@ -224,8 +232,8 @@ void GeneralServerFeature::collectOptions(
   options
       ->addOption(
           "--server.telemetrics-api-max-requests",
-          "Maximum number of requests from the arangosh that the telemetrics "
-          "API will respond without rate-limiting.",
+          "The maximum number of requests from arangosh that the "
+          "telemetrics API responds to without rate-limiting.",
           new options::UInt64Parameter(&_telemetricsMaxRequestsPerInterval),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Uncommon,
@@ -233,17 +241,16 @@ void GeneralServerFeature::collectOptions(
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100)
-      .setLongDescription(R"(This option controls the maximum 
-number of requests that the telemetrics API will respond to before
-it rate-limits. Note that only requests from the arangosh to the
-telemetrics API will be rate-limited, but not any other requests
-to the telemetrics API.
-Requests to the telemetrics API will be counted for every 2 hour
-interval, and then resetted. That means after a period of at most
-2 hours, the telemetrics API will become usable again.
-The purpose of this option is to keep a deployment from being
-overwhelmed by too many telemetrics requests, issued by arangosh
-instances that are used for batch processing.)");
+      .setLongDescription(R"(This option limits requests from the arangosh to
+the telemetrics API, but not any other requests to the API.
+
+Requests to the telemetrics API are counted for every 2 hour interval, and then
+reset. This means after a period of at most 2 hours, the telemetrics API
+becomes usable again.
+
+The purpose of this option is to keep a deployment from being overwhelmed by
+too many telemetrics requests issued by arangosh instances that are used for
+batch processing.)");
 
   options->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
@@ -730,9 +737,6 @@ void GeneralServerFeature::defineRemainingHandlers(
         std::string{StaticStrings::ApiLogInternal},
         RestHandlerCreator<RestLogInternalHandler>::createNoData);
     f.addPrefixHandler(
-        "/_api/prototype-state",
-        RestHandlerCreator<RestPrototypeStateHandler>::createNoData);
-    f.addPrefixHandler(
         std::string{StaticStrings::ApiDocumentStateExternal},
         RestHandlerCreator<RestDocumentStateHandler>::createNoData);
   }
@@ -755,6 +759,10 @@ void GeneralServerFeature::defineRemainingHandlers(
         "/_api/aqlfunction",
         RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
   }
+
+  f.addPrefixHandler(
+      "/_api/dump",
+      RestHandlerCreator<arangodb::RestDumpHandler>::createNoData);
 
   f.addPrefixHandler("/_api/explain",
                      RestHandlerCreator<RestExplainHandler>::createNoData);

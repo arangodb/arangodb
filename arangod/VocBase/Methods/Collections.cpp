@@ -33,6 +33,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
+#include "Cluster/ClusterCollectionMethods.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -61,6 +62,8 @@
 #include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -199,33 +202,6 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
       return {TRI_ERROR_BAD_PARAMETER,
               "invalid combination of 'isSmart' and 'satellite' "
               "replicationFactor"};
-    }
-  }
-
-  return {};
-}
-
-// validate collection parameters. if the validation fails, it will audit-log
-// the failure.
-Result validateAllCollectionsInfo(
-    TRI_vocbase_t& vocbase, std::vector<CollectionCreationInfo> const& infos,
-    bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer,
-    bool enforceReplicationFactor) {
-  Result res;
-
-  for (auto const& info : infos) {
-    // If the PlanId is not set, we either are on a single server, or this is
-    // a local collection in a cluster; which means, it is neither a user-facing
-    // collection (as seen on a Coordinator), nor a shard (on a DBServer).
-
-    // validate the information of the collection to be created
-    res = validateCreationInfo(
-        info, vocbase, allowEnterpriseCollectionsOnSingleServer,
-        enforceReplicationFactor, isLocalCollection(info), isSystemName(info),
-        allowSystem);
-    if (res.fail()) {
-      events::CreateCollection(vocbase.name(), info.name, res.errorNumber());
-      return res;
     }
   }
 
@@ -585,52 +561,20 @@ void Collections::enumerate(
   return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
-/*static*/ arangodb::Result Collections::create(  // create collection
-    TRI_vocbase_t& vocbase,                       // collection vocbase
+[[nodiscard]] arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
+Collections::create(         // create collection
+    TRI_vocbase_t& vocbase,  // collection vocbase
     OperationOptions const& options,
-    std::string const& name,                 // collection name
-    TRI_col_type_e collectionType,           // collection type
-    arangodb::velocypack::Slice properties,  // collection properties
-    bool createWaitsForSyncReplication,      // replication wait flag
-    bool enforceReplicationFactor,           // replication factor flag
-    bool isNewDatabase,
-    std::shared_ptr<LogicalCollection>& ret,  // invoke on collection creation
-    bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer,
+    std::vector<CreateCollectionBody> collections,  // Collections to create
+    bool createWaitsForSyncReplication,             // replication wait flag
+    bool enforceReplicationFactor,                  // replication factor flag
+    bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
     bool isRestore) {
-  if (name.empty()) {
-    events::CreateCollection(vocbase.name(), name,
-                             TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return TRI_ERROR_ARANGO_ILLEGAL_NAME;
-  } else if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
-             collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-    events::CreateCollection(vocbase.name(), name,
-                             TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-    return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
-  }
-  std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
-  std::vector<std::shared_ptr<LogicalCollection>> collections;
-  Result res =
-      create(vocbase, options, infos, createWaitsForSyncReplication,
-             enforceReplicationFactor, isNewDatabase, nullptr, collections,
-             allowSystem, allowEnterpriseCollectionsOnSingleServer, isRestore);
-  if (res.ok() && collections.size() > 0) {
-    ret = std::move(collections[0]);
-  }
-  return res;
-}
-
-Result Collections::create(
-    TRI_vocbase_t& vocbase, OperationOptions const& options,
-    std::vector<CollectionCreationInfo> const& infos,
-    bool createWaitsForSyncReplication, bool enforceReplicationFactor,
-    bool isNewDatabase,
-    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
-    std::vector<std::shared_ptr<LogicalCollection>>& ret, bool allowSystem,
-    bool allowEnterpriseCollectionsOnSingleServer, bool isRestore) {
+  // Let's first check if we are allowed to create the collections
   ExecContext const& exec = options.context();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
-    for (auto const& info : infos) {
-      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_FORBIDDEN);
+    for (auto const& col : collections) {
+      events::CreateCollection(vocbase.name(), col.name, TRI_ERROR_FORBIDDEN);
     }
     return arangodb::Result(                             // result
         TRI_ERROR_FORBIDDEN,                             // code
@@ -638,63 +582,91 @@ Result Collections::create(
     );
   }
 
+  // TODO: Discuss should this be Prod Assert?
+  // We are trying to protect against someone creating collections
+  // in a database that is to be deleted.
+  // Or should this be a possible error?
   TRI_ASSERT(!vocbase.isDangling());
 
-  // validate information from every element of infos.
-  // if the validation fails, it will audit-log the failure.
-  Result res = validateAllCollectionsInfo(
-      vocbase, infos, allowSystem, allowEnterpriseCollectionsOnSingleServer,
-      enforceReplicationFactor);
-  if (res.fail()) {
-    return res;
+  auto config = vocbase.getDatabaseConfiguration();
+  config.enforceReplicationFactor = enforceReplicationFactor;
+
+  auto numberOfPublicCollections = collections.size();
+  // NOTE: We use index access here, as collections may be modified
+  // during this code
+  for (size_t i = 0; i < numberOfPublicCollections; ++i) {
+    auto& col = collections[i];
+    {
+      // TODO: Can be replaced inspection for computed values
+      // We use this here to validate the format.
+      // But also to include optional properties as default values.
+      TRI_ASSERT(col.shardKeys.has_value());
+      auto result = ComputedValues::buildInstance(
+          vocbase, col.shardKeys.value(), col.computedValues.slice());
+      if (result.fail()) {
+        return result.result();
+      }
+
+      {
+        if (result.get() != nullptr) {
+          // The constructor of ComputedValues wil introduce some internal
+          // default properties. Hence we will take the valid output generated
+          // by the parsed computed values instance to write into the
+          // collection.
+          VPackBuilder builder;
+          result.get()->toVelocyPack(builder);
+          col.computedValues = std::move(builder);
+        }
+      }
+
+      if (ServerState::instance()->isCoordinator()) {
+        // This is only relevant for Coordinators
+        appendSmartEdgeCollections(col, collections, config.idGenerator);
+      }
+    }
   }
 
-  // construct a builder that contains information from all elements of infos
-  // and cluster related information
-  VPackBuilder builder = createCollectionProperties(
-      vocbase, infos, allowEnterpriseCollectionsOnSingleServer);
+  arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>> results{
+      TRI_ERROR_INTERNAL};
 
-  VPackSlice infoSlice = builder.slice();
-
-  TRI_ASSERT(infoSlice.isArray());
-  TRI_ASSERT(infoSlice.length() >= 1);
-  TRI_ASSERT(infoSlice.length() == infos.size());
-
-  std::vector<std::shared_ptr<LogicalCollection>> collections;
-  collections.reserve(infoSlice.length());
-
-  try {
-    if (ServerState::instance()->isCoordinator()) {
-      // Here we do have a cluster setup. In that case, we will create many
-      // collections in one go (batch-wise).
-      collections = ClusterMethods::createCollectionsOnCoordinator(
-          vocbase, infoSlice, false, createWaitsForSyncReplication,
-          enforceReplicationFactor, isNewDatabase, colToDistributeShardsLike);
-
-      if (collections.empty()) {
-        for (auto const& info : infos) {
-          events::CreateCollection(vocbase.name(), info.name,
-                                   TRI_ERROR_INTERNAL);
-        }
-        return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
+  if (ServerState::instance()->isCoordinator()) {
+    // Here we do have a cluster setup. In that case, we will create many
+    // collections in one go (batch-wise).
+    results = ClusterCollectionMethods::createCollectionsOnCoordinator(
+        vocbase, collections, false, createWaitsForSyncReplication,
+        enforceReplicationFactor, isNewDatabase);
+    if (results.fail()) {
+      for (auto const& info : collections) {
+        events::CreateCollection(vocbase.name(), info.name,
+                                 results.errorNumber());
       }
-    } else {
-      TRI_ASSERT(ServerState::instance()->isSingleServer() ||
-                 ServerState::instance()->isDBServer() ||
-                 ServerState::instance()->isAgent());
-      // Here we do have a single server setup, or we're either on a DBServer /
-      // Agency. In that case, we're not batching collection creating.
-      // Therefore, we need to iterate over the infoSlice and create each
-      // collection one by one.
-      collections = vocbase.createCollections(
-          infoSlice, allowEnterpriseCollectionsOnSingleServer);
+      return results;
     }
-  } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+    if (results->empty()) {
+      // TODO: CHeck if this can really happen after refactoring is completed
+      // We may be able to guarantee error when nothing could be done.
+      for (auto const& info : collections) {
+        events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_INTERNAL);
+      }
+      return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
+    }
+  } else {
+    TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+               ServerState::instance()->isDBServer() ||
+               ServerState::instance()->isAgent());
+    // Here we do have a single server setup, or we're either on a DBServer
+    // / Agency. In that case, we're not batching collection creating.
+    // Therefore, we need to iterate over the infoSlice and create each
+    // collection one by one.
+    results = vocbase.createCollections(
+        collections, allowEnterpriseCollectionsOnSingleServer);
+    if (results.fail()) {
+      for (auto const& info : collections) {
+        events::CreateCollection(vocbase.name(), info.name,
+                                 results.errorNumber());
+      }
+      return results;
+    }
   }
 
   // Grant access to the collections.
@@ -709,7 +681,7 @@ Result Collections::create(
       int tries = 0;
       while (true) {
         Result r = um->updateUser(exec.user(), [&](auth::User& entry) {
-          for (auto const& col : collections) {
+          for (auto const& col : *results) {
             // do not grant rights on system collections
             if (!col->system()) {
               entry.grantCollection(vocbase.name(), col->name(),
@@ -724,51 +696,191 @@ Result Collections::create(
           break;
         }
         if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
-          LOG_TOPIC("116bb", WARN, Logger::AUTHENTICATION)
+          // This could be 116bb again, as soon as "old code" is removed
+          LOG_TOPIC("116bc", WARN, Logger::AUTHENTICATION)
               << "Updating user failed with error: " << r.errorMessage()
               << ". giving up!";
-          for (auto const& col : collections) {
+          for (auto const& col : *results) {
             events::CreateCollection(vocbase.name(), col->name(),
                                      r.errorNumber());
           }
           return r;
         }
         // try again in case of conflict
-        LOG_TOPIC("ff123", TRACE, Logger::AUTHENTICATION)
+        // This could be ff123 again, as soon as "old code" is removed
+        LOG_TOPIC("ff124", TRACE, Logger::AUTHENTICATION)
             << "Updating user failed with error: " << r.errorMessage()
             << ". trying again";
       }
     }
-    ret = std::move(collections);
   } catch (basics::Exception const& ex) {
-    for (auto const& info : infos) {
+    for (auto const& info : collections) {
       events::CreateCollection(vocbase.name(), info.name, ex.code());
     }
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    for (auto const& info : infos) {
+    for (auto const& info : collections) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_INTERNAL);
     }
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    for (auto const& info : infos) {
+    for (auto const& info : collections) {
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_INTERNAL);
     }
     return Result(TRI_ERROR_INTERNAL, "cannot create collection");
   }
-  for (auto const& info : infos) {
+  for (auto const& info : collections) {
     if (!ServerState::instance()->isSingleServer()) {
       // don't log here (again) for single servers, because on the single
       // server we will log the creation of each collection inside
       // vocbase::createCollectionWorker
       events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
     }
-    velocypack::Builder builder(info.properties);
-    OperationResult result(Result(), builder.steal(), options);
+
+    // TODO: update auditLog reporting
+    OperationResult result(Result(), info.toCollectionsCreate().steal(),
+                           options);
     events::PropertyUpdateCollection(vocbase.name(), info.name, result);
   }
 
-  return {};
+  return results;
+}
+
+/*static*/ arangodb::Result Collections::createShard(  // create shard
+    TRI_vocbase_t& vocbase,                            // collection vocbase
+    OperationOptions const& options,
+    std::string const& name,                 // collection name
+    TRI_col_type_e collectionType,           // collection type
+    arangodb::velocypack::Slice properties,  // collection properties
+    std::shared_ptr<LogicalCollection>& ret) {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+  // NOTE: This is original Collections::create but we stripped of
+  // everything that is not relevant on DBServers.
+
+  if (name.empty()) {
+    events::CreateCollection(vocbase.name(), name,
+                             TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    return TRI_ERROR_ARANGO_ILLEGAL_NAME;
+  } else if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+             collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    events::CreateCollection(vocbase.name(), name,
+                             TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
+  }
+
+  std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
+
+  bool allowEnterpriseCollectionsOnSingleServer = false;
+  TRI_ASSERT(!vocbase.isDangling());
+  {
+    // Validate if Collection info is valid (We only have one entry so front is
+    // enough) This does actually not matter, we cannot get into a code path
+    // where it is read.
+    bool enforceReplicationFactor = false;
+    bool allowSystem = false;
+    // LocalCollection checks if we are trying to create a "real" collection
+    // We cannot have this, we have a shard.
+    TRI_ASSERT(!isLocalCollection(infos.front()));
+    auto res = validateCreationInfo(
+        infos.front(), vocbase, allowEnterpriseCollectionsOnSingleServer,
+        enforceReplicationFactor, isLocalCollection(infos.front()),
+        NameValidator::isSystemName(name), allowSystem);
+    if (res.fail()) {
+      // Audit Log the error
+      events::CreateCollection(vocbase.name(), name, res.errorNumber());
+      return res;
+    }
+  }
+
+  // construct a builder that contains information from all elements of infos
+  // and cluster related information
+  VPackBuilder builder = createCollectionProperties(
+      vocbase, infos, allowEnterpriseCollectionsOnSingleServer);
+
+  VPackSlice infoSlice = builder.slice();
+
+  TRI_ASSERT(infoSlice.isArray());
+  TRI_ASSERT(infoSlice.length() == 1);
+  TRI_ASSERT(infoSlice.length() == infos.size());
+
+  try {
+    auto collections = vocbase.createCollections(
+        infoSlice, allowEnterpriseCollectionsOnSingleServer);
+
+    // We do not have user management on Shards.
+    // If we ever change this we may need to add permission granting here.
+    TRI_ASSERT(AuthenticationFeature::instance()->userManager() == nullptr);
+
+    for (auto const& info : infos) {
+      // Add audit logging for the one collection we have
+      events::CreateCollection(vocbase.name(), name, TRI_ERROR_NO_ERROR);
+      velocypack::Builder reportBuilder(info.properties);
+      OperationResult result(Result(), reportBuilder.steal(), options);
+      events::PropertyUpdateCollection(vocbase.name(), name, result);
+    }
+    // We asked for one shard. It did not throw on creation.
+    // So we expect to get exactly one back
+    ADB_PROD_ASSERT(collections.size() == 1);
+    ret = std::move(collections[0]);
+    return TRI_ERROR_NO_ERROR;
+  } catch (basics::Exception const& ex) {
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+  }
+}
+
+void Collections::applySystemCollectionProperties(
+    CreateCollectionBody& col, TRI_vocbase_t const& vocbase,
+    DatabaseConfiguration const& config, bool isLegacyDatabase) {
+  col.isSystem = true;
+  // that forces all collections to be on the same physical DBserver
+  auto designatedLeaderName = vocbase.isSystem() && !isLegacyDatabase
+                                  ? StaticStrings::UsersCollection
+                                  : StaticStrings::GraphsCollection;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // This implements some stunt to figure out if we are in a mock environment.
+  // If that is the case we may not have all System collections.
+  // So we better not enforce distributeShardsLike.
+  bool isMock = false;
+  if (vocbase.server().hasFeature<EngineSelectorFeature>()) {
+    StorageEngine& engine =
+        vocbase.server().template getFeature<EngineSelectorFeature>().engine();
+
+    isMock = (engine.typeName() == "Mock");
+  } else {
+    // We do not even have a full server, can only be a mock.
+    isMock = true;
+  }
+
+  if (isMock) {
+    designatedLeaderName = col.name;
+  }
+#endif
+
+  if (col.name == designatedLeaderName) {
+    // The leading collection needs to define sharding
+    col.replicationFactor = vocbase.replicationFactor();
+    if (vocbase.server().hasFeature<ClusterFeature>()) {
+      col.replicationFactor =
+          (std::max)(col.replicationFactor.value(),
+                     static_cast<uint64_t>(vocbase.server()
+                                               .getFeature<ClusterFeature>()
+                                               .systemReplicationFactor()));
+    }
+  } else {
+    // Others only follow
+    col.distributeShardsLike = designatedLeaderName;
+  }
+
+  [[maybe_unused]] auto res =
+      col.applyDefaultsAndValidateDatabaseConfiguration(config);
+  ADB_PROD_ASSERT(!res.fail())
+      << "Created illegal default system collection attributes: "
+      << res.errorMessage();
 }
 
 void Collections::createSystemCollectionProperties(
@@ -816,19 +928,21 @@ void Collections::createSystemCollectionProperties(
   Result res = methods::Collections::lookup(vocbase, name, createdCollection);
 
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-    VPackBuilder bb;
-    createSystemCollectionProperties(name, bb, vocbase);
+    CreateCollectionBody newCollection;
+    newCollection.name = name;
+    methods::Collections::applySystemCollectionProperties(
+        newCollection, vocbase, vocbase.getDatabaseConfiguration(), false);
 
-    res =
-        Collections::create(vocbase,  // vocbase to create in
-                            options,
-                            name,  // collection name top create
-                            TRI_COL_TYPE_DOCUMENT,  // collection type to create
-                            bb.slice(),  // collection definition to create
-                            true,        // waitsForSyncReplication
-                            true,        // enforceReplicationFactor
-                            isNewDatabase, createdCollection,
-                            true /* allow system collection creation */);
+    auto collection = Collections::create(vocbase, options, {newCollection},
+                                          true,  // waitsForSyncReplication
+                                          true,  // enforceReplicationFactor
+                                          isNewDatabase);
+    // Operation either failed, or we have created exactly one collection.
+    TRI_ASSERT(collection.fail() || collection.get().size() == 1);
+    if (collection.ok()) {
+      createdCollection = collection.get().front();
+    }
+    return collection.result();
   }
 
   TRI_ASSERT(res.fail() || createdCollection);
@@ -1279,3 +1393,11 @@ arangodb::velocypack::Builder Collections::filterInput(
       properties, std::unordered_set<std::string>{
                       COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES});
 }
+
+#ifndef USE_ENTERPRISE
+void Collections::appendSmartEdgeCollections(
+    CreateCollectionBody&, std::vector<CreateCollectionBody>&,
+    std::function<DataSourceId()> const&) {
+  // Nothing to do here.
+}
+#endif

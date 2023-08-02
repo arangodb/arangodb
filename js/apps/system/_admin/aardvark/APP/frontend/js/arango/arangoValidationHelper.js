@@ -8,12 +8,8 @@
     getControlCharactersRegex: () => {
       return /^[^\u0000-\u001F]+$/;
     },
-    getDocumentKeySpecialCharactersValidation: () => {
-      var keySpecialCharactersValidation = {
-        rule: Joi.string().regex(/^[a-zA-Z0-9_\-:\.@()\+,=;$!*%']+$/),
-        msg: "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %.",
-      };
-      return keySpecialCharactersValidation;
+    getDocumentKeyRegex: () => {
+      return /^[a-zA-Z0-9_\-:\.@()\+,=;$!*%']+$/;
     },
     getDatabaseNameValidations: () => {
       var extendedNames = window.frontendConfig.extendedNames;
@@ -66,12 +62,16 @@
       return databaseNameValidations;
     },
     getDocumentNameValidations: () => {
-      var keySpecialCharactersValidation =
-        window.arangoValidationHelper.getDocumentKeySpecialCharactersValidation();
+      var documentKeyRegex =
+        window.arangoValidationHelper.getDocumentKeyRegex();
+      var keySpecialCharactersValidation = {
+        rule: Joi.string().regex(documentKeyRegex).allow(""),
+        msg: "Only these characters are allowed: a-z, A-Z, 0-9 and  _ - : . @ ( ) + , = ; $ ! * ' %.",
+      };
       return [
         keySpecialCharactersValidation,
         {
-          rule: Joi.string().max(254, "utf8"),
+          rule: Joi.string().max(254, "utf8").allow(""),
           msg: "Document key max length is 254.",
         },
         {
@@ -127,23 +127,6 @@
         }
       );
       return collectionNameValidations;
-    },
-    getGraphNameValidations: () => {
-      var keySpecialCharactersValidation =
-        window.arangoValidationHelper.getDocumentKeySpecialCharactersValidation();
-
-      var graphNameValidations = [
-        keySpecialCharactersValidation,
-        {
-          rule: Joi.string().max(254, "utf8"),
-          msg: "Graph name max length is 254 bytes.",
-        },
-        {
-          rule: Joi.string().required(),
-          msg: "No graph name given.",
-        },
-      ];
-      return graphNameValidations;
     },
   };
 })();

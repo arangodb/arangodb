@@ -44,11 +44,12 @@ Metadata::Metadata() noexcept
       _resizing(false) {}
 
 Metadata::Metadata(std::uint64_t usageLimit, std::uint64_t fixed,
-                   std::uint64_t table, std::uint64_t max) noexcept
+                   std::uint64_t tableSize, std::uint64_t max) noexcept
     : fixedSize(fixed),
-      tableSize(table),
+      tableSize(tableSize),
       maxSize(max),
-      allocatedSize(usageLimit + fixed + table + Manager::cacheRecordOverhead),
+      allocatedSize(usageLimit + fixed + tableSize +
+                    Manager::kCacheRecordOverhead),
       deservedSize(allocatedSize),
       usage(0),
       softUsageLimit(usageLimit),
@@ -56,6 +57,7 @@ Metadata::Metadata(std::uint64_t usageLimit, std::uint64_t fixed,
       _migrating(false),
       _resizing(false) {
   TRI_ASSERT(allocatedSize <= maxSize);
+  checkInvariants();
 }
 
 Metadata::Metadata(Metadata&& other) noexcept
@@ -114,14 +116,23 @@ bool Metadata::adjustUsageIfAllowed(std::int64_t usageChange) noexcept {
   return true;
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void Metadata::checkInvariants() const noexcept {
+  TRI_ASSERT(allocatedSize == hardUsageLimit + tableSize + fixedSize +
+                                  Manager::kCacheRecordOverhead);
+  TRI_ASSERT(allocatedSize <= maxSize);
+}
+#endif
+
 bool Metadata::adjustLimits(std::uint64_t softLimit,
                             std::uint64_t hardLimit) noexcept {
   TRI_ASSERT(_lock.isLockedWrite());
-  uint64_t fixed = tableSize + fixedSize + Manager::cacheRecordOverhead;
+  uint64_t fixed = tableSize + fixedSize + Manager::kCacheRecordOverhead;
   auto approve = [&]() -> bool {
     softUsageLimit = softLimit;
     hardUsageLimit = hardLimit;
     allocatedSize = hardUsageLimit + fixed;
+    checkInvariants();
 
     return true;
   };
@@ -167,7 +178,7 @@ std::uint64_t Metadata::adjustDeserved(std::uint64_t deserved) noexcept {
 
 std::uint64_t Metadata::newLimit() const noexcept {
   TRI_ASSERT(_lock.isLocked());
-  std::uint64_t fixed = fixedSize + tableSize + Manager::cacheRecordOverhead;
+  std::uint64_t fixed = fixedSize + tableSize + Manager::kCacheRecordOverhead;
   return ((Cache::kMinSize + fixed) >= deservedSize)
              ? Cache::kMinSize
              : std::min((deservedSize - fixed), 4 * hardUsageLimit);
@@ -176,7 +187,7 @@ std::uint64_t Metadata::newLimit() const noexcept {
 bool Metadata::migrationAllowed(std::uint64_t newTableSize) noexcept {
   TRI_ASSERT(_lock.isLocked());
   return (hardUsageLimit + fixedSize + newTableSize +
-              Manager::cacheRecordOverhead <=
+              Manager::kCacheRecordOverhead <=
           std::min(deservedSize, maxSize));
 }
 
@@ -184,7 +195,8 @@ void Metadata::changeTable(std::uint64_t newTableSize) noexcept {
   TRI_ASSERT(_lock.isLockedWrite());
   tableSize = newTableSize;
   allocatedSize =
-      hardUsageLimit + fixedSize + tableSize + Manager::cacheRecordOverhead;
+      hardUsageLimit + fixedSize + tableSize + Manager::kCacheRecordOverhead;
+  checkInvariants();
 }
 
 }  // namespace arangodb::cache

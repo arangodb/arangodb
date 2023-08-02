@@ -1,5 +1,4 @@
 @startDocuBlock delete_api_control_pregel_history_id
-@brief Removes the persisted state of a past Pregel execution job
 
 @RESTHEADER{DELETE /_api/control_pregel/history/{id}, Remove the execution statistics of a past Pregel job, deletePregelJobStatistics}
 

@@ -168,8 +168,12 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     uint16_t coveringPosition = aql::Projections::kNoCoveringIndexPosition;
 
     // projections we want to cover
-    aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
-        {StaticStrings::FromString, StaticStrings::ToString}));
+    std::vector<aql::AttributeNamePath> paths = {};
+    paths.emplace_back(
+        aql::AttributeNamePath({StaticStrings::FromString}, monitor));
+    paths.emplace_back(
+        aql::AttributeNamePath({StaticStrings::ToString}, monitor));
+    aql::Projections edgeProjections(std::move(paths));
 
     if (index->covers(edgeProjections)) {
       // find opposite attribute
@@ -216,6 +220,11 @@ RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
       _requiresFullDocument(requiresFullDocument) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!globalIndexConditions.empty());
+  if (globalIndexConditions.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "index conditions in SingleServerEdgeCursor should not be empty");
+  }
   _lookupInfo.reserve(globalIndexConditions.size());
   _depthLookupInfo.reserve(depthBasedIndexConditions.size());
 

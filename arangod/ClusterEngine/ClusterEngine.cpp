@@ -38,7 +38,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
@@ -290,17 +290,15 @@ void ClusterEngine::waitForEstimatorSync(
 }
 Result ClusterEngine::dropReplicatedState(
     TRI_vocbase_t& vocbase,
-    std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
-        ptr) {
+    std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-ResultT<std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>>
+ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>>
 ClusterEngine::createReplicatedState(
     TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    replication2::replicated_state::PersistedStateInfo const& info) {
-  return ResultT<
-      std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>>{
+    replication2::storage::PersistedStateInfo const& info) {
+  return ResultT<std::unique_ptr<replication2::storage::IStorageEngineMethods>>{
       TRI_ERROR_NOT_IMPLEMENTED};
 }
 

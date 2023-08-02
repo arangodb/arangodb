@@ -46,6 +46,7 @@
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
+#include "GeneralServerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -66,7 +67,14 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
               .with<structuredParams::UrlName>(_request->fullUrl())
               .with<structuredParams::UserName>(_request->user())
               .share()),
-      _canceled(false) {}
+      _canceled(false) {
+  if (server.hasFeature<GeneralServerFeature>() &&
+      server.isEnabled<GeneralServerFeature>()) {
+    _requestBodySizeTracker = metrics::GaugeCounterGuard<std::uint64_t>{
+        server.getFeature<GeneralServerFeature>()._requestBodySize,
+        _request->memoryUsage()};
+  }
+}
 
 RestHandler::~RestHandler() {
   if (_trackedAsOngoingLowPrio) {
@@ -373,8 +381,8 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
 }
 
 void RestHandler::runHandlerStateMachine() {
+  std::lock_guard lock{_executionMutex};
   TRI_ASSERT(_callback);
-  RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
 
   while (true) {
     switch (_state) {
@@ -483,7 +491,7 @@ void RestHandler::shutdownExecute(bool isFinalized) noexcept {
 /// Execute the rest handler state machine. Retry the wakeup,
 /// returns true if _state == PAUSED, false otherwise
 bool RestHandler::wakeupHandler() {
-  RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
+  std::lock_guard lock{_executionMutex};
   if (_state == HandlerState::PAUSED) {
     runHandlerStateMachine();  // may change _state
     return _state == HandlerState::PAUSED;
@@ -597,7 +605,7 @@ void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
 }
 
 void RestHandler::compressResponse() {
-  if (_response->isCompressionAllowed()) {
+  if (!_isAsyncRequest && _response->isCompressionAllowed()) {
     switch (_request->acceptEncoding()) {
       case rest::EncodingType::DEFLATE:
         _response->deflate();
@@ -643,20 +651,18 @@ RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
     f.result().throwIfFailed();  // just throw the error upwards
     return RestStatus::DONE;
   }
-  bool done = false;
-  std::move(f).thenFinal(
-      withLogContext([self = shared_from_this(),
-                      &done](futures::Try<futures::Unit>&& t) -> void {
+  TRI_ASSERT(_executionCounter == 0);
+  _executionCounter = 2;
+  std::move(f).thenFinal(withLogContext(
+      [self = shared_from_this()](futures::Try<futures::Unit>&& t) -> void {
         if (t.hasException()) {
           self->handleExceptionPtr(std::move(t).exception());
         }
-        if (std::this_thread::get_id() == self->_executionMutexOwner.load()) {
-          done = true;
-        } else {
+        if (--self->_executionCounter == 0) {
           self->wakeupHandler();
         }
       }));
-  return done ? RestStatus::DONE : RestStatus::WAITING;
+  return --_executionCounter == 0 ? RestStatus::DONE : RestStatus::WAITING;
 }
 
 // -----------------------------------------------------------------------------

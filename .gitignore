@@ -123,6 +123,7 @@ npm-debug.log
 /log-*
 data-*
 databases
+!js/apps/system/_admin/aardvark/APP/react/src/views/databases
 !/Documentation/DocuBlocks/Rest/Databases
 cluster-init
 

@@ -153,9 +153,9 @@ void FileDescriptorsFeature::collectOptions(
   options
       ->addOption(
           "--server.count-descriptors-interval",
-          "Controls the interval (in milliseconds) in which open files for the "
-          "process are determined. "
-          "Requires `--server.count-descriptors`.",
+          "Controls the interval (in milliseconds) in which the number of open "
+          "file descriptors for the process is determined "
+          "(0 = disable counting).",
           new UInt64Parameter(&_countDescriptorsInterval),
           arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                        arangodb::options::Flags::OsLinux))
