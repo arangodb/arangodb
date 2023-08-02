@@ -31,6 +31,7 @@
 #include "VocBase/voc-types.h"
 #include "Zkd/ZkdHelper.h"
 
+#include <iosfwd>
 #include <string>
 #include <string_view>
 
