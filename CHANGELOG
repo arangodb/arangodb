@@ -1,6 +1,10 @@
 devel
 -----
 
+* ES-1566: instead of potentially accessing a nullptr inside graph traversal
+  setup, throw an exception. This will be handled properly and returned with
+  a proper error message.
+
 * Updated arangosync to v2.19.0-preview-4.
 
 * Expose the "high water multiplier" for the in-memory cache subsystem via a
