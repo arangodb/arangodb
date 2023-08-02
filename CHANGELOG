@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.19.0-preview-4.
+
 * Expose the "high water multiplier" for the in-memory cache subsystem via a
   new startup option `--cache.high-water-multiplier`.
   The high water multiplier is used to calculate the effective memory usage 
