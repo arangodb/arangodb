@@ -83,14 +83,14 @@
 #include <velocypack/Slice.h>
 
 #include <algorithm>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
 #include <numeric>
 #include <random>
 #include <vector>
 
 #include <absl/strings/str_cat.h>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -304,7 +304,7 @@ const char* notFoundSlice =
 void mergeResultsAllShards(
     std::vector<VPackSlice> const& results, VPackBuilder& resultBody,
     std::unordered_map<::ErrorCode, size_t>& errorCounter,
-    VPackValueLength const expectedResults) {
+    VPackValueLength expectedResults, bool silent) {
   // errorCounter is not allowed to contain any NOT_FOUND entry.
   TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
              errorCounter.end());
@@ -320,16 +320,19 @@ void mergeResultsAllShards(
       oneRes = oneRes.at(currentIndex);
 
       auto errorNum = TRI_ERROR_NO_ERROR;
-      VPackSlice errorNumSlice = oneRes.get(StaticStrings::ErrorNum);
-      if (errorNumSlice.isNumber()) {
+      if (auto errorNumSlice = oneRes.get(StaticStrings::ErrorNum);
+          errorNumSlice.isNumber()) {
         errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
       }
       if ((errorNum != TRI_ERROR_NO_ERROR &&
            errorNum != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ||
           oneRes.hasKey(StaticStrings::KeyString)) {
         // This is the correct result: Use it
-        resultBody.add(oneRes);
         foundRes = true;
+        if (!silent || (errorNum != TRI_ERROR_NO_ERROR &&
+                        errorNum != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+          resultBody.add(oneRes);
+        }
         break;
       }
     }
@@ -380,16 +383,17 @@ OperationResult handleCRUDShardResponsesFast(
       VPackSlice result = res.slice();
       // we expect an array of baby-documents, but the response might
       // also be an error, if the DBServer threw a hissy fit
-      if (result.isObject() && result.get(StaticStrings::Error).isBoolean() &&
-          result.get(StaticStrings::Error).getBoolean()) {
-        // an error occurred, now rethrow the error
-        auto code = ::ErrorCode{
-            result.get(StaticStrings::ErrorNum).getNumericValue<int>()};
-        VPackSlice msg = result.get(StaticStrings::ErrorMessage);
-        if (msg.isString()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(code, msg.copyString());
-        } else {
-          THROW_ARANGO_EXCEPTION(code);
+      if (result.isObject()) {
+        if (auto error = result.get(StaticStrings::Error); error.isTrue()) {
+          // an error occurred, now rethrow the error
+          auto code = ::ErrorCode{
+              result.get(StaticStrings::ErrorNum).getNumericValue<int>()};
+          VPackSlice msg = result.get(StaticStrings::ErrorMessage);
+          if (msg.isString()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(code, msg.copyString());
+          } else {
+            THROW_ARANGO_EXCEPTION(code);
+          }
         }
       }
       resultMap.try_emplace(std::move(sId), result);
@@ -434,7 +438,13 @@ OperationResult handleCRUDShardResponsesFast(
       resultBody.close();
     } else {
       VPackSlice arr = it->second;
-      resultBody.add(arr.at(pair.second));
+      VPackSlice doc = arr.at(pair.second);
+      TRI_ASSERT(doc.isObject());
+
+      if (!opCtx.options.silent || doc.get(StaticStrings::Error).isTrue()) {
+        // in silent mode we suppress all non-errors
+        resultBody.add(arr.at(pair.second));
+      }
     }
   }
   resultBody.close();
@@ -503,7 +513,8 @@ OperationResult handleCRUDShardResponsesSlow(
   VPackBuilder resultBody;
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == responses.size());
-  mergeResultsAllShards(allResults, resultBody, errorCounter, expectedLen);
+  mergeResultsAllShards(allResults, resultBody, errorCounter, expectedLen,
+                        options.silent);
   return OperationResult(Result(), resultBody.steal(), std::move(options),
                          std::move(errorCounter));
 }
@@ -523,7 +534,7 @@ struct CrudOperationCtx {
 
 ::ErrorCode distributeBabyOnShards(CrudOperationCtx& opCtx,
                                    LogicalCollection& collinfo,
-                                   VPackSlice value) {
+                                   velocypack::Slice value) {
   TRI_ASSERT(!collinfo.isSmart() || collinfo.type() == TRI_COL_TYPE_DOCUMENT);
 
   ShardID shardID;
@@ -535,7 +546,7 @@ struct CrudOperationCtx {
     shardID = collinfo.shardingInfo()->shardListAsShardID()->at(0);
   } else {
     // Now find the responsible shard:
-    bool usesDefaultShardingAttributes;
+    [[maybe_unused]] bool usesDefaultShardingAttributes;
     auto res = collinfo.getResponsibleShard(
         value, /*docComplete*/ false, shardID, usesDefaultShardingAttributes);
 
@@ -549,20 +560,16 @@ struct CrudOperationCtx {
   }
 
   // We found the responsible shard. Add it to the list.
-  auto it = opCtx.shardMap.find(shardID);
-  if (it == opCtx.shardMap.end()) {
-    opCtx.shardMap.try_emplace(shardID, std::vector<VPackSlice>{value});
-    opCtx.reverseMapping.emplace_back(shardID, 0);
-  } else {
-    it->second.push_back(value);
-    opCtx.reverseMapping.emplace_back(shardID, it->second.size() - 1);
-  }
+  auto& map = opCtx.shardMap[shardID];
+  map.push_back(value);
+  opCtx.reverseMapping.emplace_back(shardID, map.size() - 1);
   return TRI_ERROR_NO_ERROR;
 }
 
 struct InsertOperationCtx {
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
-  std::map<ShardID, std::vector<std::pair<VPackSlice, std::string>>> shardMap;
+  std::map<ShardID, std::vector<std::pair<velocypack::Slice, std::string>>>
+      shardMap;
   arangodb::OperationOptions options;
   std::vector<Result> localErrors;
 };
@@ -656,7 +663,8 @@ struct InsertOperationCtx {
     if (userSpecifiedKey &&
         (!usesDefaultShardingAttributes || !collinfo.allowUserKeys()) &&
         !isRestore) {
-      return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
+      addLocalError(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+      return TRI_ERROR_NO_ERROR;
     }
   }
 
@@ -1432,7 +1440,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> createDocumentOnCoordinator(
+futures::Future<OperationResult> insertDocumentOnCoordinator(
     transaction::Methods const& trx, LogicalCollection& coll, VPackSlice slice,
     OperationOptions const& options, transaction::MethodsApi api) {
   // create vars used in this function
@@ -1506,6 +1514,9 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
         .param(StaticStrings::SkipDocumentValidation,
                (options.validate ? "false" : "true"));
 
+    // note: the "silent" flag is not forwarded to the leader by the
+    // coordinator. the coordinator handles the "silent" flag on its own.
+
     if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
       // this attribute can have 3 values: default, true and false. only
       // expose it when it is not set to "default"
@@ -1562,8 +1573,8 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
       addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
       auto future = network::sendRequestRetry(
           pool, "shard:" + it.first, fuerte::RestVerb::Post,
-          baseUrl + StringUtils::urlEncode(it.first), std::move(reqBuffer),
-          reqOpts, std::move(headers));
+          absl::StrCat(baseUrl, StringUtils::urlEncode(it.first)),
+          std::move(reqBuffer), reqOpts, std::move(headers));
       futures.emplace_back(std::move(future));
     }
 
@@ -1620,7 +1631,7 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
 
   CrudOperationCtx opCtx;
   opCtx.options = options;
-  const bool useMultiple = slice.isArray();
+  bool useMultiple = slice.isArray();
 
   bool canUseFastPath = true;
   if (useMultiple) {
@@ -1652,6 +1663,9 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
       .param(StaticStrings::IgnoreRevsString,
              (options.ignoreRevs ? "true" : "false"));
 
+  // note: the "silent" flag is not forwarded to the leader by the
+  // coordinator. the coordinator handles the "silent" flag on its own.
+
   if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
     // this attribute can have 3 values: default, true and false. only
     // expose it when it is not set to "default"
@@ -1675,69 +1689,68 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
                                         api);
     }
 
-    return std::move(f).thenValue(
-        [=, &trx, opCtx(std::move(opCtx))](
-            Result&& r) mutable -> Future<OperationResult> {
-          if (r.fail()) {
-            return OperationResult(std::move(r), options);
+    return std::move(f).thenValue([=, &trx,
+                                   opCtx(std::move(opCtx))](Result&& r) mutable
+                                  -> Future<OperationResult> {
+      if (r.fail()) {
+        return OperationResult(std::move(r), options);
+      }
+
+      // Now prepare the requests:
+      auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+      std::vector<Future<network::Response>> futures;
+      futures.reserve(opCtx.shardMap.size());
+
+      for (auto const& it : opCtx.shardMap) {
+        VPackBuffer<uint8_t> buffer;
+        if (!useMultiple) {
+          TRI_ASSERT(it.second.size() == 1);
+          buffer.append(slice.begin(), slice.byteSize());
+        } else {
+          VPackBuilder reqBuilder(buffer);
+          reqBuilder.openArray(/*unindexed*/ true);
+          for (VPackSlice value : it.second) {
+            reqBuilder.add(value);
           }
+          reqBuilder.close();
+        }
 
-          // Now prepare the requests:
-          auto* pool =
-              trx.vocbase().server().getFeature<NetworkFeature>().pool();
-          std::vector<Future<network::Response>> futures;
-          futures.reserve(opCtx.shardMap.size());
+        network::Headers headers;
+        // Just make sure that no dirty read flag makes it here, since we
+        // are writing and then `addTransactionHeaderForShard` might
+        // misbehave!
+        TRI_ASSERT(!trx.state()->options().allowDirtyReads);
+        addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
+                                     headers);
+        futures.emplace_back(network::sendRequestRetry(
+            pool, "shard:" + it.first, fuerte::RestVerb::Delete,
+            absl::StrCat("/_api/document/", StringUtils::urlEncode(it.first)),
+            std::move(buffer), reqOpts, std::move(headers)));
+      }
 
-          for (auto const& it : opCtx.shardMap) {
-            VPackBuffer<uint8_t> buffer;
-            if (!useMultiple) {
-              TRI_ASSERT(it.second.size() == 1);
-              buffer.append(slice.begin(), slice.byteSize());
-            } else {
-              VPackBuilder reqBuilder(buffer);
-              reqBuilder.openArray(/*unindexed*/ true);
-              for (VPackSlice value : it.second) {
-                reqBuilder.add(value);
-              }
-              reqBuilder.close();
-            }
-
-            network::Headers headers;
-            // Just make sure that no dirty read flag makes it here, since we
-            // are writing and then `addTransactionHeaderForShard` might
-            // misbehave!
-            TRI_ASSERT(!trx.state()->options().allowDirtyReads);
-            addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
-                                         headers);
-            futures.emplace_back(network::sendRequestRetry(
-                pool, "shard:" + it.first, fuerte::RestVerb::Delete,
-                "/_api/document/" + StringUtils::urlEncode(it.first),
-                std::move(buffer), reqOpts, std::move(headers)));
+      // Now listen to the results:
+      if (!useMultiple) {
+        TRI_ASSERT(futures.size() == 1);
+        auto cb = [options](network::Response&& res) -> OperationResult {
+          if (res.error != fuerte::Error::NoError) {
+            return OperationResult(network::fuerteToArangoErrorCode(res),
+                                   options);
           }
+          return network::clusterResultRemove(res.statusCode(),
+                                              res.response().stealPayload(),
+                                              std::move(options), {});
+        };
+        return std::move(futures[0]).thenValue(cb);
+      }
 
-          // Now listen to the results:
-          if (!useMultiple) {
-            TRI_ASSERT(futures.size() == 1);
-            auto cb = [options](network::Response&& res) -> OperationResult {
-              if (res.error != fuerte::Error::NoError) {
-                return OperationResult(network::fuerteToArangoErrorCode(res),
-                                       options);
-              }
-              return network::clusterResultRemove(res.statusCode(),
-                                                  res.response().stealPayload(),
-                                                  std::move(options), {});
-            };
-            return std::move(futures[0]).thenValue(cb);
-          }
-
-          return futures::collectAll(std::move(futures))
-              .thenValue([opCtx = std::move(opCtx)](
-                             std::vector<Try<network::Response>>&& results)
-                             -> OperationResult {
-                return handleCRUDShardResponsesFast(
-                    network::clusterResultRemove, opCtx, results);
-              });
-        });
+      return futures::collectAll(std::move(futures))
+          .thenValue([opCtx = std::move(opCtx)](
+                         std::vector<Try<network::Response>>&& results)
+                         -> OperationResult {
+            return handleCRUDShardResponsesFast(network::clusterResultRemove,
+                                                opCtx, results);
+          });
+    });
   }
 
   // Not all shard keys are known in all documents.
@@ -1781,7 +1794,7 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
           addTransactionHeaderForShard(trx, *shardIds, shard, headers);
           futures.emplace_back(network::sendRequestRetry(
               pool, "shard:" + shard, fuerte::RestVerb::Delete,
-              "/_api/document/" + StringUtils::urlEncode(shard),
+              absl::StrCat("/_api/document/", StringUtils::urlEncode(shard)),
               /*cannot move*/ buffer, reqOpts, std::move(headers)));
         }
 
@@ -1890,7 +1903,7 @@ Future<OperationResult> getDocumentOnCoordinator(
 
   CrudOperationCtx opCtx;
   opCtx.options = options;
-  const bool useMultiple = slice.isArray();
+  bool useMultiple = slice.isArray();
 
   bool canUseFastPath = true;
   if (useMultiple) {
@@ -1927,9 +1940,8 @@ Future<OperationResult> getDocumentOnCoordinator(
     restVerb = options.silent ? fuerte::RestVerb::Head : fuerte::RestVerb::Get;
   } else {
     restVerb = fuerte::RestVerb::Put;
-    if (options.silent) {
-      reqOpts.param(StaticStrings::SilentString, "true");
-    }
+    reqOpts.param(StaticStrings::SilentString,
+                  options.silent ? "true" : "false");
     reqOpts.param("onlyget", "true");
   }
 
@@ -2055,7 +2067,7 @@ Future<OperationResult> getDocumentOnCoordinator(
         (slice.isObject() ? slice.get(StaticStrings::KeyString) : slice)
             .stringView());
 
-    const bool addMatch =
+    bool addMatch =
         !options.ignoreRevs && slice.hasKey(StaticStrings::RevString);
     for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
@@ -2451,7 +2463,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 
   CrudOperationCtx opCtx;
   opCtx.options = options;
-  const bool useMultiple = slice.isArray();
+  bool useMultiple = slice.isArray();
 
   bool canUseFastPath = true;
   if (useMultiple) {
@@ -2492,6 +2504,9 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
       .param(StaticStrings::IsRestoreString,
              (options.isRestore ? "true" : "false"));
 
+  // note: the "silent" flag is not forwarded to the leader by the
+  // coordinator. the coordinator handles the "silent" flag on its own.
+
   if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
     // this attribute can have 3 values: default, true and false. only
     // expose it when it is not set to "default"
@@ -2519,7 +2534,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
     reqOpts.param(StaticStrings::ReturnOldString, "true");
   }
 
-  const bool isManaged =
+  bool isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   if (canUseFastPath) {
@@ -2533,81 +2548,82 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
                                         api);
     }
 
-    return std::move(f).thenValue(
-        [=, &trx, opCtx(std::move(opCtx))](
-            Result&& r) mutable -> Future<OperationResult> {
-          if (r.fail()) {  // bail out
-            return OperationResult(r, opCtx.options);
+    return std::move(f).thenValue([=, &trx,
+                                   opCtx(std::move(opCtx))](Result&& r) mutable
+                                  -> Future<OperationResult> {
+      if (r.fail()) {  // bail out
+        return OperationResult(r, opCtx.options);
+      }
+
+      // Now prepare the requests:
+      auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+      std::vector<Future<network::Response>> futures;
+      futures.reserve(opCtx.shardMap.size());
+
+      for (auto const& it : opCtx.shardMap) {
+        std::string url;
+        VPackBuffer<uint8_t> buffer;
+
+        if (!useMultiple) {
+          TRI_ASSERT(it.second.size() == 1);
+          TRI_ASSERT(slice.isObject());
+          std::string_view const ref(
+              slice.get(StaticStrings::KeyString).stringView());
+          // We send to single endpoint
+          url =
+              absl::StrCat("/_api/document/", StringUtils::urlEncode(it.first),
+                           "/", StringUtils::urlEncode(ref.data(), ref.size()));
+          buffer.append(slice.begin(), slice.byteSize());
+
+        } else {
+          // We send to Babies endpoint
+          url =
+              absl::StrCat("/_api/document/", StringUtils::urlEncode(it.first));
+
+          VPackBuilder builder(buffer);
+          builder.clear();
+          builder.openArray(/*unindexed*/ true);
+          for (auto const& value : it.second) {
+            builder.add(value);
           }
+          builder.close();
+        }
 
-          // Now prepare the requests:
-          auto* pool =
-              trx.vocbase().server().getFeature<NetworkFeature>().pool();
-          std::vector<Future<network::Response>> futures;
-          futures.reserve(opCtx.shardMap.size());
+        network::Headers headers;
+        // Just make sure that no dirty read flag makes it here, since we
+        // are writing and then `addTransactionHeaderForShard` might
+        // misbehave!
+        TRI_ASSERT(!trx.state()->options().allowDirtyReads);
+        addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
+                                     headers);
+        futures.emplace_back(network::sendRequestRetry(
+            pool, "shard:" + it.first, restVerb, std::move(url),
+            std::move(buffer), reqOpts, std::move(headers)));
+      }
 
-          for (auto const& it : opCtx.shardMap) {
-            std::string url;
-            VPackBuffer<uint8_t> buffer;
-
-            if (!useMultiple) {
-              TRI_ASSERT(it.second.size() == 1);
-              TRI_ASSERT(slice.isObject());
-              std::string_view const ref(
-                  slice.get(StaticStrings::KeyString).stringView());
-              // We send to single endpoint
-              url = "/_api/document/" + StringUtils::urlEncode(it.first) + "/" +
-                    StringUtils::urlEncode(ref.data(), ref.length());
-              buffer.append(slice.begin(), slice.byteSize());
-
-            } else {
-              // We send to Babies endpoint
-              url = "/_api/document/" + StringUtils::urlEncode(it.first);
-
-              VPackBuilder builder(buffer);
-              builder.clear();
-              builder.openArray(/*unindexed*/ true);
-              for (auto const& value : it.second) {
-                builder.add(value);
-              }
-              builder.close();
-            }
-
-            network::Headers headers;
-            // Just make sure that no dirty read flag makes it here, since we
-            // are writing and then `addTransactionHeaderForShard` might
-            // misbehave!
-            TRI_ASSERT(!trx.state()->options().allowDirtyReads);
-            addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
-                                         headers);
-            futures.emplace_back(network::sendRequestRetry(
-                pool, "shard:" + it.first, restVerb, std::move(url),
-                std::move(buffer), reqOpts, std::move(headers)));
+      // Now listen to the results:
+      if (!useMultiple) {
+        TRI_ASSERT(futures.size() == 1);
+        auto cb = [options](network::Response&& res) -> OperationResult {
+          if (res.error != fuerte::Error::NoError) {
+            return OperationResult(network::fuerteToArangoErrorCode(res),
+                                   options);
           }
+          return network::clusterResultModify(res.statusCode(),
+                                              res.response().stealPayload(),
+                                              std::move(options), {});
+        };
+        return std::move(futures[0]).thenValue(cb);
+      }
 
-          // Now listen to the results:
-          if (!useMultiple) {
-            TRI_ASSERT(futures.size() == 1);
-            auto cb = [options](network::Response&& res) -> OperationResult {
-              if (res.error != fuerte::Error::NoError) {
-                return OperationResult(network::fuerteToArangoErrorCode(res),
-                                       options);
-              }
-              return network::clusterResultModify(res.statusCode(),
-                                                  res.response().stealPayload(),
-                                                  std::move(options), {});
-            };
-            return std::move(futures[0]).thenValue(cb);
-          }
-
-          return futures::collectAll(std::move(futures))
-              .thenValue([opCtx = std::move(opCtx)](
-                             std::vector<Try<network::Response>>&& results)
-                             -> OperationResult {
-                return handleCRUDShardResponsesFast(
-                    network::clusterResultModify, opCtx, results);
-              });
-        });
+      return futures::collectAll(std::move(futures))
+          .thenValue([opCtx = std::move(opCtx)](
+                         std::vector<Try<network::Response>>&& results)
+                         -> OperationResult {
+            return handleCRUDShardResponsesFast(network::clusterResultModify,
+                                                opCtx, results);
+          });
+    });
   }
 
   // Not all shard keys are known in all documents.
@@ -2618,48 +2634,48 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
     f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
-  return std::move(f).thenValue(
-      [=, &trx](Result&&) mutable -> Future<OperationResult> {
-        auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-        std::vector<Future<network::Response>> futures;
-        futures.reserve(shardIds->size());
+  return std::move(f).thenValue([=, &trx](Result&&) mutable
+                                -> Future<OperationResult> {
+    auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+    std::vector<Future<network::Response>> futures;
+    futures.reserve(shardIds->size());
 
-        const size_t expectedLen = useMultiple ? slice.length() : 0;
-        VPackBuffer<uint8_t> buffer;
-        buffer.append(slice.begin(), slice.byteSize());
+    size_t expectedLen = useMultiple ? slice.length() : 0;
+    VPackBuffer<uint8_t> buffer;
+    buffer.append(slice.begin(), slice.byteSize());
 
-        for (auto const& shardServers : *shardIds) {
-          ShardID const& shard = shardServers.first;
-          network::Headers headers;
-          // Just make sure that no dirty read flag makes it here, since we
-          // are writing and then `addTransactionHeaderForShard` might
-          // misbehave!
-          TRI_ASSERT(!trx.state()->options().allowDirtyReads);
-          addTransactionHeaderForShard(trx, *shardIds, shard, headers);
+    for (auto const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.first;
+      network::Headers headers;
+      // Just make sure that no dirty read flag makes it here, since we
+      // are writing and then `addTransactionHeaderForShard` might
+      // misbehave!
+      TRI_ASSERT(!trx.state()->options().allowDirtyReads);
+      addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
-          std::string url;
-          if (!useMultiple) {  // send to single API
-            std::string_view const key(
-                slice.get(StaticStrings::KeyString).stringView());
-            url = "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
-                  StringUtils::urlEncode(key.data(), key.size());
-          } else {
-            url = "/_api/document/" + StringUtils::urlEncode(shard);
-          }
-          futures.emplace_back(network::sendRequestRetry(
-              pool, "shard:" + shard, restVerb, std::move(url),
-              /*cannot move*/ buffer, reqOpts, std::move(headers)));
-        }
+      std::string url;
+      if (!useMultiple) {
+        // send to single document API
+        std::string_view key(slice.get(StaticStrings::KeyString).stringView());
+        url = absl::StrCat("/_api/document/", StringUtils::urlEncode(shard),
+                           "/", StringUtils::urlEncode(key.data(), key.size()));
+      } else {
+        // send to batch API
+        url = absl::StrCat("/_api/document/", StringUtils::urlEncode(shard));
+      }
+      futures.emplace_back(network::sendRequestRetry(
+          pool, "shard:" + shard, restVerb, std::move(url),
+          /*cannot move*/ buffer, reqOpts, std::move(headers)));
+    }
 
-        return futures::collectAll(std::move(futures))
-            .thenValue(
-                [=](std::vector<Try<network::Response>>&& responses) mutable
-                -> OperationResult {
-                  return ::handleCRUDShardResponsesSlow(
-                      network::clusterResultModify, expectedLen,
-                      std::move(options), responses);
-                });
-      });
+    return futures::collectAll(std::move(futures))
+        .thenValue([=](std::vector<Try<network::Response>>&& responses) mutable
+                   -> OperationResult {
+          return ::handleCRUDShardResponsesSlow(network::clusterResultModify,
+                                                expectedLen, std::move(options),
+                                                responses);
+        });
+  });
 }
 
 /// @brief flush WAL on all DBservers
