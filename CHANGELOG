@@ -1,6 +1,97 @@
 devel
 -----
 
+* Remove long-deprecated graph compatibility functions, which were implemented
+  as JavaScript user-defined AQL functions since ArangoDB 3.0:
+
+  - arangodb::GRAPH_EDGES(...)
+  - arangodb::GRAPH_VERTICES(...)
+  - arangodb::GRAPH_NEIGHBORS(...)
+  - arangodb::GRAPH_COMMON_NEIGHBORS(...)
+  - arangodb::GRAPH_COMMON_PROPERTIES(...)
+  - arangodb::GRAPH_PATHS(...)
+  - arangodb::GRAPH_SHORTEST_PATH(...)
+  - arangodb::GRAPH_DISTANCE_TO(...)
+  - arangodb::GRAPH_ABSOLUTE_ECCENTRICTIY(...)
+  - arangodb::GRAPH_ECCENTRICTIY(...)
+  - arangodb::GRAPH_ABSOLUTE_CLOSENESS(...)
+  - arangodb::GRAPH_CLOSENESS(...)
+  - arangodb::GRAPH_ABSOLUTE_BETWEENNESS(...)
+  - arangodb::GRAPH_BETWEENNESS(...)
+  - arangodb::GRAPH_RADIUS(...)
+  - arangodb::GRAPH_DIAMETER(...)
+
+  These functions were only available previously after explicitly calling the
+  `_registerCompatibilityFunctions()` function from any of the JavaScript graph
+  modules. 
+  The `_registerCompatibilityFunctions()` exports have also been removed from 
+  the JavaScript graph modules.
+
+* Removed the following long-deprecated features for the HTTP server:
+
+  - overriding the HTTP method by setting one of the HTTP headers 
+    - `x-http-method`
+    - `x-http-method-override`
+    - `x-method-override`
+    This functionality could previously be enabled by starting the server with 
+    the startup option `--http.allow-method-override`.
+    The functionality has now been removed and setting the startup option does 
+    nothing.
+
+  - optionally hiding ArangoDB's `server` response header. This functionality
+    could optionally be enabled by starting the server with the startup option
+    `--http.hide-product-header`. 
+    The functionality has now been removed and setting the startup option does 
+    nothing.
+
+* Fixed BTS-1302: make "silent" option for document operations work in cluster.
+  When using the "silent" options for document operations in the cluster, the
+  coordinator will now only return the errors that happened, as it did in
+  single server for a long time.
+  This is a bugfix and feature alignment, but still a downwards-incompatible
+  change compared to previous versions, where the "silent" option in document
+  operations had no effect in the cluster.
+
+  This change also unifies the behavior of batch document operations in single
+  server and cluster with the behavior of document operations for SmartGraph
+  edge collections: 
+  previously, batch document operations in SmartGraph edge collections stopped
+  upon the first error, whereas they were (intentionally) continued for the
+  remaining operations in the batch in single server and cluster.
+
+  This is a downwards-incompatible change compared to previous versions, but
+  it can be considered a bugfix.
+
+* FE-291: Refactor Query screen on web UI to React.
+
+* FE-313: Upgrade arangojs to v8.x on web UI.
+
+* ES-1566: instead of potentially accessing a nullptr inside graph traversal
+  setup, throw an exception. This will be handled properly and returned with
+  a proper error message.
+
+* Updated arangosync to v2.19.0-preview-4.
+
+* Expose the "high water multiplier" for the in-memory cache subsystem via a
+  new startup option `--cache.high-water-multiplier`.
+  The high water multiplier is used to calculate the effective memory usage 
+  limit for the in-memory cache subsystem. The cache's configured memory usage 
+  limit (`--cache.size`) is multiplied by the high water multiplier, and the 
+  resulting value is used as the effective memory limit. It defaults to 95%
+  of the configured cache size.
+
+  Note that this is a behavior change. Previous versions of ArangoDB set the
+  high water multiplier to effectively 56% of the configured memory. The value
+  was hard-coded in versions before 3.11.3, and is exposed since then with a
+  default value of 56%. 
+  3.12 now sets the default value for the high water multiplier to 95%, so that
+  the configured memory limit for the cache subsystem is actually better
+  honored than before.
+
+* Wrap imports into SmartGraph edge collections via the REST import API
+  (POST `/_api/import`) into a managed transaction, so that edge data is
+  either completely inserted or not at all.
+
 * Changed default values for the following options related to the in-memory
   cache subsystem:
 

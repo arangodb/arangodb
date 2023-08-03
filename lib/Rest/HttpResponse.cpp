@@ -44,8 +44,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-bool HttpResponse::HIDE_PRODUCT_HEADER = false;
-
 HttpResponse::HttpResponse(ResponseCode code, uint64_t mid,
                            std::unique_ptr<basics::StringBuffer> buffer)
     : GeneralResponse(code, mid), _body(std::move(buffer)), _bodySize(0) {
@@ -210,7 +208,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   }
 
   // add "Server" response header
-  if (!seenServerHeader && !HIDE_PRODUCT_HEADER) {
+  if (!seenServerHeader) {
     output->appendText(std::string_view("Server: ArangoDB\r\n"));
   }
 

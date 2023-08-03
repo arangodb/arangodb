@@ -3,7 +3,7 @@ import React from "react";
 import { AddAPhoto } from "styled-icons/material";
 import { useGraph } from "../GraphContext";
 
-const downloadCanvas = (graphName: string) => {
+export const downloadCanvas = (graphName: string) => {
   const canvas = document.getElementsByTagName("canvas")[0];
   const newCanvas = canvas.cloneNode(true) as HTMLCanvasElement;
   // set canvas background to white for screenshot download

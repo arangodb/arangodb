@@ -2,7 +2,7 @@ import { Icon, IconButton, Tooltip } from "@chakra-ui/react";
 import React from "react";
 import { Fullscreen } from "styled-icons/material";
 
-const enterFullscreen = (element: any) => {
+export const enterFullscreen = (element: any) => {
   if (element.requestFullscreen) {
     element.requestFullscreen();
   } else if (element.webkitRequestFullscreen) {

@@ -70,11 +70,8 @@ std::string urlDecode(char const* begin, char const* end) {
 }
 }  // namespace
 
-HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, uint64_t mid,
-                         bool allowMethodOverride)
-    : GeneralRequest(connectionInfo, mid),
-      _allowMethodOverride(allowMethodOverride),
-      _validatedPayload(false) {
+HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, uint64_t mid)
+    : GeneralRequest(connectionInfo, mid), _validatedPayload(false) {
   _contentType = ContentType::UNSET;
   _contentTypeResponse = ContentType::JSON;
   TRI_ASSERT(_memoryUsage == 0);
@@ -618,19 +615,6 @@ void HttpRequest::setHeader(std::string key, std::string value) {
   } else if (key == "cookie") {
     parseCookies(value.c_str(), value.size());
     return;
-  }
-
-  if (_allowMethodOverride && key.starts_with("x-")) {
-    // handle x-... headers
-
-    // override HTTP method?
-    if (key == "x-http-method" || key == "x-method-override" ||
-        key == "x-http-method-override") {
-      StringUtils::tolowerInPlace(value);
-      _type = findRequestType(value.c_str(), value.size());
-      // don't insert this header!!
-      return;
-    }
   }
 
   auto memoryUsage = key.size() + value.size();

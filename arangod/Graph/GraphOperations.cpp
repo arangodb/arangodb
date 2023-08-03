@@ -89,32 +89,9 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(
   builder.close();
 
   GraphManager gmngr{_vocbase};
-  std::set<std::string> newCollections;
-
-  // add collections that didn't exist in the graph before to newCollections:
-  for (auto const& it : boost::join(newEdgeDef.getFrom(), newEdgeDef.getTo())) {
-    if (!graph.hasVertexCollection(it) && !graph.hasOrphanCollection(it)) {
-      newCollections.emplace(it);
-    }
-  }
-
-  VPackBuilder collectionOptions;
-  collectionOptions.openObject();
-  _graph.createCollectionOptions(collectionOptions, waitForSync);
-  collectionOptions.close();
-  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
-  bool waitForSyncReplication = cluster.createWaitsForSyncReplication();
-  for (auto const& newCollection : newCollections) {
-    // While the collection is new in the graph, it may still already exist.
-    if (GraphManager::getCollectionByName(_vocbase, newCollection)) {
-      continue;
-    }
-
-    Result result = gmngr.createVertexCollection(
-        newCollection, waitForSyncReplication, collectionOptions.slice());
-    if (result.fail()) {
-      return OperationResult(result, options);
-    }
+  res = gmngr.ensureAllCollections(&_graph, waitForSync);
+  if (res.fail()) {
+    return OperationResult(res, options);
   }
 
   // now write to database

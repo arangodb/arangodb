@@ -32,6 +32,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -47,11 +48,14 @@ EdgeCollectionInfo::EdgeCollectionInfo(ResourceMonitor& monitor,
       _collection(nullptr),
       _coveringPosition(0),
       _searchBuilder(monitor) {
-  if (!trx->isEdgeCollection(collectionName)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-  }
-
   _trx->addCollectionAtRuntime(_collectionName, AccessMode::Type::READ);
+
+  if (auto collection = trx->resolver()->getCollection(collectionName);
+      collection != nullptr) {
+    if (collection->type() != TRI_COL_TYPE_EDGE) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    }
+  }
 
   // projections we need to cover
   std::vector<aql::AttributeNamePath> paths = {};
