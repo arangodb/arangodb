@@ -193,7 +193,11 @@ function transactionRevisionsSuite (dbParams) {
 
     testRemoveInsertWithSameRev: function () {
       if (isCluster) {
-        // running this test in cluster will trigger an assertion failure
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
         return;
       }
       var doc = c.insert({ _key: 'test', value: 1 });
@@ -217,7 +221,11 @@ function transactionRevisionsSuite (dbParams) {
 
     testUpdateWithSameRevTransaction: function () {
       if (isCluster) {
-        // running this test in cluster will trigger an assertion failure
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
         return;
       }
       var doc = c.insert({ _key: 'test', value: 1 });
@@ -240,7 +248,11 @@ function transactionRevisionsSuite (dbParams) {
 
     testUpdateAbortWithSameRev: function () {
       if (isCluster) {
-        // running this test in cluster will trigger an assertion failure
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
         return;
       }
       var doc = c.insert({ _key: 'test', value: 1 });
