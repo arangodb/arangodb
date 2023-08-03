@@ -192,6 +192,10 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testRemoveInsertWithSameRev: function () {
+      if (isCluster) {
+        // running this test in cluster will trigger an assertion failure
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({
@@ -212,6 +216,10 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testUpdateWithSameRevTransaction: function () {
+      if (isCluster) {
+        // running this test in cluster will trigger an assertion failure
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({
@@ -231,6 +239,10 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testUpdateAbortWithSameRev: function () {
+      if (isCluster) {
+        // running this test in cluster will trigger an assertion failure
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({

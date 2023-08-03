@@ -18,7 +18,8 @@ export const TYPE_TO_LABEL_MAP: {
   pipeline: "Pipeline",
   geojson: "GeoJSON",
   geopoint: "GeoPoint",
-  geo_s2: "Geo S2"
+  geo_s2: "Geo S2",
+  minhash: "Min Hash"
 };
 
 export const TYPE_TO_INITIAL_VALUES_MAP: {
@@ -152,5 +153,8 @@ export const TYPE_TO_INITIAL_VALUES_MAP: {
       type: "shape",
       format: "latLngDouble"
     }
+  },
+  minhash: {
+    type: "minhash"
   }
 };

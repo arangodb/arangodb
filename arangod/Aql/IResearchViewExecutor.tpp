@@ -1611,9 +1611,7 @@ bool IResearchViewExecutor<ExecutionTraits>::writeRow(
 template<typename ExecutionTraits>
 IResearchViewMergeExecutor<ExecutionTraits>::IResearchViewMergeExecutor(
     Fetcher& fetcher, Infos& infos)
-    : Base{fetcher, infos},
-      _heap_it{
-          MinHeapContext{*infos.sort().first, infos.sort().second, _segments}} {
+    : Base{fetcher, infos}, _heap_it{*infos.sort().first, infos.sort().second} {
   TRI_ASSERT(infos.sort().first);
   TRI_ASSERT(!infos.sort().first->empty());
   TRI_ASSERT(infos.sort().first->size() >= infos.sort().second);
@@ -1652,15 +1650,12 @@ IResearchViewMergeExecutor<ExecutionTraits>::Segment::Segment(
 
 template<typename ExecutionTraits>
 IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::MinHeapContext(
-    IResearchSortBase const& sort, size_t sortBuckets,
-    std::vector<Segment>& segments) noexcept
-    : _less(sort, sortBuckets), _segments(&segments) {}
+    IResearchSortBase const& sort, size_t sortBuckets) noexcept
+    : _less{sort, sortBuckets} {}
 
 template<typename ExecutionTraits>
 bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
-    size_t const i) const {
-  assert(i < _segments->size());
-  auto& segment = (*_segments)[i];
+    Value& segment) const {
   while (segment.docs->next()) {
     auto const doc = segment.docs->value();
 
@@ -1675,11 +1670,8 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
 
 template<typename ExecutionTraits>
 bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
-    size_t const lhs, size_t const rhs) const {
-  assert(lhs < _segments->size());
-  assert(rhs < _segments->size());
-  return _less.Compare((*_segments)[rhs].sortValue->value,
-                       (*_segments)[lhs].sortValue->value) < 0;
+    Value const& lhs, Value const& rhs) const {
+  return _less.Compare(lhs.sortValue->value, rhs.sortValue->value) < 0;
 }
 
 template<typename ExecutionTraits>
@@ -1785,7 +1777,7 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
     }
   }
 
-  _heap_it.reset(_segments.size());
+  _heap_it.Reset(_segments);
 }
 
 template<typename ExecutionTraits>
@@ -1826,8 +1818,8 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
   bool gotData{false};
-  while (_heap_it.next()) {
-    auto& segment = _segments[_heap_it.value()];
+  while (_heap_it.Next()) {
+    auto& segment = _heap_it.Lead();
     ++segment.segmentPos;
     TRI_ASSERT(segment.docs);
     TRI_ASSERT(segment.doc);
@@ -1892,8 +1884,8 @@ size_t IResearchViewMergeExecutor<ExecutionTraits>::skip(size_t limit,
 
   size_t const toSkip = limit;
 
-  while (limit && _heap_it.next()) {
-    ++this->_segments[_heap_it.value()].segmentPos;
+  while (limit && _heap_it.Next()) {
+    ++_heap_it.Lead().segmentPos;
     --limit;
   }
 
@@ -1907,19 +1899,24 @@ size_t IResearchViewMergeExecutor<ExecutionTraits>::skipAll(
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t skipped = 0;
-  if (_heap_it.size()) {
+  // 0 || 0 -- _heap_it exhausted, we don't need to skip anything
+  // 0 || 1 -- _heap_it not exhausted, we need to skip tail
+  // 1 || 0 -- never called _heap_it.Next(), we need to skip all
+  // 1 || 1 -- impossible, asserted
+  if (!_heap_it.Initilized() || _heap_it.Size() != 0) {
+    TRI_ASSERT(_heap_it.Initilized() || _heap_it.Size() == 0);
+    auto& infos = this->infos();
     for (auto& segment : _segments) {
       TRI_ASSERT(segment.docs);
-      if (this->infos().filterConditionIsEmpty()) {
+      if (infos.filterConditionIsEmpty()) {
         TRI_ASSERT(segment.segmentIndex < this->_reader->size());
         auto const live_docs_count =
             (*this->_reader)[segment.segmentIndex].live_docs_count();
         TRI_ASSERT(segment.segmentPos <= live_docs_count);
         skipped += live_docs_count - segment.segmentPos;
       } else {
-        skipped +=
-            calculateSkipAllCount(this->infos().countApproximate(),
-                                  segment.segmentPos, segment.docs.get());
+        skipped += calculateSkipAllCount(
+            infos.countApproximate(), segment.segmentPos, segment.docs.get());
       }
     }
     // Adjusting by count of docs already consumed by heap but not consumed by
@@ -1927,14 +1924,12 @@ size_t IResearchViewMergeExecutor<ExecutionTraits>::skipAll(
     // after heap.next. But we should adjust by the heap size only if the heap
     // was advanced at least once (heap is actually filled on first next) or we
     // have nothing consumed from doc iterators!
-    if (!_segments.empty() &&
-        this->infos().countApproximate() == CountApproximate::Exact &&
-        !this->infos().filterConditionIsEmpty() && _heap_it.size() &&
-        this->_segments[_heap_it.value()].segmentPos) {
-      skipped += (_heap_it.size() - 1);
+    if (infos.countApproximate() == CountApproximate::Exact &&
+        !infos.filterConditionIsEmpty() && _heap_it.Size() != 0) {
+      skipped += (_heap_it.Size() - 1);
     }
-    _heap_it.reset(0);
   }
+  _heap_it.Reset({});  // Make it uninitilized
   return skipped;
 }
 

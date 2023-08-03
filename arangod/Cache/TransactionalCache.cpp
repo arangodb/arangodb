@@ -32,7 +32,6 @@
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Finding.h"
-#include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
@@ -126,6 +125,7 @@ template<typename Hasher>
             maybeMigrate = source->slotFilled();
           }
           maybeMigrate |= reportInsert(eviction);
+          adjustGlobalAllocation(change, false);
         } else {
           requestGrow();  // let function do the hard work
           status = TRI_ERROR_RESOURCE_LIMIT;
@@ -175,6 +175,7 @@ template<typename Hasher>
       }
 
       freeValue(candidate);
+      adjustGlobalAllocation(change, false);
       TRI_ASSERT(source != nullptr);
       maybeMigrate = source->slotEmptied();
     }
@@ -220,8 +221,11 @@ template<typename Hasher>
       }
 
       freeValue(candidate);
+      adjustGlobalAllocation(change, false);
       TRI_ASSERT(source != nullptr);
       maybeMigrate = source->slotEmptied();
+    } else {
+      status = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
     }
   }
 
@@ -464,8 +468,8 @@ TransactionalCache<Hasher>::getBucket(Table::HashOrId bucket,
 
 template<typename Hasher>
 Table::BucketClearer TransactionalCache<Hasher>::bucketClearer(
-    Manager* /*manager*/, Metadata* metadata) {
-  return [metadata](void* ptr) -> void {
+    Cache* cache, Metadata* metadata) {
+  return [cache, metadata](void* ptr) -> void {
     auto bucket = static_cast<TransactionalBucket*>(ptr);
     std::uint64_t totalSize = 0;
     bucket->lock(Cache::triesGuarantee);
@@ -476,9 +480,13 @@ Table::BucketClearer TransactionalCache<Hasher>::bucketClearer(
         totalSize += size;
       }
     }
-    {
-      SpinLocker metaGuard(SpinLocker::Mode::Read, metadata->lock());
-      metadata->adjustUsageIfAllowed(-static_cast<int64_t>(totalSize));
+    if (totalSize > 0) {
+      {
+        SpinLocker metaGuard(SpinLocker::Mode::Read, metadata->lock());
+        metadata->adjustUsageIfAllowed(-static_cast<std::int64_t>(totalSize));
+      }
+      cache->adjustGlobalAllocation(-static_cast<std::int64_t>(totalSize),
+                                    /*force*/ false);
     }
     bucket->clear();
   };

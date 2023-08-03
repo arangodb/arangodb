@@ -30,7 +30,6 @@
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Finding.h"
-#include "Cache/FrequencyBuffer.h"
 #include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
@@ -112,19 +111,15 @@ class TransactionalCache final : public Cache {
   /// @brief returns the name of the hasher
   std::string_view hasherName() const noexcept;
 
+  static constexpr uint64_t allocationSize() {
+    return sizeof(TransactionalCache);
+  }
+
  private:
   // friend class manager and tasks
   friend class FreeMemoryTask;
   friend class Manager;
   friend class MigrateTask;
-
-  static constexpr uint64_t allocationSize(bool enableWindowedStats) {
-    return sizeof(TransactionalCache) +
-           (enableWindowedStats
-                ? (sizeof(StatBuffer) +
-                   StatBuffer::allocationSize(findStatsCapacity))
-                : 0);
-  }
 
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
                                        Metadata&& metadata,
@@ -140,8 +135,7 @@ class TransactionalCache final : public Cache {
       Table::HashOrId bucket, std::uint64_t maxTries,
       bool singleOperation = true);
 
-  static Table::BucketClearer bucketClearer(Manager* manager,
-                                            Metadata* metadata);
+  static Table::BucketClearer bucketClearer(Cache* cache, Metadata* metadata);
 };
 
 }  // end namespace arangodb::cache
