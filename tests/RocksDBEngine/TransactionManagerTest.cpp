@@ -76,6 +76,9 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
   EXPECT_TRUE(tm.holdTransactions(500));
 
+  tm.registerTransaction(trxId, false, false);
+  EXPECT_EQ(tm.getActiveTransactionCount(), 1);
+
   std::atomic<bool> done;
 
   auto getReadLock = [&]() -> void {
