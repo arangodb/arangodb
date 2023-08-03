@@ -165,8 +165,8 @@ auto EdgeCache::Thread::report() const -> ThreadReport {
                          ->server()
                          .getFeature<EngineSelectorFeature>()
                          .engine<RocksDBEngine>();
-      auto [entriesSizeTotal, entriesSizeEffective, inserts,
-            compressedInserts] = engine.getCacheMetrics();
+      auto [entriesSizeTotal, entriesSizeEffective, inserts, compressedInserts,
+            emptyInserts] = engine.getCacheMetrics();
       data.add("inserts", VPackValue(inserts));
       data.add("compressedInserts", VPackValue(compressedInserts));
       data.add(
@@ -175,6 +175,7 @@ auto EdgeCache::Thread::report() const -> ThreadReport {
                          ? 100.0 * (static_cast<double>(compressedInserts) /
                                     static_cast<double>(inserts))
                          : 0.0));
+      data.add("emptyInserts", VPackValue(emptyInserts));
       data.add("payloadSizeBeforeCompression", VPackValue(entriesSizeTotal));
       data.add("payloadSizeAfterCompression", VPackValue(entriesSizeEffective));
       data.add(

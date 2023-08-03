@@ -573,6 +573,7 @@ AsyncAgencyCommManager::AsyncAgencyCommManager(ArangodServer& server)
 const char* AGENCY_URL_READ = "/_api/agency/read";
 const char* AGENCY_URL_WRITE = "/_api/agency/write";
 const char* AGENCY_URL_POLL = "/_api/agency/poll";
+const char* AGENCY_URL_TRANSIENT = "/_api/agency/transient";
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(
     std::string const& path, std::optional<network::Timeout> timeout) const {
@@ -674,6 +675,38 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(
   }
 
   return sendWriteTransaction(timeout, std::move(transaction));
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::setTransientValue(
+    std::string const& key, velocypack::Slice const& slice,
+    SetTransientOptions const& opts) {
+  VPackBuffer<uint8_t> transaction;
+  {
+    VPackBuilder trxBuilder(transaction);
+    VPackArrayBuilder env(&trxBuilder);
+    {
+      VPackArrayBuilder trx(&trxBuilder);
+      {
+        VPackObjectBuilder ops(&trxBuilder);
+        {
+          VPackObjectBuilder op(&trxBuilder, key);
+          trxBuilder.add("op", VPackValue("set"));
+          trxBuilder.add("new", slice);
+        }
+      }
+    }
+  }
+
+  RequestMeta meta;
+  meta.requestId = _manager.nextRequestId();
+  meta.method = RestVerb::Post;
+  meta.type = RequestType::CUSTOM;
+  meta.url = AGENCY_URL_TRANSIENT;
+  meta.timeout = opts.timeout;
+  meta.skipScheduler = opts.skipScheduler;
+  meta.startTime = clock::now();
+  meta.tries = 0;
+  return agencyAsyncSend(_manager, std::move(meta), std::move(transaction));
 }
 
 std::unique_ptr<AsyncAgencyCommManager> AsyncAgencyCommManager::INSTANCE =

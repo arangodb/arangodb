@@ -38,7 +38,8 @@ EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast,
     : _fromCondition(nullptr),
       _toCondition(nullptr),
       _modCondition(nullptr),
-      _containsCondition(false) {
+      _containsCondition(false),
+      _resourceMonitor(ast->query().resourceMonitor()) {
   if (other._modCondition != nullptr) {
     TRI_ASSERT(other._modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
 
@@ -57,11 +58,13 @@ EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast,
   }
 }
 
-EdgeConditionBuilder::EdgeConditionBuilder(AstNode* modCondition)
+EdgeConditionBuilder::EdgeConditionBuilder(
+    AstNode* modCondition, arangodb::ResourceMonitor& resourceMonitor)
     : _fromCondition(nullptr),
       _toCondition(nullptr),
       _modCondition(modCondition),
-      _containsCondition(false) {
+      _containsCondition(false),
+      _resourceMonitor(resourceMonitor) {
   if (_modCondition != nullptr) {
     TRI_ASSERT(_modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
   }
@@ -115,8 +118,13 @@ AstNode* EdgeConditionBuilder::getInboundCondition() {
   return _modCondition;
 }
 
-EdgeConditionBuilderContainer::EdgeConditionBuilderContainer()
-    : EdgeConditionBuilder(nullptr) {
+arangodb::ResourceMonitor& EdgeConditionBuilder::resourceMonitor() {
+  return _resourceMonitor;
+}
+
+EdgeConditionBuilderContainer::EdgeConditionBuilderContainer(
+    arangodb::ResourceMonitor& resourceMonitor)
+    : EdgeConditionBuilder(nullptr, resourceMonitor), _varGen(resourceMonitor) {
   auto node = std::make_unique<AstNode>(NODE_TYPE_OPERATOR_NARY_AND);
   _astNodes.emplace_back(node.get());
   _modCondition = node.release();

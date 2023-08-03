@@ -3,7 +3,7 @@ import React, { ChangeEvent } from "react";
 import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { LayoutType, useUrlParameterContext } from "../UrlParametersContext";
 
-const LAYOUT_OPTIONS: Array<{ layout: LayoutType }> = [
+export const LAYOUT_OPTIONS: Array<{ layout: LayoutType }> = [
   {
     layout: "forceAtlas2"
   },
@@ -11,26 +11,17 @@ const LAYOUT_OPTIONS: Array<{ layout: LayoutType }> = [
     layout: "hierarchical"
   }
 ];
-
-const GraphLayoutSelector = () => {
-  const { urlParams, setUrlParams } = useUrlParameterContext();
-  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const newUrlParameters = {
-      ...urlParams,
-      layout: event.target.value as LayoutType
-    };
-    setUrlParams(newUrlParameters);
-  };
-
+export const GraphLayoutSelectorComponent = ({
+  value,
+  onChange
+}: {
+  value: LayoutType;
+  onChange: (event: ChangeEvent<HTMLSelectElement>) => void;
+}) => {
   return (
     <>
       <FormLabel htmlFor="layout">Layout</FormLabel>
-      <Select
-        size="sm"
-        id="layout"
-        value={urlParams.layout}
-        onChange={handleChange}
-      >
+      <Select size="sm" id="layout" value={value} onChange={onChange}>
         {LAYOUT_OPTIONS.map(style => {
           const { layout } = style;
           return (
@@ -44,6 +35,23 @@ const GraphLayoutSelector = () => {
         label={"Graph layouts are the algorithms arranging the node positions."}
       />
     </>
+  );
+};
+const GraphLayoutSelector = () => {
+  const { urlParams, setUrlParams } = useUrlParameterContext();
+  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const newUrlParameters = {
+      ...urlParams,
+      layout: event.target.value as LayoutType
+    };
+    setUrlParams(newUrlParameters);
+  };
+
+  return (
+    <GraphLayoutSelectorComponent
+      onChange={handleChange}
+      value={urlParams.layout}
+    />
   );
 };
 

@@ -168,6 +168,10 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _enableBlobGarbageCollection;
   bool _exclusiveWrites;
   bool _minWriteBufferNumberToMergeTouched;
+  bool _partitionFilesForDocumentsCf;
+  bool _partitionFilesForPrimaryIndexCf;
+  bool _partitionFilesForEdgeIndexCf;
+  bool _partitionFilesForVPackIndexCf;
 
   /// per column family write buffer limits
   std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies>
