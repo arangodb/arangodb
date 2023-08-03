@@ -2208,8 +2208,7 @@ Future<OperationResult> transaction::Methods::insertCoordinator(
     return futures::makeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
-  return arangodb::createDocumentOnCoordinator(*this, *colptr, value, options,
-                                               api);
+  return insertDocumentOnCoordinator(*this, *colptr, value, options, api);
 }
 #endif
 
