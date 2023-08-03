@@ -10,6 +10,7 @@ import {
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
 import { FormField } from "../../../components/form/FormField";
+import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
 import { useCollectionOptions } from "./useEdgeCollectionOptions";
 import { useResetFromAndToValues } from "./useResetFromAndToValues";
@@ -109,10 +110,12 @@ const EdgeDefinition = ({
   const { collectionToDisabledMap } = useResetFromAndToValues();
   const { edgeCollectionOptions, documentCollectionOptions } =
     useCollectionOptions();
+  const { mode } = useGraphsModeContext();
   const isFromAndToDisabled = collectionToDisabledMap[index];
   const collectionFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.collection.name}`;
   const fromFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.from.name}`;
   const toFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.to.name}`;
+  const isEditMode = mode === "edit";
   return (
     <Stack
       spacing="4"
@@ -153,7 +156,7 @@ const EdgeDefinition = ({
           field={{
             ...graphRelationFieldsMap.from,
             name: fromFieldName,
-            isDisabled: isFromAndToDisabled,
+            isDisabled: !isEditMode && isFromAndToDisabled,
             options: allowExistingCollections
               ? documentCollectionOptions
               : undefined,
@@ -164,7 +167,7 @@ const EdgeDefinition = ({
           field={{
             ...graphRelationFieldsMap.to,
             name: toFieldName,
-            isDisabled: isFromAndToDisabled,
+            isDisabled: !isEditMode && isFromAndToDisabled,
             options: allowExistingCollections
               ? documentCollectionOptions
               : undefined,
