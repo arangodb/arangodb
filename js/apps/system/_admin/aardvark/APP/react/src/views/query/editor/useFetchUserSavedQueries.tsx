@@ -5,6 +5,7 @@ export type QueryType = {
   name: string;
   value: string;
   modified_at?: number;
+  created_at?: number;
   parameter: any;
   isTemplate?: boolean;
 };
