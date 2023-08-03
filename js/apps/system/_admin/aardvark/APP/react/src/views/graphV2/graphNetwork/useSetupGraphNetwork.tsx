@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { DataSet } from "vis-data";
 import { Network } from "vis-network";
-import { GraphPointer } from "../GraphAction.types";
+import {
+  AddEdgeCallback,
+  AddEdgeData,
+  GraphPointer
+} from "../GraphAction.types";
 import { useGraph } from "../GraphContext";
-import { EdgeDataType } from "../GraphData.types";
 
 let timer: number;
-
-type AddEdgeData = { from: string; to: string };
-type AddEdgeCallback = (edge: EdgeDataType) => void;
-type AddEdgeArgs = {
-  data: AddEdgeData;
-  callback: AddEdgeCallback;
-};
 
 export const useSetupGraphNetwork = ({
   visJsRef
@@ -32,7 +28,7 @@ export const useSetupGraphNetwork = ({
 
   const { edges, nodes, settings } = graphData || {};
   const { layout: options } = settings || {};
-  const onAddEdge = ({ data, callback }: AddEdgeArgs) => {
+  const onAddEdge = (data: AddEdgeData, callback: AddEdgeCallback) => {
     setSelectedAction(action => {
       if (!action) {
         return;
@@ -51,9 +47,7 @@ export const useSetupGraphNetwork = ({
       ...options,
       manipulation: {
         enabled: false,
-        addEdge: function(data: AddEdgeData, callback: AddEdgeCallback) {
-          onAddEdge({ data, callback });
-        }
+        addEdge: onAddEdge
       },
       physics: {
         ...options?.physics,
@@ -74,20 +68,20 @@ export const useSetupGraphNetwork = ({
     );
 
     function registerNetwork() {
-      newNetwork.on("stabilizationProgress", function(params) {
+      newNetwork.on("stabilizationProgress", function (params) {
         if (nodes?.length && nodes.length > 1) {
           const widthFactor = params.iterations / params.total;
           const calculatedProgressValue = Math.round(widthFactor * 100);
           setProgressValue(calculatedProgressValue);
         }
       });
-      newNetwork.on("startStabilizing", function() {
+      newNetwork.on("startStabilizing", function () {
         if (hasDrawnOnce.current) {
           newNetwork.stopSimulation();
         }
         hasDrawnOnce.current = true;
       });
-      newNetwork.on("stabilizationIterationsDone", function() {
+      newNetwork.on("stabilizationIterationsDone", function () {
         newNetwork.fit();
         newNetwork.setOptions({
           physics: false

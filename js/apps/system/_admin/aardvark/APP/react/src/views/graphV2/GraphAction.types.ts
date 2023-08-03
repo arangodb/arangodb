@@ -5,6 +5,10 @@ export type GraphPointer = {
   canvas: { x: number; y: number };
 };
 
+export type AddEdgeData = { from: string; to: string };
+export type AddEdgeCallback = (edge: EdgeDataType) => void;
+
+
 export type RightClickedEntityType = {
   type: string;
   nodeId?: string;
