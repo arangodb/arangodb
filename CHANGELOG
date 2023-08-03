@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-308: Support for graph editing on web UI.
+
 * Fixed BTS-1302: make "silent" option for document operations work in cluster.
   When using the "silent" options for document operations in the cluster, the
   coordinator will now only return the errors that happened, as it did in
