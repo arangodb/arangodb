@@ -19,21 +19,6 @@
 
     initialize: function (options) {
       var self = this;
-
-      // aql preview only mode
-      if (options.id) {
-        // dynamically set id if available
-        this.setElement(options.id);
-        this.graphData = options.data;
-        this.aqlMode = true;
-      }
-
-      // aql to graph viewer mode
-      if (options.noDefinedGraph) {
-        this.noDefinedGraph = options.noDefinedGraph;
-        this.graphData = options.data;
-      }
-
       this.name = options.name;
       this.userConfig = options.userConfig;
       this.documentStore = options.documentStore;
@@ -67,8 +52,6 @@
 
     activeNodes: [],
     selectedNodes: {},
-
-    aqlMode: false,
 
     events: {
       'click #downloadPNG': 'downloadPNG',
@@ -177,9 +160,7 @@
     },
 
     render: function (toFocus) {
-      this.$el.html(this.template.render({
-        noDefinedGraph: false
-      }));
+      this.$el.html(this.template.render());
 
       // render navigation
       $('#subNavigationBar .breadcrumb').html(
@@ -238,59 +219,6 @@
       }
     },
 
-    renderAQLPreview: function (data) {
-      this.$el.html(this.template.render({
-        noDefinedGraph: true
-      }));
-
-      // remove not needed elements
-      this.$el.find('.headerBar').remove();
-
-      // set graph box height
-      var height = $('.centralRow').height() - 250;
-      this.$el.find('#graph-container').css('height', height);
-
-      // render
-      this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
-
-      var success = false;
-      try {
-        this.renderGraph(this.graphData.modified, null, true);
-        success = true;
-      } catch (ignore) {
-      }
-
-      return success;
-    },
-
-    renderAQL: function (data) {
-      this.$el.html(this.template.render({
-        noDefinedGraph: true
-      }));
-
-      // render navigation
-      $('#subNavigationBar .breadcrumb').html(
-        'AQL Graph'
-      );
-      $('#subNavigationBar .bottom').html('');
-      $('.queries-menu').removeClass('active');
-
-      this.resize();
-      this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
-      this.renderGraph(this.graphData.modified, null, false);
-
-      this.initFullscreen();
-
-      // init & render graph settings view
-      this.graphSettingsView = new window.GraphSettingsView({
-        name: this.name,
-        userConfig: undefined,
-        saveCallback: undefined,
-        noDefinedGraph: true
-      });
-      this.graphSettingsView.render();
-    },
-
     killCurrentGraph: function () {
       if (this.currentGraph && this.currentGraph.renderers) {
         for (var i in this.currentGraph.renderers) {
@@ -299,39 +227,6 @@
             this.currentGraph.kill(i);
           } catch (ignore) {
             // no need to cleanup
-          }
-        }
-      }
-    },
-
-    rerenderAQL: function (layout, renderer) {
-      this.killCurrentGraph();
-      // TODO add WebGL features
-      this.renderGraph(this.graphData.modified, null, false, layout, 'canvas');
-      if ($('#g_nodeColorByCollection').val() === 'true') {
-        this.switchNodeColorByCollection(true);
-      } else {
-        if ($('#g_nodeColor').is(':disabled')) {
-          this.updateColors(true, true, null, null, true);
-        } else {
-          if (this.ncolor) {
-            this.updateColors(true, true, this.ncolor, this.ecolor);
-          } else {
-            this.updateColors(true, true, '#2ecc71', '#2ecc71');
-          }
-        }
-      }
-
-      if ($('#g_edgeColorByCollection').val() === 'true') {
-        this.switchEdgeColorByCollection(true);
-      } else {
-        if ($('#g_edgeColor').is(':disabled')) {
-          this.updateColors(true, true, null, null, true);
-        } else {
-          if (this.ecolor) {
-            this.updateColors(true, true, this.ncolor, this.ecolor);
-          } else {
-            this.updateColors(true, true, '#2ecc71', '#2ecc71');
           }
         }
       }
@@ -443,32 +338,6 @@
       }
     },
 
-    switchNodeSizeByCollection: function (boolean) {
-      var self = this;
-      if (boolean) {
-        self.buildCollectionSizes();
-        self.currentGraph.graph.nodes().forEach(function (n) {
-          n.size = self.nodeEdgesCount[n.id];
-        });
-      } else {
-        self.currentGraph.graph.nodes().forEach(function (n) {
-          n.size = 15;
-        });
-      }
-      self.currentGraph.refresh();
-    },
-
-    switchEdgeType: function (edgeType) {
-      var data = {
-        nodes: this.currentGraph.graph.nodes(),
-        edges: this.currentGraph.graph.edges(),
-        settings: {}
-      };
-
-      this.killCurrentGraph();
-      this.renderGraph(data, null, false, null, null, edgeType);
-    },
-
     switchLayout: function (layout) {
       var data = {
         nodes: this.currentGraph.graph.nodes(),
@@ -477,7 +346,7 @@
       };
 
       this.killCurrentGraph();
-      this.renderGraph(data, null, false, layout);
+      this.renderGraph(data, null, layout);
 
       if ($('#g_nodeColorByCollection').val() === 'true') {
         this.switchNodeColorByCollection(true);
@@ -487,103 +356,6 @@
       } else {
         this.switchEdgeColorByCollection(false);
       }
-    },
-
-    parseData: function (data, type) {
-      var vertices = {}; var edges = {};
-      var color = '#2ecc71';
-
-      var returnObj = {
-        nodes: [],
-        edges: [],
-        settings: {}
-      };
-
-      if (this.ncolor) {
-        color = this.ncolor;
-      }
-
-      if (type === 'object') {
-        _.each(data, function (obj) {
-          if (obj.edges && obj.vertices) {
-            _.each(obj.edges, function (edge) {
-              if (edge !== null) {
-                edges[edge._id] = {
-                  id: edge._id,
-                  source: edge._from,
-                  // label: edge._key,
-                  color: '#cccccc',
-                  target: edge._to
-                };
-              }
-            });
-
-            _.each(obj.vertices, function (node) {
-              if (node !== null) {
-                vertices[node._id] = {
-                  id: node._id,
-                  label: node._key,
-                  size: 0.3,
-                  color: color,
-                  x: Math.random(),
-                  y: Math.random()
-                };
-              }
-            });
-          }
-        });
-
-        var nodeIds = [];
-        _.each(vertices, function (node) {
-          returnObj.nodes.push(node);
-          nodeIds.push(node.id);
-        });
-
-        _.each(edges, function (edge) {
-          if (nodeIds.includes(edge.source) && nodeIds.includes(edge.target)) {
-            returnObj.edges.push(edge);
-          }
-          /* how to handle not correct data?
-          else {
-            console.log('target to from is missing');
-          }
-          */
-        });
-      } else if (type === 'array') {
-        var edgeObj = {};
-
-        _.each(data, function (edge) {
-          if (edge) {
-            vertices[edge._from] = null;
-            vertices[edge._to] = null;
-
-            if (edge._id) {
-              edgeObj[edge._id] = {
-                id: edge._id,
-                source: edge._from,
-                color: '#cccccc',
-                target: edge._to
-              };
-            }
-          }
-        });
-
-        _.each(vertices, function (val, key) {
-          returnObj.nodes.push({
-            id: key,
-            label: key,
-            size: 0.3,
-            color: color,
-            x: Math.random(),
-            y: Math.random()
-          });
-        });
-        _.each(edgeObj, function (edge) {
-          returnObj.edges.push(edge);
-        });
-      }
-
-      return returnObj;
     },
 
     rerender: function () {
@@ -896,26 +668,24 @@
         window.modalView.createReadOnlyEntry('delete-node-attr-id', 'Really delete node', nodeId)
       );
 
-      if (!this.noDefinedGraph) {
-        tableContent.push(
-          window.modalView.createSelectEntry(
-            'delete-node-edges-attr',
-            'Also delete edges?',
-            undefined,
-            undefined,
-            [
-              {
-                value: 'yes',
-                label: 'Yes'
-              },
-              {
-                value: 'no',
-                label: 'No'
-              }
-            ]
-          )
-        );
-      }
+      tableContent.push(
+        window.modalView.createSelectEntry(
+          'delete-node-edges-attr',
+          'Also delete edges?',
+          undefined,
+          undefined,
+          [
+            {
+              value: 'yes',
+              label: 'Yes'
+            },
+            {
+              value: 'no',
+              label: 'No'
+            }
+          ]
+        )
+      );
 
       buttons.push(
         window.modalView.createDeleteButton('Delete', this.deleteNode.bind(this))
@@ -1499,20 +1269,13 @@
         wheel.sliceHoverAttr = {stroke: '#fff', 'stroke-width': 2};
         wheel.slicePathFunction = slicePath().DonutSlice;
 
-        if (!self.noDefinedGraph) {
-          wheel.createWheel([
-            'imgsrc:img/gv_edit.png',
-            'imgsrc:img/gv_trash.png',
-            'imgsrc:img/gv_flag.png',
-            'imgsrc:img/gv_link.png',
-            'imgsrc:img/gv_expand.png'
-          ]);
-        } else {
-          wheel.createWheel([
-            'imgsrc:img/gv_edit.png',
-            'imgsrc:img/gv_trash.png'
-          ]);
-        }
+        wheel.createWheel([
+          'imgsrc:img/gv_edit.png',
+          'imgsrc:img/gv_trash.png',
+          'imgsrc:img/gv_flag.png',
+          'imgsrc:img/gv_link.png',
+          'imgsrc:img/gv_expand.png'
+        ]);
 
         $('#nodeContextMenu').addClass('animated bounceIn');
 
@@ -1533,36 +1296,34 @@
             self.removeHelp();
           };
 
-          if (!self.noDefinedGraph) {
-            // function 2: mark as start node
-            wheel.navItems[2].navigateFunction = function (e) {
-              self.clearOldContextMenu();
-              self.setStartNode(nodeId);
-              self.removeHelp();
-            };
+          // function 2: mark as start node
+          wheel.navItems[2].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.setStartNode(nodeId);
+            self.removeHelp();
+          };
 
-            // function 3: create edge
-            wheel.navItems[3].navigateFunction = function (e) {
-              self.contextState.createEdge = true;
-              self.contextState._from = nodeId;
-              self.contextState.fromX = x;
-              self.contextState.fromY = y;
+          // function 3: create edge
+          wheel.navItems[3].navigateFunction = function (e) {
+            self.contextState.createEdge = true;
+            self.contextState._from = nodeId;
+            self.contextState.fromX = x;
+            self.contextState.fromY = y;
 
-              var c = document.getElementsByClassName('sigma-mouse')[0];
-              self.drawHelp('Now click destination node, or click background to cancel.');
-              c.addEventListener('mousemove', self.drawLine.bind(this), false);
+            var c = document.getElementsByClassName('sigma-mouse')[0];
+            self.drawHelp('Now click destination node, or click background to cancel.');
+            c.addEventListener('mousemove', self.drawLine.bind(this), false);
 
-              self.clearOldContextMenu();
-              self.removeHelp();
-            };
+            self.clearOldContextMenu();
+            self.removeHelp();
+          };
 
-            // function 4: mark as start node
-            wheel.navItems[4].navigateFunction = function (e) {
-              self.clearOldContextMenu();
-              self.expandNode(nodeId);
-              self.removeHelp();
-            };
-          }
+          // function 4: mark as start node
+          wheel.navItems[4].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.expandNode(nodeId);
+            self.removeHelp();
+          };
 
           // add menu hover functions
 
@@ -1571,11 +1332,9 @@
             'Delete the node.'
           ];
 
-          if (!self.noDefinedGraph) {
-            descriptions.push('Set as startnode.');
-            descriptions.push('Draw edge.');
-            descriptions.push('Expand the node.');
-          }
+          descriptions.push('Set as startnode.');
+          descriptions.push('Draw edge.');
+          descriptions.push('Expand the node.');
 
           // hover functions
           _.each(descriptions, function (val, key) {
@@ -1944,7 +1703,7 @@
       s.refresh();
     },
 
-    renderGraph: function (graph, toFocus, aqlMode, layout, renderer, edgeType) {
+    renderGraph: function (graph, toFocus, layout, renderer, edgeType) {
       var self = this;
       this.graphSettings = graph.settings;
 
@@ -1968,14 +1727,12 @@
           }
 
           var style = 'position: absolute; left: 25px; bottom: 50px;';
-          if (!this.aqlMode) {
-            $('#graph-container').append(
-              '<div id="objectCount" style="' + style + ' animated fadeIn">' +
-                '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
-                '<span class="arangoState"><span id="edgesCount">' + graph.edges.length + '</span> edges</span>' +
-              '</div>'
-            );
-          }
+          $('#graph-container').append(
+            '<div id="objectCount" style="' + style + ' animated fadeIn">' +
+              '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
+              '<span class="arangoState"><span id="edgesCount">' + graph.edges.length + '</span> edges</span>' +
+            '</div>'
+          );
         }
       }
       this.Sigma = sigma;
@@ -2075,21 +1832,6 @@
         settings.minArrowSize = 7;
       }
 
-      if (aqlMode) {
-        // aql editor settings
-        self.renderer = 'canvas';
-
-        if (graph.nodes.length < 500) {
-          self.algorithm = 'fruchtermann';
-        } else {
-          settings.scalingMode = 'outside';
-        }
-
-        settings.drawEdgeLabels = false;
-        settings.minNodeSize = 2;
-        settings.maxNodeSize = 8;
-      }
-
       // adjust display settings for webgl renderer
       if (self.renderer === 'webgl') {
         settings.enableEdgeHovering = false;
@@ -2107,12 +1849,10 @@
       });
       this.currentGraph = s;
 
-      if (!this.aqlMode) {
-        sigma.plugins.fullScreen({
-          container: 'graph-container',
-          btnId: 'graph-fullscreen-btn'
-        });
-      }
+      sigma.plugins.fullScreen({
+        container: 'graph-container',
+        btnId: 'graph-fullscreen-btn'
+      });
 
       s.graph.nodes().forEach(function (n) {
         n.originalColor = n.color;
@@ -2147,142 +1887,132 @@
       }
 
       // for canvas renderer allow graph editing
-      if (!self.aqlMode) {
-        var showAttributes = function (e, node) {
-          $('.nodeInfoDiv').remove();
+      var showAttributes = function (e, node) {
+        $('.nodeInfoDiv').remove();
 
-          if (self.contextState.createEdge === false) {
-            if (window.location.hash.indexOf('graph') > -1) {
-              var callback = function (error, data, id) {
-                if (!error) {
-                  var attributes = '';
-                  attributes += '<span class="title">ID </span> <span class="nodeId">' + data.documents[0]._id + '</span>';
-                  if (Object.keys(data.documents[0]).length > 3) {
-                    attributes += '<span class="title">ATTRIBUTES </span>';
-                  }
-                  _.each(data.documents[0], function (value, key) {
-                    if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
-                      attributes += '<span class="nodeAttribute" title="' + arangoHelper.escapeHtml(value, false) + '">' + arangoHelper.escapeHtml(key, false) + '</span>';
-                    }
-                  });
-                  var string = '<div id="nodeInfoDiv" class="nodeInfoDiv" style="display: none;">' + attributes + '</div>';
-
-                  $('#graph-container').append(string);
-                  arangoHelper.fixTooltips('.nodeAttribute', 'top');
-                  if (self.isFullscreen) {
-                    $('.nodeInfoDiv').css('top', '10px');
-                    $('.nodeInfoDiv').css('left', '10px');
-                  }
-                  $('#nodeInfoDiv').fadeIn('slow');
-                } else {
-                  // node not available any more
-                  self.currentGraph.graph.dropNode(id);
-                  // rerender graph
-                  self.currentGraph.refresh();
+        if (self.contextState.createEdge === false) {
+          if (window.location.hash.indexOf('graph') > -1) {
+            var callback = function (error, data, id) {
+              if (!error) {
+                var attributes = '';
+                attributes += '<span class="title">ID </span> <span class="nodeId">' + data.documents[0]._id + '</span>';
+                if (Object.keys(data.documents[0]).length > 3) {
+                  attributes += '<span class="title">ATTRIBUTES </span>';
                 }
-              };
+                _.each(data.documents[0], function (value, key) {
+                  if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
+                    attributes += '<span class="nodeAttribute" title="' + arangoHelper.escapeHtml(value, false) + '">' + arangoHelper.escapeHtml(key, false) + '</span>';
+                  }
+                });
+                var string = '<div id="nodeInfoDiv" class="nodeInfoDiv" style="display: none;">' + attributes + '</div>';
 
-              if (node) {
-                self.documentStore.getDocument(e.data.node.id.split('/')[0], e.data.node.id.split('/')[1], callback);
+                $('#graph-container').append(string);
+                arangoHelper.fixTooltips('.nodeAttribute', 'top');
+                if (self.isFullscreen) {
+                  $('.nodeInfoDiv').css('top', '10px');
+                  $('.nodeInfoDiv').css('left', '10px');
+                }
+                $('#nodeInfoDiv').fadeIn('slow');
               } else {
-                self.documentStore.getDocument(e.data.edge.id.split('/')[0], e.data.edge.id.split('/')[1], callback);
+                // node not available any more
+                self.currentGraph.graph.dropNode(id);
+                // rerender graph
+                self.currentGraph.refresh();
               }
+            };
+
+            if (node) {
+              self.documentStore.getDocument(e.data.node.id.split('/')[0], e.data.node.id.split('/')[1], callback);
+            } else {
+              self.documentStore.getDocument(e.data.edge.id.split('/')[0], e.data.edge.id.split('/')[1], callback);
             }
           }
-        };
+        }
+      };
 
-        s.bind('clickNode', function (e) {
-          if (self.contextState.createEdge === true) {
-            self.clearMouseCanvas();
-            self.removeHelp();
+      s.bind('clickNode', function (e) {
+        if (self.contextState.createEdge === true) {
+          self.clearMouseCanvas();
+          self.removeHelp();
 
-            // create the edge
-            self.contextState._to = e.data.node.id;
-            var fromCollection = self.contextState._from.split('/')[0];
-            var toCollection = self.contextState._to.split('/')[0];
+          // create the edge
+          self.contextState._to = e.data.node.id;
+          var fromCollection = self.contextState._from.split('/')[0];
+          var toCollection = self.contextState._to.split('/')[0];
 
-            // validate edgeDefinitions
-            var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
-            if (foundEdgeDefinitions.length === 0) {
-              arangoHelper.arangoNotification('Graph', 'No valid edge definition found.');
-            } else {
-              self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
-              self.clearOldContextMenu(false);
-            }
+          // validate edgeDefinitions
+          var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
+          if (foundEdgeDefinitions.length === 0) {
+            arangoHelper.arangoNotification('Graph', 'No valid edge definition found.');
           } else {
-            if (!self.dragging) {
-              if (self.contextState.createEdge === true) {
-                self.newEdgeColor = '#ff0000';
-              } else {
-                self.newEdgeColor = '#000000';
-              }
-
-              // halo on active nodes:
-              if (self.renderer === 'canvas') {
-                self.currentGraph.renderers[0].halo({
-                  nodes: self.currentGraph.graph.nodes(),
-                  nodeHaloColor: '#DF0101',
-                  nodeHaloSize: 100
-                });
-              }
-
-              showAttributes(e, true);
-              self.activeNodes = [e.data.node];
-
-              if (self.renderer === 'canvas') {
-                s.renderers[0].halo({
-                  nodes: [e.data.node]
-                });
-              }
-
-              self.createNodeContextMenu(e.data.node.id, e);
-            }
+            self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
+            self.clearOldContextMenu(false);
           }
-        });
-
-        if (!self.noDefinedGraph) {
-          s.bind('clickStage', function (e) {
-            if (e.data.captor.isDragging) {
-              self.clearOldContextMenu(true);
-              self.clearMouseCanvas();
-            } else if (self.contextState.createEdge === true) {
-              self.clearOldContextMenu(true);
-              self.clearMouseCanvas();
-              self.removeHelp();
+        } else {
+          if (!self.dragging) {
+            if (self.contextState.createEdge === true) {
+              self.newEdgeColor = '#ff0000';
             } else {
-              // stage menu
-              if (!$('#nodeContextMenu').is(':visible')) {
-                // var offset = $('#graph-container').offset();
-                self.addNodeX = e.data.captor.x;
-                self.addNodeY = e.data.captor.y;
-                // self.calculateAddNodePosition(self.cursorX, self.cursorY);
-                // self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
-                // self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
-                // self.addNodeX = e.data.captor.x;
-                // self.addNodeY = e.data.captor.y;
-                self.createContextMenu(e);
-                self.clearMouseCanvas();
-              } else {
-                // cleanup
-                self.clearOldContextMenu(true);
-                self.clearMouseCanvas();
-                self.removeOldContextMenu();
-              }
+              self.newEdgeColor = '#000000';
+            }
 
-              // remember halo
-              s.renderers[0].halo({
-                nodes: self.activeNodes
+            // halo on active nodes:
+            if (self.renderer === 'canvas') {
+              self.currentGraph.renderers[0].halo({
+                nodes: self.currentGraph.graph.nodes(),
+                nodeHaloColor: '#DF0101',
+                nodeHaloSize: 100
               });
             }
-          });
+
+            showAttributes(e, true);
+            self.activeNodes = [e.data.node];
+
+            if (self.renderer === 'canvas') {
+              s.renderers[0].halo({
+                nodes: [e.data.node]
+              });
+            }
+
+            self.createNodeContextMenu(e.data.node.id, e);
+          }
+        }
+      });
+
+      s.bind('clickStage', function (e) {
+        if (e.data.captor.isDragging) {
+          self.clearOldContextMenu(true);
+          self.clearMouseCanvas();
+        } else if (self.contextState.createEdge === true) {
+          self.clearOldContextMenu(true);
+          self.clearMouseCanvas();
+          self.removeHelp();
         } else {
-          s.bind('clickStage', function (e) {
+          // stage menu
+          if (!$('#nodeContextMenu').is(':visible')) {
+            // var offset = $('#graph-container').offset();
+            self.addNodeX = e.data.captor.x;
+            self.addNodeY = e.data.captor.y;
+            // self.calculateAddNodePosition(self.cursorX, self.cursorY);
+            // self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
+            // self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
+            // self.addNodeX = e.data.captor.x;
+            // self.addNodeY = e.data.captor.y;
+            self.createContextMenu(e);
+            self.clearMouseCanvas();
+          } else {
+            // cleanup
             self.clearOldContextMenu(true);
             self.clearMouseCanvas();
-            self.removeHelp();
+            self.removeOldContextMenu();
+          }
+
+          // remember halo
+          s.renderers[0].halo({
+            nodes: self.activeNodes
           });
         }
-      }
+      });
 
       if (self.renderer === 'canvas') {
         // render parallel edges
@@ -2370,10 +2100,6 @@
         // add buttons for start/stopping calculation
         var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px; z-index: 9999;';
 
-        if (self.aqlMode) {
-          style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: 10px; margin-right: -15px';
-        }
-
         $('#graph-container').after(
           '<div id="toggleForce" style="' + style2 + '">' +
             '<i style="margin-right: 5px;" class="fa fa-pause"></i><span> Stop layout</span>' +
@@ -2386,18 +2112,10 @@
         var adjust = 500;
         if (graph.nodes) {
           duration = graph.nodes.length;
-          if (aqlMode) {
-            if (duration < 250) {
-              duration = 250;
-            } else {
-              duration += adjust;
-            }
-          } else {
-            if (duration <= 250) {
-              duration = 500;
-            }
-            duration += adjust;
+          if (duration <= 250) {
+            duration = 500;
           }
+          duration += adjust;
         }
 
         if (graph.empty) {
@@ -2517,15 +2235,9 @@
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
       $('#toggleForce span').html('Stop layout');
       this.layouting = true;
-      if (this.aqlMode) {
-        this.currentGraph.startForceAtlas2({
-          worker: true
-        });
-      } else {
-        this.currentGraph.startForceAtlas2({
-          worker: true
-        });
-      }
+      this.currentGraph.startForceAtlas2({
+        worker: true
+      });
       // sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
     },
 

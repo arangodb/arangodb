@@ -5,12 +5,15 @@ help: |
 unit: byte
 type: gauge
 # all other categories are too specific
-category: Statistics
+category: Agency
 complexity: high
 exposedBy:
   - coordinator
   - dbserver
   - agent
 description: |
-  Amount of memory used to represent the agency data structure. This measures memory usage on agency and the
-  cache usage on coordinators/dbservers.
+  Amount of memory used to represent the agency data structure. This measures memory usage on agents 
+  and also on Coordinators and DB servers, because these have a cached version of the agency's
+  `Plan` and `Current` sections.
+  This metric can be non-zero even on single servers because there is a small initial memory allocation
+  made at ArangoDB instance start.
