@@ -51,9 +51,20 @@ const exampleGraphsMap = [
 ];
 
 export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
+  const [isAnyLoading, setIsAnyLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState<{ [key: string]: boolean }>(
+    {}
+  );
+
   const createExampleGraph = async ({ graphName }: { graphName: string }) => {
-    setIsLoading(true);
     try {
+      setIsAnyLoading(true);
+      setLoadingState(prev => {
+        return {
+          ...prev,
+          [graphName]: true
+        };
+      });
       await getRouteForDB(window.frontendConfig.db, "_admin").post(
         `/aardvark/graph-examples/create/${graphName}`
       );
@@ -64,10 +75,15 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
       const errorMessage = e?.response?.body?.errorMessage || "Unknown error";
       notifyError(`Could not create graph: ${errorMessage}`);
     }
-    setIsLoading(false);
+    setIsAnyLoading(false);
+    setLoadingState(prev => {
+      return {
+        ...prev,
+        [graphName]: false
+      };
+    });
   };
-  const [isLoading, setIsLoading] = useState(false);
-
+  console.log({ isAnyLoading });
   return (
     <VStack spacing={4} align="stretch">
       {exampleGraphsMap.map(exampleGraphField => {
@@ -80,7 +96,8 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
               colorScheme="blue"
               size="xs"
               type="submit"
-              isLoading={isLoading}
+              isDisabled={isAnyLoading}
+              isLoading={loadingState[exampleGraphField.name]}
               onClick={async () => {
                 await createExampleGraph({ graphName: exampleGraphField.name });
               }}
