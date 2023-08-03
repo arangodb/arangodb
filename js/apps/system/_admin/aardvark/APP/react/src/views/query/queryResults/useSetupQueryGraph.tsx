@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { DataSet } from "vis-data";
 import { Network } from "vis-network";
-import { EdgeDataType, NodeDataType } from "../../graphV2/GraphData.types";
-import { LayoutType } from "../../graphV2/UrlParametersContext";
+import {
+  EdgeDataType,
+  NodeDataType
+} from "../../graphV2/viewGraph/GraphData.types";
+import { LayoutType } from "../../graphV2/viewGraph/UrlParametersContext";
 
 export type SettingsType = {
   layout: LayoutType;
