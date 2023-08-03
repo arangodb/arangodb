@@ -60,7 +60,6 @@ class GeneralServerFeature final : public ArangodFeature {
   bool proxyCheck() const noexcept;
   bool returnQueueTimeHeader() const noexcept;
   std::vector<std::string> trustedProxies() const;
-  bool allowMethodOverride() const noexcept;
   std::vector<std::string> const& accessControlAllowOrigins() const;
   Result reloadTLS();
   bool permanentRootRedirect() const noexcept;
@@ -111,7 +110,6 @@ class GeneralServerFeature final : public ArangodFeature {
   bool _startedListening;
 #endif
   bool _allowEarlyConnections;
-  bool _allowMethodOverride;
   bool _enableTelemetrics;
   bool _proxyCheck;
   bool _returnQueueTimeHeader;
