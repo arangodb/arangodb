@@ -41,6 +41,7 @@
 #include "Aql/Stats.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/Variable.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "RestServer/TemporaryStorageFeature.h"
 #include "Transaction/Context.h"
@@ -139,10 +140,14 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     return TestLambdaSkipExecutor::Infos{dropAll, dropSkipAll};
   }
 
+ protected:
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
+
  private:
   std::unique_ptr<TemporaryStorageFeature> tempStorage;
   velocypack::Options const* vpackOptions{&velocypack::Options::Defaults};
-  Variable sortVar{"mySortVar", 0, false};
+  Variable sortVar{"mySortVar", 0, false, resourceMonitor};
 };
 
 template<size_t... vs>

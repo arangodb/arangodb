@@ -701,17 +701,19 @@ class IResearchViewMergeExecutor
 
   class MinHeapContext {
    public:
-    MinHeapContext(iresearch::IResearchSortBase const& sort, size_t sortBuckets,
-                   std::vector<Segment>& segments) noexcept;
+    using Value = Segment;
+
+    MinHeapContext(iresearch::IResearchSortBase const& sort,
+                   size_t sortBuckets) noexcept;
 
     // advance
-    bool operator()(size_t i) const;
+    bool operator()(Value& segment) const;
 
     // compare
-    bool operator()(size_t lhs, size_t rhs) const;
+    bool operator()(const Value& lhs, const Value& rhs) const;
 
+   private:
     iresearch::VPackComparer<iresearch::IResearchSortBase> _less;
-    std::vector<Segment>* _segments;
   };
 
   // reads local document id from a specified segment
@@ -727,7 +729,7 @@ class IResearchViewMergeExecutor
 
  private:
   std::vector<Segment> _segments;
-  irs::ExternalHeapIterator<MinHeapContext> _heap_it;
+  irs::ExternalMergeIterator<MinHeapContext> _heap_it;
 };
 
 template<typename ExecutionTraits>

@@ -42,7 +42,7 @@ class FreeMemoryTask : public std::enable_shared_from_this<FreeMemoryTask> {
   FreeMemoryTask& operator=(FreeMemoryTask const&) = delete;
 
   FreeMemoryTask(Manager::TaskEnvironment environment, Manager& manager,
-                 std::shared_ptr<Cache>);
+                 std::shared_ptr<Cache>, bool triggerShrinking);
   ~FreeMemoryTask();
 
   bool dispatch();
@@ -53,6 +53,7 @@ class FreeMemoryTask : public std::enable_shared_from_this<FreeMemoryTask> {
   Manager::TaskEnvironment _environment;
   Manager& _manager;
   std::shared_ptr<Cache> _cache;
+  bool const _triggerShrinking;
 };
 
 class MigrateTask : public std::enable_shared_from_this<MigrateTask> {
