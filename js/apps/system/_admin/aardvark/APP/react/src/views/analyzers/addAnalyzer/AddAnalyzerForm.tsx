@@ -1,17 +1,9 @@
-import { ExternalLinkIcon } from "@chakra-ui/icons";
-import {
-  Divider,
-  Flex,
-  Grid,
-  Link,
-  Stack,
-  Switch,
-  Text
-} from "@chakra-ui/react";
+import { Divider, Flex, Grid, Stack, Switch, Text } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
 import { InputControl } from "../../../components/form/InputControl";
 import { SelectControl } from "../../../components/form/SelectControl";
+import { ExternalLink } from "../../../components/link/ExternalLink";
 import { AnalyzerTypes } from "../Analyzer.types";
 import { useAnalyzersContext } from "../AnalyzersContext";
 import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
@@ -57,18 +49,13 @@ export const AddAnalyzerForm = ({
                 options: ANALYZER_TYPE_OPTIONS
               }}
             />
-            <Link
-              spacing="1"
-              as={Stack}
-              alignItems="center"
-              direction="row"
+            <ExternalLink
               marginLeft="2"
               marginBottom="2"
-              target="_blank"
               href={`https://www.arangodb.com/docs/stable/analyzers.html#${analyzerTypeValue}`}
             >
-              <Text>Docs</Text> <ExternalLinkIcon />
-            </Link>
+              Docs
+            </ExternalLink>
           </Flex>
         </Grid>
       </Stack>
