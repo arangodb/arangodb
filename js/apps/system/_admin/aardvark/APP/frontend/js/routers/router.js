@@ -61,7 +61,7 @@
       'logs': 'logger',
       'helpus': 'helpUs',
       'views': 'views',
-      'views/:name': 'views',
+      'view/:name': 'views',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
