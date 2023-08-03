@@ -1,6 +1,8 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
+* Updated arangosync to v2.19.0.
+
 * ES-1566: instead of potentially accessing a nullptr inside graph traversal
   setup, throw an exception. This will be handled properly and returned with
   a proper error message.
