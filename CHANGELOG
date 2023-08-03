@@ -16,6 +16,49 @@ devel
   memory limit settings, turn on intermediate commits for the query, or adjust
   the query so that it uses less memory.
 
+* Remove long-deprecated graph compatibility functions, which were implemented
+  as JavaScript user-defined AQL functions since ArangoDB 3.0:
+
+  - arangodb::GRAPH_EDGES(...)
+  - arangodb::GRAPH_VERTICES(...)
+  - arangodb::GRAPH_NEIGHBORS(...)
+  - arangodb::GRAPH_COMMON_NEIGHBORS(...)
+  - arangodb::GRAPH_COMMON_PROPERTIES(...)
+  - arangodb::GRAPH_PATHS(...)
+  - arangodb::GRAPH_SHORTEST_PATH(...)
+  - arangodb::GRAPH_DISTANCE_TO(...)
+  - arangodb::GRAPH_ABSOLUTE_ECCENTRICTIY(...)
+  - arangodb::GRAPH_ECCENTRICTIY(...)
+  - arangodb::GRAPH_ABSOLUTE_CLOSENESS(...)
+  - arangodb::GRAPH_CLOSENESS(...)
+  - arangodb::GRAPH_ABSOLUTE_BETWEENNESS(...)
+  - arangodb::GRAPH_BETWEENNESS(...)
+  - arangodb::GRAPH_RADIUS(...)
+  - arangodb::GRAPH_DIAMETER(...)
+
+  These functions were only available previously after explicitly calling the
+  `_registerCompatibilityFunctions()` function from any of the JavaScript graph
+  modules. 
+  The `_registerCompatibilityFunctions()` exports have also been removed from 
+  the JavaScript graph modules.
+
+* Removed the following long-deprecated features for the HTTP server:
+
+  - overriding the HTTP method by setting one of the HTTP headers 
+    - `x-http-method`
+    - `x-http-method-override`
+    - `x-method-override`
+    This functionality could previously be enabled by starting the server with 
+    the startup option `--http.allow-method-override`.
+    The functionality has now been removed and setting the startup option does 
+    nothing.
+
+  - optionally hiding ArangoDB's `server` response header. This functionality
+    could optionally be enabled by starting the server with the startup option
+    `--http.hide-product-header`. 
+    The functionality has now been removed and setting the startup option does 
+    nothing.
+
 * Fixed BTS-1302: make "silent" option for document operations work in cluster.
   When using the "silent" options for document operations in the cluster, the
   coordinator will now only return the errors that happened, as it did in

@@ -111,5 +111,4 @@ exports._drop = function (graphName, dropCollections) {
 exports._edgeDefinitions = ggc._edgeDefinitions;
 exports._extendEdgeDefinitions = ggc._extendEdgeDefinitions;
 exports._relation = ggc._relation;
-exports._registerCompatibilityFunctions = ggc._registerCompatibilityFunctions;
 exports.__graphToClass = graphToClass;
