@@ -728,7 +728,6 @@ static void InitV8GeneralGraphModule(v8::Handle<v8::Context> context,
    * _edgeDefinitions
    * _extendEdgeDefinitions
    * _relation
-   * _registerCompatibilityFunctions
    */
 
   /* TODO
