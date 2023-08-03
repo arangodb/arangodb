@@ -114,7 +114,7 @@ const patchQueries = async ({
   }
   const currentDB = getCurrentDB();
   try {
-    await currentDB.request({
+    await currentDB.route().request({
       method: "PATCH",
       path: `/_api/user/${encodeURIComponent(window.App.currentUser)}`,
       body: {
