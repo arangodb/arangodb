@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-313: Add support for minHash analyzers & offset field on web UI.
+
 * FE-313: Upgrade arangojs to v8.x on web UI.
 
 * ES-1566: instead of potentially accessing a nullptr inside graph traversal
