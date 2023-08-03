@@ -1,6 +1,23 @@
 devel
 -----
 
+* Removed the following long-deprecated features for the HTTP server:
+
+  - overriding the HTTP method by setting one of the HTTP headers 
+    - `x-http-method`
+    - `x-http-method-override`
+    - `x-method-override`
+    This functionality could previously be enabled by starting the server with 
+    the startup option `--http.allow-method-override`.
+    The functionality has now been removed and setting the startup option does 
+    nothing.
+
+  - optionally hiding ArangoDB's `server` response header. This functionality
+    could optionally be enabled by starting the server with the startup option
+    `--http.hide-product-header`. 
+    The functionality has now been removed and setting the startup option does 
+    nothing.
+
 * FE-291: Refactor Query screen on web UI to React.
 
 * FE-313: Upgrade arangojs to v8.x on web UI.
