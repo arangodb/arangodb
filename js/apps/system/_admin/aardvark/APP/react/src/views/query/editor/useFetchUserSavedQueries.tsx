@@ -1,4 +1,3 @@
-import { ArangoUser } from "arangojs/database";
 import useSWR from "swr";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { getQueryStorageKey } from "../queryHelper";
@@ -23,12 +22,8 @@ export const useFetchUserSavedQueries = () => {
       return savedQueries.reverse();
     }
     const currentDB = getCurrentDB();
-    const path = `/_api/user/${encodeURIComponent(currentUser)}`;
-    const user = await currentDB.request({
-      absolutePath: false,
-      path
-    });
-    const savedQueries = (user.body as ArangoUser).extra.queries;
+    const user = await currentDB.getUser(currentUser);
+    const savedQueries = user.extra?.queries;
     return savedQueries.reverse();
   };
   const { data, isLoading } = useSWR<QueryType[]>("/savedQueries", fetchUser);
