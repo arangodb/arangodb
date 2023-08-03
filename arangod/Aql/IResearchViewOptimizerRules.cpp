@@ -311,6 +311,17 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     auto const* varSetBy = plan->getVarSetBy(sort.var->id);
     TRI_ASSERT(varSetBy);
     switch (varSetBy->getType()) {
+      case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+        if (&viewNode != varSetBy) {
+          // we can't use column from another index
+          return false;
+        }
+        auto source = viewNode.getSourceColumnInfo(sort.var->id);
+        TRI_ASSERT(source.first != std::numeric_limits<ptrdiff_t>::max());
+        heapSort.push_back(HeapSortElement{.source = source.first,
+                                           .fieldNumber = source.second,
+                                           .ascending = sort.ascending});
+      } break;
       case ExecutionNode::CALCULATION: {
         auto* calc = ExecutionNode::castTo<CalculationNode const*>(varSetBy);
         TRI_ASSERT(calc->expression());

@@ -2214,6 +2214,18 @@ bool IResearchViewNode::isBuilding() const {
 
 size_t IResearchViewNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
+std::pair<ptrdiff_t, size_t> IResearchViewNode::getSourceColumnInfo(
+    aql::VariableId id) const noexcept {
+  for (auto const& column : _outNonMaterializedViewVars) {
+    for (auto const& var : column.second) {
+      if (var.var->id == id) {
+        return {column.first, var.fieldNum};
+      }
+    }
+  }
+  return {std::numeric_limits<ptrdiff_t>::max(), 0};
+}
+
 }  // namespace arangodb::iresearch
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

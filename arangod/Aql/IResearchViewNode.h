@@ -290,6 +290,9 @@ class IResearchViewNode final : public aql::ExecutionNode {
       containers::FlatHashMap<std::vector<basics::AttributeName> const*,
                               ViewVariableWithColumn>;
 
+  std::pair<ptrdiff_t, size_t> getSourceColumnInfo(
+      aql::VariableId id) const noexcept;
+
   void setViewVariables(ViewVarsInfo const& viewVariables) {
     _outNonMaterializedViewVars.clear();
     for (auto const& viewVars : viewVariables) {
