@@ -6,7 +6,9 @@ import {
   getFacetedUniqueValues,
   getFilteredRowModel,
   getSortedRowModel,
+  RowSelectionState,
   SortingState,
+  TableOptions,
   useReactTable
 } from "@tanstack/react-table";
 import React from "react";
@@ -16,17 +18,23 @@ type SortableReactTableOptions<Data extends object> = {
   initialSorting?: SortingState;
   columns: ColumnDef<Data, any>[];
   initialFilters?: ColumnFiltersState;
+  initialRowSelection?: RowSelectionState;
 };
 
 export const useSortableReactTable = <Data extends object>({
   data,
   columns,
   initialSorting = [],
-  initialFilters = []
-}: SortableReactTableOptions<Data>) => {
+  initialFilters = [],
+  initialRowSelection = {},
+  ...rest
+}: SortableReactTableOptions<Data> &
+  Omit<TableOptions<Data>, "getCoreRowModel">) => {
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting);
   const [columnFilters, setColumnFilters] =
     React.useState<ColumnFiltersState>(initialFilters);
+  const [rowSelection, setRowSelection] =
+    React.useState<RowSelectionState>(initialRowSelection);
   const table = useReactTable({
     columns,
     data,
@@ -38,9 +46,12 @@ export const useSortableReactTable = <Data extends object>({
     getFacetedRowModel: getFacetedRowModel(),
     state: {
       sorting,
-      columnFilters
+      columnFilters,
+      rowSelection
     },
-    onColumnFiltersChange: setColumnFilters
+    onRowSelectionChange: setRowSelection,
+    onColumnFiltersChange: setColumnFilters,
+    ...rest
   });
   return table;
 };

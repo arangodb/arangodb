@@ -19,6 +19,10 @@ devel
   This is a downwards-incompatible change compared to previous versions, but
   it can be considered a bugfix.
 
+* FE-291: Refactor Query screen on web UI to React.
+
+* FE-313: Upgrade arangojs to v8.x on web UI.
+
 * ES-1566: instead of potentially accessing a nullptr inside graph traversal
   setup, throw an exception. This will be handled properly and returned with
   a proper error message.

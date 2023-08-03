@@ -19,7 +19,8 @@ import { CopyAnalyzerDropdown } from "./CopyAnalyzerDropdown";
 const INITIAL_VALUES = {
   name: "",
   type: "identity",
-  features: []
+  features: [],
+  properties: {}
 } as AnalyzerDescription;
 
 export const AddAnalyzerModal = ({

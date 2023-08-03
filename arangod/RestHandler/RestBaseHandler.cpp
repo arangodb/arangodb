@@ -54,7 +54,7 @@ velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
     // before making a call to payload() and after.
     auto old = _request->memoryUsage();
     auto slice = _request->payload(true);
-    this->_requestBodySizeTracker.add(_request->memoryUsage() - old);
+    _currentRequestsSizeTracker.add(_request->memoryUsage() - old);
     return slice;
   } catch (VPackException const& e) {
     // simon: do not mess with the error message format, tests break
