@@ -296,8 +296,7 @@ RestStatus RestDocumentHandler::insertDocument() {
                   }
 
                   generateSaved(
-                      opres, cname,
-                      TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                      opres, cname, _activeTrx->getCollectionType(cname),
                       _activeTrx->transactionContextPtr()->getVPackOptions(),
                       isMultiple);
                 });
@@ -675,8 +674,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
               }
 
               generateSaved(
-                  opRes, cname,
-                  TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                  opRes, cname, _activeTrx->getCollectionType(cname),
                   _activeTrx->transactionContextPtr()->getVPackOptions(),
                   isArrayCase);
             });
@@ -825,8 +823,7 @@ RestStatus RestDocumentHandler::removeDocument() {
                   }
 
                   generateDeleted(
-                      opRes, cname,
-                      TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                      opRes, cname, _activeTrx->getCollectionType(cname),
                       _activeTrx->transactionContextPtr()->getVPackOptions(),
                       isMultiple);
                 });

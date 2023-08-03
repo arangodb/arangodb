@@ -29,13 +29,31 @@
 namespace arangodb {
 
 struct CacheOptions {
-  double idealLowerFillRatio = 0.04;
-  double idealUpperFillRatio = 0.25;
-  std::size_t minValueSizeForEdgeCompression = 1'073'741'824ULL;  // 1GB
+  // lower fill ratio for a hash table. if a hash table's load factor is
+  // less than this ratio, it is subject to shrinking
+  double idealLowerFillRatio = 0.08;
+  // upper fill ratio for a hash table. if a hash table's load factor is
+  // higher than this ratio, it is subject to doubling in size!
+  double idealUpperFillRatio = 0.33;
+  // 1GB, so effectively compression is disabled by default.
+  std::size_t minValueSizeForEdgeCompression = 1'073'741'824ULL;
+  // lz4-internal acceleration factor for compression.
+  // values > 1 could mean slower compression, but faster decompression
   std::uint32_t accelerationFactorForEdgeCompression = 1;
+  // cache size will be set dynamically later based on available RAM
   std::uint64_t cacheSize = 0;
   std::uint64_t rebalancingInterval = 2'000'000ULL;  // 2s
+  // maximum memory usage for spare hash tables kept around by the cache.
   std::uint64_t maxSpareAllocation = 67'108'864ULL;  // 64MB
+  // used internally and by tasks. this multiplier is used with the
+  // cache's memory limit, and if exceeded, triggers a shrinking of the
+  // least frequently accessed kCachesToShrinkRatio caches.
+  // it is set to 56% of the configured memory limit by default only because
+  // of compatibility reasons. the value was set to 0.7 * 0.8 of the memory
+  // limit, i.e. 0.56.
+  double highwaterMultiplier = 0.95;
+  // whether or not we want recent hit rates. if this is turned off,
+  // we only get global hit rates over the entire lifetime of a cache
   bool enableWindowedStats = true;
 };
 

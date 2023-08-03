@@ -1,4 +1,4 @@
-name: arangodb_internal_index_estimates_memory
+name: arangodb_index_estimates_memory_usage
 introducedIn: "3.12.0"
 help: |
   Total memory usage of all index selectivity estimates.

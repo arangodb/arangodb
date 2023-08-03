@@ -42,8 +42,8 @@
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
@@ -57,12 +57,15 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/HealthData.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
-#include "VocBase/vocbase.h"
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -518,7 +521,7 @@ void HeartbeatThread::runDBServer() {
     try {
       auto const start = std::chrono::steady_clock::now();
       // send our state to the agency.
-      sendServerState();
+      sendServerStateAsync();
 
       if (isStopping()) {
         break;
@@ -1212,13 +1215,13 @@ void HeartbeatThread::runCoordinator() {
   // operation run in a scheduler thread and a the heartbeat
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
-  std::shared_ptr<std::atomic<int>> getNewsRunning(new std::atomic<int>(0));
+  auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
 
   while (!isStopping()) {
     try {
       auto const start = std::chrono::steady_clock::now();
       // send our state to the agency.
-      sendServerState();
+      sendServerStateAsync();
 
       if (isStopping()) {
         break;
@@ -1525,6 +1528,88 @@ bool HeartbeatThread::sendServerState() {
   }
 
   return false;
+}
+
+void HeartbeatThread::sendServerStateAsync() {
+  auto const start = std::chrono::steady_clock::now();
+
+  // construct JSON value { "status": "...", "time": "...", "healthy": ... }
+  VPackBuilder builder;
+
+  try {
+    builder.openObject();
+    std::string const status =
+        ServerState::stateToString(ServerState::instance()->getState());
+    builder.add("status", VPackValue(status));
+    std::string const stamp = AgencyCommHelper::generateStamp();
+    builder.add("time", VPackValue(stamp));
+
+    if (ServerState::instance()->isDBServer()) {
+      // use storage engine health self-assessment and send it to agency too
+      arangodb::HealthData hd =
+          server().getFeature<EngineSelectorFeature>().engine().healthCheck();
+      hd.toVelocyPack(builder);
+    }
+
+    builder.close();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("b109f", WARN, Logger::HEARTBEAT)
+        << "failed to construct heartbeat agency transaction: " << e.what();
+    return;
+  } catch (...) {
+    LOG_TOPIC("06781", WARN, Logger::HEARTBEAT)
+        << "failed to construct heartbeat agency transaction";
+    return;
+  }
+
+  network::Timeout timeout = std::chrono::seconds{20};
+  if (isStopping()) {
+    timeout = std::chrono::seconds{5};
+  }
+
+  AsyncAgencyComm ac;
+  auto f = ac.setTransientValue(
+      "arango/Sync/ServerStates/" + ServerState::instance()->getId(),
+      builder.slice(), {.skipScheduler = true, .timeout = timeout});
+
+  std::move(f).thenFinal(
+      [self = shared_from_this(),
+       start](futures::Try<AsyncAgencyCommResult> const& tryResult) noexcept {
+        auto timeDiff = std::chrono::steady_clock::now() - start;
+        self->_heartbeat_send_time_ms.count(
+            std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff)
+                .count());
+
+        if (timeDiff > std::chrono::seconds(2) && !self->isStopping()) {
+          LOG_TOPIC("776a5", WARN, Logger::HEARTBEAT)
+              << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
+                 "this might be causing trouble with health checks. Please "
+                 "contact ArangoDB Support.";
+        }
+
+        try {
+          auto const& result = tryResult.get().asResult();
+          if (result.fail()) {
+            if (++self->_numFails % self->_maxFailsBeforeWarning == 0) {
+              self->_heartbeat_failure_counter.count();
+              std::string const endpoints =
+                  AsyncAgencyCommManager::INSTANCE->endpointsString();
+              LOG_TOPIC("4e2f5", WARN, Logger::HEARTBEAT)
+                  << "heartbeat could not be sent to agency endpoints ("
+                  << endpoints << "): error code: " << result.errorMessage();
+              self->_numFails = 0;
+            }
+          } else {
+            self->_numFails = 0;
+          }
+        } catch (std::exception const& e) {
+          LOG_TOPIC("cfd83", WARN, Logger::HEARTBEAT)
+              << "failed to send heartbeat - exception occurred: " << e.what();
+        } catch (...) {
+          LOG_TOPIC("cfe83", WARN, Logger::HEARTBEAT)
+              << "failed to send heartbeat - unknown exception occurred.";
+        }
+      });
 }
 
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
