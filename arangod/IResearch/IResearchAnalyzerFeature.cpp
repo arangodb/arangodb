@@ -2382,6 +2382,7 @@ IResearchAnalyzerFeature::splitAnalyzerName(
         analyzer[i - 1] == ANALYZER_PREFIX_DELIM) {  // previous is also delim
       auto vocbase =
           i > 1  // non-empty prefix, +1 for first delimiter char
+                 // cppcheck-suppress invalidLifetime
               ? std::string_view(analyzer.data(),
                                  i - 1)  // -1 for the first ':' delimiter
               : irs::kEmptyStringView<char>;

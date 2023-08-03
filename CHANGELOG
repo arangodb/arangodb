@@ -1,6 +1,10 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
+* ES-1566: instead of potentially accessing a nullptr inside graph traversal
+  setup, throw an exception. This will be handled properly and returned with
+  a proper error message.
+
 * BTS-1511: AQL: Fixed access of integers in the ranges
   [-36028797018963968, -281474976710657] and
   [281474976710656, 36028797018963968], i.e. those whose representation require
