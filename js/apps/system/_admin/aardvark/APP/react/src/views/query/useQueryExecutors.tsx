@@ -1,4 +1,4 @@
-import { aql } from "arangojs";
+import { literal } from "arangojs/aql";
 import React, { useCallback } from "react";
 import {
   getApiRouteForCurrentDB,
@@ -18,12 +18,12 @@ export const useQueryExecutors = ({
     async ({ queryValue, queryBindParams }: QueryExecutionOptions) => {
       const route = getApiRouteForCurrentDB();
       try {
-        const query = aql.literal(queryValue);
+        const literalValue = literal(queryValue);
         // call the /cursor API, get async job id
         const cursorResponse = await route.post(
           "cursor",
           {
-            query: query.toAQL(),
+            query: literalValue.toAQL(),
             bindVars: queryBindParams,
             options: {
               profile: true
@@ -62,7 +62,7 @@ export const useQueryExecutors = ({
     queryBindParams
   }: QueryExecutionOptions) => {
     const currentDB = getCurrentDB();
-    const literal = aql.literal(queryValue);
+    const literalValue = literal(queryValue);
     const path = `/_admin/aardvark/query/profile`;
     const route = currentDB.route(path);
     setQueryResults(queryResults => [
@@ -76,7 +76,7 @@ export const useQueryExecutors = ({
     ]);
     try {
       const profile = await route.post({
-        query: literal.toAQL(),
+        query: literalValue.toAQL(),
         bindVars: queryBindParams
       });
       setQueryResultById({
@@ -103,7 +103,7 @@ export const useQueryExecutors = ({
   const onExplain = useCallback(
     async ({ queryValue, queryBindParams }: QueryExecutionOptions) => {
       const currentDB = getCurrentDB();
-      const literal = aql.literal(queryValue);
+      const literalValue = literal(queryValue);
       const path = `/_admin/aardvark/query/explain`;
       const route = currentDB.route(path);
       setQueryResults(queryResults => [
@@ -117,7 +117,7 @@ export const useQueryExecutors = ({
       ]);
       try {
         const explainResult = await route.post({
-          query: literal.toAQL(),
+          query: literalValue.toAQL(),
           bindVars: queryBindParams
         });
         setQueryResultById({

@@ -105,5 +105,7 @@ const usePatchBackboneExecute = ({
     return () => {
       window.App.execute = originalExecute;
     };
+    // disabled because functions are not needed here
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryResults, allowLeave]);
 };
