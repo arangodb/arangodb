@@ -104,11 +104,23 @@ export const QueryEditorBottomBar = () => {
               label: "Execute"
             },
             profile: {
-              method: () => onProfile({ queryValue, queryBindParams }),
+              method: () =>
+                onProfile({
+                  queryValue,
+                  queryBindParams,
+                  queryOptions,
+                  disabledRules
+                }),
               label: "Profile"
             },
             explain: {
-              method: () => onExplain({ queryValue, queryBindParams }),
+              method: () =>
+                onExplain({
+                  queryValue,
+                  queryBindParams,
+                  queryOptions,
+                  disabledRules
+                }),
               label: "Explain"
             }
           }}

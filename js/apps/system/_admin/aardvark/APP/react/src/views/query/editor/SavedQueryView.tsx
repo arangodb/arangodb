@@ -64,8 +64,14 @@ const SavedQueryToolbar = () => {
 const columnHelper = createColumnHelper<QueryType>();
 
 const ActionCell = (info: CellContext<QueryType, unknown>) => {
-  const { onQueryChange, setCurrentView, onExecute, onExplain } =
-    useQueryContext();
+  const {
+    onQueryChange,
+    setCurrentView,
+    onExecute,
+    onExplain,
+    queryOptions,
+    disabledRules
+  } = useQueryContext();
   const query = info.row.original;
   const { name, value, parameter, isTemplate } = query;
   const {
@@ -103,7 +109,9 @@ const ActionCell = (info: CellContext<QueryType, unknown>) => {
             onClick={() => {
               onExplain({
                 queryValue: value,
-                queryBindParams: parameter
+                queryBindParams: parameter,
+                queryOptions,
+                disabledRules
               });
             }}
             title="Explain"
