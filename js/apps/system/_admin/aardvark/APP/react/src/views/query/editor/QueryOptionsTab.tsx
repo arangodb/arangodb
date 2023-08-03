@@ -122,10 +122,6 @@ export const QueryOptionsTab = ({ mode }: { mode: "json" | "table" }) => {
         onValidationError={errors => {
           setErrors(errors);
         }}
-        /**
-         * This option will get passed on the jsonEditor.
-         * */
-        // @ts-ignore
         mainMenuBar={false}
       />
       <JSONErrors
