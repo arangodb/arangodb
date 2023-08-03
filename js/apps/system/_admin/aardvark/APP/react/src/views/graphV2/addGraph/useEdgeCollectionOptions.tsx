@@ -1,4 +1,4 @@
-import { CollectionType } from "arangojs";
+import { CollectionType } from "arangojs/collection";
 import useSWR from "swr";
 import { getCurrentDB } from "../../../utils/arangoClient";
 
