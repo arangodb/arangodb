@@ -1,10 +1,11 @@
 import { Button, useDisclosure } from "@chakra-ui/react";
 import { GraphInfo } from "arangojs/graph";
 import React from "react";
-import { DeleteGraphModal } from "./DeleteGraphModal";
-import { fetchUserConfig } from "../viewGraph/useFetchAndSetupGraphParams";
+import { notifyError, notifySuccess } from "../../../utils/notifications";
 import { DEFAULT_URL_PARAMETERS } from "../viewGraph/UrlParametersContext";
+import { fetchUserConfig } from "../viewGraph/useFetchAndSetupGraphParams";
 import { putUserConfig } from "../viewGraph/useGraphSettingsHandlers";
+import { DeleteGraphModal } from "./DeleteGraphModal";
 
 export const EditGraphButtons = ({
   graph,
@@ -29,18 +30,14 @@ export const EditGraphButtons = ({
         fullConfig,
         graphName: graph.name
       });
-      window.arangoHelper.arangoNotification(
-        "Graph",
+      notifySuccess(
         `Successfully reset display settings for graph "${graph.name}"`
       );
       onClose();
       return info;
     } catch (e: any) {
-      const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError(
-        "Could not reset display settings: ",
-        errorMessage
-      );
+      const errorMessage = e?.response?.body?.errorMessage || "Unknown error";
+      notifyError(`Could not reset graph display settings: ${errorMessage}`);
     }
   };
   return (

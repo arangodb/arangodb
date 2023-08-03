@@ -7,6 +7,7 @@ import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { FormField } from "../../../components/form/FormField";
 import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
+import { notifyError, notifySuccess } from "../../../utils/notifications";
 
 export const DeleteGraphModal = ({
   currentGraph,
@@ -29,17 +30,14 @@ export const DeleteGraphModal = ({
     const graph = currentDB.graph(currentGraph.name);
     try {
       const info = await graph.drop(values.dropCollections);
-      window.arangoHelper.arangoNotification(
-        "Graph",
-        `"${currentGraph.name}" successfully deleted`
-      );
+      notifySuccess(`Graph: "${currentGraph.name}" successfully deleted`);
       mutate("/graphs");
       onClose();
       onSuccess();
       return info;
     } catch (e: any) {
-      const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError("Could not delete graph", errorMessage);
+      const errorMessage = e?.response?.body?.errorMessage || "Unknown error";
+      notifyError(`Could not delete graph: ${errorMessage}`);
     }
   };
 

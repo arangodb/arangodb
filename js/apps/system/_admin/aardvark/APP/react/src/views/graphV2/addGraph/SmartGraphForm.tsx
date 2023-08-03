@@ -42,44 +42,39 @@ export const SmartGraphForm = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
   const isEditMode = mode === "edit";
   const handleSubmit = async (values: SmartGraphCreateValues) => {
-    try {
-      const sanitizedValues = {
-        name: values.name,
-        edgeDefinitions: values.edgeDefinitions,
-        orphanCollections: values.orphanCollections,
-        options: {
-          isDisjoint: values.isDisjoint,
-          isSmart: true,
-          numberOfShards: Number(values.numberOfShards),
-          replicationFactor: Number(values.replicationFactor),
-          writeConcern: Number(values.writeConcern),
-          satellites: values.satellites,
-          smartGraphAttribute: values.smartGraphAttribute
-        }
-      };
-      if (isEditMode) {
-        const info = await updateGraph({
-          values: sanitizedValues,
-          initialGraph,
-          onSuccess: () => {
-            mutate("/graphs");
-            onClose();
-          }
-        });
-        return info;
+    const sanitizedValues = {
+      name: values.name,
+      edgeDefinitions: values.edgeDefinitions,
+      orphanCollections: values.orphanCollections,
+      options: {
+        isDisjoint: values.isDisjoint,
+        isSmart: true,
+        numberOfShards: Number(values.numberOfShards),
+        replicationFactor: Number(values.replicationFactor),
+        writeConcern: Number(values.writeConcern),
+        satellites: values.satellites,
+        smartGraphAttribute: values.smartGraphAttribute
       }
-      const info = await createGraph({
+    };
+    if (isEditMode) {
+      const info = await updateGraph({
         values: sanitizedValues,
+        initialGraph,
         onSuccess: () => {
           mutate("/graphs");
           onClose();
         }
       });
       return info;
-    } catch (e: any) {
-      const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError("Could not add graph", errorMessage);
     }
+    const info = await createGraph({
+      values: sanitizedValues,
+      onSuccess: () => {
+        mutate("/graphs");
+        onClose();
+      }
+    });
+    return info;
   };
   return (
     <Formik

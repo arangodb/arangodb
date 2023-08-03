@@ -13,6 +13,7 @@ import React, { useState } from "react";
 import { mutate } from "swr";
 import { ModalFooter } from "../../../components/modal";
 import { getRouteForDB } from "../../../utils/arangoClient";
+import { notifyError, notifySuccess } from "../../../utils/notifications";
 
 const exampleGraphsMap = [
   {
@@ -56,15 +57,12 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
       await getRouteForDB(window.frontendConfig.db, "_admin").post(
         `/aardvark/graph-examples/create/${graphName}`
       );
-      window.arangoHelper.arangoNotification(
-        "Graph",
-        `Successfully created the graph: ${graphName}`
-      );
+      notifySuccess(`Successfully created the graph: ${graphName}`);
       mutate("/graphs");
       onClose();
     } catch (e: any) {
-      const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError("Could not add graph", errorMessage);
+      const errorMessage = e?.response?.body?.errorMessage || "Unknown error";
+      notifyError(`Could not create graph: ${errorMessage}`);
     }
     setIsLoading(false);
   };
