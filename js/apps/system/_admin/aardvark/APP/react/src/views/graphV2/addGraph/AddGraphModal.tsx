@@ -9,6 +9,7 @@ import {
 } from "@chakra-ui/react";
 import React from "react";
 import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
+import { useGraphsListContext } from "../listGraphs/GraphsListContext";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { EnterpriseGraphForm } from "./EnterpriseGraphForm";
 import { ExampleGraphForm } from "./ExampleGraphForm";
@@ -58,8 +59,14 @@ export const AddGraphModal = ({
   const isEnterprise = window.frontendConfig.isEnterprise;
   const initialFocusRef = React.useRef<HTMLInputElement>(null);
   const { mode } = useGraphsModeContext();
-  const defaultIndex = isEnterprise ? 4 : 1;
-
+  const { isOneShardDb } = useGraphsListContext();
+  let defaultIndex = 1;
+  if (isEnterprise) {
+    defaultIndex = 4;
+    if (isOneShardDb) {
+      defaultIndex = 2;
+    }
+  }
   return (
     <Modal
       initialFocusRef={initialFocusRef}
