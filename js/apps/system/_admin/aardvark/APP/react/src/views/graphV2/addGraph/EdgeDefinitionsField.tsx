@@ -107,15 +107,15 @@ const EdgeDefinition = ({
   allowExistingCollections: boolean;
   noOptionsMessage: (() => string) | undefined;
 }) => {
+  const { mode } = useGraphsModeContext();
+  const isEditMode = mode === "edit";
   const { collectionToDisabledMap } = useResetFromAndToValues();
   const { edgeCollectionOptions, documentCollectionOptions } =
     useCollectionOptions();
-  const { mode } = useGraphsModeContext();
   const isFromAndToDisabled = collectionToDisabledMap[index];
   const collectionFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.collection.name}`;
   const fromFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.from.name}`;
   const toFieldName = `edgeDefinitions[${index}]${graphRelationFieldsMap.to.name}`;
-  const isEditMode = mode === "edit";
   return (
     <Stack
       spacing="4"
