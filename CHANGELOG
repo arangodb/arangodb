@@ -27,6 +27,24 @@ devel
   The `_registerCompatibilityFunctions()` exports have also been removed from 
   the JavaScript graph modules.
 
+* Fixed BTS-1302: make "silent" option for document operations work in cluster.
+  When using the "silent" options for document operations in the cluster, the
+  coordinator will now only return the errors that happened, as it did in
+  single server for a long time.
+  This is a bugfix and feature alignment, but still a downwards-incompatible
+  change compared to previous versions, where the "silent" option in document
+  operations had no effect in the cluster.
+
+  This change also unifies the behavior of batch document operations in single
+  server and cluster with the behavior of document operations for SmartGraph
+  edge collections: 
+  previously, batch document operations in SmartGraph edge collections stopped
+  upon the first error, whereas they were (intentionally) continued for the
+  remaining operations in the batch in single server and cluster.
+
+  This is a downwards-incompatible change compared to previous versions, but
+  it can be considered a bugfix.
+
 * FE-291: Refactor Query screen on web UI to React.
 
 * FE-313: Upgrade arangojs to v8.x on web UI.
