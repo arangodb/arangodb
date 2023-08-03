@@ -122,7 +122,7 @@ class KShortestPathsFinderTest : public ::testing::Test {
   arangodb::ResourceMonitor resourceMonitor{global};
 
   // PathValidatorOptions parts (used for API not under test here)
-  aql::Variable _tmpVar{"tmp", 0, false};
+  aql::Variable _tmpVar{"tmp", 0, false, resourceMonitor};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
 
   arangodb::transaction::Methods _trx{_query->newTrxContext(),
@@ -409,7 +409,7 @@ class WeightedKShortestPathsFinderTest : public ::testing::Test {
   arangodb::ResourceMonitor resourceMonitor{global};
 
   // PathValidatorOptions parts (used for API not under test here)
-  aql::Variable _tmpVar{"tmp", 0, false};
+  aql::Variable _tmpVar{"tmp", 0, false, resourceMonitor};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
 
   arangodb::transaction::Methods _trx{_query->newTrxContext(),

@@ -37,6 +37,7 @@
 #include "Aql/TraversalExecutor.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
@@ -573,7 +574,11 @@ void GraphNode::setGraphInfoAndCopyColls(
   if (_graphObj == nullptr) {
     _graphInfo.openArray();
     for (auto const& it : edgeColls) {
-      TRI_ASSERT(it != nullptr);
+      if (it == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "access to non-existing edge collection in AQL graph traversal");
+      }
       _edgeColls.emplace_back(it);
       _graphInfo.add(VPackValue(it->name()));
     }
@@ -581,13 +586,21 @@ void GraphNode::setGraphInfoAndCopyColls(
   } else {
     _graphInfo.add(VPackValue(_graphObj->name()));
     for (auto const& it : edgeColls) {
-      TRI_ASSERT(it != nullptr);
+      if (it == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "access to non-existing edge collection in AQL graph traversal");
+      }
       _edgeColls.emplace_back(it);
     }
   }
 
   for (auto& it : vertexColls) {
-    TRI_ASSERT(it != nullptr);
+    if (it == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "access to non-existing vertex collection in AQL graph traversal");
+    }
     addVertexCollection(*it);
   }
 }
@@ -826,8 +839,19 @@ void GraphNode::getConditionVariables(std::vector<Variable const*>& res) const {
 
 Collection const* GraphNode::getShardingPrototype() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
+  if (_edgeColls.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "AQL graph traversal without edge collections");
+  }
+
   TRI_ASSERT(!_edgeColls.empty());
   for (auto const* c : _edgeColls) {
+    if (c == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "access to non-existing collection in AQL graph traversal");
+    }
     // We are required to valuate non-satellites above
     // satellites, as the collection is used as the prototype
     // for this graphs sharding.
@@ -932,33 +956,36 @@ void GraphNode::addEdgeCollection(Collections const& collections,
 
 void GraphNode::addEdgeCollection(aql::Collection& collection,
                                   TRI_edge_direction_e dir) {
-  auto const& n = collection.name();
+  auto add = [this](aql::Collection& collection, TRI_edge_direction_e dir) {
+    _directions.emplace_back(dir);
+    _edgeColls.emplace_back(&collection);
+  };
+
   if (_isSmart) {
+    auto const& n = collection.name();
     if (n.starts_with(StaticStrings::FullFromPrefix)) {
       if (dir != TRI_EDGE_IN) {
-        _directions.emplace_back(TRI_EDGE_OUT);
-        _edgeColls.emplace_back(&collection);
+        add(collection, TRI_EDGE_OUT);
       }
       return;
     } else if (n.starts_with(StaticStrings::FullToPrefix)) {
       if (dir != TRI_EDGE_OUT) {
-        _directions.emplace_back(TRI_EDGE_IN);
-        _edgeColls.emplace_back(&collection);
+        add(collection, TRI_EDGE_IN);
       }
       return;
     }
+    // fallthrough intentional
   }
 
   if (dir == TRI_EDGE_ANY) {
-    _directions.emplace_back(TRI_EDGE_OUT);
-    _edgeColls.emplace_back(&collection);
-
-    _directions.emplace_back(TRI_EDGE_IN);
-    _edgeColls.emplace_back(&collection);
+    // ANY = OUT + IN
+    add(collection, TRI_EDGE_OUT);
+    add(collection, TRI_EDGE_IN);
   } else {
-    _directions.emplace_back(dir);
-    _edgeColls.emplace_back(&collection);
+    add(collection, dir);
   }
+
+  TRI_ASSERT(_directions.size() == _edgeColls.size());
 }
 
 void GraphNode::addEdgeAlias(std::string const& name) {

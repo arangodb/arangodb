@@ -84,43 +84,6 @@ std::shared_ptr<transaction::Context> GraphManager::ctx() const {
   return transaction::V8Context::CreateWhenRequired(_vocbase, true);
 }
 
-Result GraphManager::createEdgeCollection(std::string const& name,
-                                          bool waitForSyncReplication,
-                                          VPackSlice options) {
-  return createCollection(name, TRI_COL_TYPE_EDGE, waitForSyncReplication,
-                          options);
-}
-
-Result GraphManager::createVertexCollection(std::string const& name,
-                                            bool waitForSyncReplication,
-                                            VPackSlice options) {
-  return createCollection(name, TRI_COL_TYPE_DOCUMENT, waitForSyncReplication,
-                          options);
-}
-
-Result GraphManager::createCollection(std::string const& name,
-                                      TRI_col_type_e colType,
-                                      bool waitForSyncReplication,
-                                      VPackSlice options) {
-  TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
-
-  auto& vocbase = ctx()->vocbase();
-
-  std::shared_ptr<LogicalCollection> coll;
-  OperationOptions opOptions(ExecContext::current());
-  auto res = arangodb::methods::Collections::create(  // create collection
-      vocbase,                                        // collection vocbase
-      opOptions,
-      name,     // collection name
-      colType,  // collection type
-      options,  // collection properties
-      /*createWaitsForSyncReplication*/ waitForSyncReplication,
-      /*enforceReplicationFactor*/ true,
-      /*isNewDatabase*/ false, coll);
-
-  return res;
-}
-
 bool GraphManager::renameGraphCollection(std::string const& oldName,
                                          std::string const& newName) {
   // todo: return a result, by now just used in the graph modules

@@ -1,15 +1,20 @@
 import { Link, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
-import { AnalyzerDescription } from "arangojs/analyzer";
+import { GenericAnalyzerDescription } from "arangojs/analyzer";
 import React from "react";
 import { Link as RouterLink, useHistory } from "react-router-dom";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
+import { AnalyzerTypes } from "../Analyzer.types";
 import { useAnalyzersContext } from "../AnalyzersContext";
 import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
 
-const columnHelper = createColumnHelper<AnalyzerDescription>();
+type AnalyzerDataType = GenericAnalyzerDescription & {
+  type: AnalyzerTypes;
+};
+
+const columnHelper = createColumnHelper<AnalyzerDataType>();
 
 const TABLE_COLUMNS = [
   columnHelper.accessor("name", {
@@ -71,7 +76,7 @@ const TABLE_COLUMNS = [
 
 export const AnalyzersTable = () => {
   const { analyzers } = useAnalyzersContext();
-  const tableInstance = useSortableReactTable<AnalyzerDescription>({
+  const tableInstance = useSortableReactTable<AnalyzerDataType>({
     data: analyzers || [],
     columns: TABLE_COLUMNS,
     initialSorting: [
@@ -90,11 +95,11 @@ export const AnalyzersTable = () => {
   const history = useHistory();
   return (
     <Stack>
-      <FiltersList<AnalyzerDescription>
+      <FiltersList<AnalyzerDataType>
         columns={TABLE_COLUMNS}
         table={tableInstance}
       />
-      <ReactTable<AnalyzerDescription>
+      <ReactTable<AnalyzerDataType>
         table={tableInstance}
         emptyStateMessage="No analyzers found"
         onRowSelect={row => {

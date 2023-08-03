@@ -53,6 +53,8 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
@@ -92,6 +94,8 @@ class IResearchViewNodeTest
                                             arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   IResearchViewNodeTest() : server(false) {
     arangodb::tests::init(true);
@@ -143,7 +147,8 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
   MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
                   arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   {
     auto json = arangodb::velocypack::Parser::fromJson(
@@ -292,7 +297,8 @@ TEST_F(IResearchViewNodeTest, construct) {
   MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
                   arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no options
   {
@@ -901,7 +907,8 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
                       std::string_view("LET variable = 42 LET scoreVariable1 = "
                                        "1 LET scoreVariable2 = 2 RETURN 1")));
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // missing 'viewId'
   {
@@ -1898,7 +1905,8 @@ TEST_F(IResearchViewNodeTest, clone) {
   MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
                   arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition, no shards, no options
   {
@@ -2315,7 +2323,8 @@ TEST_F(IResearchViewNodeTest, clone) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no sort condition
-    arangodb::aql::Variable const outNmDocId("variable101", 101, false);
+    arangodb::aql::Variable const outNmDocId("variable101", 101, false,
+                                             resourceMonitor);
     node.setLateMaterialized(outNmDocId);
     ASSERT_TRUE(node.isLateMaterialized());
     auto varsSetOriginal = node.getVariablesSetHere();
@@ -2428,8 +2437,10 @@ TEST_F(IResearchViewNodeTest, clone) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no sort condition
-    arangodb::aql::Variable const outNmColPtr("variable100", 100, false);
-    arangodb::aql::Variable const outNmDocId("variable101", 101, false);
+    arangodb::aql::Variable const outNmColPtr("variable100", 100, false,
+                                              resourceMonitor);
+    arangodb::aql::Variable const outNmDocId("variable101", 101, false,
+                                             resourceMonitor);
     std::vector<std::pair<size_t, bool>> scorersSort{{0, true}};
     node.setScorersSort(std::move(scorersSort), 42);
     auto varsSetOriginal = node.getVariablesSetHere();
@@ -2504,7 +2515,8 @@ TEST_F(IResearchViewNodeTest, serialize) {
                                        "let variable101 = 2 RETURN 1")));
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition
   {
@@ -2691,7 +2703,8 @@ TEST_F(IResearchViewNodeTest, serialize) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no sort condition
-    arangodb::aql::Variable const outNmDocId("variable101", 2, false);
+    arangodb::aql::Variable const outNmDocId("variable101", 2, false,
+                                             resourceMonitor);
     node.setLateMaterialized(outNmDocId);
 
     node.setVarsUsedLater({arangodb::aql::VarSet{&outNmDocId}});
@@ -3021,9 +3034,12 @@ TEST_F(IResearchViewNodeTest, serialize) {
         " }");
 
     queryScores.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-    arangodb::aql::Variable const outVariable("variable", 0, false);
-    arangodb::aql::Variable const outScore0("variable100", 1, false);
-    arangodb::aql::Variable const outScore1("variable101", 2, false);
+    arangodb::aql::Variable const outVariable("variable", 0, false,
+                                              resourceMonitor);
+    arangodb::aql::Variable const outScore0("variable100", 1, false,
+                                            resourceMonitor);
+    arangodb::aql::Variable const outScore1("variable101", 2, false,
+                                            resourceMonitor);
     arangodb::iresearch::IResearchViewNode node(
         *queryScores.plan(), json->slice());  // no sort condition
     node.setVarsUsedLater(
@@ -3089,7 +3105,8 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
                                        "let variable101 = 2 RETURN 1")));
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition
   {
@@ -3266,7 +3283,8 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no sort condition
-    arangodb::aql::Variable const outNmDocId("variable101", 2, false);
+    arangodb::aql::Variable const outNmDocId("variable101", 2, false,
+                                             resourceMonitor);
     node.setSort(viewImpl.primarySort(), 1);
     node.setLateMaterialized(outNmDocId);
 
@@ -3403,7 +3421,8 @@ TEST_F(IResearchViewNodeTest, collections) {
   // prepare query
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(
@@ -3493,7 +3512,8 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
       arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::ExecutionPlan plan(query.ast(), false);
 
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition
   {
@@ -3599,7 +3619,8 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   // dummy engine
   arangodb::aql::SingletonNode singleton(&plan,
                                          arangodb::aql::ExecutionNodeId{0});
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(
@@ -3651,8 +3672,10 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
       arangodb::aql::SerializationFormat::SHADOWROWS);
   arangodb::aql::SingletonNode singleton(query.plan(),
                                          arangodb::aql::ExecutionNodeId{0});
-  arangodb::aql::Variable const outVariable("variable", 0, false);
-  arangodb::aql::Variable const outNmDocId("variable101", 101, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
+  arangodb::aql::Variable const outNmDocId("variable101", 101, false,
+                                           resourceMonitor);
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(

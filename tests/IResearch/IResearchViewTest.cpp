@@ -55,6 +55,8 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -158,6 +160,8 @@ class IResearchViewTest
   arangodb::tests::mocks::MockAqlServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::string testFilesystemPath;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   IResearchViewTest() : server(false) {
     arangodb::tests::init();
@@ -4458,7 +4462,7 @@ TEST_F(IResearchViewTest, test_query) {
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::Options options;
 
-    arangodb::aql::Variable variable("testVariable", 0, false);
+    arangodb::aql::Variable variable("testVariable", 0, false, resourceMonitor);
 
     // test insert + query
     for (size_t i = 1; i < 200; ++i) {

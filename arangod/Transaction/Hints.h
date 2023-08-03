@@ -24,6 +24,8 @@
 #pragma once
 
 #include <cstdint>
+#include <iosfwd>
+#include <string>
 
 namespace arangodb::transaction {
 
@@ -72,8 +74,12 @@ class Hints {
 
   ValueType toInt() const noexcept { return static_cast<ValueType>(_value); }
 
+  std::string toString() const;
+
  private:
   ValueType _value;
 };
+
+std::ostream& operator<<(std::ostream&, Hints const&);
 
 }  // namespace arangodb::transaction

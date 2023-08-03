@@ -74,7 +74,7 @@ class DFSFinderTest
   // PathValidatorOptions parts (used for API not under test here)
   arangodb::transaction::Methods _trx{_query->newTrxContext(),
                                       transaction::TrxType::kInternal};
-  aql::Variable _tmpVar{"tmp", 0, false};
+  aql::Variable _tmpVar{"tmp", 0, false, resourceMonitor};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
   arangodb::aql::FixedVarExpressionContext _expressionContext{
       _trx, *_query.get(), _functionsCache};

@@ -3,6 +3,31 @@ import React, { ChangeEvent } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
+export const ParameterNodeColorByCollectionComponent = ({
+  isChecked,
+  onChange
+}: {
+  isChecked: boolean;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}) => {
+  return (
+    <>
+      <FormLabel htmlFor="nodeColorByCollection">
+        Color nodes by collection
+      </FormLabel>
+      <Checkbox
+        id="nodeColorByCollection"
+        isChecked={isChecked}
+        onChange={onChange}
+      />
+      <InfoTooltip
+        label={
+          "Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored."
+        }
+      />
+    </>
+  );
+};
 const ParameterNodeColorByCollection = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
 
@@ -15,21 +40,10 @@ const ParameterNodeColorByCollection = () => {
   };
 
   return (
-    <>
-      <FormLabel htmlFor="nodeColorByCollection">
-        Color nodes by collection
-      </FormLabel>
-      <Checkbox
-        id="nodeColorByCollection"
-        isChecked={urlParams.nodeColorByCollection}
-        onChange={handleChange}
-      />
-      <InfoTooltip
-        label={
-          "Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored."
-        }
-      />
-    </>
+    <ParameterNodeColorByCollectionComponent
+      isChecked={urlParams.nodeColorByCollection}
+      onChange={handleChange}
+    />
   );
 };
 

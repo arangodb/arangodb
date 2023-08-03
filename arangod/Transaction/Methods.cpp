@@ -2006,14 +2006,8 @@ DataSourceId transaction::Methods::addCollectionAtRuntime(
 }
 
 /// @brief return the type of a collection
-bool transaction::Methods::isEdgeCollection(
-    std::string const& collectionName) const {
-  return getCollectionType(collectionName) == TRI_COL_TYPE_EDGE;
-}
-
-/// @brief return the type of a collection
 TRI_col_type_e transaction::Methods::getCollectionType(
-    std::string const& collectionName) const {
+    std::string_view collectionName) const {
   auto collection = resolver()->getCollection(collectionName);
 
   return collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;

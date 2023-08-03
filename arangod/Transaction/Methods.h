@@ -263,8 +263,7 @@ class Methods {
                                               AccessMode::Type type);
 
   /// @brief return the type of a collection
-  bool isEdgeCollection(std::string const& collectionName) const;
-  TRI_col_type_e getCollectionType(std::string const& collectionName) const;
+  TRI_col_type_e getCollectionType(std::string_view collectionName) const;
 
   /// @brief return one  document from a collection, fast path
   ///        If everything went well the result will contain the found document

@@ -46,6 +46,8 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -90,6 +92,8 @@
 class IResearchViewCoordinatorTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockCoordinator server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   IResearchViewCoordinatorTest() : server("CRDN_0001") {
     arangodb::tests::init();
@@ -7907,7 +7911,8 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     arangodb::aql::SingletonNode singleton(query->plan(),
                                            arangodb::aql::ExecutionNodeId{0});
 
-    arangodb::aql::Variable const outVariable("variable", 0, false);
+    arangodb::aql::Variable const outVariable("variable", 0, false,
+                                              resourceMonitor);
 
     arangodb::iresearch::IResearchViewNode node(
         *query->plan(), arangodb::aql::ExecutionNodeId{42},

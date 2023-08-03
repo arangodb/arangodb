@@ -36,6 +36,8 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/files.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -67,6 +69,8 @@
 class IResearchViewDBServerTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockDBServer server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   IResearchViewDBServerTest() : server("PRMR_0001") {}
 
@@ -695,7 +699,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::Options options;
 
-    arangodb::aql::Variable variable("testVariable", 0, false);
+    arangodb::aql::Variable variable("testVariable", 0, false, resourceMonitor);
 
     // test insert + query
     for (size_t i = 1; i < 200; ++i) {

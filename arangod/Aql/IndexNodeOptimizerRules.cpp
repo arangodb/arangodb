@@ -32,6 +32,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Optimizer.h"
+#include "Aql/QueryContext.h"
 #include "Basics/AttributeNameParser.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"

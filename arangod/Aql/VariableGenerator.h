@@ -44,7 +44,7 @@ namespace aql {
 class VariableGenerator {
  public:
   /// @brief create the generator
-  VariableGenerator();
+  VariableGenerator(arangodb::ResourceMonitor& resourceMonitor);
 
   VariableGenerator(VariableGenerator const& other) = delete;
   VariableGenerator& operator=(VariableGenerator const& other) = delete;
@@ -107,6 +107,8 @@ class VariableGenerator {
 
   /// @brief the next assigned variable id
   VariableId _id;
+
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 }  // namespace aql
 }  // namespace arangodb

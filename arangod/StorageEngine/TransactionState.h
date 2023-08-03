@@ -242,14 +242,14 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] virtual bool ensureSnapshot() = 0;
 
   /// @brief begin a transaction
-  virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
+  virtual Result beginTransaction(transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
-  virtual futures::Future<arangodb::Result> commitTransaction(
+  virtual futures::Future<Result> commitTransaction(
       transaction::Methods* trx) = 0;
 
   /// @brief abort a transaction
-  virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
+  virtual Result abortTransaction(transaction::Methods* trx) = 0;
 
   virtual Result triggerIntermediateCommit() = 0;
 

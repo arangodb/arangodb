@@ -50,12 +50,6 @@ class GraphManager {
 
   std::shared_ptr<transaction::Context> ctx() const;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief find or create collection by name and type
-  ////////////////////////////////////////////////////////////////////////////////
-  Result createCollection(std::string const& name, TRI_col_type_e colType,
-                          bool waitForSyncReplication, VPackSlice options);
-
  public:
   explicit GraphManager(TRI_vocbase_t& vocbase,
                         transaction::TrxType trxTypeHint)
@@ -95,19 +89,6 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   Result findOrCreateCollectionsByEdgeDefinition(
       Graph& graph, EdgeDefinition const& edgeDefinition, bool waitForSync);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create a vertex collection
-  ////////////////////////////////////////////////////////////////////////////////
-  Result createVertexCollection(std::string const& name,
-                                bool waitForSyncReplication,
-                                VPackSlice options);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create an edge collection
-  ////////////////////////////////////////////////////////////////////////////////
-  Result createEdgeCollection(std::string const& name,
-                              bool waitForSyncReplication, VPackSlice options);
 
   /// @brief rename a collection used in an edge definition
   bool renameGraphCollection(std::string const& oldName,
