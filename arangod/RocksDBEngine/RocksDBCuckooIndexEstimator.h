@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <map>
 #include <set>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -35,6 +36,7 @@
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Basics/fasthash.h"
+#include "Metrics/Fwd.h"
 
 #include <rocksdb/types.h>
 
@@ -106,11 +108,9 @@ class RocksDBCuckooIndexEstimator {
       *counter() = 0;
     }
 
-    bool isEqual(uint16_t fp) const noexcept {
-      return ((*fingerprint()) == fp);
-    }
+    bool isEqual(uint16_t fp) const noexcept { return *fingerprint() == fp; }
 
-    bool isEmpty() const noexcept { return (*fingerprint()) == 0; }
+    bool isEmpty() const noexcept { return *fingerprint() == 0; }
 
     // If this returns FALSE we have removed the
     // last element => we need to remove the fingerprint as well.
@@ -122,8 +122,8 @@ class RocksDBCuckooIndexEstimator {
       return false;
     }
 
-    void increase() {
-      if ((*counter()) < UINT32_MAX) {
+    void increase() noexcept {
+      if (*counter() < UINT32_MAX) {
         (*counter())++;
       }
     }
@@ -139,13 +139,19 @@ class RocksDBCuckooIndexEstimator {
       std::swap(*counter(), cnt);
     }
 
-    void injectCounter(uint32_t* cnt) { _counter = cnt; }
+    void injectCounter(uint32_t* cnt) noexcept { _counter = cnt; }
   };
 
- public:
-  explicit RocksDBCuckooIndexEstimator(uint64_t size);
+  // private common constructor, used by the public constructors
+  explicit RocksDBCuckooIndexEstimator(
+      metrics::Gauge<uint64_t>* memoryUsageMetric);
 
-  explicit RocksDBCuckooIndexEstimator(std::string_view serialized);
+ public:
+  explicit RocksDBCuckooIndexEstimator(
+      metrics::Gauge<uint64_t>* memoryUsageMetric, uint64_t size);
+
+  explicit RocksDBCuckooIndexEstimator(
+      metrics::Gauge<uint64_t>* memoryUsageMetric, std::string_view serialized);
 
   ~RocksDBCuckooIndexEstimator();
 
@@ -207,6 +213,9 @@ class RocksDBCuckooIndexEstimator {
 
   /// @brief only call directly during startup/recovery; otherwise buffer
   void clear();
+
+  /// @brief free internal buffers
+  void drain();
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
@@ -311,12 +320,11 @@ class RocksDBCuckooIndexEstimator {
   rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
 
   uint64_t memoryUsage() const {
-    return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize +
-           _counterAllocSize;
+    return sizeof(RocksDBCuckooIndexEstimator) + _allocSize;
   }
 
   Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp,
-                        bool& found) const {
+                        bool& found) const noexcept {
     found = false;
     Slot s = findSlotNoCuckoo(pos1, fp, found);
     if (found) {
@@ -335,7 +343,7 @@ class RocksDBCuckooIndexEstimator {
   // In order to create an empty slot this function tries to
   // cuckoo neighboring elements, if that does not succeed
   // it deletes a random element occupying a position.
-  Slot findSlotCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp) {
+  Slot findSlotCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp) noexcept {
     Slot firstEmpty(nullptr);
     bool foundEmpty = false;
 
@@ -465,8 +473,9 @@ class RocksDBCuckooIndexEstimator {
     return Slot{nullptr};
   }
 
-  Slot findSlot(uint64_t pos, uint64_t slot) const {
-    TRI_ASSERT(kSlotSize * (pos * kSlotsPerBucket + slot) <= _slotAllocSize);
+  Slot findSlot(uint64_t pos, uint64_t slot) const noexcept {
+    TRI_ASSERT(kSlotSize * (pos * kSlotsPerBucket + slot) <=
+               _size * kSlotSize * kSlotsPerBucket);
     char* address = _base + kSlotSize * (pos * kSlotsPerBucket + slot);
     auto ret = reinterpret_cast<uint16_t*>(address);
     return Slot(ret);
@@ -474,7 +483,7 @@ class RocksDBCuckooIndexEstimator {
 
   uint32_t* findCounter(uint64_t pos, uint64_t slot) const noexcept {
     TRI_ASSERT(kCounterSize * (pos * kSlotsPerBucket + slot) <=
-               _counterAllocSize);
+               _size * kCounterSize * kSlotsPerBucket);
     char* address = _counters + kCounterSize * (pos * kSlotsPerBucket + slot);
     return reinterpret_cast<uint32_t*>(address);
   }
@@ -484,7 +493,7 @@ class RocksDBCuckooIndexEstimator {
     return ((relevantBits < _size) ? relevantBits : (relevantBits - _size));
   }
 
-  uint16_t keyToFingerprint(Key const& k) const {
+  uint16_t keyToFingerprint(Key const& k) const noexcept {
     uint64_t hashfp = _fingerprint(k);
     uint16_t fingerprint =
         (uint16_t)((hashfp ^ (hashfp >> 16) ^ (hashfp >> 32) ^ (hashfp >> 48)) &
@@ -492,7 +501,8 @@ class RocksDBCuckooIndexEstimator {
     return (fingerprint ? fingerprint : 1);
   }
 
-  uint64_t _hasherPosFingerprint(uint64_t pos, uint16_t fingerprint) const {
+  uint64_t _hasherPosFingerprint(uint64_t pos,
+                                 uint16_t fingerprint) const noexcept {
     return ((pos << _sizeShift) ^ _hasherShort(fingerprint));
   }
 
@@ -509,7 +519,41 @@ class RocksDBCuckooIndexEstimator {
 
   void deriveSizesAndAlloc();
 
- private:               // member variables
+  // used for calculating memory usage in _bufferedMemoryUsage
+  // approximate memory usage for top-level items.
+  // size of one allocation plus the size of an entry in _insertBuffers.
+  static constexpr uint64_t bufferedEntrySize() {
+    return sizeof(void*) +
+           sizeof(typename decltype(_insertBuffers)::value_type);
+  }
+
+  // approximate memory usage for individual items in a top-level item.
+  // does not take into account unused capacity in _insertBuffers.second.
+  static constexpr uint64_t bufferedEntryItemSize() {
+    return sizeof(
+        typename decltype(_insertBuffers)::value_type::second_type::value_type);
+  }
+
+  void increaseMemoryUsage(uint64_t value) noexcept;
+  void decreaseMemoryUsage(uint64_t value) noexcept;
+
+  // free all underlying memory
+  void freeMemory();
+
+  // helper function for drain()
+  void drainNoLock();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void checkInvariants() const;
+#else
+  inline constexpr void checkInvariants() {}
+#endif
+
+  // metric for tracking global memory usage (combined memory usage of all
+  // cuckoo index estimators)
+  // note: may be a nullptr
+  metrics::Gauge<uint64_t>* _memoryUsageMetric;
+
   uint64_t _randState;  // pseudo random state for expunging
 
   uint64_t _logSize;    // logarithm (base 2) of number of buckets
@@ -518,23 +562,28 @@ class RocksDBCuckooIndexEstimator {
                         // 2^_logSize
   uint64_t _sizeMask;   // used to mask out some bits from the hash
   uint32_t _sizeShift;  // used to shift the bits down to get a position
-  uint64_t _slotAllocSize;     // number of allocated bytes for the slots,
-                               // == _size * kSlotsPerBucket * kSlotSize + 64
-  uint64_t _counterAllocSize;  // number of allocated bytes ofr the counters,
-                               // == _size * kSlotsPerBucket * kCounterSize + 64
-  char* _base;                 // pointer to allocated space, 64-byte aligned
-  char* _slotBase;             // base of original allocation
-  char* _counters;             // pointer to allocated space, 64-byte aligned
-  char* _counterBase;          // base of original counter allocation
-  uint64_t _nrUsed;            // number of pairs stored in the table
+  uint64_t _allocSize;  // number of dynamic allocated bytes for the slots and
+                        // counters
+  std::unique_ptr<char[]>
+      _allocBase;       // base of original allocation of _allocSize
+  char* _base;          // pointer to allocated space, 64-byte aligned
+  char* _counters;      // pointer to allocated space, 64-byte aligned
+  uint64_t _nrUsed;     // number of pairs stored in the table
   uint64_t _nrCuckood;  // number of elements that have been removed by cuckoo
   uint64_t _nrTotal;    // number of elements included in total (not cuckood)
 
   std::atomic<rocksdb::SequenceNumber> _appliedSeq;
   std::atomic<bool> _needToPersist;
 
+  uint64_t _memoryUsage;
   std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
   std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
+
+  // current assumption for memory accounting is that both members use the same
+  // underlying data structures.
+  static_assert(std::is_same_v<typename decltype(_insertBuffers)::value_type,
+                               typename decltype(_removalBuffers)::value_type>);
+
   std::set<rocksdb::SequenceNumber> _truncateBuffer;
 
   // Instance to compute the first hash function

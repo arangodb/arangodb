@@ -21,6 +21,9 @@ export const ChakraCustomProvider = ({
         height: "auto",
         display: "flex",
         width: "100%"
+      },
+      ".centralRow": {
+        backgroundColor: "white !important"
       }
     };
   }
@@ -31,9 +34,19 @@ export const ChakraCustomProvider = ({
           // {/* This is to override the non-react wrappers */}
           ...overrideNonReactStyles,
           // {/* This is to override bootstrap styles */}
-          "input[type='number'], input[type='number']:focus": {
-            height: "40px"
-          }
+          "input[type='number'], input[type='password']": {
+            borderColor: "var(--chakra-colors-gray-200)"
+          },
+          "input[type='password']": {
+            fontSize: "var(--chakra-fontSizes-md)",
+            padding: 0,
+            paddingLeft: "var(--chakra-space-4)",
+            paddingRight: "var(--chakra-space-4)"
+          },
+          "input[type='number'], input[type='password'], input[type='number']:focus, input[type='password']:focus":
+            {
+              height: "40px"
+            }
         }}
       />
       {children}

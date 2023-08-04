@@ -116,12 +116,12 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
 
       ADB_PROD_ASSERT(not responsibleServers->empty());
 
-      auto loadableVertexShard =
-          LoadableVertexShard{.pregelShard = PregelShard(result.size()),
-                              .vertexShard = vertexShard,
-                              .responsibleServer = responsibleServers->at(0),
-                              .collectionName = vertexCollection,
-                              .edgeShards = {}};
+      auto loadableVertexShard = LoadableVertexShard{
+          .pregelShard = PregelShard(result.size()),
+          .vertexShard = vertexShard,
+          .responsibleServer = ServerID{responsibleServers->at(0)},
+          .collectionName = vertexCollection,
+          .edgeShards = {}};
 
       for (auto&& edgeCollection : graphByCollections.edgeCollections) {
         if (not graphByCollections.isRestricted(vertexCollection,

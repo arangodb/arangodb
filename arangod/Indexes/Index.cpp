@@ -33,14 +33,12 @@
 #include "Aql/Projections.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/AttributeNamePath.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/datetime.h"
-#include "Cluster/ServerState.h"
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -187,7 +185,8 @@ Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex) {
   TRI_ASSERT(!costs.supportsCondition);
   costs.coveredAttributes = 0;
   costs.estimatedCosts =
-      100.0 + /*for sort setup*/
+      0.01 * itemsInIndex + /*for sort setup, 1 percent of documents covered by
+                               index */
       1.05 * (itemsInIndex > 0 ? (static_cast<double>(itemsInIndex) *
                                   std::log2(static_cast<double>(itemsInIndex)))
                                : 0.0);
@@ -209,6 +208,7 @@ Index::Index(
       _collection(collection),
       _name(name),
       _fields(fields),
+      _progress(-1.),
       _useExpansion(::hasExpansion(_fields)),
       _unique(unique),
       _sparse(sparse) {
@@ -226,6 +226,7 @@ Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
           slice.get(arangodb::StaticStrings::IndexFields), /*allowEmpty*/ true,
           Index::allowExpansion(Index::type(
               slice.get(arangodb::StaticStrings::IndexType).stringView())))),
+      _progress(-1.),
       _useExpansion(::hasExpansion(_fields)),
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, arangodb::StaticStrings::IndexUnique, false)),
@@ -550,6 +551,11 @@ void Index::toVelocyPack(
   if (hasSelectivityEstimate() &&
       Index::hasFlag(flags, Index::Serialize::Estimates)) {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
+  }
+
+  auto const progress = _progress.load(std::memory_order_relaxed);
+  if (progress > -1 && progress < 100) {
+    builder.add("progress", VPackValue(progress));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {

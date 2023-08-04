@@ -357,8 +357,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::_makeExecutionBlockImpl(
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   RegIdSet inputRegisters;
@@ -801,6 +800,8 @@ std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
 
   return indexAccessors;
 }
+
+size_t EnumeratePathsNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 void EnumeratePathsNode::prepareOptions() {
   if (_optionsBuilt) {

@@ -137,7 +137,7 @@ class ArgumentParser {
         } else {
           // option = value
           value = option.substr(pos + 1);
-          option = option.substr(0, pos);
+          option.resize(pos);
           if (dashes == 1) {
             option = _options->translateShorthand(option);
           }

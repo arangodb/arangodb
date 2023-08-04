@@ -195,15 +195,6 @@ void parseGraphCollectionRestriction(Ast* ast, std::string_view typeName,
             absl::StrCat("data source type for '", typeName,
                          "' option must be an edge collection"));
       }
-    } else if (typeName == "vertexCollections") {
-      if (type != TRI_COL_TYPE_DOCUMENT) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
-            absl::StrCat("data source type for '", typeName,
-                         "' option must be a document collection"));
-      }
-    } else {
-      TRI_ASSERT(false);
     }
 
     collections.emplace_back(std::move(name));
@@ -510,8 +501,10 @@ ExecutionPlan::~ExecutionPlan() {
     // only track memory usage here and access ast/query if we are allowed to do
     // so. this can be inherently unsafe from within the gtest unit tests, so it
     // is protected by an option here
-    _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() *
-                                                        sizeof(ExecutionNode));
+    for (auto const& [id, node] : _ids) {
+      _ast->query().resourceMonitor().decreaseMemoryUsage(
+          node->getMemoryUsedBytes());
+    }
   }
 
   for (auto& x : _ids) {
@@ -1128,8 +1121,9 @@ ExecutionNode* ExecutionPlan::registerNode(
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   {
-    ResourceUsageScope scope(_ast->query().resourceMonitor(),
-                             _trackMemoryUsage ? sizeof(ExecutionNode) : 0);
+    ResourceUsageScope scope(
+        _ast->query().resourceMonitor(),
+        _trackMemoryUsage ? node->getMemoryUsedBytes() : 0);
 
     auto emplaced =
         _ids.try_emplace(node->id(), node.get()).second;  // take ownership
@@ -1404,7 +1398,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   TRI_ASSERT(direction->isIntValue());
 
   // First create the node
-  auto travNode = new TraversalNode(
+  auto travNode = createNode<TraversalNode>(
       this, nextId(), &(_ast->query().vocbase()), direction, start, graph,
       std::move(pruneExpression), std::move(options));
 
@@ -1431,9 +1425,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     }
   }
 
-  ExecutionNode* en = registerNode(travNode);
-  TRI_ASSERT(en != nullptr);
-  return addDependency(previous, en);
+  return addDependency(previous, travNode);
 }
 
 AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode*& previous,
@@ -1700,11 +1692,14 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       // sort operand is a variable
       auto v = static_cast<Variable*>(expression->getData());
       TRI_ASSERT(v != nullptr);
-      elements.emplace_back(v, isAscending);
+      auto elem = SortElement{v, isAscending, _ast->query().resourceMonitor()};
+      elements.emplace_back(std::move(elem));
     } else {
       // sort operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
-      elements.emplace_back(getOutVariable(calc), isAscending);
+      auto elem = SortElement{getOutVariable(calc), isAscending,
+                              _ast->query().resourceMonitor()};
+      elements.emplace_back(std::move(elem));
       previous = calc;
     }
   }
@@ -2226,7 +2221,8 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 
     // add a sort on rangeVariable in front of the WINDOW
     SortElementVector elements;
-    elements.emplace_back(rangeVar, /*isAscending*/ true);
+    elements.emplace_back(SortElement{rangeVar, /*isAscending*/ true,
+                                      _ast->query().resourceMonitor()});
     auto en = registerNode(
         std::make_unique<SortNode>(this, nextId(), elements, false));
     previous = addDependency(previous, en);
@@ -2287,7 +2283,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  ExecutionNode* en = registerNode(new SingletonNode(this, nextId()));
+  ExecutionNode* en = createNode<SingletonNode>(this, nextId());
 
   size_t const n = node->numMembers();
 
@@ -2394,6 +2390,8 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
     }
+
+    TRI_ASSERT(en != nullptr);
 
     if (en == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "type not handled");

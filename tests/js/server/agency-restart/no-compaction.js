@@ -109,6 +109,14 @@ function recoverySuite () {
 
 function main (argv) {
   'use strict';
+
+  for (let i = 0; i < 100; i++) {
+    if (ArangoAgent.leading().leading) {
+      break;
+    }
+    require('internal').sleep(0.5);
+  }
+
   if (argv[1] === 'setup') {
     runSetup();
     return 0;

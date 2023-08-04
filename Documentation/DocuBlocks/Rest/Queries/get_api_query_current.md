@@ -1,49 +1,49 @@
 
 @startDocuBlock get_api_query_current
-@brief returns a list of currently running AQL queries
 
-@RESTHEADER{GET /_api/query/current, Returns the currently running AQL queries, listAqlQueries}
+@RESTHEADER{GET /_api/query/current, List the running AQL queries, listAqlQueries}
 
 @RESTDESCRIPTION
 Returns an array containing the AQL queries currently running in the selected
 database. Each query is a JSON object with the following attributes:
 
-- *id*: the query's id
+- `id`: the query's id
 
-- *database*: the name of the database the query runs in
+- `database`: the name of the database the query runs in
 
-- *user*: the name of the user that started the query
+- `user`: the name of the user that started the query
 
-- *query*: the query string (potentially truncated)
+- `query`: the query string (potentially truncated)
 
-- *bindVars*: the bind parameter values used by the query
+- `bindVars`: the bind parameter values used by the query
 
-- *started*: the date and time when the query was started
+- `started`: the date and time when the query was started
 
-- *runTime*: the query's run time up to the point the list of queries was
+- `runTime`: the query's run time up to the point the list of queries was
   queried
 
-- *peakMemoryUsage*: the query's peak memory usage in bytes (in increments of 32KB)
+- `peakMemoryUsage`: the query's peak memory usage in bytes (in increments of 32KB)
 
-- *state*: the query's current execution state (as a string). One of:
+- `state`: the query's current execution state (as a string). One of:
   - `"initializing"`
   - `"parsing"`
   - `"optimizing ast"`
   - `"loading collections"`
   - `"instantiating plan"`
   - `"optimizing plan"`
+  - `"instantiating executors"`
   - `"executing"`
   - `"finalizing"`
   - `"finished"`
   - `"killed"`
   - `"invalid"`
 
-- *stream*: whether or not the query uses a streaming cursor
+- `stream`: whether or not the query uses a streaming cursor
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{all,boolean,optional}
-If set to *true*, will return the currently running queries in all databases,
+If set to `true`, will return the currently running queries in all databases,
 not just the selected one.
 Using the parameter is only allowed in the system database and with superuser
 privileges.
@@ -57,7 +57,7 @@ Is returned when the list of queries can be retrieved successfully.
 The server will respond with *HTTP 400* in case of a malformed request,
 
 @RESTRETURNCODE{403}
-*HTTP 403* is returned in case the *all* parameter was used, but the request
+*HTTP 403* is returned in case the `all` parameter was used, but the request
 was made in a different database than _system, or by an non-privileged user.
 
 @endDocuBlock

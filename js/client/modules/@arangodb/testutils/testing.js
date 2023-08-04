@@ -228,6 +228,7 @@ const optionsDefaults = {
   'onlyGrey': false,
   'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   'isSan': isSan,
+  'sanOptions': {},
   'isCov': isCoverage,
   'isInstrumented': isInstrumented,
   'skipTimeCritical': false,
@@ -451,7 +452,7 @@ function loadTestSuites () {
   testFuncs['auto'] = autoTest;
 }
 
-function translateTestList(cases) {
+function translateTestList(cases, options) {
   let caselist = [];
   const expandWildcard = ( name ) => {
     if (!name.endsWith('*')) {
@@ -469,6 +470,10 @@ function translateTestList(cases) {
       if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
+        if (fs.exists(which)) {
+          options.test = which;
+          return translateTestList(['auto'], options);
+        }
         print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).sort().join(', '));
         throw new Error("USAGE ERROR");
       }
@@ -510,7 +515,7 @@ function iterateTests(cases, options) {
     // we are applying the failed filter -> only consider cases with failed tests
     cases = _.filter(cases, c => options.failed.hasOwnProperty(c));
   }
-  caselist = translateTestList(cases);
+  caselist = translateTestList(cases, options);
   let optionsList = [];
   if (options.optionsJson != null) {
     optionsList = JSON.parse(options.optionsJson);
@@ -611,7 +616,26 @@ function unitTest (cases, options) {
   if (options.activefailover && (options.singles === 1)) {
     options.singles =  2;
   }
-  
+  if (options.isSan) {
+    ['ASAN_OPTIONS',
+     'LSAN_OPTIONS',
+     'UBSAN_OPTIONS',
+     'ASAN_OPTIONS',
+     'LSAN_OPTIONS',
+     'UBSAN_OPTIONS',
+     'TSAN_OPTIONS'].forEach(sanOpt => {
+       if (process.env.hasOwnProperty(sanOpt)) {
+         options.sanOptions[sanOpt] = {};
+         let opt = process.env[sanOpt];
+         opt.split(':').forEach(oneOpt => {
+           let pair = oneOpt.split('=');
+           if (pair.length === 2) {
+             options.sanOptions[sanOpt][pair[0]] = pair[1];
+           }
+         });
+       }
+     });
+  }
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
   }

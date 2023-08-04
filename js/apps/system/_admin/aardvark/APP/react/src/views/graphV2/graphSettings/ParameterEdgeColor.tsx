@@ -2,6 +2,33 @@ import { FormLabel, Input, Spacer } from "@chakra-ui/react";
 import React, { ChangeEvent } from "react";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
+export const ParameterEdgeColorComponent = ({
+  value,
+  onChange,
+  isDisabled
+}: {
+  value: string;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  isDisabled: boolean;
+}) => {
+  return (
+    <>
+      <FormLabel htmlFor="edgeColor">Default edge color</FormLabel>
+      <Input
+        id="edgeColor"
+        type="color"
+        value={value}
+        style={{
+          width: "60px",
+          height: "30px"
+        }}
+        onChange={onChange}
+        disabled={isDisabled}
+      />
+      <Spacer />
+    </>
+  );
+};
 const ParameterEdgeColor = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
 
@@ -18,21 +45,11 @@ const ParameterEdgeColor = () => {
   }
 
   return (
-    <>
-      <FormLabel htmlFor="edgeColor">Default edge color</FormLabel>
-      <Input
-        id="edgeColor"
-        type="color"
-        value={calculatedEdgeColor}
-        style={{
-          width: "60px",
-          height: "30px"
-        }}
-        onChange={handleChange}
-        disabled={urlParams.edgeColorByCollection}
-      />
-      <Spacer />
-    </>
+    <ParameterEdgeColorComponent
+      value={calculatedEdgeColor}
+      onChange={handleChange}
+      isDisabled={urlParams.edgeColorByCollection}
+    />
   );
 };
 

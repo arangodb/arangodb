@@ -30,8 +30,10 @@
 #include "Logger/Logger.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
@@ -162,7 +164,7 @@ std::string RestImportHandler::buildParseError(size_t i,
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any
       // point
-      part = part.substr(0, 255) + "...";
+      part.replace(255, part.size() - 255, "...");
     }
 
     return positionize(i) +
@@ -188,7 +190,7 @@ ErrorCode RestImportHandler::handleSingleDocument(
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any
       // point
-      part = part.substr(0, 255) + "...";
+      part.replace(255, part.size() - 255, "...");
     }
 
     std::string errorMsg =
@@ -265,7 +267,7 @@ ErrorCode RestImportHandler::handleSingleDocument(
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any
       // point
-      part = part.substr(0, 255) + "...";
+      part.replace(255, part.size() - 255, "...");
     }
 
     std::string errorMsg =
@@ -357,6 +359,18 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
+  bool isEdgeCollection = false;
+  if (auto collection = trx.resolver()->getCollection(collectionName);
+      collection != nullptr) {
+    isEdgeCollection = collection->type() == TRI_COL_TYPE_EDGE;
+    if (isEdgeCollection && collection->isSmart()) {
+      // must wrap imports into a smart edge collection into a GLOBAL_MANAGED
+      // transaction, so that the different parts (_from, _to, _local) either
+      // all get inserted or not at all
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    }
+  }
+
   // .............................................................................
   // inside write transaction
   // .............................................................................
@@ -368,8 +382,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
                              "");
     return false;
   }
-
-  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
     OperationOptions truncateOpts(_context);
@@ -462,18 +474,12 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   else {
     // the entire request body is one JSON document
+    bool success = false;
+    VPackSlice documents = parseVPackBody(success);
 
-    VPackSlice documents;
-    try {
-      documents = _request->payload();
-    } catch (VPackException const& ex) {
-      generateError(
-          rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-          std::string("expecting a valid JSON array in the request. got: ") +
-              ex.what());
+    if (!success) {
       return false;
     }
-
     if (!documents.isArray()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
@@ -556,6 +562,18 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
+  bool isEdgeCollection = false;
+  if (auto collection = trx.resolver()->getCollection(collectionName);
+      collection != nullptr) {
+    isEdgeCollection = collection->type() == TRI_COL_TYPE_EDGE;
+    if (isEdgeCollection && collection->isSmart()) {
+      // must wrap imports into a smart edge collection into a GLOBAL_MANAGED
+      // transaction, so that the different parts (_from, _to, _local) either
+      // all get inserted or not at all
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    }
+  }
+
   // .............................................................................
   // inside write transaction
   // .............................................................................
@@ -569,8 +587,6 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
     return false;
   }
 
-  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
-
   if (overwrite) {
     OperationOptions truncateOpts;
     truncateOpts.waitForSync = false;
@@ -582,8 +598,12 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   VPackBuilder babies;
   babies.openArray();
 
-  VPackSlice const documents = _request->payload();
+  bool success = false;
+  VPackSlice documents = parseVPackBody(success);
 
+  if (!success) {
+    return false;
+  }
   if (!documents.isArray()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON array in the request");
@@ -740,6 +760,19 @@ bool RestImportHandler::createFromKeyValueList() {
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+
+  bool isEdgeCollection = false;
+  if (auto collection = trx.resolver()->getCollection(collectionName);
+      collection != nullptr) {
+    isEdgeCollection = collection->type() == TRI_COL_TYPE_EDGE;
+    if (isEdgeCollection && collection->isSmart()) {
+      // must wrap imports into a smart edge collection into a GLOBAL_MANAGED
+      // transaction, so that the different parts (_from, _to, _local) either
+      // all get inserted or not at all
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    }
+  }
 
   // .............................................................................
   // inside write transaction
@@ -752,8 +785,6 @@ bool RestImportHandler::createFromKeyValueList() {
                              "");
     return false;
   }
-
-  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
     OperationOptions truncateOpts(_context);

@@ -2,10 +2,6 @@
 /*global assertEqual, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for regression returning blocks to the manager
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2014 triagens GmbH, Cologne, Germany
@@ -38,6 +34,7 @@ const vc2Name = "v2";
 const ec1Name = "e1";
 const ec2Name = "e2";
 const viewName = "vvvv";
+const gn = "connectedComponentsGraph";
 
 const cleanup = function() {
   db._dropView(viewName);
@@ -45,6 +42,11 @@ const cleanup = function() {
   db._drop(vc2Name);
   db._drop(ec1Name);
   db._drop(ec2Name);
+
+  try {
+    require("@arangodb/general-graph")._drop(gn, true);
+  } catch (err) {
+  }
 };
 
 const createBaseGraph = function () {
@@ -81,6 +83,8 @@ function vertexCollectionRestrictionSuite() {
       cleanup();
       createBaseGraph();
       db._createView(viewName, "arangosearch", {});
+
+      require("@arangodb/graph-examples/example-graph").loadGraph(gn);
     },
 
     tearDownAll : function () {
@@ -293,7 +297,7 @@ function vertexCollectionRestrictionSuite() {
                        RETURN DISTINCT v._id`;
 
       try {
-        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
@@ -308,12 +312,9 @@ function vertexCollectionRestrictionSuite() {
                        SORT v._id
                        RETURN DISTINCT v._id`;
 
-      try {
-        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
-      }
+      const actual = db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+      const expected = [];
+      assertEqual(actual, expected);
     },
     
     testRestrictViewAsVertexCollection: function () {
@@ -325,7 +326,7 @@ function vertexCollectionRestrictionSuite() {
                        RETURN DISTINCT v._id`;
 
       try {
-        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
@@ -397,7 +398,7 @@ function vertexCollectionRestrictionSuite() {
                        RETURN DISTINCT v._id`;
 
       try {
-        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
@@ -413,7 +414,7 @@ function vertexCollectionRestrictionSuite() {
                        RETURN DISTINCT v._id`;
 
       try {
-        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
@@ -429,10 +430,62 @@ function vertexCollectionRestrictionSuite() {
                        RETURN DISTINCT v._id`;
 
       try {
-        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name }).toArray();
+        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
+      }
+    },
+    
+    testRestrictDifferentEdgeCollection: function () {
+      const query = `WITH @@vc1, @@vc2
+                     FOR v IN 3..3 OUTBOUND "${vc1Name}/node_5" @@ec1
+                       // specify different edge collection
+                       OPTIONS {edgeCollections: [@ec2]}
+                       SORT v._id
+                       RETURN DISTINCT v._id`;
+
+      try {
+        db._query(query, {'@vc1': vc1Name, '@vc2': vc2Name, '@ec1': ec1Name, 'ec2': ec2Name });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST.code, err.errorNum);
+      }
+    },
+
+    testAccessCollectionNamedGraphInvalidType: function () {
+      try {
+        db._query(`FOR v IN ANY "components/A1" GRAPH "${gn}" OPTIONS { edgeCollections: "${vc1Name}" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code, err.errorNum);
+      }
+    },
+  
+    testAccessCollectionNamedGraphInvalidEdgeCollection: function () {
+      try {
+        db._query(`FOR v IN ANY "components/A1" GRAPH "${gn}" OPTIONS { edgeCollections: "piff" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
+    testAccessCollectionNamedGraphEdgeCollectionNotInGraph: function () {
+      try {
+        db._query(`FOR v IN ANY "components/A1" GRAPH "${gn}" OPTIONS { edgeCollections: "${ec1Name}" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST.code, err.errorNum);
+      }
+    },
+    
+    testAccessCollectionNamedGraphVertexCollectionNotInGraph: function () {
+      try {
+        db._query(`FOR v IN ANY "components/A1" GRAPH "${gn}" OPTIONS { vertexCollections: "${vc1Name}" } RETURN v`);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code, err.errorNum);
       }
     },
 

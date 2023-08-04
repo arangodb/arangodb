@@ -27,37 +27,67 @@
 #include <cstdint>
 #include <memory>
 
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
+#include "Cache/Manager.h"
 #include "Cache/PlainBucket.h"
 #include "Cache/Table.h"
+#include "RestServer/SharedPRNGFeature.h"
 
+#include "Mocks/Servers.h"
+#include "MockScheduler.h"
+
+using namespace arangodb;
 using namespace arangodb::cache;
+using namespace tests::mocks;
 
 TEST(CacheTableTest, test_static_allocation_size_method) {
   for (std::uint32_t i = Table::kMinLogSize; i <= Table::kMaxLogSize; i++) {
     ASSERT_TRUE(Table::allocationSize(i) ==
-                (sizeof(Table) + (BUCKET_SIZE << i) + Table::padding));
+                (sizeof(Table) + (kBucketSizeInBytes << i) + Table::kPadding));
   }
 }
 
 TEST(CacheTableTest, test_basic_constructor_behavior) {
+  MockScheduler scheduler(4);
+  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    scheduler.post(fn);
+    return true;
+  };
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  CacheOptions co;
+  co.cacheSize = 16ULL * 1024ULL * 1024ULL;
+  Manager manager(sharedPRNG, postFn, co);
+
   for (std::uint32_t i = Table::kMinLogSize; i <= 20; i++) {
-    auto table = std::make_shared<Table>(i);
+    auto table = std::make_shared<Table>(i, &manager);
     ASSERT_NE(table.get(), nullptr);
     ASSERT_EQ(table->memoryUsage(),
-              (sizeof(Table) + (BUCKET_SIZE << i) + Table::padding));
+              (sizeof(Table) + (kBucketSizeInBytes << i) + Table::kPadding));
     ASSERT_EQ(table->logSize(), i);
     ASSERT_EQ(table->size(), (static_cast<std::uint64_t>(1) << i));
   }
 }
 
 TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
-  auto table = std::make_shared<Table>(Table::kMinLogSize);
+  MockScheduler scheduler(4);
+  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    scheduler.post(fn);
+    return true;
+  };
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  CacheOptions co;
+  co.cacheSize = 16ULL * 1024ULL * 1024ULL;
+  Manager manager(sharedPRNG, postFn, co);
+
+  auto table = std::make_shared<Table>(Table::kMinLogSize, &manager);
   ASSERT_NE(table.get(), nullptr);
   table->enable();
   for (std::uint64_t i = 0; i < table->size(); i++) {
-    std::uint32_t hash =
-        static_cast<std::uint32_t>(i << (32 - Table::kMinLogSize));
+    Table::BucketHash hash{
+        static_cast<std::uint32_t>(i << (32 - Table::kMinLogSize))};
     Table::BucketLocker guard = table->fetchAndLockBucket(hash, -1);
     ASSERT_TRUE(guard.isValid());
     ASSERT_TRUE(guard.isLocked());
@@ -76,14 +106,27 @@ TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
 
 class CacheTableMigrationTest : public ::testing::Test {
  protected:
+  MockScheduler scheduler;
+  MockMetricsServer server;
+  CacheOptions co;
+  Manager manager;
   std::shared_ptr<Table> small;
   std::shared_ptr<Table> large;
   std::shared_ptr<Table> huge;
 
   CacheTableMigrationTest()
-      : small(std::make_shared<Table>(Table::kMinLogSize)),
-        large(std::make_shared<Table>(Table::kMinLogSize + 2)),
-        huge(std::make_shared<Table>(Table::kMinLogSize + 4)) {
+      : scheduler(4),
+        co{.cacheSize = 16ULL * 1024ULL * 1024ULL},
+        manager(
+            server.getFeature<SharedPRNGFeature>(),
+            [this](std::function<void()> fn) -> bool {
+              scheduler.post(fn);
+              return true;
+            },
+            co),
+        small(std::make_shared<Table>(Table::kMinLogSize, &manager)),
+        large(std::make_shared<Table>(Table::kMinLogSize + 2, &manager)),
+        huge(std::make_shared<Table>(Table::kMinLogSize + 4, &manager)) {
     small->enable();
     large->enable();
     huge->enable();
@@ -106,7 +149,7 @@ TEST_F(CacheTableMigrationTest,
 
   std::uint32_t indexSmall = 17;  // picked something at "random"
   std::uint32_t indexLarge = indexSmall << 2;
-  std::uint32_t hash = indexSmall << (32 - small->logSize());
+  Table::BucketHash hash{indexSmall << (32 - small->logSize())};
 
   {
     Table::BucketLocker guard = small->fetchAndLockBucket(hash, -1);
@@ -181,14 +224,16 @@ TEST_F(CacheTableMigrationTest, check_subtable_apply_all_works) {
 }
 
 TEST_F(CacheTableMigrationTest, test_fill_ratio_methods) {
+  CacheOptions const co;
+
   for (std::uint64_t i = 0; i < large->size(); i++) {
     bool res = large->slotFilled();
     if (static_cast<double>(i + 1) <
-        0.04 * static_cast<double>(large->size())) {
+        co.idealLowerFillRatio * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() - 1);
       ASSERT_FALSE(res);
     } else if (static_cast<double>(i + 1) >
-               0.25 * static_cast<double>(large->size())) {
+               co.idealUpperFillRatio * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() + 1);
       ASSERT_TRUE(res);
     } else {
@@ -199,11 +244,11 @@ TEST_F(CacheTableMigrationTest, test_fill_ratio_methods) {
   for (std::uint64_t i = large->size(); i > 0; i--) {
     bool res = large->slotEmptied();
     if (static_cast<double>(i - 1) <
-        0.04 * static_cast<double>(large->size())) {
+        co.idealLowerFillRatio * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() - 1);
       ASSERT_TRUE(res);
     } else if (static_cast<double>(i - 1) >
-               0.25 * static_cast<double>(large->size())) {
+               co.idealUpperFillRatio * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() + 1);
       ASSERT_FALSE(res);
     } else {

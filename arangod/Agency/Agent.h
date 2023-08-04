@@ -147,10 +147,10 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   trans_ret_t transact(velocypack::Slice qs) override;
 
   /// @brief Put trxs into list of ongoing ones.
-  void addTrxsOngoing(Slice trxs);
+  void addTrxsOngoing(velocypack::Slice trxs);
 
   /// @brief Remove trxs from list of ongoing ones.
-  void removeTrxsOngoing(Slice trxs) noexcept;
+  void removeTrxsOngoing(velocypack::Slice trxs) noexcept;
 
   /// @brief Check whether a trx is ongoing.
   bool isTrxOngoing(std::string const& id) const noexcept;
@@ -165,9 +165,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief Resign leadership
   void resign(term_t otherTerm = 0);
 
-  /// @brief collect store callbacks for removal
-  void trashStoreCallback(std::string const& url, velocypack::Slice body);
-
  private:
   void logsForTrigger();
 
@@ -180,9 +177,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
 
   /// @brief trigger all expire polls
   void clearExpiredPolls();
-
-  /// @brief empty callback trash bin
-  void emptyCbTrashBin();
 
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
@@ -279,9 +273,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   void executeTransientLocked(std::function<void()> const& cb);
 
   /// @brief Get read store and compaction index
-  index_t readDB(Node&) const;
-
-  /// @brief Get read store and compaction index
   index_t readDB(velocypack::Builder&) const;
 
   /// @brief Get read store
@@ -312,7 +303,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
       index_t end = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Last contact with followers
-  void lastAckedAgo(Builder&) const;
+  void lastAckedAgo(velocypack::Builder&) const;
 
   /// @brief Are we ready for RAFT?
   bool ready() const;
@@ -539,11 +530,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
 
   /// @brief load() has completed
   std::atomic<bool> _loaded;
-
-  /// @brief Container for callbacks for removal
-  std::unordered_map<std::string, std::unordered_set<std::string>>
-      _callbackTrashBin;
-  std::chrono::time_point<std::chrono::steady_clock> _callbackLastPurged;
 
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;

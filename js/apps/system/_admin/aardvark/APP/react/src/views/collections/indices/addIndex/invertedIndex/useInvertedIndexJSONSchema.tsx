@@ -13,10 +13,17 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
       const: "inverted"
     },
     name: {
-      nullable: true,
       type: "string",
-      // eslint-disable-next-line no-useless-escape
-      pattern: extendedNames ? "" : "^[a-zA-Z][a-zA-Z0-9\-_]*$"
+      nullable: true,
+      anyOf: [
+        {
+          // eslint-disable-next-line no-useless-escape
+          pattern: extendedNames ? "" : "^[a-zA-Z][a-zA-Z0-9-_]*$"
+        },
+        {
+          maxLength: 0
+        }
+      ]
     },
     analyzer: {
       nullable: true,

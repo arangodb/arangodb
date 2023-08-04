@@ -29,6 +29,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Agency/Node.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
@@ -80,17 +81,15 @@ void MetricsFeature::collectOptions(
       ->addOption(
           "--server.ensure-whitespace-metrics-format",
           "Set to `true` to ensure whitespace between the exported metric "
-          "value "
-          "and the preceeding token (metric name or labels) in the metrics "
-          "output.",
+          "value and the preceding token (metric name or labels) in the "
+          "metrics output.",
           new options::BooleanParameter(&_ensureWhitespace),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
-      .setLongDescription(
-          R"(Using the whitespace characters in the output may be
-required to make the metrics output compatible with some processing tools, although "
-Prometheus itself doesn't need it.)")
-      .setIntroducedIn(31006);
+      .setIntroducedIn(31006)
+      .setLongDescription(R"(Using the whitespace characters in the output may
+be required to make the metrics output compatible with some processing tools,
+although Prometheus itself doesn't need it.)");
 }
 
 std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
@@ -173,6 +172,7 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
   if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
     cm.toPrometheus(result, _globals, _ensureWhitespace);
   }
+  consensus::Node::toPrometheus(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
