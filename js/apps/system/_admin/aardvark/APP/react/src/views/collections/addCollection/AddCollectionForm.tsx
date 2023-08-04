@@ -58,15 +58,14 @@ export const AddCollectionForm = () => {
             <>
               <InputControl
                 isDisabled={
-                  isDisabled || isOneShard || distributeShardsLike.value !== ""
+                  isDisabled ||
+                  isOneShard ||
+                  isSatellite.value ||
+                  distributeShardsLike.value !== ""
                 }
                 name={"numberOfShards"}
                 label="Number of shards"
-                inputProps={{
-                  type: "number",
-                  min: 1,
-                  max: window.frontendConfig.maxNumberOfShards
-                }}
+                inputProps={{ type: "number" }}
                 tooltip={
                   isOneShard
                     ? undefined
@@ -74,7 +73,7 @@ export const AddCollectionForm = () => {
                 }
               />
               <CreatableMultiSelectControl
-                isDisabled={isDisabled}
+                isDisabled={isDisabled || isSatellite.value}
                 name={"shardKeys"}
                 label="Shard keys"
                 selectProps={{
@@ -90,11 +89,7 @@ export const AddCollectionForm = () => {
                 }
                 name={"replicationFactor"}
                 label="Replication Factor"
-                inputProps={{
-                  type: "number",
-                  min: window.frontendConfig.minReplicationFactor ?? 1,
-                  max: window.frontendConfig.maxReplicationFactor
-                }}
+                inputProps={{ type: "number" }}
                 tooltip={"Total number of copies of the data in the cluster."}
               />
               <InputControl
@@ -105,11 +100,7 @@ export const AddCollectionForm = () => {
                 }
                 name={"writeConcern"}
                 label="Write Concern"
-                inputProps={{
-                  type: "number",
-                  min: 1,
-                  max: window.frontendConfig.maxReplicationFactor
-                }}
+                inputProps={{ type: "number" }}
                 tooltip={
                   "Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created. Must be smaller or equal compared to the replication factor."
                 }
@@ -117,23 +108,33 @@ export const AddCollectionForm = () => {
               {window.frontendConfig.isEnterprise && (
                 <>
                   {!isOneShard && (
-                    <SelectControl
-                      isDisabled={isDisabled}
-                      name={"distributeShardsLike"}
-                      label="Distribute shards like"
-                      selectProps={{
-                        options: [
-                          { label: "N/A", value: "" },
-                          ...(collections?.map(collection => ({
-                            label: collection.name,
-                            value: collection.name
-                          })) ?? [])
-                        ]
-                      }}
-                      tooltip={
-                        "Name of another collection that should be used as a prototype for sharding this collection."
-                      }
-                    />
+                    <>
+                      <SelectControl
+                        isDisabled={isDisabled}
+                        name={"distributeShardsLike"}
+                        label="Distribute shards like"
+                        selectProps={{
+                          options: [
+                            { label: "N/A", value: "" },
+                            ...(collections?.map(collection => ({
+                              label: collection.name,
+                              value: collection.name
+                            })) ?? [])
+                          ]
+                        }}
+                        tooltip={
+                          "Name of another collection that should be used as a prototype for sharding this collection."
+                        }
+                      />
+                      <InputControl
+                        isDisabled={isDisabled || isSatellite.value}
+                        name={"smartJoinAttribute"}
+                        label="SmartJoin attribute"
+                        tooltip={
+                          "String attribute name. Can be left empty if SmartJoins are not used."
+                        }
+                      />
+                    </>
                   )}
                   <SwitchControl
                     isDisabled={isDisabled || distributeShardsLike.value !== ""}
@@ -145,14 +146,6 @@ export const AddCollectionForm = () => {
                   />
                 </>
               )}
-              <InputControl
-                isDisabled={isDisabled}
-                name={"smartJoinAttribute"}
-                label="SmartJoin attribute"
-                tooltip={
-                  "String attribute name. Can be left empty if SmartJoins are not used."
-                }
-              />
             </>
           )}
           <SwitchControl

@@ -23,9 +23,7 @@ const CollectionViewHeader = ({ onOpen }: { onOpen: () => void }) => {
         size="sm"
         leftIcon={<AddIcon />}
         colorScheme="blue"
-        onClick={() => {
-          onOpen();
-        }}
+        onClick={onOpen}
       >
         Add collection
       </Button>

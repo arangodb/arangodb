@@ -2,7 +2,7 @@ import useSWR from "swr";
 import { getCurrentDB } from "../../utils/arangoClient";
 
 export const useFetchDatabase = (name: string) => {
-  const { data } = useSWR(
+  const { data, error } = useSWR(
     `/databases/${encodeURIComponent(name)}`,
     async () => {
       const db = getCurrentDB();
@@ -17,5 +17,5 @@ export const useFetchDatabase = (name: string) => {
       };
     }
   );
-  return { database: data };
+  return { database: data, error };
 };
