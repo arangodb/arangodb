@@ -33,7 +33,8 @@ const ANALYZER_TYPE_TO_CONFIG_MAP = {
   pipeline: PipelineConfig,
   geojson: GeoJSONConfig,
   geopoint: GeopointConfig,
-  geo_s2: GeoS2Config
+  geo_s2: GeoS2Config,
+  minhash: null
 };
 
 export const AnalyzerTypeForm = ({
@@ -49,7 +50,7 @@ export const AnalyzerTypeForm = ({
   }
   return (
     <Stack gridColumn="1 / -1">
-      <Text>Configuration</Text>
+      <Text>Properties</Text>
       <Divider borderColor="gray.400" />
       <AnalyzerConfigComponent basePropertiesPath={basePropertiesPath} />
     </Stack>

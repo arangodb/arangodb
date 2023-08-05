@@ -376,29 +376,6 @@
           view: undefined,
           active: false
         }
-      ],
-      queries: [
-        {
-          name: 'Editor',
-          route: 'query',
-          active: true
-        },
-        {
-          name: 'Running Queries',
-          route: 'queryManagement',
-          params: {
-            active: true
-          },
-          active: undefined
-        },
-        {
-          name: 'Slow Query History',
-          route: 'queryManagement',
-          params: {
-            active: false
-          },
-          active: undefined
-        }
       ]
     },
 

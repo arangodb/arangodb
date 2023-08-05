@@ -29,6 +29,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortNode.h"
+#include "Basics/ResourceUsage.h"
 
 namespace arangodb {
 namespace aql {

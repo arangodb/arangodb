@@ -32,6 +32,9 @@ export const FilterBar = <Data extends object>({
     return null;
   }
   const filterOptions = columns.filter(column => {
+    if (column.enableColumnFilter === false) {
+      return false;
+    }
     return !currentFilterColumns.find(
       currentFilter => currentFilter?.id === column.id
     );
@@ -73,7 +76,7 @@ export const FilterBar = <Data extends object>({
         <Menu>
           <MenuButton
             as={isAnyFilterSelected ? IconButton : Button}
-            size="sm"
+            size="xs"
             height="30px"
             alignSelf={"flex-end"}
             marginBottom="1"
