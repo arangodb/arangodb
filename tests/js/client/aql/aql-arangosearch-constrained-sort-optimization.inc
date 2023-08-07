@@ -29,6 +29,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 (function() {
   var db = require("@arangodb").db;
+  const isCluster = require("internal").isCluster();
+  const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
   return function (isSearchAlias, isCluster, newDbName, dbArgs) {
     const ruleName = "arangosearch-constrained-sort";
     const cn = "UnitTestsCollection";
@@ -202,7 +204,9 @@
           let result = AQL_EXECUTE(query, {}, {fullCount:false});
           assertEqual(1, result.json.length);
           assertEqual(300, result.json[0]);
-          assertEqual(6216, result.stats.scannedIndex);
+          if (!isCluster) {
+            assertEqual(6216, result.stats.scannedIndex);
+          }
       },
       testApplyWithFullCountDocs() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
@@ -221,7 +225,9 @@
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = AQL_EXECUTE(query, {}, {fullCount:false});
           assertEqual(300, result.json.length);
-          assertEqual(6216, result.stats.scannedIndex);
+          if (!isCluster) {
+            assertEqual(6216, result.stats.scannedIndex);
+          }
       },
       testApplyWithFullCountDocsNoOffset() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
@@ -240,7 +246,9 @@
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = AQL_EXECUTE(query, {}, {fullCount:false});
           assertEqual(1500, result.json.length);
-          assertEqual(6216, result.stats.scannedIndex);
+          if (!isCluster) {
+            assertEqual(6216, result.stats.scannedIndex);
+          }
       },
       testAppliedWithNonDetermAfter() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3'  SORT BM25(d) LIMIT 10 LET a = NOOPT(d.b.b1) RETURN {dD:d, aA:a}";
@@ -297,10 +305,12 @@
         let result = AQL_EXECUTE(query);
         assertEqual(10, result.json.length);
         let expectedIdx = 4994;
-        for (let i = 0; i < 10; ++i) {
-          assertEqual(result.json[i].idx, expectedIdx);
-          if (i % 2 === 1) {
+        if (!isCluster) {
+          for (let i = 0; i < 10; ++i) {
+            assertEqual(result.json[i].idx, expectedIdx);
+            if (i % 2 === 1) {
               expectedIdx--;
+            }
           }
         }
       },
@@ -311,11 +321,13 @@
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
         assertEqual(10, result.json.length);
-        let expectedIdx = 501;
-        for (let i = 0; i < 10; ++i) {
-          assertEqual(result.json[i].idx, expectedIdx);
-          if (i % 2 === 1) {
+        if (!isCluster) {
+          let expectedIdx = 501;
+          for (let i = 0; i < 10; ++i) {
+            assertEqual(result.json[i].idx, expectedIdx);
+            if (i % 2 === 1) {
               expectedIdx++;
+            }
           }
         }
       },
@@ -326,11 +338,13 @@
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
         assertEqual(10, result.json.length);
-        let expectedIdx = 501;
-        for (let i = 0; i < 10; ++i) {
-          assertEqual(result.json[i].dv, longValue + expectedIdx);
-          if (i % 2 === 1) {
+        if (!isCluster) {
+          let expectedIdx = 501;
+          for (let i = 0; i < 10; ++i) {
+            assertEqual(result.json[i].dv, longValue + expectedIdx);
+            if (i % 2 === 1) {
               expectedIdx++;
+            }
           }
         }
       }

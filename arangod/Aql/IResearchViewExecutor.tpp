@@ -462,12 +462,9 @@ velocypack::Slice IndexReadBuffer<ValueType, copySorted>::readHeapSortColumn(
   }
   auto& reader = _heapOnlyStoredValuesReaders[readerSlot];
   irs::bytes_view val;
-  if (reader.itr) {
-    if (doc == reader.itr->seek(doc)) {
-      val = reader.value->value;
-    } else {
-      val = ref<irs::byte_type>(VPackSlice::nullSlice());
-    }
+  TRI_ASSERT(!reader.itr || reader.itr->value() <= doc);
+  if (reader.itr && doc == reader.itr->seek(doc)) {
+    val = reader.value->value;
   } else {
     val = ref<irs::byte_type>(VPackSlice::nullSlice());
   }
@@ -534,8 +531,9 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
           _heapOnlyStoredValuesReaders.push_back(readerProvider(cmp.source));
         }
         auto& reader = _heapOnlyStoredValuesReaders[j];
+        TRI_ASSERT(!reader.itr || reader.itr->value() <= doc);
         irs::bytes_view val;
-        if (doc == reader.itr->seek(doc)) {
+        if (reader.itr && doc == reader.itr->seek(doc)) {
           val = reader.value->value;
         } else {
           val = ref<irs::byte_type>(VPackSlice::nullSlice());
