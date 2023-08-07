@@ -1648,14 +1648,32 @@ TRI_vocbase_t& transaction::Methods::vocbase() const {
   return _state->vocbase();
 }
 
+// is this instance responsible for commit / abort
+bool transaction::Methods::isMainTransaction() const noexcept {
+  return _mainTransaction;
+}
+
+/// @brief add a transaction hint
+void transaction::Methods::addHint(transaction::Hints::Hint hint) noexcept {
+  _localHints.set(hint);
+}
+
+transaction::TrxType transaction::Methods::getTrxTypeHint() const noexcept {
+  return _trxTypeHint;
+}
+
 /// @brief whether or not the transaction consists of a single operation only
-bool transaction::Methods::isSingleOperationTransaction() const {
+bool transaction::Methods::isSingleOperationTransaction() const noexcept {
   return _state->isSingleOperation();
 }
 
 /// @brief get the status of the transaction
-transaction::Status transaction::Methods::status() const {
+transaction::Status transaction::Methods::status() const noexcept {
   return _state->status();
+}
+
+std::string_view transaction::Methods::statusString() const noexcept {
+  return transaction::statusString(status());
 }
 
 velocypack::Options const& transaction::Methods::vpackOptions() const {
@@ -1683,7 +1701,10 @@ static bool findRefusal(
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
                               transaction::TrxType trxTypeHint,
                               transaction::Options const& options)
-    : _state(nullptr), _transactionContext(ctx), _mainTransaction(false) {
+    : _state(nullptr),
+      _transactionContext(ctx),
+      _trxTypeHint(trxTypeHint),
+      _mainTransaction(false) {
   TRI_ASSERT(_transactionContext != nullptr);
   if (ADB_UNLIKELY(_transactionContext == nullptr)) {
     // in production, we must not go on with undefined behavior, so we bail out
@@ -1691,7 +1712,6 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction context pointer");
   }
-  this->addTrxTypeHint(trxTypeHint);
 
   // initialize the transaction
   _state = _transactionContext->acquireState(options, _mainTransaction);

@@ -105,7 +105,7 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   return metric;
 }
 
-Metric* MetricsFeature::get(MetricKeyView const& key) {
+Metric* MetricsFeature::get(MetricKeyView const& key) const {
   std::shared_lock lock{_mutex};
   auto it = _registry.find(key);
   if (it == _registry.end()) {

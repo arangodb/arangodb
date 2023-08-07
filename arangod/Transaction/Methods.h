@@ -192,25 +192,21 @@ class Methods {
   }
 
   // is this instance responsible for commit / abort
-  bool isMainTransaction() const { return _mainTransaction; }
+  bool isMainTransaction() const noexcept;
 
   /// @brief add a transaction hint
-  void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
+  void addHint(transaction::Hints::Hint hint) noexcept;
 
-  void addTrxTypeHint(transaction::TrxType hint) { _trxTypeHint = hint; }
-
-  transaction::TrxType getTrxTypeHint() { return _trxTypeHint; }
+  transaction::TrxType getTrxTypeHint() const noexcept;
 
   /// @brief whether or not the transaction consists of a single operation only
-  bool isSingleOperationTransaction() const;
+  bool isSingleOperationTransaction() const noexcept;
 
   /// @brief get the status of the transaction
-  Status status() const;
+  Status status() const noexcept;
 
   /// @brief get the status of the transaction, as a string
-  char const* statusString() const {
-    return transaction::statusString(status());
-  }
+  std::string_view statusString() const noexcept;
 
   /// @brief options used, not dump options
   TEST_VIRTUAL velocypack::Options const& vpackOptions() const;

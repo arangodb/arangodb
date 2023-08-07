@@ -25,9 +25,6 @@
 
 #include "Aql/QueryContext.h"
 #include "Containers/SmallVector.h"
-#include "Logger/LogMacros.h"
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 
 #include <cstdint>
@@ -37,124 +34,6 @@ namespace arangodb {
 struct ResourceMonitor;
 struct RocksDBMethodsMemoryTracker;
 
-struct IMemoryTracker {
-  virtual ~IMemoryTracker() {}
-  virtual void reset() noexcept = 0;
-  virtual void increaseMemoryUsage(std::uint64_t valueInBytes) = 0;
-  virtual void decreaseMemoryUsage(std::uint64_t valueInBytes) noexcept = 0;
-
-  virtual void setSavePoint() = 0;
-  virtual void rollbackToSavePoint() noexcept = 0;
-  virtual void popSavePoint() noexcept = 0;
-};
-/*
-class MemoryUsageTracker : public IMemoryTracker {
- public:
-  MemoryUsageTracker(metrics::Gauge<uint64_t>* memoryTrackerMetric)
-      : _memoryTrackerMetric(memoryTrackerMetric) {}
-  ~MemoryUsageTracker() { TRI_ASSERT(_memoryTrackerMetric->load() == 0); }
-  void reset() noexcept override {
-    _memoryTrackerMetric->store(0, std::memory_order_relaxed);
-    _savePoints.clear();
-  }
-  void increaseMemoryUsage(std::uint64_t valueInBytes) override {
-    TRI_ASSERT(_memoryTrackerMetric != nullptr);
-    LOG_DEVEL << "Will increase metric"
-              << " " << _memoryTrackerMetric->name() << " by " << valueInBytes
-              << "bytes";
-    _memoryTrackerMetric->fetch_add(valueInBytes);
-  }
-  void decreaseMemoryUsage(std::uint64_t valueInBytes) noexcept override {
-    TRI_ASSERT(_memoryTrackerMetric != nullptr);
-    LOG_DEVEL << "Will decrease metric"
-              << " " << _memoryTrackerMetric->name() << " by " << valueInBytes
-              << "bytes";
-    _memoryTrackerMetric->fetch_sub(valueInBytes);
-  }
-
-  void setSavePoint() override {
-    //  LOG_DEVEL << "ADDING SAVEPOINT";
-    _savePoints.push_back(_memoryTrackerMetric->load());
-  }
-
-  void rollbackToSavePoint() noexcept override {
-    //  LOG_DEVEL << "ROLLING BACK TO SAVEPOINT";
-    TRI_ASSERT(!_savePoints.empty());
-    _memoryTrackerMetric->store(_savePoints.back(), std::memory_order_relaxed);
-    _savePoints.pop_back();
-  }
-
-  void popSavePoint() noexcept override {
-    //  LOG_DEVEL << "POPPING SAVEPOINT";
-    TRI_ASSERT(!_savePoints.empty());
-    _savePoints.pop_back();
-  }
-
- private:
-  metrics::Gauge<uint64_t>* _memoryTrackerMetric;
-  containers::SmallVector<std::uint64_t, 4> _savePoints;
-};
-
-class AqlMemoryUsageTracker : public IMemoryTracker {
- public:
-  AqlMemoryUsageTracker(metrics::Gauge<uint64_t>* memoryTrackerMetric,
-                        ResourceMonitor& resourceMonitor)
-      : _memoryTrackerMetric(memoryTrackerMetric),
-        _resourceMonitor(resourceMonitor) {}
-  ~AqlMemoryUsageTracker() { TRI_ASSERT(_memoryTrackerMetric->load() == 0); }
-
-  void reset() noexcept override {
-    _memoryTrackerMetric->store(0, std::memory_order_relaxed);
-    _savePoints.clear();
-    _resourceMonitor.clear();
-  }
-  void increaseMemoryUsage(std::uint64_t valueInBytes) override {
-    TRI_ASSERT(_memoryTrackerMetric != nullptr);
-    LOG_DEVEL << "Will increase metric"
-              << " " << _memoryTrackerMetric->name() << " by " << valueInBytes
-              << "bytes";
-    _memoryTrackerMetric->fetch_add(valueInBytes);
-    LOG_DEVEL << "Will increase resource monitor by " << valueInBytes
-              << "bytes";
-    _resourceMonitor.increaseMemoryUsage(valueInBytes);
-  }
-  void decreaseMemoryUsage(std::uint64_t valueInBytes) noexcept override {
-    TRI_ASSERT(_memoryTrackerMetric != nullptr);
-    LOG_DEVEL << "Will decrease metric"
-              << " " << _memoryTrackerMetric->name() << " by " << valueInBytes
-              << "bytes";
-    _memoryTrackerMetric->fetch_sub(valueInBytes);
-    LOG_DEVEL << "Will decrease resource monitor by " << valueInBytes
-              << "bytes";
-    _resourceMonitor.decreaseMemoryUsage(valueInBytes);
-  }
-
-  void setSavePoint() override {
-    //  LOG_DEVEL << "ADDING SAVEPOINT";
-    _savePoints.push_back(_memoryTrackerMetric->load());
-  }
-
-  void rollbackToSavePoint() noexcept override {
-    //  LOG_DEVEL << "ROLLING BACK TO SAVEPOINT";
-    TRI_ASSERT(!_savePoints.empty());
-    _memoryTrackerMetric->store(_savePoints.back(), std::memory_order_relaxed);
-    _savePoints.pop_back();
-    _resourceMonitor.clear();
-    _resourceMonitor.increaseMemoryUsage(_savePoints.back());
-  }
-
-  void popSavePoint() noexcept override {
-    //  LOG_DEVEL << "POPPING SAVEPOINT";
-    TRI_ASSERT(!_savePoints.empty());
-    _savePoints.pop_back();
-  }
-
- private:
-  metrics::Gauge<uint64_t>* _memoryTrackerMetric;
-  ResourceMonitor& _resourceMonitor;
-  containers::SmallVector<std::uint64_t, 4> _savePoints;
-};
-*/
 struct IRocksDBTransactionCallback {
   virtual ~IRocksDBTransactionCallback() = default;
   virtual rocksdb::SequenceNumber prepare() = 0;
@@ -285,8 +164,6 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   IRocksDBTransactionCallback& _callback;
 
   rocksdb::TransactionDB* _db{nullptr};
-
-  std::optional<std::reference_wrapper<ResourceMonitor>> _resourceMonitor;
 
   /// @brief shared read options which can be used by operations
   ReadOptions _readOptions{};

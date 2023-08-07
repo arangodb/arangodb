@@ -57,6 +57,7 @@ using namespace arangodb;
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
+      _trxTypeHint(transaction::TrxType::kInternal),
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
       _id(tid) {
@@ -368,6 +369,16 @@ void TransactionState::acceptAnalyzersRevision(
   _analyzersRevision = analyzersRevision;
 }
 
+void TransactionState::setTrxTypeHint(
+    transaction::TrxType trxTypeHint) noexcept {
+  _trxTypeHint = trxTypeHint;
+}
+
+[[nodiscard]] transaction::TrxType TransactionState::getTrxTypeHint()
+    const noexcept {
+  return _trxTypeHint;
+}
+
 Result TransactionState::checkCollectionPermission(
     DataSourceId cid, std::string_view cname, AccessMode::Type accessType) {
   TRI_ASSERT(!cname.empty());
@@ -570,9 +581,4 @@ containers::FlatHashMap<ShardID, ServerID> TransactionState::whichReplicas(
     result.try_emplace(shard, it->second);
   }
   return result;
-}
-
-void TransactionState::setResourceMonitor(
-    arangodb::ResourceMonitor& resourceMonitor) {
-  _resourceMonitor = resourceMonitor;
 }

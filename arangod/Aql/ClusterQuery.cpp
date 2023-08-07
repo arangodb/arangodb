@@ -142,10 +142,8 @@ void ClusterQuery::prepareClusterQuery(
   _trx = AqlTransaction::create(
       _transactionContext, _collections, _queryOptions.transactionOptions,
       this->_trxTypeHint, std::move(inaccessibleCollections));
-  if (_trxTypeHint == transaction::TrxType::kAQL) {
-    _trx->state()->setResourceMonitor(_resourceMonitor);
-  }
-  // create the transaction object, but do not start it yet
+
+  // create the transaction object, but do not start the transaction yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
   if (_trx->state()->isDBServer()) {

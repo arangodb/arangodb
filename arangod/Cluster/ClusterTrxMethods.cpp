@@ -200,8 +200,7 @@ Result checkTransactionResult(TransactionId desiredTid,
     TransactionId tid{StringUtils::uint64(idRef.data(), idRef.size())};
     std::string_view statusRef = statusSlice.stringView();
     if (tid == desiredTid &&
-        transaction::statusFromString(statusRef.data(), statusRef.size()) ==
-            desStatus) {
+        transaction::statusFromString(statusRef) == desStatus) {
       // all good
       return r.reset();
     }

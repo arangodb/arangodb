@@ -435,10 +435,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
                                 _queryOptions.transactionOptions, _trxTypeHint,
                                 std::move(inaccessibleCollections));
 
-  if (_trxTypeHint == transaction::TrxType::kAQL) {
-    _trx->state()->setResourceMonitor(_resourceMonitor);
-  }
-
   // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
@@ -1026,10 +1022,6 @@ QueryResult Query::explain() {
     _trx =
         AqlTransaction::create(_transactionContext, _collections,
                                _queryOptions.transactionOptions, _trxTypeHint);
-
-    if (_trxTypeHint == transaction::TrxType::kAQL) {
-      _trx->state()->setResourceMonitor(_resourceMonitor);
-    }
 
     // we have an AST
     Result res = _trx->begin();

@@ -42,6 +42,7 @@
 #include "VocBase/voc-types.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -211,10 +212,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     return _hints.has(hint);
   }
 
-  [[nodiscard]] transaction::TrxType getTrxTypeHint() const noexcept {
-    return _trxTypeHint;
-  }
-
   using CommitCallback = std::function<void(TransactionState&)>;
   using BeforeCommitCallback = CommitCallback;
   using AfterCommitCallback = CommitCallback;
@@ -294,12 +291,13 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   }
 
   /// @brief servers already contacted
-  [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers() const {
+  [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers()
+      const noexcept {
     return _knownServers;
   }
 
-  [[nodiscard]] bool knowsServer(std::string_view uuid) const {
-    return _knownServers.find(uuid) != _knownServers.end();
+  [[nodiscard]] bool knowsServer(std::string_view uuid) const noexcept {
+    return _knownServers.contains(uuid);
   }
 
   /// @brief add a server to the known set
@@ -310,35 +308,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   void clearKnownServers() { _knownServers.clear(); }
 
-  void setResourceMonitor(ResourceMonitor& resourceMonitor);
-  [[nodiscard]] std::optional<std::reference_wrapper<ResourceMonitor>>&
-  getResourceMonitor() {
-    return _resourceMonitor;
-  }
-
-  /// @brief add the choice of replica for some more shards to the map
-  /// _chosenReplicas. Please note that the choice of replicas is not
-  /// arbitrary! If two collections have the same `distributeShardsLike`
-  /// (or one has the other as `distributeShardsLike`), then the choices for
-  /// corresponding shards must be made in a coherent fashion. Therefore:
-  /// Do not fill in this map yourself, always use this method for this.
-  /// The Nolock version does not acquire the _replicaMutex and is only
-  /// called from other, public methods in this class.
- private:
-  void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
-
-  template<typename Callbacks>
-  void applyCallbackImpl(Callbacks& callbacks) noexcept {
-    for (auto& callback : callbacks) {
-      try {
-        (*callback)(*this);
-      } catch (...) {
-      }
-    }
-    callbacks.clear();
-  }
-
- public:
   void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
 
   /// @brief lookup a replica choice for some shard, this basically looks
@@ -356,9 +325,9 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void acceptAnalyzersRevision(
       QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
-  void setTrxTypeHint(transaction::TrxType trxTypeHint) {
-    _trxTypeHint = trxTypeHint;
-  }
+  void setTrxTypeHint(transaction::TrxType trxTypeHint) noexcept;
+
+  [[nodiscard]] transaction::TrxType getTrxTypeHint() const noexcept;
 
   [[nodiscard]] QueryAnalyzerRevisions const& analyzersRevision()
       const noexcept {
@@ -402,6 +371,27 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 #endif
 
  private:
+  /// @brief add the choice of replica for some more shards to the map
+  /// _chosenReplicas. Please note that the choice of replicas is not
+  /// arbitrary! If two collections have the same `distributeShardsLike`
+  /// (or one has the other as `distributeShardsLike`), then the choices for
+  /// corresponding shards must be made in a coherent fashion. Therefore:
+  /// Do not fill in this map yourself, always use this method for this.
+  /// The Nolock version does not acquire the _replicaMutex and is only
+  /// called from other, public methods in this class.
+  void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
+
+  template<typename Callbacks>
+  void applyCallbackImpl(Callbacks& callbacks) noexcept {
+    for (auto& callback : callbacks) {
+      try {
+        (*callback)(*this);
+      } catch (...) {
+      }
+    }
+    callbacks.clear();
+  }
+
   /// @brief check if current user can access this collection
   Result checkCollectionPermission(DataSourceId cid, std::string_view cname,
                                    AccessMode::Type);
@@ -425,7 +415,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
 
-  transaction::TrxType _trxTypeHint = transaction::TrxType::kInternal;
+  transaction::TrxType _trxTypeHint;
 
   ServerState::RoleEnum const _serverRole;  /// role of the server
 
@@ -464,8 +454,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// transaction option allowDirtyReads is set.
   std::mutex _replicaMutex;  // protects access to _chosenReplicas
   std::unique_ptr<containers::FlatHashMap<ShardID, ServerID>> _chosenReplicas;
-  std::optional<std::reference_wrapper<ResourceMonitor>> _resourceMonitor =
-      std::nullopt;
 
   QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction = false;

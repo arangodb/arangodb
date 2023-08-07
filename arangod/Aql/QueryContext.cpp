@@ -56,6 +56,7 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase,
       _collections(&vocbase),
       _vocbase(vocbase),
       _execState(QueryExecutionState::ValueType::INVALID_STATE),
+      _trxTypeHint(trxTypeHint),
       _numRequests(0) {
   // aql analyzers should be able to run even during recovery when AqlFeature
   // is not started. And as optimization - these queries do not need
@@ -78,6 +79,12 @@ QueryContext::~QueryContext() {
   }
 }
 
+TRI_vocbase_t& QueryContext::vocbase() const noexcept { return _vocbase; }
+
+transaction::TrxType QueryContext::getTrxTypeHint() const noexcept {
+  return _trxTypeHint;
+}
+
 Collections& QueryContext::collections() {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION ||
              ClusterEngine::Mocking);
@@ -93,6 +100,8 @@ std::vector<std::string> QueryContext::collectionNames() const {
 
 /// @brief return the user that started the query
 std::string const& QueryContext::user() const { return StaticStrings::Empty; }
+
+QueryWarnings& QueryContext::warnings() { return _warnings; }
 
 /// @brief look up a graph either from our cache list or from the _graphs
 ///        collection

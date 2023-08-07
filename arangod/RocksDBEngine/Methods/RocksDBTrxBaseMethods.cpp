@@ -27,6 +27,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Gauge.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -41,59 +42,95 @@
 
 using namespace arangodb;
 
-// dummy implementation to track memory allocations during a
-// transaction. currently only counts memory. will be replaced
-// with an alternative implementation that will count memory
-// against different sinks (depending on transaction invocation type),
-// e.g. the current AQL query's ResourceMonitor instance or different
-// metrics for non-AQL transactions.
-class TrxMemoryTracker final : public RocksDBMethodsMemoryTracker {
+// abstract base class with common functionality for other memory usage
+// trackers
+class MemoryTrackerBase : public RocksDBMethodsMemoryTracker {
  public:
-  TrxMemoryTracker()
-      : _memoryUsage(0),
-        _memoryUsageAtBeginQuery(0),
-        _resourceMonitor(nullptr) {}
-  ~TrxMemoryTracker() {
+  MemoryTrackerBase(MemoryTrackerBase const&) = delete;
+  MemoryTrackerBase& operator=(MemoryTrackerBase const&) = delete;
+
+  MemoryTrackerBase() : _memoryUsage(0), _memoryUsageAtBeginQuery(0) {}
+
+  ~MemoryTrackerBase() {
     TRI_ASSERT(_memoryUsage == 0);
     TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
   }
 
   void reset() noexcept override {
-    // inform resource monitor
-    if (_resourceMonitor != nullptr) {
-      _resourceMonitor->decreaseMemoryUsage(_memoryUsage);
-    }
     _memoryUsage = 0;
     _memoryUsageAtBeginQuery = 0;
     _savePoints.clear();
   }
 
   void increaseMemoryUsage(std::uint64_t value) override {
-    // inform resource monitor first
-    if (_resourceMonitor != nullptr) {
-      // can throw
-      _resourceMonitor->increaseMemoryUsage(value);
-    }
     _memoryUsage += value;
   }
 
   void decreaseMemoryUsage(std::uint64_t value) noexcept override {
     TRI_ASSERT(_memoryUsage >= value);
     _memoryUsage -= value;
-
-    // inform resource monitor
-    if (_resourceMonitor != nullptr) {
-      _resourceMonitor->decreaseMemoryUsage(value);
-    }
   }
 
   void setSavePoint() override { _savePoints.push_back(_memoryUsage); }
 
   void rollbackToSavePoint() noexcept override {
-    auto value = _memoryUsage;
     TRI_ASSERT(!_savePoints.empty());
     _memoryUsage = _savePoints.back();
     _savePoints.pop_back();
+  }
+
+  void popSavePoint() noexcept override {
+    TRI_ASSERT(!_savePoints.empty());
+    _savePoints.pop_back();
+  }
+
+  std::uint64_t memoryUsage() const noexcept override { return _memoryUsage; }
+
+ protected:
+  std::uint64_t _memoryUsage;
+  std::uint64_t _memoryUsageAtBeginQuery;
+  containers::SmallVector<std::uint64_t, 4> _savePoints;
+};
+
+// memory usage tracker for AQL transactions that tracks memory
+// allocations during an AQL query. reports to the AQL query's
+// ResourceMonitor.
+class MemoryTrackerAqlQuery final : public MemoryTrackerBase {
+ public:
+  MemoryTrackerAqlQuery() : MemoryTrackerBase(), _resourceMonitor(nullptr) {}
+
+  ~MemoryTrackerAqlQuery() = default;
+
+  void reset() noexcept override {
+    // inform resource monitor first
+    if (_resourceMonitor != nullptr) {
+      _resourceMonitor->decreaseMemoryUsage(_memoryUsage);
+    }
+    // reset everything
+    MemoryTrackerBase::reset();
+  }
+
+  void increaseMemoryUsage(std::uint64_t value) override {
+    // inform resource monitor first
+    if (_resourceMonitor != nullptr) {
+      // can throw. if it does, no harm is done
+      _resourceMonitor->increaseMemoryUsage(value);
+    }
+    MemoryTrackerBase::increaseMemoryUsage(value);
+  }
+
+  void decreaseMemoryUsage(std::uint64_t value) noexcept override {
+    // inform resource monitor
+    if (_resourceMonitor != nullptr) {
+      _resourceMonitor->decreaseMemoryUsage(value);
+    }
+    MemoryTrackerBase::decreaseMemoryUsage(value);
+  }
+
+  void rollbackToSavePoint() noexcept override {
+    auto value = _memoryUsage;
+    // this will reset _memoryUsage
+    MemoryTrackerBase::rollbackToSavePoint();
 
     // inform resource monitor
     if (_resourceMonitor != nullptr) {
@@ -108,14 +145,8 @@ class TrxMemoryTracker final : public RocksDBMethodsMemoryTracker {
     }
   }
 
-  void popSavePoint() noexcept override {
-    TRI_ASSERT(!_savePoints.empty());
-    _savePoints.pop_back();
-  }
-
-  size_t memoryUsage() const noexcept override { return _memoryUsage; }
-
   void beginQuery(ResourceMonitor* resourceMonitor) override {
+    TRI_ASSERT(resourceMonitor != nullptr);
     TRI_ASSERT(_resourceMonitor == nullptr);
     TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
     _resourceMonitor = resourceMonitor;
@@ -125,6 +156,8 @@ class TrxMemoryTracker final : public RocksDBMethodsMemoryTracker {
   }
 
   void endQuery() noexcept override {
+    TRI_ASSERT(_resourceMonitor != nullptr);
+
     if (_resourceMonitor != nullptr) {
       if (_memoryUsage >= _memoryUsageAtBeginQuery) {
         _resourceMonitor->decreaseMemoryUsage(_memoryUsage -
@@ -135,66 +168,108 @@ class TrxMemoryTracker final : public RocksDBMethodsMemoryTracker {
       }
       _memoryUsage = _memoryUsageAtBeginQuery;
       _memoryUsageAtBeginQuery = 0;
+      _resourceMonitor = nullptr;
     }
-    _resourceMonitor = nullptr;
   }
 
  private:
-  std::uint64_t _memoryUsage;
-  std::uint64_t _memoryUsageAtBeginQuery;
   ResourceMonitor* _resourceMonitor;
-  containers::SmallVector<std::uint64_t, 4> _savePoints;
+};
+
+// memory usage tracker for transactions that update a particular
+// memory usage metric. currently used for all transactions that
+// are not top-level AQL queries, and for internal transactions
+// (transactions that were not explicitly initiated by users).
+class MemoryTrackerMetric final : public MemoryTrackerBase {
+ public:
+  MemoryTrackerMetric(metrics::Gauge<std::uint64_t>* metric)
+      : MemoryTrackerBase(), _metric(metric) {
+    TRI_ASSERT(_metric != nullptr);
+  }
+
+  ~MemoryTrackerMetric() = default;
+
+  void reset() noexcept override {
+    // inform metric
+    _metric->fetch_sub(_memoryUsage);
+    // reset everything
+    MemoryTrackerBase::reset();
+  }
+
+  void increaseMemoryUsage(std::uint64_t value) override {
+    // both of these will not throw, so we can execute them
+    // in any order
+    _metric->fetch_add(value);
+    MemoryTrackerBase::increaseMemoryUsage(value);
+  }
+
+  void decreaseMemoryUsage(std::uint64_t value) noexcept override {
+    _metric->fetch_sub(value);
+    MemoryTrackerBase::decreaseMemoryUsage(value);
+  }
+
+  void rollbackToSavePoint() noexcept override {
+    auto value = _memoryUsage;
+    // this will reset _memoryUsage
+    MemoryTrackerBase::rollbackToSavePoint();
+
+    if (value > _memoryUsage) {
+      // this should be the usual case, that after popping a
+      // SavePoint we will use _less_ memory
+      _metric->fetch_sub(value - _memoryUsage);
+    } else {
+      // somewhat unexpected case
+      _metric->fetch_add(_memoryUsage - value);
+    }
+  }
+
+  void beginQuery(ResourceMonitor* /*resourceMonitor*/) override {
+    // note: resourceMonitor can be a nullptr when we are called
+    // from RocksDBCollection::truncateWithRemovals()
+    TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
+    _memoryUsageAtBeginQuery = _memoryUsage;
+  }
+
+  void endQuery() noexcept override {
+    if (_memoryUsage >= _memoryUsageAtBeginQuery) {
+      _metric->fetch_sub(_memoryUsage - _memoryUsageAtBeginQuery);
+    } else {
+      _metric->fetch_add(_memoryUsageAtBeginQuery - _memoryUsage);
+    }
+    _memoryUsage = _memoryUsageAtBeginQuery;
+    _memoryUsageAtBeginQuery = 0;
+  }
+
+ private:
+  metrics::Gauge<std::uint64_t>* _metric;
 };
 
 RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
     RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
     rocksdb::TransactionDB* db)
-    : RocksDBTransactionMethods(state),
-      _callback(callback),
-      _db(db),
-      _resourceMonitor(_state->getResourceMonitor()) {
-  if (_state->getTrxTypeHint() == transaction::TrxType::kREST) {
-    LOG_DEVEL << "REST";
-  } else if (_state->getTrxTypeHint() == transaction::TrxType::kAQL) {
-    LOG_DEVEL << "AQL";
-  } else if (_state->getTrxTypeHint() == transaction::TrxType::kInternal) {
-    LOG_DEVEL << "INTERNAL";
-  } else {
-    LOG_DEVEL << "UNDEFINED";
+    : RocksDBTransactionMethods(state), _callback(callback), _db(db) {
+  TRI_ASSERT(_state != nullptr);
+
+  switch (_state->getTrxTypeHint()) {
+    case transaction::TrxType::kREST:
+      _memoryTracker = std::make_unique<MemoryTrackerMetric>(
+          &state->statistics()._restTransactionsMemoryUsage);
+      break;
+    case transaction::TrxType::kAQL:
+      TRI_ASSERT(!_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
+      _memoryTracker = std::make_unique<MemoryTrackerAqlQuery>();
+      break;
+    case transaction::TrxType::kInternal:
+      _memoryTracker = std::make_unique<MemoryTrackerMetric>(
+          &state->statistics()._internalTransactionsMemoryUsage);
+      break;
   }
-  // auto resourceMonitor = state->getResourceMonitor();
-  // refine classification of transactions with hint by mapping
-  /*
-  if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-      _state->getTrxTypeHint() == transaction::TrxType::kREST) {
-    _memoryTracker = std::make_unique<
-        MemoryUsageTracker>(static_cast<metrics::Gauge<uint64_t>*>(
-        _state->vocbase().server().getFeature<metrics::MetricsFeature>().get(
-            {"arangodb_transaction_memory_rest", ""})));
-  } else if (_state->getTrxTypeHint() == transaction::TrxType::kAQL) {
-    TRI_ASSERT(resourceMonitor.has_value());
-    _memoryTracker = std::make_unique<AqlMemoryUsageTracker>(
-        static_cast<metrics::Gauge<uint64_t>*>(
-            _state->vocbase()
-                .server()
-                .getFeature<metrics::MetricsFeature>()
-                .get({"arangodb_aql_global_memory_usage", ""})),
-        resourceMonitor.value().get());
-  } else {
-    TRI_ASSERT(_state->getTrxTypeHint() ==
-               transaction::TrxType::kInternal);
-    _memoryTracker = std::make_unique<
-        MemoryUsageTracker>(static_cast<metrics::Gauge<uint64_t>*>(
-        _state->vocbase().server().getFeature<metrics::MetricsFeature>().get(
-            {"arangodb_transaction_memory_internal", ""})));
-  }
-  */
+
+  TRI_ASSERT(_memoryTracker != nullptr);
 
   TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
-
-  _memoryTracker = std::make_unique<TrxMemoryTracker>();
 }
 
 RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() {

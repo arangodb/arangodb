@@ -80,7 +80,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
         QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
         QueryOptions options, std::shared_ptr<SharedQueryState> sharedState,
-        transaction::TrxType trxTypeHint = transaction::TrxType::kInternal);
+        transaction::TrxType trxTypeHint);
 
   /// Used to construct a full query. the constructor is protected to ensure
   /// that call sites only create Query objects using the `create` factory
@@ -88,7 +88,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
         QueryOptions options, Scheduler* scheduler,
-        transaction::TrxType trxTypeHint = transaction::TrxType::kInternal);
+        transaction::TrxType trxTypeHint);
 
   ~Query() override;
 

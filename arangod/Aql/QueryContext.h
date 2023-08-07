@@ -80,12 +80,12 @@ class QueryContext {
   }
 
   /// @brief get the vocbase
-  inline TRI_vocbase_t& vocbase() const { return _vocbase; }
+  TRI_vocbase_t& vocbase() const noexcept;
+
+  transaction::TrxType getTrxTypeHint() const noexcept;
 
   Collections& collections();
   Collections const& collections() const;
-
-  transaction::TrxType getTrxTypeHint() { return _trxTypeHint; }
 
   /// @brief return the names of collections used in the query
   std::vector<std::string> collectionNames() const;
@@ -94,7 +94,7 @@ class QueryContext {
   virtual std::string const& user() const;
 
   /// warnings access is thread safe
-  QueryWarnings& warnings() { return _warnings; }
+  QueryWarnings& warnings();
 
   /// @brief look up a graph in the _graphs collection
   ResultT<graph::Graph const*> lookupGraphByName(std::string const& name);
@@ -163,8 +163,6 @@ class QueryContext {
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;
 
-  transaction::TrxType _trxTypeHint;
-
   TRI_voc_tick_t const _queryId;
 
   /// @brief thread-safe query warnings collector
@@ -187,6 +185,8 @@ class QueryContext {
   /// @brief current state the query is in (used for profiling and error
   /// messages)
   std::atomic<QueryExecutionState::ValueType> _execState;
+
+  transaction::TrxType _trxTypeHint;
 
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines
