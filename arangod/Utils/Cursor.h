@@ -76,7 +76,7 @@ class Cursor {
  public:
   CursorId id() const noexcept { return _id; }
 
-  inline size_t batchSize() const noexcept { return _batchSize; }
+  size_t batchSize() const noexcept { return _batchSize; }
 
   bool hasCount() const noexcept { return _hasCount; }
 
