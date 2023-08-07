@@ -1,6 +1,8 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
+* Updated ArangoDB Starter to 0.17.0.
+
 * Updated arangosync to v2.19.1.
 
 * ES-1566: instead of potentially accessing a nullptr inside graph traversal
