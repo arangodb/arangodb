@@ -349,6 +349,7 @@ static Result fillIndex(
   ro.snapshot = snap;
   ro.prefix_same_as_start = true;
   ro.iterate_upper_bound = &upper;
+  ro.adaptive_readahead = true;
 
   rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
