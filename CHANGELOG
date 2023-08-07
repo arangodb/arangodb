@@ -16,6 +16,8 @@ devel
   memory limit settings, turn on intermediate commits for the query, or adjust
   the query so that it uses less memory.
 
+* Updated arangosync to v2.19.0.
+
 * Remove long-deprecated graph compatibility functions, which were implemented
   as JavaScript user-defined AQL functions since ArangoDB 3.0:
 
