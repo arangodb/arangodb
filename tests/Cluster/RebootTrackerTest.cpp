@@ -33,6 +33,7 @@
 #include "Logger/Logger.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -817,3 +818,171 @@ TEST_F(RebootTrackerTest, two_servers_call_interleaved) {
   waitForSchedulerEmpty();
   EXPECT_EQ(2, numCalled) << "Callback must not be called during destruction";
 }
+
+class FuzzyRebootTrackerTest
+    : public ::testing::Test,
+      public LogSuppressor<Logger::CLUSTER, LogLevel::WARN> {
+ protected:
+// MSVC new/malloc only guarantees 8 byte alignment, but SupervisedScheduler
+// needs 64. Disable warning:
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning(disable : 4316)  // Object allocated on the heap may not be
+                                 // aligned for this type
+#endif
+  FuzzyRebootTrackerTest()
+      : mockApplicationServer(),
+        scheduler(std::make_unique<SupervisedScheduler>(
+            mockApplicationServer.server(), 2, 64, 128, 1024 * 1024, 4096, 4096,
+            128, 0.0)) {}
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
+
+  MockRestServer mockApplicationServer;
+  std::unique_ptr<SupervisedScheduler> scheduler;
+
+  // ApplicationServer needs to be prepared in order for the scheduler to start
+  // threads.
+
+  void SetUp() override { scheduler->start(); }
+  void TearDown() override { scheduler->shutdown(); }
+
+  bool schedulerEmpty() const {
+    auto stats = scheduler->queueStatistics();
+
+    return stats._queued == 0 && stats._working == 0;
+  }
+
+  void waitForSchedulerEmpty() const {
+    while (!schedulerEmpty()) {
+      std::this_thread::yield();
+    }
+  }
+
+
+  struct Simulation {
+    Simulation() {
+      init();
+      // Randomly draw a seed
+      _seed = RandomGenerator::interval(UINT64_MAX);
+      // Retain the seed for reporting
+      RandomGenerator::seed(_seed);
+    }
+
+    Simulation(uint64_t seed) : _seed{seed} {
+      init();
+      RandomGenerator::seed(_seed);
+    }
+
+   private:
+    void init() {
+      RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
+      RandomGenerator::ensureDeviceIsInitialized();
+    }
+
+    uint64_t _seed;
+  };
+
+  struct Action {};
+
+    struct ActionReboot : public Action {
+        ServerID server;
+        RebootId rebootId;
+    };
+
+    struct ActionScheduleCallback : public Action {
+        ServerID server;
+        RebootId rebootId;
+        std::function<void()> callback;
+    };
+
+    struct ActionCancelCallback : public Action {
+        ServerID server;
+        RebootId rebootId;
+    };
+
+    struct ActionValidate : public Action {
+    };
+};
+
+TEST_F(FuzzyRebootTrackerTest, "simulate_cluster") {
+
+}
+
+#if true
+TEST_F(RebootTrackerTest, fuzzy_test) {
+    auto state = containers::FlatHashMap<ServerID, ServerHealthState>{
+        {serverA, ServerHealthState{.rebootId = RebootId{0},
+                                    .status = ServerHealth::kGood}}};
+
+    std::unordered_map<uint64_t, uint64_t> expectedCalls{};
+    std::unordered_map<uint64_t, uint64_t> receivedCalls{};
+    uint64_t currentRebootId = 0;
+    uint64_t maxRebootId = 10;
+    uint64_t testScaling = 1000;
+    uint64_t chanceForCompletion = 4; // out of 10 requests
+
+    {
+        RebootTracker rebootTracker{scheduler.get()};
+        std::vector<std::pair<uint64_t, CallbackGuard>> guards{};
+        // Set state to { serverA => 1 }
+        rebootTracker.updateServerState(state);
+
+        auto registerRandomCallback = [&]() {
+          uint64_t myRebootId{std::rand() % maxRebootId + currentRebootId};
+          auto callback = [&receivedCalls, myRebootId=myRebootId]() {
+            receivedCalls[myRebootId]++; };
+          expectedCalls[myRebootId]++;
+          guards.emplace_back(std::make_pair(
+              myRebootId,
+              rebootTracker.callMeOnChange({serverA, RebootId{myRebootId}}, callback, "")));
+        };
+
+        auto unregisterRandomCallback = [&]() {
+          if (guards.empty()) {
+            return;
+          }
+
+          auto index = std::rand() % guards.size();
+          auto const& rebootId = guards[index].first;
+          if (rebootId >= currentRebootId) {
+            // If we delete before we are triggered by reboot tracker
+            // Then this callback will not be triggered
+            expectedCalls[rebootId]--;
+          }
+          guards.erase(guards.begin() + index);
+        };
+
+        while (currentRebootId < maxRebootId) {
+      auto randomNumber = std::rand() % (10 * testScaling);
+      if (randomNumber == 0) {
+        LOG_DEVEL << "Simulate a reboot";
+        currentRebootId++;
+        state.insert_or_assign(serverA,
+                               ServerHealthState{.rebootId = RebootId{currentRebootId},
+                                                 .status = ServerHealth::kGood});
+        rebootTracker.updateServerState(state);
+        waitForSchedulerEmpty();
+        for (uint64_t rebootId = 0; rebootId < maxRebootId; ++rebootId) {
+          if (rebootId < currentRebootId) {
+            ASSERT_EQ(receivedCalls[rebootId], expectedCalls[rebootId])
+                << "Checking RebootId " << rebootId
+                << " for current: " << currentRebootId
+                << " received unexpected amount of calls";
+          } else {
+            ASSERT_EQ(receivedCalls[rebootId], 0)
+                << "Should not automatically trigger higher reboot ids, "
+                   "checking:"
+                << rebootId << " current: " << currentRebootId;
+          }
+        }
+      } else if (randomNumber < chanceForCompletion * testScaling) {
+        unregisterRandomCallback();
+      } else {
+        registerRandomCallback();
+      }
+        }
+    }
+}
+#endif
