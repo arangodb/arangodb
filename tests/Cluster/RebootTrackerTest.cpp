@@ -860,54 +860,96 @@ class FuzzyRebootTrackerTest
     }
   }
 
+  // TODO: Implement those actions.
+  // i envison a "run" method that has specific implementation for every action.
+  // Maybe this Run method requires some Input (e.g. a reference to the list fo callbacks)
+  struct Action {};
+
+  struct ActionReboot : public Action {
+    ServerID server;
+    RebootId rebootId;
+  };
+
+  struct ActionScheduleCallback : public Action {
+    ServerID server;
+    RebootId rebootId;
+    std::function<void()> callback;
+  };
+
+  struct ActionCancelCallback : public Action {
+    ServerID server;
+    RebootId rebootId;
+  };
+
+  struct ActionValidate : public Action {};
 
   struct Simulation {
-    Simulation() {
-      init();
+    Simulation(double chanceToReboot, double chanceToUnregister)
+         {
+      init(chanceToReboot, chanceToUnregister);
       // Randomly draw a seed
-      _seed = RandomGenerator::interval(UINT64_MAX);
+      _seed = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
       // Retain the seed for reporting
       RandomGenerator::seed(_seed);
     }
 
-    Simulation(uint64_t seed) : _seed{seed} {
-      init();
+    Simulation(double chanceToReboot, double chanceToUnregister, uint64_t seed)
+        :
+        _seed{seed} {
+      init(chanceToReboot, chanceToUnregister);
       RandomGenerator::seed(_seed);
     }
 
-   private:
-    void init() {
-      RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
-      RandomGenerator::ensureDeviceIsInitialized();
+    auto nextAction() -> Action {
+      auto rand = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
+      if (rand < _belowToReboot) {
+        // TODO Randomize Action
+        // TODO: Increment rebootId per server
+        return ActionReboot {
+          .server = ServerID{"PRMR_A"}, .rebootId = RebootId{1}
+        };
+      }
+      if (rand < _belowToUnregister) {
+        // TODO: Randomze Action, we actually need to pick a specific callback here
+        return ActionCancelCallback {
+            .server = ServerID{"PRMR_A"}, .rebootId = RebootId{1}
+        };
+      }
+      // TODO: Randomize Server Selection and RebootId.
+      // Define desired callback.
+      return ActionScheduleCallback{
+        .server = ServerID{"PRMR_A"}, .rebootId = RebootId{1}, .callback = [](){}
+      };
     }
 
+   private:
+    void init(double chanceToReboot, double chanceToUnregister) {
+      RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
+      RandomGenerator::ensureDeviceIsInitialized();
+      _belowToReboot = std::min(
+          1ul, static_cast<uint64_t>(
+                   chanceToReboot *
+                   static_cast<double>(std::numeric_limits<uint64_t>::max())));
+      _belowToUnregister = std::min(
+          2ul, static_cast<uint64_t>(
+                   (chanceToReboot + chanceToUnregister) *
+                   static_cast<double>(std::numeric_limits<uint64_t>::max())));
+    }
+
+    uint64_t _belowToReboot;
+    uint64_t _belowToUnregister;
     uint64_t _seed;
   };
-
-  struct Action {};
-
-    struct ActionReboot : public Action {
-        ServerID server;
-        RebootId rebootId;
-    };
-
-    struct ActionScheduleCallback : public Action {
-        ServerID server;
-        RebootId rebootId;
-        std::function<void()> callback;
-    };
-
-    struct ActionCancelCallback : public Action {
-        ServerID server;
-        RebootId rebootId;
-    };
-
-    struct ActionValidate : public Action {
-    };
 };
 
 TEST_F(FuzzyRebootTrackerTest, "simulate_cluster") {
-
+  uint64_t nrActions = 1000;
+  Simulation sim{0.001, 0.45};
+  for (uint64_t i = 0; i < nrActions; ++i) {
+    sim.nextAction();
+    // TODO Run the Action
+    // TODO: Validate from time to time e.g. every 1000 actions.
+  }
 }
 
 #if true
