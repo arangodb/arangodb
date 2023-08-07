@@ -861,7 +861,7 @@ class FuzzyRebootTrackerTest
   }
 
   // TODO: Implement those actions.
-  // i envison a "run" method that has specific implementation for every action.
+  // i envision a "run" method that has specific implementation for every action.
   // Maybe this Run method requires some Input (e.g. a reference to the list fo callbacks)
   struct Action {};
 
@@ -934,11 +934,20 @@ class FuzzyRebootTrackerTest
           2ul, static_cast<uint64_t>(
                    (chanceToReboot + chanceToUnregister) *
                    static_cast<double>(std::numeric_limits<uint64_t>::max())));
+
+
+      for (auto const& name: {"PRMR_A", "PRMR_B", "PRMR_C", "PRMR_D", "PRMR_E"}) {
+        _servers.push_back(ServerID{name});
+        _state.insert({ServerID{name}, ServerHealthState{.rebootId = RebootId{0},
+                              .status = ServerHealth::kGood}});
+      }
     }
 
     uint64_t _belowToReboot;
     uint64_t _belowToUnregister;
     uint64_t _seed;
+    std::vector<ServerID> _servers{};
+    containers::FlatHashMap<ServerID, ServerHealthState> _state{};
   };
 };
 
