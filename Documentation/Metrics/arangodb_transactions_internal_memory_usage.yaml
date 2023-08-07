@@ -1,0 +1,21 @@
+name: arangodb_transactions_internal_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Total memory usage of transactions (excluding top-level AQL queries).
+unit: bytes
+type: gauge
+category: Transactions
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total memory usage of currently ongoing transactions that were started
+  by end users. 
+  This includes transactions explicitly started via the transactions API, 
+  but also auto-commit single and multi-document operations that were not 
+  explicitly wrapped into a transaction by the end user.
+  Excluded from this metric are top-level AQL queries, whose memory usage
+  is tracked in a seperate metric `arangodb_aql_global_memory_usage`. 

@@ -1,0 +1,20 @@
+name: arangodb_transactions_rest_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Total memory usage of internal transactions.
+unit: bytes
+type: gauge
+category: Transactions
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total memory usage of currently ongoing internal transactions, i.e.
+  transactions that were not explicitly started by an end user.
+  Internal transactions include ArangoDB-internal maintenance queries,
+  queries to purge data from TTL indexes, periodic queries for
+  collecting and aggregating statistics, for maintaining the state of
+  Foxx, and transactions internally used by shard synchronization.
