@@ -865,10 +865,12 @@ class FuzzyRebootTrackerTest
 
   struct Counters {
     void addReceived(ServerID server, RebootId rebootId) {
+      std::lock_guard guard{_receivedMutex};
       _receivedCalls[server][rebootId.value()]++;
     }
 
     void addExpected(ServerID server, RebootId rebootId) {
+      std::lock_guard guard{_expectedMutex};
       _expectedCalls[server][rebootId.value()]++;
     }
 
@@ -876,6 +878,7 @@ class FuzzyRebootTrackerTest
         ServerID server, RebootId rebootId,
         containers::FlatHashMap<ServerID, ServerHealthState> const& state) {
       if (rebootId >= state.find(server)->second.rebootId) {
+        std::lock_guard guard{_expectedMutex};
         // If we delete before we are triggered by reboot tracker
         // Then this callback will not be triggered
         TRI_ASSERT(_expectedCalls[server][rebootId.value()] > 0);
@@ -884,6 +887,11 @@ class FuzzyRebootTrackerTest
     }
 
     void validate(containers::FlatHashMap<ServerID, ServerHealthState> const& state) {
+      // This actually waits for scheduler to be cleared. So in Theory there should
+      // be no race here.
+      // It's the only one that get's both mutexes, so order does not matter.
+      std::lock_guard guardReceived{_receivedMutex};
+      std::lock_guard guardExpected{_expectedMutex};
       for (auto const& [server, expectedReboots] : _expectedCalls) {
         auto const& receivedReboots = _receivedCalls[server];
         for (auto const& [rebootId, expectedCalls] : expectedReboots) {
@@ -904,8 +912,10 @@ class FuzzyRebootTrackerTest
     }
 
    private:
+    std::mutex _expectedMutex;
     std::unordered_map<ServerID, std::unordered_map<uint64_t, uint64_t>>
         _expectedCalls{};
+    std::mutex _receivedMutex;
     std::unordered_map<ServerID, std::unordered_map<uint64_t, uint64_t>>
         _receivedCalls{};
   };
@@ -1062,7 +1072,7 @@ class FuzzyRebootTrackerTest
 };
 
 TEST_F(FuzzyRebootTrackerTest, simulate_cluster) {
-  uint64_t nrActions = 100000;
+  uint64_t nrActions = 10000000;
   RebootTracker rebootTracker{scheduler.get()};
   Simulation sim{0.001, 0.45};
   Counters counters{};
@@ -1076,80 +1086,6 @@ TEST_F(FuzzyRebootTrackerTest, simulate_cluster) {
       counters.validate(sim.state());
     }
   }
+  waitForSchedulerEmpty();
+  counters.validate(sim.state());
 }
-
-#if true
-TEST_F(RebootTrackerTest, fuzzy_test) {
-    auto state = containers::FlatHashMap<ServerID, ServerHealthState>{
-        {serverA, ServerHealthState{.rebootId = RebootId{0},
-                                    .status = ServerHealth::kGood}}};
-
-    std::unordered_map<uint64_t, uint64_t> expectedCalls{};
-    std::unordered_map<uint64_t, uint64_t> receivedCalls{};
-    uint64_t currentRebootId = 0;
-    uint64_t maxRebootId = 10;
-    uint64_t testScaling = 1000;
-    uint64_t chanceForCompletion = 4; // out of 10 requests
-
-    {
-        RebootTracker rebootTracker{scheduler.get()};
-        std::vector<std::pair<uint64_t, CallbackGuard>> guards{};
-        // Set state to { serverA => 1 }
-        rebootTracker.updateServerState(state);
-
-        auto registerRandomCallback = [&]() {
-          uint64_t myRebootId{std::rand() % maxRebootId + currentRebootId};
-          auto callback = [&receivedCalls, myRebootId=myRebootId]() {
-            receivedCalls[myRebootId]++; };
-          expectedCalls[myRebootId]++;
-          guards.emplace_back(std::make_pair(
-              myRebootId,
-              rebootTracker.callMeOnChange({serverA, RebootId{myRebootId}}, callback, "")));
-        };
-
-        auto unregisterRandomCallback = [&]() {
-          if (guards.empty()) {
-            return;
-          }
-
-          auto index = std::rand() % guards.size();
-          auto const& rebootId = guards[index].first;
-          if (rebootId >= currentRebootId) {
-            // If we delete before we are triggered by reboot tracker
-            // Then this callback will not be triggered
-            expectedCalls[rebootId]--;
-          }
-          guards.erase(guards.begin() + index);
-        };
-
-        while (currentRebootId < maxRebootId) {
-      auto randomNumber = std::rand() % (10 * testScaling);
-      if (randomNumber == 0) {
-        currentRebootId++;
-        state.insert_or_assign(serverA,
-                               ServerHealthState{.rebootId = RebootId{currentRebootId},
-                                                 .status = ServerHealth::kGood});
-        rebootTracker.updateServerState(state);
-        waitForSchedulerEmpty();
-        for (uint64_t rebootId = 0; rebootId < maxRebootId; ++rebootId) {
-          if (rebootId < currentRebootId) {
-            ASSERT_EQ(receivedCalls[rebootId], expectedCalls[rebootId])
-                << "Checking RebootId " << rebootId
-                << " for current: " << currentRebootId
-                << " received unexpected amount of calls";
-          } else {
-            ASSERT_EQ(receivedCalls[rebootId], 0)
-                << "Should not automatically trigger higher reboot ids, "
-                   "checking:"
-                << rebootId << " current: " << currentRebootId;
-          }
-        }
-      } else if (randomNumber < chanceForCompletion * testScaling) {
-        unregisterRandomCallback();
-      } else {
-        registerRandomCallback();
-      }
-        }
-    }
-}
-#endif
