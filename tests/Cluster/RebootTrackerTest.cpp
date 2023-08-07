@@ -860,32 +860,94 @@ class FuzzyRebootTrackerTest
     }
   }
 
+
+  struct Simulation;
+
+  struct Counters {
+    void addReceived(ServerID server, RebootId rebootId) {}
+
+    void addExpected(ServerID server, RebootId rebootId) {}
+
+    void addCancelled(ServerID server, RebootId rebootId) {}
+  };
+
+  struct GuardedCallback{
+    ServerID server;
+    RebootId rebootId;
+    CallbackGuard guard;
+  };
+
   // TODO: Implement those actions.
   // i envision a "run" method that has specific implementation for every action.
   // Maybe this Run method requires some Input (e.g. a reference to the list fo callbacks)
-  struct Action {};
+  struct Action {
+    virtual ~Action() = default;
+    virtual void run(RebootTracker& tracker, Counters& counters) = 0;
+  };
 
   struct ActionReboot : public Action {
-    ServerID server;
-    RebootId rebootId;
+    containers::FlatHashMap<ServerID, ServerHealthState> state;
+
+    ActionReboot(containers::FlatHashMap<ServerID, ServerHealthState>  const& state) : state(state) {}
+
+    ~ActionReboot() override = default;
+
+    void run(RebootTracker& tracker, Counters& counters) override {
+      tracker.updateServerState(state);
+    }
   };
 
   struct ActionScheduleCallback : public Action {
     ServerID server;
     RebootId rebootId;
-    std::function<void()> callback;
+    std::vector<GuardedCallback>& guards;
+
+    ActionScheduleCallback(ServerID pserver, RebootId prebootId,
+                           std::vector<GuardedCallback>& pguards)
+        : server(pserver), rebootId(prebootId), guards(pguards) {}
+
+    void run(RebootTracker& tracker, Counters& counters) override {
+      auto callback = [&counters, s = this->server, r = this->rebootId]() {
+        counters.addReceived(s, r);
+      };
+      counters.addExpected(server, rebootId);
+      LOG_DEVEL << "Add callback for " << server << " "
+                << rebootId;
+      guards.emplace_back(GuardedCallback{
+          server, rebootId,
+          tracker.callMeOnChange({server, rebootId}, callback, "")});
+    }
   };
 
   struct ActionCancelCallback : public Action {
-    ServerID server;
-    RebootId rebootId;
+    uint64_t indexToUnregister;
+    std::vector<GuardedCallback>& guards;
+
+    ActionCancelCallback(uint64_t pindexToUnregister,
+                         std::vector<GuardedCallback>& pguards)
+        : indexToUnregister(pindexToUnregister), guards(pguards) {}
+
+    void run(RebootTracker& tracker, Counters& counters) override {
+      {
+        auto const& toDelete = guards.at(indexToUnregister);
+        // toDelete is invalidated with following erase
+        LOG_DEVEL << "Delete callback for " << toDelete.server << " "
+                  << toDelete.rebootId;
+        counters.addCancelled(toDelete.server, toDelete.rebootId);
+      }
+      guards.erase(guards.begin() + indexToUnregister);
+    }
   };
 
-  struct ActionValidate : public Action {};
+  struct ActionValidate : public Action {
+    void run(RebootTracker& tracker, Counters& counters) override {
+LOG_DEVEL << "Validating";
+    }
+  };
+
 
   struct Simulation {
-    Simulation(double chanceToReboot, double chanceToUnregister)
-         {
+    Simulation(double chanceToReboot, double chanceToUnregister) {
       init(chanceToReboot, chanceToUnregister);
       // Randomly draw a seed
       _seed = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
@@ -894,43 +956,49 @@ class FuzzyRebootTrackerTest
     }
 
     Simulation(double chanceToReboot, double chanceToUnregister, uint64_t seed)
-        :
-        _seed{seed} {
+        : _seed{seed} {
       init(chanceToReboot, chanceToUnregister);
       RandomGenerator::seed(_seed);
     }
 
-    auto nextAction() -> Action {
+    auto nextAction() -> std::unique_ptr<Action> {
       auto rand = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
       if (rand < _belowToReboot) {
-        // TODO Randomize Action
-        // TODO: Increment rebootId per server
-        return ActionReboot {
-          .server = ServerID{"PRMR_A"}, .rebootId = RebootId{1}
-        };
+        auto serverIndex = RandomGenerator::interval(_servers.size() - 1);
+        auto server = _servers[serverIndex];
+        RebootId nextValue{_state.find(server)->second.rebootId.value() + 1};
+        _state.find(server)->second.rebootId = nextValue;
+        LOG_DEVEL << "Rebooting " << server << " to " << nextValue;
+        return std::make_unique<ActionReboot>(_state);
       }
-      if (rand < _belowToUnregister) {
-        // TODO: Randomze Action, we actually need to pick a specific callback here
-        return ActionCancelCallback {
-            .server = ServerID{"PRMR_A"}, .rebootId = RebootId{1}
-        };
+      if (rand < _belowToUnregister && !_guards.empty()) {
+        auto indexToUnregister = RandomGenerator::interval(_guards.size() - 1);
+        return std::make_unique<ActionCancelCallback>(
+            indexToUnregister, _guards
+        );
       }
       // TODO: Randomize Server Selection and RebootId.
       // Define desired callback.
-      return ActionScheduleCallback{
-        .server = ServerID{"PRMR_A"}, .rebootId = RebootId{1}, .callback = [](){}
-      };
+      auto serverIndex = RandomGenerator::interval(_servers.size() - 1);
+      auto server = _servers[serverIndex];
+      auto rebootId = RandomGenerator::interval(getMaximumRebootId());
+      return std::make_unique<ActionScheduleCallback>(
+          server, RebootId{rebootId}, _guards);
+    }
+
+    containers::FlatHashMap<ServerID, ServerHealthState> state() const {
+      return _state;
     }
 
    private:
     void init(double chanceToReboot, double chanceToUnregister) {
       RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
       RandomGenerator::ensureDeviceIsInitialized();
-      _belowToReboot = std::min(
+      _belowToReboot = std::max(
           1ul, static_cast<uint64_t>(
                    chanceToReboot *
                    static_cast<double>(std::numeric_limits<uint64_t>::max())));
-      _belowToUnregister = std::min(
+      _belowToUnregister = std::max(
           2ul, static_cast<uint64_t>(
                    (chanceToReboot + chanceToUnregister) *
                    static_cast<double>(std::numeric_limits<uint64_t>::max())));
@@ -943,21 +1011,39 @@ class FuzzyRebootTrackerTest
       }
     }
 
+    uint64_t getMaximumRebootId() const {
+      uint64_t result = 0;
+      for (auto const& [_, health] : _state) {
+        if (result < health.rebootId.value()) {
+          result = health.rebootId.value();
+        }
+      }
+      // Allow a chance to go higher
+      return result + 2;
+    }
+
     uint64_t _belowToReboot;
     uint64_t _belowToUnregister;
     uint64_t _seed;
     std::vector<ServerID> _servers{};
     containers::FlatHashMap<ServerID, ServerHealthState> _state{};
+    std::vector<GuardedCallback> _guards{};
   };
 };
 
-TEST_F(FuzzyRebootTrackerTest, "simulate_cluster") {
+TEST_F(FuzzyRebootTrackerTest, simulate_cluster) {
   uint64_t nrActions = 1000;
+  RebootTracker rebootTracker{scheduler.get()};
   Simulation sim{0.001, 0.45};
+  Counters counters{};
+  rebootTracker.updateServerState(sim.state());
   for (uint64_t i = 0; i < nrActions; ++i) {
-    sim.nextAction();
-    // TODO Run the Action
-    // TODO: Validate from time to time e.g. every 1000 actions.
+    auto action = sim.nextAction();
+    action->run(rebootTracker, counters);
+
+    if (i % 100 == 0) {
+      ActionValidate{}.run(rebootTracker, counters);
+    }
   }
 }
 
