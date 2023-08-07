@@ -29,7 +29,8 @@ namespace arangodb::tests::mocks {
 struct MockQuery final : aql::Query {
   MockQuery(std::shared_ptr<transaction::Context> const& ctx,
             aql::QueryString const& queryString)
-      : aql::Query{ctx, queryString, nullptr, {}, nullptr} {}
+      : aql::Query{ctx, queryString, nullptr,
+                   {},  nullptr,     transaction::TrxType::kInternal} {}
 
   ~MockQuery() final {
     // Destroy this query, otherwise it's still
