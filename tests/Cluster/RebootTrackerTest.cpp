@@ -864,11 +864,50 @@ class FuzzyRebootTrackerTest
   struct Simulation;
 
   struct Counters {
-    void addReceived(ServerID server, RebootId rebootId) {}
+    void addReceived(ServerID server, RebootId rebootId) {
+      _receivedCalls[server][rebootId.value()]++;
+    }
 
-    void addExpected(ServerID server, RebootId rebootId) {}
+    void addExpected(ServerID server, RebootId rebootId) {
+      _expectedCalls[server][rebootId.value()]++;
+    }
 
-    void addCancelled(ServerID server, RebootId rebootId) {}
+    void addCancelled(
+        ServerID server, RebootId rebootId,
+        containers::FlatHashMap<ServerID, ServerHealthState> const& state) {
+      if (rebootId >= state.find(server)->second.rebootId) {
+        // If we delete before we are triggered by reboot tracker
+        // Then this callback will not be triggered
+        TRI_ASSERT(_expectedCalls[server][rebootId.value()] > 0);
+        _expectedCalls[server][rebootId.value()]--;
+      }
+    }
+
+    void validate(containers::FlatHashMap<ServerID, ServerHealthState> const& state) {
+      for (auto const& [server, expectedReboots] : _expectedCalls) {
+        auto const& receivedReboots = _receivedCalls[server];
+        for (auto const& [rebootId, expectedCalls] : expectedReboots) {
+          if (rebootId < state.find(server)->second.rebootId.value() && expectedCalls > 0) {
+            auto const& receivedCalls = receivedReboots.at(rebootId);
+            ASSERT_EQ(receivedCalls, expectedCalls)
+                << "Checking server: " << server << " rebootId: " << rebootId;
+          } else {
+            // No call expected. Either we cancelled them all. Or we have ont reached the reboot id.
+            ASSERT_EQ(receivedReboots.find(rebootId), receivedReboots.end())
+                << "Checking server: " << server << " rebootId: " << rebootId
+                << " should not trigger any callbacks, as we have not yet "
+                   "rebooted to it";
+          }
+
+        }
+      }
+    }
+
+   private:
+    std::unordered_map<ServerID, std::unordered_map<uint64_t, uint64_t>>
+        _expectedCalls{};
+    std::unordered_map<ServerID, std::unordered_map<uint64_t, uint64_t>>
+        _receivedCalls{};
   };
 
   struct GuardedCallback{
@@ -911,8 +950,6 @@ class FuzzyRebootTrackerTest
         counters.addReceived(s, r);
       };
       counters.addExpected(server, rebootId);
-      LOG_DEVEL << "Add callback for " << server << " "
-                << rebootId;
       guards.emplace_back(GuardedCallback{
           server, rebootId,
           tracker.callMeOnChange({server, rebootId}, callback, "")});
@@ -922,26 +959,22 @@ class FuzzyRebootTrackerTest
   struct ActionCancelCallback : public Action {
     uint64_t indexToUnregister;
     std::vector<GuardedCallback>& guards;
+    containers::FlatHashMap<ServerID, ServerHealthState> const& state;
 
-    ActionCancelCallback(uint64_t pindexToUnregister,
-                         std::vector<GuardedCallback>& pguards)
-        : indexToUnregister(pindexToUnregister), guards(pguards) {}
+    ActionCancelCallback(
+        uint64_t pindexToUnregister, std::vector<GuardedCallback>& pguards,
+        containers::FlatHashMap<ServerID, ServerHealthState> const& pstate)
+        : indexToUnregister(pindexToUnregister),
+          guards(pguards),
+          state(pstate) {}
 
     void run(RebootTracker& tracker, Counters& counters) override {
       {
         auto const& toDelete = guards.at(indexToUnregister);
         // toDelete is invalidated with following erase
-        LOG_DEVEL << "Delete callback for " << toDelete.server << " "
-                  << toDelete.rebootId;
-        counters.addCancelled(toDelete.server, toDelete.rebootId);
+        counters.addCancelled(toDelete.server, toDelete.rebootId, state);
       }
       guards.erase(guards.begin() + indexToUnregister);
-    }
-  };
-
-  struct ActionValidate : public Action {
-    void run(RebootTracker& tracker, Counters& counters) override {
-LOG_DEVEL << "Validating";
     }
   };
 
@@ -953,6 +986,7 @@ LOG_DEVEL << "Validating";
       _seed = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
       // Retain the seed for reporting
       RandomGenerator::seed(_seed);
+      LOG_DEVEL << "Using random seed: " << _seed;
     }
 
     Simulation(double chanceToReboot, double chanceToUnregister, uint64_t seed)
@@ -968,17 +1002,13 @@ LOG_DEVEL << "Validating";
         auto server = _servers[serverIndex];
         RebootId nextValue{_state.find(server)->second.rebootId.value() + 1};
         _state.find(server)->second.rebootId = nextValue;
-        LOG_DEVEL << "Rebooting " << server << " to " << nextValue;
         return std::make_unique<ActionReboot>(_state);
       }
       if (rand < _belowToUnregister && !_guards.empty()) {
         auto indexToUnregister = RandomGenerator::interval(_guards.size() - 1);
         return std::make_unique<ActionCancelCallback>(
-            indexToUnregister, _guards
-        );
+            indexToUnregister, _guards, _state);
       }
-      // TODO: Randomize Server Selection and RebootId.
-      // Define desired callback.
       auto serverIndex = RandomGenerator::interval(_servers.size() - 1);
       auto server = _servers[serverIndex];
       auto rebootId = RandomGenerator::interval(getMaximumRebootId());
@@ -1032,7 +1062,7 @@ LOG_DEVEL << "Validating";
 };
 
 TEST_F(FuzzyRebootTrackerTest, simulate_cluster) {
-  uint64_t nrActions = 1000;
+  uint64_t nrActions = 100000;
   RebootTracker rebootTracker{scheduler.get()};
   Simulation sim{0.001, 0.45};
   Counters counters{};
@@ -1041,8 +1071,9 @@ TEST_F(FuzzyRebootTrackerTest, simulate_cluster) {
     auto action = sim.nextAction();
     action->run(rebootTracker, counters);
 
-    if (i % 100 == 0) {
-      ActionValidate{}.run(rebootTracker, counters);
+    if (i % 1000 == 0) {
+      waitForSchedulerEmpty();
+      counters.validate(sim.state());
     }
   }
 }
@@ -1094,7 +1125,6 @@ TEST_F(RebootTrackerTest, fuzzy_test) {
         while (currentRebootId < maxRebootId) {
       auto randomNumber = std::rand() % (10 * testScaling);
       if (randomNumber == 0) {
-        LOG_DEVEL << "Simulate a reboot";
         currentRebootId++;
         state.insert_or_assign(serverA,
                                ServerHealthState{.rebootId = RebootId{currentRebootId},
