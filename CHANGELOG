@@ -1,6 +1,8 @@
 v3.9.12 (XXXX-X-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.17.0.
+
 * Updated arangosync to v2.19.1.
 
 * BTS-1511: AQL: Fixed access of integers in the ranges
@@ -13,8 +15,6 @@ v3.9.12 (XXXX-X-XX)
   the latter only if the numbers are compared directly, but not as part of a
   value. For example, `SORT x` lead to an unexpected order if x was such a
   number. `SORT [x]` however worked as expected.
-
-* Updated ArangoDB Starter to 0.16.0.
 
 * Fixed two possible deadlocks which could occur if all medium priority threads
   are busy. One is that in this case the AgencyCache could no longer receive
