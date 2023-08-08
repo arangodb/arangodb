@@ -236,7 +236,7 @@ size_t buildLogMessage(char* s, size_t bytesLeft, std::string_view context,
   appendNullTerminatedString("💥 ArangoDB ", bytesLeft, p);
   appendNullTerminatedString(ARANGODB_VERSION_FULL, bytesLeft - (p - s), p);
   appendNullTerminatedString(", thread ", bytesLeft - (p - s), p);
-  if (bytesLeft - (p - s) >= 20) {
+  if (bytesLeft >= (p - s) + 20ul) {
     p += arangodb::basics::StringUtils::itoa(
         uint64_t(arangodb::Thread::currentThreadNumber()), p);
   }
@@ -252,7 +252,7 @@ size_t buildLogMessage(char* s, size_t bytesLeft, std::string_view context,
   bool printed = false;
   appendNullTerminatedString(" caught unexpected signal ", bytesLeft - (p - s),
                              p);
-  if (bytesLeft - (p - s) >= 20) {
+  if (bytesLeft >= (p - s) + 20ul) {
     p += arangodb::basics::StringUtils::itoa(uint64_t(signal), p);
   }
   appendNullTerminatedString(" (", bytesLeft - (p - s), p);
@@ -261,7 +261,7 @@ size_t buildLogMessage(char* s, size_t bytesLeft, std::string_view context,
 #ifndef _WIN32
   if (info != nullptr) {
     appendNullTerminatedString(") from pid ", bytesLeft - (p - s), p);
-    if (bytesLeft - (p - s) >= 20) {
+    if (bytesLeft >= (p - s) + 20ul) {
       p += arangodb::basics::StringUtils::itoa(uint64_t(info->si_pid), p);
     }
     printed = true;
@@ -295,7 +295,7 @@ size_t buildLogMessage(char* s, size_t bytesLeft, std::string_view context,
                                p);
     unsigned char const* x = reinterpret_cast<unsigned char const*>(baseAddr);
     unsigned char const* ss = reinterpret_cast<unsigned char const*>(&x);
-    if (bytesLeft - (p - s) >= sizeof(unsigned char const*) * 2) {
+    if (bytesLeft >= (p - s) + sizeof(unsigned char const*) * 2) {
       appendHexValue(ss, sizeof(unsigned char const*), p, false);
     }
   }
