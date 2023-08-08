@@ -408,8 +408,9 @@ const getReplicatedLogLeaderPlan = function (database, logId, nothrow = false) {
     throw error;
   }
   const leader = plan.currentTerm.leader.serverId;
+  const rebootId = plan.currentTerm.leader.rebootId;
   const term = plan.currentTerm.term;
-  return {leader, term};
+  return {leader, term, rebootId};
 };
 
 const getReplicatedLogLeaderTarget = function (database, logId) {
