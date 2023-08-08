@@ -104,12 +104,6 @@ void Manager::registerTransaction(TransactionId transactionId,
   TRI_ASSERT(!isFollowerTransaction ||
              transactionId.isFollowerTransactionId() ||
              transactionId.isLegacyTransactionId());
-  if (!isReadOnlyTransaction && !isFollowerTransaction) {
-    LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS)
-        << "Acquiring read lock for tid " << transactionId.id();
-    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS)
-        << "Got read lock for tid " << transactionId.id();
-  }
 
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
 }
