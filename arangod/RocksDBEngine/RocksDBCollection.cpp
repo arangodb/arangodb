@@ -40,6 +40,7 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Random/RandomGenerator.h"
@@ -349,6 +350,32 @@ void RocksDBCollection::deferDropCollection(
     try {
       destroyCache();
     } catch (...) {
+    }
+  }
+
+  // remove all indexes from the collection object.
+  // we do this because the objects of deleted collections will be
+  // retained in memory until the server is shut down.
+  // deleting the collection's attached index objects saves
+  // memory for caches etc.
+  // when we get here, the code in RocksDBEngine::dropCollection()
+  // will have already called `drop()` on each index object.
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  auto it = _indexes.begin();
+  while (it != _indexes.end()) {
+    auto const& idx = (*it);
+    // unloading drops any potential caches
+    idx->unload();
+
+    if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      // we keep the primary index object around, because it can
+      // be referred to by the collection object with a pointer.
+      ++it;
+    } else {
+      // all other index types we simply delete, so that the
+      // underlying objects will be garbage-collected and memory
+      // be freed.
+      it = _indexes.erase(it);
     }
   }
 }
@@ -1291,6 +1318,12 @@ void RocksDBCollection::figuresSpecific(
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         size_t count = 0;
         switch (type) {
+          case Index::TRI_IDX_TYPE_INVERTED_INDEX: {
+            auto snapshot =
+                basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*rix)
+                    .snapshot();
+            count = snapshot.getDirectoryReader().live_docs_count();
+          } break;
           case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::PrimaryIndex(rix->objectId()), snapshot,

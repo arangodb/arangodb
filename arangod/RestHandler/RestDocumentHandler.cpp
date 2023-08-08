@@ -278,7 +278,8 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
-          .thenValue([=, this](OperationResult&& opres) {
+          .thenValue([=, this,
+                      silent(opOptions.silent)](OperationResult&& opres) {
             // Will commit if no error occured.
             // or abort if an error occured.
             // result stays valid!
@@ -295,10 +296,10 @@ RestStatus RestDocumentHandler::insertDocument() {
                     return;
                   }
 
-                  generateSaved(
+                  generate20x(
                       opres, cname, _activeTrx->getCollectionType(cname),
                       _activeTrx->transactionContextPtr()->getVPackOptions(),
-                      isMultiple);
+                      isMultiple, silent, rest::ResponseCode::CREATED);
                 });
           }));
 }
@@ -655,7 +656,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   return waitForFuture(std::move(f).thenValue(
-      [=, this, buffer(std::move(buffer))](OperationResult opRes) {
+      [=, this, silent(opOptions.silent),
+       buffer(std::move(buffer))](OperationResult opRes) {
         return _activeTrx->finishAsync(opRes.result)
             .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
               // ...........................................................................
@@ -673,10 +675,10 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
                 return;
               }
 
-              generateSaved(
+              generate20x(
                   opRes, cname, _activeTrx->getCollectionType(cname),
                   _activeTrx->transactionContextPtr()->getVPackOptions(),
-                  isArrayCase);
+                  isArrayCase, silent, rest::ResponseCode::CREATED);
             });
       }));
 }
@@ -803,7 +805,7 @@ RestStatus RestDocumentHandler::removeDocument() {
 
   return waitForFuture(
       _activeTrx->removeAsync(cname, search, opOptions)
-          .thenValue([=, this,
+          .thenValue([=, this, silent(opOptions.silent),
                       buffer(std::move(buffer))](OperationResult opRes) {
             return _activeTrx->finishAsync(opRes.result)
                 .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
@@ -822,10 +824,10 @@ RestStatus RestDocumentHandler::removeDocument() {
                     return;
                   }
 
-                  generateDeleted(
+                  generate20x(
                       opRes, cname, _activeTrx->getCollectionType(cname),
                       _activeTrx->transactionContextPtr()->getVPackOptions(),
-                      isMultiple);
+                      isMultiple, silent, rest::ResponseCode::OK);
                 });
           }));
 }

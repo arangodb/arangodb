@@ -1,4 +1,4 @@
-import { GraphCreateOptions } from "arangojs/graph";
+import { CreateGraphOptions } from "arangojs/graph";
 
 type FormEdgeDefinitionOptions = {
   collection: string;
@@ -14,10 +14,10 @@ type GraphCreateValues = {
 
 export type GeneralGraphCreateValues = GraphCreateValues;
 export type SatelliteGraphCreateValues = GraphCreateValues &
-  Pick<GraphCreateOptions, "replicationFactor">;
+  Pick<CreateGraphOptions, "replicationFactor">;
 export type EnterpriseGraphCreateValues = GraphCreateValues &
   Pick<
-    GraphCreateOptions,
+    CreateGraphOptions,
     | "isSmart"
     | "numberOfShards"
     | "replicationFactor"
@@ -26,7 +26,7 @@ export type EnterpriseGraphCreateValues = GraphCreateValues &
   >;
 export type SmartGraphCreateValues = GraphCreateValues &
   Pick<
-    GraphCreateOptions,
+    CreateGraphOptions,
     | "isSmart"
     | "numberOfShards"
     | "replicationFactor"

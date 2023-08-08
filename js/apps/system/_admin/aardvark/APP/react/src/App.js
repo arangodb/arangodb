@@ -19,6 +19,7 @@ require('./views/graphV2/GraphV2ReactView');
 require('./views/users/UserManagementReactView');
 require('./views/views/ViewsReactView');
 require('./views/collections/indices/CollectionIndicesReactView');
+require('./views/query/QueryReactView');
 require('./views/shards/distribution/ShardDistributionReactView');
 
 // old libraries
@@ -139,12 +140,8 @@ window.JSONEditor = jsoneditor;
 
 // ace
 window.define = window.ace.define;
-window.aqltemplates = require('../public/assets/aqltemplates.json');
 
 window.d3 = d3;
-require('leaflet');
-require('../../frontend/js/lib/tile.stamen.js');
-require('leaflet.geodesic');
 
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
 window.Dygraph = require('../../frontend/js/lib/dygraph-combined.min.js');
@@ -177,7 +174,6 @@ require('../../frontend/js/lib/sigma.plugins.filter.js');
 require('../../frontend/js/lib/sigma.plugins.fullScreen.js');
 require('../../frontend/js/lib/sigma.plugins.lasso.js');
 require('../../frontend/js/lib/sigma.renderers.halo.js');
-require('../../frontend/js/lib/jquery.csv.min.js');
 
 require('../../frontend/js/lib/wheelnav.slicePath.js');
 require('../../frontend/js/lib/wheelnav.min.js');

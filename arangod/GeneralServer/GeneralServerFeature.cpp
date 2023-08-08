@@ -153,19 +153,18 @@ DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
 DECLARE_COUNTER(arangodb_vst_connections_total,
                 "Total number of VST connections");
-DECLARE_GAUGE(arangodb_request_body_memory_usage, std::uint64_t,
-              "Memory consumed by incoming request bodies.");
+DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
+              "Memory consumed by incoming requests");
 
 GeneralServerFeature::GeneralServerFeature(Server& server)
     : ArangodFeature{server, *this},
-      _requestBodySize(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_request_body_memory_usage{})),
+      _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_requests_memory_usage{})),
       _telemetricsMaxRequestsPerInterval(3),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _startedListening(false),
 #endif
       _allowEarlyConnections(false),
-      _allowMethodOverride(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _enableTelemetrics(false),
 #else
@@ -269,29 +268,10 @@ batch processing.)");
 
   options->addSection("http", "HTTP server features");
 
-  options
-      ->addOption("--http.allow-method-override",
-                  "Allow HTTP method override using special headers.",
-                  new BooleanParameter(&_allowMethodOverride),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30800)
-      .setLongDescription(R"(If you set this option to `true`, the HTTP request
-method is optionally fetched from one of the following HTTP request headers if
-present in the request:
-
-- `x-http-method`
-- `x-http-method-override`
-- `x-method-override`
-
-If the option is enabled and any of these headers is set, the request method is
-overridden by the value of the header. For example, this allows you to issue an
-HTTP DELETE request which, to the outside world, looks like an HTTP GET request.
-This allows you to bypass proxies and tools that only let certain request types
-pass.
-
-Enabling this option may impose a security risk. You should only use it in
-controlled environments.)");
+  // option was deprecated in 3.8 and removed in 3.12.
+  options->addObsoleteOption(
+      "--http.allow-method-override",
+      "Allow HTTP method override using special headers.", true);
 
   options
       ->addOption("--http.keep-alive-timeout",
@@ -301,12 +281,10 @@ controlled environments.)");
 server automatically when the timeout is reached. A keep-alive-timeout value of
 `0` disables the keep-alive feature entirely.)");
 
-  options
-      ->addOption(
-          "--http.hide-product-header",
-          "Whether to omit the `Server: ArangoDB` header in HTTP responses.",
-          new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
-      .setDeprecatedIn(30800);
+  // option was deprecated in 3.8 and removed in 3.12.
+  options->addObsoleteOption(
+      "--http.hide-product-header",
+      "Whether to omit the `Server: ArangoDB` header in HTTP responses.", true);
 
   options->addOption(
       "--http.trusted-origin",
@@ -431,14 +409,6 @@ void GeneralServerFeature::prepare() {
     _enableTelemetrics = false;
   }
 
-  if (ServerState::instance()->isDBServer() &&
-      !server().options()->processingResult().touched(
-          "http.hide-product-header")) {
-    // if we are a DB server, client applications will not talk to us
-    // directly, so we can turn off the Server signature header.
-    HttpResponse::HIDE_PRODUCT_HEADER = true;
-  }
-
   _jobManager = std::make_unique<AsyncJobManager>();
 
   // create an initial, very stripped-down RestHandlerFactory.
@@ -535,10 +505,6 @@ bool GeneralServerFeature::returnQueueTimeHeader() const noexcept {
 
 std::vector<std::string> GeneralServerFeature::trustedProxies() const {
   return _trustedProxies;
-}
-
-bool GeneralServerFeature::allowMethodOverride() const noexcept {
-  return _allowMethodOverride;
 }
 
 std::vector<std::string> const&

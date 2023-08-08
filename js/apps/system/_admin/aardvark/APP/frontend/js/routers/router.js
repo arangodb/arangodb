@@ -70,15 +70,6 @@
     execute: function (callback, args, handler, skipDirtyViewCheck = false) {
       const self = this;
 
-      if (this.lastRoute === '#queries') {
-        // cleanup input editors
-        this.queryView.removeInputEditors();
-        // cleanup old canvas elements
-        this.queryView.cleanupGraphs();
-        // cleanup old ace instances
-        this.queryView.removeResults();
-      }
-
       let skipExecute = false, goBack = true;
       if (this.lastRoute) {
         // service replace logic
@@ -181,13 +172,6 @@
         if (this.graphViewer) {
           if (this.graphViewer.graphSettingsView) {
             this.graphViewer.graphSettingsView.hide();
-          }
-        }
-        if (this.queryView) {
-          if (this.queryView.graphViewer) {
-            if (this.queryView.graphViewer.graphSettingsView) {
-              this.queryView.graphViewer.graphSettingsView.hide();
-            }
           }
         }
       }
@@ -306,10 +290,6 @@
         // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
 
-        window.spotlightView = new window.SpotlightView({
-          collection: this.arangoCollectionsStore
-        });
-
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
         this.arangoCollectionsStore.fetch({
@@ -333,9 +313,6 @@
             self.naviView.render();
           }
         });
-
-        this.queryCollection = new window.ArangoQueries();
-
         window.checkVersion();
 
         this.userConfig = new window.UserConfig({
@@ -915,12 +892,10 @@
       this.checkUser();
 
       this.init.then(() => {
-        if (!this.queryView) {
-          this.queryView = new window.QueryView({
-            collection: this.queryCollection
-          });
-        }
-        this.queryView.render();
+        ReactDOM.render(
+          React.createElement(window.QueryReactView),
+          document.getElementById("content-react")
+        );
       });
     },
 
@@ -982,20 +957,6 @@
           this.supportView = new window.SupportView({});
         }
         this.supportView.render();
-      });
-    },
-
-    queryManagement: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (this.queryManagementView) {
-          this.queryManagementView.remove();
-        }
-        this.queryManagementView = new window.QueryManagementView({
-          collection: undefined
-        });
-        this.queryManagementView.render();
       });
     },
 
@@ -1201,9 +1162,6 @@
     handleResize: function () {
       if (this.dashboardView) {
         this.dashboardView.resize();
-      }
-      if (this.queryView && Backbone.history.getFragment() === 'queries') {
-        this.queryView.resize();
       }
       if (this.naviView) {
         this.naviView.resize();
