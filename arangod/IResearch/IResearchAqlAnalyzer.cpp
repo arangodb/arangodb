@@ -154,8 +154,6 @@ bool parse_options_slice(VPackSlice const& slice,
   auto const res = arangodb::velocypack::deserializeWithStatus(
       slice, options, {.ignoreUnknownFields = true});
 
-  // auto const res = deserialize<ValidatingOptionsDeserializer,
-  //                              hints::hint_list<hints::ignore_unknown>>(slice);
   if (!res.ok()) {
     LOG_TOPIC("d88b8", WARN, arangodb::iresearch::TOPIC)
         << "Failed to deserialize options from JSON while constructing '"
