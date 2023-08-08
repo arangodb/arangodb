@@ -453,7 +453,7 @@ void logBacktrace() try {
             // pad frame id to 2 digits length
             *p++ = ' ';
           }
-          if (BYTES_LEFT(buffer, p) > 19) {
+          if (BYTES_LEFT(buffer, p) >= 20) {
             p += arangodb::basics::StringUtils::itoa(uint64_t(frame), p);
           }
 
@@ -481,7 +481,7 @@ void logBacktrace() try {
               appendNullTerminatedString(mangled, BYTES_LEFT(buffer, p), p);
             }
             // print offset into function
-            if (BYTES_LEFT(buffer, p) > 20) {
+            if (BYTES_LEFT(buffer, p) >= 20) {
               appendNullTerminatedString(" (+0x", BYTES_LEFT(buffer, p), p);
               appendHexValue(reinterpret_cast<unsigned char const*>(&offset),
                              sizeof(decltype(offset)), p, true);
