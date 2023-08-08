@@ -196,7 +196,7 @@ function testOptimizeTopKEnterprise() {
         assertEqual(db._view("fail"), null);
       }
 
-      // try to update arangosearch view. No changes should apply
+      // try to update arangosearch view. No changes should be applied
       {
         db._view("v_search_tfidf").properties({optimizeTopK: ["BM25(@doc) DESC"]}, true);
         assertEqual(db._view("v_search_tfidf").properties()["optimizeTopK"], ["TFIDF(@doc) DESC"]);
@@ -219,22 +219,41 @@ function testOptimizeTopKCommunity () {
     test: function () {
       db._create("c");
 
-      db._createView("view", "arangosearch", {
+      // check correct definition
+      db._createView("view1", "arangosearch", {
         links: { "c": { fields: { "f": {}, "a": {}, "x": {} } } },
-        optimizeTopK: ["TFIDF(@doc) DESC", "BM25(@doc) DESC", "wrong scorer"]
+        optimizeTopK: ["TFIDF(@doc) DESC", "BM25(@doc) DESC"]
       });
-      let view_props = db._view("view").properties();
-      assertFalse(view_props.hasOwnProperty("optimizeTopK"));
+      let view_props1 = db._view("view1").properties();
+      assertFalse(view_props1.hasOwnProperty("optimizeTopK"));
 
+      // check incorrect definition
+      db._createView("view2", "arangosearch", {
+        links: { "c": { fields: { "f": {}, "a": {}, "x": {} } } },
+        optimizeTopK: ["wrong scorer"]
+      });
+      let view_props2 = db._view("view2").properties();
+      assertFalse(view_props2.hasOwnProperty("optimizeTopK"));
+
+      // check correct definition
       db.c.ensureIndex({ 
-        name: "i", 
+        name: "i1", 
         type: "inverted", 
         fields: ["f", "a", "x"], 
-        optimizeTopK: ["TFIDF(@doc) DESC", "BM25(@doc) DESC", "wrong scorer"] 
+        optimizeTopK: ["TFIDF(@doc) DESC", "BM25(@doc) DESC"] 
       });
+      let index_props1 = db.c.index("i1");
+      assertFalse(index_props1.hasOwnProperty("optimizeTopK"));
 
-      let index_props = db.c.index("i");
-      assertFalse(index_props.hasOwnProperty("optimizeTopK"));
+      // check incorrect definition
+      db.c.ensureIndex({ 
+        name: "i2", 
+        type: "inverted", 
+        fields: ["f", "a", "x"], 
+        optimizeTopK: ["wrong scorer"] 
+      });
+      let index_props2 = db.c.index("i2");
+      assertFalse(index_props2.hasOwnProperty("optimizeTopK"));
     }
   };
 }
