@@ -347,9 +347,9 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
               if (s == std::end(scorers)) {
                 return false;
               }
-              heapSort.push_back(HeapSortElement{
-                  .source = std::distance(scorers.begin(), s),
-                  .ascending = sort.ascending});
+              heapSort.push_back(
+                  HeapSortElement{.source = std::distance(scorers.begin(), s),
+                                  .ascending = sort.ascending});
             }
             break;
           case AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS:
@@ -370,8 +370,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
               } catch (::arangodb::basics::Exception const&) {
                 return false;
               }
-              heapSort.push_back(HeapSortElement{
-                  .ascending = sort.ascending});
+              heapSort.push_back(HeapSortElement{.ascending = sort.ascending});
               attrs.push_back(std::move(af));
               storedMaps.insert({attrs.size() - 1, heapSort.size() - 1});
             }

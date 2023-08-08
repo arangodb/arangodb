@@ -135,17 +135,15 @@ constexpr int kSortMultiplier[]{-1, 1};
 template<typename ValueType>
 class BufferHeapSortContext {
  public:
-  explicit BufferHeapSortContext(
-      std::span<HeapSortValue const> heapSortValues,
-      std::span<HeapSortElement const> heapSort)
-      : _heapSortValues(heapSortValues),
-        _heapSort(heapSort) {}
+  explicit BufferHeapSortContext(std::span<HeapSortValue const> heapSortValues,
+                                 std::span<HeapSortElement const> heapSort)
+      : _heapSortValues(heapSortValues), _heapSort(heapSort) {}
 
   bool operator()(size_t a, size_t b) const noexcept {
     TRI_ASSERT(_heapSortValues.size() > a * _heapSort.size())
-      << "Size:" << _heapSortValues.size() << " Index:" << a;
+        << "Size:" << _heapSortValues.size() << " Index:" << a;
     TRI_ASSERT(_heapSortValues.size() > b * _heapSort.size())
-      << "Size:" << _heapSortValues.size() << " Index:" << b;
+        << "Size:" << _heapSortValues.size() << " Index:" << b;
     auto lhs_stored = &_heapSortValues[a * _heapSort.size()];
     auto rhs_stored = &_heapSortValues[b * _heapSort.size()];
     for (auto const& cmp : _heapSort) {
@@ -155,8 +153,8 @@ class BufferHeapSortContext {
                                : lhs_stored->score > rhs_stored->score;
         }
       } else {
-        auto res =
-            basics::VelocyPackHelper::compare(lhs_stored->slice, rhs_stored->slice, true);
+        auto res = basics::VelocyPackHelper::compare(lhs_stored->slice,
+                                                     rhs_stored->slice, true);
         if (res != 0) {
           return kSortMultiplier[size_t{cmp.ascending}] * res;
         }
@@ -168,19 +166,20 @@ class BufferHeapSortContext {
   }
 
   template<typename StoredValueProvider>
-  bool compareInput(size_t lhsIdx, float_t const* rhs_scores, StoredValueProvider const& stored) const noexcept {
+  bool compareInput(size_t lhsIdx, float_t const* rhs_scores,
+                    StoredValueProvider const& stored) const noexcept {
     TRI_ASSERT(_heapSortValues.size() > lhsIdx * _heapSort.size());
     auto lhs_values = &_heapSortValues[lhsIdx * _heapSort.size()];
     for (auto const& cmp : _heapSort) {
       if (cmp.isScore()) {
         if (lhs_values->score != rhs_scores[cmp.source]) {
-          return cmp.ascending
-                     ? lhs_values->score < rhs_scores[cmp.source]
-                     : lhs_values->score > rhs_scores[cmp.source];
+          return cmp.ascending ? lhs_values->score < rhs_scores[cmp.source]
+                               : lhs_values->score > rhs_scores[cmp.source];
         }
       } else {
         auto value = stored(cmp);
-        auto res = basics::VelocyPackHelper::compare(lhs_values->slice, value, true);
+        auto res =
+            basics::VelocyPackHelper::compare(lhs_values->slice, value, true);
         if (res != 0) {
           return kSortMultiplier[size_t{cmp.ascending}] * res;
         }
@@ -189,7 +188,6 @@ class BufferHeapSortContext {
     }
     return false;
   }
-
 
  private:
   std::span<HeapSortValue const> _heapSortValues;
@@ -238,8 +236,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
-    std::vector<HeapSortElement> const& heapSort,
-    size_t heapSortLimit,
+    std::vector<HeapSortElement> const& heapSort, size_t heapSortLimit,
     iresearch::SearchMeta const* meta)
     : _searchDocOutReg{searchDocRegister},
       _documentOutReg{outRegister},
@@ -440,8 +437,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushValue(
 
 template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
-  std::sort(
-      _rows.begin(), _rows.end(),
+  std::sort(_rows.begin(), _rows.end(),
             BufferHeapSortContext<typename StoredValuesContainer::value_type>{
                 _heapSortValues, _heapSort});
   if (_heapSizeLeft) {
@@ -455,7 +451,7 @@ template<typename ColumnReaderProvider>
 velocypack::Slice IndexReadBuffer<ValueType, copySorted>::readHeapSortColumn(
     arangodb::iresearch::HeapSortElement const& cmp, irs::doc_id_t doc,
     ColumnReaderProvider& readerProvider, size_t readerSlot) {
-  TRI_ASSERT(_heapOnlyStoredValuesReaders.size()  >= readerSlot);
+  TRI_ASSERT(_heapOnlyStoredValuesReaders.size() >= readerSlot);
   TRI_ASSERT(!cmp.isScore());
   if (_heapOnlyStoredValuesReaders.size() == readerSlot) {
     _heapOnlyStoredValuesReaders.push_back(readerProvider(cmp.source));
@@ -511,8 +507,7 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
           if constexpr (fullHeap) {
             _heapSortValues[heapSortValuesIndex].slice = slice;
           } else {
-            _heapSortValues.push_back(
-                HeapSortValue{.slice = slice});
+            _heapSortValues.push_back(HeapSortValue{.slice = slice});
           }
         } else {
           if constexpr (fullHeap) {
@@ -556,9 +551,9 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
 template<typename ValueType, bool copySorted>
 template<typename ColumnReaderProvider>
 void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
-    ColumnReaderProvider& columnReader,
-    StorageSnapshot const& snapshot, ValueType&& value,
-    std::span<float_t const> scores, irs::score_threshold* threshold) {
+    ColumnReaderProvider& columnReader, StorageSnapshot const& snapshot,
+    ValueType&& value, std::span<float_t const> scores,
+    irs::score_threshold* threshold) {
   TRI_ASSERT(_maxSize);
   TRI_ASSERT(threshold == nullptr || !scores.empty());
   _currentDocumentSlices.clear();
@@ -572,14 +567,18 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
         sortContext(_heapSortValues, _heapSort);
     size_t readerSlot{0};
     if (sortContext.compareInput(_rows.front(), scores.data(),
-            [this, &value, &readerSlot, &columnReader](iresearch::HeapSortElement const& cmp) {
-              return readHeapSortColumn(cmp, value.irsDocId(), columnReader, readerSlot++);
-      })) {
+                                 [this, &value, &readerSlot, &columnReader](
+                                     iresearch::HeapSortElement const& cmp) {
+                                   return readHeapSortColumn(
+                                       cmp, value.irsDocId(), columnReader,
+                                       readerSlot++);
+                                 })) {
       return;  // not interested in this document
     }
     std::pop_heap(_rows.begin(), _rows.end(), sortContext);
     // now last contains "free" index in the buffer
-    finalizeHeapSortDocument<true>(_rows.back(), value.irsDocId(), scores, columnReader);
+    finalizeHeapSortDocument<true>(_rows.back(), value.irsDocId(), scores,
+                                   columnReader);
     _keyBuffer[_rows.back()] = BufferValueType{snapshot, std::move(value)};
     auto const base = _rows.back() * _numScoreRegisters;
     size_t i{0};
@@ -600,7 +599,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     }
   } else {
     finalizeHeapSortDocument<false>(_rows.size(), value.irsDocId(), scores,
-                             columnReader);
+                                    columnReader);
     _keyBuffer.emplace_back(snapshot, std::move(value));
     size_t i = 0;
     for (; i < scores.size(); ++i) {
@@ -1105,11 +1104,9 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
     auto columnFieldsRegs = columnsFieldsRegs.cbegin();
     auto index = storedValuesIndex * columnsFieldsRegs.size();
     if (IResearchViewNode::kSortColumnNumber == columnFieldsRegs->first) {
-      if (!std::is_same_v<
-              HeapSortExecutorValue,
+      if (!std::is_same_v<HeapSortExecutorValue,
                           Traits::IndexBufferValueType> ||
-          !_storedColumnsMask
-              .contains(columnFieldsRegs->first)) {
+          !_storedColumnsMask.contains(columnFieldsRegs->first)) {
         auto sortReader = ::sortColumn(segmentReader);
         if (ADB_UNLIKELY(!sortReader)) {
           LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
@@ -1204,8 +1201,7 @@ IResearchViewHeapSortExecutor<ExecutionTraits>::IResearchViewHeapSortExecutor(
     Fetcher& fetcher, Infos& infos)
     : Base{fetcher, infos} {
   this->_indexReadBuffer.setHeapSort(
-      this->_infos.heapSort(),
-      this->_infos.getOutNonMaterializedViewRegs());
+      this->_infos.heapSort(), this->_infos.getOutNonMaterializedViewRegs());
 }
 
 template<typename ExecutionTraits>
@@ -1405,15 +1401,13 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
         auto const* storedValuesReader =
             segmentReader.column(columns[column].name);
         if (ADB_LIKELY(storedValuesReader)) {
-          ::reset(it,
-                  storedValuesReader->iterator(irs::ColumnHint::kNormal));
+          ::reset(it, storedValuesReader->iterator(irs::ColumnHint::kNormal));
         }
       }
       return it;
     };
     this->_indexReadBuffer.pushSortedValue(
-        provider,
-        this->_reader->snapshot(readerOffset),
+        provider, this->_reader->snapshot(readerOffset),
         typename decltype(this->_indexReadBuffer)::KeyValueType(doc->value,
                                                                 readerOffset),
         std::span{scores.data(), numScores}, threshold);
@@ -1495,8 +1489,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
             this->infos().getOutNonMaterializedViewRegs();
         TRI_ASSERT(!columnsFieldsRegs.empty());
         auto readerIndex = segmentIdx * columnsFieldsRegs.size();
-        size_t valueIndex =
-            *orderIt * columnsFieldsRegs.size();
+        size_t valueIndex = *orderIt * columnsFieldsRegs.size();
         for (auto it = columnsFieldsRegs.cbegin();
              it != columnsFieldsRegs.cend(); ++it) {
           if (this->_storedColumnsMask.contains(it->first)) {

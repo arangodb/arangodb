@@ -75,7 +75,6 @@ enum class CountApproximate {
 };
 
 struct HeapSortElement {
-
   bool isScore() const noexcept {
     // if fieldNumber is max then it is scored idx.
     // Stored Column idx otherwise.
@@ -228,15 +227,13 @@ class IResearchViewNode final : public aql::ExecutionNode {
   //   sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-
-  void setScorersSort(std::vector<HeapSortElement>&& sort,
-                      size_t limit) {
+  void setScorersSort(std::vector<HeapSortElement>&& sort, size_t limit) {
     _heapSort = std::move(sort);
-    _scorersSortLimit = limit;
+    _heapSortLimit = limit;
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  size_t getScorersSortLimit() const noexcept { return _scorersSortLimit; }
+  size_t getScorersSortLimit() const noexcept { return _heapSortLimit; }
 
   auto getScorersSort() const noexcept { return std::span(_heapSort); }
 #endif
@@ -393,7 +390,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
 
   // Internal order for scorers.
   std::vector<HeapSortElement> _heapSort;
-  size_t _scorersSortLimit{0};
+  size_t _heapSortLimit{0};
 
   // Volatility mask
   mutable int _volatilityMask{-1};

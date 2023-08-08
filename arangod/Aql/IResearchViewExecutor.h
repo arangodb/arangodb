@@ -89,10 +89,8 @@ class IResearchViewExecutorInfos {
       iresearch::IResearchViewNode::ViewValuesRegisters&&
           outNonMaterializedViewRegs,
       iresearch::CountApproximate, iresearch::FilterOptimization,
-      std::vector<iresearch::HeapSortElement> const&
-          heapSort,
-      size_t heapSortLimit,
-      iresearch::SearchMeta const* meta);
+      std::vector<iresearch::HeapSortElement> const& heapSort,
+      size_t heapSortLimit, iresearch::SearchMeta const* meta);
 
   auto getDocumentRegister() const noexcept -> RegisterId;
 
@@ -249,13 +247,12 @@ class ScoreIterator {
   size_t _numScores;
 };
 
-
 union HeapSortValue {
   irs::score_t score;
   velocypack::Slice slice;
 };
 
-  // Holds and encapsulates the data read from the iresearch index.
+// Holds and encapsulates the data read from the iresearch index.
 template<typename ValueType, bool copyStored>
 class IndexReadBuffer {
  public:
@@ -295,8 +292,9 @@ class IndexReadBuffer {
       }
       auto it = storedValues.find(c.source);
       if (it != storedValues.end()) {
-        _heapUsedStoredColumns.emplace(c.source,
-                                      static_cast<size_t>(std::distance(storedValues.begin(), it)));
+        _heapUsedStoredColumns.emplace(
+            c.source,
+            static_cast<size_t>(std::distance(storedValues.begin(), it)));
       } else {
         ++_heapOnlyColumnsCount;
       }
@@ -315,8 +313,8 @@ class IndexReadBuffer {
 
   template<typename ColumnReaderProvider>
   void pushSortedValue(ColumnReaderProvider& columnReader,
-                       StorageSnapshot const& snapshot,
-                       ValueType&& value, std::span<float_t const> scores,
+                       StorageSnapshot const& snapshot, ValueType&& value,
+                       std::span<float_t const> scores,
                        irs::score_threshold* threshold);
 
   void finalizeHeapSort();
@@ -342,15 +340,17 @@ class IndexReadBuffer {
   // before and after.
   void assertSizeCoherence() const noexcept;
 
-  size_t memoryUsage(size_t maxSize, size_t scores,  size_t stored) const noexcept {
+  size_t memoryUsage(size_t maxSize, size_t scores,
+                     size_t stored) const noexcept {
     auto res =
         maxSize * sizeof(typename decltype(_keyBuffer)::value_type) +
-        scores* maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
+        scores * maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
         maxSize * sizeof(typename decltype(_searchDocs)::value_type) +
-        stored * maxSize * sizeof(typename decltype(_storedValuesBuffer)::value_type);
+        stored * maxSize *
+            sizeof(typename decltype(_storedValuesBuffer)::value_type);
     if (!_heapSort.empty()) {
       res += maxSize * sizeof(typename decltype(_rows)::value_type);
-      res += _heapOnlyColumnsCount* maxSize *
+      res += _heapOnlyColumnsCount * maxSize *
              sizeof(typename decltype(_heapOnlyStoredValuesBuffer)::value_type);
       res += _heapOnlyColumnsCount *
              sizeof(typename decltype(_currentDocumentBuffer)::value_type);
@@ -428,19 +428,20 @@ class IndexReadBuffer {
 
   template<typename ColumnReaderProvider>
   velocypack::Slice readHeapSortColumn(iresearch::HeapSortElement const& cmp,
-                                       irs::doc_id_t doc, ColumnReaderProvider& readerProvider,
+                                       irs::doc_id_t doc,
+                                       ColumnReaderProvider& readerProvider,
                                        size_t readerSlot);
   template<bool fullHeap, typename ColumnReaderProvider>
-  void finalizeHeapSortDocument(
-      size_t idx, irs::doc_id_t,
-      std::span<float_t const> scores,
-      ColumnReaderProvider& readerProvider);
+  void finalizeHeapSortDocument(size_t idx, irs::doc_id_t,
+                                std::span<float_t const> scores,
+                                ColumnReaderProvider& readerProvider);
 
   std::vector<BufferValueType> _keyBuffer;
   // FIXME(gnusi): compile time
   std::vector<iresearch::SearchDoc> _searchDocs;
   std::vector<irs::score_t> _scoreBuffer;
-  StoredValuesContainer _storedValuesBuffer; // FIXME: ensure atMost rows are allocated from the beginning!
+  StoredValuesContainer _storedValuesBuffer;  // FIXME: ensure atMost rows are
+                                              // allocated from the beginning!
 
   // Heap Sort facilities
   // maps stored column to index in _storedValuesBuffer

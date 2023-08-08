@@ -337,7 +337,6 @@ template bool latematerialized::attributesMatch<
     std::vector<std::vector<ColumnVariant<true>>>& usedColumnsCounter,
     size_t columnsCount);
 
-
 template bool latematerialized::attributesMatch<
     false, std::vector<latematerialized::AttributeAndField<
                latematerialized::AstAndColumnFieldData>>>(
