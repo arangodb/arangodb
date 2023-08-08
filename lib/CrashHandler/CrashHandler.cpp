@@ -641,19 +641,13 @@ void createMiniDump(EXCEPTION_POINTERS* pointers) {
   exceptionInfo.ExceptionPointers = pointers;
   exceptionInfo.ClientPointers = FALSE;
 
-  // We try to gather some additional
-  // information from referenced memory
-  // In total we gather up to 16000
-  // memory blocks of 1kb each. We
-  // consider only addresses that
-  // reference some memory block that
-  // can actually be read (->
-  // !IsBadReadPtr).
+  // We try to gather some additional information from referenced memory
+  // In total we gather up to 16000 memory blocks of 1kb each. We
+  // consider only addresses that reference some memory block that can
+  // actually be read (-> !IsBadReadPtr).
 
-  // we want to have enough addresses
-  // to cover all 16 registers plus all
-  // indirections and all maxStackAddrs
-  // stack addresses
+  // we want to have enough addresses to cover all 16 registers plus all
+  // indirections and all maxStackAddrs stack addresses
   static_assert(maxNumAddrs >
                 maxStackAddrs + numRegs * (blockSize / sizeof(void*)));
 
