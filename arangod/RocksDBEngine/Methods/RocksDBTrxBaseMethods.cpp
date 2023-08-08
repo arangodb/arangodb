@@ -99,11 +99,11 @@ class MemoryTrackerAqlQuery final : public MemoryTrackerBase {
  public:
   MemoryTrackerAqlQuery() : MemoryTrackerBase(), _resourceMonitor(nullptr) {}
 
-  ~MemoryTrackerAqlQuery() = default;
+  ~MemoryTrackerAqlQuery() { reset(); }
 
   void reset() noexcept override {
     // inform resource monitor first
-    if (_resourceMonitor != nullptr) {
+    if (_resourceMonitor != nullptr && _memoryUsage != 0) {
       _resourceMonitor->decreaseMemoryUsage(_memoryUsage);
     }
     // reset everything
@@ -111,20 +111,24 @@ class MemoryTrackerAqlQuery final : public MemoryTrackerBase {
   }
 
   void increaseMemoryUsage(std::uint64_t value) override {
-    // inform resource monitor first
-    if (_resourceMonitor != nullptr) {
-      // can throw. if it does, no harm is done
-      _resourceMonitor->increaseMemoryUsage(value);
+    if (value != 0) {
+      // inform resource monitor first
+      if (_resourceMonitor != nullptr) {
+        // can throw. if it does, no harm is done
+        _resourceMonitor->increaseMemoryUsage(value);
+      }
+      MemoryTrackerBase::increaseMemoryUsage(value);
     }
-    MemoryTrackerBase::increaseMemoryUsage(value);
   }
 
   void decreaseMemoryUsage(std::uint64_t value) noexcept override {
-    // inform resource monitor
-    if (_resourceMonitor != nullptr) {
-      _resourceMonitor->decreaseMemoryUsage(value);
+    if (value != 0) {
+      // inform resource monitor
+      if (_resourceMonitor != nullptr) {
+        _resourceMonitor->decreaseMemoryUsage(value);
+      }
+      MemoryTrackerBase::decreaseMemoryUsage(value);
     }
-    MemoryTrackerBase::decreaseMemoryUsage(value);
   }
 
   void rollbackToSavePoint() noexcept override {
@@ -183,44 +187,38 @@ class MemoryTrackerAqlQuery final : public MemoryTrackerBase {
 class MemoryTrackerMetric final : public MemoryTrackerBase {
  public:
   MemoryTrackerMetric(metrics::Gauge<std::uint64_t>* metric)
-      : MemoryTrackerBase(), _metric(metric) {
+      : MemoryTrackerBase(), _metric(metric), _lastPublishedValue(0) {
     TRI_ASSERT(_metric != nullptr);
   }
 
-  ~MemoryTrackerMetric() = default;
+  ~MemoryTrackerMetric() { reset(); }
 
   void reset() noexcept override {
-    // inform metric
-    _metric->fetch_sub(_memoryUsage);
     // reset everything
     MemoryTrackerBase::reset();
+    publish(true);
   }
 
   void increaseMemoryUsage(std::uint64_t value) override {
-    // both of these will not throw, so we can execute them
-    // in any order
-    _metric->fetch_add(value);
-    MemoryTrackerBase::increaseMemoryUsage(value);
+    if (value != 0) {
+      // both of these will not throw, so we can execute them
+      // in any order
+      MemoryTrackerBase::increaseMemoryUsage(value);
+      publish(false);
+    }
   }
 
   void decreaseMemoryUsage(std::uint64_t value) noexcept override {
-    _metric->fetch_sub(value);
-    MemoryTrackerBase::decreaseMemoryUsage(value);
+    if (value != 0) {
+      MemoryTrackerBase::decreaseMemoryUsage(value);
+      publish(false);
+    }
   }
 
   void rollbackToSavePoint() noexcept override {
-    auto value = _memoryUsage;
     // this will reset _memoryUsage
     MemoryTrackerBase::rollbackToSavePoint();
-
-    if (value > _memoryUsage) {
-      // this should be the usual case, that after popping a
-      // SavePoint we will use _less_ memory
-      _metric->fetch_sub(value - _memoryUsage);
-    } else {
-      // somewhat unexpected case
-      _metric->fetch_add(_memoryUsage - value);
-    }
+    publish(true);
   }
 
   void beginQuery(ResourceMonitor* /*resourceMonitor*/) override {
@@ -231,17 +229,52 @@ class MemoryTrackerMetric final : public MemoryTrackerBase {
   }
 
   void endQuery() noexcept override {
-    if (_memoryUsage >= _memoryUsageAtBeginQuery) {
-      _metric->fetch_sub(_memoryUsage - _memoryUsageAtBeginQuery);
-    } else {
-      _metric->fetch_add(_memoryUsageAtBeginQuery - _memoryUsage);
-    }
     _memoryUsage = _memoryUsageAtBeginQuery;
     _memoryUsageAtBeginQuery = 0;
+    publish(true);
   }
 
  private:
+  void publish(bool force) noexcept {
+    if (!force) {
+      if (_lastPublishedValue < _memoryUsage) {
+        // current memory usage is higher
+        force |=
+            (_memoryUsage - _lastPublishedValue) >= kMemoryReportGranularity;
+      } else if (_lastPublishedValue > _memoryUsage) {
+        // current memory usage is lower
+        force |=
+            (_lastPublishedValue - _memoryUsage) >= kMemoryReportGranularity;
+      }
+    }
+    if (force) {
+      if (_lastPublishedValue < _memoryUsage) {
+        // current memory usage is higher
+        _metric->fetch_add(_memoryUsage - _lastPublishedValue);
+      } else if (_lastPublishedValue > _memoryUsage) {
+        // current memory usage is lower
+        _metric->fetch_sub(_lastPublishedValue - _memoryUsage);
+      }
+      _lastPublishedValue = _memoryUsage;
+    }
+  }
+
   metrics::Gauge<std::uint64_t>* _metric;
+
+  // last value we published to the metric ourselves. we keep track
+  // of this so we only need to update the metric if our current
+  // memory usage differs by more than kMemoryReportGranularity from
+  // what we already posted to the metric. we do this to save lots
+  // of metrics updates with very small increments/decrements, which
+  // would provide little value and would only lead to contention on
+  // the metric's underlying atomic value.
+  std::uint64_t _lastPublishedValue;
+
+  // publish only memory usage differences if memory usage changed
+  // by this many bytes since our last update to the metric.
+  // this is to avoid too frequent metrics updates and potential
+  // contention on ths metric's underlying atomic value.
+  static constexpr std::int64_t kMemoryReportGranularity = 4096;
 };
 
 RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
