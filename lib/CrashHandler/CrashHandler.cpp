@@ -359,7 +359,7 @@ void logCrashInfo(std::string_view context, int signal, siginfo_t* info,
 // crucial, otherwise `appendNullTerminatedString` will overshoot the buffer
 // by that one byte to write the terminating byte!
 #define BYTES_LEFT(buffer, p) \
-  sizeof(buffer) - static_cast<size_t>(((p) - &(buffer)[0]) - 1)
+  ((sizeof(buffer) - static_cast<size_t>(((p) - &(buffer)[0]))) - 1)
 
 void logBacktrace() try {
   if (!enableStacktraces.load(std::memory_order_relaxed)) {
