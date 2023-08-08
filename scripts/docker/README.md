@@ -6,3 +6,4 @@ To automate and simplify this, for each dockerfile there is a build-image.sh scr
 tag and afterwards automatically determines the relevant version numbers, tags the image accordingly, and prints the command
 to push the image.
 
+After building and pushing the image, don't forget to update .circleci/base_config.yml so that the new image is actually used.

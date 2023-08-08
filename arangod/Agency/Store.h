@@ -47,23 +47,23 @@ struct check_ret_t {
 
   explicit check_ret_t(bool s) : success(s) {}
 
-  inline bool successful() const { return success; }
+  bool successful() const noexcept { return success; }
 
-  inline void successful(bool s) { success = s; }
+  void successful(bool s) noexcept { success = s; }
 
-  inline void open() {
+  void open() {
     TRI_ASSERT(failed == nullptr);
     failed = std::make_shared<VPackBuilder>();
     failed->openArray();
   }
 
-  inline void push_back(VPackSlice const& key) {
+  void push_back(VPackSlice const& key) {
     TRI_ASSERT(failed != nullptr);
     success = false;
     failed->add(key);
   }
 
-  inline void close() {
+  void close() {
     TRI_ASSERT(failed != nullptr);
     failed->close();
   }
