@@ -1,6 +1,204 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.17.0.
+
+* Updated arangosync to v2.19.1.
+
+* Updated arangosync to v2.19.0.
+
+* Remove long-deprecated graph compatibility functions, which were implemented
+  as JavaScript user-defined AQL functions since ArangoDB 3.0:
+
+  - arangodb::GRAPH_EDGES(...)
+  - arangodb::GRAPH_VERTICES(...)
+  - arangodb::GRAPH_NEIGHBORS(...)
+  - arangodb::GRAPH_COMMON_NEIGHBORS(...)
+  - arangodb::GRAPH_COMMON_PROPERTIES(...)
+  - arangodb::GRAPH_PATHS(...)
+  - arangodb::GRAPH_SHORTEST_PATH(...)
+  - arangodb::GRAPH_DISTANCE_TO(...)
+  - arangodb::GRAPH_ABSOLUTE_ECCENTRICTIY(...)
+  - arangodb::GRAPH_ECCENTRICTIY(...)
+  - arangodb::GRAPH_ABSOLUTE_CLOSENESS(...)
+  - arangodb::GRAPH_CLOSENESS(...)
+  - arangodb::GRAPH_ABSOLUTE_BETWEENNESS(...)
+  - arangodb::GRAPH_BETWEENNESS(...)
+  - arangodb::GRAPH_RADIUS(...)
+  - arangodb::GRAPH_DIAMETER(...)
+
+  These functions were only available previously after explicitly calling the
+  `_registerCompatibilityFunctions()` function from any of the JavaScript graph
+  modules. 
+  The `_registerCompatibilityFunctions()` exports have also been removed from 
+  the JavaScript graph modules.
+
+* Removed the following long-deprecated features for the HTTP server:
+
+  - overriding the HTTP method by setting one of the HTTP headers 
+    - `x-http-method`
+    - `x-http-method-override`
+    - `x-method-override`
+    This functionality could previously be enabled by starting the server with 
+    the startup option `--http.allow-method-override`.
+    The functionality has now been removed and setting the startup option does 
+    nothing.
+
+  - optionally hiding ArangoDB's `server` response header. This functionality
+    could optionally be enabled by starting the server with the startup option
+    `--http.hide-product-header`. 
+    The functionality has now been removed and setting the startup option does 
+    nothing.
+
+* Fixed BTS-1302: make "silent" option for document operations work in cluster.
+  When using the "silent" options for document operations in the cluster, the
+  coordinator will now only return the errors that happened, as it did in
+  single server for a long time.
+  This is a bugfix and feature alignment, but still a downwards-incompatible
+  change compared to previous versions, where the "silent" option in document
+  operations had no effect in the cluster.
+
+  This change also unifies the behavior of batch document operations in single
+  server and cluster with the behavior of document operations for SmartGraph
+  edge collections: 
+  previously, batch document operations in SmartGraph edge collections stopped
+  upon the first error, whereas they were (intentionally) continued for the
+  remaining operations in the batch in single server and cluster.
+
+  This is a downwards-incompatible change compared to previous versions, but
+  it can be considered a bugfix.
+
+* FE-291: Refactor Query screen on web UI to React.
+
+* FE-313: Upgrade arangojs to v8.x on web UI.
+
+* ES-1566: instead of potentially accessing a nullptr inside graph traversal
+  setup, throw an exception. This will be handled properly and returned with
+  a proper error message.
+
+* Updated arangosync to v2.19.0-preview-4.
+
+* Expose the "high water multiplier" for the in-memory cache subsystem via a
+  new startup option `--cache.high-water-multiplier`.
+  The high water multiplier is used to calculate the effective memory usage 
+  limit for the in-memory cache subsystem. The cache's configured memory usage 
+  limit (`--cache.size`) is multiplied by the high water multiplier, and the 
+  resulting value is used as the effective memory limit. It defaults to 95%
+  of the configured cache size.
+
+  Note that this is a behavior change. Previous versions of ArangoDB set the
+  high water multiplier to effectively 56% of the configured memory. The value
+  was hard-coded in versions before 3.11.3, and is exposed since then with a
+  default value of 56%. 
+  3.12 now sets the default value for the high water multiplier to 95%, so that
+  the configured memory limit for the cache subsystem is actually better
+  honored than before.
+
+* Wrap imports into SmartGraph edge collections via the REST import API
+  (POST `/_api/import`) into a managed transaction, so that edge data is
+  either completely inserted or not at all.
+
+* Changed default values for the following options related to the in-memory
+  cache subsystem:
+
+  - `--cache.ideal-lower-fill-ratio` changed from 0.04 to 0.08
+  - `--cache.ideal-upper-fill-ratio` changed from 0.25 to 0.33
+
+  This allows slightly better hash table utilization and earlier memory
+  reclamation.
+
+* Added metric `rocksdb_cache_edge_empty_inserts_total` to count the number
+  of inserts into the edge cache for non-connected edges.
+
+* Renamed two edge-cache related metrics to improve naming consistency:
+  - `rocksdb_cache_edge_effective_entries_size` was renamed to 
+    `rocksdb_cache_edge_inserts_effective_entries_size_total` and was changed
+    from a gauge to a counter.
+  - `rocksdb_cache_edge_uncompressed_entries_size` was renamed to 
+    `rocksdb_cache_edge_inserts_uncompressed_entries_size_total` and is now
+    also a counter instead of a gauge.
+
+* Do not auto-reload entries into in-memory edge cache for edge index entries
+  that were previously not contained in the in-memory edge cache. This change
+  will help to keep the hot set in memory rather than evicting it in favor of
+  "random" other index entries.
+
+* Properly track memory usage for allocated objects in the in-memory cache
+  (e.g. the edge cache or the in-memory cache for other persistent indexes).
+  Previously the memory used for the underlying hash tables was accounted for
+  correctly, but the sizes of the cache payloads (keys and values) were not
+  accounted for under all circumstances (at least for the initial entries in
+  the caches).
+  This change leads to more accurate memory usage tracking and reporting by the 
+  in-memory cache subsystem, and to the cache subsystem not exceeding its 
+  configured memory usage limit. 
+  The cache subsystem was also changed so that it can use as much memory as
+  configured by the global cache memory limit (configurable via startup option
+  `--cache.size`). Previously the cache subsystem was freeing memory as soon
+  as it hit 56% of the configured limit.
+  Overall, the effective memory usage of the cache subsystem will be very
+  different to the memory usage in previous versions. In previous versions the
+  configured memory usage limit could be temporarily exceeded, but in most
+  cases the cache used considerably less memory than allowed by the limit.
+  Now the cache will try to use up to as much memory as allowed by the
+  configured memory usage limit.
+  If that leads to an overall overallocation of resources (i.e. too high total
+  memory of the system), it may be necessary to lower the value of the startup
+  option `--cache.size`, so that the cache memory usage is decreased.
+
+* Reduce memory usage for empty in-memory edge caches by ~40%. This is achieved
+  by allocating each cache's statistics objects only lazily, when actually 
+  needed.
+  
+* Renamed memory usage metrics for better naming consistency:
+  - `arangodb_internal_index_estimates_memory` was renamed to 
+    `arangodb_index_estimates_memory_usage`
+  - `arangodb_scheduler_queue_memory` was renamed to 
+    `arangodb_scheduler_queue_memory_usage`
+  - `arangodb_scheduler_stack_memory` was renamed to 
+    `arangodb_scheduler_stack_memory_usage`
+  These metrics were introduced in 3.12, so no previous versions are affected.
+
+* Updated arangosync to v2.19.0-preview-2.
+
+* Added experimental startup options for RocksDB .sst file partitioning:
+
+  - `--rocksdb.partition-files-for-documents`
+  - `--rocksdb.partition-files-for-primary-index`
+  - `--rocksdb.partition-files-for-edge-index`
+  - `--rocksdb.partition-files-for-persistent-index`
+
+  Enabling any of these options will make RocksDB's compaction write the 
+  data for different collections/shards/indexes into different .sst files. 
+  Otherwise the document data from different collections/shards/indexes 
+  can be mixed and written into the same .sst files.
+
+  Enabling these options usually has the benefit of making the RocksDB
+  compaction more efficient when a lot of different collections/shards/indexes
+  are written to in parallel.
+  The disavantage of enabling this option is that there can be more .sst
+  files than when the option is turned off, and the disk space used by
+  these .sst files can be higher than if there are fewer .sst files (this
+  is because there is some per-.sst file overhead).
+  In particular on deployments with many collections/shards/indexes this can 
+  lead to a very high number of .sst files, with the potential of outgrowing 
+  the maximum number of file descriptors the ArangoDB process can open. 
+  Thus the option should only be enabled on deployments with a limited number
+  of collections/shards/indexes.
+
+* BTS-1511: AQL: Fixed access of integers in the ranges
+  [-36028797018963968, -281474976710657] and
+  [281474976710656, 36028797018963968], i.e. those whose representation require
+  7 bytes. These values were misinterpreted as different integers.
+  Simple passing of values (i.e. writing to or reading from documents) was not
+  affected: Only accesses of those values as numbers by AQL was. E.g. arithmetic
+  (addition, multiplication, ...), certain AQL functions, comparing/sorting -
+  the latter only if the numbers are compared directly, but not as part of a
+  value. For example, `SORT x` lead to an unexpected order if x was such a
+  number. `SORT [x]` however worked as expected.
+
+* FE-301: Unify Users View on web UI.
+
 * Updated ArangoDB Starter to 0.16.0.
 
 * Fixed issue with lock starvation when an AQL insert operation with multiple

@@ -57,19 +57,20 @@ const FilterButton = ({
         backgroundColor={isSelected ? "gray.200" : "white"}
         borderColor="gray.900"
         variant={"outline"}
+        size="sm"
       >
         Filters
         {appliedFiltersCount > 0 && (
           <Badge
-            fontSize="sm"
-            width="5"
-            height="5"
+            fontSize="xs"
+            width="4"
+            height="4"
             display="flex"
             alignItems="center"
             justifyContent="center"
             position="absolute"
-            right="-10px"
-            top="-10px"
+            right="-8px"
+            top="-8px"
             backgroundColor="gray.900"
             color="white"
             borderRadius="20px"

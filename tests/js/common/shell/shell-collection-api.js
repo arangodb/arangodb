@@ -1093,7 +1093,7 @@ function CreateCollectionsSuite() {
                   delete edge.isDisjoint;
                 }
 
-                if (!isEnterprise || isServer) {
+                if (!isEnterprise) {
                   // The initial request is disallowed.
                   // Which will trigger removal of distributeShardsLike
                   delete edge.distributeShardsLike;
@@ -1245,10 +1245,9 @@ function CreateCollectionsSuite() {
                   delete edge.isSmart;
                   delete edge.isDisjoint;
                 }
-                if (!isEnterprise || isServer) {
-                  // Comunity does not support it and on
-                  // EE Server the initial request is disallowed.
-                  // Both will trigger removal of distributeShardsLike
+                if (!isEnterprise) {
+                  // Community does not support it and on
+                  // This will trigger removal of distributeShardsLike
                   delete edge.distributeShardsLike;
                 }
               } else {
