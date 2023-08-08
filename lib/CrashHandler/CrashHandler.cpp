@@ -602,8 +602,7 @@ constexpr DWORD maxNumAddrs = 160000;
 constexpr DWORD numRegs = 16;
 
 void createMiniDump(EXCEPTION_POINTERS* pointers) {
-  // we have to serialize calls to
-  // MiniDumpWriteDump
+  // we have to serialize calls to MiniDumpWriteDump
   std::lock_guard<std::mutex> lock(miniDumpLock);
 
   char buffer[4096];
@@ -820,8 +819,7 @@ void CrashHandler::crash(std::string_view context) {
                                                  char const* func,
                                                  char const* context,
                                                  char const* message) {
-  // assemble an "assertion failured in
-  // file:line: message" string
+  // assemble an "assertion failured in file:line: message" string
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
 
@@ -862,8 +860,7 @@ void CrashHandler::disableBacktraces() {
 
 /// @brief installs the crash handler globally
 void CrashHandler::installCrashHandler() {
-  // read environment variable that can
-  // be used to toggle the crash
+  // read environment variable that can be used to toggle the crash
   // handler
   std::string value;
   if (TRI_GETENV("ARANGODB_OVERRIDE_CRASH_HANDLER", value)) {
@@ -914,8 +911,7 @@ void CrashHandler::installCrashHandler() {
   SetUnhandledExceptionFilter(unhandledExceptionFilter);
 #endif
 
-  // install handler for
-  // std::terminate()
+  // install handler for std::terminate()
   std::set_terminate([]() {
     using namespace std::string_view_literals;
 
@@ -925,12 +921,9 @@ void CrashHandler::installCrashHandler() {
     char* p = &buffer[0];
 
     if (auto ex = std::current_exception()) {
-      // there is an active exception
-      // going on...
+      // there is an active exception going on...
       try {
-        // rethrow so we can get the
-        // exception type and its
-        // message
+        // rethrow so we can get the exception type and its message
         std::rethrow_exception(ex);
       } catch (std::exception const& ex) {
         constexpr static auto msg =
