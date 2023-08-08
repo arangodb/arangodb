@@ -202,7 +202,8 @@ void appendAddress(unw_word_t pc, long base, size_t bytesLeft, char*& dst) {
   if (base == 0) {
     // absolute address of pc
     appendNullTerminatedString(" [$0x", bytesLeft, dst);
-    if (bytesLeft - (dst - begin) >= 2 * sizeof(decltype(pc))) {
+    TRI_ASSERT(dst >= begin);
+    if (bytesLeft >= (dst - begin) + 2 * sizeof(decltype(pc))) {
       appendHexValue(reinterpret_cast<unsigned char const*>(&pc),
                      sizeof(decltype(pc)), dst, false);
     }
@@ -211,10 +212,13 @@ void appendAddress(unw_word_t pc, long base, size_t bytesLeft, char*& dst) {
     appendNullTerminatedString(" [+0x", bytesLeft, dst);
     decltype(pc) relative = pc - base;
     unsigned char const* s = reinterpret_cast<unsigned char const*>(&relative);
-    if (bytesLeft - (dst - begin) >= 2 * sizeof(relative)) {
+    TRI_ASSERT(dst >= begin);
+    if (bytesLeft >= (dst - begin) + 2 * sizeof(relative)) {
       appendHexValue(s, sizeof(relative), dst, false);
     }
   }
+  TRI_ASSERT(dst >= begin && bytesLeft >= static_cast<size_t>(dst - begin));
+  // This is true, since we have not overrun the buffer so far.
   appendNullTerminatedString("] ", bytesLeft - (dst - begin), dst);
 }
 #endif
