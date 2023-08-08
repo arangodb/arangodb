@@ -31,6 +31,7 @@
 
 #include "Basics/xoroshiro128plus.h"
 #include "Cache/BinaryKeyHasher.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
@@ -44,16 +45,15 @@ using namespace arangodb;
 using namespace arangodb::cache;
 using namespace arangodb::tests::mocks;
 
-// long-running
-
 TEST(CachePlainCacheTest, test_basic_cache_creation) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 1024 * 1024);
+  CacheOptions co;
+  co.cacheSize = 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache1 =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, 256 * 1024);
-  ASSERT_TRUE(true);
   auto cache2 =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, 512 * 1024);
 
@@ -62,8 +62,8 @@ TEST(CachePlainCacheTest, test_basic_cache_creation) {
   ASSERT_EQ(0, cache2->usage());
   ASSERT_TRUE(512 * 1024 >= cache2->size());
 
-  manager.destroyCache(cache1);
-  manager.destroyCache(cache2);
+  manager.destroyCache(std::move(cache1));
+  manager.destroyCache(std::move(cache2));
 }
 
 TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
@@ -71,7 +71,9 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, cacheLimit);
 
@@ -80,7 +82,7 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
     } else {
@@ -94,7 +96,7 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
       ASSERT_EQ(0, memcmp(f.value()->value(), &j, sizeof(std::uint64_t)));
@@ -108,7 +110,7 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
     } else {
@@ -117,7 +119,7 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
   }
   ASSERT_TRUE(cache->size() <= 128 * 1024);
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
@@ -125,7 +127,9 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, cacheLimit);
 
@@ -134,7 +138,7 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
       ASSERT_NE(f.value(), nullptr);
@@ -158,7 +162,7 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
   // test removal of bogus keys
   for (std::uint64_t i = 1024; i < 1088; i++) {
     auto status = cache->remove(&i, sizeof(std::uint64_t));
-    ASSERT_TRUE(status.ok());
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
     // ensure existing keys not removed
     std::uint64_t found = 0;
     for (std::uint64_t j = 0; j < 1024; j++) {
@@ -176,12 +180,12 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
   // remove actual keys
   for (std::uint64_t i = 0; i < 1024; i++) {
     auto status = cache->remove(&i, sizeof(std::uint64_t));
-    ASSERT_TRUE(status.ok());
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
     auto f = cache->find(&i, sizeof(std::uint64_t));
     ASSERT_FALSE(f.found());
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CachePlainCacheTest,
@@ -193,7 +197,9 @@ TEST(CachePlainCacheTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
+  CacheOptions co;
+  co.cacheSize = 1024 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Plain);
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
@@ -202,7 +208,7 @@ TEST(CachePlainCacheTest,
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.fail()) {
+    if (status != TRI_ERROR_NO_ERROR) {
       delete value;
     }
   }
@@ -210,7 +216,7 @@ TEST(CachePlainCacheTest,
   EXPECT_GT(cache->usageLimit(), minimumUsage);
   EXPECT_GT(cache->usage(), minimumUsage);
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
@@ -222,7 +228,9 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
+  CacheOptions co;
+  co.cacheSize = 1024 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain);
@@ -241,7 +249,7 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
                                                   &item, sizeof(std::uint64_t));
       TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
-      if (status.fail()) {
+      if (status != TRI_ERROR_NO_ERROR) {
         delete value;
       }
     }
@@ -276,7 +284,7 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
             &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = cache->insert(value);
-        if (status.fail()) {
+        if (status != TRI_ERROR_NO_ERROR) {
           delete value;
         }
       } else {  // lookup something
@@ -312,7 +320,7 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
     delete t;
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
   RandomGenerator::shutdown();
 }
 
@@ -321,7 +329,9 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cacheMiss =
       manager.createCache<BinaryKeyHasher>(CacheType::Plain, true, cacheLimit);
   auto cacheHit =
@@ -334,7 +344,7 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cacheHit->insert(value);
-    if (status.fail()) {
+    if (status != TRI_ERROR_NO_ERROR) {
       delete value;
     }
 
@@ -342,7 +352,7 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
                                    sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     status = cacheMiss->insert(value);
-    if (status.fail()) {
+    if (status != TRI_ERROR_NO_ERROR) {
       delete value;
     }
 
@@ -350,7 +360,7 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
                                    sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     status = cacheMixed->insert(value);
-    if (status.fail()) {
+    if (status != TRI_ERROR_NO_ERROR) {
       delete value;
     }
   }
@@ -390,17 +400,20 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
   {
     auto cacheStats = cacheMixed->hitRates();
     auto managerStats = manager.globalHitRates();
+    // the tracking of hits and misses in the cache is only
+    // approximate. thus we cannot guarantee exact values here
+    // and have to use ranges for checking.
     EXPECT_GT(cacheStats.first, 10.0);
-    EXPECT_LT(cacheStats.first, 60.0);
+    EXPECT_LT(cacheStats.first, 75.0);
     EXPECT_GT(cacheStats.second, 10.0);
-    EXPECT_LT(cacheStats.second, 60.0);
+    EXPECT_LT(cacheStats.second, 75.0);
     EXPECT_GT(managerStats.first, 10.0);
-    EXPECT_LT(managerStats.first, 60.0);
+    EXPECT_LT(managerStats.first, 75.0);
     EXPECT_GT(managerStats.second, 10.0);
-    EXPECT_LT(managerStats.second, 60.0);
+    EXPECT_LT(managerStats.second, 75.0);
   }
 
-  manager.destroyCache(cacheHit);
-  manager.destroyCache(cacheMiss);
-  manager.destroyCache(cacheMixed);
+  manager.destroyCache(std::move(cacheHit));
+  manager.destroyCache(std::move(cacheMiss));
+  manager.destroyCache(std::move(cacheMixed));
 }

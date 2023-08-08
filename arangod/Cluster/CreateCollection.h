@@ -26,8 +26,11 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <chrono>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace maintenance {
@@ -45,6 +48,9 @@ class CreateCollection : public ActionBase, public ShardDefinition {
  private:
   bool _doNotIncrement =
       false;  // indicate that `setState` shall not increment the version
+  bool createReplication2Shard(CollectionID const& collection,
+                               ShardID const& shard, VPackSlice props,
+                               TRI_vocbase_t& vocbase) const;
 };
 
 }  // namespace maintenance

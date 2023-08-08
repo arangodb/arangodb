@@ -26,6 +26,8 @@
 #include <memory>
 #include <string_view>
 
+#include "VocBase/voc-types.h"
+
 #include <velocypack/Slice.h>
 
 #include "Options.h"
@@ -49,7 +51,7 @@ class Runner {
  private:
   void startServer();
   void setup();
-  auto createCollection(std::string const& name)
+  auto createCollection(std::string const& name, std::string const& type)
       -> std::shared_ptr<LogicalCollection>;
   void createIndex(LogicalCollection& col, IndexSetup const& index);
   auto runBenchmark() -> Report;

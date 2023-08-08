@@ -49,7 +49,9 @@ class Methods;
 
 namespace helpers {
 /// @brief extract the _key attribute from a slice
-std::string_view extractKeyPart(VPackSlice);
+std::string_view extractKeyPart(velocypack::Slice slice, bool& keyPresent);
+
+std::string_view extractKeyPart(velocypack::Slice slice);
 
 /** @brief Given a string, returns the substring after the first '/' or
  *          the whole string if it contains no '/'.

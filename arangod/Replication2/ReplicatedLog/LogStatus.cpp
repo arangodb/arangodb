@@ -35,6 +35,7 @@
 
 #include "LogStatus.h"
 
+using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
@@ -269,11 +270,21 @@ auto replicated_log::to_string(ParticipantRole role) noexcept
     case ParticipantRole::kFollower:
       return "Follower";
   }
-  LOG_TOPIC("e3242", ERR, Logger::REPLICATION2)
+  LOG_TOPIC("e3142", ERR, Logger::REPLICATION2)
       << "Unhandled participant role: "
       << static_cast<std::underlying_type_t<decltype(role)>>(role);
   TRI_ASSERT(false);
   return "(unknown status code)";
+}
+
+auto replicated_log::to_string(LogStatus const& status) -> std::string {
+  auto builder = velocypack::Builder();
+  status.toVelocyPack(builder);
+  return builder.toJson();
+}
+
+auto replicated_log::to_string(QuickLogStatus const& status) -> std::string {
+  return velocypack::serialize(status).toJson();
 }
 
 void GlobalStatus::Specification::toVelocyPack(

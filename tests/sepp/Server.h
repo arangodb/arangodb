@@ -28,6 +28,7 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+struct CacheOptionsProvider;
 struct RocksDBOptionsProvider;
 }  // namespace arangodb
 
@@ -35,6 +36,7 @@ namespace arangodb::sepp {
 
 struct Server {
   Server(arangodb::RocksDBOptionsProvider const& optionsProvider,
+         arangodb::CacheOptionsProvider const& cacheOptionsProvider,
          std::string databaseDirectory);
   ~Server();
 

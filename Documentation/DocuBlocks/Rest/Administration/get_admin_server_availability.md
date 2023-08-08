@@ -1,10 +1,14 @@
 @startDocuBlock get_admin_server_availability
-@brief Return whether or not a server is available
 
 @RESTHEADER{GET /_admin/server/availability, Return whether or not a server is available, getServerAvailability}
 
 @RESTDESCRIPTION
 Return availability information about a server.
+
+The response is a JSON object with an attribute "mode". The "mode" can either
+be "readonly", if the server is in read-only mode, or "default", if it is not.
+Please note that the JSON object with "mode" is only returned in case the server
+does not respond with HTTP response code 503.
 
 This is a public API so it does *not* require authentication. It is meant to be
 used only in the context of server monitoring.

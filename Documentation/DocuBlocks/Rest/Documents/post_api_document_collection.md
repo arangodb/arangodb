@@ -1,7 +1,6 @@
 @startDocuBlock post_api_document_collection
-@brief creates documents
 
-@RESTHEADER{POST /_api/document/{collection},Create document,createDocument}
+@RESTHEADER{POST /_api/document/{collection},Create a document,createDocument}
 
 @RESTURLPARAMETERS
 
@@ -66,11 +65,11 @@ This option supersedes `overwrite` and offers the following modes:
 
 @RESTQUERYPARAM{keepNull,boolean,optional}
 If the intention is to delete existing attributes with the update-insert
-command, the URL query parameter `keepNull` can be used with a value of
-`false`. This modifies the behavior of the patch command to remove any
-attributes from the existing document that are contained in the patch document
-with an attribute value of `null`.
-This option controls the update-insert behavior only.
+command, set the `keepNull` URL query parameter to `false`. This modifies the
+behavior of the patch command to remove top-level attributes and sub-attributes
+from the existing document that are contained in the patch document with an
+attribute value of `null` (but not attributes of objects that are nested inside
+of arrays). This option controls the update-insert behavior only.
 
 @RESTQUERYPARAM{mergeObjects,boolean,optional}
 Controls whether objects (not arrays) are merged if present in both, the
@@ -92,7 +91,7 @@ Possibly given `_id` and `_rev` attributes in the body are always ignored,
 the URL part or the query parameter collection respectively counts.
 
 If the document was created successfully, then the `Location` header
-contains the path to the newly created document. The `Etag` header field
+contains the path to the newly created document. The `ETag` header field
 contains the revision of the document. Both are only set in the single
 document case.
 

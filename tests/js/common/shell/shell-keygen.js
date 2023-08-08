@@ -2,10 +2,6 @@
 /*global arango, assertEqual, assertTrue, assertFalse,, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the traditional key generators
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -681,7 +677,8 @@ function AutoIncrementSuite() {
 /// @brief create with null keygen
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateNullKeyGen: function () {
+    testCreateNullKeyGen: function() {
+      // NOTE: This is only passing for 3.11 compatibility mode
       let c = db._create(cn, {keyOptions: null});
 
       let options = c.properties().keyOptions;
@@ -952,7 +949,7 @@ function AllowUserKeysSuite() {
     testAllowUserKeysTrueDefaultSharding: function () {
       generators().forEach((generator) => {
         let numShards = 2;
-        if (generator === "autoincrement" && cluster) {
+        if (generator === "autoincrement") {
           numShards = 1;
         }
         let c = db._create(cn, {keyOptions: {type: generator, allowUserKeys: true}, numberOfShards: numShards});
@@ -980,7 +977,7 @@ function AllowUserKeysSuite() {
     testAllowUserKeysFalseDefaultSharding: function () {
       generators().forEach((generator) => {
         let numShards = 2;
-        if (generator === "autoincrement" && cluster) {
+        if (generator === "autoincrement") {
           numShards = 1;
         }
         let c = db._create(cn, {keyOptions: {type: generator, allowUserKeys: false}, numberOfShards: numShards});
@@ -1106,7 +1103,7 @@ function PersistedLastValueSuite() {
     testPersistedLastValue: function () {
       generators().forEach((generator) => {
         let numShards = 2;
-        if (generator === "autoincrement" && cluster) {
+        if (generator === "autoincrement") {
           numShards = 1;
         }
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: numShards});

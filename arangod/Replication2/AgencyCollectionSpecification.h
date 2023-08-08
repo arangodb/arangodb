@@ -24,12 +24,17 @@
 
 #include <unordered_map>
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
-#include <Basics/Identifier.h>
+#include "Basics/Identifier.h"
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/PlanShardToServerMappping.h"
+#include "Inspection/Access.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/Properties/KeyGeneratorProperties.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Properties/CollectionInternalProperties.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "VocBase/Properties/CollectionIndexesProperties.h"
 
 namespace arangodb::replication2::agency {
 
@@ -37,34 +42,114 @@ struct CollectionGroupId : basics::Identifier {
   using Identifier::Identifier;
 };
 
+/***
+ * SECTION Collection Groups
+ */
 struct CollectionGroup {
   CollectionGroupId id;
 
-  struct Collection {
-    explicit Collection(VPackSlice slice);
-    void toVelocyPack(VPackBuilder& builder) const;
-  };
+  struct Collection {};
   std::unordered_map<CollectionID, Collection> collections;
 
-  struct ShardSheaf {
-    LogId replicatedLog;
-
-    explicit ShardSheaf(VPackSlice slice);
-    void toVelocyPack(VPackBuilder& builder) const;
-  };
-  std::vector<ShardSheaf> shardSheaves;
-
   struct Attributes {
-    std::size_t writeConcern;
-    bool waitForSync;
+    struct MutableAttributes {
+      std::size_t writeConcern{};
+      std::size_t replicationFactor{};
+      bool waitForSync{};
+    };
 
-    explicit Attributes(VPackSlice slice);
-    void toVelocyPack(VPackBuilder& builder) const;
+    MutableAttributes mutableAttributes;
+
+    struct ImmutableAttributes {
+      std::size_t numberOfShards;
+    };
+
+    ImmutableAttributes immutableAttributes;
   };
   Attributes attributes;
+};
 
-  explicit CollectionGroup(VPackSlice slice);
-  void toVelocyPack(VPackBuilder& builder) const;
+struct CollectionGroupTargetSpecification : public CollectionGroup {
+  std::optional<uint64_t> version;
+};
+
+struct CollectionGroupPlanSpecification : public CollectionGroup {
+  struct ShardSheaf {
+    LogId replicatedLog;
+  };
+  std::vector<ShardSheaf> shardSheaves;
+};
+
+struct CollectionGroupCurrentSpecification {
+  struct Supervision {
+    std::optional<uint64_t> version;
+  };
+
+  Supervision supervision;
+};
+
+/***
+ * SECTION Collections
+ */
+
+struct Collection {
+  // TODO: Fill Attributes.
+  CollectionGroupId groupId;
+
+  struct MutableProperties {
+    // TODO: This can be optimized into it's own struct.
+    // Did a short_cut here to avoid concatenated changes
+    arangodb::velocypack::Builder computedValues{VPackSlice::nullSlice()};
+
+    // TODO: This can be optimized into it's own struct.
+    // Did a short_cut here to avoid concatenated changes
+    std::optional<arangodb::velocypack::Builder> schema{std::nullopt};
+  };
+
+  MutableProperties mutableProperties;
+
+  struct ImmutableProperties : public CollectionInternalProperties {
+    std::string name{StaticStrings::Empty};
+    bool isSystem{false};
+    std::underlying_type_t<TRI_col_type_e> type =
+        TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
+    KeyGeneratorProperties keyOptions{};
+    bool isSmart{false};
+    bool isDisjoint{false};
+    bool cacheEnabled{false};
+    std::vector<std::string> shardKeys{};
+    inspection::NonNullOptional<std::string> smartJoinAttribute{std::nullopt};
+    inspection::NonNullOptional<std::string> smartGraphAttribute{std::nullopt};
+    inspection::NonNullOptional<std::vector<DataSourceId>> shadowCollections{
+        std::nullopt};
+  };
+
+  ImmutableProperties immutableProperties;
+
+  CollectionIndexesProperties indexes;
+};
+
+struct CollectionTargetSpecification : public Collection {};
+
+struct CollectionPlanSpecification : public Collection {
+  std::vector<ShardID> shardList;
+
+  // Note this is still here for compatibility, and temporary reasons.
+  // We think we can get away with just above shardList and CollectionGroups
+  // as soon as everything is in place.
+  PlanShardToServerMapping deprecatedShardMap;
+};
+
+struct CollectionCurrentShardSpecification {
+  bool error;
+  std::string errorMessage;
+  std::uint64_t errorNum;
+  std::vector<velocypack::SharedSlice> indexes;
+  std::vector<ServerID> servers;
+  std::vector<ServerID> failoverCandidates;
+};
+struct CollectionCurrentSpecification {
+  std::unordered_map<ShardID, CollectionCurrentShardSpecification> shards;
 };
 
 }  // namespace arangodb::replication2::agency

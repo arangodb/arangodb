@@ -42,8 +42,8 @@
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
@@ -57,12 +57,15 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/HealthData.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
-#include "VocBase/vocbase.h"
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -362,7 +365,7 @@ void HeartbeatThread::run() {
       runSingleServer();
     }
   } else if (ServerState::instance()->isAgent(role)) {
-    runAgent();
+    // do nothing
   } else {
     LOG_TOPIC("8291e", ERR, Logger::HEARTBEAT)
         << "invalid role setup found when starting HeartbeatThread";
@@ -518,7 +521,7 @@ void HeartbeatThread::runDBServer() {
     try {
       auto const start = std::chrono::steady_clock::now();
       // send our state to the agency.
-      sendServerState();
+      sendServerStateAsync();
 
       if (isStopping()) {
         break;
@@ -802,6 +805,9 @@ void HeartbeatThread::runSingleServer() {
 
   uint64_t lastSentVersion = 0;
   auto start = std::chrono::steady_clock::now();
+  // last time we were able to successfully send our heartbeat to the agency
+  std::chrono::time_point<std::chrono::steady_clock> lastSuccessfulHeartbeat;
+
   while (!isStopping()) {
     {
       std::unique_lock locker{_condition.mutex};
@@ -818,10 +824,68 @@ void HeartbeatThread::runSingleServer() {
       break;
     }
 
+    double leaderGracePeriod = replication.activeFailoverLeaderGracePeriod();
+    TRI_IF_FAILURE("HeartbeatThread::reducedLeaderGracePeriod") {
+      leaderGracePeriod = 10.0;
+    }
+
     try {
       // send our state to the agency.
-      // we don't care if this fails
-      sendServerState();
+      // we don't care if this fails here. however, if sending the heartbeat
+      // works, we note the timestamp. the reason is that if we can't send our
+      // heartbeat to the agency for a prolonged time, we should not assume
+      // our own leadership, simply because it may have changed in the agency
+      // since we last contacted it.
+      if (sendServerState()) {
+        // heartbeat sent successfully
+        lastSuccessfulHeartbeat = std::chrono::steady_clock::now();
+      } else if (leaderGracePeriod > 0.0) {
+        // could not send heartbeat to agency.
+        // if this state continues for a long time, the agency may elect
+        // a different leader. this is a problem if we consider ourselves
+        // the leader as well.
+        auto now = std::chrono::steady_clock::now();
+        if (now - lastSuccessfulHeartbeat >=
+                std::chrono::duration<double>(leaderGracePeriod) &&
+            ServerState::instance()->mode() == ServerState::Mode::DEFAULT) {
+          // we were leader previously. now resign from leadership by refusing
+          // to accept any incoming write requests.
+          // as we couldn't send our own heartbeat to the agency for a prolonged
+          // period, we also don't try to inform the agency about that we block
+          // incoming requests.
+          // in case we can reach the agency again later, things will
+          // automatically fix themselves.
+          LOG_TOPIC("2cdc2", INFO, Logger::HEARTBEAT)
+              << "We were leader, but could not send our heartbeat to the "
+                 "agency for a prolonged time. "
+              << "Now refusing to serve incoming write requests until the "
+                 "agency is reachable again.";
+
+          // server is not responsible anymore for expiring outdated documents
+          ttlFeature.allowRunning(false);
+
+          ServerState::instance()->setFoxxmaster("");  // no foxxmater
+          ServerState::instance()->setReadOnly(
+              ServerState::API_TRUE);  // Disable writes
+
+          // refuse requests
+          ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
+          TRI_ASSERT(!applier->isActive());
+          applier->forget();
+
+          auto& gs = server().getFeature<GeneralServerFeature>();
+          Result res = gs.jobManager().clearAllJobs();
+          if (res.fail()) {
+            LOG_TOPIC("22fa7", WARN, Logger::HEARTBEAT)
+                << "could not cancel all async jobs " << res.errorMessage();
+          }
+        }
+
+        // we can't continue from here until we are able to send our own state
+        // to the agency successfully again.
+        continue;
+      }
+
       double const timeout = 1.0;
 
       // check current local version of database objects version, and bump
@@ -900,7 +964,7 @@ void HeartbeatThread::runSingleServer() {
             << "Leadership vacuum detected, "
             << "attempting a takeover";
 
-        // if we stay a slave, the redirect will be turned on again
+        // if we stay a follower, the redirect will be turned on again
         ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
         AgencyCommResult result;
         if (leader.isNone()) {
@@ -1001,19 +1065,19 @@ void HeartbeatThread::runSingleServer() {
       LOG_TOPIC("aeb38", TRACE, Logger::HEARTBEAT)
           << "Following: " << leaderStr;
 
-      // server is not responsible anymore for expiring outdated documents
-      ttlFeature.allowRunning(false);
-
-      ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
-      ServerState::instance()->setReadOnly(
-          ServerState::API_TRUE);  // Disable writes with dirty-read header
-
       std::string endpoint = ci.getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
         LOG_TOPIC("05196", ERR, Logger::HEARTBEAT)
             << "Failed to resolve leader endpoint";
         continue;  // try again next time
       }
+
+      // server is not responsible anymore for expiring outdated documents
+      ttlFeature.allowRunning(false);
+
+      ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
+      ServerState::instance()->setReadOnly(
+          ServerState::API_TRUE);  // Disable writes with dirty-read header
 
       // enable redirection to leader
       auto prv =
@@ -1151,13 +1215,13 @@ void HeartbeatThread::runCoordinator() {
   // operation run in a scheduler thread and a the heartbeat
   // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
-  std::shared_ptr<std::atomic<int>> getNewsRunning(new std::atomic<int>(0));
+  auto getNewsRunning = std::make_shared<std::atomic<int>>(0);
 
   while (!isStopping()) {
     try {
       auto const start = std::chrono::steady_clock::now();
       // send our state to the agency.
-      sendServerState();
+      sendServerStateAsync();
 
       if (isStopping()) {
         break;
@@ -1192,28 +1256,6 @@ void HeartbeatThread::runCoordinator() {
           << "Got an unknown exception in coordinator heartbeat";
     }
     LOG_TOPIC("f5627", DEBUG, Logger::HEARTBEAT) << "Heart beating.";
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat main loop, agent version
-////////////////////////////////////////////////////////////////////////////////
-
-void HeartbeatThread::runAgent() {
-  // simple loop to post dead threads every hour, no other tasks today
-  while (!isStopping()) {
-    try {
-      std::unique_lock locker{_condition.mutex};
-      if (!isStopping()) {
-        _condition.cv.wait_for(locker, std::chrono::hours{1});
-      }
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("e6761", ERR, Logger::HEARTBEAT)
-          << "Got an exception in agent heartbeat: " << ex.what();
-    } catch (...) {
-      LOG_TOPIC("e1dbc", ERR, Logger::HEARTBEAT)
-          << "Got an unknown exception in agent heartbeat";
-    }
   }
 }
 
@@ -1442,6 +1484,8 @@ void HeartbeatThread::notify() {
 bool HeartbeatThread::sendServerState() {
   LOG_TOPIC("3369a", TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
+  TRI_IF_FAILURE("HeartbeatThread::sendServerState") { return false; }
+
   auto const start = std::chrono::steady_clock::now();
   ScopeGuard sg([&]() noexcept {
     auto timeDiff = std::chrono::steady_clock::now() - start;
@@ -1484,6 +1528,88 @@ bool HeartbeatThread::sendServerState() {
   }
 
   return false;
+}
+
+void HeartbeatThread::sendServerStateAsync() {
+  auto const start = std::chrono::steady_clock::now();
+
+  // construct JSON value { "status": "...", "time": "...", "healthy": ... }
+  VPackBuilder builder;
+
+  try {
+    builder.openObject();
+    std::string const status =
+        ServerState::stateToString(ServerState::instance()->getState());
+    builder.add("status", VPackValue(status));
+    std::string const stamp = AgencyCommHelper::generateStamp();
+    builder.add("time", VPackValue(stamp));
+
+    if (ServerState::instance()->isDBServer()) {
+      // use storage engine health self-assessment and send it to agency too
+      arangodb::HealthData hd =
+          server().getFeature<EngineSelectorFeature>().engine().healthCheck();
+      hd.toVelocyPack(builder);
+    }
+
+    builder.close();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("b109f", WARN, Logger::HEARTBEAT)
+        << "failed to construct heartbeat agency transaction: " << e.what();
+    return;
+  } catch (...) {
+    LOG_TOPIC("06781", WARN, Logger::HEARTBEAT)
+        << "failed to construct heartbeat agency transaction";
+    return;
+  }
+
+  network::Timeout timeout = std::chrono::seconds{20};
+  if (isStopping()) {
+    timeout = std::chrono::seconds{5};
+  }
+
+  AsyncAgencyComm ac;
+  auto f = ac.setTransientValue(
+      "arango/Sync/ServerStates/" + ServerState::instance()->getId(),
+      builder.slice(), {.skipScheduler = true, .timeout = timeout});
+
+  std::move(f).thenFinal(
+      [self = shared_from_this(),
+       start](futures::Try<AsyncAgencyCommResult> const& tryResult) noexcept {
+        auto timeDiff = std::chrono::steady_clock::now() - start;
+        self->_heartbeat_send_time_ms.count(
+            std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff)
+                .count());
+
+        if (timeDiff > std::chrono::seconds(2) && !self->isStopping()) {
+          LOG_TOPIC("776a5", WARN, Logger::HEARTBEAT)
+              << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
+                 "this might be causing trouble with health checks. Please "
+                 "contact ArangoDB Support.";
+        }
+
+        try {
+          auto const& result = tryResult.get().asResult();
+          if (result.fail()) {
+            if (++self->_numFails % self->_maxFailsBeforeWarning == 0) {
+              self->_heartbeat_failure_counter.count();
+              std::string const endpoints =
+                  AsyncAgencyCommManager::INSTANCE->endpointsString();
+              LOG_TOPIC("4e2f5", WARN, Logger::HEARTBEAT)
+                  << "heartbeat could not be sent to agency endpoints ("
+                  << endpoints << "): error code: " << result.errorMessage();
+              self->_numFails = 0;
+            }
+          } else {
+            self->_numFails = 0;
+          }
+        } catch (std::exception const& e) {
+          LOG_TOPIC("cfd83", WARN, Logger::HEARTBEAT)
+              << "failed to send heartbeat - exception occurred: " << e.what();
+        } catch (...) {
+          LOG_TOPIC("cfe83", WARN, Logger::HEARTBEAT)
+              << "failed to send heartbeat - unknown exception occurred.";
+        }
+      });
 }
 
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {

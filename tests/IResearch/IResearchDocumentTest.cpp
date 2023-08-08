@@ -2603,19 +2603,16 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
     EXPECT_TRUE(pkField);
     EXPECT_EQ(size, pkField->docs_count());
 
-    arangodb::iresearch::PrimaryKeyFilterContainer filters;
+    arangodb::iresearch::PrimaryKeysFilter<false> filters{
+        irs::IResourceManager::kNoop};
     EXPECT_TRUE(filters.empty());
-    auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
+    filters.emplace(arangodb::LocalDocumentId(rid));
     EXPECT_FALSE(filters.empty());
 
     // first execution
     {
-      auto prepared = filter.prepare(*reader);
+      auto prepared = static_cast<irs::filter&>(filters).prepare(*reader);
       ASSERT_TRUE(prepared);
-      EXPECT_EQ(prepared, filter.prepare(*reader));  // same object
-      EXPECT_TRUE(&filter ==
-                  dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
-                      prepared.get()));  // same object
 
       for (auto& segment : *reader) {
         auto docs = prepared->execute(segment);
@@ -2779,17 +2776,14 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       EXPECT_TRUE(ridSlice.isNumber<uint64_t>());
 
       auto rid = ridSlice.getNumber<uint64_t>();
-      arangodb::iresearch::PrimaryKeyFilterContainer filters;
+      arangodb::iresearch::PrimaryKeysFilter<false> filters{
+          irs::IResourceManager::kNoop};
       EXPECT_TRUE(filters.empty());
-      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
+      filters.emplace(arangodb::LocalDocumentId(rid));
       EXPECT_FALSE(filters.empty());
 
-      auto prepared = filter.prepare(*store.reader);
+      auto prepared = static_cast<irs::filter&>(filters).prepare(*store.reader);
       ASSERT_TRUE(prepared);
-      EXPECT_EQ(prepared, filter.prepare(*store.reader));  // same object
-      EXPECT_TRUE((&filter ==
-                   dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
-                       prepared.get())));  // same object
 
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);

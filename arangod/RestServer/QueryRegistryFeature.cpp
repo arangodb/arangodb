@@ -182,7 +182,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       _logFailedQueries(false),
       _maxQueryStringLength(4096),
       _maxCollectionsPerQuery(2048),
-      _peakMemoryUsageThreshold(4294967296),  // 4GB
+      _peakMemoryUsageThreshold(1073741824),  // 1GB
       _queryGlobalMemoryLimit(
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
       _queryMemoryLimit(
@@ -673,8 +673,8 @@ catch unexpected failed queries in production.)");
   options
       ->addOption(
           "--query.max-dnf-condition-members",
-          "Maximum number of OR sub-nodes in internal representation of "
-          "an AQL FILTER condition.",
+          "The maximum number of OR sub-nodes in the internal representation "
+          "of an AQL FILTER condition.",
           new SizeTParameter(&_maxDNFConditionMembers),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Uncommon,
@@ -682,15 +682,17 @@ catch unexpected failed queries in production.)");
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100)
-      .setLongDescription(R"(This option can be used to limit the computation
+      .setLongDescription(R"(Yon can use this option to limit the computation
 time and memory usage when converting complex AQL FILTER conditions into the
 internal DNF (disjunctive normal form) format. FILTER conditions with a lot of
 logical branches (AND, OR, NOT) can take a large amount of processing time and
-memory. This startup option can be used to limit the computation time and memory
-usage for such conditions. Once the threshold value is reached during the DNF
-conversion of a FILTER condition, the conversion will be aborted, and the query
-will continue with a simplified internal representation of the condition, which
-cannot be used for index lookups.")");
+memory. This startup option limits the computation time and memory usage for
+such conditions.
+
+Once the threshold value is reached during the DNF conversion of a FILTER
+condition, the conversion is aborted, and the query continues with a simplified
+internal representation of the condition, which cannot be used for index
+lookups.)");
 
   options
       ->addOption(

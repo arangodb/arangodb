@@ -285,46 +285,64 @@ configure_file(
 ## Find the git revision
 ################################################################################
 
+function(determine_repository_version source_dir build_repository have_build_repository)
+  # Get commit hash 
+  execute_process(
+    WORKING_DIRECTORY ${source_dir}
+    COMMAND ${GIT_EXE} rev-parse --short HEAD
+    OUTPUT_VARIABLE COMMIT_RAW
+  )
+  if (NOT COMMIT_RAW)
+    message(FATAL_ERROR "Can't extract current commit with the command: 'git rev-parse --short HEAD'")
+  endif()
+
+  string(STRIP ${COMMIT_RAW} COMMIT_SHORT)
+
+  if (NOT DEFINED BUILD_REPO_INFO OR BUILD_REPO_INFO STREQUAL "default")
+    execute_process(
+      WORKING_DIRECTORY ${source_dir}
+      COMMAND ${GIT_EXE} branch --show-current
+      OUTPUT_VARIABLE BRANCH_NAME_RAW)
+    if (NOT BRANCH_NAME_RAW)
+      # For example, in docker we do 'checkout'. Hence, it is impossible to detect branch
+      set(${build_repository} "${COMMIT_SHORT}" PARENT_SCOPE)
+      set(${have_build_repository} "1" PARENT_SCOPE)
+    else()
+      string(STRIP ${BRANCH_NAME_RAW} BRANCH_NAME)
+      set(${build_repository} "refs/${BRANCH_NAME} ${COMMIT_SHORT}" PARENT_SCOPE)
+      set(${have_build_repository} "1" PARENT_SCOPE)
+    endif()
+  elseif(BUILD_REPO_INFO STREQUAL "release")
+    execute_process(
+      WORKING_DIRECTORY ${source_dir}
+      COMMAND ${GIT_EXE} describe --all --tags --match v${ARANGODB_PLAIN_VERSION}
+      OUTPUT_VARIABLE TAG_RAW)
+    if (NOT TAG_RAW)
+      message(FATAL_ERROR "Can't extract tag using the command: 'git describe --all --tags --match v${ARANGODB_PLAIN_VERSION}")
+    else()
+      string(STRIP ${TAG_RAW} TAG)
+      set(${build_repository} "refs/${TAG} ${COMMIT_SHORT}" PARENT_SCOPE)
+      set(${have_build_repository} "1" PARENT_SCOPE)
+    endif()
+  elseif(BUILD_REPO_INFO STREQUAL "nightly")
+    set(${build_repository} "refs/head/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR} ${COMMIT_SHORT}" PARENT_SCOPE)
+    set(${have_build_repository} "1" PARENT_SCOPE)
+  else ()
+    set(${build_repository} "GIT FAILED TO RETRIEVE THE VERSION - UNSUPPORTED BUILD MODE" PARENT_SCOPE)
+    set(${have_build_repository} "1" PARENT_SCOPE)
+  endif()
+endfunction()
+
 find_program (GIT_EXE git)
 if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
-  execute_process(
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-
-    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
-    OUTPUT_VARIABLE GIT_OUTPUT)
-
-  # this may fail on shallow clones that only knows about a limited number of commits.
-  # if there is an older merged revision the head, it may not be available to git.
-  if (NOT GIT_OUTPUT)
-      set(ARANGODB_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
-      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
-    else()
-      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-      set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
-      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
-    endif()
-else ()
+  determine_repository_version(${CMAKE_SOURCE_DIR} ARANGODB_BUILD_REPOSITORY HAVE_ARANGODB_BUILD_REPOSITORY)
+else()
   set(ARANGODB_BUILD_REPOSITORY "")
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
 
 if (DEFINED GIT_EXE AND USE_ENTERPRISE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
-  execute_process(
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/enterprise
-
-    COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
-    OUTPUT_VARIABLE GIT_OUTPUT)
-
-  # this may fail on shallow clones that only knows about a limited number of commits.
-  # if there is an older merged revision the head, it may not be available to git.
-  if (NOT GIT_OUTPUT)
-      set(ENTERPRISE_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
-      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
-    else()
-      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-      set(ENTERPRISE_BUILD_REPOSITORY ${REPOSITORY_VERSION})
-      set(HAVE_ENTERPRISE_BUILD_REPOSITORY "1")
-    endif()
+  determine_repository_version(${CMAKE_SOURCE_DIR}/enterprise ENTERPRISE_BUILD_REPOSITORY HAVE_ENTERPRISE_BUILD_REPOSITORY)
 else ()
   set(ENTERPRISE_BUILD_REPOSITORY "")
   set(HAVE_ENTERPRISE_BUILD_REPOSITORY "0")
@@ -345,6 +363,7 @@ configure_file(
 
 if (VERBOSE)
   message(STATUS "ARANGODB_BUILD_REPOSITORY=\"${ARANGODB_BUILD_REPOSITORY}\"")
+  message(STATUS "ENTERPRISE_BUILD_REPOSITORY=\"${ENTERPRISE_BUILD_REPOSITORY}\"")
 endif ()
 
 ################################################################################
@@ -753,10 +772,13 @@ endfunction()
 # JEMALLOC
 # ------------------------------------------------------------------------------
 
-option(USE_JEMALLOC_PROF "use jemalloc profiler" OFF)
+option(USE_JEMALLOC_PROF "use jemalloc profiler" ON)
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+else ()
+  # Must not compile in profiling stuff if we are not using JEMALLOC
+  set(USE_JEMALLOC_PROF OFF)
 endif ()
 
 if (USE_JEMALLOC_PROF)

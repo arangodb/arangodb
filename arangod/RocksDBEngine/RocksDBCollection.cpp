@@ -40,6 +40,7 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Random/RandomGenerator.h"
@@ -273,18 +274,26 @@ struct TruncateTimeTracker final : public TimeTracker {
   }
 };
 
-void reportPrimaryIndexInconsistencyIfNotFound(Result const& res,
-                                               std::string_view key,
-                                               LocalDocumentId const& rev) {
-  if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-    // Scandal! A primary index entry is pointing to nowhere! Let's report
-    // this to the authorities immediately:
-    LOG_TOPIC("42536", ERR, arangodb::Logger::ENGINES)
-        << "Found primary index entry for which there is no actual "
-           "document: _key="
-        << key << ", _rev=" << rev.id();
-    TRI_ASSERT(false);
-  }
+void reportPrimaryIndexInconsistencyIfNotFound(
+    Result const& res, LogicalCollection const& collection,
+    std::string_view key, LocalDocumentId const& rev,
+    ReadOwnWrites readOwnWrites, RocksDBTransactionState const* state) {
+  TRI_ASSERT(res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
+  // Scandal! A primary index entry is pointing to nowhere! Let's report
+  // this to the authorities immediately:
+  LOG_TOPIC("42536", ERR, arangodb::Logger::ENGINES)
+      << "Found primary index entry for which there is no actual "
+         "document: "
+      << res.errorMessage() << ", collection: " << collection.vocbase().name()
+      << "/" << collection.name() << ", type: "
+      << (collection.type() == TRI_COL_TYPE_EDGE ? "edge" : "document")
+      << ", smart: " << (collection.isSmart() ? "yes" : "no")
+      << ", _key=" << key << ", _rev=" << RevisionId(rev).toHLC() << " ("
+      << rev.id() << "), read own writes: "
+      << (readOwnWrites == ReadOwnWrites::yes ? "yes" : "no")
+      << ", state: " << state->debugInfo()
+      << ", hlc: " << TRI_HybridLogicalClock();
+  TRI_ASSERT(false);
 }
 
 size_t getParallelism(velocypack::Slice slice) {
@@ -343,6 +352,32 @@ void RocksDBCollection::deferDropCollection(
     } catch (...) {
     }
   }
+
+  // remove all indexes from the collection object.
+  // we do this because the objects of deleted collections will be
+  // retained in memory until the server is shut down.
+  // deleting the collection's attached index objects saves
+  // memory for caches etc.
+  // when we get here, the code in RocksDBEngine::dropCollection()
+  // will have already called `drop()` on each index object.
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  auto it = _indexes.begin();
+  while (it != _indexes.end()) {
+    auto const& idx = (*it);
+    // unloading drops any potential caches
+    idx->unload();
+
+    if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      // we keep the primary index object around, because it can
+      // be referred to by the collection object with a pointer.
+      ++it;
+    } else {
+      // all other index types we simply delete, so that the
+      // underlying objects will be garbage-collected and memory
+      // be freed.
+      it = _indexes.erase(it);
+    }
+  }
 }
 
 Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
@@ -392,9 +427,9 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
   }
 }
 
-std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
-                                                      bool restore,
-                                                      bool& created) {
+std::shared_ptr<Index> RocksDBCollection::createIndex(
+    VPackSlice info, bool restore, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(info.isObject());
 
   // Step 0. Lock all the things
@@ -545,9 +580,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
       }
 
       RocksDBFilePurgePreventer walKeeper(&engine);
-      res = buildIdx->fillIndexBackground(locker);
+      res = buildIdx->fillIndexBackground(locker, std::move(progress));
     } else {
-      res = buildIdx->fillIndexForeground();
+      res = buildIdx->fillIndexForeground(std::move(progress));
     }
     if (res.fail()) {
       return res;
@@ -764,13 +799,15 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
   auto const& indexes = indexesSnapshot.getIndexes();
 
   // delete index values
+  std::vector<TruncateGuard> guards;
+  guards.reserve(indexes.size());
   for (auto const& idx : indexes) {
-    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-    bounds = ridx->getBounds();
-    s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
+    auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+    auto r = rIdx->truncateBegin(batch);
+    if (!r.ok()) {
+      return std::move(r).result();
     }
+    guards.push_back(std::move(r.get()));
   }
 
   // add the log entry so we can recover the correct count
@@ -787,25 +824,29 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
   }
+  // we need crash server if any failure in order to trigger recovery,
+  // as rocksdb truncate already committed here
+  [&]() noexcept {
+    // post commit sequence
+    rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber() - 1;
 
-  rocksdb::SequenceNumber seq =
-      db->GetLatestSequenceNumber() - 1;  // post commit sequence
+    uint64_t numDocs = _meta.numberDocuments();
+    _meta.adjustNumberDocuments(seq,
+                                /*revision*/ _logicalCollection.newRevisionId(),
+                                -static_cast<int64_t>(numDocs));
 
-  uint64_t numDocs = _meta.numberDocuments();
-  _meta.adjustNumberDocuments(seq,
-                              /*revision*/ _logicalCollection.newRevisionId(),
-                              -static_cast<int64_t>(numDocs));
+    for (auto it = guards.begin(); auto const& idx : indexes) {
+      // clears caches / clears links (if applicable)
+      auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+      rIdx->truncateCommit(std::move(*it++), seq, &trx);
+    }
 
-  for (auto const& idx : indexes) {
-    idx->afterTruncate(seq,
-                       &trx);  // clears caches / clears links (if applicable)
-  }
+    indexesSnapshot.release();
 
-  indexesSnapshot.release();
+    bufferTruncate(seq);
 
-  bufferTruncate(seq);
-
-  TRI_ASSERT(!state->hasOperations());  // not allowed
+    TRI_ASSERT(!state->hasOperations());  // not allowed
+  }();
   return {};
 }
 
@@ -1037,7 +1078,11 @@ Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->ensureSnapshot());
-  ::reportPrimaryIndexInconsistencyIfNotFound(res, key, documentId);
+  if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    ::reportPrimaryIndexInconsistencyIfNotFound(
+        res, _logicalCollection, key, documentId, readOwnWrites,
+        RocksDBTransactionState::toState(trx));
+  }
   return res;
 }
 
@@ -1273,6 +1318,12 @@ void RocksDBCollection::figuresSpecific(
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         size_t count = 0;
         switch (type) {
+          case Index::TRI_IDX_TYPE_INVERTED_INDEX: {
+            auto snapshot =
+                basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*rix)
+                    .snapshot();
+            count = snapshot.getDirectoryReader().live_docs_count();
+          } break;
           case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::PrimaryIndex(rix->objectId()), snapshot,
@@ -1399,11 +1450,34 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
     return res.reset(TRI_ERROR_DEBUG);
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (options.isRestore && ServerState::instance()->isDBServer()) {
+    rocksdb::PinnableSlice ps;
+    rocksdb::Status s =
+        mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
+                                RocksDBColumnFamilyManager::Family::Documents),
+                            key->string(), &ps);
+    if (s.ok()) {
+      // the LocalDocumentId should not have existed before...
+      res.reset(TRI_ERROR_ARANGO_CONFLICT,
+                "conflict with existing LocalDocumentId while trying to insert "
+                "document on follower");
+      res.withError([&doc](result::Error& err) {
+        TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
+        err.appendErrorMessage("; key: ");
+        err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
+      });
+      TRI_ASSERT(false) << "insert: " << res.errorMessage()
+                        << ", options: " << options;
+    }
+  }
+#endif
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Documents),
       key.ref(),
       rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
+
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&doc](result::Error& err) {
@@ -1571,6 +1645,9 @@ Result RocksDBCollection::modifyDocument(
     velocypack::Slice oldDoc, LocalDocumentId newDocumentId,
     velocypack::Slice newDoc, RevisionId oldRevisionId,
     RevisionId newRevisionId, OperationOptions const& options) const {
+  TRI_ASSERT(oldDoc.get(StaticStrings::KeyString).stringView() ==
+             newDoc.get(StaticStrings::KeyString).stringView());
+
   savepoint.prepareOperation(newRevisionId);
 
   // Coordinator doesn't know index internals
@@ -1657,6 +1734,35 @@ Result RocksDBCollection::modifyDocument(
 
   key->constructDocument(objectId(), newDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (options.isRestore && ServerState::instance()->isDBServer()) {
+    rocksdb::PinnableSlice ps;
+    rocksdb::Status s =
+        mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
+                                RocksDBColumnFamilyManager::Family::Documents),
+                            key->string(), &ps);
+    if (s.ok()) {
+      // the LocalDocumentId should not have existed before...
+      res.reset(TRI_ERROR_ARANGO_CONFLICT,
+                "conflict with existing LocalDocumentId while trying to modify "
+                "document on follower");
+      res.withError([&oldDoc, &newDoc](result::Error& err) {
+        TRI_ASSERT(oldDoc.get(StaticStrings::KeyString).isString());
+        TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
+        err.appendErrorMessage("; old key: ");
+        err.appendErrorMessage(
+            oldDoc.get(StaticStrings::KeyString).copyString());
+        err.appendErrorMessage("; new key: ");
+        err.appendErrorMessage(
+            newDoc.get(StaticStrings::KeyString).copyString());
+      });
+      TRI_ASSERT(false) << "modify: " << res.errorMessage()
+                        << ", options: " << options;
+    }
+  }
+#endif
+
   s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Documents),
@@ -1919,7 +2025,7 @@ void RocksDBCollection::destroyCache() const {
   if (_cache != nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
-    _cacheManager->destroyCache(_cache);
+    _cacheManager->destroyCache(std::move(_cache));
     _cache.reset();
   }
 }
@@ -1928,17 +2034,17 @@ void RocksDBCollection::destroyCache() const {
 void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
-    bool banished = false;
-    while (!banished) {
+    do {
       auto status = _cache->banish(k.buffer()->data(),
                                    static_cast<uint32_t>(k.buffer()->size()));
-      if (status.ok()) {
-        banished = true;
-      } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
+      if (status == TRI_ERROR_NO_ERROR ||
+          status == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        break;
+      } else if (status == TRI_ERROR_SHUTTING_DOWN) {
         destroyCache();
         break;
       }
-    }
+    } while (true);
   }
 }
 

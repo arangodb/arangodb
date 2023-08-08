@@ -55,6 +55,7 @@
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utilities/NameValidator.h"
@@ -260,15 +261,23 @@ void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("database", "database options");
 
+  auto static const allowedReplicationVersions = [] {
+    auto result = std::unordered_set<std::string>();
+    for (auto const& version : replication::allowedVersions) {
+      result.emplace(replication::versionToString(version));
+    }
+    return result;
+  }();
+
   options
       ->addOption("--database.default-replication-version",
-                  "default replication version, can be overwritten "
+                  "The default replication version, can be overwritten "
                   "when creating a new database, possible values: 1, 2",
-                  new replication::ReplicationVersionParameter(
-                      &_defaultReplicationVersion),
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_defaultReplicationVersion, allowedReplicationVersions),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(31200);
 
   options->addOption(
       "--database.wait-for-sync",
@@ -310,6 +319,15 @@ void DatabaseFeature::collectOptions(
                   options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30807)
       .setIntroducedIn(30902);
+
+  options
+      ->addOption("--database.max-databases",
+                  "The maximum number of databases that can exist in parallel.",
+                  new options::SizeTParameter(&_maxDatabases))
+      .setLongDescription(R"(If the maximum number of databases is reached, no
+additional databases can be created in the deployment. In order to create additional
+databases, other databases need to be removed first.")")
+      .setIntroducedIn(31200);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
@@ -450,6 +468,7 @@ void DatabaseFeature::beginShutdown() {
 
     // throw away all open cursors in order to speed up shutdown
     vocbase->cursorRepository()->garbageCollect(true);
+    vocbase->shutdownReplicatedLogs();
   }
 }
 
@@ -587,9 +606,19 @@ void DatabaseFeature::recoveryDone() {
 
   // '_pendingRecoveryCallbacks' will not change because
   // !StorageEngine.inRecovery()
+  // It's single active thread before recovery done,
+  // so we could use general purpose thread pool for this
+  std::vector<futures::Future<Result>> futures;
+  futures.reserve(_pendingRecoveryCallbacks.size());
   for (auto& entry : _pendingRecoveryCallbacks) {
-    auto result = entry();
-
+    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+        RequestLane::CLIENT_SLOW, std::move(entry)));
+  }
+  _pendingRecoveryCallbacks.clear();
+  // TODO(MBkkt) use single wait with early termination
+  // when it would be available
+  for (auto& future : futures) {
+    auto result = std::move(future).get();
     if (!result.ok()) {
       LOG_TOPIC("772a7", ERR, Logger::FIXME)
           << "recovery failure due to error from callback, error '"
@@ -599,8 +628,6 @@ void DatabaseFeature::recoveryDone() {
       THROW_ARANGO_EXCEPTION(result);
     }
   }
-
-  _pendingRecoveryCallbacks.clear();
 
   if (ServerState::instance()->isCoordinator()) {
     return;
@@ -681,6 +708,18 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
         // name already in use
         return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                       std::string("duplicate database name '") + name + "'");
+      }
+
+      if (ServerState::instance()->isSingleServerOrCoordinator() &&
+          databases->size() >= maxDatabases()) {
+        // intentionally do not validate number of databases on DB servers,
+        // because they only carry out operations that are initiated by
+        // coordinators
+        return {TRI_ERROR_RESOURCE_LIMIT,
+                absl::StrCat(
+                    "unable to create additional database because it would "
+                    "exceed the configured maximum number of databases (",
+                    maxDatabases(), ")")};
       }
     }
 
@@ -801,7 +840,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
       server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(
           *vocbase);
     }
-
+    vocbase->shutdownReplicatedLogs();
     auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry != nullptr) {
       queryRegistry->destroy(vocbase->name());

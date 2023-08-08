@@ -501,8 +501,10 @@ ExecutionPlan::~ExecutionPlan() {
     // only track memory usage here and access ast/query if we are allowed to do
     // so. this can be inherently unsafe from within the gtest unit tests, so it
     // is protected by an option here
-    _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() *
-                                                        sizeof(ExecutionNode));
+    for (auto const& [id, node] : _ids) {
+      _ast->query().resourceMonitor().decreaseMemoryUsage(
+          node->getMemoryUsedBytes());
+    }
   }
 
   for (auto& x : _ids) {
@@ -1119,8 +1121,9 @@ ExecutionNode* ExecutionPlan::registerNode(
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   {
-    ResourceUsageScope scope(_ast->query().resourceMonitor(),
-                             _trackMemoryUsage ? sizeof(ExecutionNode) : 0);
+    ResourceUsageScope scope(
+        _ast->query().resourceMonitor(),
+        _trackMemoryUsage ? node->getMemoryUsedBytes() : 0);
 
     auto emplaced =
         _ids.try_emplace(node->id(), node.get()).second;  // take ownership
@@ -1689,11 +1692,14 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       // sort operand is a variable
       auto v = static_cast<Variable*>(expression->getData());
       TRI_ASSERT(v != nullptr);
-      elements.emplace_back(v, isAscending);
+      auto elem = SortElement{v, isAscending, _ast->query().resourceMonitor()};
+      elements.emplace_back(std::move(elem));
     } else {
       // sort operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
-      elements.emplace_back(getOutVariable(calc), isAscending);
+      auto elem = SortElement{getOutVariable(calc), isAscending,
+                              _ast->query().resourceMonitor()};
+      elements.emplace_back(std::move(elem));
       previous = calc;
     }
   }
@@ -2215,7 +2221,8 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 
     // add a sort on rangeVariable in front of the WINDOW
     SortElementVector elements;
-    elements.emplace_back(rangeVar, /*isAscending*/ true);
+    elements.emplace_back(SortElement{rangeVar, /*isAscending*/ true,
+                                      _ast->query().resourceMonitor()});
     auto en = registerNode(
         std::make_unique<SortNode>(this, nextId(), elements, false));
     previous = addDependency(previous, en);

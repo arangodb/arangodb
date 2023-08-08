@@ -61,7 +61,8 @@ constexpr auto kNonServerFeatures =
 namespace arangodb::sepp {
 
 struct Server::Impl {
-  Impl(RocksDBOptionsProvider const& optionsProvider,
+  Impl(arangodb::RocksDBOptionsProvider const& optionsProvider,
+       arangodb::CacheOptionsProvider const& cacheOptionsProvider,
        std::string databaseDirectory);
   ~Impl();
 
@@ -75,6 +76,7 @@ struct Server::Impl {
 
   std::shared_ptr<arangodb::options::ProgramOptions> _options;
   RocksDBOptionsProvider const& _optionsProvider;
+  CacheOptionsProvider const& _cacheOptionsProvider;
   std::string _databaseDirectory;
   ::ArangodServer _server;
   std::thread _serverThread;
@@ -82,10 +84,12 @@ struct Server::Impl {
 };
 
 Server::Impl::Impl(RocksDBOptionsProvider const& optionsProvider,
+                   CacheOptionsProvider const& cacheOptionsProvider,
                    std::string databaseDirectory)
     : _options(std::make_shared<arangodb::options::ProgramOptions>("sepp", "",
                                                                    "", "")),
       _optionsProvider(optionsProvider),
+      _cacheOptionsProvider(cacheOptionsProvider),
       _databaseDirectory(std::move(databaseDirectory)),
       _server(_options, "") {
   std::string name = "arangod";  // we simply reuse the arangod config
@@ -154,6 +158,10 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       [this](auto& server, TypeTag<RocksDBEngine>) {
         return std::make_unique<RocksDBEngine>(server, _optionsProvider);
       },
+      [this](auto& server, TypeTag<CacheManagerFeature>) {
+        return std::make_unique<CacheManagerFeature>(server,
+                                                     _cacheOptionsProvider);
+      },
       [&result](auto& server, TypeTag<ScriptFeature>) {
         return std::make_unique<ScriptFeature>(server, &result);
       },
@@ -209,8 +217,9 @@ void Server::Impl::runServer(char const* exectuable) {
 }
 
 Server::Server(arangodb::RocksDBOptionsProvider const& optionsProvider,
+               arangodb::CacheOptionsProvider const& cacheOptionsProvider,
                std::string databaseDirectory)
-    : _impl(std::make_unique<Impl>(optionsProvider,
+    : _impl(std::make_unique<Impl>(optionsProvider, cacheOptionsProvider,
                                    std::move(databaseDirectory))) {}
 
 Server::~Server() = default;

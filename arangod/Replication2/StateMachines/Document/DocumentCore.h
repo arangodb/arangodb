@@ -23,35 +23,35 @@
 
 #pragma once
 
-#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb::replication2::replicated_state::document {
 
-struct IDocumentStateAgencyHandler;
 struct IDocumentStateShardHandler;
+struct IDocumentStateTransactionHandler;
 
 struct DocumentCore {
   explicit DocumentCore(
-      GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
+      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      DocumentCoreParameters coreParameters,
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
       LoggerContext loggerContext);
 
+  GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
 
-  auto getShardId() -> std::string_view;
-  auto getGid() -> GlobalLogIdentifier;
-
+  auto getVocbase() -> TRI_vocbase_t&;
   void drop();
+  auto getShardHandler() -> std::shared_ptr<IDocumentStateShardHandler>;
 
  private:
-  GlobalLogIdentifier _gid;
+  TRI_vocbase_t& _vocbase;
   DocumentCoreParameters _params;
-  ShardID _shardId;
-  std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
 };
 }  // namespace arangodb::replication2::replicated_state::document

@@ -110,6 +110,9 @@ class WindowNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief calculate the aggregate registers
   void calcAggregateRegisters(
       std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
@@ -121,9 +124,7 @@ class WindowNode : public ExecutionNode {
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,

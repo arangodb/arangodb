@@ -28,6 +28,7 @@
 
 #include "Aql/Collections.h"
 #include "Basics/Common.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 
 struct TRI_vocbase_t;
 
@@ -94,7 +95,7 @@ class BaseEngine {
   arangodb::aql::EngineId const _engineId;
   arangodb::aql::QueryContext& _query;
   std::unique_ptr<transaction::Methods> _trx;
-  std::unordered_map<std::string, std::vector<std::string>> _vertexShards;
+  MonitoredCollectionToShardMap _vertexShards;
 };
 
 class BaseTraverserEngine : public BaseEngine {

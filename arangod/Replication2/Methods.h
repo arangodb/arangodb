@@ -24,9 +24,10 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
+#include "Replication2/ReplicatedLog/LogPayload.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "VocBase/vocbase.h"
 
 #include <string>
 #include <variant>
@@ -39,6 +40,8 @@ template<typename T>
 class Future;
 }
 }  // namespace arangodb
+
+struct TRI_vocbase_t;
 
 namespace arangodb::replication2 {
 
@@ -98,17 +101,14 @@ struct ReplicatedLogMethods {
       -> futures::Future<replication2::replicated_log::GlobalStatus> = 0;
   virtual auto getStatus(LogId) const -> futures::Future<GenericLogStatus> = 0;
 
-  virtual auto getLogEntryByIndex(LogId, LogIndex) const
-      -> futures::Future<std::optional<PersistingLogEntry>> = 0;
-
   virtual auto slice(LogId, LogIndex start, LogIndex stop) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
   virtual auto poll(LogId, LogIndex, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
   virtual auto head(LogId, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
   virtual auto tail(LogId, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
 
   virtual auto ping(LogId, std::optional<std::string> message) const
       -> futures::Future<

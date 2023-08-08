@@ -4,7 +4,7 @@ import { useFormikContext } from "formik";
 import { ValidationError } from "jsoneditor-react";
 import React, { useState } from "react";
 import { JSONErrors } from "../../../../../components/jsonEditor/JSONErrors";
-import { ControlledJSONEditor } from "./ControlledJSONEditor";
+import { ControlledJSONEditor } from "../../../../../components/jsonEditor/ControlledJSONEditor";
 import { useInvertedIndexJSONSchema } from "./useInvertedIndexJSONSchema";
 
 const ajv = new Ajv({
@@ -26,6 +26,7 @@ export const InvertedIndexFormJSONEditor = ({
     <Box height="100%" backgroundColor="white" position="relative" minWidth={0}>
       <ControlledJSONEditor
         value={values}
+        isDisabled={isFormDisabled}
         onValidationError={errors => {
           setErrors(errors);
         }}
