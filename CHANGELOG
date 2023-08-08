@@ -5,7 +5,9 @@ v3.9.12 (XXXX-X-XX)
 
 * Updated ArangoDB Starter to 0.17.0.
 
-* Updated arangosync to v2.19.1.
+* Updated arangosync to v2.19.2.
+
+* Updated ArangoDB Starter to 0.17.0.
 
 * BTS-1511: AQL: Fixed access of integers in the ranges
   [-36028797018963968, -281474976710657] and
