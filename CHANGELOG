@@ -1,6 +1,9 @@
 devel
 -----
 
+* Improve crash handler by adding the state of the application server (e.g.
+  startup, running, shutting dow) into the crash message.
+
 * Updated ArangoDB Starter to 0.17.0.
 
 * Updated arangosync to v2.19.1.

@@ -80,7 +80,7 @@ Scheduler::Scheduler(ArangodServer& server)
 Scheduler::~Scheduler() = default;
 
 bool Scheduler::start() {
-  _cronThread.reset(new SchedulerCronThread(_server, *this));
+  _cronThread = std::make_unique<SchedulerCronThread>(_server, *this);
   return _cronThread->start();
 }
 
