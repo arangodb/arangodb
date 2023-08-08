@@ -2060,8 +2060,8 @@ void RocksDBEngine::prepareDropCollection(TRI_vocbase_t& /*vocbase*/,
   replicationManager()->drop(coll);
 }
 
-arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
-                                               LogicalCollection& coll) {
+Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
+                                     LogicalCollection& coll) {
   auto* rcoll = static_cast<RocksDBMetaCollection*>(coll.getPhysical());
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
@@ -2131,26 +2131,25 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   }
 
   // delete indexes, RocksDBIndex::drop() has its own check
-  std::vector<std::shared_ptr<Index>> vecShardIndex = rcoll->getIndexes();
-  TRI_ASSERT(!vecShardIndex.empty());
+  auto indexes = rcoll->getIndexes();
+  TRI_ASSERT(!indexes.empty());
 
-  for (auto& index : vecShardIndex) {
-    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(index.get());
-    res = RocksDBMetadata::deleteIndexEstimate(db, ridx->objectId());
+  for (auto const& idx : indexes) {
+    auto* rIdx = basics::downCast<RocksDBIndex>(idx.get());
+    res = RocksDBMetadata::deleteIndexEstimate(db, rIdx->objectId());
     if (res.fail()) {
       LOG_TOPIC("f2d51", WARN, Logger::ENGINES)
           << "could not delete index estimate: " << res.errorMessage();
     }
 
-    auto dropRes = index->drop().errorNumber();
+    auto dropRes = idx->drop();
 
-    if (dropRes != TRI_ERROR_NO_ERROR) {
+    if (dropRes.fail()) {
       // We try to remove all indexed values.
       // If it does not work they cannot be accessed any more and leaked.
       // User View remains consistent.
       LOG_TOPIC("97176", ERR, Logger::ENGINES)
-          << "unable to drop index: " << TRI_errno_string(dropRes);
-      //      return TRI_ERROR_NO_ERROR;
+          << "unable to drop index: " << dropRes.errorMessage();
     }
   }
 
@@ -2164,7 +2163,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
     // We try to remove all documents.
     // If it does not work they cannot be accessed any more and leaked.
     // User View remains consistent.
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
 
   // run compaction for data only if collection contained a considerable
@@ -2190,7 +2189,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
   // if we get here all documents / indexes are gone.
   // We have no data garbage left.
-  return Result();
+  return {};
 }
 
 void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
@@ -2207,9 +2206,9 @@ void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
   }
 }
 
-arangodb::Result RocksDBEngine::renameCollection(
-    TRI_vocbase_t& vocbase, LogicalCollection const& collection,
-    std::string const& oldName) {
+Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
+                                       LogicalCollection const& collection,
+                                       std::string const& oldName) {
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
       LogicalDataSource::Serialization::PersistenceWithInProgress);
@@ -2222,7 +2221,7 @@ arangodb::Result RocksDBEngine::renameCollection(
 }
 
 Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, DataSourceId id,
-                                 arangodb::LogicalView const& view) {
+                                 LogicalView const& view) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("0bad8", DEBUG, Logger::ENGINES) << "RocksDBEngine::createView";
 #endif
@@ -2256,8 +2255,8 @@ Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, DataSourceId id,
   return rocksutils::convertStatus(res);
 }
 
-arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
-                                         LogicalView const& view) {
+Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
+                               LogicalView const& view) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("fa6e5", DEBUG, Logger::ENGINES) << "RocksDBEngine::dropView";
 #endif
@@ -2852,13 +2851,12 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
-  arangodb::Result res;
   rocksdb::WriteOptions wo;
   rocksdb::DB* db = _db->GetRootDB();
 
   // remove view definitions
-  res = rocksutils::removeLargeRange(db, RocksDBKeyBounds::DatabaseViews(id),
-                                     true, /*rangeDel*/ false);
+  Result res = rocksutils::removeLargeRange(
+      db, RocksDBKeyBounds::DatabaseViews(id), true, /*rangeDel*/ false);
   if (res.fail()) {
     return res;
   }
@@ -3028,8 +3026,7 @@ void RocksDBEngine::addSystemDatabase() {
 
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
-    arangodb::CreateDatabaseInfo&& info, bool wasCleanShutdown,
-    bool isUpgrade) {
+    CreateDatabaseInfo&& info, bool wasCleanShutdown, bool isUpgrade) {
   auto vocbase = std::make_unique<TRI_vocbase_t>(std::move(info));
 
   LOG_TOPIC("26c21", TRACE, arangodb::Logger::ENGINES)

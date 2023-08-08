@@ -83,8 +83,7 @@ template<SocketType T>
   int32_t const sid = frame->hd.stream_id;
   me->acquireStatistics(sid).SET_READ_START(TRI_microtime());
   auto req =
-      std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
-                                    /*allowMethodOverride*/ false);
+      std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid);
   me->createStream(sid, std::move(req));
 
   LOG_TOPIC("33598", TRACE, Logger::REQUESTS)
@@ -795,7 +794,7 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
 
     // add "Server" response header
-    if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
+    if (!seenServerHeader) {
       nva.push_back(
           {(uint8_t*)"server", (uint8_t*)"ArangoDB", 6, 8,
            NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});

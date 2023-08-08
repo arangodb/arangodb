@@ -34,6 +34,7 @@
 #include "VocBase/vocbase.h"
 
 #include <memory>
+#include <string_view>
 
 struct TRI_vocbase_t;
 
@@ -125,7 +126,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief Internal Traverser path
   static std::string const INTERNAL_TRAVERSER_PATH;
 
- public:
   RestVocbaseBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
@@ -144,30 +144,15 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief assemble a document id from a string and a string
   /// optionally url-encodes
-  std::string assembleDocumentId(std::string const& collectionName,
-                                 std::string const& key, bool urlEncode);
+  std::string assembleDocumentId(std::string_view collectionName,
+                                 std::string_view key, bool urlEncode) const;
 
   /// @brief generates a HTTP 201 or 202 response
-  void generate20x(arangodb::OperationResult const&, std::string const&,
-                   TRI_col_type_e, arangodb::velocypack::Options const*,
-                   bool isMultiple, rest::ResponseCode waitForSyncResponseCode);
-
-  /// @brief generates message for a saved document
-  void generateSaved(arangodb::OperationResult const& result,
-                     std::string const& collectionName, TRI_col_type_e type,
-                     arangodb::velocypack::Options const*, bool isMultiple);
-
-  /// @brief generates deleted message
-  void generateDeleted(arangodb::OperationResult const& result,
-                       std::string const& collectionName, TRI_col_type_e type,
-                       arangodb::velocypack::Options const*, bool isMultiple);
-
-  /// @brief generates document not found error message, no transaction info
-  void generateDocumentNotFound(std::string const& /* collection name */,
-                                std::string const& /* document key */) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  }
+  void generate20x(arangodb::OperationResult const& result,
+                   std::string_view collectionName, TRI_col_type_e type,
+                   arangodb::velocypack::Options const* options,
+                   bool isMultiple, bool silent,
+                   rest::ResponseCode waitForSyncResponseCode);
 
   /// @brief generates conflict error
   void generateConflictError(arangodb::OperationResult const&,
@@ -177,15 +162,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void generateNotModified(RevisionId);
 
   /// @brief generates first entry from a result set
-  void generateDocument(arangodb::velocypack::Slice const& input,
-                        bool generateBody,
-                        arangodb::velocypack::Options const* options = nullptr);
+  void generateDocument(velocypack::Slice input, bool generateBody,
+                        velocypack::Options const* options = nullptr);
 
   /// @brief generate an error message for a transaction error, this method
   /// is used by the others.
-  void generateTransactionError(std::string const& collectionName,
+  void generateTransactionError(std::string_view collectionName,
                                 OperationResult const& result,
-                                std::string const& key = "",
+                                std::string_view key = "",
                                 RevisionId rid = RevisionId::none());
 
   /// @brief extracts the revision. "header" must be lowercase.

@@ -5,7 +5,7 @@ const useCurrentDbProperties = () => {
   const currentDbName = window.frontendConfig.db;
   const { data } = useSWR(`/${currentDbName}/properties`, () => {
     const currentDb = getCurrentDB();
-    return currentDb.request({ method: "GET", path: "/_api/database/current" });
+    return currentDb.route().get("/_api/database/current");
   });
   return data?.body.result;
 };

@@ -17,17 +17,10 @@ export const createGraph = async <
 }) => {
   const currentDB = getCurrentDB();
   try {
-    const response = await currentDB.request(
-      {
-        method: "POST",
-        path: "/_api/gharial",
-        body: {
-          ...values,
-          name: values.name.normalize()
-        }
-      },
-      res => res.body.graph
-    );
+    const response = await currentDB.route().post("/_api/gharial", {
+      ...values,
+      name: values.name.normalize()
+    });
     notifySuccess(`Successfully created the graph: ${values.name}`);
     onSuccess();
     return response;
