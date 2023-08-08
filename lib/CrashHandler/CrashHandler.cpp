@@ -141,6 +141,8 @@ std::atomic<bool> killHard(false);
 
 /// @brief appends null-terminated string src to dst,
 /// advances dst pointer by length of src
+/// `maxLength` must be chosen so that this number of bytes can still be
+/// added **plus one terminating 0 byte**!
 void appendNullTerminatedString(std::string_view src, size_t maxLength,
                                 char*& dst) {
   size_t len = std::min(src.size(), maxLength);
@@ -149,6 +151,8 @@ void appendNullTerminatedString(std::string_view src, size_t maxLength,
   *dst = '\0';
 }
 
+/// `maxLength` must be chosen so that this number of bytes can still be
+/// added **plus one terminating 0 byte**!
 void appendNullTerminatedString(char const* src, size_t maxLength, char*& dst) {
   size_t len = std::min(strlen(src), maxLength);
   memcpy(static_cast<void*>(dst), src, len);
@@ -346,6 +350,10 @@ void logCrashInfo(std::string_view context, int signal, siginfo_t* info,
   // we better not throw an exception from inside a signal handler
 }
 
+// Note that the following macro intentionally subtracts one to keep one
+// byte at the end of the buffer free for the terminating 0 byte. This is
+// crucial, otherwise `appendNullTerminatedString` will overshoot the buffer
+// by that one byte to write the terminating byte!
 #define BYTES_LEFT(buffer, p) \
   sizeof(buffer) - static_cast<size_t>(((p) - &(buffer)[0]) - 1)
 
