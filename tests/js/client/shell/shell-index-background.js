@@ -118,6 +118,9 @@ function backgroundIndexSuite() {
         tasks.register({ name: "UnitTestsIndexCreateIDX", command: command });
       }
 
+      // We are aware of the fact that this is indeed a race. The index creation could be done before
+      // the first transaction has begun. If this actually becomes the case, please consider
+      // increasing the amount of documents.
       while (tasksCompleted() > 0) {
         const trx = db._createTransaction({collections: {write: [cn]}});
         const c = trx.collection(cn);
