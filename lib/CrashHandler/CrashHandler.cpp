@@ -97,6 +97,9 @@ std::atomic<bool> enableStacktraces(true);
 /// file generation etc.
 std::atomic<bool> killHard(false);
 
+/// @brief string with server state information. must be null-terminated
+std::atomic<char const*> stateString = nullptr;
+
 /// @brief kills the process with the given signal
 [[noreturn]] void killProcess(int signal) {
 #ifdef _WIN32
@@ -242,6 +245,13 @@ size_t buildLogMessage(char* s, std::string_view context, int signal,
 #endif
   if (!printed) {
     appendNullTerminatedString(")", p);
+  }
+
+  char const* ss = ::stateString.load();
+  if (ss != nullptr) {
+    appendNullTerminatedString(" in state \"", p);
+    appendNullTerminatedString(ss, p);
+    appendNullTerminatedString("\" ", p);
   }
 
 #ifndef _WIN32
@@ -744,6 +754,10 @@ void CrashHandler::crash(std::string_view context) {
 
   // crash from here
   ::killProcess(SIGABRT);
+}
+
+void CrashHandler::setState(std::string_view state) {
+  ::stateString.store(state.data());
 }
 
 /// @brief logs an assertion failure and crashes the program
