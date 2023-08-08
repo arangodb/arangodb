@@ -208,7 +208,7 @@ class Index {
   }
 
   /// @brief whether or not the ith attribute is expanded (somewhere)
-  inline bool isAttributeExpanded(size_t i) const {
+  bool isAttributeExpanded(size_t i) const {
     if (i >= _fields.size()) {
       return false;
     }
@@ -216,7 +216,7 @@ class Index {
   }
 
   /// @brief whether or not any attribute is expanded
-  inline bool isAttributeExpanded(
+  bool isAttributeExpanded(
       std::vector<basics::AttributeName> const& attribute) const {
     for (auto const& it : _fields) {
       if (!basics::AttributeName::namesMatch(attribute, it)) {
@@ -228,9 +228,8 @@ class Index {
   }
 
   /// @brief whether or not any attribute is expanded
-  inline bool attributeMatches(
-      std::vector<basics::AttributeName> const& attribute,
-      bool isPrimary = false) const {
+  bool attributeMatches(std::vector<basics::AttributeName> const& attribute,
+                        bool isPrimary = false) const {
     for (auto const& it : _fields) {
       if (basics::AttributeName::isIdentical(attribute, it, true)) {
         return true;
@@ -245,7 +244,7 @@ class Index {
   }
 
   /// @brief whether or not any attribute is expanded
-  inline bool hasExpansion() const { return _useExpansion; }
+  bool hasExpansion() const { return _useExpansion; }
 
   /// @brief if index needs explicit reversal and wouldn`t be reverted by
   /// storage rollback
@@ -261,16 +260,16 @@ class Index {
   }
 
   /// @brief return the underlying collection
-  inline LogicalCollection& collection() const { return _collection; }
+  LogicalCollection& collection() const { return _collection; }
 
   /// @brief return a contextual string for logging
   std::string context() const;
 
   /// @brief whether or not the index is sparse
-  inline bool sparse() const { return _sparse; }
+  bool sparse() const { return _sparse; }
 
   /// @brief whether or not the index is unique
-  inline bool unique() const { return _unique; }
+  bool unique() const { return _unique; }
 
   /// @brief validates that field names don't start or end with ":"
   static void validateFieldsWithSpecialCase(velocypack::Slice fields);

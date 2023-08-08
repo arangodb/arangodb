@@ -266,7 +266,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
 bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   auto current = static_cast<ExecutionNode*>(&viewNode);
   auto viewVariable = viewNode.outVariable();
-  auto const& scorers = viewNode.scorers();
+  auto& scorers = viewNode.scorers();
   SortNode* sortNode = nullptr;
   LimitNode const* limitNode = nullptr;
   while ((current = current->getFirstParent())) {
@@ -304,7 +304,9 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
   // we've found all we need
   auto const& sortElements = sortNode->elements();
+  TRI_ASSERT(!sortElements.empty());
   std::vector<std::pair<size_t, bool>> scoresSort;
+  auto zero = std::numeric_limits<size_t>::max();
   for (auto const& sort : sortElements) {
     TRI_ASSERT(sort.var);
 
@@ -350,8 +352,22 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     if (s == std::end(scorers)) {
       return false;
     }
-    scoresSort.emplace_back(std::distance(scorers.begin(), s), sort.ascending);
+    auto pos = std::distance(scorers.begin(), s);
+    if (pos == 0) {
+      zero = scoresSort.size();
+    }
+    scoresSort.emplace_back(pos, sort.ascending);
   }
+
+  auto& idx = scoresSort.front().first;
+  if (idx != 0) {
+    std::swap(scorers.front(), scorers[idx]);
+    idx = 0;
+    if (zero != std::numeric_limits<size_t>::max()) {
+      scoresSort[zero].first = idx;
+    }
+  }
+
   // all sort elements are covered by view's scorers
   viewNode.setScorersSort(std::move(scoresSort),
                           limitNode->offset() + limitNode->limit());

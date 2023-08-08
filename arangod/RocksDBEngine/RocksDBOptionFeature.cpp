@@ -273,6 +273,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       // note: this is a default value from RocksDB (db/column_family.cc,
       // kAdjustedTtl):
       _periodicCompactionTtl(30 * 24 * 60 * 60),
+      _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compressionType(::kCompressionTypeLZ4),
       _blobCompressionType(::kCompressionTypeLZ4),
       _blockCacheType(::kBlockCacheTypeLRU),
@@ -289,7 +290,6 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _reserveTableBuilderMemory(false),
       _reserveTableReaderMemory(false),
       _reserveFileMetadataMemory(false),
-      _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(true),
       _cacheIndexAndFilterBlocksWithHighPriority(
@@ -977,7 +977,7 @@ the overall size of the block cache.)");
   options->addOption(
       "--rocksdb.recycle-log-file-num",
       "If enabled, keep a pool of log files around for recycling.",
-      new BooleanParameter(&_recycleLogFileNum),
+      new SizeTParameter(&_recycleLogFileNum),
       arangodb::options::makeFlags(
           arangodb::options::Flags::Uncommon,
           arangodb::options::Flags::DefaultNoComponents,
@@ -1750,7 +1750,7 @@ void RocksDBOptionFeature::start() {
       << _pinl0FilterAndIndexBlocksInCache
       << ", pin_top_level_index_and_filter: " << std::boolalpha
       << _pinTopLevelIndexAndFilter << ", table_block_size: " << _tableBlockSize
-      << ", recycle_log_file_num: " << std::boolalpha << _recycleLogFileNum
+      << ", recycle_log_file_num: " << _recycleLogFileNum
       << ", compaction_read_ahead_size: " << _compactionReadaheadSize
       << ", level0_compaction_trigger: " << _level0CompactionTrigger
       << ", level0_slowdown_trigger: " << _level0SlowdownTrigger
