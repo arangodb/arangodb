@@ -1,6 +1,10 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.17.0.
+
+* Updated arangosync to v2.19.1.
+
 * Updated arangosync to v2.19.0.
 
 * Remove long-deprecated graph compatibility functions, which were implemented
