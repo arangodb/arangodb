@@ -145,7 +145,7 @@ void appendNullTerminatedString(std::string_view src, size_t maxLength,
                                 char*& dst) {
   size_t len = std::min(src.size(), maxLength);
   memcpy(static_cast<void*>(dst), src.data(), len);
-  dst += src.size();
+  dst += len;
   *dst = '\0';
 }
 
