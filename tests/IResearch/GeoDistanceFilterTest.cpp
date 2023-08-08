@@ -147,7 +147,8 @@ struct custom_sort final : public irs::ScorerBase<void> {
             ctxImpl.sort_.scorerScore(doc_id, res);
           }
         },
-        *this, segment, features, stats, doc_attrs);
+        irs::ScoreFunction::DefaultMin, *this, segment, features, stats,
+        doc_attrs);
   }
 
   irs::TermCollector::ptr prepare_term_collector() const final {
@@ -483,7 +484,7 @@ TEST(GeoDistanceFilterTest, query) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
+      EXPECT_TRUE(score->IsDefault());
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);
@@ -997,10 +998,10 @@ TEST(GeoDistanceFilterTest, checkScorer) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_FALSE(*score == irs::ScoreFunction::DefaultScore);
+      EXPECT_FALSE(score->IsDefault());
       auto* seek_score = irs::get<irs::score>(*seek_it);
       EXPECT_NE(nullptr, seek_score);
-      EXPECT_FALSE(*seek_score == irs::ScoreFunction::DefaultScore);
+      EXPECT_FALSE(seek_score->IsDefault());
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);
