@@ -36,7 +36,7 @@ class AuthenticationFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Authentication"; }
 
-  static inline AuthenticationFeature* instance() { return INSTANCE; }
+  static AuthenticationFeature* instance() { return INSTANCE; }
 
   explicit AuthenticationFeature(Server& server);
 
@@ -55,16 +55,14 @@ class AuthenticationFeature final : public ArangodFeature {
   bool localAuthentication() const noexcept { return _localAuthentication; }
 
   /// @return Cache to deal with authentication tokens
-  inline auth::TokenCache& tokenCache() const noexcept {
+  auth::TokenCache& tokenCache() const noexcept {
     TRI_ASSERT(_authCache);
     return *_authCache.get();
   }
 
   /// @brief user manager may be null on DBServers and Agency
   /// @return user manager singleton
-  inline auth::UserManager* userManager() const noexcept {
-    return _userManager.get();
-  }
+  auth::UserManager* userManager() const noexcept { return _userManager.get(); }
 
   bool hasUserdefinedJwt() const;
 #ifdef USE_ENTERPRISE
