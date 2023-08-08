@@ -81,6 +81,10 @@ struct HeapSortElement {
     return fieldNumber == std::numeric_limits<size_t>::max();
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  auto operator<=>(HeapSortElement const&) const noexcept = default;
+#endif
+
   std::string postfix;
   ptrdiff_t source{0};
   size_t fieldNumber{std::numeric_limits<size_t>::max()};

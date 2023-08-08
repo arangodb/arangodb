@@ -880,13 +880,14 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(0, node.getScorersSortLimit());
     EXPECT_TRUE(node.getScorersSort().empty());
 
-    std::vector<std::pair<size_t, bool>> scorersSort{
-        {1, true}, {2, false}, {4, true}};
+    std::vector<arangodb::iresearch::HeapSortElement> scorersSort{
+        {"", 1, std::numeric_limits<size_t>::max(), true},
+        {"foo", 2, 1, false},
+        {"", -1, 0, true}};
     auto expectedScorersSort = scorersSort;
     node.setScorersSort(std::move(scorersSort), 42);
     EXPECT_EQ(42, node.getScorersSortLimit());
     auto actualScorersSort = node.getScorersSort();
-    EXPECT_EQ(expectedScorersSort.size(), actualScorersSort.size());
     EXPECT_TRUE(std::equal(expectedScorersSort.begin(),
                            expectedScorersSort.end(), actualScorersSort.begin(),
                            actualScorersSort.end()));
@@ -1282,10 +1283,12 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(42, node.getScorersSortLimit());
     auto actualScorersSort = node.getScorersSort();
     EXPECT_EQ(2, actualScorersSort.size());
-    EXPECT_EQ(0, actualScorersSort[0].first);
-    EXPECT_TRUE(actualScorersSort[0].second);
-    EXPECT_EQ(1, actualScorersSort[1].first);
-    EXPECT_FALSE(actualScorersSort[1].second);
+    EXPECT_EQ(0, actualScorersSort[0].source);
+    EXPECT_TRUE(actualScorersSort[0].ascending);
+    EXPECT_TRUE(actualScorersSort[0].isScore());
+    EXPECT_EQ(1, actualScorersSort[1].source);
+    EXPECT_FALSE(actualScorersSort[1].ascending);
+    EXPECT_TRUE(actualScorersSort[1].isScore());
   }
 
   // no options with invalid index scorersSort
@@ -2441,7 +2444,8 @@ TEST_F(IResearchViewNodeTest, clone) {
                                               resourceMonitor);
     arangodb::aql::Variable const outNmDocId("variable101", 101, false,
                                              resourceMonitor);
-    std::vector<std::pair<size_t, bool>> scorersSort{{0, true}};
+    std::vector<arangodb::iresearch::HeapSortElement> scorersSort{
+        {"", 0, 0, true}};
     node.setScorersSort(std::move(scorersSort), 42);
     auto varsSetOriginal = node.getVariablesSetHere();
     // clone without properties into the same plan
