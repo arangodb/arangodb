@@ -32,6 +32,7 @@ if (WINDOWS)
 endif ()
 
 add_library(arango_tests_basics OBJECT
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/ClusterInfoMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.h
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp

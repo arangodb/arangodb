@@ -17,12 +17,16 @@ import { useAnalyzersContext } from "../AnalyzersContext";
 import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
 import { AnalyzerTypeForm } from "./AnalyzerTypeForm";
 
-const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP).map(type => {
-  return {
-    value: type,
-    label: TYPE_TO_LABEL_MAP[type as AnalyzerTypes]
-  };
-});
+const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP)
+  .map(type => {
+    const excludedTypes = ["minhash"];
+    if (excludedTypes.includes(type)) return null;
+    return {
+      value: type,
+      label: TYPE_TO_LABEL_MAP[type as AnalyzerTypes]
+    };
+  })
+  .filter(Boolean) as { label: string; value: string }[];
 
 export const AddAnalyzerForm = ({
   initialFocusRef

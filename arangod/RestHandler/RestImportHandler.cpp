@@ -30,8 +30,10 @@
 #include "Logger/Logger.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
@@ -357,6 +359,18 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
+  bool isEdgeCollection = false;
+  if (auto collection = trx.resolver()->getCollection(collectionName);
+      collection != nullptr) {
+    isEdgeCollection = collection->type() == TRI_COL_TYPE_EDGE;
+    if (isEdgeCollection && collection->isSmart()) {
+      // must wrap imports into a smart edge collection into a GLOBAL_MANAGED
+      // transaction, so that the different parts (_from, _to, _local) either
+      // all get inserted or not at all
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    }
+  }
+
   // .............................................................................
   // inside write transaction
   // .............................................................................
@@ -368,8 +382,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
                              "");
     return false;
   }
-
-  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
     OperationOptions truncateOpts(_context);
@@ -550,6 +562,18 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
+  bool isEdgeCollection = false;
+  if (auto collection = trx.resolver()->getCollection(collectionName);
+      collection != nullptr) {
+    isEdgeCollection = collection->type() == TRI_COL_TYPE_EDGE;
+    if (isEdgeCollection && collection->isSmart()) {
+      // must wrap imports into a smart edge collection into a GLOBAL_MANAGED
+      // transaction, so that the different parts (_from, _to, _local) either
+      // all get inserted or not at all
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    }
+  }
+
   // .............................................................................
   // inside write transaction
   // .............................................................................
@@ -562,8 +586,6 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
     return false;
   }
-
-  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
     OperationOptions truncateOpts;
@@ -738,6 +760,19 @@ bool RestImportHandler::createFromKeyValueList() {
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+
+  bool isEdgeCollection = false;
+  if (auto collection = trx.resolver()->getCollection(collectionName);
+      collection != nullptr) {
+    isEdgeCollection = collection->type() == TRI_COL_TYPE_EDGE;
+    if (isEdgeCollection && collection->isSmart()) {
+      // must wrap imports into a smart edge collection into a GLOBAL_MANAGED
+      // transaction, so that the different parts (_from, _to, _local) either
+      // all get inserted or not at all
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+    }
+  }
 
   // .............................................................................
   // inside write transaction
@@ -750,8 +785,6 @@ bool RestImportHandler::createFromKeyValueList() {
                              "");
     return false;
   }
-
-  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
     OperationOptions truncateOpts(_context);

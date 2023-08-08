@@ -86,7 +86,7 @@ const SettingsMenuContent = () => {
     </Portal>
   );
 };
-const GraphAccordionItem = ({
+export const GraphAccordionItem = ({
   children,
   title
 }: {

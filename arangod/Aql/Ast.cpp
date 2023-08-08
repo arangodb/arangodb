@@ -105,7 +105,9 @@ auto doNothingVisitor = [](AstNode const*) {};
 /// AttributeFinderContext to a single AttributePath, and injects it into the
 /// attributeNamePath within the Context.
 /// Returns true if and only if the context found an attribute access path.
-bool translateNodeStackToAttributePath(RecursiveAttributeFinderContext& state) {
+bool translateNodeStackToAttributePath(
+    RecursiveAttributeFinderContext& state,
+    arangodb::ResourceMonitor& resourceMonitor) {
   TRI_ASSERT(!state.seen.empty());
   AstNode const* top = state.seen.back();
   TRI_ASSERT(top->type == NODE_TYPE_REFERENCE);
@@ -176,7 +178,9 @@ bool translateNodeStackToAttributePath(RecursiveAttributeFinderContext& state) {
     }
 
     // now take off all projections from the stack
-    std::vector<std::string> path;
+    ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor> alloc = {
+        resourceMonitor};
+    MonitoredStringVector path{alloc};
     while (top->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       path.emplace_back(top->getString());
       state.seen.pop_back();
@@ -187,7 +191,7 @@ bool translateNodeStackToAttributePath(RecursiveAttributeFinderContext& state) {
     }
 
     TRI_ASSERT(!path.empty());
-    state.attributes.emplace(std::move(path));
+    state.attributes.emplace(AttributeNamePath(std::move(path)));
   }
 
   return true;
@@ -358,6 +362,7 @@ Ast::Ast(QueryContext& query,
          AstPropertiesFlagsType flags /* = AstPropertyFlag::AST_FLAG_DEFAULT */)
     : _query(query),
       _resources(query.resourceMonitor()),
+      _variables(query.resourceMonitor()),
       _root(nullptr),
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),
@@ -2772,7 +2777,8 @@ size_t Ast::countReferences(AstNode const* node, Variable const* search) {
 bool Ast::getReferencedAttributesRecursive(
     AstNode const* node, Variable const* variable,
     std::string_view expectedAttribute,
-    containers::FlatHashSet<aql::AttributeNamePath>& attributes) {
+    containers::FlatHashSet<aql::AttributeNamePath>& attributes,
+    arangodb::ResourceMonitor& resourceMonitor) {
   RecursiveAttributeFinderContext state{variable,
                                         /*couldExtractAttributePath*/ true,
                                         expectedAttribute,
@@ -2846,7 +2852,7 @@ bool Ast::getReferencedAttributesRecursive(
             state.seen.push_back(iterRhs);
             // finally the stack is complete... now eval it to find the
             // projection
-            if (!::translateNodeStackToAttributePath(state)) {
+            if (!::translateNodeStackToAttributePath(state, resourceMonitor)) {
               state.couldExtractAttributePath = false;
             }
           }
@@ -2870,7 +2876,7 @@ bool Ast::getReferencedAttributesRecursive(
       // reference to a variable
       state.seen.push_back(node);
       // evaluate whatever we have on the stack
-      if (!translateNodeStackToAttributePath(state)) {
+      if (!translateNodeStackToAttributePath(state, resourceMonitor)) {
         state.couldExtractAttributePath = false;
       }
       // fall-through intentional

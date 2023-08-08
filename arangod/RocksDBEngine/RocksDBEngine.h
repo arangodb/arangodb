@@ -500,10 +500,11 @@ class RocksDBEngine final : public StorageEngine {
   std::shared_ptr<StorageSnapshot> currentSnapshot() override;
 
   void addCacheMetrics(uint64_t initial, uint64_t effective,
-                       uint64_t totalInserts,
-                       uint64_t totalCompressedInserts) noexcept;
+                       uint64_t totalInserts, uint64_t totalCompressedInserts,
+                       uint64_t totalEmptyInserts) noexcept;
 
-  std::tuple<uint64_t, uint64_t, uint64_t, uint64_t> getCacheMetrics();
+  std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>
+  getCacheMetrics();
 
  private:
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
@@ -750,13 +751,17 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeResurrections;
 
   // total size of uncompressed values for the edge cache
-  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeInitial;
+  metrics::Counter& _metricsEdgeCacheEntriesSizeInitial;
   // total size of values stored in the edge cache (can be smaller than the
   // initial size because of compression)
-  metrics::Gauge<uint64_t>& _metricsEdgeCacheEntriesSizeEffective;
+  metrics::Counter& _metricsEdgeCacheEntriesSizeEffective;
 
+  // total number of inserts into edge cache
   metrics::Counter& _metricsEdgeCacheInserts;
+  // total number of inserts into edge cache that were compressed
   metrics::Counter& _metricsEdgeCacheCompressedInserts;
+  // total number of inserts into edge cache that stored an empty array
+  metrics::Counter& _metricsEdgeCacheEmptyInserts;
 
   // @brief persistor for replicated logs
   std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
