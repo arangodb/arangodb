@@ -928,7 +928,6 @@ void CrashHandler::installCrashHandler() {
       } catch (std::exception const& ex) {
         constexpr static auto msg =
             "handler for std::terminate() invoked with an std::exception: "sv;
-        static_assert(msg.size() < bufferSize);
         appendNullTerminatedString(msg, BYTES_LEFT(buffer, p), p);
         char const* e = ex.what();
         if (e != nullptr) {
