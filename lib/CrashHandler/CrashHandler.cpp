@@ -872,9 +872,7 @@ void CrashHandler::installCrashHandler() {
   // be used to toggle the crash
   // handler
   std::string value;
-  if (TRI_GETENV("ARANGODB_OVERRIDE_"
-                 "CRASH_HANDLER",
-                 value)) {
+  if (TRI_GETENV("ARANGODB_OVERRIDE_CRASH_HANDLER", value)) {
     bool toggle = arangodb::basics::StringUtils::boolean(value);
     if (!toggle) {
       // crash handler backtraces turned off
