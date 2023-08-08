@@ -81,6 +81,15 @@ class ReadLocker {
     }
   }
 
+  ReadLocker(ReadLocker&& other) noexcept
+      : _readWriteLock(other._readWriteLock),
+        _file(other._file),
+        _line(other._line),
+        _isLocked(other._isLocked) {
+    // make only ourselves responsible for unlocking
+    other.steal();
+  }
+
   /// @brief releases the read-lock
   ~ReadLocker() {
     if (_isLocked) {
