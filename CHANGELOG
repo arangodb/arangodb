@@ -5,7 +5,9 @@ v3.11.3 (XXXX-XX-XX)
 
 * Updated ArangoDB Starter to 0.17.0.
 
-* Updated arangosync to v2.19.1.
+* Updated arangosync to v2.19.2.
+
+* Updated ArangoDB Starter to 0.17.0.
 
 * ES-1566: instead of potentially accessing a nullptr inside graph traversal
   setup, throw an exception. This will be handled properly and returned with
