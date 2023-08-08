@@ -322,6 +322,9 @@ void logCrashInfo(std::string_view context, int signal, siginfo_t* info,
   // we better not throw an exception from inside a signal handler
 }
 
+#define BYTES_LEFT(buffer, p) \
+  sizeof(buffer) - static_cast<size_t>(((p) - &(buffer)[0]) - 1)
+
 void logBacktrace() try {
   if (!enableStacktraces.load(std::memory_order_relaxed)) {
     return;
@@ -407,14 +410,18 @@ void logBacktrace() try {
           // this is a stack frame we want to display
           memset(&buffer[0], 0, sizeof(buffer));
           char* p = &buffer[0];
-          appendNullTerminatedString("frame ", p);
-          if (frame < 10) {
+          appendNullTerminatedString("frame ", BYTES_LEFT(buffer, p), p);
+          if (frame < 10 && BYTES_LEFT(buffer, p) > 0) {
             // pad frame id to 2 digits length
             *p++ = ' ';
           }
-          p += arangodb::basics::StringUtils::itoa(uint64_t(frame), p);
+          if (BYTES_LEFT(buffer, p) > 19) {
+            p += arangodb::basics::StringUtils::itoa(uint64_t(frame), p);
+          }
 
-          appendAddress(pc, base, p);
+          if (BYTES_LEFT(buffer, p) > 16) {
+            appendAddress(pc, base, p);
+          }
 
           char mangled[512];
           memset(&mangled[0], 0, sizeof(mangled));
@@ -430,21 +437,23 @@ void logBacktrace() try {
             boost::core::scoped_demangled_name demangled(&mangled[0]);
 
             if (demangled.get()) {
-              appendNullTerminatedString(demangled.get(), p);
+              appendNullTerminatedString(demangled.get(), BYTES_LEFT(buffer, p), p);
             } else {
               // demangling has failed.
               // in this case, append mangled version. still better than nothing
-              appendNullTerminatedString(mangled, p);
+              appendNullTerminatedString(mangled, BYTES_LEFT(buffer, p), p);
             }
             // print offset into function
-            appendNullTerminatedString(" (+0x", p);
-            appendHexValue(reinterpret_cast<unsigned char const*>(&offset),
-                           sizeof(decltype(offset)), p, true);
-            appendNullTerminatedString(")", p);
+            appendNullTerminatedString(" (+0x", BYTES_LEFT(buffer, p), p);
+            if (BYTES_LEFT(buffer, p) > 16) {
+              appendHexValue(reinterpret_cast<unsigned char const*>(&offset),
+                             sizeof(decltype(offset)), p, true);
+            }
+            appendNullTerminatedString(")", BYTES_LEFT(buffer, p), p);
           } else {
             // unable to retrieve symbol information
             appendNullTerminatedString(
-                "*no symbol name available for this frame", p);
+                "*no symbol name available for this frame", BYTES_LEFT(buffer, p), p);
           }
 
           size_t length = p - &buffer[0];
