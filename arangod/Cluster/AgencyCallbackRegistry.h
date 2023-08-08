@@ -118,8 +118,6 @@ auto AgencyCallbackRegistry::waitFor(std::string path, F&& fn)
   auto ctx = std::make_shared<Context>(std::forward<F>(fn));
   auto f = ctx->promise.getFuture();
 
-  using namespace cluster::paths;
-
   auto cb = std::make_shared<AgencyCallback>(
       _agency.server(), std::move(path),
       [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {

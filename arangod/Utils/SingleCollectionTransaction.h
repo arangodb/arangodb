@@ -60,7 +60,7 @@ class SingleCollectionTransaction final : public transaction::Methods {
   LogicalCollection* documentCollection();
 
   /// @brief get the underlying collection's id
-  inline DataSourceId cid() const { return _cid; }
+  DataSourceId cid() const noexcept { return _cid; }
 
 #ifdef USE_ENTERPRISE
   using transaction::Methods::addCollectionAtRuntime;
