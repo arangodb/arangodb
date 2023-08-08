@@ -1,6 +1,8 @@
 devel
 -----
 
+* Prevent a buffer overflow in the crash dumper.
+
 * FE-301: Unify Users View on web UI.
 
 * Updated ArangoDB Starter to 0.16.0.
