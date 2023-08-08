@@ -481,8 +481,8 @@ void logBacktrace() try {
               appendNullTerminatedString(mangled, BYTES_LEFT(buffer, p), p);
             }
             // print offset into function
-            appendNullTerminatedString(" (+0x", BYTES_LEFT(buffer, p), p);
-            if (BYTES_LEFT(buffer, p) > 16) {
+            if (BYTES_LEFT(buffer, p) > 20) {
+              appendNullTerminatedString(" (+0x", BYTES_LEFT(buffer, p), p);
               appendHexValue(reinterpret_cast<unsigned char const*>(&offset),
                              sizeof(decltype(offset)), p, true);
             }
