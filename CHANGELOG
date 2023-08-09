@@ -1,6 +1,8 @@
 devel
 -----
 
+* Prevent potential buffer overflow in the crash handler.
+
 * Improve crash handler by adding the state of the application server (e.g.
   startup, running, shutting dow) into the crash message.
 
