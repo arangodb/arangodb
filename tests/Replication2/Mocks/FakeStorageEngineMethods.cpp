@@ -191,7 +191,7 @@ void FakeStorageEngineMethodsContext::emplaceLogRange(LogRange range,
   for (auto idx : range) {
     log.emplace(
         idx, LogEntry{term, idx,
-                      LogPayload::createFromString("(" + to_string(term) + "," +
+                      LogPayload::createFromString("(" + to_string(term) + ":" +
                                                    to_string(idx) + ")")});
   }
 }
