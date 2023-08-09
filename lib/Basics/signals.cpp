@@ -225,6 +225,8 @@ void maskAllSignalsServer() {
   sigdelset(&all, SIGILL);
   sigdelset(&all, SIGFPE);
   sigdelset(&all, SIGABRT);
+  sigdelset(&all, SIGUSR1);
+  sigdelset(&all, SIGUSR2);
   pthread_sigmask(SIG_SETMASK, &all, nullptr);
 #endif
 }

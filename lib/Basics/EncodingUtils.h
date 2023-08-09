@@ -28,8 +28,7 @@
 
 #include "Basics/ErrorCode.h"
 
-namespace arangodb {
-namespace encoding {
+namespace arangodb::encoding {
 
 template<typename T>
 [[nodiscard]] ErrorCode gzipUncompress(uint8_t const* compressed,
@@ -48,5 +47,4 @@ template<typename T>
 [[nodiscard]] ErrorCode gzipDeflate(uint8_t const* uncompressed,
                                     size_t uncompressedLength, T& compressed);
 
-}  // namespace encoding
-}  // namespace arangodb
+}  // namespace arangodb::encoding

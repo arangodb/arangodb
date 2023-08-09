@@ -51,6 +51,7 @@
 #include "Basics/SizeLimitedString.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/cpu-relax.h"
 #include "Basics/files.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
@@ -68,10 +69,14 @@
 
 #ifdef __linux__
 #include <sys/auxv.h>
+#include <sys/syscall.h>
 #include <elf.h>
 #endif
 
 namespace {
+
+// size of alternative stack
+constexpr size_t kStackSize = 64 * 1024;
 
 using SmallString = arangodb::SizeLimitedString<4096>;
 
@@ -90,6 +95,9 @@ std::unique_ptr<char[]> alternativeStackMemory;
 /// @brief an atomic that makes sure there are no races inside the signal
 /// handler callback
 std::atomic<bool> crashHandlerInvoked(false);
+
+/// @brief whether or not the crash handler is currently logging
+std::atomic<bool> crashHandlerIsLogging(false);
 #endif
 
 /// @brief an atomic that controls whether we will log backtraces
@@ -165,12 +173,14 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
                      siginfo_t const* info, void* ucontext) {
   // build a crash message
   buffer.append("💥 ArangoDB ").append(ARANGODB_VERSION_FULL);
-  buffer.append(", thread ")
-      .appendUInt64(uint64_t(arangodb::Thread::currentThreadNumber()));
-
 #ifdef __linux__
+  buffer.append(", thread ").appendUInt64(uint64_t(gettid()));
+
   arangodb::ThreadNameFetcher nameFetcher;
   buffer.append(" [").append(nameFetcher.get()).append("]");
+#else
+  buffer.append(", thread ")
+      .appendUInt64(uint64_t(arangodb::Thread::currentThreadNumber()));
 #endif
 
   bool printed = false;
@@ -264,12 +274,25 @@ void logBacktrace() try {
     return;
   }
 
+  // wait until it is our turn to log output
+  while (true) {
+    bool expected = false;
+    if (::crashHandlerIsLogging.compare_exchange_strong(expected, true)) {
+      break;
+    }
+    arangodb::basics::cpu_relax();
+  }
+
 #ifdef ARANGODB_HAVE_LIBUNWIND
   // fixed buffer for constructing temporary log messages (to avoid malloc)
   SmallString buffer;
 
   buffer.append("Backtrace of thread ");
+#ifdef __linux__
+  buffer.appendUInt64(uint64_t(gettid()));
+#else
   buffer.appendUInt64(arangodb::Thread::currentThreadNumber());
+#endif
   buffer.append(" [").append(currentThreadName).append("]");
 
   LOG_TOPIC("c962b", INFO, arangodb::Logger::CRASH) << buffer.view();
@@ -366,9 +389,11 @@ void logBacktrace() try {
     }
   }
 
+  ::crashHandlerIsLogging.store(false);
 #endif
 } catch (...) {
   // we better not throw an exception from inside a signal handler
+  ::crashHandlerIsLogging.store(false);
 }
 
 // log info about the current process
@@ -430,6 +455,37 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
   killProcess(signal);
 }
+
+#ifdef __linux__
+// logs a backtrace of the thread that received the signal.
+void crashHandlerLogBacktraceHandler(int signal, siginfo_t* info,
+                                     void* ucontext) {
+  logBacktrace();
+}
+
+// sends a signal to all threads of the process to log a backtrace.
+void crashHandlerLogAllHandler(int signal, siginfo_t* info, void* ucontext) {
+  uint64_t threads[1024];
+  memset(&threads[0], 0, sizeof(threads));
+
+  size_t n =
+      TRI_ProcessThreads(arangodb::Thread::currentProcessId(), &threads[0],
+                         sizeof(threads) / sizeof(threads[0]));
+
+  for (size_t i = 0; i < n; ++i) {
+    // call each individual thread with signal SIGUSR2, which will make the
+    // thread log a backtrace.
+    // we intentionally ignore the return value, as we cannot do anything about
+    // errors here anyway.
+    // we are using a syscall here directly because musl does not implemented
+    // tgkill() in its C library.
+    (void)syscall(SYS_tgkill,
+                  static_cast<int>(arangodb::Thread::currentProcessId()),
+                  static_cast<int>(threads[i]), SIGUSR2);
+  }
+}
+#endif
+
 #endif
 
 #ifdef _WIN32
@@ -696,8 +752,8 @@ void CrashHandler::installCrashHandler() {
 
 #ifndef _WIN32
   try {
-    size_t const stackSize =
-        std::max<size_t>(128 * 1024, std::max<size_t>(MINSIGSTKSZ, SIGSTKSZ));
+    size_t stackSize =
+        std::max<size_t>(::kStackSize, std::max<size_t>(MINSIGSTKSZ, SIGSTKSZ));
 
     ::alternativeStackMemory = std::make_unique<char[]>(stackSize);
 
@@ -715,19 +771,48 @@ void CrashHandler::installCrashHandler() {
     ::alternativeStackMemory.release();
   }
 
-  // install signal handlers for the following signals
-  struct sigaction act;
-  sigemptyset(&act.sa_mask);
-  act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO |
-                 (::alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
-  act.sa_sigaction = crashHandlerSignalHandler;
-  sigaction(SIGSEGV, &act, nullptr);
-  sigaction(SIGBUS, &act, nullptr);
-  sigaction(SIGILL, &act, nullptr);
-  sigaction(SIGFPE, &act, nullptr);
-  sigaction(SIGABRT, &act, nullptr);
+  {
+    // install signal handlers for the following signals
+    struct sigaction act;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO |
+                   (::alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
+    act.sa_sigaction = crashHandlerSignalHandler;
+    sigaction(SIGSEGV, &act, nullptr);
+    sigaction(SIGBUS, &act, nullptr);
+    sigaction(SIGILL, &act, nullptr);
+    sigaction(SIGFPE, &act, nullptr);
+    sigaction(SIGABRT, &act, nullptr);
 #else  // _WIN32
   SetUnhandledExceptionFilter(unhandledExceptionFilter);
+#endif
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef __linux__
+  // highly experimental region, thus not enabled in production
+  {
+    // install log handler for the SIGUSR2 signal.
+    // catching this signal in a thread will make the thread
+    // log a backtrace.
+    struct sigaction act;
+    sigfillset(&act.sa_mask);
+    act.sa_flags = SA_SIGINFO;
+    act.sa_sigaction = crashHandlerLogBacktraceHandler;
+    sigaction(SIGUSR2, &act, nullptr);
+  }
+
+  {
+    // install log handler for the SIGUSR1 signal.
+    // catching this signal in a thread will make the thread
+    // log a backtrace for all threads of the process.
+    struct sigaction act;
+    sigfillset(&act.sa_mask);
+    act.sa_flags = SA_SIGINFO;
+    act.sa_sigaction = crashHandlerLogAllHandler;
+    sigaction(SIGUSR1, &act, nullptr);
+  }
+#endif
 #endif
 
   // install handler for std::terminate()
