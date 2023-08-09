@@ -289,8 +289,8 @@ class IndexReadBuffer {
   }
 
   void pushSortedValue(StorageSnapshot const& snapshot, ValueType&& value,
-                       std::span<float_t const> scores,
-                       irs::score_threshold* threshold);
+                       std::span<float_t const> scores, irs::score& score,
+                       irs::score_t& threshold);
 
   void finalizeHeapSort();
   // A note on the scores: instead of saving an array of AqlValues, we could
