@@ -318,3 +318,19 @@ Result Queries::kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id,
 
   return res;
 }
+
+/// @brief kills the given query
+Result Queries::kill(DatabaseFeature& df, std::string const& databaseName,
+                     TRI_voc_tick_t id) {
+  auto vocbase = df.useDatabase(databaseName);
+  if (!vocbase) {
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+  }
+  Result res = checkAuthorization(*vocbase, /*allDatabases*/ false);
+
+  if (res.ok()) {
+    res.reset(vocbase->queryList()->kill(id));
+  }
+
+  return res;
+}

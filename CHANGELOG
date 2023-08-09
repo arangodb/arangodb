@@ -1,7 +1,10 @@
 devel
 -----
 
-* Prevent a buffer overflow in the crash dumper.
+* Prevent potential buffer overflow in the crash handler.
+
+* Improve crash handler by adding the state of the application server (e.g.
+  startup, running, shutting dow) into the crash message.
 
 * Updated OpenSSL to 3.1.2 and OpenLDAP to 2.6.6.
 

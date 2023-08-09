@@ -2021,7 +2021,7 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
                                  arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _expression(new Expression(plan->getAst(), base)) {}
+      _expression(std::make_unique<Expression>(plan->getAst(), base)) {}
 
 CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
                                  std::unique_ptr<Expression> expr,

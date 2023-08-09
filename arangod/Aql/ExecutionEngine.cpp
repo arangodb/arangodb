@@ -49,6 +49,7 @@
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Queries.h"
 
 using namespace arangodb;
@@ -563,18 +564,21 @@ struct DistributedQueryInstanciator final
       ClusterInfo& ci =
           _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
       engine->rebootTrackers().reserve(srvrQryId.size());
+      DatabaseFeature& df =
+          _query.vocbase().server().getFeature<DatabaseFeature>();
+
       for (auto const& [server, queryId, rebootId] : srvrQryId) {
         TRI_ASSERT(!server.starts_with("server:"));
         std::string comment = std::string("AQL query from coordinator ") +
                               ServerState::instance()->getId();
 
         std::function<void(void)> f = [srvr = server, id = _query.id(),
-                                       &vocbase = _query.vocbase()]() {
+                                       vn = _query.vocbase().name(), &df]() {
           LOG_TOPIC("d2554", INFO, Logger::QUERIES)
               << "killing query " << id << " because participating DB server "
               << srvr << " is unavailable";
           try {
-            methods::Queries::kill(vocbase, id, false);
+            methods::Queries::kill(df, vn, id);
           } catch (...) {
             // it does not really matter if this fails.
             // if the coordinator contacts the failed DB server next time, it

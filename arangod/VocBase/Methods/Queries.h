@@ -27,6 +27,8 @@
 #include "Basics/Result.h"
 
 namespace arangodb {
+class DatabaseFeature;
+
 namespace velocypack {
 class Builder;
 }
@@ -49,6 +51,9 @@ struct Queries {
   /// @brief kills the given query
   static Result kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id,
                      bool allDatabases);
+
+  static Result kill(DatabaseFeature& df, std::string const& databaseName,
+                     TRI_voc_tick_t id);
 };
 
 }  // namespace methods

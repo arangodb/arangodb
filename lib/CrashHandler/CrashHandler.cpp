@@ -100,6 +100,9 @@ std::atomic<bool> enableStacktraces(true);
 /// file generation etc.
 std::atomic<bool> killHard(false);
 
+/// @brief string with server state information. must be null-terminated
+std::atomic<char const*> stateString = nullptr;
+
 /// @brief kills the process with the given signal
 [[noreturn]] void killProcess(int signal) {
 #ifdef _WIN32
@@ -183,6 +186,10 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
     buffer.append(")");
   }
 
+  if (char const* ss = ::stateString.load(); ss != nullptr) {
+    buffer.append(" in state \"").append(ss).append("\" ");
+  }
+
 #ifndef _WIN32
   if (info != nullptr && (signal == SIGSEGV || signal == SIGBUS)) {
     // dump address that was accessed when the failure occurred (this is
@@ -208,8 +215,7 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
   // FIXME: implement ARM64 context output
   buffer.append(" ARM64 CPU context: is not available ");
 #else
-  auto ctx = static_cast<ucontext_t*>(ucontext);
-  if (ctx) {
+  if (auto ctx = static_cast<ucontext_t*>(ucontext); ctx) {
     auto appendRegister = [ctx, &buffer](char const* prefix, int reg) {
       buffer.append(prefix);
       auto const* s =
@@ -638,6 +644,10 @@ void CrashHandler::crash(std::string_view context) {
 
   // crash from here
   ::killProcess(SIGABRT);
+}
+
+void CrashHandler::setState(std::string_view state) {
+  ::stateString.store(state.data());
 }
 
 /// @brief logs an assertion failure and crashes the program
