@@ -191,7 +191,8 @@ class BufferHeapSortContext {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool descScore() const noexcept {
-    return !_scoresSort.empty() && !_scoresSort.front().second;
+    return !_heapSort.empty() && _heapSort.front().isScore() &&
+           !_heapSort.front().ascending;
   }
 #endif
 
@@ -472,9 +473,13 @@ velocypack::Slice IndexReadBuffer<ValueType, copySorted>::readHeapSortColumn(
   }
   TRI_ASSERT(_currentDocumentBuffer.capacity() > _currentDocumentBuffer.size());
   _currentDocumentBuffer.emplace_back(val);
-  _currentDocumentSlices.push_back(
-      getStoredValue(_currentDocumentBuffer.back(), cmp));
-  return _currentDocumentSlices.back();
+  if constexpr (copySorted) {
+    return getStoredValue(_currentDocumentBuffer.back(), cmp);
+  } else {
+    _currentDocumentSlices.push_back(
+        getStoredValue(_currentDocumentBuffer.back(), cmp));
+    return _currentDocumentSlices.back();
+  }
 }
 
 template<typename ValueType, bool copySorted>
@@ -485,7 +490,9 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
   auto const heapSortSize = _heapSort.size();
   size_t heapSortValuesIndex = idx * heapSortSize;
   size_t j = 0;
-  TRI_ASSERT(_currentDocumentSlices.size() == _currentDocumentBuffer.size());
+  if constexpr (!copySorted) {
+    TRI_ASSERT(_currentDocumentSlices.size() == _currentDocumentBuffer.size());
+  }
   if constexpr (fullHeap) {
     TRI_ASSERT(heapSortValuesIndex < _heapSortValues.size());
   } else {
@@ -546,11 +553,12 @@ template<typename ValueType, bool copySorted>
 template<typename ColumnReaderProvider>
 void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     ColumnReaderProvider& columnReader, StorageSnapshot const& snapshot,
-    ValueType&& value, std::span<float_t const> scores,
-    irs::score_threshold* threshold) {
+    ValueType&& value, std::span<float_t const> scores, irs::score& score,
+    irs::score_t& threshold) {
   TRI_ASSERT(_maxSize);
-  TRI_ASSERT(threshold == nullptr || !scores.empty());
-  _currentDocumentSlices.clear();
+  if constexpr (!copySorted) {
+    _currentDocumentSlices.clear();
+  }
   _currentDocumentBuffer.clear();
   if (_currentReaderOffset != value.readerOffset()) {
     _currentReaderOffset = value.readerOffset();

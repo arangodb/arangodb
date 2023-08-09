@@ -314,8 +314,8 @@ class IndexReadBuffer {
   template<typename ColumnReaderProvider>
   void pushSortedValue(ColumnReaderProvider& columnReader,
                        StorageSnapshot const& snapshot, ValueType&& value,
-                       std::span<float_t const> scores,
-                       irs::score_threshold* threshold);
+                       std::span<float_t const> scores, irs::score& score,
+                       irs::score_t& threshold);
 
   void finalizeHeapSort();
   // A note on the scores: instead of saving an array of AqlValues, we could
@@ -454,7 +454,10 @@ class IndexReadBuffer {
   std::vector<ColumnIterator> _heapOnlyStoredValuesReaders;
   // <num heap only values>
   StoredValuesContainer _currentDocumentBuffer;
-  std::vector<velocypack::Slice> _currentDocumentSlices;
+  using DocumentSlicesContainer =
+      typename std::conditional<copyStored, bool,
+                                std::vector<velocypack::Slice>>::type;
+  [[maybe_unused]] DocumentSlicesContainer _currentDocumentSlices;
   std::vector<HeapSortValue> _heapSortValues;
   std::span<iresearch::HeapSortElement const> _heapSort;
   size_t _heapOnlyColumnsCount{0};

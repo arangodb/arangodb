@@ -255,7 +255,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
 bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   auto current = static_cast<ExecutionNode*>(&viewNode);
   auto const& viewVariable = viewNode.outVariable();
-  auto const& scorers = viewNode.scorers();
+  auto& scorers = viewNode.scorers();
   SortNode* sortNode = nullptr;
   LimitNode const* limitNode = nullptr;
   QueryContext ctx{
@@ -421,13 +421,15 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       return false;
     }
   }
-
-  auto& idx = scoresSort.front().first;
-  if (idx != 0) {
+  if (heapSort.front().isScore() && heapSort.front().source != 0) {
+    auto idx = heapSort.front().source;
     std::swap(scorers.front(), scorers[idx]);
-    idx = 0;
-    if (zero != std::numeric_limits<size_t>::max()) {
-      scoresSort[zero].first = idx;
+    for (auto it = heapSort.begin(); it != heapSort.end(); ++it) {
+      if (it->isScore() && it->source == 0) {
+        it->source = idx;
+      } else if (it->isScore() && it->source == idx) {
+        it->source = 0;
+      }
     }
   }
   // all sort elements are covered by view's scorers / stored values
