@@ -347,16 +347,6 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
 
   bool haveCluster = server.hasFeature<ClusterFeature>();
   {
-    // We need to also take care of the `cluster.force-one-shard` option here.
-    // It set, the entire cluster is forced to be a OneShard deployment.
-    if (haveCluster) {
-      if (server.getFeature<ClusterFeature>().forceOneShard()) {
-        vocbaseOptions.sharding = "single";
-      }
-    }
-  }
-
-  {
     VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
     bool isSatellite =
         (replicationSlice.isString() &&
