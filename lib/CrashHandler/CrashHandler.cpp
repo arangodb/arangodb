@@ -187,7 +187,7 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
   }
 
   if (char const* ss = ::stateString.load(); ss != nullptr) {
-    buffer.append(" in state \"").append(ss).append("\" ");
+    buffer.append(" in state \"").append(ss).append("\"");
   }
 
 #ifndef _WIN32
