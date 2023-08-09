@@ -40,6 +40,9 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "CrashHandler/CrashHandler.h"
+#endif
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
@@ -82,6 +85,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
+#include <absl/strings/str_cat.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
@@ -1659,6 +1663,10 @@ Result RocksDBCollection::modifyDocument(
       err.appendErrorMessage("; new key: ");
       err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
     });
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("b28a9", ERR, Logger::ENGINES) << res.errorMessage();
+    CrashHandler::logBacktrace();
+#endif
     TRI_ASSERT(false) << res.errorMessage();
     return res;
   }
