@@ -94,12 +94,15 @@ void DelayedExecutor::runOnce() noexcept {
   f.operator()();
 }
 
-void DelayedExecutor::runAll() noexcept {
-  while (not queue.empty()) {
-    runOnce();
-  }
-}
-
 auto DelayedExecutor::hasWork() const noexcept -> bool {
   return not queue.empty();
+}
+
+size_t DelayedExecutor::runAllCurrent() noexcept {
+  auto queue_ = std::move(this->queue);
+  auto const tasks = queue_.size();
+  while (not queue_.empty()) {
+    runOnce();
+  }
+  return tasks;
 }

@@ -22,73 +22,47 @@
 
 #pragma once
 
-#include <deque>
+#include <list>
 #include <memory>
 
 #include "Replication2/ReplicatedLog/Components/LogFollower.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 
+#include "Replication2/Mocks/SchedulerMocks.h"
+
 namespace arangodb::replication2::test {
 
-struct DelayedLogFollower : replicated_log::AbstractFollower,
-                            replicated_log::ILogParticipant {
+// Queues appendEntries calls on its own DelayedScheduler. Keeps a queue of
+// pending requests to inspect.
+struct DelayedLogFollower : replicated_log::ILogFollower {
   explicit DelayedLogFollower(
       std::shared_ptr<replicated_log::ILogFollower> follower)
-      : _follower(std::move(follower)) {}
-
-  /*
-explicit LogFollowerImpl(
-ParticipantId myself,
-std::unique_ptr<storage::IStorageEngineMethods> methods,
-std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
-std::shared_ptr<FollowerTermInformation const> termInfo,
-std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-std::shared_ptr<ReplicatedLogMetrics> metrics,
-std::shared_ptr<ILeaderCommunicator> leaderComm,
-std::shared_ptr<IScheduler> scheduler, LoggerContext logContext);
-  */
-  // DelayedFollowerLog(LoggerContext const& logContext,
-  //                    std::shared_ptr<ReplicatedLogMetricsMock>
-  //                    logMetricsMock,
-  //                    std::shared_ptr<ReplicatedLogGlobalSettings const>
-  //                    options, ParticipantId const& id,
-  //                    std::unique_ptr<storage::IStorageEngineMethods> methods,
-  //                    LogTerm term, ParticipantId leaderId)
-  //     : DelayedFollowerLog([&] {
-  //         return std::make_shared<replicated_log::LogFollowerImpl>(
-  //             id, std::move(methods), nullptr /* TODO state handle */,
-  //             nullptr /* TODO terminfo */, std::move(options),
-  //             std::move(logMetricsMock), nullptr /* TODO leadercomm */,
-  //             nullptr /* TODO scheduler */, logContext);
-  //         // logContext, std::move(logMetricsMock), std::move(options), id,
-  //         // std::move(methods), term, std::move(leaderId));
-  //       }()) {}
+      : _follower(std::move(follower)) {
+    // Let's not accidentally wrap a DelayedLogFollower in another
+    ADB_PROD_ASSERT(std::dynamic_pointer_cast<DelayedLogFollower>(follower) ==
+                    nullptr);
+  }
 
   auto appendEntries(replicated_log::AppendEntriesRequest req)
       -> arangodb::futures::Future<
           replicated_log::AppendEntriesResult> override {
-    auto future = _asyncQueue.doUnderLock([&](auto& queue) {
-      return queue.emplace_back(std::make_shared<AsyncRequest>(std::move(req)))
-          ->promise.getFuture();
+    auto p = _asyncQueue.emplace_back(
+        std::make_shared<AsyncRequest>(std::move(req)));
+
+    scheduler.queue([p, this]() {
+      p->promise.setValue(std::move(p->request));
+      auto it = std::find(_asyncQueue.begin(), _asyncQueue.end(), p);
+      if (it != _asyncQueue.end()) {
+        _asyncQueue.erase(it);
+      }
     });
-    return std::move(future).thenValue([this](auto&& result) mutable {
+
+    return p->promise.getFuture().thenValue([this](auto&& result) mutable {
       return _follower->appendEntries(std::forward<decltype(result)>(result));
     });
   }
 
-  auto runAsyncAppendEntries() {
-    auto asyncQueue = _asyncQueue.doUnderLock([](auto& _queue) {
-      auto queue = std::move(_queue);
-      _queue.clear();
-      return queue;
-    });
-
-    for (auto& p : asyncQueue) {
-      p->promise.setValue(std::move(p->request));
-    }
-
-    return asyncQueue.size();
-  }
+  auto runAsyncAppendEntries() { return scheduler.runAllCurrent(); }
 
   void runAllAsyncAppendEntries() {
     while (hasPendingAppendEntries()) {
@@ -106,12 +80,11 @@ std::shared_ptr<IScheduler> scheduler, LoggerContext logContext);
     WaitForAsyncPromise promise;
   };
   [[nodiscard]] auto pendingAppendEntries() const
-      -> std::deque<std::shared_ptr<AsyncRequest>> {
-    return _asyncQueue.copy();
+      -> std::list<std::shared_ptr<AsyncRequest>> {
+    return _asyncQueue;
   }
   [[nodiscard]] auto hasPendingAppendEntries() const -> bool {
-    return _asyncQueue.doUnderLock(
-        [](auto const& queue) { return !queue.empty(); });
+    return scheduler.hasWork();
   }
 
   auto getParticipantId() const noexcept -> ParticipantId const& override {
@@ -152,8 +125,11 @@ std::shared_ptr<IScheduler> scheduler, LoggerContext logContext);
     return _follower->getInternalLogIterator(bounds);
   }
 
+  DelayedScheduler scheduler;
+
  private:
-  Guarded<std::deque<std::shared_ptr<AsyncRequest>>> _asyncQueue;
+  std::list<std::shared_ptr<AsyncRequest>> _asyncQueue;
   std::shared_ptr<replicated_log::ILogFollower> _follower;
 };
+
 }  // namespace arangodb::replication2::test

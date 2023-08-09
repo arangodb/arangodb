@@ -32,7 +32,8 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   Mocks/LogFollowerMock.h
   Mocks/ReplicatedStateHandleMock.h
   Mocks/FakeFollowerFactory.h
-  )
+  Mocks/IDelayedScheduler.h
+)
 
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES

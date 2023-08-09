@@ -21,7 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Replication2/Mocks/IDelayedScheduler.h"
+
 #include "Replication2/IScheduler.h"
+
 #include <deque>
 
 namespace arangodb::replication2::test {
@@ -81,7 +84,7 @@ struct FakeScheduler : IScheduler {
   }
 };
 
-struct DelayedScheduler : IScheduler {
+struct DelayedScheduler : IScheduler, IDelayedScheduler {
   auto delayedFuture(std::chrono::nanoseconds duration, std::string_view name)
       -> arangodb::futures::Future<arangodb::futures::Unit> override {
     if (name.data() == nullptr) {
@@ -110,7 +113,7 @@ struct DelayedScheduler : IScheduler {
     _queue.push_back(std::move(function));
   }
 
-  void runOnce() noexcept {
+  void runOnce() noexcept override {
     auto f = std::invoke([this] {
       ADB_PROD_ASSERT(not _queue.empty());
       auto f = std::move(_queue.front());
@@ -120,18 +123,18 @@ struct DelayedScheduler : IScheduler {
     f.operator()();
   }
 
-  auto runAll() noexcept {
-    auto iters = std::size_t{0};
-    while (not _queue.empty()) {
+  auto runAllCurrent() noexcept -> std::size_t override {
+    auto queue = std::move(_queue);
+    auto const tasks = queue.size();
+    while (not queue.empty()) {
       runOnce();
-      ++iters;
     }
-    return iters;
+    return tasks;
   }
 
-  auto hasWork() const noexcept -> bool { return not _queue.empty(); }
+  auto hasWork() const noexcept -> bool override { return not _queue.empty(); }
 
-  ~DelayedScheduler() {
+  ~DelayedScheduler() override {
     EXPECT_TRUE(_queue.empty())
         << "Unresolved item(s) in the DelayedScheduler queue";
   }
