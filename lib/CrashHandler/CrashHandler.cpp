@@ -456,6 +456,7 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
   killProcess(signal);
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #ifdef __linux__
 // logs a backtrace of the thread that received the signal.
 void crashHandlerLogBacktraceHandler(int signal, siginfo_t* info,
@@ -484,6 +485,7 @@ void crashHandlerLogAllHandler(int signal, siginfo_t* info, void* ucontext) {
                   static_cast<int>(threads[i]), SIGUSR2);
   }
 }
+#endif
 #endif
 
 #endif
