@@ -1,6 +1,9 @@
 v3.11.3 (XXXX-XX-XX)
 --------------------
 
+* Added better diagnostic messages in case documents<->primarx index corruption
+  occurs.
+
 * Updated OpenSSL to 3.0.10 and OpenLDAP to 2.6.6.
 
 * Updated ArangoDB Starter to 0.17.0.

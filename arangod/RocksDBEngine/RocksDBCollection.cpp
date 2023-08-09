@@ -40,6 +40,9 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "CrashHandler/CrashHandler.h"
+#endif
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Random/RandomGenerator.h"
@@ -81,6 +84,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
+#include <absl/strings/str_cat.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
@@ -273,18 +277,29 @@ struct TruncateTimeTracker final : public TimeTracker {
   }
 };
 
-void reportPrimaryIndexInconsistencyIfNotFound(Result const& res,
-                                               std::string_view key,
-                                               LocalDocumentId const& rev) {
-  if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-    // Scandal! A primary index entry is pointing to nowhere! Let's report
-    // this to the authorities immediately:
-    LOG_TOPIC("42536", ERR, arangodb::Logger::ENGINES)
-        << "Found primary index entry for which there is no actual "
-           "document: _key="
-        << key << ", _rev=" << rev.id();
-    TRI_ASSERT(false);
-  }
+void reportPrimaryIndexInconsistencyIfNotFound(
+    Result const& res, LogicalCollection const& collection,
+    std::string_view key, LocalDocumentId const& rev,
+    ReadOwnWrites readOwnWrites, RocksDBTransactionState const* state) {
+  TRI_ASSERT(res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
+  // Scandal! A primary index entry is pointing to nowhere! Let's report
+  // this to the authorities immediately:
+  LOG_TOPIC("42536", ERR, arangodb::Logger::ENGINES)
+      << "Found primary index entry for which there is no actual "
+         "document: "
+      << res.errorMessage() << ", collection: " << collection.vocbase().name()
+      << "/" << collection.name() << ", type: "
+      << (collection.type() == TRI_COL_TYPE_EDGE ? "edge" : "document")
+      << ", smart: " << (collection.isSmart() ? "yes" : "no")
+      << ", _key=" << key << ", _rev=" << RevisionId(rev).toHLC() << " ("
+      << rev.id() << "), read own writes: "
+      << (readOwnWrites == ReadOwnWrites::yes ? "yes" : "no")
+      << ", state: " << state->debugInfo()
+      << ", hlc: " << TRI_HybridLogicalClock();
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+  CrashHandler::logBacktrace();
+#endif
+  TRI_ASSERT(false);
 }
 
 size_t getParallelism(velocypack::Slice slice) {
@@ -1043,7 +1058,11 @@ Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->ensureSnapshot());
-  ::reportPrimaryIndexInconsistencyIfNotFound(res, key, documentId);
+  if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    ::reportPrimaryIndexInconsistencyIfNotFound(
+        res, _logicalCollection, key, documentId, readOwnWrites,
+        RocksDBTransactionState::toState(trx));
+  }
   return res;
 }
 
@@ -1577,13 +1596,33 @@ Result RocksDBCollection::modifyDocument(
     velocypack::Slice oldDoc, LocalDocumentId newDocumentId,
     velocypack::Slice newDoc, RevisionId oldRevisionId,
     RevisionId newRevisionId, OperationOptions const& options) const {
+  Result res;
+
+  if (oldDoc.get(StaticStrings::KeyString).stringView() !=
+      newDoc.get(StaticStrings::KeyString).stringView()) {
+    res.reset(TRI_ERROR_INTERNAL,
+              absl::StrCat("invalid document update in '",
+                           _logicalCollection.vocbase().name(), "/",
+                           _logicalCollection.name()));
+    res.withError([&oldDoc, &newDoc](result::Error& err) {
+      err.appendErrorMessage("; old key: ");
+      err.appendErrorMessage(oldDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage("; new key: ");
+      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
+    });
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    CrashHandler::logBacktrace();
+#endif
+    TRI_ASSERT(false) << res.errorMessage();
+    return res;
+  }
+
   savepoint.prepareOperation(newRevisionId);
 
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(objectId() != 0);
-  Result res;
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods(_logicalCollection.id());
