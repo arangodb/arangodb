@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <cstring>
 #include <string_view>
 #include <type_traits>
@@ -79,18 +81,10 @@ class SizeLimitedString {
   }
 
   SizeLimitedString& append(std::string_view data) noexcept {
-    return append(data.data(), data.size());
-  }
-
-  SizeLimitedString& append(char const* data) noexcept {
-    return append(data, strlen(data));
-  }
-
-  SizeLimitedString& append(char const* data, size_t length) noexcept {
     if (!_full) {
       // append as much as is possible (potentially only a prefix)
-      length = std::min(length, remaining());
-      memcpy(_buffer + _offset, data, length);
+      size_t length = std::min(data.size(), remaining());
+      memcpy(_buffer + _offset, data.data(), length);
       _offset += length;
       recalculateState();
     }
@@ -118,48 +112,30 @@ class SizeLimitedString {
   SizeLimitedString& appendHexValue(T value, bool stripLeadingZeros) noexcept {
     static_assert(std::is_integral_v<T> || std::is_pointer_v<T>);
     // copy value into local buffer
-    unsigned char buffer[sizeof(T)];
-    memcpy(buffer, &value, sizeof(T));
+    std::array<unsigned char, sizeof(T)> buffer;
+    memcpy(buffer.begin(), &value, sizeof(T));
+    if constexpr (basics::isLittleEndian()) {
+      std::reverse(buffer.begin(), buffer.end());
+    }
 
     // stringify value. if string is already full, this may do some
     // iterations, but not append to the buffer. we are not optimizing for
     // this case.
     constexpr char chars[] = "0123456789abcdef";
-    unsigned char const* e = &buffer[0] + sizeof(T);
-
-    if constexpr (basics::isLittleEndian()) {
-      while (--e >= &buffer[0]) {
-        unsigned char c = *e;
-        if (!stripLeadingZeros || (c >> 4U) != 0) {
-          push_back(chars[c >> 4U]);
-          stripLeadingZeros = false;
-        }
-        if (!stripLeadingZeros || (c & 0xfU) != 0) {
-          push_back(chars[c & 0xfU]);
-          stripLeadingZeros = false;
-        }
+    for (auto c : buffer) {
+      if (!stripLeadingZeros || (c >> 4U) != 0) {
+        push_back(chars[c >> 4U]);
+        stripLeadingZeros = false;
       }
-      if (stripLeadingZeros) {
-        push_back('0');
-      }
-    } else {
-      unsigned char const* p = &buffer[0];
-      while (p < e) {
-        unsigned char c = *p;
-        if (!stripLeadingZeros || (c >> 4U) != 0) {
-          push_back(chars[c >> 4U]);
-          stripLeadingZeros = false;
-        }
-        if (!stripLeadingZeros || (c & 0xfU) != 0) {
-          push_back(chars[c & 0xfU]);
-          stripLeadingZeros = false;
-        }
-        ++p;
-      }
-      if (stripLeadingZeros) {
-        push_back('0');
+      if (!stripLeadingZeros || (c & 0xfU) != 0) {
+        push_back(chars[c & 0xfU]);
+        stripLeadingZeros = false;
       }
     }
+    if (stripLeadingZeros) {
+      push_back('0');
+    }
+
     return *this;
   }
 
