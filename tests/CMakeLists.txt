@@ -204,6 +204,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/RandomTest.cpp
   Basics/ReadWriteLockTest.cpp
   Basics/RecursiveLockerTest.cpp
+  Basics/SizeLimitedStringTest.cpp
   Basics/SpinLockTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
