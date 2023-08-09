@@ -57,30 +57,29 @@ class SortCondition {
   /// @brief destroy the sort condition
   ~SortCondition();
 
- public:
   /// @brief whether or not the condition consists only of attribute accesses
-  inline bool isOnlyAttributeAccess() const { return _onlyAttributeAccess; }
+  bool isOnlyAttributeAccess() const { return _onlyAttributeAccess; }
 
   /// @brief whether or not all conditions have the same sort order
-  inline bool isUnidirectional() const { return _unidirectional; }
+  bool isUnidirectional() const { return _unidirectional; }
 
   /// @brief whether or not all sort directions are ascending
   /// note that the return value of this function is only meaningful if the
   /// sort is unidirectional
-  inline bool isAscending() const {
+  bool isAscending() const {
     TRI_ASSERT(isUnidirectional());
     return _ascending;
   }
 
   /// @brief whether or not all sort directions are descending
   /// this is the reverse of isAscending()
-  inline bool isDescending() const { return !isAscending(); }
+  bool isDescending() const { return !isAscending(); }
 
   /// @brief whether or not there are fields
-  inline bool isEmpty() const { return _fields.empty(); }
+  bool isEmpty() const { return _fields.empty(); }
 
   /// @brief number of attributes in condition
-  inline size_t numAttributes() const { return _fields.size(); }
+  size_t numAttributes() const { return _fields.size(); }
 
   /// @brief returns the number of attributes in the sort condition covered
   /// by the specified index fields
