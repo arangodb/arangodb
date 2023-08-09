@@ -156,7 +156,7 @@ class BufferHeapSortContext {
         auto res = basics::VelocyPackHelper::compare(lhs_stored->slice,
                                                      rhs_stored->slice, true);
         if (res != 0) {
-          return kSortMultiplier[size_t{cmp.ascending}] * res;
+          return (kSortMultiplier[size_t{cmp.ascending}] * res) < 0;
         }
       }
       ++lhs_stored;
@@ -181,7 +181,7 @@ class BufferHeapSortContext {
         auto res =
             basics::VelocyPackHelper::compare(lhs_values->slice, value, true);
         if (res != 0) {
-          return (kSortMultiplier[size_t{cmp.ascending}] * res) > 0;
+          return (kSortMultiplier[size_t{cmp.ascending}] * res) < 0;
         }
       }
       ++lhs_values;
@@ -598,7 +598,9 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     TRI_ASSERT(!sortContext.descScore() ||
                threshold <= _scoreBuffer[_rows.front() * _numScoreRegisters]);
 #endif
-    threshold = _scoreBuffer[_rows.front() * _numScoreRegisters];
+    if (!scores.empty()) {
+      threshold = _scoreBuffer[_rows.front() * _numScoreRegisters];
+    }
     score.Min(threshold);
   } else {
     finalizeHeapSortDocument<false>(_rows.size(), value.irsDocId(), scores,

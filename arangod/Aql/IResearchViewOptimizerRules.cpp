@@ -354,10 +354,8 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
             }
             break;
           case AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS:
-            if (!checkAttributeAccess(astCalcNode, viewVariable, false)) {
-              return false;
-            }
-            {
+            if (checkAttributeAccess(astCalcNode, viewVariable, false)) {
+              // direct access to view variable
               latematerialized::AttributeAndField<
                   latematerialized::IndexFieldData>
                   af;
@@ -374,6 +372,31 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
               heapSort.push_back(HeapSortElement{.ascending = sort.ascending});
               attrs.push_back(std::move(af));
               storedMaps.insert({attrs.size() - 1, heapSort.size() - 1});
+            } else {
+              // this could be stored column access but with postfix.
+              HeapSortElement element;
+              size_t usedVars{0};
+              visitReferencedVariables(
+                  *astCalcNode, [&](aql::Variable const& var) {
+                    if (++usedVars < 2) {
+                      // only one variable allowed e.g. LET x = y.foo
+                      auto column = viewNode.getSourceColumnInfo(var.id);
+                      std::string name;
+                      if (column.first !=
+                              std::numeric_limits<ptrdiff_t>::max() &&
+                          nameFromAttributeAccess(name, *astCalcNode, ctx,
+                                                  false)) {
+                        element.source = column.first;
+                        element.fieldNumber = column.second;
+                        element.postfix = name;
+                        element.ascending = sort.ascending;
+                      }
+                    }
+                  });
+              if (usedVars != 1 || element.isScore()) {
+                return false;
+              }
+              heapSort.push_back(std::move(element));
             }
             break;
           default:
@@ -1087,7 +1110,7 @@ void handleConstrainedSortInView(Optimizer* opt,
       continue;
     }
 
-    if (!viewNode.scorers().empty() && !viewNode.isInInnerLoop()) {
+    if (!viewNode.isInInnerLoop()) {
       // check if we can optimize away a sort that follows the EnumerateView
       // node this is only possible if the view node itself is not contained in
       // another loop

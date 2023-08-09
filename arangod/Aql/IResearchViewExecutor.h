@@ -374,7 +374,7 @@ class IndexReadBuffer {
       _scoreBuffer.reserve(atMost * scores);
       if (!_heapSort.empty()) {
         _rows.reserve(atMost);
-        _currentDocumentBuffer.reserve(_heapOnlyColumnsCount);
+        _currentDocumentBuffer.reserve(_heapSort.size());
         // resize is important here as we want
         // indexed access for setting values
         _storedValuesBuffer.resize(atMost * stored);

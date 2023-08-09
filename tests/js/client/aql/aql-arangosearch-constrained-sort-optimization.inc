@@ -57,10 +57,10 @@
             type: "inverted", includeAllFields: true,
             consolidationIntervalMsec: 5000,
             primarySort: {
-              fields: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
+              fields: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.ps", "direction": "desc"}],
               compression: "none"
             },
-            storedValues: [["obj.a.a1"],
+            storedValues: [["obj.a.a1"], ["compound"],
               {fields: ["obj.c"], compression: "none"},
               ["storedVal"],
               {fields: ["obj.d.d1", "obj.e.e1"], compression: "lz4"},
@@ -78,9 +78,9 @@
         } else {
           db._createView(vn, "arangosearch", {
             consolidationIntervalMsec: 5000,
-            primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
+            primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.ps", "direction": "desc"}],
             primarySortCompression: "none",
-            storedValues: [["obj.a.a1"],
+            storedValues: [["obj.a.a1"], ["compound"],
               {fields: ["obj.c"], compression: "none"},
               ["storedVal"],
               {fields: ["obj.d.d1", "obj.e.e1"], compression: "lz4"},
@@ -110,10 +110,17 @@
         let data = [];
         let data2 = [];
         let cats = "cat";
+        let j = 0;
+        let sort = 0;
         for (let i = 0; i < 5000; ++i) {
-          data.push({field1:i, field2: "A" + i % 1000, field3: "B" + i % 100, strval: cats, idx:i, storedVal: longValue + i});
-          data2.push({field1:i/2, field2: "A" + i % 2000, field3: "B" + i % 300, strval: cats, idx:i, storedVal: longValue + i});
+          data.push({field1:i, field2: "A" + i % 1000, field3: "B" + i % 100, strval: cats, idx:i, storedVal: longValue + i,
+          compound: {val:sort},
+          obj: {ps:sort, a: {a1: 30}, b: {b1: 31}, c: i, d: {d1: 33}, e: {e1: 34}, f: j, g: 36, h: 37, j: 38}});
+          data2.push({field1:i/2, field2: "A" + i % 2000, field3: "B" + i % 300, strval: cats, idx:i, storedVal: longValue + i,
+          compound: {val:sort + 1},
+          obj: {ps:sort + 1, a: {a1: 30}, b: {b1: 31}, c: i, d: {d1: 33}, e: {e1: 34}, f: j + 1, g: 36, h: 37, j: 38}});
           cats = cats + " cat";
+          sort = sort + 2;
         }
         c.save(data);
         c1.save(data2);
@@ -126,6 +133,11 @@
       },
       testNotAppliedDueToNotSorted() {
         let query = "FOR d IN " + vn + " LIMIT 10 RETURN d";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      },
+      testNotAppliedDueToSortWrapped() {
+        let query = "FOR d IN " + vn + " SORT ROUND(BM25(d)) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
@@ -155,12 +167,12 @@
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToNonScoresSort() {
-        let query = "FOR a IN 1..10 FOR d IN " + vn + " SEARCH d.a.a1 == a SORT BM25(d), d.a.a1 ASC LIMIT 10 RETURN d";
+        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 1 SORT BM25(d), d.a.a1 ASC LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToNonScoresSort2() {
-        let query = "FOR a IN 1..10 FOR d IN " + vn + " SEARCH d.a.a1 == a SORT d.a.a1 ASC, BM25(d) LIMIT 10 RETURN d";
+        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 1 SORT d.a.a1 ASC, BM25(d) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
@@ -334,6 +346,123 @@
           if (i % 2 === 1) {
             expectedIdx++;
           }
+        }
+      },
+      testAppliedStoredValuesOnly() {
+        let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT d.storedVal ASC LIMIT 10 "
+                    + " RETURN {dv:d.storedVal, score:TFIDF(d)}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(10, result.json.length);
+        let expectedIdx = 0;
+        for (let i = 0; i < 10; ++i) {
+          assertEqual(result.json[i].dv, longValue + expectedIdx);
+          if (i % 2 === 1) {
+            if (expectedIdx === 0) {
+                expectedIdx = 1;
+            } else {
+                expectedIdx = expectedIdx * 10;
+            }
+          }
+        }
+      },
+      testAppliedStoredValuesSplitted() {
+        let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT d.storedVal ASC LIMIT 10 "
+                    + " RETURN {dv:d.obj.c, score:TFIDF(d)}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(10, result.json.length);
+        let expectedIdx = 0;
+        for (let i = 0; i < 10; ++i) {
+          assertEqual(result.json[i].dv, expectedIdx);
+          if (i % 2 === 1) {
+            if (expectedIdx === 0) {
+                expectedIdx = 1;
+            } else {
+                expectedIdx = expectedIdx * 10;
+            }
+          }
+        }
+      },
+      testAppliedStoredValuesScoreAndStoredDesc() {
+        let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) ASC, d.obj.f DESC LIMIT 10 "
+                    + " RETURN {dv:d.obj.f, score:TFIDF(d)}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(10, result.json.length);
+        let expectedIdx = 1;
+        let score = 0;
+        for (let i = 0; i < 10; ++i) {
+          assertTrue(score <= result.json[i].score);
+          score = result.json[i].score;
+          assertEqual(result.json[i].dv, expectedIdx);
+          if (expectedIdx === 0) {
+            expectedIdx = 1;
+          } else {
+            expectedIdx = 0;
+          }
+        }
+      },
+      testAppliedStoredValuesScoreAndStoredAsc() {
+        let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) ASC, d.obj.f ASC LIMIT 10 "
+                    + " RETURN {dv:d.obj.f, score:TFIDF(d)}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(10, result.json.length);
+        let expectedIdx = 0;
+        let score = 0;
+        for (let i = 0; i < 10; ++i) {
+          assertTrue(score <= result.json[i].score);
+          score = result.json[i].score;
+          assertEqual(result.json[i].dv, expectedIdx);
+          if (expectedIdx === 0) {
+            expectedIdx = 1;
+          } else {
+            expectedIdx = 0;
+          }
+        }
+      },
+      testAppliedUsePrimarySort() {
+        let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT d.obj.ps ASC LIMIT 10, 10 "
+                    + " RETURN {dv:d.obj.ps}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(10, result.json.length);
+        let expectedIdx = 10;
+        for (let i = 0; i < 10; ++i) {
+          assertEqual(result.json[i].dv, expectedIdx);
+          expectedIdx = expectedIdx + 1;
+        }
+      },
+      testAppliedWithPostfix() {
+        let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT d.compound.val DESC LIMIT 10, 10 "
+                    + " RETURN {dv:d.compound.val, stored: d.storedVal}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(10, result.json.length);
+        let expectedIdx = 9989;
+        for (let i = 0; i < 10; ++i) {
+          assertEqual(result.json[i].dv, expectedIdx);
+          expectedIdx = expectedIdx - 1;
+        }
+      },
+      testAppliedWithPostfixNoReturnValue() {
+        let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT d.compound.val DESC LIMIT 10, 10 "
+                    + " RETURN {stored: d.obj.ps}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(10, result.json.length);
+        let expectedIdx = 9989;
+        for (let i = 0; i < 10; ++i) {
+          assertEqual(result.json[i].stored, expectedIdx);
+          expectedIdx = expectedIdx - 1;
         }
       }
     };
