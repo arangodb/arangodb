@@ -41,13 +41,17 @@
 
 namespace arangodb::replication2::test {
 
+auto operator"" _Lx(unsigned long long x) -> LogIndex { return LogIndex{x}; }
+auto operator"" _T(unsigned long long x) -> LogTerm { return LogTerm{x}; }
+
 struct LogArguments {
   LogRange initialLogRange = {};
   // set persistedMetadata to std::nullopt to simulate a read failure.
   // `.stateId` will be set by makeLogWithFakes(), but is of no consequence
   // anyway.
   std::optional<storage::PersistedStateInfo> persistedMetadata =
-      storage::PersistedStateInfo{};
+      storage::PersistedStateInfo{
+          .snapshot = {.status = replicated_state::SnapshotStatus::kCompleted}};
 };
 struct ConfigArguments {
   LogTerm term = LogTerm{1};
@@ -168,7 +172,7 @@ struct LogWithFakes {
   std::shared_ptr<DelayedScheduler> logScheduler =
       std::make_shared<DelayedScheduler>();
   std::shared_ptr<test::RebootIdCacheMock> rebootIdCache =
-      std::make_shared<test::RebootIdCacheMock>();
+      std::make_shared<testing::NiceMock<test::RebootIdCacheMock>>();
   std::shared_ptr<test::FakeFollowerFactory> fakeFollowerFactory =
       std::make_shared<FakeFollowerFactory>();
   std::shared_ptr<replicated_log::DefaultParticipantsFactory>
