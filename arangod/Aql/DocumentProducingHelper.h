@@ -64,6 +64,11 @@ struct Variable;
 
 struct DocumentProducingFunctionContext {
  public:
+  DocumentProducingFunctionContext(DocumentProducingFunctionContext const&) =
+      delete;
+  DocumentProducingFunctionContext& operator=(
+      DocumentProducingFunctionContext const&) = delete;
+
   // constructor called from EnumerateCollectionExecutor
   DocumentProducingFunctionContext(transaction::Methods& trx,
                                    InputAqlItemRow const& inputRow,

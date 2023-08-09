@@ -103,7 +103,7 @@ struct dummy_scorer final : public irs::ScorerBase<void> {
       const irs::byte_type* /*stats*/,
       const irs::attribute_provider& /*doc_attrs*/,
       irs::score_t /*boost*/) const noexcept final {
-    return irs::ScoreFunction::Empty();
+    return irs::ScoreFunction::Default(0);
   }
 
   dummy_scorer() = default;

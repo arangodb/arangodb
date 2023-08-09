@@ -163,6 +163,12 @@ class BufferHeapSortContext {
     return false;
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool descScore() const noexcept {
+    return !_scoresSort.empty() && !_scoresSort.front().second;
+  }
+#endif
+
  private:
   size_t _numScoreRegisters;
   std::span<std::pair<size_t, bool> const> _scoresSort;
@@ -400,11 +406,11 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
 template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     StorageSnapshot const& snapshot, ValueType&& value,
-    std::span<float_t const> scores, irs::score_threshold* threshold) {
+    std::span<float_t const> scores, irs::score& score,
+    irs::score_t& threshold) {
   BufferHeapSortContext sortContext(_numScoreRegisters, _scoresSort,
                                     _scoreBuffer);
   TRI_ASSERT(_maxSize);
-  TRI_ASSERT(threshold == nullptr || !scores.empty());
   if (ADB_LIKELY(!_heapSizeLeft)) {
     if (sortContext.compareInput(_rows.front(), scores.data())) {
       return;  // not interested in this document
@@ -424,11 +430,12 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
       ++bufferIt;
     }
     std::push_heap(_rows.begin(), _rows.end(), sortContext);
-    if (threshold) {
-      TRI_ASSERT(threshold->min <=
-                 _scoreBuffer[_rows.front() * _numScoreRegisters]);
-      threshold->min = _scoreBuffer[_rows.front() * _numScoreRegisters];
-    }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(!sortContext.descScore() ||
+               threshold <= _scoreBuffer[_rows.front() * _numScoreRegisters]);
+#endif
+    threshold = _scoreBuffer[_rows.front() * _numScoreRegisters];
+    score.Min(threshold);
   } else {
     _keyBuffer.emplace_back(snapshot, std::move(value));
     size_t i = 0;
@@ -1150,10 +1157,9 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
 
   irs::doc_iterator::ptr itr;
   irs::document const* doc{};
-  irs::score_threshold* threshold{};
-  irs::score_t threshold_value = 0.f;
+  irs::score* scr = const_cast<irs::score*>(&irs::score::kNoScore);
   size_t numScores{0};
-  irs::score const* scr;
+  irs::score_t threshold = 0.f;
   for (size_t readerOffset = 0; readerOffset < count;) {
     if (!itr) {
       auto& segmentReader = (*this->_reader)[readerOffset];
@@ -1167,34 +1173,22 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
       doc = irs::get<irs::document>(*itr);
       TRI_ASSERT(doc);
       if constexpr (ExecutionTraits::Ordered) {
-        scr = irs::get<irs::score>(*itr);
-        if (!scr) {
-          scr = &irs::score::kNoScore;
-          numScores = 0;
-          threshold = nullptr;
-        } else {
+        auto* score = irs::get_mutable<irs::score>(itr.get());
+        if (score != nullptr) {
+          scr = score;
           numScores = scores.size();
-          threshold = irs::get_mutable<irs::score_threshold>(itr.get());
-          if (threshold != nullptr && this->_wand.Enabled()) {
-            TRI_ASSERT(threshold->min == 0.f);
-            threshold->min = threshold_value;
-          } else {
-            threshold = nullptr;
-          }
+          scr->Min(threshold);
         }
       }
       itr = segmentReader.mask(std::move(itr));
       TRI_ASSERT(itr);
     }
     if (!itr->next()) {
-      if (threshold != nullptr) {
-        TRI_ASSERT(threshold_value <= threshold->min);
-        threshold_value = threshold->min;
-      }
       ++readerOffset;
       itr.reset();
       doc = nullptr;
-      scr = nullptr;
+      scr = const_cast<irs::score*>(&irs::score::kNoScore);
+      numScores = 0;
       continue;
     }
     ++_totalCount;
@@ -1205,7 +1199,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
         this->_reader->snapshot(readerOffset),
         typename decltype(this->_indexReadBuffer)::KeyValueType(doc->value,
                                                                 readerOffset),
-        std::span{scores.data(), numScores}, threshold);
+        std::span{scores.data(), numScores}, *scr, threshold);
   }
   this->_indexReadBuffer.finalizeHeapSort();
   _bufferedCount = this->_indexReadBuffer.size();

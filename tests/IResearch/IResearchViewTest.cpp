@@ -135,7 +135,7 @@ struct DocIdScorer final : public irs::ScorerBase<void> {
           auto* state = static_cast<ScoreCtx*>(ctx);
           *res = static_cast<irs::score_t>(state->_doc->value);
         },
-        doc);
+        irs::ScoreFunction::DefaultMin, doc);
   }
 
   struct ScoreCtx : public irs::score_ctx {

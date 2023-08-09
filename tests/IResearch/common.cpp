@@ -301,7 +301,7 @@ struct BoostScorer final : public irs::ScorerBase<void> {
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
           *res = static_cast<ScoreCtx*>(ctx)->boost;
         },
-        boost);
+        irs::ScoreFunction::DefaultMin, boost);
   }
 
   static irs::Scorer::ptr make(std::string_view) {
@@ -350,7 +350,7 @@ struct CustomScorer final : public irs::ScorerBase<void> {
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
           *res = static_cast<ScoreCtx const*>(ctx)->scoreValue;
         },
-        this->i);
+        irs::ScoreFunction::DefaultMin, this->i);
   }
 
   bool equals(irs::Scorer const& other) const noexcept final {
