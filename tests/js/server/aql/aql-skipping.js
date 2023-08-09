@@ -524,7 +524,8 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
                   "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
                 }
               }
-            }
+            },
+            optimizeTopK: ["BM25(@doc) DESC"]
           };
         } else {
           meta = {
@@ -544,7 +545,8 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
           meta = { links : {
             UnitTestsCollection1: { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} },
             UnitTestsCollection2 : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} }
-          }};
+          },
+          optimizeTopK: ["BM25(@doc) DESC"]};
         } else {
           meta = { links : {
             UnitTestsCollection1: { includeAllFields: true },
@@ -678,28 +680,27 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
       }
     },
 
-    //FIXME uncomment
-    //testPassSkipArangoSearchSortedFullCountHeapSort: function () {
-    //  const opts = {fullCount: true};
+    testPassSkipArangoSearchSortedFullCountHeapSort: function () {
+     const opts = {fullCount: true};
 
-    //  const query = "FOR doc IN CompoundView SEARCH doc.a == 'foo' "
-    //    + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
-    //    + "SORT doc.a "
-    //    + "LIMIT 3,3 RETURN doc";
+     const query = "FOR doc IN CompoundView SEARCH doc.a == 'foo' "
+       + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+       + "SORT doc.a "
+       + "LIMIT 3,3 RETURN doc";
 
-    //  result = AQL_EXPLAIN(query, {}, opts);
-    //  assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("constrained-heap"));
+     result = AQL_EXPLAIN(query, {}, opts);
+     assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("constrained-heap"));
 
-    //  // skip 3, return 3, out of 10
-    //  result = AQL_EXECUTE(query, {}, opts);
+     // skip 3, return 3, out of 10
+     result = AQL_EXECUTE(query, {}, opts);
 
-    //  assertEqual(result.json.length, 3);
-    //  result.json.forEach(function(res) {
-    //    assertEqual(res.a, "foo");
-    //    assertTrue(res._id.startsWith('UnitTestsCollection/'));
-    //  });
-    //  assertEqual(10, result.stats.fullCount);
-    //},
+     assertEqual(result.json.length, 3);
+     result.json.forEach(function(res) {
+       assertEqual(res.a, "foo");
+       assertTrue(res._id.startsWith('UnitTestsCollection/'));
+     });
+     assertEqual(10, result.stats.fullCount);
+    },
 
     testPassSkipArangoSearchSortedFullCountDefaultSort: function () {
       const opts = {

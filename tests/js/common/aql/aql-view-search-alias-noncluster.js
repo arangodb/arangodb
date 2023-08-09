@@ -56,7 +56,8 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
         {name:"invertedIndex",
          type:"inverted",
          includeAllFields:true,
-         fields: [{name:"a[*]", analyzer:"identity"}]});
+         fields: [{name:"a[*]", analyzer:"identity"}],
+         optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});
 
       db._createView("UnitTestsWithArrayView", "search-alias", {indexes : [ { collection: "UnitTestsWithArrayCollection", index: "invertedIndex" } ]});
       try { analyzers.remove("customAnalyzer", true); } catch(err) {}
@@ -69,6 +70,7 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
                                   
       db.TestsCollectionWithLongFields.ensureIndex({type:"inverted", analyzer: "customAnalyzer", 
                        fields:["field1", "field2", "field3", "field4", "field5", "field6", "_key"],
+                       optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"],
                        name:"invertedIndex",  primarySort: { fields: [{field: "field1", direction: "asc"},
                                               {field: "field2", direction: "asc"},
                                               {field: "field3", direction: "asc"},
@@ -118,7 +120,8 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
         name: "invertedIndex",
         fields: [ "a", "b", "c", "name", "anotherNumericField",
                   "anotherNullField", "anotherBoolField", "_key", "xyz",
-                  { name: "text", analyzer: "text_en" } ] });
+                  { name: "text", analyzer: "text_en" } ],
+        optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"] });
       db._dropView("UnitTestsView");
       
       db._createView("UnitTestsView", "search-alias", { 
@@ -128,12 +131,12 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
       
       db.UnitTestsCollection.ensureIndex({ 
         type: "inverted",
-        name: "invertedIndexCompound", includeAllFields:true});
+        name: "invertedIndexCompound", includeAllFields:true,
+        optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});
       db.UnitTestsCollection2.ensureIndex({ 
         type: "inverted",
-        name: "invertedIndexCompound", includeAllFields:true});
-
-      
+        name: "invertedIndexCompound", includeAllFields:true,
+        optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});     
       
       db._createView("CompoundView", "search-alias",
         { indexes : [
@@ -364,7 +367,8 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
             }
           },
           "type": "arangosearch",
-          "writebufferIdle": 64
+          "writebufferIdle": 64,
+          "optimizeTopK": ["BM25(@doc) DESC"]
         });
 
         var linksView = db._createView("links_view", "arangosearch", {
@@ -388,7 +392,8 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
             }
           },
           "type": "arangosearch",
-          "writebufferIdle": 64
+          "writebufferIdle": 64,
+          "optimizeTopK": ["BM25(@doc) DESC"]
         });
 
         var expectedResult = [
@@ -455,7 +460,8 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
                     "type": {}
                   },
                 }
-              }
+              },
+              optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
             }
           );
 
@@ -479,7 +485,8 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
         
         let coll = db._create(queryOptColl);
         let view = db._createView(queryOptView, 'arangosearch',
-                                 { links: { "QueryOptOptionsCol": { includeAllFields: true } } });
+                                 { links: { "QueryOptOptionsCol": { includeAllFields: true } },
+                                 optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"] });
         coll.save({ value1: "1", value2: "A",
           valueArray: ["A", "B", "C"]
         }); 
@@ -542,7 +549,8 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
                                             NgramMatchCol : { analyzers: [ queryAnalyzer],
                                                               includeAllFields: true, 
                                                               trackListPositions: true} 
-                                            }
+                                            },
+                                    optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
                                   });
         coll.save({ value1: "1", value2: "Jack Daniels"}); 
         coll.save({ value1: "2", value2: "Jack Sparrow"}); 
@@ -683,7 +691,8 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
                         geometry: { analyzers: [queryAnalyzer] }
                       }
                   }
-              }
+              },
+              optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
           });
 
         geoData.forEach(doc => coll.save(doc));

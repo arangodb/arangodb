@@ -116,7 +116,8 @@ function noDocumentMaterializationViewRuleTestSuite(isSearchAlias) {
           links: {
             [cn]: {includeAllFields: true},
             [cn1]: {includeAllFields: true},
-          }
+          },
+          optimizeTopK: ["BM25(@doc) DESC"]
         });
 
         db._createView(svn, "arangosearch", {
@@ -126,7 +127,8 @@ function noDocumentMaterializationViewRuleTestSuite(isSearchAlias) {
           links: {
             [cn]: {includeAllFields: true},
             [cn1]: {includeAllFields: true}
-          }
+          },
+          optimizeTopK: ["BM25(@doc) DESC"]
         });
 
         db._createView(vvn, "arangosearch", {
@@ -139,7 +141,8 @@ function noDocumentMaterializationViewRuleTestSuite(isSearchAlias) {
           links: {
             [cn]: {includeAllFields: true},
             [cn1]: {includeAllFields: true}
-          }
+          },
+          optimizeTopK: ["BM25(@doc) DESC"]
         });
 
         db._createView(systemvn, "arangosearch", {
@@ -149,7 +152,8 @@ function noDocumentMaterializationViewRuleTestSuite(isSearchAlias) {
           links: {
             [cn]: {includeAllFields: true},
             [edgeIndexCollectionName]: {includeAllFields: true}
-          }
+          },
+          optimizeTopK: ["BM25(@doc) DESC"]
         });
       }
 

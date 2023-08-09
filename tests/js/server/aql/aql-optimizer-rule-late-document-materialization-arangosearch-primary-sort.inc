@@ -94,7 +94,8 @@
                 includeAllFields: true, analyzers: ["identity"],
                 fields: {str: {"analyzers": ["text_en"]}}
               }
-            }
+            },
+            optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
           });
           db._createView(svn, "arangosearch", {
             consolidationIntervalMsec: 5000,
@@ -102,7 +103,8 @@
             links: {
               [cn]: {includeAllFields: true},
               [cn1]: {includeAllFields: true}
-            }
+            },
+            optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
           });
         }
 
