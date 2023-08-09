@@ -181,7 +181,7 @@ class BufferHeapSortContext {
         auto res =
             basics::VelocyPackHelper::compare(lhs_values->slice, value, true);
         if (res != 0) {
-          return kSortMultiplier[size_t{cmp.ascending}] * res;
+          return (kSortMultiplier[size_t{cmp.ascending}] * res) > 0;
         }
       }
       ++lhs_values;
@@ -464,6 +464,7 @@ velocypack::Slice IndexReadBuffer<ValueType, copySorted>::readHeapSortColumn(
   } else {
     val = ref<irs::byte_type>(VPackSlice::nullSlice());
   }
+  TRI_ASSERT(_currentDocumentBuffer.capacity() > _currentDocumentBuffer.size());
   _currentDocumentBuffer.emplace_back(val);
   _currentDocumentSlices.push_back(
       getStoredValue(_currentDocumentBuffer.back(), cmp));
@@ -498,27 +499,13 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
               ? _heapOnlyStoredValuesBuffer[idx * _heapOnlyColumnsCount + j]
               : _storedValuesBuffer[idx * _storedValuesCount +
                                     columnMap->second];
+      velocypack::Slice slice;
       if (j < _currentDocumentBuffer.size()) {
         valueSlot = std::move(_currentDocumentBuffer[j]);
         if constexpr (copySorted) {
-          // if SSO engaged we must re-request Slice as address in memory may
-          // change for bstring.
-          auto slice = getStoredValue(valueSlot, cmp);
-          if constexpr (fullHeap) {
-            _heapSortValues[heapSortValuesIndex].slice = slice;
-          } else {
-            _heapSortValues.push_back(HeapSortValue{.slice = slice});
-          }
+          slice = getStoredValue(valueSlot, cmp);
         } else {
-          if constexpr (fullHeap) {
-            _heapSortValues[heapSortValuesIndex].slice =
-                _currentDocumentSlices[j];
-          } else {
-            _heapSortValues.push_back(
-                HeapSortValue{.slice = _currentDocumentSlices[j]});
-          }
-          TRI_ASSERT(getStoredValue(valueSlot, cmp).begin() ==
-                     _heapSortValues[heapSortValuesIndex].slice.begin());
+          slice = _currentDocumentSlices[j];
         }
       } else {
         TRI_ASSERT(_heapOnlyStoredValuesReaders.size() >= j);
@@ -534,14 +521,15 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
           val = ref<irs::byte_type>(VPackSlice::nullSlice());
         }
         valueSlot = val;
-        if constexpr (fullHeap) {
-          _heapSortValues[heapSortValuesIndex].slice =
-              getStoredValue(valueSlot, cmp);
-        } else {
-          _heapSortValues.push_back(
-              HeapSortValue{.slice = getStoredValue(valueSlot, cmp)});
-        }
+        slice = getStoredValue(valueSlot, cmp);
       }
+      if constexpr (fullHeap) {
+        _heapSortValues[heapSortValuesIndex].slice = slice;
+      } else {
+        _heapSortValues.push_back(HeapSortValue{.slice = slice});
+      }
+      TRI_ASSERT(getStoredValue(valueSlot, cmp).begin() ==
+                 _heapSortValues[heapSortValuesIndex].slice.begin());
       ++j;
     }
     ++heapSortValuesIndex;

@@ -421,8 +421,8 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     }
   }
   // all sort elements are covered by view's scorers / stored values
-  viewNode.setScorersSort(std::move(heapSort),
-                          limitNode->offset() + limitNode->limit());
+  viewNode.setHeapSort(std::move(heapSort),
+                       limitNode->offset() + limitNode->limit());
   sortNode->_reinsertInCluster = false;
   if (!ServerState::instance()->isCoordinator()) {
     // in cluster node will be unlinked later by 'distributeSortToClusterRule'

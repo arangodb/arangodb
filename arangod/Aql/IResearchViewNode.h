@@ -231,15 +231,15 @@ class IResearchViewNode final : public aql::ExecutionNode {
   //   sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-  void setScorersSort(std::vector<HeapSortElement>&& sort, size_t limit) {
+  void setHeapSort(std::vector<HeapSortElement>&& sort, size_t limit) {
     _heapSort = std::move(sort);
     _heapSortLimit = limit;
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  size_t getScorersSortLimit() const noexcept { return _heapSortLimit; }
+  size_t getHeapSortLimit() const noexcept { return _heapSortLimit; }
 
-  auto getScorersSort() const noexcept { return std::span(_heapSort); }
+  auto getHeapSort() const noexcept { return std::span(_heapSort); }
 #endif
 
   // Creates corresponding ExecutionBlock.
