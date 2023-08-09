@@ -75,7 +75,7 @@ RestStatus MaintenanceRestHandler::execute() {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       break;
-  }  // switch
+  }
 
   return RestStatus::DONE;
 }
@@ -153,7 +153,7 @@ void MaintenanceRestHandler::putAction() {
         std::string("expecting a valid JSON object in the request. got: ") +
             ex.what());
     good = false;
-  }  // catch
+  }
 
   if (good && _request->payload().isEmptyObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
@@ -169,8 +169,8 @@ void MaintenanceRestHandler::putAction() {
       generateError(
           rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
           std::string("unable to parse JSON object into key/value pairs."));
-    }  // if
-  }    // if
+    }
+  }
 
   if (good) {
     // build the action
@@ -185,48 +185,44 @@ void MaintenanceRestHandler::putAction() {
                     result.errorMessage());
     }  // if
   }    // if
-
-}  // MaintenanceRestHandler::putAction
+}
 
 bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
-  bool good(true);
-
   std::map<std::string, std::string> desc;
   auto prop = std::make_shared<VPackBuilder>();
   int priority = 1;
   bool forced = false;
 
   VPackObjectIterator it(parameters, true);
-  for (; it.valid() && good; ++it) {
-    VPackSlice key, value;
+  for (; it.valid(); ++it) {
+    VPackSlice key = it.key();
+    VPackSlice value = it.value();
 
-    key = it.key();
-    value = it.value();
-
-    // attempt insert into map ... but needs to be unique
     if (key.isString() && value.isString()) {
-      good = desc.insert({key.copyString(), value.copyString()}).second;
-    } else if (key.isString() && (key.stringView() == "properties") &&
+      // note: no check for key uniqueness necessary here. this
+      // is already handled when parsing the JSON request body
+      desc.insert({key.copyString(), value.copyString()});
+    } else if (key.isString() && key.stringView() == "properties" &&
                value.isObject()) {
       // code here
-      prop.reset(new VPackBuilder(value));
-    } else if (key.isString() && (key.stringView() == "priority") &&
+      prop->clear();
+      prop->add(value);
+    } else if (key.isString() && key.stringView() == "priority" &&
                value.isInteger()) {
       priority = static_cast<int>(value.getInt());
-    } else if (key.isString() && (key.stringView() == "forced") &&
+    } else if (key.isString() && key.stringView() == "forced" &&
                value.isBool()) {
       forced = value.isTrue();
     } else {
-      good = false;
-    }  // else
-  }    // for
+      return false;
+    }
+  }
 
   _actionDesc = std::make_shared<maintenance::ActionDescription>(
       std::move(desc), priority, forced, std::move(prop));
 
-  return good;
-
-}  // MaintenanceRestHandler::parsePutBody
+  return true;
+}
 
 void MaintenanceRestHandler::getAction() {
   // build the action
@@ -241,8 +237,7 @@ void MaintenanceRestHandler::getAction() {
   }
 
   generateResult(rest::ResponseCode::OK, builder.slice());
-
-}  // MaintenanceRestHandler::getAction
+}
 
 void MaintenanceRestHandler::deleteAction() {
   auto& maintenance = server().getFeature<MaintenanceFeature>();
@@ -266,11 +261,9 @@ void MaintenanceRestHandler::deleteAction() {
       if (!result.ok()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       result.errorMessage());
-      }  // if
-    }    // else
-
+      }
+    }
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
   }
-
-}  // MaintenanceRestHandler::deleteAction
+}

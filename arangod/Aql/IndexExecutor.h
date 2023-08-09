@@ -211,7 +211,9 @@ class IndexExecutor {
                  AstNode const* condition, std::shared_ptr<Index> const& index,
                  DocumentProducingFunctionContext& context,
                  CursorStats& cursorStats, bool checkUniqueness);
-    bool readIndex(OutputAqlItemRow& output);
+    bool readIndex(OutputAqlItemRow& output,
+                   DocumentProducingFunctionContext const&
+                       documentProducingFunctionContext);
     size_t skipIndex(size_t toSkip);
     void reset();
 

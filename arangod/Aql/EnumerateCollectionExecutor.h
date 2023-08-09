@@ -172,6 +172,7 @@ class EnumerateCollectionExecutor {
  private:
   transaction::Methods _trx;
   Infos& _infos;
+  IndexIterator::LocalDocumentIdCallback _documentNonProducer;
   IndexIterator::DocumentCallback _documentProducer;
   IndexIterator::DocumentCallback _documentSkipper;
   DocumentProducingFunctionContext _documentProducingFunctionContext;

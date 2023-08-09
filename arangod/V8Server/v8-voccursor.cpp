@@ -310,7 +310,7 @@ struct V8Cursor final {
         TRI_V8_THROW_TYPE_ERROR("expecting object for <bindVars>");
       }
       if (args[1]->IsObject()) {
-        bindVars.reset(new VPackBuilder);
+        bindVars = std::make_shared<VPackBuilder>();
         TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
       }
     }
