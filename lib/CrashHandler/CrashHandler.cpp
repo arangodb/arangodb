@@ -194,9 +194,7 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
   if (info != nullptr && (signal == SIGSEGV || signal == SIGBUS)) {
     // dump address that was accessed when the failure occurred (this is
     // somewhat likely a nullptr)
-    buffer.append(" accessing address 0x");
-    auto const* x = reinterpret_cast<void const*>(info->si_addr);
-    buffer.appendHexValue(x, false);
+    buffer.append(" accessing address 0x").appendHexValue(info->si_addr, false);
   }
 #endif
 
@@ -207,9 +205,7 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
     // AT_PHDR points to the program header, which is located after the ELF
     // header. This allows us to calculate the base address of the executable.
     auto baseAddr = getauxval(AT_PHDR) - sizeof(Elf64_Ehdr);
-    buffer.append(" - image base address: 0x");
-    auto const* x = reinterpret_cast<void const*>(baseAddr);
-    buffer.appendHexValue(x, false);
+    buffer.append(" - image base address: 0x").appendHexValue(baseAddr, false);
   }
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
   // FIXME: implement ARM64 context output
@@ -217,10 +213,7 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
 #else
   if (auto ctx = static_cast<ucontext_t*>(ucontext); ctx) {
     auto appendRegister = [ctx, &buffer](char const* prefix, int reg) {
-      buffer.append(prefix);
-      auto const* s =
-          reinterpret_cast<greg_t const*>(&ctx->uc_mcontext.gregs[reg]);
-      buffer.appendHexValue(*s, false);
+      buffer.append(prefix).appendHexValue(ctx->uc_mcontext.gregs[reg], false);
     };
     buffer.append(" - CPU context:");
     appendRegister(" rip: 0x", REG_RIP);
