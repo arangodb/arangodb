@@ -216,7 +216,7 @@ TEST(SizeLimitedStringTest, test_append_uint64) {
   }
 }
 
-TEST(SizeLimitedStringTest, test_append_hex_value) {
+TEST(SizeLimitedStringTest, test_append_hex_value_le) {
   {
     uint32_t value = 0;
     SizeLimitedString<10> testee;
@@ -257,5 +257,33 @@ TEST(SizeLimitedStringTest, test_append_hex_value) {
     SizeLimitedString<16> testee;
     testee.appendHexValue(value, true);
     EXPECT_EQ(std::string_view("abcdef01234"), testee.view());
+  }
+
+  {
+    uint64_t value = 0x0fffffffffffffffULL;
+    SizeLimitedString<16> testee;
+    testee.appendHexValue(value, false);
+    EXPECT_EQ(std::string_view("0fffffffffffffff"), testee.view());
+  }
+
+  {
+    uint64_t value = 0x0fffffffffffffffULL;
+    SizeLimitedString<16> testee;
+    testee.appendHexValue(value, true);
+    EXPECT_EQ(std::string_view("fffffffffffffff"), testee.view());
+  }
+
+  {
+    uint64_t value = 0xffffffffffffffffULL;
+    SizeLimitedString<16> testee;
+    testee.appendHexValue(value, false);
+    EXPECT_EQ(std::string_view("ffffffffffffffff"), testee.view());
+  }
+
+  {
+    uint64_t value = 0xffffffffffffffffULL;
+    SizeLimitedString<16> testee;
+    testee.appendHexValue(value, true);
+    EXPECT_EQ(std::string_view("ffffffffffffffff"), testee.view());
   }
 }

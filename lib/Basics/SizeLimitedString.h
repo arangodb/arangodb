@@ -27,6 +27,7 @@
 #include <string_view>
 #include <type_traits>
 
+#include "Basics/Endian.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 
@@ -125,19 +126,39 @@ class SizeLimitedString {
     // this case.
     constexpr char chars[] = "0123456789abcdef";
     unsigned char const* e = &buffer[0] + sizeof(T);
-    while (--e >= &buffer[0]) {
-      unsigned char c = *e;
-      if (!stripLeadingZeros || (c >> 4U) != 0) {
-        push_back(chars[c >> 4U]);
-        stripLeadingZeros = false;
+
+    if constexpr (basics::isLittleEndian()) {
+      while (--e >= &buffer[0]) {
+        unsigned char c = *e;
+        if (!stripLeadingZeros || (c >> 4U) != 0) {
+          push_back(chars[c >> 4U]);
+          stripLeadingZeros = false;
+        }
+        if (!stripLeadingZeros || (c & 0xfU) != 0) {
+          push_back(chars[c & 0xfU]);
+          stripLeadingZeros = false;
+        }
       }
-      if (!stripLeadingZeros || (c & 0xfU) != 0) {
-        push_back(chars[c & 0xfU]);
-        stripLeadingZeros = false;
+      if (stripLeadingZeros) {
+        push_back('0');
       }
-    }
-    if (stripLeadingZeros) {
-      push_back('0');
+    } else {
+      unsigned char const* p = &buffer[0];
+      while (p < e) {
+        unsigned char c = *p;
+        if (!stripLeadingZeros || (c >> 4U) != 0) {
+          push_back(chars[c >> 4U]);
+          stripLeadingZeros = false;
+        }
+        if (!stripLeadingZeros || (c & 0xfU) != 0) {
+          push_back(chars[c & 0xfU]);
+          stripLeadingZeros = false;
+        }
+        ++p;
+      }
+      if (stripLeadingZeros) {
+        push_back('0');
+      }
     }
     return *this;
   }
