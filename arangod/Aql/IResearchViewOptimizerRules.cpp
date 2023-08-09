@@ -416,14 +416,6 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       auto const attrCount = attrs.size();
       for (size_t i = 0; i < attrCount; ++i) {
         auto const& a = attrs[i];
-        std::string s;
-        for (auto const& ss : a.attr) {
-          s += ".";
-          s += ss.name;
-        }
-        LOG_DEVEL << " Column " << a.afData.columnNumber << ":"
-                  << a.afData.fieldNumber << " P:" << a.afData.postfix << ":"
-                  << s;
         TRI_ASSERT(storedMaps.contains(i));
         auto& sortBucket = heapSort[storedMaps[i]];
         sortBucket.source = a.afData.columnNumber;
@@ -438,7 +430,6 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
           }
           sortBucket.postfix += a.afData.field->at(i).name;
         }
-        LOG_DEVEL << "Postfix path:" << sortBucket.postfix;
       }
     } else {
       return false;
