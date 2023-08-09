@@ -16,6 +16,8 @@ devel
   memory limit settings, turn on intermediate commits for the query, or adjust
   the query so that it uses less memory.
 
+* Prevent potential buffer overflow in the crash handler.
+
 * Improve crash handler by adding the state of the application server (e.g.
   startup, running, shutting dow) into the crash message.
 
