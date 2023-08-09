@@ -195,6 +195,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
   auto& shards() noexcept { return _shards; }
 
   // Return the scorers to pass to the view.
+  auto& scorers() noexcept { return _scorers; }
   auto const& scorers() const noexcept { return _scorers; }
 
   // Return current snapshot key

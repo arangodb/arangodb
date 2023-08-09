@@ -250,7 +250,6 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalViewTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
-  VPackDeserializer/BasicTests.cpp
   Cluster/ShardAutoRebalancerTest.cpp)
 
 if (LINUX)

@@ -128,11 +128,11 @@ class Manager final : public IManager {
   // unregister a transaction
   void unregisterTransaction(TransactionId transactionId,
                              bool isReadOnlyTransaction,
-                             bool isFollowerTransaction);
+                             bool isFollowerTransaction) noexcept;
 
   uint64_t getActiveTransactionCount();
 
-  void disallowInserts() {
+  void disallowInserts() noexcept {
     _disallowInserts.store(true, std::memory_order_release);
   }
 

@@ -295,6 +295,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
   // we've found all we need
   auto const& sortElements = sortNode->elements();
+  TRI_ASSERT(!sortElements.empty());
   std::vector<HeapSortElement> heapSort;
   std::vector<std::vector<latematerialized::ColumnVariant<true>>> usedColumns;
   auto const& primarySort = getPrimarySort(viewNode.meta(), viewNode.view());
@@ -418,6 +419,15 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       }
     } else {
       return false;
+    }
+  }
+
+  auto& idx = scoresSort.front().first;
+  if (idx != 0) {
+    std::swap(scorers.front(), scorers[idx]);
+    idx = 0;
+    if (zero != std::numeric_limits<size_t>::max()) {
+      scoresSort[zero].first = idx;
     }
   }
   // all sort elements are covered by view's scorers / stored values
