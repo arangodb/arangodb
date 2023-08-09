@@ -101,8 +101,8 @@ class GeoIterator : public irs::doc_iterator {
 
     if (!order.empty()) {
       auto& score = std::get<irs::score>(_attrs);
-      score = irs::CompileScore(order.buckets(), reader, field, query_stats,
-                                *this, boost);
+      irs::CompileScore(score, order.buckets(), reader, field, query_stats,
+                        *this, boost);
     }
     if constexpr (std::is_same_v<std::decay_t<Parser>, S2PointParser>) {
       // random, stub value but it should be unit length because assert
@@ -119,15 +119,12 @@ class GeoIterator : public irs::doc_iterator {
   }
 
   bool next() final {
-    for (;;) {
-      if (!_approx->next()) {
-        return false;
-      }
-
+    while (_approx->next()) {
       if (accept()) {
         return true;
       }
     }
+    return false;
   }
 
   irs::doc_id_t seek(irs::doc_id_t target) final {
@@ -186,7 +183,9 @@ irs::doc_iterator::ptr makeIterator(
   }
 
   return irs::memory::make_managed<GeoIterator<Parser, Acceptor>>(
-      irs::MakeDisjunction<Disjunction>(std::move(itrs), irs::NoopAggregator{}),
+      // TODO(MBkkt) by_terms? lazy_bitset_iterator faster than disjunction
+      irs::MakeDisjunction<Disjunction>({}, std::move(itrs),
+                                        irs::NoopAggregator{}),
       std::move(columnIt), parser, acceptor, reader, field, query_stats, order,
       boost);
 }
