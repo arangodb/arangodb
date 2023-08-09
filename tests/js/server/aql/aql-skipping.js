@@ -684,11 +684,11 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
      const opts = {fullCount: true};
 
      const query = "FOR doc IN CompoundView SEARCH doc.a == 'foo' "
-       + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+       + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } "
        + "SORT doc.a "
        + "LIMIT 3,3 RETURN doc";
 
-     result = AQL_EXPLAIN(query, {}, opts);
+     var result = AQL_EXPLAIN(query, {}, opts);
      assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("constrained-heap"));
 
      // skip 3, return 3, out of 10
@@ -697,7 +697,7 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
      assertEqual(result.json.length, 3);
      result.json.forEach(function(res) {
        assertEqual(res.a, "foo");
-       assertTrue(res._id.startsWith('UnitTestsCollection/'));
+       assertTrue(res._id.startsWith('UnitTestsCollection1/'));
      });
      assertEqual(10, result.stats.fullCount);
     },
