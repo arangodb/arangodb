@@ -799,6 +799,7 @@ Result RocksDBPrimaryIndex::update(
     });
 
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("f3b56", ERR, Logger::ENGINES) << res.errorMessage();
     CrashHandler::logBacktrace();
 #endif
     TRI_ASSERT(false) << res.errorMessage();

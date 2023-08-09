@@ -1611,6 +1611,7 @@ Result RocksDBCollection::modifyDocument(
       err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
     });
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("b28a9", ERR, Logger::ENGINES) << res.errorMessage();
     CrashHandler::logBacktrace();
 #endif
     TRI_ASSERT(false) << res.errorMessage();
