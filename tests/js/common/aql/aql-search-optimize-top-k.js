@@ -249,7 +249,7 @@ function testOptimizeTopKCommunity () {
       db.c.ensureIndex({ 
         name: "i2", 
         type: "inverted", 
-        fields: ["f", "a", "x", "x"], 
+        fields: ["f", "a", "x", "w"], 
         optimizeTopK: ["wrong scorer"] 
       });
       let index_props2 = db.c.index("i2");
