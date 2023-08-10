@@ -16,6 +16,12 @@ devel
   memory limit settings, turn on intermediate commits for the query, or adjust
   the query so that it uses less memory.
 
+* FE-94: Support for query options and optimizer rules on web UI.
+
+* FE-308: Support for graph editing on web UI.
+
+* FE-313: Add support for minHash analyzers & offset field on web UI.
+
 * Prevent potential buffer overflow in the crash handler.
 
 * Improve crash handler by adding the state of the application server (e.g.
