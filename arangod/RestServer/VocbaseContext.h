@@ -35,7 +35,7 @@ namespace arangodb {
 /// @brief just also stores the context
 class VocbaseContext final : public arangodb::ExecContext {
  public:
-  virtual ~VocbaseContext();
+  ~VocbaseContext();
 
   static VocbaseContext* create(GeneralRequest& req, TRI_vocbase_t& vocbase);
   TEST_VIRTUAL TRI_vocbase_t& vocbase() const { return _vocbase; }
@@ -47,15 +47,15 @@ class VocbaseContext final : public arangodb::ExecContext {
   void forceReadOnly();
 
 #ifdef USE_ENTERPRISE
-  virtual std::string clientAddress() const override {
+  std::string clientAddress() const override {
     return _request.connectionInfo().fullClient();
   }
-  virtual std::string requestUrl() const override { return _request.fullUrl(); }
-  virtual std::string authMethod() const override;
+  std::string requestUrl() const override { return _request.fullUrl(); }
+  std::string authMethod() const override;
 #endif
 
   /// @brief tells you if this execution was canceled
-  virtual bool isCanceled() const override {
+  bool isCanceled() const override {
     return _canceled.load(std::memory_order_relaxed);
   }
 

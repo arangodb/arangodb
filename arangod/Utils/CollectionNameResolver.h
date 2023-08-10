@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/ReadWriteLock.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -31,13 +30,11 @@
 
 #include <shared_mutex>
 
-enum TRI_col_type_e : uint32_t;
-
 namespace arangodb {
 
 class LogicalCollection;
 class LogicalDataSource;
-class LogicalView;  // forward declaration
+class LogicalView;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief data-source id/name resolver and cache (single-server and cluster)
@@ -45,11 +42,8 @@ class LogicalView;  // forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 class CollectionNameResolver {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create the resolver
-  //////////////////////////////////////////////////////////////////////////////
-  explicit CollectionNameResolver(TRI_vocbase_t& vocbase)
-      : _vocbase(vocbase), _serverRole(ServerState::instance()->getRole()) {}
+  explicit CollectionNameResolver(TRI_vocbase_t& vocbase);
+  ~CollectionNameResolver() = default;
 
   // copy an existing resolver
   CollectionNameResolver(CollectionNameResolver const& other);
@@ -59,11 +53,6 @@ class CollectionNameResolver {
       delete;
   CollectionNameResolver(CollectionNameResolver&& other) = delete;
   CollectionNameResolver& operator=(CollectionNameResolver&& other) = delete;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief destroy the resolver
-  //////////////////////////////////////////////////////////////////////////////
-  ~CollectionNameResolver() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection struct for a collection id
@@ -161,7 +150,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the vocbase instance this resolver instance uses
   //////////////////////////////////////////////////////////////////////////////
-  TRI_vocbase_t& vocbase() const { return _vocbase; }
+  TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invoke visitor on all collections that map to the specified 'id'
