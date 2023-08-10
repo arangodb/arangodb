@@ -69,6 +69,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     server.addReporter(
         {[&](ArangodServer::State state) {
+           CrashHandler::setState(ArangodServer::stringifyState(state));
+
            if (state == ArangodServer::State::IN_START) {
              // drop priveleges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
