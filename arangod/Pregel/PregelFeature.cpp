@@ -305,7 +305,10 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                         .copyString()
                   : "vertex";
 
-          if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
+          // In a OneShard database sharding is acceptable
+          // for pregel by default.
+          if (!vocbase.isOneShard() &&
+              (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute)) {
             return Result{
                 TRI_ERROR_BAD_PARAMETER,
                 "Edge collection needs to be sharded "
