@@ -113,7 +113,7 @@ class SizeLimitedString {
     static_assert(std::is_integral_v<T> || std::is_pointer_v<T>);
     // copy value into local buffer
     std::array<unsigned char, sizeof(T)> buffer;
-    memcpy(buffer.begin(), &value, sizeof(T));
+    memcpy(reinterpret_cast<void*>(buffer.data()), &value, sizeof(T));
     if constexpr (basics::isLittleEndian()) {
       std::reverse(buffer.begin(), buffer.end());
     }

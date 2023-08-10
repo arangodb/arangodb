@@ -431,7 +431,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
   ShortestPathExecutorTest(ShortestPathTestParameters parameters_)
       : parameters(std::move(parameters_)),
         server{},
-        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+        itemBlockManager(monitor),
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
         defaultOptions(*fakedQuery.get()),

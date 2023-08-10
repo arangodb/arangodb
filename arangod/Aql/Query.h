@@ -69,7 +69,6 @@ class ExecutionEngine;
 struct ExecutionStats;
 struct QueryCacheResultEntry;
 struct QueryProfile;
-enum class SerializationFormat;
 
 /// @brief an AQL query
 class Query : public QueryContext, public std::enable_shared_from_this<Query> {
@@ -133,7 +132,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// every following call will be ignored.
   void ensureExecutionTime() noexcept;
 
-  void prepareQuery(SerializationFormat format);
+  void prepareQuery();
 
   /// @brief execute an AQL query
   ExecutionState execute(QueryResult& res);

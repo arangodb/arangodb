@@ -49,18 +49,11 @@ class SharedScatterExecutionBlockTest {
   mocks::MockAqlServer server{};
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor,
-                                       SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor};
   std::shared_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
   velocypack::Options vpackOptions;
   std::vector<std::string> clientIds{"a", "b", "c"};
-
-  SharedScatterExecutionBlockTest() {
-    auto engine = std::make_unique<ExecutionEngine>(
-        0, *fakedQuery, itemBlockManager, SerializationFormat::SHADOWROWS);
-    /// TODO fakedQuery->setEngine(engine.release());
-  }
 
   auto buildStack(AqlCall call, size_t subqueryDepth = 0) -> AqlCallStack {
     if (subqueryDepth == 0) {

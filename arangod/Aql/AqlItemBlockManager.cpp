@@ -34,8 +34,8 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the manager
 AqlItemBlockManager::AqlItemBlockManager(
-    arangodb::ResourceMonitor& resourceMonitor, SerializationFormat format)
-    : _resourceMonitor(resourceMonitor), _format(format) {}
+    arangodb::ResourceMonitor& resourceMonitor)
+    : _resourceMonitor(resourceMonitor) {}
 
 /// @brief destroy the manager
 AqlItemBlockManager::~AqlItemBlockManager() { delete _constValueBlock; }
