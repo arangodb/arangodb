@@ -1,6 +1,8 @@
 v3.11.3 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to v2.19.3.
+
 * Harden HTTP/2 internal callback functions against exceptions.
 
   These callback functions are called from C code which cannot handle exceptions
@@ -13,10 +15,6 @@ v3.11.3 (XXXX-XX-XX)
 * Prevent potential buffer overflow in the crash handler.
 
 * Updated OpenSSL to 3.0.10 and OpenLDAP to 2.6.6.
-
-* Updated ArangoDB Starter to 0.17.0.
-
-* Updated arangosync to v2.19.2.
 
 * Updated ArangoDB Starter to 0.17.0.
 
