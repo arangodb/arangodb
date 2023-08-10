@@ -195,6 +195,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"CRC32", ".", flags, &functions::Crc32});
   add({"FNV64", ".", flags, &functions::Fnv64});
   add({"HASH", ".", flags, &functions::Hash});
+  add({"FROM_BASE64", ".", flags, &functions::FromBase64});
   add({"TO_BASE64", ".", flags, &functions::ToBase64});
   add({"TO_HEX", ".", flags, &functions::ToHex});
   add({"ENCODE_URI_COMPONENT", ".", flags, &functions::EncodeURIComponent});

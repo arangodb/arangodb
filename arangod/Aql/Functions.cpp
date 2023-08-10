@@ -1534,6 +1534,23 @@ AqlValue functions::ToString(ExpressionContext* expr, AstNode const&,
   return AqlValue(buffer->data(), buffer->length());
 }
 
+/// @brief function FROM_BASE64
+AqlValue functions::ToBase64(ExpressionContext* expr, AstNode const&,
+                             VPackFunctionParametersView parameters) {
+  auto& trx = expr->trx();
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  transaction::StringLeaser buffer(&trx);
+  velocypack::StringSink adapter(buffer.get());
+
+  ::appendAsString(trx.vpackOptions(), adapter, value);
+
+  std::string encoded =
+      basics::StringUtils::decodeBase64(buffer->data());
+
+  return AqlValue(encoded);
+}
+
 /// @brief function TO_BASE64
 AqlValue functions::ToBase64(ExpressionContext* expr, AstNode const&,
                              VPackFunctionParametersView parameters) {

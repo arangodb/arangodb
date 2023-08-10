@@ -149,6 +149,8 @@ AqlValue RegexReplace(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParametersView);
 AqlValue RegexSplit(arangodb::aql::ExpressionContext*, AstNode const&,
                     VPackFunctionParametersView);
+AqlValue FromBase64(arangodb::aql::ExpressionContext*, AstNode const&,
+                    VPackFunctionParametersView);
 AqlValue ToBase64(arangodb::aql::ExpressionContext*, AstNode const&,
                   VPackFunctionParametersView);
 AqlValue ToHex(arangodb::aql::ExpressionContext*, AstNode const&,
