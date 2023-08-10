@@ -194,6 +194,23 @@ function testOptimizeTopKEnterprise() {
         } catch (err) { }
 
         assertEqual(db._view("fail"), null);
+        db.c.dropIndex("i1");
+        db.c.dropIndex("i2");
+      }
+
+      // Try to cover with search-alias different optimizeTopK values
+      {
+        db.c.ensureIndex({ name: "i1", type: "inverted", fields: ["f", "a"]});
+        db.c.ensureIndex({ name: "i2", type: "inverted", fields: ["f", "b"], optimizeTopK: ["bm25(@doc) desc"] });
+
+        try {
+          db._createView("fail", "search-alias", { indexes: [{ collection: "c", index: "i1" }, { collection: "c", index: "i2" }] });
+          assertTrue(false);
+        } catch (err) { }
+
+        assertEqual(db._view("fail"), null);
+        db.c.dropIndex("i1");
+        db.c.dropIndex("i2");
       }
 
       // try to update arangosearch view. No changes should be applied
