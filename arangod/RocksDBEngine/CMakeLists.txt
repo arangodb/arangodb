@@ -25,6 +25,7 @@ add_library(arango_rocksdb STATIC
   RocksDBLogValue.cpp
   RocksDBMetaCollection.cpp
   RocksDBMetadata.cpp
+  RocksDBMethodsMemoryTracker.cpp
   RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
   RocksDBOptionsProvider.cpp
