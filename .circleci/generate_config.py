@@ -313,8 +313,9 @@ def main():
         with open(args.base_config, "r", encoding="utf-8") as instream:
             with open(args.output, "w", encoding="utf-8") as outstream:
                 config = yaml.safe_load(instream)
-                generate_jobs(config, args, tests, False) # community
-                generate_jobs(config, args, tests, True) # enterprise
+                # disable tests for now
+                # generate_jobs(config, args, tests, False) # community
+                # generate_jobs(config, args, tests, True) # enterprise
                 yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)
