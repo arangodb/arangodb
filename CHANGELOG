@@ -3,9 +3,14 @@ v3.11.3 (XXXX-XX-XX)
 
 * Harden HTTP/2 internal callback functions against exceptions.
 
-  These callback functions are called from C code which cannot handle
-  exceptions in any way. Instead, we now turn any exception into the return
-  code `HPE_INTERNAL` to signal that an error occurred.
+  These callback functions are called from C code which cannot handle exceptions
+  in any way. Instead, we now turn any exception into the return code
+  `HPE_INTERNAL` to signal that an error occurred.
+
+* Added better diagnostic messages in case documents<->primarx index corruption
+  occurs.
+
+* Prevent potential buffer overflow in the crash handler.
 
 * Updated OpenSSL to 3.0.10 and OpenLDAP to 2.6.6.
 
