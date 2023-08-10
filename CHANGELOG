@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-308: Support for graph editing on web UI.
+
 * FE-313: Add support for minHash analyzers & offset field on web UI.
 
 * Prevent potential buffer overflow in the crash handler.
