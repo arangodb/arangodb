@@ -41,11 +41,7 @@ class AqlItemBlockInputRange {
                                   std::size_t skipped = 0);
 
   AqlItemBlockInputRange(MainQueryState, std::size_t skipped,
-                         arangodb::aql::SharedAqlItemBlockPtr const&,
-                         std::size_t startIndex);
-
-  AqlItemBlockInputRange(MainQueryState, std::size_t skipped,
-                         arangodb::aql::SharedAqlItemBlockPtr&&,
+                         arangodb::aql::SharedAqlItemBlockPtr,
                          std::size_t startIndex) noexcept;
 
   void reset() noexcept { _block.reset(nullptr); }
@@ -127,7 +123,6 @@ class AqlItemBlockInputRange {
   template<LookAhead doPeek, RowType type>
   ExecutorState nextState() const noexcept;
 
- private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
   std::size_t _rowIndex{};
   MainQueryState _finalState{MainQueryState::HASMORE};
