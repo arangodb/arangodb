@@ -1425,7 +1425,9 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
                              "].index' attribute is out of range"));
           }
           _heapSort.emplace_back(
-              HeapSortElement{.source = index.getNumber<ptrdiff_t>(),
+              HeapSortElement{.postfix = "",
+                              .source = index.getNumber<ptrdiff_t>(),
+                              .fieldNumber = std::numeric_limits<size_t>::max(),
                               .ascending = asc.getBool()});
         } else {
           THROW_ARANGO_EXCEPTION_MESSAGE(
