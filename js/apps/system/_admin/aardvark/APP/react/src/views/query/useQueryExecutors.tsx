@@ -15,7 +15,12 @@ export const useQueryExecutors = ({
   setQueryResultById: (queryResult: QueryResultType) => void;
 }) => {
   const onExecute = useCallback(
-    async ({ queryValue, queryBindParams }: QueryExecutionOptions) => {
+    async ({
+      queryValue,
+      queryBindParams,
+      queryOptions,
+      disabledRules
+    }: QueryExecutionOptions) => {
       const route = getApiRouteForCurrentDB();
       try {
         const literalValue = literal(queryValue);
@@ -26,7 +31,11 @@ export const useQueryExecutors = ({
             query: literalValue.toAQL(),
             bindVars: queryBindParams,
             options: {
-              profile: true
+              profile: true,
+              ...queryOptions,
+              optimizer: {
+                rules: disabledRules
+              }
             }
           },
           undefined,
@@ -59,7 +68,9 @@ export const useQueryExecutors = ({
 
   const onProfile = async ({
     queryValue,
-    queryBindParams
+    queryBindParams,
+    queryOptions,
+    disabledRules
   }: QueryExecutionOptions) => {
     const currentDB = getCurrentDB();
     const literalValue = literal(queryValue);
@@ -77,7 +88,13 @@ export const useQueryExecutors = ({
     try {
       const profile = await route.post({
         query: literalValue.toAQL(),
-        bindVars: queryBindParams
+        bindVars: queryBindParams,
+        options: {
+          ...queryOptions,
+          optimizer: {
+            rules: disabledRules
+          }
+        }
       });
       setQueryResultById({
         queryValue,
@@ -101,7 +118,12 @@ export const useQueryExecutors = ({
     }
   };
   const onExplain = useCallback(
-    async ({ queryValue, queryBindParams }: QueryExecutionOptions) => {
+    async ({
+      queryValue,
+      queryBindParams,
+      queryOptions,
+      disabledRules
+    }: QueryExecutionOptions) => {
       const currentDB = getCurrentDB();
       const literalValue = literal(queryValue);
       const path = `/_admin/aardvark/query/explain`;
@@ -118,7 +140,13 @@ export const useQueryExecutors = ({
       try {
         const explainResult = await route.post({
           query: literalValue.toAQL(),
-          bindVars: queryBindParams
+          bindVars: queryBindParams,
+          options: {
+            ...queryOptions,
+            optimizer: {
+              rules: disabledRules
+            }
+          }
         });
         setQueryResultById({
           queryValue,

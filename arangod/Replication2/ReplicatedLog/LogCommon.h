@@ -353,14 +353,13 @@ struct CommitFailReason {
     }
   };
   struct NonEligibleServerRequiredForQuorum {
-    enum Why {
+    enum class Why {
       kNotAllowedInQuorum,
       // WrongTerm might be misleading, because the follower might be in the
       // right term, it just never has acked an entry of the current term.
       kWrongTerm,
       kSnapshotMissing,
     };
-    static auto to_string(Why) noexcept -> std::string_view;
 
     using CandidateMap = std::unordered_map<ParticipantId, Why>;
 
@@ -436,6 +435,10 @@ struct CommitFailReason {
   template<typename... Args>
   explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
 };
+
+auto to_string(
+    CommitFailReason::NonEligibleServerRequiredForQuorum::Why) noexcept
+    -> std::string_view;
 
 auto operator<<(std::ostream&,
                 CommitFailReason::QuorumSizeNotReached::ParticipantInfo)
