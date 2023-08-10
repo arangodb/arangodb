@@ -245,16 +245,17 @@ auto replicated_log::operator<<(
   return ostream;
 }
 
-auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
-    to_string(replicated_log::CommitFailReason::
-                  NonEligibleServerRequiredForQuorum::Why why) noexcept
-    -> std::string_view {
+auto replicated_log::to_string(
+    replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::Why
+        why) noexcept -> std::string_view {
+  using Why =
+      replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::Why;
   switch (why) {
-    case kNotAllowedInQuorum:
+    case Why::kNotAllowedInQuorum:
       return NonEligibleNotAllowedInQuorum;
-    case kWrongTerm:
+    case Why::kWrongTerm:
       return NonEligibleWrongTerm;
-    case kSnapshotMissing:
+    case Why::kSnapshotMissing:
       return NonEligibleSnapshotMissing;
     default:
       TRI_ASSERT(false);
@@ -295,9 +296,9 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
         CommitFailReason::NonEligibleServerRequiredForQuorum const& reason)
         -> std::string {
       auto result =
-          std::string{"A non-eligible server is required to reach a quorum: "};
+          std::string{"A non-eligible server is required to reach a quorum:"};
       for (auto const& [pid, why] : reason.candidates) {
-        result += basics::StringUtils::concatT(" ", pid, ": ", why);
+        result += basics::StringUtils::concatT(" (", pid, ": ", why, ")");
       }
       return result;
     }
