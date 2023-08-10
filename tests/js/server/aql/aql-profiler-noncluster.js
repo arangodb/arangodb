@@ -940,8 +940,7 @@ const _ = require('lodash');
        } else {
         let meta = {};
         if (isEnterprise) {
-          meta = {links: {[colName]: {includeAllFields: true, "fields": { "nested_value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
-          optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]};
+          meta = {links: {[colName]: {includeAllFields: true, "fields": { "nested_value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           meta = {links: {[colName]: {includeAllFields: true}}};
         }

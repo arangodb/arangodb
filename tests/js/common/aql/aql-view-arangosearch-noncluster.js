@@ -77,8 +77,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
                                               {field: "field2", direction: "asc"},
                                               {field: "field3", direction: "asc"},
                                               {field: "field4", direction: "asc"},
-                                              {field: "_key", direction: "asc"}],
-                                optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});
+                                              {field: "_key", direction: "asc"}]});
 
       wps.properties({links:{TestsCollectionWithManyFields: {
                               storeValues: "id",
@@ -94,8 +93,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
                                 
                                 
       let wsv = db._createView("WithStoredValues", "arangosearch", 
-                               {storedValues: [["field1"], ["field2"], ["field3"]],
-                                optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});
+                               {storedValues: [["field1"], ["field2"], ["field3"]]});
       wsv.properties({links:{TestsCollectionWithLongFields: {
                               storeValues: "id",
                               analyzers: ["customAnalyzer"],
@@ -105,8 +103,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
                                 field3: {}}}}});
       let wpsl = db._createView("WithLongPrimarySort", "arangosearch", 
                                {primarySort: [{field: "field1", direction: "asc"}],
-                                storedValues: [["field2"], ["field3"]],
-                                optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});
+                                storedValues: [["field2"], ["field3"]]});
       wpsl.properties({links:{TestsCollectionWithLongFields: {
                               storeValues: "id",
                               analyzers: ["customAnalyzer"],
@@ -125,8 +122,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
                         value: { analyzers:['identity', 'text_en'] }
                       }
                   }
-              },
-              optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
+              }
         });
       }
     };
@@ -168,9 +164,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
         { links : {
           UnitTestsCollection: { includeAllFields: true },
           UnitTestsCollection2 : { includeAllFields: true }
-        },
-          optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
-        }
+        }}
       );
 
       for (let i = 0; i < 5; i++) {
@@ -373,8 +367,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
             }
           },
           "type": "arangosearch",
-          "writebufferIdle": 64,
-          optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
+          "writebufferIdle": 64
         });
 
         var linksView = db._createView("links_view", "arangosearch", {
@@ -398,8 +391,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
             }
           },
           "type": "arangosearch",
-          "writebufferIdle": 64,
-          optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
+          "writebufferIdle": 64
         });
 
         var expectedResult = [
@@ -466,8 +458,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
                     "type": {}
                   },
                 }
-              },
-              optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
+              }
             }
           );
 
@@ -491,8 +482,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
         
         let coll = db._create(queryOptColl);
         let view = db._createView(queryOptView, 'arangosearch',
-                                 { links: { "QueryOptOptionsCol": { includeAllFields: true } }, 
-                                  optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});
+                                 { links: { "QueryOptOptionsCol": { includeAllFields: true } } });
         coll.save({ value1: "1", value2: "A",
           valueArray: ["A", "B", "C"]
         }); 
@@ -555,8 +545,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
                                             NgramMatchCol : { analyzers: [ queryAnalyzer],
                                                               includeAllFields: true, 
                                                               trackListPositions: true} 
-                                            },
-                                    optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
+                                            }
                                   });
         coll.save({ value1: "1", value2: "Jack Daniels"}); 
         coll.save({ value1: "2", value2: "Jack Sparrow"}); 
@@ -697,8 +686,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
                         geometry: { analyzers: [queryAnalyzer] }
                       }
                   }
-              },
-              optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
+              }
           });
 
         geoData.forEach(doc => coll.save(doc));

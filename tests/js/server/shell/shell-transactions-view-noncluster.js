@@ -126,8 +126,7 @@ function TransactionsIResearchSuite() {
       let indexMeta = {};
       let viewMeta = {};
       if (isEnterprise) {
-        viewMeta = {links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
-        optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]};
+        viewMeta = {links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         indexMeta = { type: 'inverted', name: 'inverted', fields: [
           {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
           {name: 'text', analyzer: 'myText'}
@@ -137,8 +136,7 @@ function TransactionsIResearchSuite() {
         indexMeta = { type: 'inverted', name: 'inverted', fields: [
           {"name": "value[*]"},
           {name: 'text', analyzer: 'myText'}
-        ],
-        optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]};
+        ]};
       }
       view = db._createView("UnitTestsView", "arangosearch", {});
       c.ensureIndex(indexMeta);

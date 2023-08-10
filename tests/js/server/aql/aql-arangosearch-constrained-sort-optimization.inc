@@ -86,8 +86,7 @@
             links: {
               [cn]: {includeAllFields: true, fields: {strval: {analyzers: ['text_en']}}},
               [cn1]: {includeAllFields: true, fields: {strval: {analyzers: ['text_en']}}}
-            },
-            optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
+            }
           });
         }
 

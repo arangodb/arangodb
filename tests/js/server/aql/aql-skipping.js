@@ -524,8 +524,7 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
                   "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
                 }
               }
-            },
-            optimizeTopK: ["BM25(@doc) DESC"]
+            }
           };
         } else {
           meta = {
@@ -545,8 +544,7 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
           meta = { links : {
             UnitTestsCollection1: { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} },
             UnitTestsCollection2 : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} }
-          },
-          optimizeTopK: ["BM25(@doc) DESC"]};
+          }};
         } else {
           meta = { links : {
             UnitTestsCollection1: { includeAllFields: true },
