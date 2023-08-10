@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-309: Store created_at timestamp for queries in web UI.
+
 * FE-94: Support for query options and optimizer rules on web UI.
 
 * FE-308: Support for graph editing on web UI.
