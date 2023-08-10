@@ -146,6 +146,8 @@ target_link_libraries(arango_tests_replication2_pure PUBLIC
 
 target_include_directories(arango_tests_replication2_pure PRIVATE "${PROJECT_SOURCE_DIR}/tests")
 
+# This binary currently can't be linked (and couldn't be for a while). We should
+# decide whether to fix it or remove it. [tobias, 2023-08-10]
 add_executable(arangodbtests_replication2_pure
   EXCLUDE_FROM_ALL main-replication2.cpp)
 
