@@ -1110,7 +1110,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
     auto index = storedValuesIndex * columnsFieldsRegs.size();
     if (IResearchViewNode::kSortColumnNumber == columnFieldsRegs->first) {
       if (!std::is_same_v<HeapSortExecutorValue,
-                          Traits::IndexBufferValueType> ||
+                          typename Traits::IndexBufferValueType> ||
           !_storedColumnsMask.contains(columnFieldsRegs->first)) {
         auto sortReader = ::sortColumn(segmentReader);
         if (ADB_UNLIKELY(!sortReader)) {
