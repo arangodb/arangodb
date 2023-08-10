@@ -1826,6 +1826,24 @@ void ClusterInfo::loadPlan() {
             systemDB->setShardingPrototype(ShardingPrototype::Graphs);
           }
         }
+
+        // The systemDB does initially set the sharding attribute. Therefore,
+        // we need to set it here.
+        if (newPlan.contains(StaticStrings::SystemDatabase)) {
+          auto planSlice = newPlan[StaticStrings::SystemDatabase]->slice();
+          if (planSlice.isArray() && planSlice.length() == 1) {
+            if (planSlice.at(0).isObject()) {
+              auto entrySlice = planSlice.at(0);
+              auto path = std::vector<std::string>{
+                  "arango", "Plan", "Databases", StaticStrings::SystemDatabase,
+                  StaticStrings::Sharding};
+              if (entrySlice.hasKey(path) && entrySlice.get(path).isString()) {
+                LOG_DEVEL << "FINALLY";
+                systemDB->setSharding(entrySlice.get(path).copyString());
+              }
+            }
+          }
+        }
       }
     }
   }
