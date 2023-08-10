@@ -24,6 +24,7 @@
 #pragma once
 
 #include "NodeLoadInspector.h"
+#include "Basics/Exceptions.h"
 
 namespace arangodb::consensus {
 
@@ -45,6 +46,13 @@ void deserialize(Inspector& inspector, T& result) {
 }
 
 template<class Inspector, class T>
+void deserialize(NodePtr const& node, T& result,
+                 inspection::ParseOptions options) {
+  Inspector inspector(node, options);
+  deserialize(inspector, result);
+}
+
+template<class Inspector, class T>
 void deserialize(Node const& node, T& result,
                  inspection::ParseOptions options) {
   Inspector inspector(&node, options);
@@ -52,10 +60,17 @@ void deserialize(Node const& node, T& result,
 }
 
 template<class Inspector, class T, class Context>
-void deserialize(Node const& node, T& result, inspection::ParseOptions options,
-                 Context const& context) {
-  Inspector inspector(&node, options, context);
+void deserialize(NodePtr const& node, T& result,
+                 inspection::ParseOptions options, Context const& context) {
+  Inspector inspector(node, options, context);
   deserialize(inspector, result);
+}
+
+template<class Inspector, class T>
+T deserialize(NodePtr const& node, inspection::ParseOptions options) {
+  T result;
+  detail::deserialize<Inspector, T>(node, result, options);
+  return result;
 }
 
 template<class Inspector, class T>
@@ -66,7 +81,7 @@ T deserialize(Node const& node, inspection::ParseOptions options) {
 }
 
 template<class Inspector, class T, class Context>
-T deserialize(Node const& node, inspection::ParseOptions options,
+T deserialize(NodePtr const& node, inspection::ParseOptions options,
               Context const& context) {
   T result;
   detail::deserialize<Inspector, T>(node, result, options, context);
@@ -75,7 +90,7 @@ T deserialize(Node const& node, inspection::ParseOptions options,
 
 template<class Inspector, class T>
 [[nodiscard]] inspection::Status deserializeWithStatus(
-    Node const& node, T& result, inspection::ParseOptions options) {
+    NodePtr const& node, T& result, inspection::ParseOptions options) {
   Inspector inspector(&node, options);
   return deserializeWithStatus(inspector, result);
 }
@@ -91,35 +106,35 @@ template<class Inspector, class T, class Context>
 }  // namespace detail
 
 template<class T>
-void deserialize(Node const& node, T& result,
+void deserialize(NodePtr const& node, T& result,
                  inspection::ParseOptions options = {}) {
   detail::deserialize<inspection::NodeLoadInspector<>>(node, result, options);
 }
 
 template<class T, class Context>
-void deserialize(Node const& node, T& result, inspection::ParseOptions options,
-                 Context const& context) {
+void deserialize(NodePtr const& node, T& result,
+                 inspection::ParseOptions options, Context const& context) {
   detail::deserialize<inspection::NodeLoadInspector<Context>>(node, result,
                                                               options, context);
 }
 
 template<class T>
 [[nodiscard]] inspection::Status deserializeWithStatus(
-    Node const& node, T& result, inspection::ParseOptions options = {}) {
+    NodePtr const& node, T& result, inspection::ParseOptions options = {}) {
   return detail::deserializeWithStatus<inspection::NodeLoadInspector<>>(
       node, result, options);
 }
 
 template<class T, class Context>
 [[nodiscard]] inspection::Status deserializeWithStatus(
-    Node const& node, T& result, inspection::ParseOptions options,
+    NodePtr const& node, T& result, inspection::ParseOptions options,
     Context const& context) {
   return detail::deserializeWithStatus<inspection::NodeLoadInspector<Context>>(
       node, result, options, context);
 }
 
 template<class T>
-void deserializeUnsafe(Node const& node, T& result,
+void deserializeUnsafe(NodePtr const& node, T& result,
                        inspection::ParseOptions options = {}) {
   detail::deserialize<inspection::NodeUnsafeLoadInspector<>>(node, result,
                                                              options);
@@ -134,25 +149,31 @@ void deserializeUnsafe(Node const& node, T& result,
 }
 
 template<class T>
+T deserialize(NodePtr const& node, inspection::ParseOptions options = {}) {
+  return detail::deserialize<inspection::NodeLoadInspector<>, T>(node, options);
+}
+
+template<class T>
 T deserialize(Node const& node, inspection::ParseOptions options = {}) {
   return detail::deserialize<inspection::NodeLoadInspector<>, T>(node, options);
 }
 
 template<class T, class Context>
-T deserialize(Node const& node, inspection::ParseOptions options,
+T deserialize(NodePtr const& node, inspection::ParseOptions options,
               Context const& context) {
   return detail::deserialize<inspection::NodeLoadInspector<Context>, T>(
       node, options, context);
 }
 
 template<class T>
-T deserializeUnsafe(Node const& node, inspection::ParseOptions options = {}) {
+T deserializeUnsafe(NodePtr const& node,
+                    inspection::ParseOptions options = {}) {
   return detail::deserialize<inspection::NodeUnsafeLoadInspector<>, T>(node,
                                                                        options);
 }
 
 template<class T, class Context>
-T deserializeUnsafe(Node const& node, inspection::ParseOptions options,
+T deserializeUnsafe(NodePtr const& node, inspection::ParseOptions options,
                     Context const& context) {
   return detail::deserialize<inspection::NodeUnsafeLoadInspector<Context>, T>(
       node, options, context);

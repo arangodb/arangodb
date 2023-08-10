@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "RestServer/SharedPRNGFeature.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
 #include "Logger/LogMacros.h"
@@ -103,7 +104,9 @@ TEST(CacheWithBackingStoreTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 16 * 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 16 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t hotsetSize = 50000;
@@ -157,7 +160,9 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 256 * 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 256 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t batchSize = 1000;
@@ -249,7 +254,9 @@ TEST(CacheWithBackingStoreTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 256 * 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 256 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t writeBatchSize = 1000;
@@ -335,10 +342,12 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 16 * 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 16 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   Rebalancer rebalancer(&manager);
-  TransactionalStore store1(&manager);
-  TransactionalStore store2(&manager);
+  auto store1 = std::make_unique<TransactionalStore>(&manager);
+  auto store2 = std::make_unique<TransactionalStore>(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t writeBatchSize = 1000;
   std::uint64_t readBatchSize = 100;
@@ -364,8 +373,8 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
 
   // initial fill
   for (std::uint64_t i = 1; i <= totalDocuments; i++) {
-    store1.insert(nullptr, TransactionalStore::Document(i));
-    store2.insert(nullptr, TransactionalStore::Document(i));
+    store1->insert(nullptr, TransactionalStore::Document(i));
+    store2->insert(nullptr, TransactionalStore::Document(i));
   }
 
   auto readWorker = [&store1, &store2, &storeBias, &writersDone, writerCount,
@@ -373,7 +382,8 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
     while (writersDone.load() < writerCount) {
       std::uint32_t r =
           RandomGenerator::interval(static_cast<std::uint32_t>(99UL));
-      TransactionalStore* store = (r <= storeBias) ? &store1 : &store2;
+      TransactionalStore* store =
+          (r <= storeBias) ? store1.get() : store2.get();
       auto tx = store->beginTransaction(true);
       std::uint64_t start = static_cast<std::uint64_t>(
           std::chrono::steady_clock::now().time_since_epoch().count());
@@ -400,7 +410,8 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
     for (std::uint64_t batch = 0; batch < batches; batch++) {
       std::uint32_t r =
           RandomGenerator::interval(static_cast<std::uint32_t>(99UL));
-      TransactionalStore* store = (r <= storeBias) ? &store1 : &store2;
+      TransactionalStore* store =
+          (r <= storeBias) ? store1.get() : store2.get();
       auto tx = store->beginTransaction(false);
       for (std::uint64_t i = 0; i < writeBatchSize; i++) {
         auto d = store->lookup(tx, choice);
@@ -437,7 +448,8 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
   // join threads
   threads.clear();
 
-  while (store1.cache()->isResizing() || store2.cache()->isResizing()) {
+  while (store1->cache()->isResizingOrMigratingFlagSet() ||
+         store2->cache()->isResizingOrMigratingFlagSet()) {
     std::this_thread::yield();
   }
 
@@ -459,11 +471,15 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
   // join threads
   threads.clear();
 
-  while (store1.cache()->isResizing() || store2.cache()->isResizing()) {
+  while (store1->cache()->isResizingOrMigratingFlagSet() ||
+         store2->cache()->isResizingOrMigratingFlagSet()) {
     std::this_thread::yield();
   }
   doneRebalancing = true;
   rebalancerThread.join();
+
+  store1.reset();
+  store2.reset();
 
   RandomGenerator::shutdown();
 }

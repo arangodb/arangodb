@@ -68,12 +68,14 @@ using namespace arangodb::traverser;
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn)
     : EdgeConditionBuilder(tn->_plan->getAst()->createNodeNaryOperator(
-          NODE_TYPE_OPERATOR_NARY_AND)),
+                               NODE_TYPE_OPERATOR_NARY_AND),
+                           tn->_plan->getAst()->query().resourceMonitor()),
       _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, arangodb::velocypack::Slice const& condition)
-    : EdgeConditionBuilder(tn->_plan->getAst()->createNode(condition)),
+    : EdgeConditionBuilder(tn->_plan->getAst()->createNode(condition),
+                           tn->_plan->getAst()->query().resourceMonitor()),
       _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
@@ -1218,7 +1220,7 @@ void TraversalNode::prepareOptions() {
     for (auto const& it : _globalVertexConditions) {
       cond->addMember(it);
     }
-    opts->_baseVertexExpression.reset(new Expression(ast, cond));
+    opts->_baseVertexExpression = std::make_unique<Expression>(ast, cond);
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.

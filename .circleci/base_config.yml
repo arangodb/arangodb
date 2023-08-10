@@ -16,10 +16,10 @@ commands:
         type: string
         default: ""
     steps:
-       - add_ssh_keys:
+      - add_ssh_keys:
           fingerprints:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
-       - run:
+      - run:
           name: Checkout Enterprise
           command: |
             ssh-keyscan github.com >> ~/.ssh/known_hosts
@@ -139,8 +139,16 @@ jobs:
         type: string
       enterprise:
         type: boolean
+      targets:
+        type: string
+      enterprise-targets:
+        type: string
+        default: ""
+      publish-artifacts:
+        type: boolean
+        default: true
     docker:
-      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.1
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.2
     resource_class: xlarge
     environment:
       GIT_SSH_COMMAND: ssh
@@ -172,10 +180,12 @@ jobs:
       - run:
           name: Build
           command: |
-            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest
+            TARGETS="<< parameters.targets >>"
             if [ << parameters.enterprise >> = true ]; then
-              cmake --build --preset << parameters.preset >> --parallel 8 --target arangobackup
+              TARGETS="$TARGETS << parameters.enterprise-targets >>"
             fi
+            echo "Building targets: $TARGETS"
+            cmake --build --preset << parameters.preset >> --parallel 8 --target $TARGETS
       - run:
           name: Size leaderboard
           command: |
@@ -189,24 +199,27 @@ jobs:
           name: SCCache Statistics
           command: sccache -s
       - store_artifacts:
-          path: build/bin/arango*
-      - store_artifacts:
           path: /tmp/sccache.log
-      - persist_to_workspace:
-          root: .
-          paths:
-            - CMakePresets.json
-            - build/
-            - scripts/
-            - js/
-            - enterprise/js
-            - etc/
-            - tests/js
-            - enterprise/tests/js
-            - utils
-            - UnitTests
-            - 3rdParty/iresearch/tests/resources
-            - 3rdParty/rta-makedata
+      - when:
+          condition: << parameters.publish-artifacts >>
+          steps:
+            - store_artifacts:
+                path: build/bin/arango*
+            - persist_to_workspace:
+                root: .
+                paths:
+                  - CMakePresets.json
+                  - build/
+                  - scripts/
+                  - js/
+                  - enterprise/js
+                  - etc/
+                  - tests/js
+                  - enterprise/tests/js
+                  - utils
+                  - UnitTests
+                  - 3rdParty/iresearch/tests/resources
+                  - 3rdParty/rta-makedata
 
   run-tests:
     docker:
@@ -255,6 +268,7 @@ jobs:
           path: ./work/
       - store_test_results:
           path: ./test-results/
+
   run-hotbackup-tests:
     docker:
       - image: cimg/python:3.11.1
@@ -308,20 +322,42 @@ workflows:
     jobs:
       - compile-linux:
           context:
-          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ce
           preset: community-pr
           edition: x64-community
           enterprise: false
+          targets: "arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest"
+      - compile-linux:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: build-ce-non-maintainer
+          preset: community-pr-non-maintainer
+          edition: x64-community
+          enterprise: false
+          targets: "arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench"
+          publish-artifacts: false
   enterprise-pr:
     jobs:
       - compile-linux:
           context:
-          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ee
           preset: enterprise-pr
           edition: x64-enterprise
           enterprise: true
+          targets: "arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest"
+          enterprise-targets: "arangobackup"
+      - compile-linux:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          name: build-ee-non-maintainer
+          preset: enterprise-pr-non-maintainer
+          edition: x64-enterprise
+          enterprise: true
+          targets: "arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench"
+          enterprise-targets: "arangobackup"
+          publish-artifacts: false
       - run-hotbackup-tests:
           name: run-hotbackup-tests
           requires:

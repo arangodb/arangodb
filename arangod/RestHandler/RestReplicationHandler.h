@@ -392,12 +392,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
                     std::unordered_set<std::string>& documentsToRemove,
                     bool generateNewRevisionIds);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a collection, based on the VelocyPack provided
-  //////////////////////////////////////////////////////////////////////////////
-
-  ErrorCode createCollection(VPackSlice slice);
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief minimum chunk size

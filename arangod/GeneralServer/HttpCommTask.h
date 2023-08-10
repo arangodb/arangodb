@@ -97,8 +97,6 @@ class HttpCommTask final : public GeneralCommTask<T> {
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open
   bool _messageDone;
-
-  bool const _allowMethodOverride;  /// allow method override
 };
 }  // namespace rest
 }  // namespace arangodb

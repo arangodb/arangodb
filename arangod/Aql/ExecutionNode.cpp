@@ -259,7 +259,8 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
   for (VPackSlice it : VPackArrayIterator(elementsSlice)) {
     bool ascending = it.get("ascending").getBoolean();
     Variable* v = Variable::varFromVPack(plan->getAst(), it, "inVariable");
-    elements.emplace_back(v, ascending);
+    elements.emplace_back(
+        SortElement{v, ascending, plan->getAst()->query().resourceMonitor()});
     // Is there an attribute path?
     VPackSlice path = it.get("path");
     if (path.isArray()) {
@@ -267,7 +268,8 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
       auto& element = elements.back();
       for (auto const& it2 : VPackArrayIterator(path)) {
         if (it2.isString()) {
-          element.attributePath.push_back(it2.copyString());
+          element.attributePath.emplace_back(MonitoredString{
+              it2.copyString(), plan->getAst()->query().resourceMonitor()});
         }
       }
     }
@@ -507,7 +509,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
 
       varsUsedLater.reserve(stackEntrySlice.length());
       for (auto it : VPackArrayIterator(stackEntrySlice)) {
-        Variable oneVarUsedLater(it);
+        Variable oneVarUsedLater(it, plan->getAst()->query().resourceMonitor());
         Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
 
         if (oneVariable == nullptr) {
@@ -539,7 +541,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
 
       varsValid.reserve(stackEntrySlice.length());
       for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
-        Variable oneVarValid(it);
+        Variable oneVarValid(it, plan->getAst()->query().resourceMonitor());
         Variable* oneVariable = allVars->getVariable(oneVarValid.id);
 
         if (oneVariable == nullptr) {
@@ -2019,7 +2021,7 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
                                  arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _expression(new Expression(plan->getAst(), base)) {}
+      _expression(std::make_unique<Expression>(plan->getAst(), base)) {}
 
 CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
                                  std::unique_ptr<Expression> expr,
@@ -2733,12 +2735,18 @@ ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 size_t NoResultsNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
-SortElement::SortElement(Variable const* v, bool asc)
-    : var(v), ascending(asc) {}
+SortElement::SortElement(Variable const* v, bool asc,
+                         arangodb::ResourceMonitor& resourceMonitor)
+    : var(v),
+      ascending(asc),
+      attributePath(
+          ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
+              resourceMonitor}) {}
 
 SortElement::SortElement(Variable const* v, bool asc,
-                         std::vector<std::string> const& path)
-    : var(v), ascending(asc), attributePath(path) {}
+                         MonitoredStringVector const& path,
+                         arangodb::ResourceMonitor& resourceMonitor)
+    : var(v), ascending(asc), attributePath(path, resourceMonitor) {}
 
 std::string SortElement::toString() const {
   std::string result("$");

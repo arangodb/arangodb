@@ -123,7 +123,7 @@ class UserManager {
 #ifdef USE_ENTERPRISE
   bool refreshUser(std::string const& username);
 #else
-  inline bool refreshUser(std::string const& username) { return false; }
+  bool refreshUser(std::string const& /*username*/) { return false; }
 #endif
 
   auth::Level databaseAuthLevel(std::string const& username,
@@ -131,7 +131,7 @@ class UserManager {
                                 bool configured = false);
   auth::Level collectionAuthLevel(std::string const& username,
                                   std::string const& dbname,
-                                  std::string const& coll,
+                                  std::string_view coll,
                                   bool configured = false);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
