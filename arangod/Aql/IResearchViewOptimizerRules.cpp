@@ -334,28 +334,26 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
           return false;
         }
         switch (astCalcNode->type) {
-          case AstNodeType::NODE_TYPE_REFERENCE:
+          case AstNodeType::NODE_TYPE_REFERENCE: {
             // something produced by during search function replacement.
             // e.g. it is expected to be LET sortVar = scorerVar;
-            {
-              auto sortVariable =
-                  reinterpret_cast<Variable const*>(astCalcNode->getData());
-              TRI_ASSERT(sortVariable);
-              auto const s = std::find_if(
-                  std::begin(scorers), std::end(scorers),
-                  [sortVariableId = sortVariable->id](auto const& t) noexcept {
-                    return t.var->id == sortVariableId;
-                  });
-              if (s == std::end(scorers)) {
-                return false;
-              }
-              heapSort.push_back(HeapSortElement{
-                  .postfix = "",
-                  .source = std::distance(scorers.begin(), s),
-                  .fieldNumber = std::numeric_limits<size_t>::max(),
-                  .ascending = sort.ascending});
+            auto sortVariable =
+                reinterpret_cast<Variable const*>(astCalcNode->getData());
+            TRI_ASSERT(sortVariable);
+            auto const s = std::find_if(
+                std::begin(scorers), std::end(scorers),
+                [sortVariableId = sortVariable->id](auto const& t) noexcept {
+                  return t.var->id == sortVariableId;
+                });
+            if (s == std::end(scorers)) {
+              return false;
             }
-            break;
+            heapSort.push_back(HeapSortElement{
+                .postfix = "",
+                .source = std::distance(scorers.begin(), s),
+                .fieldNumber = std::numeric_limits<size_t>::max(),
+                .ascending = sort.ascending});
+          } break;
           case AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS:
             if (checkAttributeAccess(astCalcNode, viewVariable, false)) {
               // direct access to view variable
@@ -442,8 +440,8 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       return false;
     }
   }
-  if (heapSort.front().isScore() && heapSort.front().source != 0) {
-    auto idx = heapSort.front().source;
+  if (auto& front = heapSort.front(); front.isScore() && front.source != 0) {
+    auto idx = front.source;
     std::swap(scorers.front(), scorers[idx]);
     for (auto it = heapSort.begin(); it != heapSort.end(); ++it) {
       if (it->isScore() && it->source == 0) {

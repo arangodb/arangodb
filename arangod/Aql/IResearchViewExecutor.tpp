@@ -130,7 +130,7 @@ lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
   }
 }
 
-constexpr int kSortMultiplier[]{-1, 1};
+inline constexpr int kSortMultiplier[]{-1, 1};
 
 template<typename ValueType>
 class BufferHeapSortContext {
@@ -204,25 +204,23 @@ class BufferHeapSortContext {
 velocypack::Slice getStoredValue(irs::bytes_view storedValue,
                                  HeapSortElement const& sort) {
   TRI_ASSERT(!sort.isScore());
-  [[maybe_unused]] auto const totalSize = storedValue.size();
-  VPackSlice slice{storedValue.data()};
-  if (slice.isNull()) {
-    return slice;
-  }
-  size_t size = 0;
-  size_t i = 0;
-  while (i < sort.fieldNumber) {
-    size += slice.byteSize();
-    TRI_ASSERT(size <= totalSize);
-    slice = VPackSlice{slice.end()};
-    ++i;
+  auto* start = storedValue.data();
+  [[maybe_unused]] auto* end = start + storedValue.size();
+  velocypack::Slice slice{start};
+  for (size_t i = 0; i != sort.fieldNumber; ++i) {
+    start += slice.byteSize();
+    TRI_ASSERT(start < end);
+    slice = velocypack::Slice{start};
   }
   TRI_ASSERT(!slice.isNone());
   if (sort.postfix.empty()) {
     return slice;
-  } else {
-    return slice.get(sort.postfix);
   }
+  if (!slice.isObject()) {
+    return velocypack::Slice::nullSlice();
+  }
+  auto value = slice.get(sort.postfix);
+  return !value.isNone() ? value : velocypack::Slice::nullSlice();
 }
 
 }  // namespace
@@ -476,9 +474,8 @@ velocypack::Slice IndexReadBuffer<ValueType, copySorted>::readHeapSortColumn(
   if constexpr (copySorted) {
     return getStoredValue(_currentDocumentBuffer.back(), cmp);
   } else {
-    _currentDocumentSlices.push_back(
+    return _currentDocumentSlices.emplace_back(
         getStoredValue(_currentDocumentBuffer.back(), cmp));
-    return _currentDocumentSlices.back();
   }
 }
 
@@ -569,8 +566,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
         sortContext(_heapSortValues, _heapSort);
     size_t readerSlot{0};
     if (sortContext.compareInput(_rows.front(), scores.data(),
-                                 [this, &value, &readerSlot, &columnReader](
-                                     iresearch::HeapSortElement const& cmp) {
+                                 [&](iresearch::HeapSortElement const& cmp) {
                                    return readHeapSortColumn(
                                        cmp, value.irsDocId(), columnReader,
                                        readerSlot++);
@@ -598,9 +594,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     TRI_ASSERT(!sortContext.descScore() ||
                threshold <= _scoreBuffer[_rows.front() * _numScoreRegisters]);
 #endif
-    if (!scores.empty()) {
-      threshold = _scoreBuffer[_rows.front() * _numScoreRegisters];
-    }
+    threshold = _scoreBuffer[_rows.front() * _numScoreRegisters];
     score.Min(threshold);
   } else {
     finalizeHeapSortDocument<false>(_rows.size(), value.irsDocId(), scores,
@@ -1105,15 +1099,15 @@ template<typename Impl, typename ExecutionTraits>
 bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
     irs::SubReader const& segmentReader, size_t storedValuesIndex /*= 0*/) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
+  constexpr bool HeapSort =
+      std::is_same_v<HeapSortExecutorValue,
+                     typename arangodb::aql::IResearchViewExecutorBase<
+                         Impl, ExecutionTraits>::Traits::IndexBufferValueType>;
   if (!columnsFieldsRegs.empty()) {
     auto columnFieldsRegs = columnsFieldsRegs.cbegin();
     auto index = storedValuesIndex * columnsFieldsRegs.size();
     if (IResearchViewNode::kSortColumnNumber == columnFieldsRegs->first) {
-      if (!std::is_same_v<
-              HeapSortExecutorValue,
-              typename arangodb::aql::IResearchViewExecutorBase<
-                  Impl, ExecutionTraits>::Traits::IndexBufferValueType> ||
-          !_storedColumnsMask.contains(columnFieldsRegs->first)) {
+      if (!HeapSort || !_storedColumnsMask.contains(columnFieldsRegs->first)) {
         auto sortReader = ::sortColumn(segmentReader);
         if (ADB_UNLIKELY(!sortReader)) {
           LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
@@ -1132,11 +1126,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
       for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
         TRI_ASSERT(IResearchViewNode::kSortColumnNumber <
                    columnFieldsRegs->first);
-        if constexpr (std::is_same_v<
-                          HeapSortExecutorValue,
-                          typename arangodb::aql::IResearchViewExecutorBase<
-                              Impl,
-                              ExecutionTraits>::Traits::IndexBufferValueType>) {
+        if constexpr (HeapSort) {
           if (_storedColumnsMask.contains(columnFieldsRegs->first)) {
             continue;
           }

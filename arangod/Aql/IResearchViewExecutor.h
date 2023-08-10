@@ -46,6 +46,7 @@
 
 #include <formats/formats.hpp>
 #include <index/heap_iterator.hpp>
+#include <utils/empty.hpp>
 
 #include <utility>
 #include <variant>
@@ -379,6 +380,10 @@ class IndexReadBuffer {
         // indexed access for setting values
         _storedValuesBuffer.resize(atMost * stored);
         _heapOnlyStoredValuesBuffer.resize(_heapOnlyColumnsCount * atMost);
+        if (!scores) {
+          // save ourselves 1 "if" during pushing values
+          _scoreBuffer.push_back(irs::score_t{});
+        }
       } else {
         _storedValuesBuffer.reserve(atMost * stored);
       }
@@ -444,9 +449,7 @@ class IndexReadBuffer {
   // FIXME(gnusi): compile time
   std::vector<iresearch::SearchDoc> _searchDocs;
   std::vector<irs::score_t> _scoreBuffer;
-  StoredValuesContainer _storedValuesBuffer;  // FIXME: ensure atMost rows are
-                                              // allocated from the beginning!
-
+  StoredValuesContainer _storedValuesBuffer;
   // Heap Sort facilities
   // maps stored column to index in _storedValuesBuffer
   containers::FlatHashMap<ptrdiff_t, size_t> _heapUsedStoredColumns;
@@ -456,10 +459,9 @@ class IndexReadBuffer {
   std::vector<ColumnIterator> _heapOnlyStoredValuesReaders;
   // <num heap only values>
   StoredValuesContainer _currentDocumentBuffer;
-  using DocumentSlicesContainer =
-      typename std::conditional<copyStored, bool,
-                                std::vector<velocypack::Slice>>::type;
-  DocumentSlicesContainer _currentDocumentSlices;
+  IRS_NO_UNIQUE_ADDRESS
+  irs::utils::Need<copyStored, std::vector<velocypack::Slice>>
+      _currentDocumentSlices;
   std::vector<HeapSortValue> _heapSortValues;
   std::span<iresearch::HeapSortElement const> _heapSort;
   size_t _heapOnlyColumnsCount{0};

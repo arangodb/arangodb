@@ -1416,7 +1416,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
         }
         auto index = scorersSortElement.get(kNodeViewScorersSortIndex);
         auto asc = scorersSortElement.get(kNodeViewScorersSortAsc);
-        if (index.isNumber() && asc.isBoolean()) {
+        if (index.isNumber<size_t>() && asc.isBoolean()) {
           auto indexVal = index.getNumber<size_t>();
           if (indexVal >= _scorers.size()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
