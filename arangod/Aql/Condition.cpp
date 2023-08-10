@@ -896,7 +896,7 @@ void Condition::normalize(
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
 /// in this case we don't re-run the optimizer. It's expected that you
-/// don't want to remove eventually unneccessary filters.
+/// don't want to remove eventually unnecessary filters.
 void Condition::normalize() {
   if (_isNormalized) {
     // already normalized

@@ -153,7 +153,7 @@ class Condition {
   /// @brief normalize the condition
   /// this will convert the condition into its disjunctive normal form
   /// in this case we don't re-run the optimizer. Its expected that you
-  /// don't want to remove eventually unneccessary filters.
+  /// don't want to remove eventually unnecessary filters.
   void normalize();
 
   /// @brief removes condition parts from another

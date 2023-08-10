@@ -893,7 +893,7 @@ Result ClusterInfo::createCollectionsCoordinator(
 
       if (res.successful()) {
         // Note that this is not strictly necessary, just to avoid an
-        // unneccessary request when we're sure that we don't need it anymore.
+        // unnecessary request when we're sure that we don't need it anymore.
         deleteCollectionGuard.cancel();
         if (VPackSlice resultsSlice = res.slice().get("results");
             resultsSlice.length() > 0) {
