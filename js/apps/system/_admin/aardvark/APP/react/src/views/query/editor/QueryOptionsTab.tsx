@@ -269,16 +269,18 @@ const useFetchQueryOptimizerRuleOptions = () => {
       );
       const ruleOptions = response
         .filter((rule: OptimizerRule) => {
-          if (rule.flags.enterpriseOnly && !isEnterprise) {
+          const { flags } = rule;
+          const { enterpriseOnly, clusterOnly, canBeDisabled, hidden } = flags;
+          if (enterpriseOnly && !isEnterprise) {
             return false;
           }
-          if (rule.flags.clusterOnly && !isCluster) {
+          if (clusterOnly && !isCluster) {
             return false;
           }
-          if (!rule.flags.canBeDisabled) {
+          if (!canBeDisabled) {
             return false;
           }
-          if (rule.flags.hidden) {
+          if (hidden) {
             return false;
           }
           return true;
@@ -307,7 +309,6 @@ const OptimizerRules = () => {
           return disabledRules.includes(option.value);
         })}
         onChange={value => {
-          console.log(value);
           const disabledRuleNames = value.map((v: any) => v.value);
           setDisabledRules(disabledRuleNames);
         }}
