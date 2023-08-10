@@ -1110,7 +1110,8 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
     auto index = storedValuesIndex * columnsFieldsRegs.size();
     if (IResearchViewNode::kSortColumnNumber == columnFieldsRegs->first) {
       if (!std::is_same_v<HeapSortExecutorValue,
-                          typename Traits::IndexBufferValueType> ||
+              typename arangodb::aql::IResearchViewExecutorBase<
+                  Impl, ExecutionTraits>::Traits::IndexBufferValueType> ||
           !_storedColumnsMask.contains(columnFieldsRegs->first)) {
         auto sortReader = ::sortColumn(segmentReader);
         if (ADB_UNLIKELY(!sortReader)) {
