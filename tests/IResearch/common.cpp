@@ -24,7 +24,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
@@ -606,7 +605,7 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   return query;
 }
 
@@ -712,7 +711,7 @@ void assertFilterOptimized(
       transaction::TrxType::kInternal,
       arangodb::aql::QueryOptions(options->slice()));
 
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   EXPECT_TRUE(query->plan());
   auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
 

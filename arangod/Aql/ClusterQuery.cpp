@@ -164,8 +164,6 @@ void ClusterQuery::prepareClusterQuery(
 
   enterState(QueryExecutionState::ValueType::PARSING);
 
-  SerializationFormat format = SerializationFormat::SHADOWROWS;
-
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](VPackSlice snippet) {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
@@ -173,7 +171,7 @@ void ClusterQuery::prepareClusterQuery(
 
     plan->findVarUsage();  // I think this is a no-op
 
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
   };
 

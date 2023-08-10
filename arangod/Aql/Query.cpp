@@ -100,7 +100,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
              std::shared_ptr<SharedQueryState> sharedState,
              transaction::TrxType trxTypeHint)
     : QueryContext(ctx->vocbase(), trxTypeHint, id),
-      _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
+      _itemBlockManager(_resourceMonitor),
       _queryString(std::move(queryString)),
       _transactionContext(std::move(ctx)),
       _sharedState(std::move(sharedState)),
@@ -324,7 +324,7 @@ void Query::ensureExecutionTime() noexcept {
   }
 }
 
-void Query::prepareQuery(SerializationFormat format) {
+void Query::prepareQuery() {
   try {
     init(/*createProfile*/ true);
 
@@ -364,7 +364,7 @@ void Query::prepareQuery(SerializationFormat format) {
 
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
 
     _plans.push_back(std::move(plan));
 
@@ -524,7 +524,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
         // will throw if it fails
         if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-          prepareQuery(SerializationFormat::SHADOWROWS);
+          prepareQuery();
         }
 
         logAtStart();
@@ -750,7 +750,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
 
     // will throw if it fails
-    prepareQuery(SerializationFormat::SHADOWROWS);
+    prepareQuery();
 
     logAtStart();
 

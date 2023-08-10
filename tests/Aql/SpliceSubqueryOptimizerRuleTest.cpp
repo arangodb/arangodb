@@ -25,7 +25,6 @@
 
 #include "QueryHelper.h"
 
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
@@ -144,7 +143,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
         ctx, arangodb::aql::QueryString(querystring), bindParamVpack,
         transaction::TrxType::kInternal,
         arangodb::aql::QueryOptions(ruleOptions(additionalOptions)->slice()));
-    splicedQuery->prepareQuery(SerializationFormat::SHADOWROWS);
+    splicedQuery->prepareQuery();
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0)
         << "query string: " << querystring;
 

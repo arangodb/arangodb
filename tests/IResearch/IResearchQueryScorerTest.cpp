@@ -28,7 +28,6 @@
 
 #include <regex>
 
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IResearchViewNode.h"
@@ -541,7 +540,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -648,7 +647,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -760,7 +759,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -871,7 +870,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -983,7 +982,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1095,7 +1094,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1217,7 +1216,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1329,7 +1328,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1417,7 +1416,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1507,7 +1506,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1628,7 +1627,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1718,7 +1717,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1803,7 +1802,7 @@ class QueryScorer : public QueryTest {
           arangodb::aql::QueryString(queryString), nullptr,
           arangodb::transaction::TrxType::kInternal);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 

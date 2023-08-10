@@ -32,7 +32,6 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ProfileLevel.h"
@@ -451,7 +450,7 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
       aql::QueryString(queryString), nullptr, transaction::TrxType::kInternal,
       aql::QueryOptions(queryOptions.slice()), scheduler);
   callback(*query);
-  query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   return query;
 }
@@ -587,7 +586,7 @@ std::shared_ptr<aql::Query> MockClusterServer::createFakeQuery(
       aql::QueryString(queryString), nullptr, transaction::TrxType::kInternal,
       aql::QueryOptions(queryOptions.slice()));
   callback(*query);
-  query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   return query;
 }

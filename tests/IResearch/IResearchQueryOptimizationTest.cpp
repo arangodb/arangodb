@@ -27,7 +27,6 @@
 #include <velocypack/Iterator.h>
 
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -241,7 +240,7 @@ bool findEmptyNodes(
       arangodb::transaction::TrxType::kInternal,
       arangodb::aql::QueryOptions(options->slice()));
 
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 

@@ -226,7 +226,7 @@ class IResearchInvertedIndexConditionTest
                                arangodb::transaction::TrxType::kInternal);
 
     ASSERT_NE(query.get(), nullptr);
-    query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+    query->prepareQuery();
     auto* ast = query->ast();
     ASSERT_TRUE(ast);
     auto* root = ast->root();

@@ -34,7 +34,6 @@
 #include "MockGraph.h"
 
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -229,7 +228,7 @@ struct MockGraphDatabase {
       query->collections().add(c, AccessMode::Type::READ,
                                arangodb::aql::Collection::Hint::Collection);
     }
-    query->prepareQuery(SerializationFormat::SHADOWROWS);
+    query->prepareQuery();
 
     return query;
   }
