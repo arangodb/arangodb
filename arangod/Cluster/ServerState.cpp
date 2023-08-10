@@ -913,12 +913,12 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm,
     if (latestIdSlice.isNumber()) {
       num = latestIdSlice.getNumber<uint32_t>();
       latestIdBuilder.add(VPackValue(num));
-      latestIdPrecondition.reset(
-          new AgencyPrecondition(targetIdPath, AgencyPrecondition::Type::VALUE,
-                                 latestIdBuilder.slice()));
+      latestIdPrecondition = std::make_unique<AgencyPrecondition>(
+          targetIdPath, AgencyPrecondition::Type::VALUE,
+          latestIdBuilder.slice());
     } else {
-      latestIdPrecondition.reset(new AgencyPrecondition(
-          targetIdPath, AgencyPrecondition::Type::EMPTY, true));
+      latestIdPrecondition = std::make_unique<AgencyPrecondition>(
+          targetIdPath, AgencyPrecondition::Type::EMPTY, true);
     }
 
     VPackBuilder localIdBuilder;
