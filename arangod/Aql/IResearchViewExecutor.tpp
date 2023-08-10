@@ -1109,7 +1109,8 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
     auto columnFieldsRegs = columnsFieldsRegs.cbegin();
     auto index = storedValuesIndex * columnsFieldsRegs.size();
     if (IResearchViewNode::kSortColumnNumber == columnFieldsRegs->first) {
-      if (!std::is_same_v<HeapSortExecutorValue,
+      if (!std::is_same_v<
+              HeapSortExecutorValue,
               typename arangodb::aql::IResearchViewExecutorBase<
                   Impl, ExecutionTraits>::Traits::IndexBufferValueType> ||
           !_storedColumnsMask.contains(columnFieldsRegs->first)) {
@@ -1131,8 +1132,10 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
       for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
         TRI_ASSERT(IResearchViewNode::kSortColumnNumber <
                    columnFieldsRegs->first);
-        if constexpr (std::is_same_v<HeapSortExecutorValue,
-                                     Traits::IndexBufferValueType>) {
+        if constexpr (std::is_same_v < HeapSortExecutorValue,
+                      typename arangodb::aql::IResearchViewExecutorBase<
+                          Impl,
+                          ExecutionTraits>::Traits::IndexBufferValueType >>) {
           if (_storedColumnsMask.contains(columnFieldsRegs->first)) {
             continue;
           }
