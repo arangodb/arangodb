@@ -1838,7 +1838,6 @@ void ClusterInfo::loadPlan() {
                   "arango", "Plan", "Databases", StaticStrings::SystemDatabase,
                   StaticStrings::Sharding};
               if (entrySlice.hasKey(path) && entrySlice.get(path).isString()) {
-                LOG_DEVEL << "FINALLY";
                 systemDB->setSharding(entrySlice.get(path).copyString());
               }
             }
