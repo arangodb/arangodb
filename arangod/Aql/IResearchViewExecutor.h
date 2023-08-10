@@ -457,7 +457,7 @@ class IndexReadBuffer {
   using DocumentSlicesContainer =
       typename std::conditional<copyStored, bool,
                                 std::vector<velocypack::Slice>>::type;
-  [[maybe_unused]] DocumentSlicesContainer _currentDocumentSlices;
+  DocumentSlicesContainer _currentDocumentSlices;
   std::vector<HeapSortValue> _heapSortValues;
   std::span<iresearch::HeapSortElement const> _heapSort;
   size_t _heapOnlyColumnsCount{0};
