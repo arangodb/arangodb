@@ -1,6 +1,9 @@
 v3.11.3 (XXXX-XX-XX)
 --------------------
 
+* BTS-1549: adjust permission handling in experimental dump to the same
+  behavior as in non-experimental dump.
+
 * Harden HTTP/2 internal callback functions against exceptions.
 
   These callback functions are called from C code which cannot handle exceptions
