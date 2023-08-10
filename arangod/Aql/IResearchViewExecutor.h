@@ -345,10 +345,10 @@ class IndexReadBuffer {
     auto res =
         maxSize * sizeof(typename decltype(_keyBuffer)::value_type) +
         scores * maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
-        maxSize * sizeof(typename decltype(_searchDocs)::value_type);
+        maxSize * sizeof(typename decltype(_searchDocs)::value_type) +
+        stored * maxSize *
+            sizeof(typename decltype(_storedValuesBuffer)::value_type);
     if (!_heapSort.empty()) {
-      res += stored * maxSize *
-             sizeof(typename decltype(_storedValuesBuffer)::value_type);
       res += maxSize * sizeof(typename decltype(_rows)::value_type);
       res += _heapOnlyColumnsCount * maxSize *
              sizeof(typename decltype(_heapOnlyStoredValuesBuffer)::value_type);
@@ -379,6 +379,8 @@ class IndexReadBuffer {
         // indexed access for setting values
         _storedValuesBuffer.resize(atMost * stored);
         _heapOnlyStoredValuesBuffer.resize(_heapOnlyColumnsCount * atMost);
+      } else {
+        _storedValuesBuffer.reserve(atMost * stored);
       }
     }
     _maxSize = atMost;
