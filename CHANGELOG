@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-94: Support for query options and optimizer rules on web UI.
+
 * FE-308: Support for graph editing on web UI.
 
 * FE-313: Add support for minHash analyzers & offset field on web UI.
