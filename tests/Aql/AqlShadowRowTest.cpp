@@ -48,8 +48,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor,
-                                       SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor};
 
   void AssertResultRow(
       InputAqlItemRow const& input, VPackSlice result,
