@@ -1,6 +1,9 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
+* BTS-1549: adjust permission handling in experimental dump to the same
+  behavior as in non-experimental dump.
+
 * Prevent potential buffer overflow in the crash handler.
 
 * Updated OpenSSL to 3.0.10 and OpenLDAP to 2.6.6.
