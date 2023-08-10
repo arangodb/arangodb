@@ -92,7 +92,7 @@ class CalculationExecutorTest
   arangodb::ResourceMonitor resourceMonitor{global};
 
   CalculationExecutorTest()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor),
         ast(*fakedQuery.get()),
         one(ast.createNodeValueInt(1)),
         var("a", 0, false, resourceMonitor),
