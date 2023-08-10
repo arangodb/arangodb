@@ -112,9 +112,18 @@
           data.push({field1:i, field2: "A" + i % 1000, field3: "B" + i % 100, strval: cats, idx:i, storedVal: longValue + i});
           data2.push({field1:i/2, field2: "A" + i % 2000, field3: "B" + i % 300, strval: cats, idx:i, storedVal: longValue + i});
           cats = cats + " cat";
+
+          if (data.length === 250) {
+            // start publishing data already when we have a few smaller batches ready.
+            // this allows background indexing of arangosearch to process the initial
+            // batches already while we are inserting further batches. also reduces
+            // memory usage of the test
+            c.save(data);
+            c1.save(data2);
+            data = [];
+            data2 = [];
+          }
         }
-        c.save(data);
-        c1.save(data2);
         // trigger view sync
         db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
       },

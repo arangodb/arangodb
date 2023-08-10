@@ -24,6 +24,7 @@
 #include "RocksDBMethodsMemoryTracker.h"
 
 #include "Basics/ResourceUsage.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/Gauge.h"
 
 namespace arangodb {
@@ -53,7 +54,8 @@ void MemoryTrackerBase::decreaseMemoryUsage(std::uint64_t value) noexcept {
 
 void MemoryTrackerBase::setSavePoint() { _savePoints.push_back(_memoryUsage); }
 
-void MemoryTrackerBase::rollbackToSavePoint() noexcept {
+void MemoryTrackerBase::rollbackToSavePoint() {
+  // note: this is effectively noexcept
   TRI_ASSERT(!_savePoints.empty());
   _memoryUsage = _savePoints.back();
   _savePoints.pop_back();
@@ -72,59 +74,63 @@ std::uint64_t MemoryTrackerBase::memoryUsage() const noexcept {
 // allocations during an AQL query. reports to the AQL query's
 // ResourceMonitor.
 MemoryTrackerAqlQuery::MemoryTrackerAqlQuery()
-    : MemoryTrackerBase(), _resourceMonitor(nullptr) {}
+    : MemoryTrackerBase(), _resourceMonitor(nullptr), _lastPublishedValue(0) {}
 
 MemoryTrackerAqlQuery::~MemoryTrackerAqlQuery() { reset(); }
 
 void MemoryTrackerAqlQuery::reset() noexcept {
-  // inform resource monitor first
-  if (_resourceMonitor != nullptr && _memoryUsage != 0) {
-    _resourceMonitor->decreaseMemoryUsage(_memoryUsage);
-  }
   // reset everything
   MemoryTrackerBase::reset();
+  try {
+    // this should effectively not throw, because in the destructor
+    // we should only _decrease_ the memory usage, which will call the
+    // noexcept decreaseMemoryUsage() function on the ResourceMonitor.
+    TRI_ASSERT(_memoryUsage <= _lastPublishedValue);
+    publish(true);
+  } catch (...) {
+    // we should never get here.
+    TRI_ASSERT(false);
+  }
 }
 
 void MemoryTrackerAqlQuery::increaseMemoryUsage(std::uint64_t value) {
   if (value != 0) {
-    // inform resource monitor first
-    if (_resourceMonitor != nullptr) {
-      // can throw. if it does, no harm is done
-      _resourceMonitor->increaseMemoryUsage(value);
-    }
     MemoryTrackerBase::increaseMemoryUsage(value);
+    try {
+      // note: publishing may throw when increasing the memory usage
+      publish(false);
+    } catch (...) {
+      // if we caught an exception, roll back the increase to _memoryUsage
+      MemoryTrackerBase::decreaseMemoryUsage(value);
+      throw;
+    }
   }
 }
 
 void MemoryTrackerAqlQuery::decreaseMemoryUsage(std::uint64_t value) noexcept {
   if (value != 0) {
-    // inform resource monitor
-    if (_resourceMonitor != nullptr) {
-      _resourceMonitor->decreaseMemoryUsage(value);
-    }
     MemoryTrackerBase::decreaseMemoryUsage(value);
+    // note: publish does not throw for a decrease
+    try {
+      // this should effectively not throw, because we should only _decrease_
+      // the memory usage, which will call the noexcept decreaseMemoryUsage()
+      // function on the ResourceMonitor.
+      publish(false);
+    } catch (...) {
+      // we should never get here.
+      TRI_ASSERT(false);
+    }
   }
 }
 
-void MemoryTrackerAqlQuery::rollbackToSavePoint() noexcept {
-  auto value = _memoryUsage;
+void MemoryTrackerAqlQuery::rollbackToSavePoint() {
   // this will reset _memoryUsage
   MemoryTrackerBase::rollbackToSavePoint();
-
-  // inform resource monitor
-  if (_resourceMonitor != nullptr) {
-    if (value > _memoryUsage) {
-      // this should be the usual case, that after popping a
-      // SavePoint we will use _less_ memory
-      _resourceMonitor->decreaseMemoryUsage(value - _memoryUsage);
-    } else {
-      // somewhat unexpected case
-      _resourceMonitor->increaseMemoryUsage(_memoryUsage - value);
-    }
-  }
+  publish(true);
 }
 
 void MemoryTrackerAqlQuery::beginQuery(ResourceMonitor* resourceMonitor) {
+  // note: resourceMonitor cannot be a nullptr when we are called
   TRI_ASSERT(resourceMonitor != nullptr);
   TRI_ASSERT(_resourceMonitor == nullptr);
   TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
@@ -136,18 +142,49 @@ void MemoryTrackerAqlQuery::beginQuery(ResourceMonitor* resourceMonitor) {
 
 void MemoryTrackerAqlQuery::endQuery() noexcept {
   TRI_ASSERT(_resourceMonitor != nullptr);
+  TRI_ASSERT(_memoryUsage >= _lastPublishedValue);
+  _memoryUsage = _memoryUsageAtBeginQuery;
+  _memoryUsageAtBeginQuery = 0;
+  try {
+    // this should effectively not throw, because in the endQuery()
+    // call we should only _decrease_ the memory usage, which will call
+    // the noexcept decreaseMemoryUsage() function on the ResourceMonitor.
+    publish(true);
+  } catch (...) {
+    // we should never get here.
+    TRI_ASSERT(false);
+  }
+  _resourceMonitor = nullptr;
+}
 
-  if (_resourceMonitor != nullptr) {
-    if (_memoryUsage >= _memoryUsageAtBeginQuery) {
-      _resourceMonitor->decreaseMemoryUsage(_memoryUsage -
-                                            _memoryUsageAtBeginQuery);
-    } else {
-      _resourceMonitor->increaseMemoryUsage(_memoryUsageAtBeginQuery -
-                                            _memoryUsage);
+void MemoryTrackerAqlQuery::publish(bool force) {
+  if (_resourceMonitor == nullptr) {
+    return;
+  }
+  if (!force) {
+    if (_lastPublishedValue < _memoryUsage) {
+      // current memory usage is higher
+      force |= (_memoryUsage - _lastPublishedValue) >= kMemoryReportGranularity;
+    } else if (_lastPublishedValue > _memoryUsage) {
+      // current memory usage is lower
+      force |= (_lastPublishedValue - _memoryUsage) >= kMemoryReportGranularity;
     }
-    _memoryUsage = _memoryUsageAtBeginQuery;
-    _memoryUsageAtBeginQuery = 0;
-    _resourceMonitor = nullptr;
+  }
+  if (force) {
+    if (_lastPublishedValue < _memoryUsage) {
+      // current memory usage is higher, so we increase.
+      // note: this can throw!
+      _resourceMonitor->increaseMemoryUsage(_memoryUsage - _lastPublishedValue);
+    } else if (_lastPublishedValue > _memoryUsage) {
+      // current memory usage is lower. note: this will not throw!
+      try {
+        _resourceMonitor->decreaseMemoryUsage(_lastPublishedValue -
+                                              _memoryUsage);
+      } catch (...) {
+        TRI_ASSERT(false);
+      }
+    }
+    _lastPublishedValue = _memoryUsage;
   }
 }
 
@@ -180,7 +217,7 @@ void MemoryTrackerMetric::decreaseMemoryUsage(std::uint64_t value) noexcept {
   }
 }
 
-void MemoryTrackerMetric::rollbackToSavePoint() noexcept {
+void MemoryTrackerMetric::rollbackToSavePoint() {
   // this will reset _memoryUsage
   MemoryTrackerBase::rollbackToSavePoint();
   publish(true);

@@ -38,7 +38,7 @@ struct RocksDBMethodsMemoryTracker {
   virtual void decreaseMemoryUsage(std::uint64_t value) noexcept = 0;
 
   virtual void setSavePoint() = 0;
-  virtual void rollbackToSavePoint() noexcept = 0;
+  virtual void rollbackToSavePoint() = 0;
   virtual void popSavePoint() noexcept = 0;
 
   virtual size_t memoryUsage() const noexcept = 0;
@@ -64,7 +64,7 @@ class MemoryTrackerBase : public RocksDBMethodsMemoryTracker {
 
   void setSavePoint() override;
 
-  void rollbackToSavePoint() noexcept override;
+  void rollbackToSavePoint() override;
 
   void popSavePoint() noexcept override;
 
@@ -74,6 +74,12 @@ class MemoryTrackerBase : public RocksDBMethodsMemoryTracker {
   std::uint64_t _memoryUsage;
   std::uint64_t _memoryUsageAtBeginQuery;
   containers::SmallVector<std::uint64_t, 4> _savePoints;
+
+  // publish only memory usage differences if memory usage changed
+  // by this many bytes since our last update to the metric.
+  // this is to avoid too frequent metrics updates and potential
+  // contention on ths metric's underlying atomic value.
+  static constexpr std::int64_t kMemoryReportGranularity = 4096;
 };
 
 // memory usage tracker for AQL transactions that tracks memory
@@ -90,14 +96,25 @@ class MemoryTrackerAqlQuery final : public MemoryTrackerBase {
 
   void decreaseMemoryUsage(std::uint64_t value) noexcept override;
 
-  void rollbackToSavePoint() noexcept override;
+  void rollbackToSavePoint() override;
 
   void beginQuery(ResourceMonitor* resourceMonitor) override;
 
   void endQuery() noexcept override;
 
  private:
+  void publish(bool force);
+
   ResourceMonitor* _resourceMonitor;
+
+  // last value we published to the metric ourselves. we keep track
+  // of this so we only need to update the metric if our current
+  // memory usage differs by more than kMemoryReportGranularity from
+  // what we already posted to the metric. we do this to save lots
+  // of metrics updates with very small increments/decrements, which
+  // would provide little value and would only lead to contention on
+  // the metric's underlying atomic value.
+  std::uint64_t _lastPublishedValue;
 };
 
 // memory usage tracker for transactions that update a particular
@@ -115,7 +132,7 @@ class MemoryTrackerMetric final : public MemoryTrackerBase {
 
   void decreaseMemoryUsage(std::uint64_t value) noexcept override;
 
-  void rollbackToSavePoint() noexcept override;
+  void rollbackToSavePoint() override;
 
   void beginQuery(ResourceMonitor* /*resourceMonitor*/) override;
 
@@ -134,12 +151,6 @@ class MemoryTrackerMetric final : public MemoryTrackerBase {
   // would provide little value and would only lead to contention on
   // the metric's underlying atomic value.
   std::uint64_t _lastPublishedValue;
-
-  // publish only memory usage differences if memory usage changed
-  // by this many bytes since our last update to the metric.
-  // this is to avoid too frequent metrics updates and potential
-  // contention on ths metric's underlying atomic value.
-  static constexpr std::int64_t kMemoryReportGranularity = 4096;
 };
 
 }  // namespace arangodb
