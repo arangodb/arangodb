@@ -229,11 +229,13 @@ struct ReplicatedLogTest : ::testing::Test {
                   ConfigArguments configArguments) {
     auto logConfig = agency::LogPlanConfig{};
     auto participants = agency::ParticipantsFlagsMap{};
-    std::transform(
-        follower.begin(), follower.end(),
-        std::inserter(participants, participants.end()), [&](LogWithFakes& f) {
-          return std::pair(f.serverInstance.serverId, ParticipantFlags{});
-        });
+    auto const logToParticipant = [&](LogWithFakes& f) {
+      return std::pair(f.serverInstance.serverId, ParticipantFlags{});
+    };
+    participants.emplace(logToParticipant(leader));
+    std::transform(follower.begin(), follower.end(),
+                   std::inserter(participants, participants.end()),
+                   logToParticipant);
     auto participantsConfig = agency::ParticipantsConfig{
         .participants = participants, .config = logConfig};
     auto logSpec = agency::LogPlanTermSpecification{configArguments.term,

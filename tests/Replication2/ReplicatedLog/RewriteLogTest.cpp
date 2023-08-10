@@ -32,6 +32,8 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
 
+// Allows matching a log entry partially in gtest EXPECT_THAT. Members set to
+// std::nullopt are ignored when matching; only the set members are matched.
 struct PartialLogEntry {
   std::optional<LogTerm> term{};
   std::optional<LogIndex> index{};
@@ -171,16 +173,14 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   // have the follower process the append entries request.
   // this should rewrite its log.
   IDelayedScheduler::runAll(
-      *leaderLogContainer.logScheduler, *leaderLogContainer.storageExecutor,
+      leaderLogContainer.logScheduler, leaderLogContainer.storageExecutor,
       followerLogContainer.logScheduler, followerLogContainer.storageExecutor,
       followerLogContainer.delayedLogFollower->scheduler);
 
-  EXPECT_FALSE(
-      followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
-  EXPECT_FALSE(leaderLogContainer.logScheduler->hasWork());
-  EXPECT_FALSE(leaderLogContainer.storageExecutor->hasWork());
-  EXPECT_FALSE(followerLogContainer.logScheduler->hasWork());
-  EXPECT_FALSE(followerLogContainer.storageExecutor->hasWork());
+  EXPECT_FALSE(IDelayedScheduler::hasWork(
+      leaderLogContainer.logScheduler, leaderLogContainer.storageExecutor,
+      followerLogContainer.logScheduler, followerLogContainer.storageExecutor,
+      followerLogContainer.delayedLogFollower->scheduler));
 
   {
     ASSERT_TRUE(leaderMethodsFuture.isReady());
@@ -207,12 +207,15 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   }
 
   {
-    auto storageContext = followerLogContainer.storageContext;
     auto expectedEntries = PartialLogEntries{
         {.term = 1_T, .index = 1_Lx, .payload = PartialLogEntry::IsPayload{}},
         {.term = 3_T, .index = 2_Lx, .payload = PartialLogEntry::IsMeta{}},
     };
-    EXPECT_THAT(storageContext->log,
+    // check the follower's log: this must have been rewritten
+    EXPECT_THAT(followerLogContainer.storageContext->log,
+                testing::Pointwise(MatchesMapLogEntry(), expectedEntries));
+    // just for completeness' sake, check the leader's log as well
+    EXPECT_THAT(leaderLogContainer.storageContext->log,
                 testing::Pointwise(MatchesMapLogEntry(), expectedEntries));
   }
 }
