@@ -45,9 +45,7 @@ export const EditGraphButtons = ({
       <DeleteGraphModal
         isOpen={isDeleteModalOpen}
         onClose={onCloseDeleteModal}
-        onSuccess={() => {
-          onClose();
-        }}
+        onSuccess={onClose}
         currentGraph={graph}
       />
       <Button colorScheme="red" type="button" onClick={onOpenDeleteModal}>

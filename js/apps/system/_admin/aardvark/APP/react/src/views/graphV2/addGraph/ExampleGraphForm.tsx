@@ -83,7 +83,6 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
       };
     });
   };
-  console.log({ isAnyLoading });
   return (
     <VStack spacing={4} align="stretch">
       {exampleGraphsMap.map(exampleGraphField => {
