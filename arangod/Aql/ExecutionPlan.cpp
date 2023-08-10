@@ -830,7 +830,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
 
         // and register a reference to the subquery result in the expression
         v = _ast->variables()->createTemporaryVariable();
-        auto en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
+        auto en = createNode<SubqueryNode>(this, nextId(), subquery, v);
         _subqueries[v->id] = en;
         en->addDependency(previous);
         previous = en;
@@ -1206,8 +1206,8 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                      "no collection for EnumerateCollection");
     }
     IndexHint hint(_ast->query(), options);
-    en = registerNode(new EnumerateCollectionNode(this, nextId(), collection, v,
-                                                  false, hint));
+    en = createNode<EnumerateCollectionNode>(this, nextId(), collection, v,
+                                             false, hint);
     if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES)) {
       // this is a FOR node that belongs to an UPSERT query
       ExecutionNode::castTo<EnumerateCollectionNode*>(en)->setCanReadOwnWrites(
@@ -1250,7 +1250,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(inVariable != nullptr);
-    en = registerNode(new EnumerateListNode(this, nextId(), inVariable, v));
+    en = createNode<EnumerateListNode>(this, nextId(), inVariable, v);
   } else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(expression, previous);
@@ -1552,7 +1552,7 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new FilterNode(this, nextId(), v));
+    en = createNode<FilterNode>(this, nextId(), v);
   } else {
     // operand is some misc expression
     if (expression->isTrue()) {
@@ -1569,10 +1569,10 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
     if (expression->isFalse()) {
       // filter expression is known to be always false, so
       // replace the FILTER with a NoResultsNode
-      en = registerNode(new NoResultsNode(this, nextId()));
+      en = createNode<NoResultsNode>(this, nextId());
     } else {
       auto calc = createTemporaryCalculation(expression, previous);
-      en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
+      en = createNode<FilterNode>(this, nextId(), getOutVariable(calc));
       previous = calc;
     }
   }
@@ -1605,7 +1605,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
+    en = createNode<SubqueryNode>(this, nextId(), subquery, v);
     _subqueries[ExecutionNode::castTo<SubqueryNode*>(en)->outVariable()->id] =
         en;
   } else {
@@ -1711,7 +1711,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
   }
 
   // at least one sort criterion remained
-  auto en = registerNode(new SortNode(this, nextId(), elements, false));
+  auto en = createNode<SortNode>(this, nextId(), elements, false);
 
   return addDependency(previous, en);
 }
@@ -1864,9 +1864,9 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
     countValue = count->getIntValue();
   }
 
-  auto en = registerNode(new LimitNode(this, nextId(),
-                                       static_cast<size_t>(offsetValue),
-                                       static_cast<size_t>(countValue)));
+  auto en =
+      createNode<LimitNode>(this, nextId(), static_cast<size_t>(offsetValue),
+                            static_cast<size_t>(countValue));
 
   if (_nestingLevel == 0) {
     _lastLimitNode = en;
@@ -1889,11 +1889,11 @@ ExecutionNode* ExecutionPlan::fromNodeReturn(ExecutionNode* previous,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new ReturnNode(this, nextId(), v));
+    en = createNode<ReturnNode>(this, nextId(), v);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(new ReturnNode(this, nextId(), getOutVariable(calc)));
+    en = createNode<ReturnNode>(this, nextId(), getOutVariable(calc));
     previous = calc;
   }
 
@@ -1936,8 +1936,8 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
 
-    en = registerNode(new RemoveNode(this, nextId(), collection, options,
-                                     getOutVariable(calc), outVariableOld));
+    en = createNode<RemoveNode>(this, nextId(), collection, options,
+                                getOutVariable(calc), outVariableOld);
     previous = calc;
   }
 
@@ -1982,15 +1982,15 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
     auto v = static_cast<Variable*>(expression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new InsertNode(this, nextId(), collection, options, v,
-                                     outVariableOld, outVariableNew));
+    en = createNode<InsertNode>(this, nextId(), collection, options, v,
+                                outVariableOld, outVariableNew);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
 
-    en = registerNode(new InsertNode(this, nextId(), collection, options,
-                                     getOutVariable(calc), outVariableOld,
-                                     outVariableNew));
+    en = createNode<InsertNode>(this, nextId(), collection, options,
+                                getOutVariable(calc), outVariableOld,
+                                outVariableNew);
     previous = calc;
   }
 
@@ -2049,16 +2049,15 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
     auto v = static_cast<Variable*>(docExpression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new UpdateNode(this, nextId(), collection, options, v,
-                                     keyVariable, outVariableOld,
-                                     outVariableNew));
+    en = createNode<UpdateNode>(this, nextId(), collection, options, v,
+                                keyVariable, outVariableOld, outVariableNew);
   } else {
     // document operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression, previous);
 
-    en = registerNode(new UpdateNode(this, nextId(), collection, options,
-                                     getOutVariable(calc), keyVariable,
-                                     outVariableOld, outVariableNew));
+    en = createNode<UpdateNode>(this, nextId(), collection, options,
+                                getOutVariable(calc), keyVariable,
+                                outVariableOld, outVariableNew);
     previous = calc;
   }
 
@@ -2117,16 +2116,15 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
     auto v = static_cast<Variable*>(docExpression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new ReplaceNode(this, nextId(), collection, options, v,
-                                      keyVariable, outVariableOld,
-                                      outVariableNew));
+    en = createNode<ReplaceNode>(this, nextId(), collection, options, v,
+                                 keyVariable, outVariableOld, outVariableNew);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression, previous);
 
-    en = registerNode(new ReplaceNode(this, nextId(), collection, options,
-                                      getOutVariable(calc), keyVariable,
-                                      outVariableOld, outVariableNew));
+    en = createNode<ReplaceNode>(this, nextId(), collection, options,
+                                 getOutVariable(calc), keyVariable,
+                                 outVariableOld, outVariableNew);
     previous = calc;
   }
 

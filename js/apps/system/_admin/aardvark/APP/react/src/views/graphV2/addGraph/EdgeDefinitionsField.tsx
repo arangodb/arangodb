@@ -54,7 +54,6 @@ export const EdgeDefinitionsField = ({
   allowExistingCollections?: boolean;
 }) => {
   const { values } = useFormikContext<GeneralGraphCreateValues>();
-  const { mode } = useGraphsModeContext();
   return (
     <GridItem colSpan={3}>
       <FieldArray name="edgeDefinitions">
@@ -85,7 +84,6 @@ export const EdgeDefinitionsField = ({
                 }}
                 variant="ghost"
                 colorScheme="blue"
-                isDisabled={mode === "edit"}
                 leftIcon={<AddIcon />}
               >
                 Add relation
@@ -110,6 +108,7 @@ const EdgeDefinition = ({
   noOptionsMessage: (() => string) | undefined;
 }) => {
   const { mode } = useGraphsModeContext();
+  const isEditMode = mode === "edit";
   const { collectionToDisabledMap } = useResetFromAndToValues();
   const { edgeCollectionOptions, documentCollectionOptions } =
     useCollectionOptions();
@@ -134,7 +133,6 @@ const EdgeDefinition = ({
             variant="ghost"
             colorScheme="red"
             icon={<DeleteIcon />}
-            isDisabled={mode === "edit"}
             onClick={() => {
               remove(index);
             }}
@@ -151,7 +149,6 @@ const EdgeDefinition = ({
               : undefined,
             isClearable: true,
             name: collectionFieldName,
-            isDisabled: mode === "edit",
             noOptionsMessage
           }}
         />
@@ -159,7 +156,7 @@ const EdgeDefinition = ({
           field={{
             ...graphRelationFieldsMap.from,
             name: fromFieldName,
-            isDisabled: isFromAndToDisabled,
+            isDisabled: !isEditMode && isFromAndToDisabled,
             options: allowExistingCollections
               ? documentCollectionOptions
               : undefined,
@@ -170,7 +167,7 @@ const EdgeDefinition = ({
           field={{
             ...graphRelationFieldsMap.to,
             name: toFieldName,
-            isDisabled: isFromAndToDisabled,
+            isDisabled: !isEditMode && isFromAndToDisabled,
             options: allowExistingCollections
               ? documentCollectionOptions
               : undefined,

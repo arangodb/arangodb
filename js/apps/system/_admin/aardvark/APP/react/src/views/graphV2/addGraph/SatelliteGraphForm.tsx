@@ -7,7 +7,8 @@ import { FormField } from "../../../components/form/FormField";
 import {
   createGraph,
   GENERAL_GRAPH_FIELDS_MAP,
-  GRAPH_VALIDATION_SCHEMA
+  GRAPH_VALIDATION_SCHEMA,
+  updateGraph
 } from "../listGraphs/graphListHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { SatelliteGraphCreateValues } from "./CreateGraph.types";
@@ -35,16 +36,29 @@ const INITIAL_VALUES: SatelliteGraphCreateValues = {
 
 export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
+  const isEditMode = mode === "edit";
   const handleSubmit = async (values: SatelliteGraphCreateValues) => {
-    const info = await createGraph({
-      values: {
-        name: values.name,
-        edgeDefinitions: values.edgeDefinitions,
-        orphanCollections: values.orphanCollections,
-        options: {
-          replicationFactor: "satellite"
+    const sanitizedValues = {
+      name: values.name,
+      edgeDefinitions: values.edgeDefinitions,
+      orphanCollections: values.orphanCollections,
+      options: {
+        replicationFactor: "satellite"
+      }
+    };
+    if (isEditMode) {
+      const info = await updateGraph({
+        values: sanitizedValues,
+        initialGraph,
+        onSuccess: () => {
+          mutate("/graphs");
+          onClose();
         }
-      },
+      });
+      return info;
+    }
+    const info = await createGraph({
+      values: sanitizedValues,
       onSuccess: () => {
         mutate("/graphs");
         onClose();
@@ -66,7 +80,7 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
             <FormField
               field={{
                 ...satelliteGraphFieldsMap.name,
-                isDisabled: mode === "edit"
+                isDisabled: isEditMode
               }}
             />
             <EdgeDefinitionsField
@@ -75,12 +89,7 @@ export const SatelliteGraphForm = ({ onClose }: { onClose: () => void }) => {
               }
               allowExistingCollections={false}
             />
-            <FormField
-              field={{
-                ...satelliteGraphFieldsMap.orphanCollections,
-                isDisabled: mode === "edit"
-              }}
-            />
+            <FormField field={satelliteGraphFieldsMap.orphanCollections} />
           </FieldsGrid>
           <GraphModalFooter onClose={onClose} />
         </VStack>

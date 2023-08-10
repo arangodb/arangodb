@@ -475,7 +475,9 @@ IndexExecutor::CursorReader::CursorReader(
 
 bool IndexExecutor::CursorReader::hasMore() const { return _cursor->hasMore(); }
 
-bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
+bool IndexExecutor::CursorReader::readIndex(
+    OutputAqlItemRow& output,
+    DocumentProducingFunctionContext const& documentProducingFunctionContext) {
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -487,6 +489,12 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("IndexBlock::readIndex") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
+  // validate that output has a valid AqlItemBlock
+  TRI_ASSERT(output.isInitialized());
+  // validate that the output pointer in documentProducingFunctionContext is the
+  // same as in output
+  TRI_ASSERT(&output == &documentProducingFunctionContext.getOutputRow());
 
   // update cache statistics from cursor when we exit this method
   auto statsUpdater = scopeGuard([this]() noexcept {
@@ -828,8 +836,7 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);
 
-  AqlCall clientCall = output.getClientCall();
-  INTERNAL_LOG_IDX << "IndexExecutor::produceRows " << clientCall;
+  INTERNAL_LOG_IDX << "IndexExecutor::produceRows " << output.getClientCall();
 
   /*
    * Logic of this executor is as follows:
@@ -883,7 +890,8 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       TRI_ASSERT(getCursor().hasMore());
 
       // Read the next elements from the index
-      bool more = getCursor().readIndex(output);
+      bool more =
+          getCursor().readIndex(output, _documentProducingFunctionContext);
       TRI_ASSERT(more == getCursor().hasMore());
 
       if (!more && _currentIndex + 1 >= _cursors.size() && output.isFull()) {

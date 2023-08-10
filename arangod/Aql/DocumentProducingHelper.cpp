@@ -338,6 +338,7 @@ InputAqlItemRow const& DocumentProducingFunctionContext::getInputRow()
 
 OutputAqlItemRow& DocumentProducingFunctionContext::getOutputRow()
     const noexcept {
+  TRI_ASSERT(_outputRow != nullptr);
   return *_outputRow;
 }
 
