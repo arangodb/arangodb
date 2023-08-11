@@ -95,6 +95,20 @@ struct ReplicatedOperation {
         -> bool = default;
   };
 
+  struct ModifyShard {
+    ShardID shard;
+    CollectionID collection;
+    std::shared_ptr<VPackBuilder> properties;
+
+    // The following two fields are temporary and will be removed eventually
+    // from replication 2.0.
+    std::string followersToDrop;
+    bool ignoreFollowersToDrop;
+
+    friend auto operator==(ModifyShard const&, ModifyShard const&)
+        -> bool = default;
+  };
+
   struct DropShard {
     ShardID shard;
     CollectionID collection;
@@ -114,8 +128,8 @@ struct ReplicatedOperation {
  public:
   using OperationType =
       std::variant<AbortAllOngoingTrx, Commit, IntermediateCommit, Abort,
-                   Truncate, CreateShard, DropShard, Insert, Update, Replace,
-                   Remove>;
+                   Truncate, CreateShard, ModifyShard, DropShard, Insert,
+                   Update, Replace, Remove>;
   OperationType operation;
 
   static auto fromOperationType(OperationType op) noexcept
@@ -133,6 +147,10 @@ struct ReplicatedOperation {
   static auto buildCreateShardOperation(
       ShardID shard, CollectionID collection,
       std::shared_ptr<VPackBuilder> properties) noexcept -> ReplicatedOperation;
+  static auto buildModifyShardOperation(
+      ShardID shard, CollectionID collection,
+      std::shared_ptr<VPackBuilder> properties,
+      std::string followersToDrop) noexcept -> ReplicatedOperation;
   static auto buildDropShardOperation(ShardID shard,
                                       CollectionID collection) noexcept
       -> ReplicatedOperation;
@@ -166,7 +184,8 @@ concept FinishesUserTransaction =
     std::is_same_v<T, ReplicatedOperation::Abort>;
 
 template<class T>
-concept FinishesUserTransactionOrIntermediate = FinishesUserTransaction<T> ||
+concept FinishesUserTransactionOrIntermediate =
+    FinishesUserTransaction<T> ||
     std::is_same_v<T, ReplicatedOperation::IntermediateCommit>;
 
 template<class T>
