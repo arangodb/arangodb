@@ -204,6 +204,7 @@ class BufferHeapSortContext {
 velocypack::Slice getStoredValue(irs::bytes_view storedValue,
                                  HeapSortElement const& sort) {
   TRI_ASSERT(!sort.isScore());
+  TRI_ASSERT(!storedValue.empty());
   auto* start = storedValue.data();
   [[maybe_unused]] auto* end = start + storedValue.size();
   velocypack::Slice slice{start};
@@ -465,7 +466,8 @@ velocypack::Slice IndexReadBuffer<ValueType, copySorted>::readHeapSortColumn(
   auto& reader = _heapOnlyStoredValuesReaders[readerSlot];
   irs::bytes_view val;
   TRI_ASSERT(!reader.itr || reader.itr->value() <= doc);
-  if (reader.itr && doc == reader.itr->seek(doc)) {
+  if (reader.itr && doc == reader.itr->seek(doc) &&
+      !reader.value->value.empty()) {
     val = reader.value->value;
   } else {
     val = ref<irs::byte_type>(VPackSlice::nullSlice());
@@ -523,7 +525,8 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
         auto& reader = _heapOnlyStoredValuesReaders[storedSliceIdx];
         TRI_ASSERT(!reader.itr || reader.itr->value() <= doc);
         irs::bytes_view val;
-        if (reader.itr && doc == reader.itr->seek(doc)) {
+        if (reader.itr && doc == reader.itr->seek(doc) &&
+            !reader.value->value.empty()) {
           val = reader.value->value;
         } else {
           val = ref<irs::byte_type>(VPackSlice::nullSlice());
@@ -984,8 +987,8 @@ inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
   for (auto const& [fieldNum, registerId] : fieldsRegs) {
     while (i < fieldNum) {
       size += slice.byteSize();
-      TRI_ASSERT(size <= totalSize);
-      if (ADB_UNLIKELY(size > totalSize)) {
+      TRI_ASSERT(size < totalSize);
+      if (ADB_UNLIKELY(size >= totalSize)) {
         return false;
       }
       slice = VPackSlice{slice.end()};
