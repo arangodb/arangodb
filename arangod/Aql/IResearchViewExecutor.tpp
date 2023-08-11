@@ -130,13 +130,13 @@ lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
   }
 }
 
-inline constexpr int kSortMultiplier[]{-1, 1};
+constexpr int kSortMultiplier[]{-1, 1};
 
-template<typename ValueType>
+template<typename ValueType, typename HeapSortType>
 class BufferHeapSortContext {
  public:
   explicit BufferHeapSortContext(std::span<HeapSortValue const> heapSortValues,
-                                 std::span<HeapSortElement const> heapSort)
+                                 std::span<HeapSortType const> heapSort)
       : _heapSortValues(heapSortValues), _heapSort(heapSort) {}
 
   bool operator()(size_t a, size_t b) const noexcept {
@@ -198,7 +198,7 @@ class BufferHeapSortContext {
 
  private:
   std::span<HeapSortValue const> _heapSortValues;
-  std::span<HeapSortElement const> _heapSort;
+  std::span<HeapSortType const> _heapSort;
 };
 
 velocypack::Slice getStoredValue(irs::bytes_view storedValue,
@@ -442,9 +442,10 @@ void IndexReadBuffer<ValueType, copySorted>::pushValue(
 
 template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
-  std::sort(_rows.begin(), _rows.end(),
-            BufferHeapSortContext<typename StoredValuesContainer::value_type>{
-                _heapSortValues, _heapSort});
+  std::sort(
+      _rows.begin(), _rows.end(),
+      BufferHeapSortContext<typename StoredValuesContainer::value_type,
+                            BufferHeapSortElement>{_heapSortValues, _heapSort});
   if (_heapSizeLeft) {
     // heap was not filled up to the limit. So fill buffer here.
     _storedValuesBuffer.resize(_keyBuffer.size() * _storedValuesCount);
@@ -486,7 +487,7 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
     ColumnReaderProvider& readerProvider) {
   auto const heapSortSize = _heapSort.size();
   size_t heapSortValuesIndex = idx * heapSortSize;
-  size_t j = 0;
+  size_t storedSliceIdx{0};
   if constexpr (!copySorted) {
     TRI_ASSERT(_currentDocumentSlices.size() == _currentDocumentBuffer.size());
   }
@@ -503,26 +504,23 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
         _heapSortValues.push_back(HeapSortValue{.score = scores[cmp.source]});
       }
     } else {
-      auto columnMap = _heapUsedStoredColumns.find(cmp.source);
+      TRI_ASSERT(cmp.container);
       auto& valueSlot =
-          columnMap == _heapUsedStoredColumns.end()
-              ? _heapOnlyStoredValuesBuffer[idx * _heapOnlyColumnsCount + j]
-              : _storedValuesBuffer[idx * _storedValuesCount +
-                                    columnMap->second];
+          *(cmp.container->data() + idx * cmp.multiplier + cmp.offset);
       velocypack::Slice slice;
-      if (j < _currentDocumentBuffer.size()) {
-        valueSlot = std::move(_currentDocumentBuffer[j]);
+      if (storedSliceIdx < _currentDocumentBuffer.size()) {
+        valueSlot = std::move(_currentDocumentBuffer[storedSliceIdx]);
         if constexpr (copySorted) {
           slice = getStoredValue(valueSlot, cmp);
         } else {
-          slice = _currentDocumentSlices[j];
+          slice = _currentDocumentSlices[storedSliceIdx];
         }
       } else {
-        TRI_ASSERT(_heapOnlyStoredValuesReaders.size() >= j);
-        if (_heapOnlyStoredValuesReaders.size() == j) {
+        TRI_ASSERT(_heapOnlyStoredValuesReaders.size() >= storedSliceIdx);
+        if (_heapOnlyStoredValuesReaders.size() == storedSliceIdx) {
           _heapOnlyStoredValuesReaders.push_back(readerProvider(cmp.source));
         }
-        auto& reader = _heapOnlyStoredValuesReaders[j];
+        auto& reader = _heapOnlyStoredValuesReaders[storedSliceIdx];
         TRI_ASSERT(!reader.itr || reader.itr->value() <= doc);
         irs::bytes_view val;
         if (reader.itr && doc == reader.itr->seek(doc)) {
@@ -540,7 +538,7 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
       }
       TRI_ASSERT(getStoredValue(valueSlot, cmp).begin() ==
                  _heapSortValues[heapSortValuesIndex].slice.begin());
-      ++j;
+      ++storedSliceIdx;
     }
     ++heapSortValuesIndex;
   }
@@ -553,6 +551,9 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     ValueType&& value, std::span<float_t const> scores, irs::score& score,
     irs::score_t& threshold) {
   TRI_ASSERT(_maxSize);
+  using HeapSortContext =
+      BufferHeapSortContext<typename StoredValuesContainer::value_type,
+                            BufferHeapSortElement>;
   if constexpr (!copySorted) {
     _currentDocumentSlices.clear();
   }
@@ -562,8 +563,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     _heapOnlyStoredValuesReaders.clear();
   }
   if (ADB_LIKELY(!_heapSizeLeft)) {
-    BufferHeapSortContext<typename StoredValuesContainer::value_type>
-        sortContext(_heapSortValues, _heapSort);
+    HeapSortContext sortContext(_heapSortValues, _heapSort);
     size_t readerSlot{0};
     if (sortContext.compareInput(_rows.front(), scores.data(),
                                  [&](iresearch::HeapSortElement const& cmp) {
@@ -609,8 +609,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
                         std::numeric_limits<float_t>::quiet_NaN());
     _rows.push_back(_rows.size());
     if ((--_heapSizeLeft) == 0) {
-      BufferHeapSortContext<typename StoredValuesContainer::value_type>
-          sortContext(_heapSortValues, _heapSort);
+      HeapSortContext sortContext(_heapSortValues, _heapSort);
       _storedValuesBuffer.resize(_keyBuffer.size() * _storedValuesCount);
       std::make_heap(_rows.begin(), _rows.end(), sortContext);
     }
@@ -676,7 +675,8 @@ IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
 template<typename ValueType, bool copyStored>
 void IndexReadBuffer<ValueType, copyStored>::assertSizeCoherence()
     const noexcept {
-  TRI_ASSERT(_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters);
+  TRI_ASSERT((_numScoreRegisters == 0 && _scoreBuffer.size() == 1) ||
+             (_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters));
 }
 
 template<typename Impl, typename ExecutionTraits>

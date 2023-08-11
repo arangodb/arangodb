@@ -284,20 +284,30 @@ class IndexReadBuffer {
   void setHeapSort(std::span<iresearch::HeapSortElement const> s,
                    iresearch::IResearchViewNode::ViewValuesRegisters const&
                        storedValues) noexcept {
-    _heapSort = s;
-    TRI_ASSERT(_heapUsedStoredColumns.empty());
+    TRI_ASSERT(_heapSort.empty());
     TRI_ASSERT(_heapOnlyColumnsCount == 0);
-    for (auto const& c : _heapSort) {
+    auto const storedValuesCount = storedValues.size();
+    size_t j = 0;
+    for (auto const& c : s) {
+      BufferHeapSortElement& sort = _heapSort.emplace_back(c);
       if (c.isScore()) {
         continue;
       }
       auto it = storedValues.find(c.source);
       if (it != storedValues.end()) {
-        _heapUsedStoredColumns.emplace(
-            c.source,
-            static_cast<size_t>(std::distance(storedValues.begin(), it)));
+        sort.container = &_storedValuesBuffer;
+        sort.multiplier = storedValuesCount;
+        sort.offset =
+            static_cast<size_t>(std::distance(storedValues.begin(), it));
       } else {
+        sort.container = &_heapOnlyStoredValuesBuffer;
+        sort.offset = j++;
         ++_heapOnlyColumnsCount;
+      }
+    }
+    for (auto& c : _heapSort) {
+      if (c.container == &_heapOnlyStoredValuesBuffer) {
+        c.multiplier = _heapOnlyColumnsCount;
       }
     }
   }
@@ -414,6 +424,12 @@ class IndexReadBuffer {
 
   StoredValuesContainer const& getStoredValues() const noexcept;
 
+  struct BufferHeapSortElement : iresearch::HeapSortElement {
+    StoredValuesContainer* container{};
+    size_t offset{};
+    size_t multiplier{};
+  };
+
  private:
   // _keyBuffer, _scoreBuffer, _storedValuesBuffer together hold all the
   // information read from the iresearch index.
@@ -451,8 +467,6 @@ class IndexReadBuffer {
   std::vector<irs::score_t> _scoreBuffer;
   StoredValuesContainer _storedValuesBuffer;
   // Heap Sort facilities
-  // maps stored column to index in _storedValuesBuffer
-  containers::FlatHashMap<ptrdiff_t, size_t> _heapUsedStoredColumns;
   // atMost * <num heap only values>
   StoredValuesContainer _heapOnlyStoredValuesBuffer;
   // <num heap only values>
@@ -460,10 +474,10 @@ class IndexReadBuffer {
   // <num heap only values>
   StoredValuesContainer _currentDocumentBuffer;
   IRS_NO_UNIQUE_ADDRESS
-  irs::utils::Need<copyStored, std::vector<velocypack::Slice>>
+  irs::utils::Need<!copyStored, std::vector<velocypack::Slice>>
       _currentDocumentSlices;
   std::vector<HeapSortValue> _heapSortValues;
-  std::span<iresearch::HeapSortElement const> _heapSort;
+  std::vector<BufferHeapSortElement> _heapSort;
   size_t _heapOnlyColumnsCount{0};
   size_t _currentReaderOffset{std::numeric_limits<size_t>::max()};
 
