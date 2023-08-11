@@ -597,6 +597,30 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
       let plan = lh.readAgencyValueAt(`Plan/ReplicatedLogs/${dbNameR1}`);
       assertEqual(plan, undefined, `Expected no replicated logs in agency, got ${JSON.stringify(plan)}`);
     },
+
+    testChangeCollectionProperties: function () {
+      // This test does not work with replication version 2,
+      // because the collection properties must be changed in Target.
+      // I'm leaving this test here for now, because it is a good example.
+      let collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
+      collection.properties({computedValues: [{
+          name: "createdAt",
+          expression: "RETURN DATE_NOW()",
+          overwrite: true,
+          computeOn: ["insert"]
+      }]});
+
+      let cnt = 0;
+      lh.waitFor(() => {
+        ++cnt;
+        collection.insert({_key: `bar${cnt}`});
+        let doc = collection.document(`bar${cnt}`);
+        if ("createdAt" in doc) {
+          return true;
+        }
+        return Error(`No createdAt property in doc: ${JSON.stringify(doc)}`);
+      });
+    }
   };
 };
 
@@ -979,11 +1003,14 @@ const replicatedStateDocumentShardsSuite = function () {
         name: "createdAt",
         expression: "RETURN DATE_NOW()",
         overwrite: true,
+        keepNull: true,
+        failOnWarning: false,
         computeOn: ["insert"]
       }];
       helper.agency.set(`Plan/Collections/${database}/${cid}`, plan);
       helper.agency.increaseVersion(`Plan/Version`);
 
+      // Wait for the shard to be modified.
       let cnt = 0;
       lh.waitFor(() => {
         ++cnt;
@@ -994,12 +1021,25 @@ const replicatedStateDocumentShardsSuite = function () {
         }
         return Error(`No createdAt property in doc: ${JSON.stringify(doc)}`);
       });
+      const firstTermCollection = collection.toArray();
 
-      // Trigger a failover, so that ModifyShard is executed during recovery.
+      // Get the log id.
       const shards = collection.shards();
       const shardsToLogs = lh.getShardsToLogsMapping(database, cid);
       const shardId = shards[0];
       const logId = shardsToLogs[shardId];
+
+      // Check if the universal abort command appears in the log during the current term.
+      let logContents = lh.dumpLogHead(logId);
+      let modifyShardEntryFound = _.some(logContents, entry => {
+        if (entry.payload === undefined) {
+          return false;
+        }
+        return entry.payload.operation.type === "ModifyShard";
+      });
+      assertTrue(modifyShardEntryFound, `Log contents for ${shardId}: ${JSON.stringify(logContents)}`);
+
+      // Trigger a fail-over, so that ModifyShard is executed during recovery.
       const participants = lhttp.listLogs(lh.coordinators[0], database).result[logId];
       let leader = participants[0];
       let followers = participants.slice(1);
@@ -1008,9 +1048,16 @@ const replicatedStateDocumentShardsSuite = function () {
       stopServerWait(leader);
       lh.waitFor(lp.replicatedLogLeaderEstablished(database, logId, newTerm, followers));
 
+      // The new leader should have executed the ModifyShard command.
       collection.insert({_key: "foo"});
       let doc = collection.document("foo");
       assertTrue('createdAt' in doc, JSON.stringify(doc));
+
+      // The previous computed-values should hold.
+      for (let originalDoc of firstTermCollection) {
+        let doc = collection.document(originalDoc._key);
+        assertEqual(doc, originalDoc);
+      }
     }
   };
 };
