@@ -1535,8 +1535,8 @@ AqlValue functions::ToString(ExpressionContext* expr, AstNode const&,
 }
 
 /// @brief function FROM_BASE64
-AqlValue functions::ToBase64(ExpressionContext* expr, AstNode const&,
-                             VPackFunctionParametersView parameters) {
+AqlValue functions::FromBase64(ExpressionContext* expr, AstNode const&,
+                               VPackFunctionParametersView parameters) {
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -1545,10 +1545,10 @@ AqlValue functions::ToBase64(ExpressionContext* expr, AstNode const&,
 
   ::appendAsString(trx.vpackOptions(), adapter, value);
 
-  std::string encoded =
+  std::string decoded =
       basics::StringUtils::decodeBase64(buffer->data());
 
-  return AqlValue(encoded);
+  return AqlValue(decoded);
 }
 
 /// @brief function TO_BASE64
