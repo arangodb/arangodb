@@ -40,6 +40,10 @@ struct IMaintenanceActionExecutor {
   virtual auto executeDropCollectionAction(ShardID shard,
                                            CollectionID collection)
       -> Result = 0;
+  virtual auto executeModifyCollectionAction(
+      ShardID shard, CollectionID collection,
+      std::shared_ptr<VPackBuilder> properties, std::string followersToDrop)
+      -> Result = 0;
   virtual void addDirty() = 0;
 };
 
@@ -51,6 +55,10 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
                                      std::shared_ptr<VPackBuilder> properties)
       -> Result override;
   auto executeDropCollectionAction(ShardID shard, CollectionID collection)
+      -> Result override;
+  auto executeModifyCollectionAction(ShardID shard, CollectionID collection,
+                                     std::shared_ptr<VPackBuilder> properties,
+                                     std::string followersToDrop)
       -> Result override;
   void addDirty() override;
 

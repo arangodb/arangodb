@@ -297,7 +297,7 @@ static void handlePlanShard(
 
     std::string_view const localLeader = lcol.get(THE_LEADER).stringView();
     bool leading = localLeader.empty();
-    auto const properties = compareRelevantProps(cprops, lcol);
+    auto properties = compareRelevantProps(cprops, lcol);
 
     auto fullShardLabel = dbname + "/" + colname + "/" + shname;
 
@@ -347,18 +347,23 @@ static void handlePlanShard(
     TRI_ASSERT(properties->slice().isObject());
     if (properties->slice().length() > 0 || !followersToDropString.empty()) {
       if (errors.shards.find(fullShardLabel) == errors.shards.end()) {
-        description = std::make_shared<ActionDescription>(
-            std::map<std::string, std::string>{
-                {NAME, UPDATE_COLLECTION},
-                {DATABASE, dbname},
-                {COLLECTION, colname},
-                {SHARD, shname},
-                {SERVER_ID, serverId},
-                {FOLLOWERS_TO_DROP, followersToDropString}},
-            HIGHER_PRIORITY, true, std::move(properties));
-        makeDirty.insert(dbname);
-        callNotify = true;
-        actions.emplace_back(std::move(description));
+        if (replicationVersion != replication::Version::TWO ||
+            shouldBeLeading) {
+          // Skip for replication 2 databases on followers
+          description = std::make_shared<ActionDescription>(
+              std::map<std::string, std::string>{
+                  {NAME, UPDATE_COLLECTION},
+                  {DATABASE, dbname},
+                  {COLLECTION, colname},
+                  {SHARD, shname},
+                  {SERVER_ID, serverId},
+                  {FOLLOWERS_TO_DROP, followersToDropString},
+                  {"from", "maintenance"}},
+              HIGHER_PRIORITY, true, std::move(properties));
+          makeDirty.insert(dbname);
+          callNotify = true;
+          actions.emplace_back(std::move(description));
+        }
       } else {
         LOG_TOPIC("0285b", DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for local shard " << dbname << "/"

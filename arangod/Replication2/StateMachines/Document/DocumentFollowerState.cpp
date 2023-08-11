@@ -579,4 +579,16 @@ auto DocumentFollowerState::GuardedData::applyEntry(
       activeTransactions.getReleaseIndex().value_or(index));
 }
 
+auto DocumentFollowerState::GuardedData::applyEntry(
+    ReplicatedOperation::ModifyShard const& op, LogIndex index)
+    -> ResultT<std::optional<LogIndex>> {
+  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
+    return res;
+  }
+
+  // Once the shard has been modified, we can release the entry.
+  return ResultT<std::optional<LogIndex>>::success(
+      activeTransactions.getReleaseIndex().value_or(index));
+}
+
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"

@@ -28,11 +28,14 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/DatabaseGuard.h"
@@ -85,10 +88,20 @@ bool UpdateCollection::first() {
   auto const& props = properties();
   Result res;
 
+  std::string from;
+  _description.get("from", from);
+
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
+
+    if (vocbase.replicationVersion() == replication::Version::TWO &&
+        from == "maintenance") {
+      // Replication2 leader code
+      return updateReplication2Shard(collection, shard, followersToDrop,
+                                     vocbase);
+    }
 
     std::shared_ptr<LogicalCollection> coll;
     Result found = methods::Collections::lookup(vocbase, shard, coll);
@@ -158,4 +171,24 @@ void UpdateCollection::setState(ActionState state) {
     _feature.unlockShard(getShard());
   }
   ActionBase::setState(state);
+}
+
+bool UpdateCollection::updateReplication2Shard(
+    CollectionID const& collection, ShardID const& shard,
+    std::string const& followersToDrop, TRI_vocbase_t& vocbase) const {
+  std::shared_ptr<LogicalCollection> coll;
+  Result found = methods::Collections::lookup(vocbase, shard, coll);
+
+  if (found.ok()) {
+    auto result = coll->getDocumentStateLeader()
+                      ->modifyShard(shard, collection,
+                                    _description.properties(), followersToDrop)
+                      .get();
+    if (result.fail()) {
+      LOG_TOPIC("76955", ERR, Logger::MAINTENANCE)
+          << "failed to modify shard " << result;
+    }
+  }
+
+  return false;
 }

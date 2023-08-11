@@ -98,6 +98,8 @@ struct DocumentFollowerState
         -> ResultT<std::optional<LogIndex>>;
     auto applyEntry(ReplicatedOperation::AbortAllOngoingTrx const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::ModifyShard const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
     auto applyEntry(ReplicatedOperation::DropShard const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
     auto applyEntry(ReplicatedOperation::CreateShard const&, LogIndex)
