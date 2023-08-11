@@ -456,8 +456,8 @@ const generateWindowBoundsSuite = (namePrefix) => {
     [`testAggregate${namePrefix}`]: function() {
       const query = `
         FOR doc IN ${collectionName}
-        SORT doc._key
-        LET key = doc._key
+        SORT doc.key
+        LET key = doc.key
         WINDOW {preceding: "unbounded", following: 0} AGGREGATE i = SUM(1)
         RETURN {key, i}`;
       const result = db._query(query).toArray();
@@ -470,8 +470,8 @@ const generateWindowBoundsSuite = (namePrefix) => {
     [`testLength${namePrefix}`]: function() {
       const query = `
         FOR doc IN ${collectionName}
-        SORT doc._key
-        LET key = doc._key
+        SORT doc.key
+        LET key = doc.key
         WINDOW {preceding: "unbounded", following: 0} AGGREGATE i = LENGTH()
         RETURN {key, i}`;
       const result = db._query(query).toArray();
@@ -484,12 +484,12 @@ const generateWindowBoundsSuite = (namePrefix) => {
     [`testRangeWindow${namePrefix}`]: function() {
       const query = `
         FOR doc IN ${collectionName}
-        LET key = doc._key
+        LET key = doc.key
         WINDOW doc.v WITH {preceding: 100, following: 0} AGGREGATE i = LENGTH()
         RETURN {key, i}`;
       const result = db._query(query).toArray();
-      // As Docs _key and v are identical, this should yield
-      // a result sorted by _key.
+      // As Docs key and v are identical, this should yield
+      // a result sorted by key.
       for (let i = 0; i < result.length; ++i) {
         assertEqual(result[i].key, `${i}`);
         assertEqual(result[i].i, i + 1);
@@ -499,13 +499,13 @@ const generateWindowBoundsSuite = (namePrefix) => {
     [`testRangeDuration${namePrefix}`]: function() {
       const query = `
         FOR doc IN ${collectionName}
-        LET key = doc._key
+        LET key = doc.key
         WINDOW DATE_TIMESTAMP(doc.time) WITH { preceding: "PT03M" }
         AGGREGATE i = LENGTH()
         RETURN {key, i}`;
       const result = db._query(query).toArray();
-      // As Docs _key and v are identical, this should yield
-      // a result sorted by _key.
+      // As Docs key and v are identical, this should yield
+      // a result sorted by key.
       for (let i = 0; i < result.length; ++i) {
         assertEqual(result[i].key, `${i}`);
         if (i < 4) {
@@ -526,7 +526,7 @@ function WindowBoundsManyShardSuite() {
     let docs = [];
     for (let i = 0; i < 10; ++i) {
       docs.push({
-        _key: `${i}`,
+        key: `${i}`,
         v: i,
         time: `2021-05-25 07:${i.toString().padStart(2, '0')}:00`,
       });
@@ -543,9 +543,10 @@ function WindowBoundsNonKeyShardedSuite() {
   const suite = generateWindowBoundsSuite("NonKeySharded");
   suite.setUpAll = function() {
     db._create(collectionName, {numberOfShards: 3, shardKeys: ["value"]});
+    require("internal").print(JSON.stringify(db._collection(collectionName).properties()));
     let docs = [];
     for (let i = 0; i < 10; ++i) {
-      docs.push({_key: `${i}`,
+      docs.push({key: `${i}`,
         value: `v_${i % 3}`,
         v: i,
         time: `2021-05-25 07:${i.toString().padStart(2, '0')}:00`,
@@ -565,7 +566,7 @@ function WindowBoundsSuite() {
     db._create(collectionName, {numberOfShards: 1});
     let docs = [];
     for (let i = 0; i < 10; ++i) {
-      docs.push({_key: `${i}`,
+      docs.push({key: `${i}`,
         v: i,
         time: `2021-05-25 07:${i.toString().padStart(2, '0')}:00`
       });
@@ -587,7 +588,7 @@ function WindowBoundsOneShardSuite() {
     db._create(collectionName);
     let docs = [];
     for (let i = 0; i < 10; ++i) {
-      docs.push({_key: `${i}`,
+      docs.push({key: `${i}`,
         v: i,
         time: `2021-05-25 07:${i.toString().padStart(2, '0')}:00`
       });
