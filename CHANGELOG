@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS-1544: The _system database now properly reports its sharding value.
+
 * Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used
   in the row based variant like (e.g. WINDOW { preceding: 1, following: 1 })
   it errored with:  mandatory variable "inVariable" not found. This variable
