@@ -140,15 +140,6 @@ void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
   // is more to get"! In this case, we need to check, if we have already
   // skipped the requested count, and if not, try again (with a potentially
   // reduced count):
-#if 0
-  nextImpl(
-      [&skipped](LocalDocumentId const&) {
-        ++skipped;
-        return true;
-      },
-      count);
-#endif
-#if 1
   uint64_t skippedInitial = skipped;
   do {
     TRI_ASSERT(skipped >= skippedInitial && skipped - skippedInitial <= count);
@@ -161,5 +152,4 @@ void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
       return;
     }
   } while (skipped - skippedInitial < count);
-#endif
 }
