@@ -48,7 +48,7 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 
 namespace {
-const double SETUP_TIMEOUT = 3600.0;
+const double SETUP_TIMEOUT = 10.0;
 // Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
 const double FAST_PATH_LOCK_TIMEOUT = 2.0;
 
