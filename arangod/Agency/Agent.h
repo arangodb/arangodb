@@ -99,12 +99,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief My endpoint
   std::string endpoint() const;
 
-  /// @brief Verbose print of myself
-  void print(arangodb::LoggerStream&) const;
-
-  /// @brief Are we fit to run?
-  bool fitness() const;
-
   /// @brief Leader ID
   index_t lastCommitted() const;
 
@@ -186,12 +180,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// can advance _commitIndex and apply things to readDB.
   void advanceCommitIndex();
 
-  /// In a single server agency advanceCommitIndex can be called from any
-  /// thread which does `transact` or `write`. However, it is not thread-safe,
-  /// since it is usually only called in the main agent thread. Therefore,
-  /// in these cases we protect it with this mutex.
-  std::mutex _protectAdvanceCommitIndexInSingleServerAgency;
-
  public:
   /// @brief Get last confirmed index of an agent. Default my own.
   ///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
@@ -207,17 +195,8 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   ///        2. Report success of write processes.
   void run() override final;
 
-  /// @brief Are we still booting?
-  bool booting();
-
   /// @brief Gossip in
   query_t gossip(velocypack::Slice, bool callback = false, size_t version = 0);
-
-  /// @brief Persisted agents
-  bool persistedAgents();
-
-  /// @brief Gossip in
-  bool activeAgency();
 
   /// @brief Get the index at which the leader is
   index_t index();
@@ -290,9 +269,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief Get transient store
   /// WARNING: this assumes caller holds _transientLock
   Store const& transient() const;
-
-  /// @brief Serve active agent interface
-  bool serveActiveAgent();
 
   /// @brief Get notification as inactive pool member
   void notify(velocypack::Slice message);

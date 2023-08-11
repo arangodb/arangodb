@@ -800,13 +800,13 @@ void Agent::sendAppendEntriesRPC() {
                  std::to_string(std::llround(steadyClockToDouble() * 1000)));
 
       // Send request
-      auto ac =
-          std::make_shared<AgentCallback>(this, followerId, highest, toLog);
+      auto ac = AgentCallback{this, followerId, highest, toLog};
       network::sendRequest(
           cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
           // cppcheck-suppress accessMoved
           "/_api/agency_priv/appendEntries", std::move(buffer), reqOpts)
-          .thenValue([=](network::Response r) { ac->operator()(r); });
+          .thenValue(
+              [ac = std::move(ac)](network::Response r) { ac.operator()(r); });
 
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
@@ -875,7 +875,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
   // Send request
   VPackBufferUInt8 buffer;
   buffer.append(VPackSlice::emptyArraySlice().begin(), 1);
-  auto ac = std::make_shared<AgentCallback>(this, followerId, 0, 0);
+  auto ac = AgentCallback{this, followerId, 0, 0};
 
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
@@ -894,7 +894,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
                        // cppcheck-suppress accessMoved
                        "/_api/agency_priv/appendEntries", std::move(buffer),
                        reqOpts)
-      .thenValue([=](network::Response r) { ac->operator()(r); });
+      .thenValue([=](network::Response r) { ac.operator()(r); });
   double diff = TRI_microtime() - now;
   if (diff > 0.01) {
     LOG_TOPIC("cfb7c", DEBUG, Logger::AGENCY)
@@ -2025,9 +2025,6 @@ void Agent::setPersistedState(VPackSlice compaction) {
     LOG_TOPIC("70844", ERR, Logger::AGENCY) << e.what();
   }
 }
-
-/// Are we still starting up?
-bool Agent::booting() { return (!_config.poolComplete()); }
 
 /// We expect an object as follows {id:<id>,endpoint:<endpoint>,pool:{...}}
 /// key: uuid value: endpoint
