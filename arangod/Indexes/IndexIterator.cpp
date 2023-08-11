@@ -134,11 +134,32 @@ bool IndexIterator::nextCoveringImpl(CoveringCallback const&,
 
 /// @brief default implementation for skip
 void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
-  // Skip the first count-many entries
+  // Skip the first count-many entries.
+  // It is possible that `nextImpl` does not actually move `count` steps
+  // forward, however, it will then say so by returning `true` for "there
+  // is more to get"! In this case, we need to check, if we have already
+  // skipped the requested count, and if not, try again (with a potentially
+  // reduced count):
+#if 0
   nextImpl(
       [&skipped](LocalDocumentId const&) {
         ++skipped;
         return true;
       },
       count);
+#endif
+#if 1
+  uint64_t skippedInitial = skipped;
+  do {
+    // Invariant: skipped-skippedInitial <= count
+    if (!nextImpl(
+            [&skipped](LocalDocumentId const&) {
+              ++skipped;
+              return true;
+            },
+            count - (skipped - skippedInitial))) {
+      return;
+    }
+  } while (skipped - skippedInitial < count);
+#endif
 }
