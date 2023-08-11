@@ -151,7 +151,7 @@ void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
 #if 1
   uint64_t skippedInitial = skipped;
   do {
-    // Invariant: skipped-skippedInitial <= count
+    TRI_ASSERT(skipped >= skippedInitial && skipped - skippedInitial <= count);
     if (!nextImpl(
             [&skipped](LocalDocumentId const&) {
               ++skipped;
