@@ -51,7 +51,7 @@ function VPackIndexInAggregationSuite (unique) {
     },
     
     testVPackAggregateBySingleAttributeUsingIn: function () {
-      for (let i = 1; i < 3; i += 1) {
+      for (let i = 1; i < 4; i += 1) {
         const values = [];
         for (let j = 0; j < i; ++j) {
           values.push(String(j).padStart(3, "0"));
@@ -70,6 +70,20 @@ function VPackIndexInAggregationSuite (unique) {
         let results = qr.toArray();
         assertEqual(i, results[0]);
       }
+    },
+    
+    testVPackAggregateBySingleAttributeUsingOr: function () {
+      const q = `FOR doc IN ${cn} FILTER doc.value1 == "000" OR doc.value1 == "001" COLLECT WITH COUNT INTO count RETURN count`;
+
+      let nodes = AQL_EXPLAIN(q).plan.nodes;
+      let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
+      assertEqual(1, indexNodes.length);
+      assertEqual(1, indexNodes[0].indexes.length);
+      assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
+
+      let qr = db._query(q);
+      let results = qr.toArray();
+      assertEqual(2, results[0]);
     },
     
   };
