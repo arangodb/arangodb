@@ -98,8 +98,7 @@ class AqlExecutorTestCase : public ::testing::Test {
   static inline std::unique_ptr<mocks::MockAqlServer> _server;
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor,
-                                       SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor};
   std::shared_ptr<arangodb::aql::Query> fakedQuery;
 };
 

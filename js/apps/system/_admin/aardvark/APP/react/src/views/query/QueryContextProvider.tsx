@@ -14,6 +14,8 @@ import { useSavedQueriesHandlers } from "./useSavedQueriesHandlers";
 export type QueryExecutionOptions = {
   queryValue: string;
   queryBindParams?: { [key: string]: string };
+  queryOptions?: { [key: string]: any };
+  disabledRules?: string[];
 };
 type QueryContextType = {
   queryValue: string;
@@ -67,6 +69,10 @@ type QueryContextType = {
   setQueryLimit: (value: number | "all") => void;
   runningQueries?: QueryInfo[];
   refetchRunningQueries: () => Promise<void>;
+  queryOptions: { [key: string]: any };
+  setQueryOptions: React.Dispatch<React.SetStateAction<{ [key: string]: any }>>;
+  disabledRules: string[];
+  setDisabledRules: React.Dispatch<React.SetStateAction<string[]>>;
 };
 
 const QueryContext = React.createContext<QueryContextType>(
@@ -87,7 +93,11 @@ export const QueryContextProvider = ({
     setCurrentQueryName,
     onQueryChange,
     onQueryValueChange,
-    onBindParamsChange
+    onBindParamsChange,
+    disabledRules,
+    setDisabledRules,
+    queryOptions,
+    setQueryOptions
   } = useQueryEditorHandlers();
 
   const {
@@ -131,6 +141,7 @@ export const QueryContextProvider = ({
     onClose: onCloseSpotlight
   } = useDisclosure();
   const { runningQueries, refetchRunningQueries } = useFetchRunningQueries();
+
   return (
     <QueryContext.Provider
       value={{
@@ -172,7 +183,11 @@ export const QueryContextProvider = ({
         onRemoveAllResults,
         onSaveQueryList,
         runningQueries,
-        refetchRunningQueries
+        refetchRunningQueries,
+        queryOptions,
+        setQueryOptions,
+        disabledRules,
+        setDisabledRules
       }}
     >
       <QueryKeyboardShortcutProvider>
