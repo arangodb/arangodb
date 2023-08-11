@@ -517,7 +517,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase()),
       arangodb::aql::QueryString(queryString), nullptr);
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   ASSERT_TRUE(query->ast());
   auto plan =
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
@@ -570,8 +570,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       fetcher(dummyProxy);
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  arangodb::aql::AqlItemBlockManager itemBlockManager{
-      monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::aql::AqlItemBlockManager itemBlockManager{monitor};
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
@@ -601,7 +600,7 @@ TEST_F(IResearchViewCountApproximateTest,
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase()),
       arangodb::aql::QueryString(queryString), nullptr);
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   ASSERT_TRUE(query->ast());
   auto plan =
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
@@ -653,8 +652,7 @@ TEST_F(IResearchViewCountApproximateTest,
       fetcher(dummyProxy);
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  arangodb::aql::AqlItemBlockManager itemBlockManager{
-      monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::aql::AqlItemBlockManager itemBlockManager{monitor};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock =
       itemBlockManager.requestBlock(1, 1);
   arangodb::aql::IResearchViewMergeExecutor<arangodb::aql::ExecutionTraits<
@@ -686,7 +684,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase()),
       arangodb::aql::QueryString(queryString), nullptr);
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   ASSERT_TRUE(query->ast());
   auto plan =
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
@@ -738,8 +736,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       fetcher(dummyProxy);
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  arangodb::aql::AqlItemBlockManager itemBlockManager{
-      monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::aql::AqlItemBlockManager itemBlockManager{monitor};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock =
       itemBlockManager.requestBlock(1, 1);
   arangodb::aql::IResearchViewMergeExecutor<arangodb::aql::ExecutionTraits<

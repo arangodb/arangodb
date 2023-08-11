@@ -1,32 +1,13 @@
-import { ExternalLinkIcon } from "@chakra-ui/icons";
-import {
-  Divider,
-  Flex,
-  Grid,
-  Link,
-  Stack,
-  Switch,
-  Text
-} from "@chakra-ui/react";
+import { Divider, Flex, Grid, Stack, Switch, Text } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
 import { InputControl } from "../../../components/form/InputControl";
 import { SelectControl } from "../../../components/form/SelectControl";
+import { ExternalLink } from "../../../components/link/ExternalLink";
 import { AnalyzerTypes } from "../Analyzer.types";
 import { useAnalyzersContext } from "../AnalyzersContext";
-import { TYPE_TO_LABEL_MAP } from "../AnalyzersHelpers";
+import { ANALYZER_TYPE_OPTIONS } from "../AnalyzersHelpers";
 import { AnalyzerTypeForm } from "./AnalyzerTypeForm";
-
-const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP)
-  .map(type => {
-    const excludedTypes = ["minhash"];
-    if (excludedTypes.includes(type)) return null;
-    return {
-      value: type,
-      label: TYPE_TO_LABEL_MAP[type as AnalyzerTypes]
-    };
-  })
-  .filter(Boolean) as { label: string; value: string }[];
 
 export const AddAnalyzerForm = ({
   initialFocusRef
@@ -57,18 +38,13 @@ export const AddAnalyzerForm = ({
                 options: ANALYZER_TYPE_OPTIONS
               }}
             />
-            <Link
-              spacing="1"
-              as={Stack}
-              alignItems="center"
-              direction="row"
+            <ExternalLink
               marginLeft="2"
               marginBottom="2"
-              target="_blank"
               href={`https://www.arangodb.com/docs/stable/analyzers.html#${analyzerTypeValue}`}
             >
-              <Text>Docs</Text> <ExternalLinkIcon />
-            </Link>
+              Docs
+            </ExternalLink>
           </Flex>
         </Grid>
       </Stack>
@@ -79,6 +55,7 @@ export const AddAnalyzerForm = ({
           <FeatureSwitch name="frequency" />
           <FeatureSwitch name="norm" />
           <FeatureSwitch name="position" />
+          <FeatureSwitch name="offset" />
         </Grid>
       </Stack>
       <AnalyzerTypeForm analyzerType={analyzerTypeValue} />
@@ -89,7 +66,8 @@ export const AddAnalyzerForm = ({
 const FEATURE_NAME_TO_LABEL_MAP = {
   frequency: "Frequency",
   norm: "Norm",
-  position: "Position"
+  position: "Position",
+  offset: "Offset"
 };
 
 const FeatureSwitch = ({ name }: { name: string }) => {

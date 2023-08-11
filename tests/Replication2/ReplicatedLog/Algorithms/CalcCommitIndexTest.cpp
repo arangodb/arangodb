@@ -254,7 +254,7 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
           reason.value);
   EXPECT_EQ(details.candidates.size(), 1U);
   EXPECT_EQ(details.candidates.at("A"),
-            CommitFailReason::NonEligibleServerRequiredForQuorum::
+            CommitFailReason::NonEligibleServerRequiredForQuorum::Why::
                 kNotAllowedInQuorum);
 
   EXPECT_EQ(quorum.size(), 0U);
@@ -716,9 +716,9 @@ TEST_F(CalcCommitIndexTest, who_all_excluded) {
   EXPECT_EQ(reason,
             (CommitFailReason::withNonEligibleServerRequiredForQuorum(
                 {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::
-                           kNotAllowedInQuorum},
+                           Why::kNotAllowedInQuorum},
                  {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
-                           kNotAllowedInQuorum}})))
+                           Why::kNotAllowedInQuorum}})))
       << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
 
@@ -744,13 +744,12 @@ TEST_F(CalcCommitIndexTest, who_all_excluded_wrong_term) {
 
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_EQ(syncCommitIndex, expectedLogIndex);
-  EXPECT_EQ(
-      reason,
-      (CommitFailReason::withNonEligibleServerRequiredForQuorum(
-          {{"A",
-            CommitFailReason::NonEligibleServerRequiredForQuorum::kWrongTerm},
-           {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
-                     kNotAllowedInQuorum}})))
+  EXPECT_EQ(reason,
+            (CommitFailReason::withNonEligibleServerRequiredForQuorum(
+                {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           Why::kWrongTerm},
+                 {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                           Why::kNotAllowedInQuorum}})))
       << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
 
@@ -881,11 +880,11 @@ TEST_F(CalcCommitIndexTest, who_non_eligible_required) {
   EXPECT_EQ(reason,
             (CommitFailReason::withNonEligibleServerRequiredForQuorum(
                 {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::
-                           kNotAllowedInQuorum},
+                           Why::kNotAllowedInQuorum},
                  {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
-                           kNotAllowedInQuorum},
+                           Why::kNotAllowedInQuorum},
                  {"C", CommitFailReason::NonEligibleServerRequiredForQuorum::
-                           kWrongTerm}})))
+                           Why::kWrongTerm}})))
       << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
 
@@ -948,8 +947,8 @@ TEST_F(CalcCommitIndexTest, no_snapshot_is_non_eligible_but_required) {
   auto expectedCommitIndex = TermIndexPair(LogTerm{2}, LogIndex{25});
   auto who =
       CommitFailReason::NonEligibleServerRequiredForQuorum::CandidateMap{};
-  who["C"] =
-      CommitFailReason::NonEligibleServerRequiredForQuorum::kSnapshotMissing;
+  who["C"] = CommitFailReason::NonEligibleServerRequiredForQuorum::Why::
+      kSnapshotMissing;
   auto const expected =
       CommitFailReason::withNonEligibleServerRequiredForQuorum(std::move(who));
   auto [index, syncCommitIndex, reason, quorum] =
