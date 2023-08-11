@@ -980,18 +980,15 @@ inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
     ReadContext& ctx, irs::bytes_view storedValue,
     std::map<size_t, RegisterId> const& fieldsRegs) {
   TRI_ASSERT(!storedValue.empty());
-  auto const totalSize = storedValue.size();
-  VPackSlice slice{storedValue.data()};
-  size_t size = 0;
+  auto* start = storedValue.data();
+  [[maybe_unused]] auto* end = start + storedValue.size();
+  velocypack::Slice slice{start};
   size_t i = 0;
   for (auto const& [fieldNum, registerId] : fieldsRegs) {
     while (i < fieldNum) {
-      size += slice.byteSize();
-      TRI_ASSERT(size < totalSize);
-      if (ADB_UNLIKELY(size >= totalSize)) {
-        return false;
-      }
-      slice = VPackSlice{slice.end()};
+      start += slice.byteSize();
+      TRI_ASSERT(start < end);
+      slice = velocypack::Slice{start};
       ++i;
     }
     TRI_ASSERT(!slice.isNone());

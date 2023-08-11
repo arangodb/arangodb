@@ -289,7 +289,7 @@ class IndexReadBuffer {
     auto const storedValuesCount = storedValues.size();
     size_t j = 0;
     for (auto const& c : s) {
-      BufferHeapSortElement& sort = _heapSort.emplace_back(c);
+      auto& sort = _heapSort.emplace_back(BufferHeapSortElement{c});
       if (c.isScore()) {
         continue;
       }
