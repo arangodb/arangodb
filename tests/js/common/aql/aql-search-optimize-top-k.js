@@ -27,6 +27,7 @@ const internal = require("internal");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const dbName = "testOptimizeTopK";
+const isEnterprise = require("internal").isEnterprise();
 
 function testOptimizeTopK () {
   return {
@@ -81,5 +82,7 @@ function testOptimizeTopK () {
   };
 }
 
-jsunity.run(testOptimizeTopK);
+if (!isEnterprise) {
+  jsunity.run(testOptimizeTopK);
+}
 return jsunity.done();
