@@ -3,6 +3,8 @@ devel
 
 * BTS-1544: The _system database now properly reports its sharding value.
 
+* Updated arangosync to v2.19.3.
+
 * FE-94: Support for query options and optimizer rules on web UI.
 
 * FE-308: Support for graph editing on web UI.

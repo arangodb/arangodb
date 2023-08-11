@@ -48,8 +48,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
  protected:
   GlobalResourceMonitor global;
   ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor,
-                                       SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor};
 
   AqlItemBlockInputRange createEmpty() {
     auto state = GetParam() == ExecutorState::HASMORE ? MainQueryState::HASMORE

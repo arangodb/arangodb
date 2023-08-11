@@ -146,7 +146,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
   // dummy query
   MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
                   arangodb::aql::QueryString(std::string_view("RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery();
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
 
@@ -296,7 +296,7 @@ TEST_F(IResearchViewNodeTest, construct) {
   // dummy query
   MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
                   arangodb::aql::QueryString(std::string_view("RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery();
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
 
@@ -906,7 +906,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
                   arangodb::aql::QueryString(
                       std::string_view("LET variable = 42 LET scoreVariable1 = "
                                        "1 LET scoreVariable2 = 2 RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery();
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
 
@@ -1904,7 +1904,7 @@ TEST_F(IResearchViewNodeTest, clone) {
   // dummy query
   MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
                   arangodb::aql::QueryString(std::string_view("RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery();
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
 
@@ -1948,7 +1948,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -1977,7 +1977,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -2050,7 +2050,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -2079,7 +2079,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -2149,7 +2149,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -2181,7 +2181,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -2256,7 +2256,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -2288,7 +2288,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -2363,7 +2363,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(otherQuery.plan(), true, true));
@@ -2398,7 +2398,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -2463,7 +2463,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -2483,7 +2483,7 @@ TEST_F(IResearchViewNodeTest, clone) {
       MockQuery otherQuery(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
@@ -2513,7 +2513,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
                   arangodb::aql::QueryString(
                       std::string_view("let variable = 1 let variable100 = 3 "
                                        "let variable101 = 2 RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery();
 
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
@@ -3033,7 +3033,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
         "\"name\": \"d\",\"id\": 0 }]}]}}] "
         " }");
 
-    queryScores.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+    queryScores.prepareQuery();
     arangodb::aql::Variable const outVariable("variable", 0, false,
                                               resourceMonitor);
     arangodb::aql::Variable const outScore0("variable100", 1, false,
@@ -3103,7 +3103,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
                   arangodb::aql::QueryString(
                       std::string_view("let variable = 1 let variable100 = 3 "
                                        "let variable101 = 2 RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery();
 
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
@@ -3419,7 +3419,7 @@ TEST_F(IResearchViewNodeTest, collections) {
                           arangodb::aql::Collection::Hint::None);
 
   // prepare query
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery();
 
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
@@ -3503,12 +3503,10 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   MockQuery query(ctx,
                   arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.initForTests();
-  //  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  //  query.prepareQuery();
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(
-      0, query, query.itemBlockManager(),
-      arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionEngine engine(0, query, query.itemBlockManager());
   arangodb::aql::ExecutionPlan plan(query.ast(), false);
 
   arangodb::aql::Variable const outVariable("variable", 0, false,
@@ -3606,12 +3604,10 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
                   arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.initForTests();
-  //  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  //  query.prepareQuery();
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(
-      0, query, query.itemBlockManager(),
-      arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionEngine engine(0, query, query.itemBlockManager());
   arangodb::aql::ExecutionPlan plan(query.ast(), false);
 
   // dummy engine
@@ -3662,12 +3658,10 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   // dummy query
   MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
                   arangodb::aql::QueryString(std::string_view("RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery();
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(
-      0, query, query.itemBlockManager(),
-      arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionEngine engine(0, query, query.itemBlockManager());
   arangodb::aql::SingletonNode singleton(query.plan(),
                                          arangodb::aql::ExecutionNodeId{0});
   arangodb::aql::Variable const outVariable("variable", 0, false,
