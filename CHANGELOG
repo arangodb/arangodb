@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition
+  was executed through an index lookup.
+
 * Updated arangosync to v2.19.3.
 
 * FE-94: Support for query options and optimizer rules on web UI.
