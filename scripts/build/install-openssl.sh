@@ -15,7 +15,7 @@ fi;
 echo "https://www.openssl.org/source/${OLD}openssl-$OPENSSLVERSION.tar.gz"
 
 test -n "$OPENSSLVERSION"
-export OPENSSLPATH=`echo $OPENSSLVERSION | sed 's/\([a-zA-Z]$\|\.[0-9]$\)//g'`
+export OPENSSLPATH=`echo $OPENSSLVERSION | sed 's/\.[0-9]*$//g'`
 cd /tmp
 curl -O https://www.openssl.org/source/${OLD}openssl-$OPENSSLVERSION.tar.gz
 tar xzvf openssl-$OPENSSLVERSION.tar.gz
