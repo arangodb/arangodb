@@ -318,7 +318,7 @@ cache in cluster deployments by only using the cache for leader shards, see the
 This option only applies if you use the inverted index in a `search-alias` Views.
 
 An array of strings defining sort expressions that you want to optimize.
-This is also known as _WAND optimization_ (introduced in v3.11.1).
+This is also known as _WAND optimization_ (introduced in v3.12.0).
 
 If you query a View with the `SEARCH` operation in combination with a
 `SORT` and `LIMIT` operation, search results can be retrieved faster if the
