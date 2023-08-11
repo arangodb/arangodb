@@ -86,6 +86,37 @@ function VPackIndexInAggregationSuite (unique) {
       assertEqual(2, results[0]);
     },
     
+    testVPackAggregateBySingleAttributeUsingInAndLimit22: function () {
+      for (i = 2; i <= 4; ++i) {
+        const q = `FOR doc IN ${cn} FILTER doc.value1 in ["000","001","002","003", "004"] LIMIT 2, ${i} RETURN doc`;
+
+        let nodes = AQL_EXPLAIN(q).plan.nodes;
+        let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
+        assertEqual(1, indexNodes.length);
+        assertEqual(1, indexNodes[0].indexes.length);
+        assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
+
+        let qr = db._query(q);
+        let results = qr.toArray();
+        assertEqual(Math.min(i, 3), results.length);
+      }
+    },
+    
+    testVPackAggregateBySingleAttributeUsingOrAndLimit22: function () {
+      for (i = 2; i <= 4; ++i) {
+        const q = `FOR doc IN ${cn} FILTER doc.value1 == "000" || doc.value1 == "001" || doc.value1 == "002" || doc.value1 == "003" || doc.value1 == "004" LIMIT 2, 2 RETURN doc`;
+
+        let nodes = AQL_EXPLAIN(q).plan.nodes;
+        let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
+        assertEqual(1, indexNodes.length);
+        assertEqual(1, indexNodes[0].indexes.length);
+        assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
+
+        let qr = db._query(q);
+        let results = qr.toArray();
+        assertEqual(Math.min(2, i), results.length);
+      }
+    },
   };
 }
 
