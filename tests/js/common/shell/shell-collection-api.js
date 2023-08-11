@@ -723,7 +723,7 @@ function CreateCollectionsSuite() {
             validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
           } else {
             assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-            validateProperties({smartJoinAttribute: "test", numberOfShards: 3, shardKeys: ["_key:"], numberOfShards: 3}, collname, 2);
+            validateProperties({smartJoinAttribute: "test", numberOfShards: 3, shardKeys: ["_key:"]}, collname, 2);
           }
         }
       } finally {
