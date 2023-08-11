@@ -444,6 +444,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       }
     }
   }
+  TRI_ASSERT(!viewNode.isHeapSort());
   // all sort elements are covered by view's scorers / stored values
   viewNode.setHeapSort(std::move(heapSort),
                        limitNode->offset() + limitNode->limit());
@@ -908,7 +909,8 @@ void lateDocumentMaterializationArangoSearchRule(
     if (loop != nullptr &&
         ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(loop);
-      if (viewNode.isNoMaterialization() || viewNode.isLateMaterialized()) {
+      if (viewNode.isNoMaterialization() || viewNode.isLateMaterialized() ||
+          viewNode.isHeapSort()) {
         continue;  // loop is already optimized
       }
       auto* current = limitNode->getFirstDependency();

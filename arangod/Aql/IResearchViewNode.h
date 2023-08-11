@@ -261,6 +261,8 @@ class IResearchViewNode final : public aql::ExecutionNode {
     return _outNonMaterializedDocId != nullptr;
   }
 
+  bool isHeapSort() const noexcept { return !_heapSort.empty(); }
+
   void setLateMaterialized(aql::Variable const& docIdVariable) noexcept {
     _outNonMaterializedDocId = &docIdVariable;
   }

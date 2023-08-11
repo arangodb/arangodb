@@ -142,13 +142,19 @@ class QueryLateMaterialization : public QueryTest {
                        std::vector<velocypack::Slice> const& expectedDocs,
                        bool checkRuleOnly) {
     EXPECT_TRUE(tests::assertRules(
-        vocbase(), query, {aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase(), query, {aql::OptimizerRule::handleArangoSearchViewsRule},
+        nullptr,
+        R"({"optimizer":{"rules":["-arangosearch-constrained-sort"]}})"));
 
     EXPECT_TRUE(tests::assertRules(
         vocbase(), query,
-        {aql::OptimizerRule::lateDocumentMaterializationArangoSearchRule}));
+        {aql::OptimizerRule::lateDocumentMaterializationArangoSearchRule},
+        nullptr,
+        R"({"optimizer":{"rules":["-arangosearch-constrained-sort"]}})"));
 
-    auto queryResult = tests::executeQuery(vocbase(), query);
+    auto queryResult = tests::executeQuery(
+        vocbase(), query, nullptr,
+        R"({"optimizer":{"rules":["-arangosearch-constrained-sort"]}})");
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
