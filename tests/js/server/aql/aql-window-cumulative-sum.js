@@ -602,7 +602,7 @@ function WindowBoundsOneShardSuite() {
   return suite;
 }
 
-// jsunity.run(WindowCumulativeSumTestSuite);
+jsunity.run(WindowCumulativeSumTestSuite);
 jsunity.run(WindowBoundsSuite);
 if (isCluster) {
   jsunity.run(WindowBoundsManyShardSuite);
