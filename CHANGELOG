@@ -1,7 +1,7 @@
 v3.11.3 (XXXX-XX-XX)
 --------------------
 
-* Fix BTS-1554: wrong aggregation count when an "in" or "or" condition
+* Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition
   was executed through an index lookup.
 
 * Updated arangosync to v2.19.3.
