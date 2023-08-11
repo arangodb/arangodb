@@ -1817,7 +1817,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // see description of functions below to learn how
     if (ServerState::instance()->isDBServer()) {
       auto now = std::chrono::system_clock::now();
-      LOG_DEVEL << now;
+      LOG_DEVEL << "HUI";
       reader = snapshotDBServer(*this, *trx);
       LOG_DEVEL << (std::chrono::system_clock::now() - now).count() / 1'000'000.0;
     } else {
