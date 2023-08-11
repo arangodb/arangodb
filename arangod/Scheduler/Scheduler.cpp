@@ -36,7 +36,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Metrics/GaugeBuilder.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -81,7 +80,7 @@ Scheduler::Scheduler(ArangodServer& server)
 Scheduler::~Scheduler() = default;
 
 bool Scheduler::start() {
-  _cronThread.reset(new SchedulerCronThread(_server, *this));
+  _cronThread = std::make_unique<SchedulerCronThread>(_server, *this);
   return _cronThread->start();
 }
 

@@ -87,6 +87,8 @@ function IteratorReadSuite(permuteConfigs) {
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
       c.ensureIndex({ type: "persistent", fields: ["value2"] });
       if (!internal.isCluster()) {
+        // unique secondary index not created in cluster because it is unsupported
+        // if the index attributes do not contain the collection's shard key
         c.ensureIndex({ type: "persistent", fields: ["uniqueValue"], unique: true, sparse: true });
       }
 
@@ -251,6 +253,8 @@ function IteratorWriteSuite(permuteConfigs) {
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
       c.ensureIndex({ type: "persistent", fields: ["value2"] });
       if (!internal.isCluster()) {
+        // unique secondary index not created in cluster because it is unsupported
+        // if the index attributes do not contain the collection's shard key
         c.ensureIndex({ type: "persistent", fields: ["uniqueValue"], unique: true, sparse: true });
       }
 
@@ -508,6 +512,8 @@ function IteratorWriteSuite(permuteConfigs) {
 
     testSubqueryWithUniqueSecondaryIndex: function () {
       if (internal.isCluster()) {
+        // unique secondary index not created in cluster because it is unsupported
+        // if the index attributes do not contain the collection's shard key
         return;
       }
 

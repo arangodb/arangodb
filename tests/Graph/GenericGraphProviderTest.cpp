@@ -74,8 +74,9 @@ class GraphProviderTest : public ::testing::Test {
   arangodb::ResourceMonitor resourceMonitor{global};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
   std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
-
-  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+  ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor> alloc =
+      {resourceMonitor};
+  MonitoredCollectionToShardMap _emptyShardMap{alloc};
   aql::Projections _vertexProjections{};
   aql::Projections _edgeProjections{};
 
@@ -160,7 +161,7 @@ class GraphProviderTest : public ::testing::Test {
                                        arangodb::aql::Collection::Hint::Shard);
         } catch (...) {
         }
-        fakeQuery->prepareQuery(SerializationFormat::SHADOWROWS);
+        fakeQuery->prepareQuery();
         auto ast = fakeQuery->ast();
         auto tmpVar = ast->variables()->createTemporaryVariable();
         auto tmpVarRef = ast->createNodeReference(tmpVar);
@@ -227,7 +228,7 @@ class GraphProviderTest : public ::testing::Test {
         query->collections().add("e", AccessMode::Type::READ,
                                  arangodb::aql::Collection::Hint::Collection);
 
-        query->prepareQuery(SerializationFormat::SHADOWROWS);
+        query->prepareQuery();
       }
 
       clusterEngines =

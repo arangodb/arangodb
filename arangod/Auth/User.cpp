@@ -555,7 +555,7 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
 
 /// Find the access level for a collection. Will automatically try to fall back
 auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
-                                            std::string const& cname) const {
+                                            std::string_view cname) const {
   if (cname.empty() || (dbname == "*" && cname != "*")) {
     return auth::Level::NONE;  // invalid collection names
   }

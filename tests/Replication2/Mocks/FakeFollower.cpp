@@ -27,7 +27,6 @@
 #include "Basics/voc-errors.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 
@@ -43,12 +42,6 @@ auto FakeFollower::release(arangodb::replication2::LogIndex doneWithIdx)
 
 auto FakeFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return id;
-}
-
-auto FakeFollower::resign() && -> std::tuple<
-    std::unique_ptr<replicated_log::LogCore>, DeferredAction> {
-  resign();
-  return std::make_tuple(nullptr, DeferredAction{});
 }
 
 FakeFollower::FakeFollower(ParticipantId id,
@@ -90,7 +83,7 @@ auto FakeFollower::getQuickStatus() const -> replicated_log::QuickLogStatus {
 auto FakeFollower::addEntry(LogPayload payload) -> LogIndex {
   auto index = guarded.doUnderLock([&](GuardedFollowerData& data) {
     auto index = data.log.getNextIndex();
-    auto memtry = InMemoryLogEntry(PersistingLogEntry(term, index, payload));
+    auto memtry = InMemoryLogEntry(LogEntry(term, index, payload));
     data.log.appendInPlace(LoggerContext(Logger::REPLICATION2),
                            std::move(memtry));
     return index;
@@ -114,7 +107,7 @@ auto FakeFollower::waitFor(LogIndex index) -> WaitForFuture {
 auto FakeFollower::waitForIterator(LogIndex index)
     -> replicated_log::ILogParticipant::WaitForIteratorFuture {
   return waitFor(index).thenValue(
-      [this, index](auto&&) -> std::unique_ptr<LogRangeIterator> {
+      [this, index](auto&&) -> std::unique_ptr<LogViewRangeIterator> {
         auto guard = guarded.getLockedGuard();
         return guard->log.getIteratorRange(index, guard->commitIndex + 1);
       });
@@ -135,6 +128,13 @@ void FakeFollower::resign() & {
   waitForResignQueue.resolveAll();
 }
 
-replicated_log::InMemoryLog FakeFollower::copyInMemoryLog() const {
+auto FakeFollower::getInternalLogIterator(std::optional<LogRange> bounds) const
+    -> std::unique_ptr<LogIterator> {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto FakeFollower::resign() && -> std::tuple<
+    std::unique_ptr<storage::IStorageEngineMethods>,
+    std::unique_ptr<replicated_log::IReplicatedStateHandle>, DeferredAction> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

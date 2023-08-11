@@ -24,7 +24,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
@@ -32,6 +31,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -300,7 +300,7 @@ struct BoostScorer final : public irs::ScorerBase<void> {
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
           *res = static_cast<ScoreCtx*>(ctx)->boost;
         },
-        boost);
+        irs::ScoreFunction::DefaultMin, boost);
   }
 
   static irs::Scorer::ptr make(std::string_view) {
@@ -349,7 +349,7 @@ struct CustomScorer final : public irs::ScorerBase<void> {
         [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
           *res = static_cast<ScoreCtx const*>(ctx)->scoreValue;
         },
-        this->i);
+        irs::ScoreFunction::DefaultMin, this->i);
   }
 
   bool equals(irs::Scorer const& other) const noexcept final {
@@ -600,7 +600,7 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   return query;
 }
 
@@ -616,7 +616,7 @@ void setDatabasePath(arangodb::DatabasePathFeature& feature) {
 
   path /= TRI_GetTempPath();
   path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
-  const_cast<std::string&>(feature.directory()) = path.string();
+  feature.setDirectory(path.string());
 }
 
 void expectEqualSlices_(const VPackSlice& lhs, const VPackSlice& rhs,
@@ -705,7 +705,7 @@ void assertFilterOptimized(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(options->slice()));
 
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   EXPECT_TRUE(query->plan());
   auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
 

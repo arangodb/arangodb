@@ -26,7 +26,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
-#include "Agency/Store.h"
+#include "Agency/Node.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Logger/LogMacros.h"
@@ -34,6 +34,7 @@
 
 using namespace arangodb;
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot,
                                      AgentInterface* agent,
@@ -116,11 +117,8 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
       _jb->add(VPackValue(failedServersPrefix));
       {
         VPackObjectBuilder old(_jb.get());
-        _jb->add("old", _snapshot.get(failedServersPrefix)
-                            .value()
-                            .get()
-                            .toBuilder()
-                            .slice());
+        _jb->add("old",
+                 _snapshot.get(failedServersPrefix)->toBuilder().slice());
       }
     }  // Preconditions
   }    // transactions
@@ -156,8 +154,8 @@ bool ActiveFailoverJob::start(bool&) {
     return finish(_server, "", true, reason);  // move to /Target/Finished
   }
 
-  auto leader = _snapshot.hasAsSlice(asyncReplLeader);
-  if (!leader || leader->compareString(_server) != 0) {
+  auto leader = _snapshot.hasAsStringView(asyncReplLeader);
+  if (!leader || leader != _server) {
     std::string reason =
         "Server " + _server + " is not the current replication leader";
     LOG_TOPIC("d468e", INFO, Logger::SUPERVISION) << reason;
@@ -179,7 +177,7 @@ bool ActiveFailoverJob::start(bool&) {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
       try {
-        _snapshot.get(toDoPrefix + _jobId).value().get().toBuilder(todo);
+        _snapshot.get(toDoPrefix + _jobId)->toBuilder(todo);
       } catch (std::exception const&) {
         LOG_TOPIC("26fec", INFO, Logger::SUPERVISION)
             << "Failed to get key " << toDoPrefix << _jobId
@@ -224,7 +222,7 @@ bool ActiveFailoverJob::start(bool&) {
       // Destination server should not be blocked by another job
       addPreconditionServerNotBlocked(pending, newLeader);
       // AsyncReplication leader must be the failed server
-      addPreconditionUnchanged(pending, asyncReplLeader, leader.value());
+      addPreconditionUnchanged(pending, asyncReplLeader, VPackValue(*leader));
     }  // precondition done
 
   }  // array for transaction done
@@ -282,8 +280,7 @@ std::string ActiveFailoverJob::findBestFollower() {
 
   // blocked; (not sure if this can even happen)
   try {
-    for (auto const& srv :
-         _snapshot.get(blockedServersPrefix).value().get().children()) {
+    for (auto const& srv : _snapshot.get(blockedServersPrefix)->children()) {
       healthy.erase(std::remove(healthy.begin(), healthy.end(), srv.first),
                     healthy.end());
     }

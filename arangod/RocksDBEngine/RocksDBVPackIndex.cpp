@@ -275,6 +275,7 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
 
     _searchValues.clear();
     _searchValues.add(rewriteBuilder->slice());
+    _current = velocypack::ArrayIterator(_searchValues.slice());
   }
 
   void adjustIterator() {
@@ -2714,12 +2715,13 @@ void RocksDBVPackIndex::expandInSearchValues(
   }
 }
 
-void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
-                                      transaction::Methods* trx) {
+void RocksDBVPackIndex::truncateCommit(TruncateGuard&& guard,
+                                       TRI_voc_tick_t tick,
+                                       transaction::Methods* trx) {
   if (_estimator != nullptr) {
     _estimator->bufferTruncate(tick);
   }
-  RocksDBIndex::afterTruncate(tick, trx);
+  RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
 
 Result RocksDBVPackIndex::drop() {

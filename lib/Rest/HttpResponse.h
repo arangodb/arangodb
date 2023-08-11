@@ -40,8 +40,6 @@ class HttpResponse : public GeneralResponse {
   friend class RestBatchHandler;  // TODO must be removed
 
  public:
-  static bool HIDE_PRODUCT_HEADER;
-
   HttpResponse(ResponseCode code, uint64_t mid,
                std::unique_ptr<basics::StringBuffer> = nullptr);
   ~HttpResponse() = default;
@@ -71,6 +69,11 @@ class HttpResponse : public GeneralResponse {
 
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
+
+  void clearBody() noexcept {
+    _body->clear();
+    _bodySize = 0;
+  }
 
   void reset(ResponseCode code) override final;
 

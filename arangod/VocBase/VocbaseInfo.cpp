@@ -62,6 +62,16 @@ void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
   _shardingPrototype = type;
 }
 
+void CreateDatabaseInfo::setSharding(std::string_view sharding) {
+  // sharding -- must be "", "flexible" or "single"
+  bool isValidProperty =
+      (sharding.empty() || sharding == "flexible" || sharding == "single");
+  TRI_ASSERT(isValidProperty);
+  if (isValidProperty) {
+    _sharding = sharding;
+  }
+}
+
 Result CreateDatabaseInfo::load(std::string_view name, uint64_t id) {
   _name = name;
   _id = id;
@@ -302,6 +312,19 @@ Result CreateDatabaseInfo::checkOptions() {
 
   return DatabaseNameValidator::validateName(isSystem, extendedNames, _name);
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+CreateDatabaseInfo::CreateDatabaseInfo(CreateDatabaseInfo::MockConstruct,
+                                       ArangodServer& server,
+                                       ExecContext const& execContext,
+                                       std::string const& name,
+                                       std::uint64_t id)
+    : _server(server),
+      _context(execContext),
+      _id(id),
+      _name(name),
+      _valid(true) {}
+#endif
 
 VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
                                  bool strictValidation) {

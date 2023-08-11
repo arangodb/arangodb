@@ -170,7 +170,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"LOWER", ".", flags, &functions::Lower});
   add({"UPPER", ".", flags, &functions::Upper});
   add({"SUBSTRING", ".,.|.", flags, &functions::Substring});
-  add({"SUBSTRING_BYTES", ".,.|.", flags, &functions::SubstringBytes});
+  add({"SUBSTRING_BYTES", ".,.|.,.,.", flags, &functions::SubstringBytes});
   add({"CONTAINS", ".,.|.", flags, &functions::Contains});
   add({"LIKE", ".,.|.", flags, &functions::Like});
   add({"REGEX_MATCHES", ".,.|.", flags, &functions::RegexMatches});

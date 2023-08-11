@@ -126,8 +126,8 @@ WindowBounds::WindowBounds(Type type, AqlValue&& preceding,
 }
 
 WindowBounds::WindowBounds(Type t, VPackSlice slice)
-    : WindowBounds(t, AqlValue(slice.get("following")),
-                   AqlValue(slice.get("preceding"))) {}
+    : WindowBounds(t, AqlValue(slice.get("preceding")),
+                   AqlValue(slice.get("following"))) {}
 
 WindowBounds::~WindowBounds() = default;
 
@@ -404,8 +404,7 @@ void WindowNode::calcAggregateTypes(
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -526,6 +525,8 @@ CostEstimate WindowNode::estimateCost() const {
 ExecutionNode::NodeType WindowNode::getType() const {
   return ExecutionNode::WINDOW;
 }
+
+size_t WindowNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 std::vector<Variable const*> WindowNode::getVariablesSetHere() const {
   std::vector<Variable const*> v;

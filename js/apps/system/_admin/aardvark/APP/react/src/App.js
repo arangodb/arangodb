@@ -12,12 +12,16 @@ const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 require('../../frontend/js/arango/arangoValidationHelper.js');
 
 // import new react views
-// require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
-require('./views/graphV2/GraphV2ReactView');
+require('./views/graphV2/listGraphs/GraphsListReactView');
+require('./views/databases/DatabasesReactView');
+require('./views/graphV2/viewGraph/GraphV2ReactView');
+require('./views/users/UserManagementReactView');
 require('./views/views/ViewSettingsReactView');
 require('./views/views/ViewsListReactView');
 require('./views/collections/indices/CollectionIndicesReactView');
+require('./views/query/QueryReactView');
+require('./views/shards/distribution/ShardDistributionReactView');
 
 // old libraries
 const jQuery = require('jquery');
@@ -137,12 +141,8 @@ window.JSONEditor = jsoneditor;
 
 // ace
 window.define = window.ace.define;
-window.aqltemplates = require('../public/assets/aqltemplates.json');
 
 window.d3 = d3;
-require('leaflet');
-require('../../frontend/js/lib/tile.stamen.js');
-require('leaflet.geodesic');
 
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
 window.Dygraph = require('../../frontend/js/lib/dygraph-combined.min.js');
@@ -175,7 +175,6 @@ require('../../frontend/js/lib/sigma.plugins.filter.js');
 require('../../frontend/js/lib/sigma.plugins.fullScreen.js');
 require('../../frontend/js/lib/sigma.plugins.lasso.js');
 require('../../frontend/js/lib/sigma.renderers.halo.js');
-require('../../frontend/js/lib/jquery.csv.min.js');
 
 require('../../frontend/js/lib/wheelnav.slicePath.js');
 require('../../frontend/js/lib/wheelnav.min.js');

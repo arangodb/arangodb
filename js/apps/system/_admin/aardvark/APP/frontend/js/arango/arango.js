@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Noty, Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
+/* global Noty, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -90,23 +90,6 @@
       error: 'rgb(236, 112, 99)',
       warning: '#ffb075',
       debug: 'rgb(64, 74, 83)'
-    },
-
-    // convert a Unicode string to a string in which
-    // each 16-bit unit occupies only one byte.
-    // from https://developer.mozilla.org/en-US/docs/Web/API/btoa
-    toBinary: function (string) {
-      const codeUnits = Uint16Array.from(
-        { length: string.length },
-        (element, index) => string.charCodeAt(index)
-      );
-      const charCodes = new Uint8Array(codeUnits.buffer);
-
-      let result = "";
-      charCodes.forEach((char) => {
-        result += String.fromCharCode(char);
-      });
-      return result;
     },
 
     getCurrentJwt: function () {
@@ -252,18 +235,6 @@
       return window.App.naviView.activeSubMenu;
     },
 
-    parseError: function (title, err) {
-      var msg;
-
-      try {
-        msg = JSON.parse(err.responseText).errorMessage;
-      } catch (e) {
-        msg = e;
-      }
-
-      this.arangoError(title, msg);
-    },
-
     setCheckboxStatus: function (id) {
       _.each($(id).find('ul').find('li'), function (element) {
         if (!$(element).hasClass('nav-header')) {
@@ -286,19 +257,6 @@
           }
         }
       });
-    },
-
-    parseInput: function (element) {
-      var parsed;
-      var string = $(element).val();
-
-      try {
-        parsed = JSON.parse(string);
-      } catch (e) {
-        parsed = string;
-      }
-
-      return parsed;
     },
 
     calculateCenterDivHeight: function () {
@@ -568,17 +526,12 @@
         Shards: {
           route: '#shards'
         },
-        "Rebalance Shards": {
-          route: '#rebalanceShards'
-        }
       };
 
       menus[activeKey].active = true;
       if (disabled) {
         menus[activeKey].disabled = true;
       }
-      menus["Rebalance Shards"].disabled = window.App.userCollection.authOptions.ro; // when user can't edit database,
-                                                                                     // the tab is not clickable
       this.buildSubNavBar(menus, disabled);
     },
 
@@ -1146,7 +1099,34 @@
         }, 500);
       }
     },
+    downloadQuery: function (url, body, callback) {
+      $.ajax({
+        type: 'POST',
+        data: JSON.stringify(body),
+        url: url,
+        contentType: 'application/json',
+        success: function (result, dummy, request) {
+          if (callback) {
+            callback(result);
+            return;
+          }
 
+          var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
+          var blobUrl = window.URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          document.body.appendChild(a);
+          a.style = 'display: none';
+          a.href = blobUrl;
+          a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
+          a.click();
+
+          window.setTimeout(function () {
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(a);
+          }, 500);
+        }
+      });
+    },
     download: function (url, callback) {
       $.ajax({
         type: 'GET',
@@ -1172,40 +1152,6 @@
           }, 500);
         }
       });
-    },
-
-    downloadPost: function (url, body, callback, errorCB) {
-      var xhr = new XMLHttpRequest();
-      xhr.onreadystatechange = function () {
-        if (this.readyState === 4 && this.status === 200) {
-          if (callback) {
-            callback();
-          }
-          var a = document.createElement('a');
-          a.download = this.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
-          document.body.appendChild(a);
-          var blobUrl = window.URL.createObjectURL(this.response);
-          a.href = blobUrl;
-          a.click();
-
-          window.setTimeout(function () {
-            window.URL.revokeObjectURL(blobUrl);
-            document.body.removeChild(a);
-          }, 500);
-        } else {
-          if (this.readyState === 4) {
-            if (errorCB !== undefined) {
-              errorCB(this.status, this.statusText);
-            }
-          }
-        }
-      };
-      xhr.open('POST', url);
-      if (window.arangoHelper.getCurrentJwt()) {
-        xhr.setRequestHeader('Authorization', 'bearer ' + window.arangoHelper.getCurrentJwt());
-      }
-      xhr.responseType = 'blob';
-      xhr.send(body);
     },
 
     checkCollectionPermissions: function (collectionID, roCallback) {

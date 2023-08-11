@@ -37,6 +37,7 @@
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "V8Server/V8Context.h"
 
 #include <velocypack/Builder.h>
@@ -68,7 +69,6 @@ class ExecutionEngine;
 struct ExecutionStats;
 struct QueryCacheResultEntry;
 struct QueryProfile;
-enum class SerializationFormat;
 
 /// @brief an AQL query
 class Query : public QueryContext, public std::enable_shared_from_this<Query> {
@@ -85,7 +85,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// method
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
-        QueryOptions options);
+        QueryOptions options, Scheduler* scheduler);
 
   ~Query() override;
 
@@ -100,7 +100,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   static std::shared_ptr<Query> create(
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
-      QueryOptions options = {});
+      QueryOptions options = {},
+      Scheduler* scheduler = SchedulerFeature::SCHEDULER);
 
   constexpr static uint64_t DontCache = 0;
 
@@ -131,7 +132,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// every following call will be ignored.
   void ensureExecutionTime() noexcept;
 
-  void prepareQuery(SerializationFormat format);
+  void prepareQuery();
 
   /// @brief execute an AQL query
   ExecutionState execute(QueryResult& res);

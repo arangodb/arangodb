@@ -107,12 +107,7 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
 RocksDBIndex::~RocksDBIndex() {
   _engine.removeIndexMapping(_objectId);
   if (hasCache()) {
-    TRI_ASSERT(_cache != nullptr);
-    TRI_ASSERT(_cacheManager != nullptr);
-    try {
-      _cacheManager->destroyCache(_cache);
-    } catch (...) {
-    }
+    destroyCache();
   }
 }
 
@@ -192,13 +187,17 @@ void RocksDBIndex::setupCache() {
   }
 }
 
-void RocksDBIndex::destroyCache() {
+void RocksDBIndex::destroyCache() noexcept {
   if (_cache != nullptr) {
-    TRI_ASSERT(_cacheManager != nullptr);
-    // must have a cache...
-    LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
-    _cacheManager->destroyCache(_cache);
-    _cache.reset();
+    try {
+      TRI_ASSERT(_cacheManager != nullptr);
+      // must have a cache...
+      LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
+      _cacheManager->destroyCache(std::move(_cache));
+      _cache.reset();
+    } catch (...) {
+      // meh
+    }
   }
 }
 
@@ -213,15 +212,7 @@ Result RocksDBIndex::drop() {
                                           prefixSameAsStart, useRangeDelete);
 
   // Try to drop the cache as well.
-  if (_cache) {
-    TRI_ASSERT(_cacheManager != nullptr);
-    try {
-      _cacheManager->destroyCache(_cache);
-      // Reset flag
-      _cache.reset();
-    } catch (...) {
-    }
-  }
+  destroyCache();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
@@ -239,8 +230,20 @@ Result RocksDBIndex::drop() {
   return r;
 }
 
-void RocksDBIndex::afterTruncate(TRI_voc_tick_t,
-                                 arangodb::transaction::Methods*) {
+ResultT<TruncateGuard> RocksDBIndex::truncateBegin(rocksdb::WriteBatch& batch) {
+  auto bounds = getBounds();
+  auto s =
+      batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+  auto r = rocksutils::convertStatus(s);
+  if (!r.ok()) {
+    return r;
+  }
+  return {};
+}
+
+void RocksDBIndex::truncateCommit(TruncateGuard&& guard,
+                                  TRI_voc_tick_t /*tick*/,
+                                  transaction::Methods* /*trx*/) {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();
@@ -334,20 +337,24 @@ std::shared_ptr<cache::Cache> RocksDBIndex::makeCache() const {
 }
 
 // banish given key from transactional cache
-void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
+bool RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
   if (hasCache()) {
     TRI_ASSERT(_cache != nullptr);
     do {
       auto status = _cache->banish(data, static_cast<uint32_t>(len));
-      if (status.ok()) {
+      if (status == TRI_ERROR_NO_ERROR) {
+        return true;
+      }
+      if (status == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         break;
       }
-      if (ADB_UNLIKELY(status.errorNumber() == TRI_ERROR_SHUTTING_DOWN)) {
+      if (ADB_UNLIKELY(status == TRI_ERROR_SHUTTING_DOWN)) {
         destroyCache();
         break;
       }
     } while (true);
   }
+  return false;
 }
 
 /// @brief get index estimator, optional

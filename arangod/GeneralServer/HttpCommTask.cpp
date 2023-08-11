@@ -93,8 +93,8 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->_lastHeaderValue.clear();
   me->_origin.clear();
   me->_url.clear();
-  me->_request = std::make_unique<HttpRequest>(
-      me->_connectionInfo, /*messageId*/ 1, me->_allowMethodOverride);
+  me->_request =
+      std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ 1);
   me->_response.reset();
   me->_lastHeaderWasValue = false;
   me->_shouldKeepAlive = false;
@@ -139,8 +139,8 @@ int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at,
                                      size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   if (me->_lastHeaderWasValue) {
-    me->_request->setHeaderV2(std::move(me->_lastHeaderField),
-                              std::move(me->_lastHeaderValue));
+    me->_request->setHeader(std::move(me->_lastHeaderField),
+                            std::move(me->_lastHeaderValue));
     me->_lastHeaderField.assign(at, len);
   } else {
     me->_lastHeaderField.append(at, len);
@@ -175,8 +175,8 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_response.reset();
   if (!me->_lastHeaderField.empty()) {
-    me->_request->setHeaderV2(std::move(me->_lastHeaderField),
-                              std::move(me->_lastHeaderValue));
+    me->_request->setHeader(std::move(me->_lastHeaderField),
+                            std::move(me->_lastHeaderValue));
   }
 
   bool found;
@@ -234,7 +234,7 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
 template<SocketType T>
 int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_request->body().append(at, len);
+  me->_request->appendBody(at, len);
   return HPE_OK;
 } catch (...) {
   // the caller of this function is a C function, which doesn't know
@@ -263,8 +263,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
-      _messageDone(false),
-      _allowMethodOverride(this->_generalServerFeature.allowMethodOverride()) {
+      _messageDone(false) {
   this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
@@ -532,8 +531,8 @@ void HttpCommTask<T>::doProcessRequest() {
 
   // ensure there is a null byte termination. Some RestHandlers use
   // C functions like strchr that except a C string as input
-  _request->body().push_back('\0');
-  _request->body().resetTo(_request->body().size() - 1);
+  _request->appendNullTerminator();
+  // no need to increase memory usage here!
   {
     LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
@@ -623,6 +622,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   // will add CORS headers if necessary
   this->finishExecution(*baseRes, _origin);
 
+  // handle response code 204 No Content
+  if (response.responseCode() == rest::ResponseCode::NO_CONTENT) {
+    response.clearBody();
+  }
+
   _header.clear();
   _header.reserve(220);
 
@@ -689,7 +693,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   // add "Server" response header
-  if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
+  if (!seenServerHeader) {
     _header.append(std::string_view("Server: ArangoDB\r\n"));
   }
 
@@ -723,6 +727,9 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   size_t len = response.bodySize();
+  TRI_ASSERT(response.responseCode() != rest::ResponseCode::NO_CONTENT ||
+             len == 0)
+      << "response code 204 requires body length to be zero";
   _header.append(std::string_view("Content-Length: "));
   _header.append(std::to_string(len));
   _header.append("\r\n\r\n", 4);
@@ -730,6 +737,9 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   TRI_ASSERT(_response == nullptr);
   _response = response.stealBody();
   // append write buffer and statistics
+  TRI_ASSERT(response.responseCode() != rest::ResponseCode::NO_CONTENT ||
+             _response->empty())
+      << "response code 204 requires body length to be zero";
 
   if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
       Logger::logRequestParameters()) {

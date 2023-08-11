@@ -48,9 +48,8 @@ auto BlackHoleLeaderState::resign() && noexcept
   return std::move(_core);
 }
 
-auto BlackHoleFollowerState::acquireSnapshot(ParticipantId const& destination,
-                                             LogIndex) noexcept
-    -> futures::Future<Result> {
+auto BlackHoleFollowerState::acquireSnapshot(
+    ParticipantId const& destination) noexcept -> futures::Future<Result> {
   return {TRI_ERROR_NO_ERROR};
 }
 
@@ -77,7 +76,7 @@ auto BlackHoleFactory::constructLeader(std::unique_ptr<BlackHoleCore> core)
   return std::make_shared<BlackHoleLeaderState>(std::move(core));
 }
 
-auto BlackHoleFactory::constructCore(GlobalLogIdentifier const&)
+auto BlackHoleFactory::constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
     -> std::unique_ptr<BlackHoleCore> {
   return std::make_unique<BlackHoleCore>();
 }
@@ -99,6 +98,6 @@ operator()(
   b.add(velocypack::Value(e.value));
 }
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 
 template struct replicated_state::ReplicatedState<BlackHoleState>;

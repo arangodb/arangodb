@@ -1,6 +1,5 @@
 
 @startDocuBlock post_api_index_inverted
-@brief Creates an inverted index
 
 @RESTHEADER{POST /_api/index#inverted, Create an inverted index, createIndexInverted}
 
@@ -72,7 +71,8 @@ You cannot use an array expansion if `searchField` is enabled.
 Default: the value defined by the top-level `searchField` option.
 
 @RESTSTRUCT{trackListPositions,post_api_index_inverted_fields,boolean,optional,}
-This option only applies if you use the inverted index in a `search-alias` Views.
+This option only applies if you use the inverted index in a `search-alias` Views,
+and `searchField` needs to be `true`.
 
 If set to `true`, then track the value position in arrays for array values.
 For example, when querying a document like `{ attr: [ "valueX", "valueY", "valueZ" ] }`,
@@ -366,7 +366,8 @@ Default: `false`
 with complex Analyzers may significantly slow down the indexing process.
 
 @RESTBODYPARAM{trackListPositions,boolean,optional,}
-This option only applies if you use the inverted index in a `search-alias` Views.
+This option only applies if you use the inverted index in a `search-alias` Views,
+and `searchField` needs to be `true`.
 
 If set to `true`, then track the value position in arrays for array values.
 For example, when querying a document like `{ attr: [ "valueX", "valueY", "valueZ" ] }`,

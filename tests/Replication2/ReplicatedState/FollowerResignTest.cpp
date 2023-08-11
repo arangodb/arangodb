@@ -22,25 +22,18 @@
 
 #include <gtest/gtest.h>
 
-#include "Replication2/ReplicatedLog/TestHelper.h"
-
 #include "Replication2/ReplicatedState/ReplicatedState.h"
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
-#include "Replication2/Streams/LogMultiplexer.h"
-#include "Replication2/Mocks/FakeReplicatedState.h"
-#include "Replication2/Mocks/FakeFollower.h"
 
 #include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
-using namespace arangodb::replication2::test;
 
-struct ReplicatedStateFollowerResignTest : test::ReplicatedLogTest {
+struct ReplicatedStateFollowerResignTest : ::testing::Test {
   struct State {
     using LeaderType = test::EmptyLeaderType<State>;
     using FollowerType = test::FakeFollowerType<State>;

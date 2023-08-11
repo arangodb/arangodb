@@ -54,28 +54,33 @@ struct NodeLoadInspectorImpl
       consensus::Node const* node,
       ParseOptions options = {}) requires(!Base::hasContext)
       : Base(options), _node(node) {}
+  explicit NodeLoadInspectorImpl(
+      consensus::NodePtr const& node,
+      ParseOptions options = {}) requires(!Base::hasContext)
+      : Base(options), _node(node.get()) {}
 
   explicit NodeLoadInspectorImpl(consensus::Node const* node,
                                  ParseOptions options, Context const& context)
       : Base(options, context), _node(node) {}
+  explicit NodeLoadInspectorImpl(consensus::NodePtr const& node,
+                                 ParseOptions options, Context const& context)
+      : Base(options, context), _node(node.get()) {}
 
   template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
   [[nodiscard]] Status value(T& v) {
-    try {
-      v = _node->slice().getNumber<T>();
+    if (auto s = _node->getNumber<T>(); s) {
+      v = *s;
       return {};
-    } catch (velocypack::Exception& e) {
-      return {e.what()};
     }
+    return {"not an integral value or not representable"};
   }
 
   [[nodiscard]] Status value(double& v) {
-    try {
-      v = _node->slice().getNumber<double>();
+    if (auto s = _node->getNumber<double>(); s) {
+      v = *s;
       return {};
-    } catch (velocypack::Exception& e) {
-      return {e.what()};
     }
+    return {"not a floating point value or not representable"};
   }
 
   [[nodiscard]] Status value(std::string& v) {
@@ -108,34 +113,12 @@ struct NodeLoadInspectorImpl
     return {};
   }
 
-  [[nodiscard]] Status value(velocypack::Slice& v) {
-    static_assert(AllowUnsafeTypes);
-    if (_node->type() != consensus::LEAF) {
-      return {"Cannot parse non-leaf node as Slice."};
-    }
-    v = _node->slice();
-    return {};
-  }
-
   [[nodiscard]] Status::Success value(velocypack::SharedSlice& v) {
-    if (_node->type() == consensus::LEAF) {
-      if constexpr (AllowUnsafeTypes) {
-        v = velocypack::SharedSlice(velocypack::SharedSlice{}, _node->slice());
-        return {};
-      } else {
-        auto slice = _node->slice();
-        velocypack::Buffer<std::uint8_t> buffer(slice.byteSize());
-        buffer.append(slice.start(), slice.byteSize());
-        v = velocypack::SharedSlice(std::move(buffer));
-        return {};
-      }
-    } else {
-      velocypack::Buffer<uint8_t> buffer;
-      velocypack::Builder builder(buffer);
-      _node->toBuilder(builder);
-      v = velocypack::SharedSlice(std::move(buffer));
-      return {};
-    }
+    velocypack::Buffer<uint8_t> buffer;
+    velocypack::Builder builder(buffer);
+    _node->toBuilder(builder);
+    v = velocypack::SharedSlice(std::move(buffer));
+    return {};
   }
 
   [[nodiscard]] Status::Success value(velocypack::Builder& v) {
@@ -169,11 +152,14 @@ struct NodeLoadInspectorImpl
 
   [[nodiscard]] Status::Success endArray() { return {}; }
 
-  bool isNull() const noexcept {
-    return _node == nullptr || _node->slice().isNull();
-  }
+  bool isNull() const noexcept { return _node == nullptr || _node->isNull(); }
 
   consensus::Node const* node() const noexcept { return _node; }
+
+  VPackSlice slice() {
+    // does not work for agency nodes.
+    return VPackSlice::noneSlice();
+  }
 
  private:
   template<class>
@@ -197,13 +183,7 @@ struct NodeLoadInspectorImpl
     }
   }
 
-  auto getTypeTag() const noexcept {
-    if (_node->type() == consensus::LEAF) {
-      return _node->slice().type();
-    } else {
-      return velocypack::ValueType::Object;
-    }
-  }
+  auto getTypeTag() const noexcept { return _node->getVelocyPackValueType(); }
 
   template<class Func>
   auto doProcessObject(Func&& func)
@@ -222,7 +202,7 @@ struct NodeLoadInspectorImpl
   template<class Func>
   Status doProcessList(Func&& func) {
     assert(_node->isArray());
-    for (auto&& s : VPackArrayIterator(*_node->getArray())) {
+    for (auto&& s : *_node->getArray()) {
       if (auto res = func(s); !res.ok()) {
         return res;
       }
@@ -256,21 +236,21 @@ struct NodeLoadInspectorImpl
     }
 
     auto node = _node->get(variant.valueField);
-    if (!node.has_value()) {
+    if (!node) {
       return {"Variant value field \"" + std::string(variant.valueField) +
               "\" is missing"};
     }
-    data = &node->get();
+    data = node.get();
     return {};
   }
 
   Status loadTypeField(std::string_view fieldName, std::string_view& result) {
     auto v = _node->get(fieldName);
-    if (!v.has_value()) {
+    if (!v) {
       return {"Variant type field \"" + std::string(fieldName) +
               "\" is missing"};
     }
-    auto val = v->get().getStringView();
+    auto val = v->getStringView();
     if (!val.has_value()) {
       return {"Variant type field \"" + std::string(fieldName) +
               "\" must be a string"};
@@ -300,7 +280,7 @@ struct NodeLoadInspectorImpl
       return type == ValueType::Double || isInt(type);
     } else if constexpr (detail::IsTuple<T>::value) {
       return type == ValueType::Array && _node->isArray() &&
-             detail::TupleSize<T>::value == _node->slice().length();
+             detail::TupleSize<T>::value == _node->getArray()->size();
     } else if constexpr (detail::IsListLike<T>::value) {
       return type == ValueType::Array;
     } else if constexpr (detail::IsMapLike<T>::value) {
@@ -326,8 +306,8 @@ struct NodeLoadInspectorImpl
 
   Status checkArrayLength(std::size_t arrayLength) {
     auto slice = _node->getArray();
-    assert(slice.has_value());
-    if (slice->length() != arrayLength) {
+    assert(slice != nullptr);
+    if (slice->size() != arrayLength) {
       return {"Expected array of length " + std::to_string(arrayLength)};
     }
     return {};

@@ -3085,6 +3085,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   selector.setEngineTesting(&engine);
   auto& functions = newServer.addFeature<arangodb::aql::AqlFunctionFeature>();
   newServer.addFeature<arangodb::metrics::MetricsFeature>();
+  newServer.addFeature<arangodb::ClusterFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sharding = newServer.addFeature<arangodb::ShardingFeature>();
   auto& systemdb = newServer.addFeature<arangodb::SystemDatabaseFeature>();
@@ -4145,6 +4146,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
   newServer.addFeature<arangodb::metrics::MetricsFeature>();
+  newServer.addFeature<arangodb::ClusterFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
   newServer.addFeature<arangodb::V8DealerFeature>();
@@ -4470,6 +4472,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
   newServer.addFeature<arangodb::metrics::MetricsFeature>();
+  newServer.addFeature<arangodb::ClusterFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
   newServer.addFeature<arangodb::V8DealerFeature>();
@@ -4603,6 +4606,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
   newServer.addFeature<arangodb::metrics::MetricsFeature>();
+  newServer.addFeature<arangodb::ClusterFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
   newServer.addFeature<arangodb::V8DealerFeature>();

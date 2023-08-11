@@ -1,22 +1,20 @@
 
 @startDocuBlock get_api_replication_clusterInventory
-@brief returns an overview of collections and indexes in a cluster
 
-@RESTHEADER{GET /_api/replication/clusterInventory, Return cluster inventory of collections and indexes, getReplicationClusterInventory}
+@RESTHEADER{GET /_api/replication/clusterInventory, Get the cluster collections and indexes, getReplicationClusterInventory}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{includeSystem,boolean,optional}
-Include system collections in the result. The default value is *true*.
+Include system collections in the result. The default value is `true`.
 
 @RESTDESCRIPTION
 Returns the array of collections and indexes available on the cluster.
 
 The response will be an array of JSON objects, one for each collection.
-Each collection containscontains exactly two keys "parameters" and
-"indexes". This
-information comes from Plan/Collections/{DB-Name}/* in the Agency,
-just that the *indexes* attribute there is relocated to adjust it to
+Each collection contains exactly two keys, `parameters` and `indexes`.
+This information comes from `Plan/Collections/{DB-Name}/*` in the Agency,
+just that the `indexes` attribute there is relocated to adjust it to
 the data format of arangodump.
 
 @RESTRETURNCODES

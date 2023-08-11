@@ -62,9 +62,9 @@ class HotBackup {
    * @brief select engine and lock transactions
    * @param  body  rest handling body
    */
-  arangodb::Result executeRocksDB(std::string const& command,
-                                  VPackSlice const payload,
-                                  VPackBuilder& report);
+  arangodb::Result executeDBServer(std::string const& command,
+                                   VPackSlice const payload,
+                                   VPackBuilder& report);
 
   /**
    * @brief select engine and create backup

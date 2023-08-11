@@ -501,8 +501,10 @@ ExecutionPlan::~ExecutionPlan() {
     // only track memory usage here and access ast/query if we are allowed to do
     // so. this can be inherently unsafe from within the gtest unit tests, so it
     // is protected by an option here
-    _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() *
-                                                        sizeof(ExecutionNode));
+    for (auto const& [id, node] : _ids) {
+      _ast->query().resourceMonitor().decreaseMemoryUsage(
+          node->getMemoryUsedBytes());
+    }
   }
 
   for (auto& x : _ids) {
@@ -828,7 +830,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
 
         // and register a reference to the subquery result in the expression
         v = _ast->variables()->createTemporaryVariable();
-        auto en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
+        auto en = createNode<SubqueryNode>(this, nextId(), subquery, v);
         _subqueries[v->id] = en;
         en->addDependency(previous);
         previous = en;
@@ -1119,8 +1121,9 @@ ExecutionNode* ExecutionPlan::registerNode(
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   {
-    ResourceUsageScope scope(_ast->query().resourceMonitor(),
-                             _trackMemoryUsage ? sizeof(ExecutionNode) : 0);
+    ResourceUsageScope scope(
+        _ast->query().resourceMonitor(),
+        _trackMemoryUsage ? node->getMemoryUsedBytes() : 0);
 
     auto emplaced =
         _ids.try_emplace(node->id(), node.get()).second;  // take ownership
@@ -1203,8 +1206,8 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                      "no collection for EnumerateCollection");
     }
     IndexHint hint(_ast->query(), options);
-    en = registerNode(new EnumerateCollectionNode(this, nextId(), collection, v,
-                                                  false, hint));
+    en = createNode<EnumerateCollectionNode>(this, nextId(), collection, v,
+                                             false, hint);
     if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES)) {
       // this is a FOR node that belongs to an UPSERT query
       ExecutionNode::castTo<EnumerateCollectionNode*>(en)->setCanReadOwnWrites(
@@ -1247,7 +1250,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(inVariable != nullptr);
-    en = registerNode(new EnumerateListNode(this, nextId(), inVariable, v));
+    en = createNode<EnumerateListNode>(this, nextId(), inVariable, v);
   } else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(expression, previous);
@@ -1549,7 +1552,7 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new FilterNode(this, nextId(), v));
+    en = createNode<FilterNode>(this, nextId(), v);
   } else {
     // operand is some misc expression
     if (expression->isTrue()) {
@@ -1566,10 +1569,10 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
     if (expression->isFalse()) {
       // filter expression is known to be always false, so
       // replace the FILTER with a NoResultsNode
-      en = registerNode(new NoResultsNode(this, nextId()));
+      en = createNode<NoResultsNode>(this, nextId());
     } else {
       auto calc = createTemporaryCalculation(expression, previous);
-      en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
+      en = createNode<FilterNode>(this, nextId(), getOutVariable(calc));
       previous = calc;
     }
   }
@@ -1602,7 +1605,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
+    en = createNode<SubqueryNode>(this, nextId(), subquery, v);
     _subqueries[ExecutionNode::castTo<SubqueryNode*>(en)->outVariable()->id] =
         en;
   } else {
@@ -1689,11 +1692,14 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       // sort operand is a variable
       auto v = static_cast<Variable*>(expression->getData());
       TRI_ASSERT(v != nullptr);
-      elements.emplace_back(v, isAscending);
+      auto elem = SortElement{v, isAscending, _ast->query().resourceMonitor()};
+      elements.emplace_back(std::move(elem));
     } else {
       // sort operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
-      elements.emplace_back(getOutVariable(calc), isAscending);
+      auto elem = SortElement{getOutVariable(calc), isAscending,
+                              _ast->query().resourceMonitor()};
+      elements.emplace_back(std::move(elem));
       previous = calc;
     }
   }
@@ -1705,7 +1711,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
   }
 
   // at least one sort criterion remained
-  auto en = registerNode(new SortNode(this, nextId(), elements, false));
+  auto en = createNode<SortNode>(this, nextId(), elements, false);
 
   return addDependency(previous, en);
 }
@@ -1858,9 +1864,9 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
     countValue = count->getIntValue();
   }
 
-  auto en = registerNode(new LimitNode(this, nextId(),
-                                       static_cast<size_t>(offsetValue),
-                                       static_cast<size_t>(countValue)));
+  auto en =
+      createNode<LimitNode>(this, nextId(), static_cast<size_t>(offsetValue),
+                            static_cast<size_t>(countValue));
 
   if (_nestingLevel == 0) {
     _lastLimitNode = en;
@@ -1883,11 +1889,11 @@ ExecutionNode* ExecutionPlan::fromNodeReturn(ExecutionNode* previous,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new ReturnNode(this, nextId(), v));
+    en = createNode<ReturnNode>(this, nextId(), v);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(new ReturnNode(this, nextId(), getOutVariable(calc)));
+    en = createNode<ReturnNode>(this, nextId(), getOutVariable(calc));
     previous = calc;
   }
 
@@ -1930,8 +1936,8 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
 
-    en = registerNode(new RemoveNode(this, nextId(), collection, options,
-                                     getOutVariable(calc), outVariableOld));
+    en = createNode<RemoveNode>(this, nextId(), collection, options,
+                                getOutVariable(calc), outVariableOld);
     previous = calc;
   }
 
@@ -1976,15 +1982,15 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
     auto v = static_cast<Variable*>(expression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new InsertNode(this, nextId(), collection, options, v,
-                                     outVariableOld, outVariableNew));
+    en = createNode<InsertNode>(this, nextId(), collection, options, v,
+                                outVariableOld, outVariableNew);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
 
-    en = registerNode(new InsertNode(this, nextId(), collection, options,
-                                     getOutVariable(calc), outVariableOld,
-                                     outVariableNew));
+    en = createNode<InsertNode>(this, nextId(), collection, options,
+                                getOutVariable(calc), outVariableOld,
+                                outVariableNew);
     previous = calc;
   }
 
@@ -2043,16 +2049,15 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
     auto v = static_cast<Variable*>(docExpression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new UpdateNode(this, nextId(), collection, options, v,
-                                     keyVariable, outVariableOld,
-                                     outVariableNew));
+    en = createNode<UpdateNode>(this, nextId(), collection, options, v,
+                                keyVariable, outVariableOld, outVariableNew);
   } else {
     // document operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression, previous);
 
-    en = registerNode(new UpdateNode(this, nextId(), collection, options,
-                                     getOutVariable(calc), keyVariable,
-                                     outVariableOld, outVariableNew));
+    en = createNode<UpdateNode>(this, nextId(), collection, options,
+                                getOutVariable(calc), keyVariable,
+                                outVariableOld, outVariableNew);
     previous = calc;
   }
 
@@ -2111,16 +2116,15 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
     auto v = static_cast<Variable*>(docExpression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new ReplaceNode(this, nextId(), collection, options, v,
-                                      keyVariable, outVariableOld,
-                                      outVariableNew));
+    en = createNode<ReplaceNode>(this, nextId(), collection, options, v,
+                                 keyVariable, outVariableOld, outVariableNew);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression, previous);
 
-    en = registerNode(new ReplaceNode(this, nextId(), collection, options,
-                                      getOutVariable(calc), keyVariable,
-                                      outVariableOld, outVariableNew));
+    en = createNode<ReplaceNode>(this, nextId(), collection, options,
+                                 getOutVariable(calc), keyVariable,
+                                 outVariableOld, outVariableNew);
     previous = calc;
   }
 
@@ -2215,7 +2219,8 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 
     // add a sort on rangeVariable in front of the WINDOW
     SortElementVector elements;
-    elements.emplace_back(rangeVar, /*isAscending*/ true);
+    elements.emplace_back(SortElement{rangeVar, /*isAscending*/ true,
+                                      _ast->query().resourceMonitor()});
     auto en = registerNode(
         std::make_unique<SortNode>(this, nextId(), elements, false));
     previous = addDependency(previous, en);
