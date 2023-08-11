@@ -79,7 +79,7 @@ jobs:
           name: Install eslint
           command: |
             apk add --no-cache npm
-            npm -g install eslint
+            npm -g install eslint@8.46.0
       - run:
           name: Run eslint
           command: |
