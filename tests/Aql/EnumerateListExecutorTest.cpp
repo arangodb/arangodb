@@ -61,10 +61,8 @@ class EnumerateListExecutorTest : public ::testing::Test {
 
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor,
-                                       SerializationFormat::SHADOWROWS};
-  EnumerateListExecutorTest()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {}
+  AqlItemBlockManager itemBlockManager{monitor};
+  EnumerateListExecutorTest() : itemBlockManager(monitor) {}
 };
 
 TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {

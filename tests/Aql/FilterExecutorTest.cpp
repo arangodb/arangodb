@@ -65,7 +65,7 @@ class FilterExecutorTest
   FilterExecutorInfos infos;
 
   FilterExecutorTest()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         outputRegisters(),
         infos(0) {}

@@ -1,6 +1,16 @@
 devel
 -----
 
+* Updated arangosync to v2.19.3.
+
+* FE-94: Support for query options and optimizer rules on web UI.
+
+* FE-308: Support for graph editing on web UI.
+
+* FE-313: Add support for minHash analyzers & offset field on web UI.
+
+* Prevent potential buffer overflow in the crash handler.
+
 * Improve crash handler by adding the state of the application server (e.g.
   startup, running, shutting dow) into the crash message.
 
