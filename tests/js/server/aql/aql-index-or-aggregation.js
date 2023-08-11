@@ -87,7 +87,7 @@ function VPackIndexInAggregationSuite (unique) {
     },
     
     testVPackAggregateBySingleAttributeUsingInAndLimit22: function () {
-      for (i = 2; i <= 4; ++i) {
+      for (let i = 2; i <= 4; ++i) {
         const q = `FOR doc IN ${cn} FILTER doc.value1 in ["000","001","002","003", "004"] LIMIT 2, ${i} RETURN doc`;
 
         let nodes = AQL_EXPLAIN(q).plan.nodes;
@@ -103,7 +103,7 @@ function VPackIndexInAggregationSuite (unique) {
     },
     
     testVPackAggregateBySingleAttributeUsingOrAndLimit22: function () {
-      for (i = 2; i <= 4; ++i) {
+      for (let i = 2; i <= 4; ++i) {
         const q = `FOR doc IN ${cn} FILTER doc.value1 == "000" || doc.value1 == "001" || doc.value1 == "002" || doc.value1 == "003" || doc.value1 == "004" LIMIT 2, 2 RETURN doc`;
 
         let nodes = AQL_EXPLAIN(q).plan.nodes;
