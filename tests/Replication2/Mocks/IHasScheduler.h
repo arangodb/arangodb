@@ -48,6 +48,12 @@ static_assert(NotPointerLike<int const>);
 static_assert(NotPointerLike<int&>);
 static_assert(NotPointerLike<int const&>);
 
+template<class T>
+concept Iterable = requires(T t) {
+  t.begin();
+  t.end();
+};
+
 struct IHasScheduler;
 
 template<class T>
@@ -96,26 +102,7 @@ struct IHasScheduler {
                        });
   }
 
-  template<typename T>
-  requires requires(T ts) {
-    ts.begin();
-    ts.end();
-    requires std::derived_from<typename T::value_type, IHasScheduler>;
-  }
-  static auto runAll(T& schedulers) -> std::size_t {
-    for (auto& scheduler : schedulers) {
-      scheduler.runAll();
-    }
-  }
-  template<typename T>
-  requires requires(T ts) {
-    ts.begin();
-    ts.end();
-    requires std::derived_from<
-        typename std::pointer_traits<typename T::value_type>::element_type,
-        IHasScheduler>;
-  }
-  static auto runAll(T& schedulers) -> std::size_t {
+  static auto runAll(Iterable auto& schedulers) -> std::size_t {
     auto count = std::size_t{0};
     for (auto& scheduler : schedulers) {
       count += schedulerTypeToPointer(scheduler)->runAll();
@@ -123,26 +110,7 @@ struct IHasScheduler {
     return count;
   }
 
-  template<typename T>
-  requires requires(T ts) {
-    ts.begin();
-    ts.end();
-    requires std::derived_from<typename T::value_type, IHasScheduler>;
-  }
-  static auto hasWork(T& schedulers) -> std::size_t {
-    return std::any_of(
-        schedulers.begin(), schedulers.end(),
-        [](auto const& scheduler) { return scheduler.hasWork(); });
-  }
-  template<typename T>
-  requires requires(T ts) {
-    ts.begin();
-    ts.end();
-    requires std::derived_from<
-        typename std::pointer_traits<typename T::value_type>::element_type,
-        IHasScheduler>;
-  }
-  static auto hasWork(T& schedulers) -> std::size_t {
+  static auto hasWork(Iterable auto& schedulers) -> std::size_t {
     return std::any_of(schedulers.begin(), schedulers.end(),
                        [](auto const& scheduler) {
                          return schedulerTypeToPointer(scheduler)->hasWork();
