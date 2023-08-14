@@ -133,88 +133,47 @@ auto const testingInputLengths = ::testing::Values(
 
 #endif
 
+std::vector<AqlCall> buildTestingAqlCalls = [] {
+  std::vector<AqlCall> calls;
+  std::vector<size_t> myOffsets = {0, 1, 2, 3, 10};
+  std::vector<size_t> mySoftLimits = {0, 1, 2, 3, 10};
+  std::vector<size_t> myHardLimits = {0, 1, 2, 3, 10};
+
+  /*
+   * Build fullcount<true> calls
+   */
+  for (auto const& off : myOffsets) {
+    // Build initial Infitity combination
+    calls.emplace_back(off, false, AqlCall::Infinity{});
+    // Build SoftLimit combinations
+    for (auto const& soft : mySoftLimits) {
+      if (off == 0 && soft == 0) {
+        // Skip the case where offset = 0 and soft limit = 0
+        continue;
+      }
+      calls.emplace_back(off, false, soft, AqlCall::LimitType::SOFT);
+    }
+    // Build Hardlimit combinations
+    for (auto const& hard : myHardLimits) {
+      calls.emplace_back(off, false, hard, AqlCall::LimitType::HARD);
+    }
+  }
+
+  /*
+   * Build fullcount<false> calls
+   */
+  for (auto const& off : myOffsets) {
+    for (auto const& hard : myHardLimits) {
+      calls.emplace_back(off, true, hard, AqlCall::LimitType::HARD);
+    }
+  }
+
+  return calls;
+}();
+
 // Note that fullCount does only make sense with a hard limit, and
 // soft limit = 0 and offset = 0 must not occur together.
-auto const testingAqlCalls = ::testing::ValuesIn(
-    std::array{AqlCall{0, false, AqlCall::Infinity{}},
-               AqlCall{0, false, 1, AqlCall::LimitType::SOFT},
-               AqlCall{0, false, 2, AqlCall::LimitType::SOFT},
-               AqlCall{0, false, 3, AqlCall::LimitType::SOFT},
-               AqlCall{0, false, 10, AqlCall::LimitType::SOFT},
-               AqlCall{0, false, 0, AqlCall::LimitType::HARD},
-               AqlCall{0, false, 1, AqlCall::LimitType::HARD},
-               AqlCall{0, false, 2, AqlCall::LimitType::HARD},
-               AqlCall{0, false, 3, AqlCall::LimitType::HARD},
-               AqlCall{0, false, 10, AqlCall::LimitType::HARD},
-               AqlCall{1, false, AqlCall::Infinity{}},
-               AqlCall{1, false, 0, AqlCall::LimitType::SOFT},
-               AqlCall{1, false, 1, AqlCall::LimitType::SOFT},
-               AqlCall{1, false, 2, AqlCall::LimitType::SOFT},
-               AqlCall{1, false, 3, AqlCall::LimitType::SOFT},
-               AqlCall{1, false, 10, AqlCall::LimitType::SOFT},
-               AqlCall{1, false, 0, AqlCall::LimitType::HARD},
-               AqlCall{1, false, 1, AqlCall::LimitType::HARD},
-               AqlCall{1, false, 2, AqlCall::LimitType::HARD},
-               AqlCall{1, false, 3, AqlCall::LimitType::HARD},
-               AqlCall{1, false, 10, AqlCall::LimitType::HARD},
-               AqlCall{2, false, AqlCall::Infinity{}},
-               AqlCall{2, false, 0, AqlCall::LimitType::SOFT},
-               AqlCall{2, false, 1, AqlCall::LimitType::SOFT},
-               AqlCall{2, false, 2, AqlCall::LimitType::SOFT},
-               AqlCall{2, false, 3, AqlCall::LimitType::SOFT},
-               AqlCall{2, false, 10, AqlCall::LimitType::SOFT},
-               AqlCall{2, false, 0, AqlCall::LimitType::HARD},
-               AqlCall{2, false, 1, AqlCall::LimitType::HARD},
-               AqlCall{2, false, 2, AqlCall::LimitType::HARD},
-               AqlCall{2, false, 3, AqlCall::LimitType::HARD},
-               AqlCall{2, false, 10, AqlCall::LimitType::HARD},
-               AqlCall{3, false, AqlCall::Infinity{}},
-               AqlCall{3, false, 0, AqlCall::LimitType::SOFT},
-               AqlCall{3, false, 1, AqlCall::LimitType::SOFT},
-               AqlCall{3, false, 2, AqlCall::LimitType::SOFT},
-               AqlCall{3, false, 3, AqlCall::LimitType::SOFT},
-               AqlCall{3, false, 10, AqlCall::LimitType::SOFT},
-               AqlCall{3, false, 0, AqlCall::LimitType::HARD},
-               AqlCall{3, false, 1, AqlCall::LimitType::HARD},
-               AqlCall{3, false, 2, AqlCall::LimitType::HARD},
-               AqlCall{3, false, 3, AqlCall::LimitType::HARD},
-               AqlCall{3, false, 10, AqlCall::LimitType::HARD},
-               AqlCall{10, false, AqlCall::Infinity{}},
-               AqlCall{10, false, 0, AqlCall::LimitType::SOFT},
-               AqlCall{10, false, 1, AqlCall::LimitType::SOFT},
-               AqlCall{10, false, 2, AqlCall::LimitType::SOFT},
-               AqlCall{10, false, 3, AqlCall::LimitType::SOFT},
-               AqlCall{10, false, 10, AqlCall::LimitType::SOFT},
-               AqlCall{10, false, 0, AqlCall::LimitType::HARD},
-               AqlCall{10, false, 1, AqlCall::LimitType::HARD},
-               AqlCall{10, false, 2, AqlCall::LimitType::HARD},
-               AqlCall{10, false, 3, AqlCall::LimitType::HARD},
-               AqlCall{10, false, 10, AqlCall::LimitType::HARD},
-               AqlCall{0, true, 0, AqlCall::LimitType::HARD},
-               AqlCall{0, true, 1, AqlCall::LimitType::HARD},
-               AqlCall{0, true, 2, AqlCall::LimitType::HARD},
-               AqlCall{0, true, 3, AqlCall::LimitType::HARD},
-               AqlCall{0, true, 10, AqlCall::LimitType::HARD},
-               AqlCall{1, true, 0, AqlCall::LimitType::HARD},
-               AqlCall{1, true, 1, AqlCall::LimitType::HARD},
-               AqlCall{1, true, 2, AqlCall::LimitType::HARD},
-               AqlCall{1, true, 3, AqlCall::LimitType::HARD},
-               AqlCall{1, true, 10, AqlCall::LimitType::HARD},
-               AqlCall{2, true, 0, AqlCall::LimitType::HARD},
-               AqlCall{2, true, 1, AqlCall::LimitType::HARD},
-               AqlCall{2, true, 2, AqlCall::LimitType::HARD},
-               AqlCall{2, true, 3, AqlCall::LimitType::HARD},
-               AqlCall{2, true, 10, AqlCall::LimitType::HARD},
-               AqlCall{3, true, 0, AqlCall::LimitType::HARD},
-               AqlCall{3, true, 1, AqlCall::LimitType::HARD},
-               AqlCall{3, true, 2, AqlCall::LimitType::HARD},
-               AqlCall{3, true, 3, AqlCall::LimitType::HARD},
-               AqlCall{3, true, 10, AqlCall::LimitType::HARD},
-               AqlCall{10, true, 0, AqlCall::LimitType::HARD},
-               AqlCall{10, true, 1, AqlCall::LimitType::HARD},
-               AqlCall{10, true, 2, AqlCall::LimitType::HARD},
-               AqlCall{10, true, 3, AqlCall::LimitType::HARD},
-               AqlCall{10, true, 10, AqlCall::LimitType::HARD}});
+auto const testingAqlCalls = ::testing::ValuesIn(buildTestingAqlCalls);
 auto const testingDoneResultIsEmpty = ::testing::Bool();
 
 auto const limitTestCases = ::testing::Combine(
