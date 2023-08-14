@@ -957,8 +957,12 @@ class instance {
     print('--------------------------------- '+ fn + ' -----------------------------------------------');
     let agencyReply = this.getAgent(path, method);
     if (agencyReply.code === 200) {
-      let agencyValue = JSON.parse(agencyReply.body);
-      fs.write(fs.join(dumpdir, fn + '_' + this.pid + ".json"), JSON.stringify(agencyValue, null, 2));
+      if (fn === "agencyState") {
+        fs.write(fs.join(dumpdir, fn + '_' + this.pid + ".json"), agencyReply.body);
+      } else {
+        let agencyValue = JSON.parse(agencyReply.body);
+        fs.write(fs.join(dumpdir, fn + '_' + this.pid + ".json"), JSON.stringify(agencyValue, null, 2));
+      }
     } else {
       print(agencyReply);
     }
