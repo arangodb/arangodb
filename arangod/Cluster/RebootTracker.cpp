@@ -208,7 +208,7 @@ void RebootTracker::unregisterCallback(PeerState const& peer,
   }
 }
 
-bool RebootTracker::isServerAlive(ServerID id) const {
+bool RebootTracker::isServerAlive(ServerID const& id) const {
   std::lock_guard guard{_mutex};
   auto it = _state.find(id);
   return it != _state.end() && it->second.status == ServerHealth::kGood;
