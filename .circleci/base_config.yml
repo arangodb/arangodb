@@ -16,10 +16,10 @@ commands:
         type: string
         default: ""
     steps:
-       - add_ssh_keys:
+      - add_ssh_keys:
           fingerprints:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
-       - run:
+      - run:
           name: Checkout Enterprise
           command: |
             ssh-keyscan github.com >> ~/.ssh/known_hosts
@@ -125,7 +125,7 @@ jobs:
           name: Install eslint
           command: |
             apk add --no-cache npm
-            npm -g install eslint
+            npm -g install eslint@8.46.0
       - run:
           name: Run eslint
           command: |
@@ -148,7 +148,7 @@ jobs:
         type: boolean
         default: true
     docker:
-      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.1
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.2
     resource_class: xlarge
     environment:
       GIT_SSH_COMMAND: ssh
@@ -322,7 +322,7 @@ workflows:
     jobs:
       - compile-linux:
           context:
-          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ce
           preset: community-pr
           edition: x64-community
@@ -330,7 +330,7 @@ workflows:
           targets: "arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest"
       - compile-linux:
           context:
-          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ce-non-maintainer
           preset: community-pr-non-maintainer
           edition: x64-community
@@ -341,7 +341,7 @@ workflows:
     jobs:
       - compile-linux:
           context:
-          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ee
           preset: enterprise-pr
           edition: x64-enterprise
@@ -350,7 +350,7 @@ workflows:
           enterprise-targets: "arangobackup"
       - compile-linux:
           context:
-          - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           name: build-ee-non-maintainer
           preset: enterprise-pr-non-maintainer
           edition: x64-enterprise

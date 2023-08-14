@@ -23,11 +23,12 @@
 
 #include "gtest/gtest.h"
 #include "Aql/Ast.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ServerState.h"
 #include "Mocks/Servers.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -46,6 +47,8 @@ class IndexNodeTest
                                             arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   IndexNodeTest() : server(false) {
     // otherwise asserts fail
@@ -514,17 +517,20 @@ TEST_F(IndexNodeTest, constructIndexNode) {
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
       nullptr);
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   {
     // short path for a test
     {
       auto vars = query->ast()->variables();
-      for (auto const& v :
-           {std::make_unique<arangodb::aql::Variable>("d", 0, false),
-            std::make_unique<arangodb::aql::Variable>("3", 4, false),
-            std::make_unique<arangodb::aql::Variable>("5", 6, false),
-            std::make_unique<arangodb::aql::Variable>("7", 8, false)}) {
+      for (auto const& v : {std::make_unique<arangodb::aql::Variable>(
+                                "d", 0, false, resourceMonitor),
+                            std::make_unique<arangodb::aql::Variable>(
+                                "3", 4, false, resourceMonitor),
+                            std::make_unique<arangodb::aql::Variable>(
+                                "5", 6, false, resourceMonitor),
+                            std::make_unique<arangodb::aql::Variable>(
+                                "7", 8, false, resourceMonitor)}) {
         if (vars->getVariable(v->id) == nullptr) {
           vars->createVariable(v.get());
         }
@@ -574,8 +580,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
         auto queryClone = arangodb::aql::Query::create(
             ctx, arangodb::aql::QueryString(std::string_view("RETURN 1")),
             nullptr);
-        queryClone->prepareQuery(
-            arangodb::aql::SerializationFormat::SHADOWROWS);
+        queryClone->prepareQuery();
         indNode.invalidateVarUsage();
         auto indNodeClone =
             dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
@@ -618,10 +623,11 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
       nullptr);
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   auto vars = query->plan()->getAst()->variables();
-  auto const& v = std::make_unique<arangodb::aql::Variable>("5", 6, false);
+  auto const& v =
+      std::make_unique<arangodb::aql::Variable>("5", 6, false, resourceMonitor);
   if (vars->getVariable(v->id) == nullptr) {
     vars->createVariable(v.get());
   }

@@ -811,9 +811,6 @@ ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
 TRI_vocbase_t::createCollections(
     std::vector<arangodb::CreateCollectionBody> const& collections,
     bool allowEnterpriseCollectionsOnSingleServer) {
-  // TODO: Need to get rid of this collection. Distribute Shards like
-  // is now denoted inside the CreateCollectionBody
-  std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
   /// Code from here is copy pasted from original create and
   /// has not been refacored yet.
   VPackBuilder builder =
@@ -1473,6 +1470,10 @@ void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
 
 void TRI_vocbase_t::setShardingPrototype(ShardingPrototype type) {
   _info.shardingPrototype(type);
+}
+
+void TRI_vocbase_t::setSharding(std::string_view sharding) {
+  _info.setSharding(sharding);
 }
 
 ShardingPrototype TRI_vocbase_t::shardingPrototype() const {

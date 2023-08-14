@@ -10,11 +10,11 @@ export const GraphsListView = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   return (
     <Box padding="4" width="100%">
-      <GraphListViewHeader onOpen={onOpen} />
-      <GraphsModeProvider mode="add">
-        <AddGraphModal isOpen={isOpen} onClose={onClose} />
-      </GraphsModeProvider>
       <GraphsListProvider>
+        <GraphListViewHeader onOpen={onOpen} />
+        <GraphsModeProvider mode="add">
+          <AddGraphModal isOpen={isOpen} onClose={onClose} />
+        </GraphsModeProvider>
         <GraphsTable />
       </GraphsListProvider>
     </Box>

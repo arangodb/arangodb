@@ -2,10 +2,6 @@
 /*global arango, assertEqual, assertTrue, assertFalse,, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the traditional key generators
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany

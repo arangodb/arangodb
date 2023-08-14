@@ -724,6 +724,29 @@ function CreateCollectionsSuite() {
       }
     },
 
+    testSmartJoinPrefixShardKey: function () {
+      const res = tryCreate({name: collname, smartJoinAttribute: "test", numberOfShards: 3, shardKeys: ["_key:"]});
+      try {
+        if (!isEnterprise) {
+          assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+          validateProperties({shardKeys: ["_key:"], numberOfShards: 3}, collname, 2);
+          validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
+          validateDeprecationLogEntryWritten();
+        } else {
+          if (!isCluster) {
+            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+            validateProperties({}, collname, 2);
+            validatePropertiesDoNotExist(collname, ["smartJoinAttribute"]);
+          } else {
+            assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+            validateProperties({smartJoinAttribute: "test", numberOfShards: 3, shardKeys: ["_key:"]}, collname, 2);
+          }
+        }
+      } finally {
+        db._drop(collname);
+      }
+    },
+
     testSmartJoinCorrect: function () {
       const leader = tryCreate({name: leaderName, numberOfShards: 3});
       try {
@@ -1093,7 +1116,7 @@ function CreateCollectionsSuite() {
                   delete edge.isDisjoint;
                 }
 
-                if (!isEnterprise || isServer) {
+                if (!isEnterprise) {
                   // The initial request is disallowed.
                   // Which will trigger removal of distributeShardsLike
                   delete edge.distributeShardsLike;
@@ -1245,10 +1268,9 @@ function CreateCollectionsSuite() {
                   delete edge.isSmart;
                   delete edge.isDisjoint;
                 }
-                if (!isEnterprise || isServer) {
-                  // Comunity does not support it and on
-                  // EE Server the initial request is disallowed.
-                  // Both will trigger removal of distributeShardsLike
+                if (!isEnterprise) {
+                  // Community does not support it and on
+                  // This will trigger removal of distributeShardsLike
                   delete edge.distributeShardsLike;
                 }
               } else {

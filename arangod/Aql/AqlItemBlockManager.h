@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
@@ -48,8 +47,7 @@ class AqlItemBlockManager {
 
  public:
   /// @brief create the manager
-  explicit AqlItemBlockManager(arangodb::ResourceMonitor&,
-                               SerializationFormat format);
+  explicit AqlItemBlockManager(arangodb::ResourceMonitor&);
 
   /// @brief destroy the manager
   TEST_VIRTUAL ~AqlItemBlockManager();
@@ -64,8 +62,6 @@ class AqlItemBlockManager {
   requestAndInitBlock(velocypack::Slice slice);
 
   TEST_VIRTUAL arangodb::ResourceMonitor& resourceMonitor() const noexcept;
-
-  SerializationFormat getFormatType() const { return _format; }
 
   void initializeConstValueBlock(RegisterCount nrRegs);
 
@@ -91,7 +87,6 @@ class AqlItemBlockManager {
 
  private:
   arangodb::ResourceMonitor& _resourceMonitor;
-  SerializationFormat const _format;
 
   static constexpr uint32_t numBuckets = 12;
   static constexpr size_t numBlocksPerBucket = 7;

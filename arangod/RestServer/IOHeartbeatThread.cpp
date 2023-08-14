@@ -65,7 +65,9 @@ void IOHeartbeatThread::run() {
   std::string testFileContent = "This is just an I/O test.\n";
 
   LOG_TOPIC("66665", DEBUG, Logger::ENGINES) << "IOHeartbeatThread: running...";
-
+  // File might be left if previous run has crashed.
+  // That will trigger an error in spit.
+  std::ignore = basics::FileUtils::remove(testFilePath);
   while (true) {
     try {  // protect thread against any exceptions
       if (isStopping()) {

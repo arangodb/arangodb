@@ -130,44 +130,99 @@ lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
   }
 }
 
+constexpr int kSortMultiplier[]{-1, 1};
+
+template<typename ValueType, typename HeapSortType>
 class BufferHeapSortContext {
  public:
-  explicit BufferHeapSortContext(
-      size_t numScoreRegisters,
-      std::span<std::pair<size_t, bool> const> scoresSort,
-      std::span<float_t const> scoreBuffer)
-      : _numScoreRegisters(numScoreRegisters),
-        _scoresSort(scoresSort),
-        _scoreBuffer(scoreBuffer) {}
+  explicit BufferHeapSortContext(std::span<HeapSortValue const> heapSortValues,
+                                 std::span<HeapSortType const> heapSort)
+      : _heapSortValues(heapSortValues), _heapSort(heapSort) {}
 
   bool operator()(size_t a, size_t b) const noexcept {
-    auto const* rhs_scores = &_scoreBuffer[b * _numScoreRegisters];
-    auto lhs_scores = &_scoreBuffer[a * _numScoreRegisters];
-    for (auto const& cmp : _scoresSort) {
-      if (lhs_scores[cmp.first] != rhs_scores[cmp.first]) {
-        return cmp.second ? lhs_scores[cmp.first] < rhs_scores[cmp.first]
-                          : lhs_scores[cmp.first] > rhs_scores[cmp.first];
+    TRI_ASSERT(_heapSortValues.size() > a * _heapSort.size())
+        << "Size:" << _heapSortValues.size() << " Index:" << a;
+    TRI_ASSERT(_heapSortValues.size() > b * _heapSort.size())
+        << "Size:" << _heapSortValues.size() << " Index:" << b;
+    auto lhs_stored = &_heapSortValues[a * _heapSort.size()];
+    auto rhs_stored = &_heapSortValues[b * _heapSort.size()];
+    for (auto const& cmp : _heapSort) {
+      if (cmp.isScore()) {
+        if (lhs_stored->score != rhs_stored->score) {
+          return cmp.ascending ? lhs_stored->score < rhs_stored->score
+                               : lhs_stored->score > rhs_stored->score;
+        }
+      } else {
+        auto res = basics::VelocyPackHelper::compare(lhs_stored->slice,
+                                                     rhs_stored->slice, true);
+        if (res != 0) {
+          return (kSortMultiplier[size_t{cmp.ascending}] * res) < 0;
+        }
       }
+      ++lhs_stored;
+      ++rhs_stored;
     }
     return false;
   }
 
-  bool compareInput(size_t lhsIdx, float_t const* rhs_scores) const noexcept {
-    auto lhs_scores = &_scoreBuffer[lhsIdx * _numScoreRegisters];
-    for (auto const& cmp : _scoresSort) {
-      if (lhs_scores[cmp.first] != rhs_scores[cmp.first]) {
-        return cmp.second ? lhs_scores[cmp.first] < rhs_scores[cmp.first]
-                          : lhs_scores[cmp.first] > rhs_scores[cmp.first];
+  template<typename StoredValueProvider>
+  bool compareInput(size_t lhsIdx, float_t const* rhs_scores,
+                    StoredValueProvider const& stored) const noexcept {
+    TRI_ASSERT(_heapSortValues.size() > lhsIdx * _heapSort.size());
+    auto lhs_values = &_heapSortValues[lhsIdx * _heapSort.size()];
+    for (auto const& cmp : _heapSort) {
+      if (cmp.isScore()) {
+        if (lhs_values->score != rhs_scores[cmp.source]) {
+          return cmp.ascending ? lhs_values->score < rhs_scores[cmp.source]
+                               : lhs_values->score > rhs_scores[cmp.source];
+        }
+      } else {
+        auto value = stored(cmp);
+        auto res =
+            basics::VelocyPackHelper::compare(lhs_values->slice, value, true);
+        if (res != 0) {
+          return (kSortMultiplier[size_t{cmp.ascending}] * res) < 0;
+        }
       }
+      ++lhs_values;
     }
     return false;
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool descScore() const noexcept {
+    return !_heapSort.empty() && _heapSort.front().isScore() &&
+           !_heapSort.front().ascending;
+  }
+#endif
 
  private:
-  size_t _numScoreRegisters;
-  std::span<std::pair<size_t, bool> const> _scoresSort;
-  std::span<float_t const> _scoreBuffer;
+  std::span<HeapSortValue const> _heapSortValues;
+  std::span<HeapSortType const> _heapSort;
 };
+
+velocypack::Slice getStoredValue(irs::bytes_view storedValue,
+                                 HeapSortElement const& sort) {
+  TRI_ASSERT(!sort.isScore());
+  TRI_ASSERT(!storedValue.empty());
+  auto* start = storedValue.data();
+  [[maybe_unused]] auto* end = start + storedValue.size();
+  velocypack::Slice slice{start};
+  for (size_t i = 0; i != sort.fieldNumber; ++i) {
+    start += slice.byteSize();
+    TRI_ASSERT(start < end);
+    slice = velocypack::Slice{start};
+  }
+  TRI_ASSERT(!slice.isNone());
+  if (sort.postfix.empty()) {
+    return slice;
+  }
+  if (!slice.isObject()) {
+    return velocypack::Slice::nullSlice();
+  }
+  auto value = slice.get(sort.postfix);
+  return !value.isNone() ? value : velocypack::Slice::nullSlice();
+}
 
 }  // namespace
 
@@ -187,7 +242,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
-    std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit,
+    std::vector<HeapSortElement> const& heapSort, size_t heapSortLimit,
     iresearch::SearchMeta const* meta)
     : _searchDocOutReg{searchDocRegister},
       _documentOutReg{outRegister},
@@ -208,8 +263,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _outNonMaterializedViewRegs{std::move(outNonMaterializedViewRegs)},
       _countApproximate{countApproximate},
       _filterOptimization{filterOptimization},
-      _scorersSort{std::move(scorersSort)},
-      _scorersSortLimit{scorersSortLimit},
+      _heapSort{heapSort},
+      _heapSortLimit{heapSortLimit},
       _meta{meta},
       _depth{depth},
       _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
@@ -390,7 +445,8 @@ template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
   std::sort(
       _rows.begin(), _rows.end(),
-      BufferHeapSortContext{_numScoreRegisters, _scoresSort, _scoreBuffer});
+      BufferHeapSortContext<typename StoredValuesContainer::value_type,
+                            BufferHeapSortElement>{_heapSortValues, _heapSort});
   if (_heapSizeLeft) {
     // heap was not filled up to the limit. So fill buffer here.
     _storedValuesBuffer.resize(_keyBuffer.size() * _storedValuesCount);
@@ -398,19 +454,132 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
 }
 
 template<typename ValueType, bool copySorted>
+template<typename ColumnReaderProvider>
+velocypack::Slice IndexReadBuffer<ValueType, copySorted>::readHeapSortColumn(
+    arangodb::iresearch::HeapSortElement const& cmp, irs::doc_id_t doc,
+    ColumnReaderProvider& readerProvider, size_t readerSlot) {
+  TRI_ASSERT(_heapOnlyStoredValuesReaders.size() >= readerSlot);
+  TRI_ASSERT(!cmp.isScore());
+  if (_heapOnlyStoredValuesReaders.size() == readerSlot) {
+    _heapOnlyStoredValuesReaders.push_back(readerProvider(cmp.source));
+  }
+  auto& reader = _heapOnlyStoredValuesReaders[readerSlot];
+  irs::bytes_view val;
+  TRI_ASSERT(!reader.itr || reader.itr->value() <= doc);
+  if (reader.itr && doc == reader.itr->seek(doc) &&
+      !reader.value->value.empty()) {
+    val = reader.value->value;
+  } else {
+    val = ref<irs::byte_type>(VPackSlice::nullSlice());
+  }
+  TRI_ASSERT(_currentDocumentBuffer.capacity() > _currentDocumentBuffer.size());
+  _currentDocumentBuffer.emplace_back(val);
+  if constexpr (copySorted) {
+    return getStoredValue(_currentDocumentBuffer.back(), cmp);
+  } else {
+    return _currentDocumentSlices.emplace_back(
+        getStoredValue(_currentDocumentBuffer.back(), cmp));
+  }
+}
+
+template<typename ValueType, bool copySorted>
+template<bool fullHeap, typename ColumnReaderProvider>
+void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
+    size_t idx, irs::doc_id_t doc, std::span<float_t const> scores,
+    ColumnReaderProvider& readerProvider) {
+  auto const heapSortSize = _heapSort.size();
+  size_t heapSortValuesIndex = idx * heapSortSize;
+  size_t storedSliceIdx{0};
+  if constexpr (!copySorted) {
+    TRI_ASSERT(_currentDocumentSlices.size() == _currentDocumentBuffer.size());
+  }
+  if constexpr (fullHeap) {
+    TRI_ASSERT(heapSortValuesIndex < _heapSortValues.size());
+  } else {
+    TRI_ASSERT(heapSortValuesIndex == _heapSortValues.size());
+  }
+  for (auto const& cmp : _heapSort) {
+    if (cmp.isScore()) {
+      if constexpr (fullHeap) {
+        _heapSortValues[heapSortValuesIndex].score = scores[cmp.source];
+      } else {
+        _heapSortValues.push_back(HeapSortValue{.score = scores[cmp.source]});
+      }
+    } else {
+      TRI_ASSERT(cmp.container);
+      auto& valueSlot =
+          *(cmp.container->data() + idx * cmp.multiplier + cmp.offset);
+      velocypack::Slice slice;
+      if (storedSliceIdx < _currentDocumentBuffer.size()) {
+        valueSlot = std::move(_currentDocumentBuffer[storedSliceIdx]);
+        if constexpr (copySorted) {
+          slice = getStoredValue(valueSlot, cmp);
+        } else {
+          slice = _currentDocumentSlices[storedSliceIdx];
+        }
+      } else {
+        TRI_ASSERT(_heapOnlyStoredValuesReaders.size() >= storedSliceIdx);
+        if (_heapOnlyStoredValuesReaders.size() == storedSliceIdx) {
+          _heapOnlyStoredValuesReaders.push_back(readerProvider(cmp.source));
+        }
+        auto& reader = _heapOnlyStoredValuesReaders[storedSliceIdx];
+        TRI_ASSERT(!reader.itr || reader.itr->value() <= doc);
+        irs::bytes_view val;
+        if (reader.itr && doc == reader.itr->seek(doc) &&
+            !reader.value->value.empty()) {
+          val = reader.value->value;
+        } else {
+          val = ref<irs::byte_type>(VPackSlice::nullSlice());
+        }
+        valueSlot = val;
+        slice = getStoredValue(valueSlot, cmp);
+      }
+      if constexpr (fullHeap) {
+        _heapSortValues[heapSortValuesIndex].slice = slice;
+      } else {
+        _heapSortValues.push_back(HeapSortValue{.slice = slice});
+      }
+      TRI_ASSERT(getStoredValue(valueSlot, cmp).begin() ==
+                 _heapSortValues[heapSortValuesIndex].slice.begin());
+      ++storedSliceIdx;
+    }
+    ++heapSortValuesIndex;
+  }
+}
+
+template<typename ValueType, bool copySorted>
+template<typename ColumnReaderProvider>
 void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
-    StorageSnapshot const& snapshot, ValueType&& value,
-    std::span<float_t const> scores, irs::score_threshold* threshold) {
-  BufferHeapSortContext sortContext(_numScoreRegisters, _scoresSort,
-                                    _scoreBuffer);
+    ColumnReaderProvider& columnReader, StorageSnapshot const& snapshot,
+    ValueType&& value, std::span<float_t const> scores, irs::score& score,
+    irs::score_t& threshold) {
   TRI_ASSERT(_maxSize);
-  TRI_ASSERT(threshold == nullptr || !scores.empty());
+  using HeapSortContext =
+      BufferHeapSortContext<typename StoredValuesContainer::value_type,
+                            BufferHeapSortElement>;
+  if constexpr (!copySorted) {
+    _currentDocumentSlices.clear();
+  }
+  _currentDocumentBuffer.clear();
+  if (_currentReaderOffset != value.readerOffset()) {
+    _currentReaderOffset = value.readerOffset();
+    _heapOnlyStoredValuesReaders.clear();
+  }
   if (ADB_LIKELY(!_heapSizeLeft)) {
-    if (sortContext.compareInput(_rows.front(), scores.data())) {
+    HeapSortContext sortContext(_heapSortValues, _heapSort);
+    size_t readerSlot{0};
+    if (sortContext.compareInput(_rows.front(), scores.data(),
+                                 [&](iresearch::HeapSortElement const& cmp) {
+                                   return readHeapSortColumn(
+                                       cmp, value.irsDocId(), columnReader,
+                                       readerSlot++);
+                                 })) {
       return;  // not interested in this document
     }
     std::pop_heap(_rows.begin(), _rows.end(), sortContext);
     // now last contains "free" index in the buffer
+    finalizeHeapSortDocument<true>(_rows.back(), value.irsDocId(), scores,
+                                   columnReader);
     _keyBuffer[_rows.back()] = BufferValueType{snapshot, std::move(value)};
     auto const base = _rows.back() * _numScoreRegisters;
     size_t i{0};
@@ -424,12 +593,15 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
       ++bufferIt;
     }
     std::push_heap(_rows.begin(), _rows.end(), sortContext);
-    if (threshold) {
-      TRI_ASSERT(threshold->min <=
-                 _scoreBuffer[_rows.front() * _numScoreRegisters]);
-      threshold->min = _scoreBuffer[_rows.front() * _numScoreRegisters];
-    }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(!sortContext.descScore() ||
+               threshold <= _scoreBuffer[_rows.front() * _numScoreRegisters]);
+#endif
+    threshold = _scoreBuffer[_rows.front() * _numScoreRegisters];
+    score.Min(threshold);
   } else {
+    finalizeHeapSortDocument<false>(_rows.size(), value.irsDocId(), scores,
+                                    columnReader);
     _keyBuffer.emplace_back(snapshot, std::move(value));
     size_t i = 0;
     for (; i < scores.size(); ++i) {
@@ -440,6 +612,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
                         std::numeric_limits<float_t>::quiet_NaN());
     _rows.push_back(_rows.size());
     if ((--_heapSizeLeft) == 0) {
+      HeapSortContext sortContext(_heapSortValues, _heapSort);
       _storedValuesBuffer.resize(_keyBuffer.size() * _storedValuesCount);
       std::make_heap(_rows.begin(), _rows.end(), sortContext);
     }
@@ -494,7 +667,7 @@ IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
   assertSizeCoherence();
   size_t key = _keyBaseIdx;
   if (std::is_same_v<ValueType, HeapSortExecutorValue> && !_rows.empty()) {
-    TRI_ASSERT(!_scoresSort.empty());
+    TRI_ASSERT(!_heapSort.empty());
     key = _rows[_keyBaseIdx];
   }
   IndexReadBufferEntry entry{key};
@@ -505,7 +678,8 @@ IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
 template<typename ValueType, bool copyStored>
 void IndexReadBuffer<ValueType, copyStored>::assertSizeCoherence()
     const noexcept {
-  TRI_ASSERT(_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters);
+  TRI_ASSERT((_numScoreRegisters == 0 && _scoreBuffer.size() == 1) ||
+             (_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters));
 }
 
 template<typename Impl, typename ExecutionTraits>
@@ -611,7 +785,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   bool const needFullCount = call.needsFullCount();
   TRI_ASSERT(_indexReadBuffer.empty() ||
-             (!this->infos().scoresSort().empty() && needFullCount));
+             (!this->infos().heapSort().empty() && needFullCount));
   auto& impl = static_cast<Impl&>(*this);
   IResearchViewStats stats{};
   while (inputRange.hasDataRow() && call.shouldSkip()) {
@@ -637,7 +811,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
       call.didSkip(impl.skipAll(stats));
     }
     // only heapsort version could possibly fetch more than skip requested
-    TRI_ASSERT(_indexReadBuffer.empty() || !this->infos().scoresSort().empty());
+    TRI_ASSERT(_indexReadBuffer.empty() || !this->infos().heapSort().empty());
 
     if (call.shouldSkip()) {
       // We still need to fetch more
@@ -806,18 +980,15 @@ inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
     ReadContext& ctx, irs::bytes_view storedValue,
     std::map<size_t, RegisterId> const& fieldsRegs) {
   TRI_ASSERT(!storedValue.empty());
-  auto const totalSize = storedValue.size();
-  VPackSlice slice{storedValue.data()};
-  size_t size = 0;
+  auto* start = storedValue.data();
+  [[maybe_unused]] auto* end = start + storedValue.size();
+  velocypack::Slice slice{start};
   size_t i = 0;
   for (auto const& [fieldNum, registerId] : fieldsRegs) {
     while (i < fieldNum) {
-      size += slice.byteSize();
-      TRI_ASSERT(size <= totalSize);
-      if (ADB_UNLIKELY(size > totalSize)) {
-        return false;
-      }
-      slice = VPackSlice{slice.end()};
+      start += slice.byteSize();
+      TRI_ASSERT(start < end);
+      slice = velocypack::Slice{start};
       ++i;
     }
     TRI_ASSERT(!slice.isNone());
@@ -928,18 +1099,24 @@ template<typename Impl, typename ExecutionTraits>
 bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
     irs::SubReader const& segmentReader, size_t storedValuesIndex /*= 0*/) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
+  constexpr bool HeapSort =
+      std::is_same_v<HeapSortExecutorValue,
+                     typename arangodb::aql::IResearchViewExecutorBase<
+                         Impl, ExecutionTraits>::Traits::IndexBufferValueType>;
   if (!columnsFieldsRegs.empty()) {
     auto columnFieldsRegs = columnsFieldsRegs.cbegin();
     auto index = storedValuesIndex * columnsFieldsRegs.size();
     if (IResearchViewNode::kSortColumnNumber == columnFieldsRegs->first) {
-      auto sortReader = ::sortColumn(segmentReader);
-      if (ADB_UNLIKELY(!sortReader)) {
-        LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
-            << "encountered a sub-reader without a sort column while "
-               "executing a query, ignoring";
-        return false;
+      if (!HeapSort || !_storedColumnsMask.contains(columnFieldsRegs->first)) {
+        auto sortReader = ::sortColumn(segmentReader);
+        if (ADB_UNLIKELY(!sortReader)) {
+          LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
+              << "encountered a sub-reader without a sort column while "
+                 "executing a query, ignoring";
+          return false;
+        }
+        ::reset(_storedValuesReaders[index++], std::move(sortReader));
       }
-      ::reset(_storedValuesReaders[index++], std::move(sortReader));
       ++columnFieldsRegs;
     }
     // if stored values exist
@@ -949,6 +1126,11 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
       for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
         TRI_ASSERT(IResearchViewNode::kSortColumnNumber <
                    columnFieldsRegs->first);
+        if constexpr (HeapSort) {
+          if (_storedColumnsMask.contains(columnFieldsRegs->first)) {
+            continue;
+          }
+        }
         auto const storedColumnNumber =
             static_cast<size_t>(columnFieldsRegs->first);
         TRI_ASSERT(storedColumnNumber < columns.size());
@@ -979,7 +1161,7 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
       _numScores{0} {
   this->_storedValuesReaders.resize(
       this->_infos.getOutNonMaterializedViewRegs().size());
-  TRI_ASSERT(infos.scoresSort().empty());
+  TRI_ASSERT(infos.heapSort().empty());
 }
 
 template<typename ExecutionTraits>
@@ -1018,7 +1200,8 @@ template<typename ExecutionTraits>
 IResearchViewHeapSortExecutor<ExecutionTraits>::IResearchViewHeapSortExecutor(
     Fetcher& fetcher, Infos& infos)
     : Base{fetcher, infos} {
-  this->_indexReadBuffer.setScoresSort(this->_infos.scoresSort());
+  this->_indexReadBuffer.setHeapSort(
+      this->_infos.heapSort(), this->_infos.getOutNonMaterializedViewRegs());
 }
 
 template<typename ExecutionTraits>
@@ -1095,7 +1278,7 @@ void IResearchViewHeapSortExecutor<ExecutionTraits>::reset(
 #ifdef USE_ENTERPRISE
   if (!needFullCount) {
     this->_wand = this->_infos.optimizeTopK().makeWandContext(
-        this->_infos.scoresSort(), this->_scorers);
+        this->_infos.heapSort(), this->_scorers);
   }
 #endif
   _totalCount = 0;
@@ -1132,15 +1315,21 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
     return false;
   }
   _bufferFilled = true;
-  TRI_ASSERT(!this->_infos.scoresSort().empty());
+  TRI_ASSERT(!this->_infos.heapSort().empty());
   TRI_ASSERT(this->_filter != nullptr);
-  size_t const atMost = this->_infos.scoresSortLimit();
+  size_t const atMost = this->_infos.heapSortLimit();
   TRI_ASSERT(atMost);
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
   auto const count = this->_reader->size();
+
+  for (auto const& cmp : this->_infos.heapSort()) {
+    if (!cmp.isScore()) {
+      this->_storedColumnsMask.insert(cmp.source);
+    }
+  }
 
   containers::SmallVector<irs::score_t, 4> scores;
   if constexpr (ExecutionTraits::Ordered) {
@@ -1149,10 +1338,9 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
 
   irs::doc_iterator::ptr itr;
   irs::document const* doc{};
-  irs::score_threshold* threshold{};
-  irs::score_t threshold_value = 0.f;
+  irs::score* scr = const_cast<irs::score*>(&irs::score::kNoScore);
   size_t numScores{0};
-  irs::score const* scr;
+  irs::score_t threshold = 0.f;
   for (size_t readerOffset = 0; readerOffset < count;) {
     if (!itr) {
       auto& segmentReader = (*this->_reader)[readerOffset];
@@ -1166,45 +1354,50 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
       doc = irs::get<irs::document>(*itr);
       TRI_ASSERT(doc);
       if constexpr (ExecutionTraits::Ordered) {
-        scr = irs::get<irs::score>(*itr);
-        if (!scr) {
-          scr = &irs::score::kNoScore;
-          numScores = 0;
-          threshold = nullptr;
-        } else {
+        auto* score = irs::get_mutable<irs::score>(itr.get());
+        if (score != nullptr) {
+          scr = score;
           numScores = scores.size();
-          threshold = irs::get_mutable<irs::score_threshold>(itr.get());
-          if (threshold != nullptr && this->_wand.Enabled()) {
-            TRI_ASSERT(threshold->min == 0.f);
-            threshold->min = threshold_value;
-          } else {
-            threshold = nullptr;
-          }
+          scr->Min(threshold);
         }
       }
       itr = segmentReader.mask(std::move(itr));
       TRI_ASSERT(itr);
     }
     if (!itr->next()) {
-      if (threshold != nullptr) {
-        TRI_ASSERT(threshold_value <= threshold->min);
-        threshold_value = threshold->min;
-      }
       ++readerOffset;
       itr.reset();
       doc = nullptr;
-      scr = nullptr;
+      scr = const_cast<irs::score*>(&irs::score::kNoScore);
+      numScores = 0;
       continue;
     }
     ++_totalCount;
 
     (*scr)(scores.data());
-
+    auto provider = [this, readerOffset](ptrdiff_t column) {
+      auto& segmentReader = (*this->_reader)[readerOffset];
+      ColumnIterator it;
+      if (IResearchViewNode::kSortColumnNumber == column) {
+        auto sortReader = ::sortColumn(segmentReader);
+        if (ADB_LIKELY(sortReader)) {
+          ::reset(it, std::move(sortReader));
+        }
+      } else {
+        auto const& columns = this->_infos.storedValues().columns();
+        auto const* storedValuesReader =
+            segmentReader.column(columns[column].name);
+        if (ADB_LIKELY(storedValuesReader)) {
+          ::reset(it, storedValuesReader->iterator(irs::ColumnHint::kNormal));
+        }
+      }
+      return it;
+    };
     this->_indexReadBuffer.pushSortedValue(
-        this->_reader->snapshot(readerOffset),
+        provider, this->_reader->snapshot(readerOffset),
         typename decltype(this->_indexReadBuffer)::KeyValueType(doc->value,
                                                                 readerOffset),
-        std::span{scores.data(), numScores}, threshold);
+        std::span{scores.data(), numScores}, *scr, threshold);
   }
   this->_indexReadBuffer.finalizeHeapSort();
   _bufferedCount = this->_indexReadBuffer.size();
@@ -1286,6 +1479,10 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
         size_t valueIndex = *orderIt * columnsFieldsRegs.size();
         for (auto it = columnsFieldsRegs.cbegin();
              it != columnsFieldsRegs.cend(); ++it) {
+          if (this->_storedColumnsMask.contains(it->first)) {
+            valueIndex++;
+            continue;
+          }
           TRI_ASSERT(readerIndex < this->_storedValuesReaders.size());
           auto const& reader = this->_storedValuesReaders[readerIndex++];
           TRI_ASSERT(reader.itr);
@@ -1611,14 +1808,12 @@ bool IResearchViewExecutor<ExecutionTraits>::writeRow(
 template<typename ExecutionTraits>
 IResearchViewMergeExecutor<ExecutionTraits>::IResearchViewMergeExecutor(
     Fetcher& fetcher, Infos& infos)
-    : Base{fetcher, infos},
-      _heap_it{
-          MinHeapContext{*infos.sort().first, infos.sort().second, _segments}} {
+    : Base{fetcher, infos}, _heap_it{*infos.sort().first, infos.sort().second} {
   TRI_ASSERT(infos.sort().first);
   TRI_ASSERT(!infos.sort().first->empty());
   TRI_ASSERT(infos.sort().first->size() >= infos.sort().second);
   TRI_ASSERT(infos.sort().second);
-  TRI_ASSERT(infos.scoresSort().empty());
+  TRI_ASSERT(infos.heapSort().empty());
 }
 
 template<typename ExecutionTraits>
@@ -1652,15 +1847,12 @@ IResearchViewMergeExecutor<ExecutionTraits>::Segment::Segment(
 
 template<typename ExecutionTraits>
 IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::MinHeapContext(
-    IResearchSortBase const& sort, size_t sortBuckets,
-    std::vector<Segment>& segments) noexcept
-    : _less(sort, sortBuckets), _segments(&segments) {}
+    IResearchSortBase const& sort, size_t sortBuckets) noexcept
+    : _less{sort, sortBuckets} {}
 
 template<typename ExecutionTraits>
 bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
-    size_t const i) const {
-  assert(i < _segments->size());
-  auto& segment = (*_segments)[i];
+    Value& segment) const {
   while (segment.docs->next()) {
     auto const doc = segment.docs->value();
 
@@ -1675,11 +1867,8 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
 
 template<typename ExecutionTraits>
 bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
-    size_t const lhs, size_t const rhs) const {
-  assert(lhs < _segments->size());
-  assert(rhs < _segments->size());
-  return _less.Compare((*_segments)[rhs].sortValue->value,
-                       (*_segments)[lhs].sortValue->value) < 0;
+    Value const& lhs, Value const& rhs) const {
+  return _less.Compare(lhs.sortValue->value, rhs.sortValue->value) < 0;
 }
 
 template<typename ExecutionTraits>
@@ -1785,7 +1974,7 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
     }
   }
 
-  _heap_it.reset(_segments.size());
+  _heap_it.Reset(_segments);
 }
 
 template<typename ExecutionTraits>
@@ -1826,8 +2015,8 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
   bool gotData{false};
-  while (_heap_it.next()) {
-    auto& segment = _segments[_heap_it.value()];
+  while (_heap_it.Next()) {
+    auto& segment = _heap_it.Lead();
     ++segment.segmentPos;
     TRI_ASSERT(segment.docs);
     TRI_ASSERT(segment.doc);
@@ -1892,8 +2081,8 @@ size_t IResearchViewMergeExecutor<ExecutionTraits>::skip(size_t limit,
 
   size_t const toSkip = limit;
 
-  while (limit && _heap_it.next()) {
-    ++this->_segments[_heap_it.value()].segmentPos;
+  while (limit && _heap_it.Next()) {
+    ++_heap_it.Lead().segmentPos;
     --limit;
   }
 
@@ -1907,19 +2096,24 @@ size_t IResearchViewMergeExecutor<ExecutionTraits>::skipAll(
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t skipped = 0;
-  if (_heap_it.size()) {
+  // 0 || 0 -- _heap_it exhausted, we don't need to skip anything
+  // 0 || 1 -- _heap_it not exhausted, we need to skip tail
+  // 1 || 0 -- never called _heap_it.Next(), we need to skip all
+  // 1 || 1 -- impossible, asserted
+  if (!_heap_it.Initilized() || _heap_it.Size() != 0) {
+    TRI_ASSERT(_heap_it.Initilized() || _heap_it.Size() == 0);
+    auto& infos = this->infos();
     for (auto& segment : _segments) {
       TRI_ASSERT(segment.docs);
-      if (this->infos().filterConditionIsEmpty()) {
+      if (infos.filterConditionIsEmpty()) {
         TRI_ASSERT(segment.segmentIndex < this->_reader->size());
         auto const live_docs_count =
             (*this->_reader)[segment.segmentIndex].live_docs_count();
         TRI_ASSERT(segment.segmentPos <= live_docs_count);
         skipped += live_docs_count - segment.segmentPos;
       } else {
-        skipped +=
-            calculateSkipAllCount(this->infos().countApproximate(),
-                                  segment.segmentPos, segment.docs.get());
+        skipped += calculateSkipAllCount(
+            infos.countApproximate(), segment.segmentPos, segment.docs.get());
       }
     }
     // Adjusting by count of docs already consumed by heap but not consumed by
@@ -1927,14 +2121,12 @@ size_t IResearchViewMergeExecutor<ExecutionTraits>::skipAll(
     // after heap.next. But we should adjust by the heap size only if the heap
     // was advanced at least once (heap is actually filled on first next) or we
     // have nothing consumed from doc iterators!
-    if (!_segments.empty() &&
-        this->infos().countApproximate() == CountApproximate::Exact &&
-        !this->infos().filterConditionIsEmpty() && _heap_it.size() &&
-        this->_segments[_heap_it.value()].segmentPos) {
-      skipped += (_heap_it.size() - 1);
+    if (infos.countApproximate() == CountApproximate::Exact &&
+        !infos.filterConditionIsEmpty() && _heap_it.Size() != 0) {
+      skipped += (_heap_it.Size() - 1);
     }
-    _heap_it.reset(0);
   }
+  _heap_it.Reset({});  // Make it uninitilized
   return skipped;
 }
 

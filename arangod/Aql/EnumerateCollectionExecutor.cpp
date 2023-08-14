@@ -132,12 +132,20 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher,
                           : transaction::Methods::CursorType::ALL),
       infos.canReadOwnWrites());
 
-  if (_infos.getProduceResult()) {
-    _documentProducer =
-        buildDocumentCallback<false, false>(_documentProducingFunctionContext);
+  if (!_infos.getCount()) {
+    if (_infos.getProduceResult()) {
+      _documentProducer = buildDocumentCallback<false, false>(
+          _documentProducingFunctionContext);
+    } else {
+      _documentNonProducer =
+          getNullCallback<false>(_documentProducingFunctionContext);
+    }
   }
-  _documentSkipper =
-      buildDocumentCallback<false, true>(_documentProducingFunctionContext);
+
+  if (_infos.getFilter() != nullptr) {
+    _documentSkipper =
+        buildDocumentCallback<false, true>(_documentProducingFunctionContext);
+  }
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
@@ -153,6 +161,7 @@ uint64_t EnumerateCollectionExecutor::skipEntries(
     stats.incrScanned(actuallySkipped);
     std::ignore = _documentProducingFunctionContext.getAndResetNumScanned();
   } else {
+    TRI_ASSERT(_documentSkipper != nullptr);
     _cursor->nextDocument(_documentSkipper, toSkip);
     uint64_t filtered =
         _documentProducingFunctionContext.getAndResetNumFiltered();
@@ -265,7 +274,15 @@ EnumerateCollectionExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);
+
+  // validate that the output pointer in documentProducingFunctionContext is the
+  // same as in output
+  TRI_ASSERT(&output == &_documentProducingFunctionContext.getOutputRow());
+
   while (inputRange.hasDataRow() && !output.isFull()) {
+    // validate that output has a valid AqlItemBlock
+    TRI_ASSERT(output.isInitialized());
+
     if (!_cursorHasMore) {
       // the following call can change the value of _cursorHasMore
       initializeNewRow(inputRange);
@@ -294,15 +311,16 @@ EnumerateCollectionExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       } else if (_infos.getProduceResult()) {
         // properly build up results by fetching the actual documents
         // using nextDocument()
+        TRI_ASSERT(_documentProducer != nullptr);
         _cursorHasMore = _cursor->nextDocument(_documentProducer,
                                                output.numRowsLeft() /*atMost*/);
       } else {
         // performance optimization: we do not need the documents at all.
         // so just call next()
         TRI_ASSERT(!_documentProducingFunctionContext.hasFilter());
-        _cursorHasMore = _cursor->next(
-            getNullCallback<false>(_documentProducingFunctionContext),
-            output.numRowsLeft() /*atMost*/);
+        TRI_ASSERT(_documentNonProducer != nullptr);
+        _cursorHasMore = _cursor->next(_documentNonProducer,
+                                       output.numRowsLeft() /*atMost*/);
       }
 
       stats.incrScanned(

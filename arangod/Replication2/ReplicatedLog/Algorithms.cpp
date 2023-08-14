@@ -291,15 +291,15 @@ auto algorithms::calculateCommitIndex(
     if (!p.isAllowedInQuorum()) {
       candidates.emplace(p.id,
                          CommitFailReason::NonEligibleServerRequiredForQuorum::
-                             kNotAllowedInQuorum);
+                             Why::kNotAllowedInQuorum);
     } else if (p.lastTerm() != lastTermIndex.term) {
-      candidates.emplace(
-          p.id,
-          CommitFailReason::NonEligibleServerRequiredForQuorum::kWrongTerm);
+      candidates.emplace(p.id,
+                         CommitFailReason::NonEligibleServerRequiredForQuorum::
+                             Why::kWrongTerm);
     } else if (not p.isSnapshotAvailable()) {
       candidates.emplace(p.id,
                          CommitFailReason::NonEligibleServerRequiredForQuorum::
-                             kSnapshotMissing);
+                             Why::kSnapshotMissing);
     }
   }
 

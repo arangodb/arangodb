@@ -205,7 +205,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   auto maybeGraphSerdeConfig =
       buildGraphSerdeConfig(vocbase, graphByCollections);
   if (!maybeGraphSerdeConfig.ok()) {
-    return maybeGraphByCollections.error();
+    return maybeGraphSerdeConfig.error();
   }
   auto graphSerdeConfig = maybeGraphSerdeConfig.get();
 

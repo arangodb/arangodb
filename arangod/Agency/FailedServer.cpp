@@ -382,7 +382,7 @@ JOB_STATUS FailedServer::status() {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
       if (serverHealthy) {
         if (!deleteTodos) {
-          deleteTodos.reset(new Builder());
+          deleteTodos = std::make_shared<Builder>();
           deleteTodos->openArray();
           deleteTodos->openObject();
         }

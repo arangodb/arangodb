@@ -8,6 +8,7 @@ import { DelimiterConfig } from "./forms/DelimiterConfig";
 import { GeoJSONConfig } from "./forms/GeoJSONConfig";
 import { GeopointConfig } from "./forms/GeopointConfig";
 import { GeoS2Config } from "./forms/GeoS2Config";
+import { MinHashConfig } from "./forms/MinHashConfig";
 import { NearestNeighborsConfig } from "./forms/NearestNeighborsConfig";
 import { NgramConfig } from "./forms/NgramConfig";
 import { NormConfig } from "./forms/NormConfig";
@@ -33,7 +34,8 @@ const ANALYZER_TYPE_TO_CONFIG_MAP = {
   pipeline: PipelineConfig,
   geojson: GeoJSONConfig,
   geopoint: GeopointConfig,
-  geo_s2: GeoS2Config
+  geo_s2: GeoS2Config,
+  minhash: MinHashConfig
 };
 
 export const AnalyzerTypeForm = ({
@@ -49,7 +51,7 @@ export const AnalyzerTypeForm = ({
   }
   return (
     <Stack gridColumn="1 / -1">
-      <Text>Configuration</Text>
+      <Text>Properties</Text>
       <Divider borderColor="gray.400" />
       <AnalyzerConfigComponent basePropertiesPath={basePropertiesPath} />
     </Stack>
