@@ -258,7 +258,7 @@ const getSingleLogId = function (database, collection) {
   const shardId = shards[0];
   const logId = shardsToLogs[shardId];
   return {logId, shardId};
-}
+};
 
 exports.getLocalValue = getLocalValue;
 exports.localKeyStatus = localKeyStatus;
