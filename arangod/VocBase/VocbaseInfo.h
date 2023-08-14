@@ -133,6 +133,7 @@ class CreateDatabaseInfo {
 
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
+  void setSharding(std::string_view sharding);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  protected:
