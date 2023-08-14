@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition
+  was executed through an index lookup.
+
 * Fix Pregel running on OneShard deployments
 
 * BTS-1544: The _system database now properly reports its sharding value.
