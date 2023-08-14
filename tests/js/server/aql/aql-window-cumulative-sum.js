@@ -543,7 +543,6 @@ function WindowBoundsNonKeyShardedSuite() {
   const suite = generateWindowBoundsSuite("NonKeySharded");
   suite.setUpAll = function() {
     db._create(collectionName, {numberOfShards: 3, shardKeys: ["value"]});
-    require("internal").print(JSON.stringify(db._collection(collectionName).properties()));
     let docs = [];
     for (let i = 0; i < 10; ++i) {
       docs.push({key: `${i}`,
