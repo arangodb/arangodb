@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix Pregel running on OneShard deployments
+
 * BTS-1544: The _system database now properly reports its sharding value.
 
 * Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used
