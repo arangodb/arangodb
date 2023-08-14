@@ -820,11 +820,14 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
           first = false;
         } else if (auto error = checkFieldsSameCollection(merged, indexMeta);
                    !error.empty()) {
-          return {TRI_ERROR_BAD_PARAMETER,
-                  absl::StrCat(
-                      "You cannot add to view indexes to the same collection,"
-                      " if them index the same fields. Error for: ",
-                      error, inverted.index().collection().name(), "'")};
+          return {
+              TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("You can only have several indexes from the same "
+                           "collection if they index different fields. Adding "
+                           "multiple indexes to the collection for the same "
+                           "fields is not permitted. Error '",
+                           error, "' for '",
+                           inverted.index().collection().name(), "'")};
         } else {
           add(merged, indexMeta);
         }
