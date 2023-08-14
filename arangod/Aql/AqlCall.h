@@ -148,6 +148,18 @@ struct AqlCall {
     return clampToLimit(ExecutionBlock::DefaultBatchSize);
   }
 
+  Limit getUnclampedLimit() const noexcept {
+    // We are not allowed to go above softLimit
+    if (std::holds_alternative<std::size_t>(softLimit)) {
+      return std::get<std::size_t>(softLimit);
+    }
+    // We are not allowed to go above hardLimit
+    if (std::holds_alternative<std::size_t>(hardLimit)) {
+      return std::get<std::size_t>(hardLimit);
+    }
+    return AqlCall::Infinity{};
+  }
+
   std::size_t clampToLimit(
       size_t limit) const noexcept {  // By default we use batchsize
     // We are not allowed to go above softLimit
