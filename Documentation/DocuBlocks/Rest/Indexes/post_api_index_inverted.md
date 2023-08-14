@@ -329,7 +329,7 @@ of a scoring function in descending order (`DESC`). Use `@doc` in the expression
 where you would normally pass the document variable emitted by the `SEARCH`
 operation to the scoring function.
 
-You can define up tp 64 expressions per View.
+You can define up to 64 expressions per View.
 
 Example: `["BM25(@doc) DESC", "TFIDF(@doc, true) DESC"]`
 
