@@ -127,31 +127,10 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
 
   auto config = makeConfig(leaderLogContainer, {followerLogContainer},
                            {.term = LogTerm{3}, .writeConcern = 2});
+  config.installConfig(false);
 
-  // we start with a snapshot, no need to acquire one
-  EXPECT_CALL(*followerLogContainer.stateHandleMock, acquireSnapshot).Times(0);
-  auto followerMethodsFuture = followerLogContainer.waitToBecomeFollower();
-  auto leaderMethodsFuture = leaderLogContainer.waitForLeadership();
-
-  {
-    auto fut = followerLogContainer.updateConfig(config);
-    EXPECT_TRUE(fut.isReady());
-    ASSERT_TRUE(followerMethodsFuture.isReady());
-    ASSERT_TRUE(followerMethodsFuture.result().hasValue());
-  }
-
-  auto followerMethods = std::move(followerMethodsFuture).get();
-  ASSERT_NE(followerMethods, nullptr);
-
-  {
-    auto fut = leaderLogContainer.updateConfig(config);
-    // write concern is 2, leadership can't be established yet
-    EXPECT_FALSE(fut.isReady());
-    EXPECT_FALSE(leaderMethodsFuture.isReady());
-  }
-
-  auto leader = leaderLogContainer.getAsLeader();
-  auto follower = followerLogContainer.getAsFollower();
+  auto leader = leaderLogContainer.log;
+  auto follower = followerLogContainer.log;
 
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
@@ -172,27 +151,10 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   // have the leader send the append entries request;
   // have the follower process the append entries request.
   // this should rewrite its log.
-  IDelayedScheduler::runAll(
-      leaderLogContainer.logScheduler, leaderLogContainer.storageExecutor,
-      followerLogContainer.logScheduler, followerLogContainer.storageExecutor,
-      followerLogContainer.delayedLogFollower->scheduler);
+  IHasScheduler::runAll(leaderLogContainer, followerLogContainer);
 
-  EXPECT_FALSE(IDelayedScheduler::hasWork(
-      leaderLogContainer.logScheduler, leaderLogContainer.storageExecutor,
-      followerLogContainer.logScheduler, followerLogContainer.storageExecutor,
-      followerLogContainer.delayedLogFollower->scheduler));
-
-  {
-    ASSERT_TRUE(leaderMethodsFuture.isReady());
-    ASSERT_TRUE(leaderMethodsFuture.result().hasValue());
-  }
-  auto leaderMethods = std::move(leaderMethodsFuture).get();
-  ASSERT_NE(leaderMethods, nullptr);
-
-  // We got the leader methods, now have to give them back to the leader
-  EXPECT_CALL(*leaderLogContainer.stateHandleMock, resignCurrentState)
-      .WillOnce(testing::Return(std::move(leaderMethods)));
-  EXPECT_CALL(*followerLogContainer.stateHandleMock, resignCurrentState);
+  EXPECT_FALSE(
+      IHasScheduler::hasWork(leaderLogContainer, followerLogContainer));
 
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;

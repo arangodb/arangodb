@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/Mocks/IDelayedScheduler.h"
+#include "Replication2/Mocks/IHasScheduler.h"
 
 #include "Replication2/IScheduler.h"
 
@@ -84,7 +84,7 @@ struct FakeScheduler : IScheduler {
   }
 };
 
-struct DelayedScheduler : IScheduler, IDelayedScheduler {
+struct DelayedScheduler : IScheduler, IHasScheduler {
   auto delayedFuture(std::chrono::nanoseconds duration, std::string_view name)
       -> arangodb::futures::Future<arangodb::futures::Unit> override {
     if (name.data() == nullptr) {
@@ -113,7 +113,7 @@ struct DelayedScheduler : IScheduler, IDelayedScheduler {
     _queue.push_back(std::move(function));
   }
 
-  void runOnce() noexcept override {
+  void runOnce() noexcept {
     auto f = std::invoke([this] {
       ADB_PROD_ASSERT(not _queue.empty());
       auto f = std::move(_queue.front());
@@ -123,13 +123,22 @@ struct DelayedScheduler : IScheduler, IDelayedScheduler {
     f.operator()();
   }
 
-  auto runAllCurrent() noexcept -> std::size_t override {
+  auto runAllCurrent() noexcept -> std::size_t {
     auto queue = std::move(_queue);
     auto const tasks = queue.size();
     while (not queue.empty()) {
       runOnce();
     }
     return tasks;
+  }
+
+  auto runAll() noexcept -> std::size_t override {
+    auto count = std::size_t{0};
+    while (hasWork()) {
+      runOnce();
+      ++count;
+    }
+    return count;
   }
 
   auto hasWork() const noexcept -> bool override { return not _queue.empty(); }

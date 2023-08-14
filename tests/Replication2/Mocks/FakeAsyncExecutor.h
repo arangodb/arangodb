@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Replication2/Mocks/IDelayedScheduler.h"
+#include "Replication2/Mocks/IHasScheduler.h"
 
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
 
@@ -50,7 +50,7 @@ struct ThreadAsyncExecutor : AsyncLogWriteBatcher::IAsyncExecutor {
 };
 
 struct DelayedExecutor : AsyncLogWriteBatcher::IAsyncExecutor,
-                         arangodb::replication2::test::IDelayedScheduler {
+                         arangodb::replication2::test::IHasScheduler {
   using Func = fu2::unique_function<void() noexcept>;
 
   void operator()(Func fn) override;
@@ -59,9 +59,10 @@ struct DelayedExecutor : AsyncLogWriteBatcher::IAsyncExecutor,
   DelayedExecutor();
 
   auto hasWork() const noexcept -> bool override;
+  auto runAll() noexcept -> std::size_t override;
 
-  void runOnce() noexcept override;
-  auto runAllCurrent() noexcept -> std::size_t override;
+  void runOnce() noexcept;
+  auto runAllCurrent() noexcept -> std::size_t;
 
  private:
   std::deque<Func> queue;

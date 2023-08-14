@@ -32,7 +32,8 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   Mocks/LogFollowerMock.h
   Mocks/ReplicatedStateHandleMock.h
   Mocks/FakeFollowerFactory.h
-  Mocks/IDelayedScheduler.h
+  Mocks/IHasScheduler.h
+  Helper/ReplicatedLogTestSetup.cpp
 )
 
 
@@ -117,6 +118,7 @@ add_library(arango_tests_replication2_pure OBJECT
   ReplicatedLog/Supervision/SupervisionTest.cpp
   ReplicatedLog/Components/SnapshotManagerTest.cpp
 
+  ReplicatedLog/AppendEntriesBatchTest.cpp
   ReplicatedLog/RewriteLogTest.cpp
   )
 

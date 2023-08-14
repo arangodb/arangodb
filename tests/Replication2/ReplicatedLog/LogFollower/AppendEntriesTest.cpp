@@ -94,10 +94,7 @@ struct AppendEntriesFollowerTest : ::testing::Test {
   void SetUp() override {
     storage = std::make_shared<storage::test::FakeStorageEngineMethodsContext>(
         storage::test::FakeStorageEngineMethodsContext{
-            objectId,
-            logId,
-            executor,
-            {LogIndex{1}, LogIndex{100}},
+            objectId, logId, executor, LogRange{LogIndex{1}, LogIndex{100}},
             storage::PersistedStateInfo{
                 .stateId = logId,
                 .snapshot = {.status = SnapshotStatus::kCompleted,

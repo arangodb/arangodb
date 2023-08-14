@@ -53,10 +53,7 @@ struct StorageManagerTest : ::testing::Test {
   std::shared_ptr<test::SyncScheduler> scheduler =
       std::make_shared<test::SyncScheduler>();
   storage::test::FakeStorageEngineMethodsContext methods{
-      objectId,
-      logId,
-      executor,
-      {LogIndex{1}, LogIndex{100}},
+      objectId, logId, executor, LogRange{LogIndex{1}, LogIndex{100}},
       storage::PersistedStateInfo{
           .stateId = logId,
           .snapshot = {.status = SnapshotStatus::kFailed,

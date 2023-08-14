@@ -41,17 +41,24 @@
 
 namespace arangodb::replication2::test {
 
-auto operator"" _Lx(unsigned long long x) -> LogIndex { return LogIndex{x}; }
-auto operator"" _T(unsigned long long x) -> LogTerm { return LogTerm{x}; }
+auto inline operator"" _Lx(unsigned long long x) -> LogIndex {
+  return LogIndex{x};
+}
+auto inline operator"" _T(unsigned long long x) -> LogTerm {
+  return LogTerm{x};
+}
 
 struct LogArguments {
-  LogRange initialLogRange = {};
+  std::variant<LogRange, std::vector<LogPayload>> initialLogRange = {};
   // set persistedMetadata to std::nullopt to simulate a read failure.
   // `.stateId` will be set by makeLogWithFakes(), but is of no consequence
   // anyway.
   std::optional<storage::PersistedStateInfo> persistedMetadata =
       storage::PersistedStateInfo{
           .snapshot = {.status = replicated_state::SnapshotStatus::kCompleted}};
+
+  std::shared_ptr<ReplicatedLogGlobalSettings> options =
+      std::make_shared<ReplicatedLogGlobalSettings>();
 };
 struct ConfigArguments {
   LogTerm term = LogTerm{1};
@@ -61,12 +68,14 @@ struct ConfigArguments {
 struct LogWithFakes;
 struct LogConfig {
   LogWithFakes& leader;
-  std::vector<std::reference_wrapper<LogWithFakes>> follower;
+  std::vector<std::reference_wrapper<LogWithFakes>> followers;
   agency::LogPlanTermSpecification termSpec;
   agency::ParticipantsConfig participantsConfig;
+
+  void installConfig(bool establishLeadership = false);
 };
 
-struct LogWithFakes {
+struct LogWithFakes : IHasScheduler {
   LogWithFakes(LogId logId, agency::ServerInstanceReference serverId,
                LoggerContext loggerContext,
                std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetrics,
@@ -78,22 +87,27 @@ struct LogWithFakes {
         storageContext(
             std::make_shared<storage::test::FakeStorageEngineMethodsContext>(
                 12, gid.id, storageExecutor, fakeArguments.initialLogRange,
-                std::move(fakeArguments.persistedMetadata))) {}
+                std::move(fakeArguments.persistedMetadata))),
+        options(std::move(fakeArguments.options)) {}
 
   [[nodiscard]] auto updateConfig(LogConfig conf) {
     if (&conf.leader == this) {
-      for (auto const it : conf.follower) {
+      stateHandleMock->expectLeader();
+      for (auto const it : conf.followers) {
         auto& followerContainer = it.get();
         fakeFollowerFactory->followerThunks.try_emplace(
             followerContainer.serverInstance.serverId, [&followerContainer]() {
+              // Note: Follower instances must have their config installed
+              // already for this to work.
+              // TODO catch exception and print an error?
               followerContainer.delayedLogFollower =
                   std::make_shared<DelayedLogFollower>(
                       followerContainer.getAsFollower());
               return followerContainer.delayedLogFollower;
             });
       }
-
-      EXPECT_CALL(*rebootIdCache, getRebootIdsFor);
+    } else {
+      stateHandleMock->expectFollower();
     }
     return log->updateConfig(std::move(conf.termSpec),
                              std::move(conf.participantsConfig),
@@ -113,41 +127,22 @@ struct LogWithFakes {
     EXPECT_NE(follower, nullptr);
     return follower;
   }
-  auto runScheduler() {
-    auto iters = std::size_t{0};
-    while (logScheduler->hasWork()) {
-      ++iters;
-      logScheduler->runOnce();
+
+  auto runAll() noexcept -> std::size_t override {
+    if (delayedLogFollower == nullptr) {
+      return IHasScheduler::runAll(logScheduler, storageExecutor);
+    } else {
+      return IHasScheduler::runAll(logScheduler, storageExecutor,
+                                   delayedLogFollower->scheduler);
     }
-    return iters;
   }
-  [[nodiscard]] auto waitForLeadership() {
-    auto promise = futures::Promise<
-        std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods>>();
-    auto future = promise.getFuture();
-    EXPECT_CALL(*stateHandleMock, leadershipEstablished)
-        .WillOnce(
-            [promise = std::move(promise)](
-                std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods>
-                    logLeaderMethods) mutable {
-              promise.setValue(std::move(logLeaderMethods));
-            });
-
-    return future;
-  }
-  [[nodiscard]] auto waitToBecomeFollower() {
-    auto promise = futures::Promise<
-        std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>>();
-    auto future = promise.getFuture();
-    EXPECT_CALL(*stateHandleMock, becomeFollower)
-        .WillOnce(
-            [promise = std::move(promise)](
-                std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
-                    logFollowerMethods) mutable {
-              promise.setValue(std::move(logFollowerMethods));
-            });
-
-    return future;
+  auto hasWork() const noexcept -> bool override {
+    if (delayedLogFollower == nullptr) {
+      return IHasScheduler::hasWork(logScheduler, storageExecutor);
+    } else {
+      return IHasScheduler::hasWork(logScheduler, storageExecutor,
+                                    delayedLogFollower->scheduler);
+    }
   }
 
   LoggerContext loggerContext;
@@ -166,8 +161,7 @@ struct LogWithFakes {
       storageContext;
   storage::IStorageEngineMethods* methodsPtr =
       storageContext->getMethods().release();
-  std::shared_ptr<ReplicatedLogGlobalSettings> optionsMock =
-      std::make_shared<ReplicatedLogGlobalSettings>();
+  std::shared_ptr<ReplicatedLogGlobalSettings> options;
 
   std::shared_ptr<DelayedScheduler> logScheduler =
       std::make_shared<DelayedScheduler>();
@@ -183,7 +177,7 @@ struct LogWithFakes {
   std::shared_ptr<replicated_log::ReplicatedLog> log =
       std::make_shared<replicated_log::ReplicatedLog>(
           std::unique_ptr<storage::IStorageEngineMethods>{methodsPtr},
-          logMetrics, optionsMock, participantsFactory, loggerContext,
+          logMetrics, options, participantsFactory, loggerContext,
           serverInstance);
 
   test::ReplicatedStateHandleMock* stateHandleMock =
@@ -241,7 +235,7 @@ struct ReplicatedLogTest : ::testing::Test {
     auto logSpec = agency::LogPlanTermSpecification{configArguments.term,
                                                     leader.serverInstance};
     return LogConfig{.leader = leader,
-                     .follower = std::move(follower),
+                     .followers = std::move(follower),
                      .termSpec = std::move(logSpec),
                      .participantsConfig = std::move(participantsConfig)};
   }

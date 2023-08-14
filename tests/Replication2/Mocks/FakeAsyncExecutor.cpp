@@ -98,11 +98,20 @@ auto DelayedExecutor::hasWork() const noexcept -> bool {
   return not queue.empty();
 }
 
-size_t DelayedExecutor::runAllCurrent() noexcept {
+auto DelayedExecutor::runAllCurrent() noexcept -> std::size_t {
   auto queue_ = std::move(this->queue);
   auto const tasks = queue_.size();
   while (not queue_.empty()) {
     runOnce();
   }
   return tasks;
+}
+
+auto DelayedExecutor::runAll() noexcept -> std::size_t {
+  auto count = std::size_t{0};
+  while (hasWork()) {
+    runOnce();
+    ++count;
+  }
+  return count;
 }
