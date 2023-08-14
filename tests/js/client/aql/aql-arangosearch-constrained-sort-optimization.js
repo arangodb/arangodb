@@ -30,7 +30,7 @@
 
 const jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const base = require("fs").join(require('internal').pathForTesting('server'),
+const base = require("fs").join(require('internal').pathForTesting('client'),
   'aql', 'aql-arangosearch-constrained-sort-optimization.inc');
 const ArangoSearchConstrainedSortTestSuite = require("internal").load(base);
 const isCluster = require("internal").isCluster();
