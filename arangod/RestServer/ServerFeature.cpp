@@ -83,14 +83,12 @@ another mode.)");
       new BooleanParameter(&_restServer),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption(
-          "--server.validate-utf8-strings",
-          "Perform UTF-8 string validation for incoming JSON and VelocyPack "
-          "data.",
-          new BooleanParameter(&_validateUtf8Strings),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon));
+  options->addOption(
+      "--server.validate-utf8-strings",
+      "Perform UTF-8 string validation for incoming JSON and VelocyPack "
+      "data.",
+      new BooleanParameter(&_validateUtf8Strings),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption("--javascript.script", "Run the script and exit.",
                      new VectorParameter<StringParameter>(&_scripts));

@@ -133,10 +133,9 @@ void ShellConsoleFeature::collectOptions(
                      "The audit log file to save commands and results to.",
                      new StringParameter(&_auditFile));
 
-  options
-      ->addOption("--console.history",
-                  "Whether to load and persist command-line history.",
-                  new BooleanParameter(&_useHistory));
+  options->addOption("--console.history",
+                     "Whether to load and persist command-line history.",
+                     new BooleanParameter(&_useHistory));
 
   options->addOption("--console.pager", "Enable paging.",
                      new BooleanParameter(&_pager));

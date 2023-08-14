@@ -958,12 +958,11 @@ then the commit and consolidation thread counts are calculated as follows:
 `[ 1..arangosearch.consolidation-threads ]`. Set it to `0` to automatically
 choose a sensible number based on the number of cores in the system.)");
 
-  options
-      ->addOption(
-          CONSOLIDATION_THREADS_IDLE_PARAM,
-          "The upper limit to the allowed number of idle threads to use "
-          "for consolidation tasks (0 = auto-detect).",
-          new options::UInt32Parameter(&_consolidationThreadsIdle));
+  options->addOption(
+      CONSOLIDATION_THREADS_IDLE_PARAM,
+      "The upper limit to the allowed number of idle threads to use "
+      "for consolidation tasks (0 = auto-detect).",
+      new options::UInt32Parameter(&_consolidationThreadsIdle));
 
   options
       ->addOption(COMMIT_THREADS_PARAM,

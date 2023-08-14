@@ -388,10 +388,10 @@ contains a single character with the server's role. The roles are:
 - `P`: Primary / DB-Server
 - `A`: Agent)");
 
-  options
-      ->addOption("--log.file-mode",
-                  "mode to use for new log file, umask will be applied as well",
-                  new StringParameter(&_fileMode));
+  options->addOption(
+      "--log.file-mode",
+      "mode to use for new log file, umask will be applied as well",
+      new StringParameter(&_fileMode));
 
   if (_threaded) {
     // this option only makes sense for arangod, not for arangosh etc.
@@ -448,11 +448,10 @@ The object attributes produced for each log message are:
 | `message`  | the actual log message payload)");
 
 #ifdef ARANGODB_HAVE_SETGID
-  options
-      ->addOption(
-          "--log.file-group",
-          "group to use for new log file, user must be a member of this group",
-          new StringParameter(&_fileGroup));
+  options->addOption(
+      "--log.file-group",
+      "group to use for new log file, user must be a member of this group",
+      new StringParameter(&_fileGroup));
 #endif
 
   options

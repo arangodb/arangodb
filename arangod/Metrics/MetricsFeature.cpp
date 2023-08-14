@@ -61,19 +61,16 @@ void MetricsFeature::collectOptions(
   _serverStatistics =
       std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
 
-  options
-      ->addOption("--server.export-metrics-api",
-                  "Whether to enable the metrics API.",
-                  new options::BooleanParameter(&_export),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon));
+  options->addOption(
+      "--server.export-metrics-api", "Whether to enable the metrics API.",
+      new options::BooleanParameter(&_export),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption("--server.export-read-write-metrics",
-                  "Whether to enable metrics for document reads and writes.",
-                  new options::BooleanParameter(&_exportReadWriteMetrics),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon));
+  options->addOption(
+      "--server.export-read-write-metrics",
+      "Whether to enable metrics for document reads and writes.",
+      new options::BooleanParameter(&_exportReadWriteMetrics),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(

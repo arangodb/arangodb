@@ -354,31 +354,29 @@ void RocksDBOptionFeature::collectOptions(
                          arangodb::options::Flags::OnDBServer,
                          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption("--rocksdb.target-file-size-base",
-                  "Per-file target file size for compaction (in bytes). The "
-                  "actual target file size for each level is "
-                  "`--rocksdb.target-file-size-base` multiplied by "
-                  "`--rocksdb.target-file-size-multiplier` ^ (level - 1)",
-                  new UInt64Parameter(&_targetFileSizeBase),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnAgent,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle));
+  options->addOption("--rocksdb.target-file-size-base",
+                     "Per-file target file size for compaction (in bytes). The "
+                     "actual target file size for each level is "
+                     "`--rocksdb.target-file-size-base` multiplied by "
+                     "`--rocksdb.target-file-size-multiplier` ^ (level - 1)",
+                     new UInt64Parameter(&_targetFileSizeBase),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption(
-          "--rocksdb.target-file-size-multiplier",
-          "The multiplier for `--rocksdb.target-file-size`. A value of 1 means "
-          "that files in different levels will have the same size.",
-          new UInt64Parameter(&_targetFileSizeMultiplier, /*base*/ 1,
-                              /*minValue*/ 1),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--rocksdb.target-file-size-multiplier",
+      "The multiplier for `--rocksdb.target-file-size`. A value of 1 means "
+      "that files in different levels will have the same size.",
+      new UInt64Parameter(&_targetFileSizeMultiplier, /*base*/ 1,
+                          /*minValue*/ 1),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   TRI_ASSERT(::compressionTypes.contains(_compressionType));
   options
@@ -912,49 +910,46 @@ index and filter blocks leaves less room for other data in the block cache, so
 in case servers have unused RAM capacity available, it may be useful to increase
 the overall size of the block cache.)");
 
-  options
-      ->addOption(
-          "--rocksdb.cache-index-and-filter-blocks-with-high-priority",
-          "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
-          "enabled, cache index and filter blocks with high priority, "
-          "making index and filter blocks be less likely to be evicted than "
-          "data blocks.",
-          new BooleanParameter(&_cacheIndexAndFilterBlocksWithHighPriority),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--rocksdb.cache-index-and-filter-blocks-with-high-priority",
+      "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
+      "enabled, cache index and filter blocks with high priority, "
+      "making index and filter blocks be less likely to be evicted than "
+      "data blocks.",
+      new BooleanParameter(&_cacheIndexAndFilterBlocksWithHighPriority),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption(
-          "--rocksdb.pin-l0-filter-and-index-blocks-in-cache",
-          "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
-          "enabled, filter and index blocks are pinned and only evicted from "
-          "cache when the table reader is freed.",
-          new BooleanParameter(&_pinl0FilterAndIndexBlocksInCache),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--rocksdb.pin-l0-filter-and-index-blocks-in-cache",
+      "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
+      "enabled, filter and index blocks are pinned and only evicted from "
+      "cache when the table reader is freed.",
+      new BooleanParameter(&_pinl0FilterAndIndexBlocksInCache),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption(
-          "--rocksdb.pin-top-level-index-and-filter",
-          "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
-          "enabled, the top-level index of partitioned filter and index blocks "
-          "are pinned and only evicted from cache when the table reader is "
-          "freed.",
-          new BooleanParameter(&_pinTopLevelIndexAndFilter),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--rocksdb.pin-top-level-index-and-filter",
+      "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
+      "enabled, the top-level index of partitioned filter and index blocks "
+      "are pinned and only evicted from cache when the table reader is "
+      "freed.",
+      new BooleanParameter(&_pinTopLevelIndexAndFilter),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.table-block-size",
                      "The approximate size (in bytes) of the user data packed "
@@ -1029,17 +1024,16 @@ RocksDB internals and performance.)");
                          arangodb::options::Flags::OnDBServer,
                          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption("--rocksdb.limit-open-files-at-startup",
-                  "Limit the amount of .sst files RocksDB inspects at "
-                  "startup, in order to reduce the startup I/O operations.",
-                  new BooleanParameter(&_limitOpenFilesAtStartup),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnAgent,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle));
+  options->addOption("--rocksdb.limit-open-files-at-startup",
+                     "Limit the amount of .sst files RocksDB inspects at "
+                     "startup, in order to reduce the startup I/O operations.",
+                     new BooleanParameter(&_limitOpenFilesAtStartup),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options
       ->addOption("--rocksdb.allow-fallocate",

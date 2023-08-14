@@ -369,15 +369,13 @@ issued for administration and database-internal purposes.)");
   options->addOption("--query.tracking", "Whether to track queries.",
                      new BooleanParameter(&_trackingEnabled));
 
-  options
-      ->addOption("--query.tracking-slow-queries",
-                  "Whether to track slow queries.",
-                  new BooleanParameter(&_trackSlowQueries));
+  options->addOption("--query.tracking-slow-queries",
+                     "Whether to track slow queries.",
+                     new BooleanParameter(&_trackSlowQueries));
 
-  options
-      ->addOption("--query.tracking-with-querystring",
-                  "Whether to track the query string.",
-                  new BooleanParameter(&_trackQueryString));
+  options->addOption("--query.tracking-with-querystring",
+                     "Whether to track the query string.",
+                     new BooleanParameter(&_trackQueryString));
 
   options
       ->addOption("--query.tracking-with-bindvars",
@@ -392,10 +390,9 @@ results cache is used.
 You can disable tracking and displaying bind variable values by setting the
 option to `false`.)");
 
-  options
-      ->addOption("--query.tracking-with-datasources",
-                  "Whether to track data sources of AQL queries.",
-                  new BooleanParameter(&_trackDataSources));
+  options->addOption("--query.tracking-with-datasources",
+                     "Whether to track data sources of AQL queries.",
+                     new BooleanParameter(&_trackDataSources));
 
   options
       ->addOption("--query.fail-on-warning",
@@ -548,34 +545,31 @@ The value can still be adjusted on a per-query basis by setting the
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
 #ifdef USE_ENTERPRISE
-  options
-      ->addOption("--query.smart-joins",
-                  "Whether to enable the SmartJoins query optimization.",
-                  new BooleanParameter(&_smartJoins),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Enterprise));
+  options->addOption("--query.smart-joins",
+                     "Whether to enable the SmartJoins query optimization.",
+                     new BooleanParameter(&_smartJoins),
+                     arangodb::options::makeDefaultFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::Enterprise));
 
-  options
-      ->addOption("--query.parallelize-traversals",
-                  "Whether to enable traversal parallelization.",
-                  new BooleanParameter(&_parallelizeTraversals),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Enterprise));
+  options->addOption("--query.parallelize-traversals",
+                     "Whether to enable traversal parallelization.",
+                     new BooleanParameter(&_parallelizeTraversals),
+                     arangodb::options::makeDefaultFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::Enterprise));
 
   // this is an Enterprise-only option
   // in Community Edition, _maxParallelism will stay at its default value
   // (currently 4), but will not be used.
-  options
-      ->addOption(
-          "--query.max-parallelism",
-          "The maximum number of threads to use for a single query; the "
-          "actual query execution may use less depending on various factors.",
-          new UInt64Parameter(&_maxParallelism),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::Enterprise));
+  options->addOption(
+      "--query.max-parallelism",
+      "The maximum number of threads to use for a single query; the "
+      "actual query execution may use less depending on various factors.",
+      new UInt64Parameter(&_maxParallelism),
+      arangodb::options::makeDefaultFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::Enterprise));
 #endif
 
   options

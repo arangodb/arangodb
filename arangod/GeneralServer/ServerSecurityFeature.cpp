@@ -45,30 +45,27 @@ ServerSecurityFeature::ServerSecurityFeature(Server& server)
 
 void ServerSecurityFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption(
-          "--server.harden",
-          "Lock down REST APIs that reveal version information or server "
-          "internals for non-admin users.",
-          new BooleanParameter(&_hardenedRestApi));
+  options->addOption(
+      "--server.harden",
+      "Lock down REST APIs that reveal version information or server "
+      "internals for non-admin users.",
+      new BooleanParameter(&_hardenedRestApi));
 
-  options
-      ->addOption("--foxx.api",
-                  "Whether to enable the Foxx management REST APIs.",
-                  new BooleanParameter(&_enableFoxxApi),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle));
+  options->addOption("--foxx.api",
+                     "Whether to enable the Foxx management REST APIs.",
+                     new BooleanParameter(&_enableFoxxApi),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption("--foxx.store",
-                  "Whether to enable the Foxx store in the web interface.",
-                  new BooleanParameter(&_enableFoxxStore),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle));
+  options->addOption("--foxx.store",
+                     "Whether to enable the Foxx store in the web interface.",
+                     new BooleanParameter(&_enableFoxxStore),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 
   options
       ->addOption(

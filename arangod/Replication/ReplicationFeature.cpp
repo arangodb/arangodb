@@ -145,40 +145,33 @@ void ReplicationFeature::collectOptions(
   options->addOldOption("--replication.automatic-failover",
                         "--replication.active-failover");
 
-  options
-      ->addOption(
-          "--replication.max-parallel-tailing-invocations",
-          "The maximum number of concurrently allowed WAL tailing invocations "
-          "(0 = unlimited).",
-          new UInt64Parameter(&_maxParallelTailingInvocations),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon));
+  options->addOption(
+      "--replication.max-parallel-tailing-invocations",
+      "The maximum number of concurrently allowed WAL tailing invocations "
+      "(0 = unlimited).",
+      new UInt64Parameter(&_maxParallelTailingInvocations),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption("--replication.connect-timeout",
-                  "The default timeout value for replication connection "
-                  "attempts (in seconds).",
-                  new DoubleParameter(&_connectTimeout));
-  options
-      ->addOption("--replication.request-timeout",
-                  "The default timeout value for replication requests "
-                  "(in seconds).",
-                  new DoubleParameter(&_requestTimeout));
+  options->addOption("--replication.connect-timeout",
+                     "The default timeout value for replication connection "
+                     "attempts (in seconds).",
+                     new DoubleParameter(&_connectTimeout));
+  options->addOption("--replication.request-timeout",
+                     "The default timeout value for replication requests "
+                     "(in seconds).",
+                     new DoubleParameter(&_requestTimeout));
 
-  options
-      ->addOption(
-          "--replication.quick-keys-limit",
-          "Limit at which 'quick' calls to the replication keys API return "
-          "only the document count for the second run.",
-          new UInt64Parameter(&_quickKeysLimit),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon));
+  options->addOption(
+      "--replication.quick-keys-limit",
+      "Limit at which 'quick' calls to the replication keys API return "
+      "only the document count for the second run.",
+      new UInt64Parameter(&_quickKeysLimit),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption(
-          "--replication.sync-by-revision",
-          "Whether to use the newer revision-based replication protocol.",
-          new BooleanParameter(&_syncByRevision));
+  options->addOption(
+      "--replication.sync-by-revision",
+      "Whether to use the newer revision-based replication protocol.",
+      new BooleanParameter(&_syncByRevision));
 
   options
       ->addOption("--replication.auto-repair-revision-trees",

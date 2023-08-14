@@ -168,111 +168,105 @@ checkAllowDenyResult checkAllowAndDenyList(std::string const& value,
 void V8SecurityFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "JavaScript engine and execution");
-  options
-      ->addOption("--javascript.allow-port-testing",
-                  "Allow the testing of ports from within JavaScript actions.",
-                  new BooleanParameter(&_allowPortTesting),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon));
+  options->addOption(
+      "--javascript.allow-port-testing",
+      "Allow the testing of ports from within JavaScript actions.",
+      new BooleanParameter(&_allowPortTesting),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle,
+          arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption("--javascript.allow-external-process-control",
-                  "Allow the execution and control of external processes from "
-                  "within JavaScript actions.",
-                  new BooleanParameter(&_allowProcessControl),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon));
+  options->addOption(
+      "--javascript.allow-external-process-control",
+      "Allow the execution and control of external processes from "
+      "within JavaScript actions.",
+      new BooleanParameter(&_allowProcessControl),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle,
+          arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption("--javascript.harden",
-                  "Disable access to JavaScript functions in the internal "
-                  "module: getPid() and logLevel().",
-                  new BooleanParameter(&_hardenInternalModule),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle));
+  options->addOption("--javascript.harden",
+                     "Disable access to JavaScript functions in the internal "
+                     "module: getPid() and logLevel().",
+                     new BooleanParameter(&_hardenInternalModule),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption(
-          "--javascript.startup-options-allowlist",
-          "Startup options whose names match this regular "
-          "expression are allowed and exposed to JavaScript.",
-          new VectorParameter<StringParameter>(&_startupOptionsAllowListVec),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--javascript.startup-options-allowlist",
+      "Startup options whose names match this regular "
+      "expression are allowed and exposed to JavaScript.",
+      new VectorParameter<StringParameter>(&_startupOptionsAllowListVec),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption(
-          "--javascript.startup-options-denylist",
-          "Startup options whose names match this regular "
-          "expression are not exposed (if not in the allowlist) to "
-          "JavaScript actions.",
-          new VectorParameter<StringParameter>(&_startupOptionsDenyListVec),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--javascript.startup-options-denylist",
+      "Startup options whose names match this regular "
+      "expression are not exposed (if not in the allowlist) to "
+      "JavaScript actions.",
+      new VectorParameter<StringParameter>(&_startupOptionsDenyListVec),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption("--javascript.environment-variables-allowlist",
-                  "Environment variables that are accessible in JavaScript.",
-                  new VectorParameter<StringParameter>(
-                      &_environmentVariablesAllowListVec),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--javascript.environment-variables-allowlist",
+      "Environment variables that are accessible in JavaScript.",
+      new VectorParameter<StringParameter>(&_environmentVariablesAllowListVec),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption("--javascript.environment-variables-denylist",
-                  "Environment variables that are inaccessible in "
-                  "JavaScript (if not in the allowlist).",
-                  new VectorParameter<StringParameter>(
-                      &_environmentVariablesDenyListVec),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--javascript.environment-variables-denylist",
+      "Environment variables that are inaccessible in "
+      "JavaScript (if not in the allowlist).",
+      new VectorParameter<StringParameter>(&_environmentVariablesDenyListVec),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption("--javascript.endpoints-allowlist",
-                  "Endpoints that can be connected to via the "
-                  "`@arangodb/request` module in JavaScript actions.",
-                  new VectorParameter<StringParameter>(&_endpointsAllowListVec),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--javascript.endpoints-allowlist",
+      "Endpoints that can be connected to via the "
+      "`@arangodb/request` module in JavaScript actions.",
+      new VectorParameter<StringParameter>(&_endpointsAllowListVec),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption("--javascript.endpoints-denylist",
-                  "Endpoints that cannot be connected to via the "
-                  "`@arangodb/request` module in JavaScript actions "
-                  "(if not in the allowlist).",
-                  new VectorParameter<StringParameter>(&_endpointsDenyListVec),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--javascript.endpoints-denylist",
+      "Endpoints that cannot be connected to via the "
+      "`@arangodb/request` module in JavaScript actions "
+      "(if not in the allowlist).",
+      new VectorParameter<StringParameter>(&_endpointsDenyListVec),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption("--javascript.files-allowlist",
-                  "Filesystem paths that are accessible from within "
-                  "JavaScript actions.",
-                  new VectorParameter<StringParameter>(&_filesAllowListVec),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle));
+  options->addOption("--javascript.files-allowlist",
+                     "Filesystem paths that are accessible from within "
+                     "JavaScript actions.",
+                     new VectorParameter<StringParameter>(&_filesAllowListVec),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOldOption("--javascript.startup-options-whitelist",
                         "--javascript.startup-options-allowlist");

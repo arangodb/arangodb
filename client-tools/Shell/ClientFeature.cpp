@@ -137,12 +137,11 @@ arangosh without connecting to a server.)");
 
   if (isArangosh) {
     // this option is only available in arangosh
-    options
-        ->addOption("--server.force-json",
-                    "Force to not use VelocyPack for easier debugging.",
-                    new BooleanParameter(&_forceJson),
-                    arangodb::options::makeDefaultFlags(
-                        arangodb::options::Flags::Uncommon));
+    options->addOption("--server.force-json",
+                       "Force to not use VelocyPack for easier debugging.",
+                       new BooleanParameter(&_forceJson),
+                       arangodb::options::makeDefaultFlags(
+                           arangodb::options::Flags::Uncommon));
   }
 
   if (_allowJwtSecret) {

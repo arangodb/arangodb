@@ -167,11 +167,10 @@ void ExportFeature::collectOptions(
       "--type", "type of export",
       new DiscreteValuesParameter<StringParameter>(&_typeExport, exports));
 
-  options
-      ->addOption("--compress-output",
-                  "Compress files containing collection contents using the "
-                  "gzip format.",
-                  new BooleanParameter(&_useGzip));
+  options->addOption("--compress-output",
+                     "Compress files containing collection contents using the "
+                     "gzip format.",
+                     new BooleanParameter(&_useGzip));
 }
 
 void ExportFeature::validateOptions(

@@ -494,10 +494,9 @@ RAM than this threshold value are aborted automatically with error 32
                      "transaction, and a new transaction is started.",
                      new UInt64Parameter(&_intermediateCommitCount));
 
-  options
-      ->addOption("--rocksdb.max-parallel-compactions",
-                  "The maximum number of parallel compactions jobs.",
-                  new UInt64Parameter(&_maxParallelCompactions));
+  options->addOption("--rocksdb.max-parallel-compactions",
+                     "The maximum number of parallel compactions jobs.",
+                     new UInt64Parameter(&_maxParallelCompactions));
 
   options
       ->addOption(
@@ -514,18 +513,17 @@ write-ahead logs to disk is only performed for not-yet synchronized data, and
 only for operations that have been executed without the `waitForSync`
 attribute.)");
 
-  options
-      ->addOption(
-          "--rocksdb.sync-delay-threshold",
-          "The threshold for self-observation of WAL disk syncs "
-          "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
-          "than this threshold triggers a warning ",
-          new UInt64Parameter(&_syncDelayThreshold),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Uncommon));
+  options->addOption(
+      "--rocksdb.sync-delay-threshold",
+      "The threshold for self-observation of WAL disk syncs "
+      "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
+      "than this threshold triggers a warning ",
+      new UInt64Parameter(&_syncDelayThreshold),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle,
+          arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--rocksdb.wal-file-timeout",

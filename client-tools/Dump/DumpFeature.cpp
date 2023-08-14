@@ -731,13 +731,11 @@ void DumpFeature::collectOptions(
                      "The maximum size for individual data batches (in bytes).",
                      new UInt64Parameter(&_options.maxChunkSize));
 
-  options
-      ->addOption(
-          "--threads",
-          "The maximum number of collections/shards to process in parallel.",
-          new UInt32Parameter(&_options.threadCount),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Dynamic));
+  options->addOption(
+      "--threads",
+      "The maximum number of collections/shards to process in parallel.",
+      new UInt32Parameter(&_options.threadCount),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--dump-data", "Whether to dump collection data.",
                      new BooleanParameter(&_options.dumpData));
@@ -747,9 +745,8 @@ void DumpFeature::collectOptions(
                   new BooleanParameter(&_options.dumpViews))
       .setIntroducedIn(31100);
 
-  options
-      ->addOption("--all-databases", "Whether to dump all databases.",
-                  new BooleanParameter(&_options.allDatabases));
+  options->addOption("--all-databases", "Whether to dump all databases.",
+                     new BooleanParameter(&_options.allDatabases));
 
   options->addOption(
       "--force",
@@ -788,15 +785,13 @@ void DumpFeature::collectOptions(
   options->addOption("--tick-end", "Last tick to be included in data dump.",
                      new UInt64Parameter(&_options.tickEnd));
 
-  options
-      ->addOption("--maskings", "A path to a file with masking definitions.",
-                  new StringParameter(&_options.maskingsFile));
+  options->addOption("--maskings", "A path to a file with masking definitions.",
+                     new StringParameter(&_options.maskingsFile));
 
-  options
-      ->addOption("--compress-output",
-                  "Compress files containing collection contents using the "
-                  "gzip format (not compatible with encryption).",
-                  new BooleanParameter(&_options.useGzip));
+  options->addOption("--compress-output",
+                     "Compress files containing collection contents using the "
+                     "gzip format (not compatible with encryption).",
+                     new BooleanParameter(&_options.useGzip));
 
   options
       ->addOption("--use-experimental-dump",
