@@ -325,10 +325,8 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     : _options(options),
       _query(arangodb::aql::StandaloneCalculation::buildQueryContext(
           arangodb::DatabaseFeature::getCalculationVocbase())),
-      _itemBlockManager(_query->resourceMonitor(),
-                        SerializationFormat::SHADOWROWS),
-      _engine(0, *_query, _itemBlockManager, SerializationFormat::SHADOWROWS,
-              nullptr),
+      _itemBlockManager(_query->resourceMonitor()),
+      _engine(0, *_query, _itemBlockManager, nullptr),
       _resetImpl(&resetFromQuery) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;

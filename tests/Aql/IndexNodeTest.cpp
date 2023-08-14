@@ -23,7 +23,6 @@
 
 #include "gtest/gtest.h"
 #include "Aql/Ast.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/IndexNode.h"
@@ -518,7 +517,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
       nullptr);
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   {
     // short path for a test
@@ -581,8 +580,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
         auto queryClone = arangodb::aql::Query::create(
             ctx, arangodb::aql::QueryString(std::string_view("RETURN 1")),
             nullptr);
-        queryClone->prepareQuery(
-            arangodb::aql::SerializationFormat::SHADOWROWS);
+        queryClone->prepareQuery();
         indNode.invalidateVarUsage();
         auto indNodeClone =
             dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
@@ -625,7 +623,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
       nullptr);
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   auto vars = query->plan()->getAst()->variables();
   auto const& v =

@@ -1,6 +1,24 @@
 devel
 -----
 
+* Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition
+  was executed through an index lookup.
+
+* Fix Pregel running on OneShard deployments
+
+* BTS-1544: The _system database now properly reports its sharding value.
+
+* Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used
+  in the row based variant like (e.g. WINDOW { preceding: 1, following: 1 })
+  it errored with:  mandatory variable "inVariable" not found. This variable
+  is now correctly treated as optional.
+
+* Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used
+  on a OneShardDatabase, or on data from a collection that only has one shard,
+  the preceding and following clauses were flipped.
+
+* Updated arangosync to v2.19.3.
+
 * FE-94: Support for query options and optimizer rules on web UI.
 
 * FE-308: Support for graph editing on web UI.
