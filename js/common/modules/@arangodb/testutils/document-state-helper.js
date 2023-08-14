@@ -249,6 +249,17 @@ const finishSnapshot = function (endpoint, db, logId, snapshotId) {
   return request.delete(`${endpoint}/_db/${db}/_api/document-state/${logId}/snapshot/finish/${snapshotId}`);
 };
 
+/*
+ * Useful for getting the log id of a single shard collection.
+ */
+const getSingleLogId = function (database, collection) {
+  const shards = collection.shards();
+  const shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+  const shardId = shards[0];
+  const logId = shardsToLogs[shardId];
+  return {logId, shardId};
+}
+
 exports.getLocalValue = getLocalValue;
 exports.localKeyStatus = localKeyStatus;
 exports.checkFollowersValue = checkFollowersValue;
@@ -266,3 +277,4 @@ exports.getSnapshotStatus = getSnapshotStatus;
 exports.getNextSnapshotBatch = getNextSnapshotBatch;
 exports.finishSnapshot = finishSnapshot;
 exports.allSnapshotsStatus = allSnapshotsStatus;
+exports.getSingleLogId = getSingleLogId;

@@ -358,7 +358,8 @@ static void handlePlanShard(
                   {SHARD, shname},
                   {SERVER_ID, serverId},
                   {FOLLOWERS_TO_DROP, followersToDropString},
-                  {"from", "maintenance"}},
+                  {"from",
+                   "maintenance"}},  // parameter used on replication2 leader
               HIGHER_PRIORITY, true, std::move(properties));
           makeDirty.insert(dbname);
           callNotify = true;
@@ -484,10 +485,12 @@ static void handleLocalShard(
     if (replicationVersion != replication::Version::TWO || isLeading) {
       // This collection is not planned anymore, can drop it
       description = std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{{NAME, DROP_COLLECTION},
-                                             {DATABASE, dbname},
-                                             {SHARD, colname},
-                                             {"from", "maintenance"}},
+          std::map<std::string, std::string>{
+              {NAME, DROP_COLLECTION},
+              {DATABASE, dbname},
+              {SHARD, colname},
+              {"from",
+               "maintenance"}},  // parameter used on replication2 leader
           isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
       makeDirty.insert(dbname);
       callNotify = true;

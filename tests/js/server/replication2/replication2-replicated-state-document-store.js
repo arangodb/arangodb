@@ -583,26 +583,33 @@ const replicatedStateRecoverySuite = function () {
  */
 const replicatedStateDocumentStoreSuiteReplication1 = function () {
   const dbNameR1 = "replication1TestDatabase";
-  const {setUpAll, tearDownAll, setUp, tearDown} =
+  const {setUpAll, tearDownAll, setUp, tearDownAnd} =
     lh.testHelperFunctions(dbNameR1, {replicationVersion: "1"});
+  let collection = null;
 
   return {
     setUpAll,
     tearDownAll,
     setUp,
-    tearDown,
+    tearDown: tearDownAnd(() => {
+      if (collection !== null) {
+        collection.drop();
+      }
+      collection = null;
+    }),
 
     testDoesNotCreateReplicatedStateForEachShard: function() {
-      db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+      collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
       let plan = lh.readAgencyValueAt(`Plan/ReplicatedLogs/${dbNameR1}`);
       assertEqual(plan, undefined, `Expected no replicated logs in agency, got ${JSON.stringify(plan)}`);
     },
 
     testChangeCollectionProperties: function () {
       // This test does not work with replication version 2,
-      // because the collection properties must be changed in Target.
+      // because the collection properties must be written to Target.
       // I'm leaving this test here for now, because it is a good example.
-      let collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
+      // We should eventually port it to replication2.
+      collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
       collection.properties({computedValues: [{
           name: "createdAt",
           expression: "RETURN DATE_NOW()",
@@ -1024,12 +1031,9 @@ const replicatedStateDocumentShardsSuite = function () {
       const firstTermCollection = collection.toArray();
 
       // Get the log id.
-      const shards = collection.shards();
-      const shardsToLogs = lh.getShardsToLogsMapping(database, cid);
-      const shardId = shards[0];
-      const logId = shardsToLogs[shardId];
+      const {logId, shardId} = dh.getSingleLogId(database, collection);
 
-      // Check if the universal abort command appears in the log during the current term.
+      // Check if the ModifyShard command appears in the log during the current term.
       let logContents = lh.dumpLogHead(logId);
       let modifyShardEntryFound = _.some(logContents, entry => {
         if (entry.payload === undefined) {
