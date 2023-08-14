@@ -139,6 +139,8 @@ std::vector<AqlCall> buildTestingAqlCalls = [] {
   return calls;
 }();
 
+// Note that fullCount does only make sense with a hard limit, and
+// soft limit = 0 and offset = 0 must not occur together.
 auto const testingAqlCalls = ::testing::ValuesIn(buildTestingAqlCalls);
 auto const testingDoneResultIsEmpty = ::testing::Bool();
 
