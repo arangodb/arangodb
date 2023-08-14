@@ -24,11 +24,13 @@
 #include "RestDumpHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/TokenCache.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RequestLane.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -36,6 +38,7 @@
 #include "Utils/ExecContext.h"
 #include "Logger/LogMacros.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
@@ -137,27 +140,34 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
         return {TRI_ERROR_BAD_PARAMETER};
       }
 
-      ExecContext& exec =
-          *static_cast<ExecContext*>(_request->requestContext());
-      if (auto s = body.get("shards"); !s.isArray()) {
-        return Result(
-            TRI_ERROR_BAD_PARAMETER,
-            "invalid 'shards' value in request - expected array or strings");
-      } else {
-        for (auto it : VPackArrayIterator(s)) {
-          if (!it.isString()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                           "invalid 'shards' value in request "
-                                           "- expected array or strings");
-          }
+      // make this version of dump compatible with the previous version of
+      // arangodump. the previous version assumed that as long as you are
+      // an admin user, you can dump every collection
+      ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-          auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      if (!ExecContext::current().isSuperuser()) {
+        if (auto s = body.get("shards"); !s.isArray()) {
+          return Result(
+              TRI_ERROR_BAD_PARAMETER,
+              "invalid 'shards' value in request - expected array or strings");
+        } else {
+          for (auto it : VPackArrayIterator(s)) {
+            if (!it.isString()) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(
+                  TRI_ERROR_BAD_PARAMETER,
+                  "invalid 'shards' value in request "
+                  "- expected array or strings");
+            }
 
-          // get collection name
-          auto collectionName = ci.getCollectionNameForShard(it.stringView());
-          if (!exec.canUseCollection(_request->databaseName(), collectionName,
-                                     auth::Level::RO)) {
-            return {TRI_ERROR_FORBIDDEN};
+            auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+            // get collection name
+            auto collectionName = ci.getCollectionNameForShard(it.stringView());
+            if (!ExecContext::current().canUseCollection(
+                    _request->databaseName(), collectionName,
+                    auth::Level::RO)) {
+              return {TRI_ERROR_FORBIDDEN};
+            }
           }
         }
       }
@@ -171,8 +181,15 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
   if (ServerState::instance()->isCoordinator()) {
     ServerID const& DBserver = _request->value("dbserver");
     if (!DBserver.empty()) {
-      // if DBserver property present, remove auth header
+      // if DBserver property present, add user header
       _request->addHeader("x-arango-dump-auth-user", _request->user());
+
+      // forward JWT
+      auto auth = AuthenticationFeature::instance();
+      if (auth != nullptr && auth->isActive()) {
+        _request->addHeader(StaticStrings::Authorization,
+                            "bearer " + auth->tokenCache().jwtToken());
+      }
       return std::make_pair(DBserver, true);
     }
 
