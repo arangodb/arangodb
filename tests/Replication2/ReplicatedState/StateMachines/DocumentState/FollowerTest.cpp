@@ -306,7 +306,7 @@ TEST_F(DocumentStateFollowerTest,
 }
 
 TEST_F(DocumentStateFollowerTest,
-       follower_applyEntries_creates_and_drops_shard) {
+       follower_applyEntries_creates_modifies_and_drops_shard) {
   using namespace testing;
 
   auto transactionHandlerMock = createRealTransactionHandler();
@@ -320,6 +320,7 @@ TEST_F(DocumentStateFollowerTest,
   ShardID const myShard = "s12";
   CollectionID const myCollection = "myCollection";
 
+  // CreateShard
   std::vector<DocumentLogEntry> entries;
   entries.emplace_back(
       DocumentLogEntry{ReplicatedOperation::buildCreateShardOperation(
@@ -331,6 +332,19 @@ TEST_F(DocumentStateFollowerTest,
   follower->applyEntries(std::move(entryIterator));
   Mock::VerifyAndClearExpectations(stream.get());
 
+  // ModifyShard
+  entries.clear();
+  entries.emplace_back(
+      DocumentLogEntry{ReplicatedOperation::buildModifyShardOperation(
+          myShard, myCollection, std::make_shared<VPackBuilder>(), {})});
+  entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  EXPECT_CALL(*shardHandlerMock, modifyShard(myShard, myCollection, _, _))
+      .Times(1);
+  EXPECT_CALL(*stream, release).Times(1);
+  follower->applyEntries(std::move(entryIterator));
+  Mock::VerifyAndClearExpectations(stream.get());
+
+  // DropShard
   entries.clear();
   entries.emplace_back(DocumentLogEntry{
       ReplicatedOperation::buildDropShardOperation(myShard, myCollection)});
