@@ -49,6 +49,11 @@ auto LogIndex::operator+=(std::uint64_t delta) -> LogIndex& {
   return *this;
 }
 
+auto LogIndex::operator++() -> LogIndex& {
+  ++value;
+  return *this;
+}
+
 LogIndex::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
 }
