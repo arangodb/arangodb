@@ -1,5 +1,4 @@
 @startDocuBlock post_api_view_arangosearch
-@brief Creates an `arangosearch` View
 
 @RESTHEADER{POST /_api/view, Create an arangosearch View, createView}
 
@@ -46,7 +45,9 @@ disk into memory and to evict them from memory.
 This option is immutable.
 
 See the `--arangosearch.columns-cache-limit` startup option to control the
-memory consumption of this cache.
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{primaryKeyCache,boolean,optional,}
 If you enable this option, then the primary key columns are always cached in
@@ -58,28 +59,9 @@ memory and to evict them from memory.
 This option is immutable.
 
 See the `--arangosearch.columns-cache-limit` startup option to control the
-memory consumption of this cache.
-
-@RESTBODYPARAM{optimizeTopK,array,optional,string}
-An array of strings defining sort expressions that you want to optimize.
-This is also known as _WAND optimization_.
-
-If you query a View with the `SEARCH` operation in combination with a
-`SORT` and `LIMIT` operation, search results can be retrieved faster if the
-`SORT` expression matches one of the optimized expressions.
-
-Only sorting by highest rank is supported, that is, sorting by the result
-of a scoring function in descending order (`DESC`). Use `@doc` in the expression
-where you would normally pass the document variable emitted by the `SEARCH`
-operation to the scoring function.
-
-You can define up tp 64 expressions per View.
-
-Example: `["BM25(@doc) DESC", "TFIDF(@doc, true) DESC"]`
-
-Default: `[]`
-
-This property is available in the Enterprise Edition only.
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{storedValues,array,optional,object}
 An array of objects to describe which document attributes to store in the View
@@ -105,9 +87,15 @@ Each object is expected in the following form:
 
 - The optional `cache` attribute allows you to always cache stored values in
   memory (introduced in v3.9.5, Enterprise Edition only). This can improve
-  the query performance if stored values are involved. See the
-  `--arangosearch.columns-cache-limit` startup option
-  to control the memory consumption of this cache.
+  the query performance if stored values are involved. Otherwise, these values
+  are memory-mapped and it is up to the operating system to load them from disk
+  into memory and to evict them from memory.
+
+  See the `--arangosearch.columns-cache-limit` startup option
+  to control the memory consumption of this cache. You can reduce the memory
+  usage of the column cache in cluster deployments by only using the cache for
+  leader shards, see the `--arangosearch.columns-cache-only-leader` startup
+  option (introduced in v3.10.6).
 
   You may use the following shorthand notations on View creation instead of
   an array of objects as described above. The default compression and cache
@@ -266,17 +254,13 @@ If a View called *name* already exists, then an *HTTP 409* error is returned.
 @EXAMPLE_ARANGOSH_RUN{RestViewPostViewArangoSearch}
     var url = "/_api/view";
     var body = {
-      name: "testViewBasics",
+      name: "products",
       type: "arangosearch"
     };
-
     var response = logCurlRequest('POST', url, body);
-
     assert(response.code === 201);
-
     logJsonResponse(response);
 
-    db._flushCache();
-    db._dropView("testViewBasics");
+    db._dropView("products");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

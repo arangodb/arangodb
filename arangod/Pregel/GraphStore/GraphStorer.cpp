@@ -119,7 +119,7 @@ auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
     if (vertex.shard() != currentShard || numDocs >= 1000) {
       commitTransaction();
       currentShard = vertex.shard();
-      shard = globalShards[currentShard.value];
+      shard = graphSerdeConfig.shardID(currentShard);
 
       auto ctx =
           transaction::StandaloneContext::Create(vocbaseGuard.database());

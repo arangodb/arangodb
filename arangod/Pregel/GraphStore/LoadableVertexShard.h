@@ -31,6 +31,7 @@ namespace arangodb::pregel {
 struct LoadableVertexShard {
   PregelShard pregelShard;
   ShardID vertexShard;
+  ServerID responsibleServer;
   CollectionName collectionName;
   std::vector<ShardID> edgeShards;
 };
@@ -38,16 +39,8 @@ template<typename Inspector>
 auto inspect(Inspector& f, LoadableVertexShard& x) {
   return f.object(x).fields(f.field("pregelShard", x.pregelShard),
                             f.field("vertexShard", x.vertexShard),
+                            f.field("responsibleServer", x.responsibleServer),
                             f.field("collectionName", x.collectionName),
                             f.field("edgeShards", x.edgeShards));
 }
-
-struct LoadableVertexShards {
-  std::vector<LoadableVertexShard> loadableVertexShards;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, LoadableVertexShards& x) {
-  return f.object(x).fields(f.field("vertexShards", x.loadableVertexShards));
-}
-
 }  // namespace arangodb::pregel

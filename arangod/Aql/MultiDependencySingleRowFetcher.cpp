@@ -131,18 +131,18 @@ void MultiDependencySingleRowFetcher::init() {
 }
 
 bool MultiDependencySingleRowFetcher::indexIsValid(
-    const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
+    MultiDependencySingleRowFetcher::DependencyInfo const& info) const {
   return info._currentBlock != nullptr &&
          info._rowIndex < info._currentBlock->numRows();
 }
 
 bool MultiDependencySingleRowFetcher::isDone(
-    const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
+    MultiDependencySingleRowFetcher::DependencyInfo const& info) const {
   return info._upstreamState == ExecutionState::DONE;
 }
 
-auto MultiDependencySingleRowFetcher::executeForDependency(
-    size_t const dependency, AqlCallStack& stack)
+auto MultiDependencySingleRowFetcher::executeForDependency(size_t dependency,
+                                                           AqlCallStack& stack)
     -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
   auto [state, skipped, block] =
       _dependencyProxy->executeForDependency(dependency, stack);
@@ -315,7 +315,7 @@ auto MultiDependencySingleRowFetcher::initialize(size_t subqueryDepth) -> void {
 #endif
 
 AqlCallStack MultiDependencySingleRowFetcher::adjustStackWithSkipReport(
-    AqlCallStack const& callStack, const size_t dependency) {
+    AqlCallStack const& callStack, size_t dependency) {
   // Copy the original
   AqlCallStack stack = callStack;
   TRI_ASSERT(dependency < _dependencySkipReports.size());

@@ -74,6 +74,8 @@ class ReplicationFeature final : public ArangodFeature {
   /// @brief returns the request timeout for replication requests
   double requestTimeout() const;
 
+  double activeFailoverLeaderGracePeriod() const;
+
   /// @brief returns the connect timeout for replication requests
   /// this will return the provided value if the user has not adjusted the
   /// timeout via configuration. otherwise it will return the configured
@@ -89,7 +91,14 @@ class ReplicationFeature final : public ArangodFeature {
   /// @brief automatic failover of replication using the agency
   bool isActiveFailoverEnabled() const;
 
-  bool syncByRevision() const;
+  bool syncByRevision() const noexcept;
+
+  bool autoRepairRevisionTrees() const noexcept;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // only used during testing
+  void autoRepairRevisionTrees(bool value) noexcept;
+#endif
 
   /// @brief track the number of (parallel) tailing operations
   /// will throw an exception if the number of concurrently running operations
@@ -122,6 +131,11 @@ class ReplicationFeature final : public ArangodFeature {
   /// @brief request timeout for replication requests
   double _requestTimeout;
 
+  /// @brief  amount of time (in seconds) for which the current leader will
+  /// continue to assume its leadership even if it lost connection to the
+  /// agency (0 = unlimited)
+  double _activeFailoverLeaderGracePeriod;
+
   /// @brief whether or not the user-defined connect timeout is forced to be
   /// used this is true only if the user set the connect timeout at startup
   bool _forceConnectTimeout;
@@ -137,6 +151,10 @@ class ReplicationFeature final : public ArangodFeature {
 
   /// Use the revision-based replication protocol
   bool _syncByRevision;
+
+  /// automatically repair revision trees of shards after too many failed
+  /// shard synchronization attempts
+  bool _autoRepairRevisionTrees;
 
   /// @brief cache for reusable connections
   httpclient::ConnectionCache _connectionCache;

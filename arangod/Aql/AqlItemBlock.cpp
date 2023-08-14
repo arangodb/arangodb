@@ -24,7 +24,6 @@
 #include "AqlItemBlock.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Range.h"
@@ -159,13 +158,9 @@ void AqlItemBlock::initFromSlice(VPackSlice slice) {
     rawIterator.next();
     rawIterator.next();
     RegisterId::value_t startColumn = 0;
-    if (getFormatType() == SerializationFormat::CLASSIC) {
-      startColumn = 1;
-    }
 
     // note that the end column is always _numRegisters + 1 here, as the first
-    // "real" input column is 1. column 0 contains shadow row information in
-    // case the serialization format is not CLASSIC.
+    // "real" input column is 1. column 0 contains shadow row information.
     for (RegisterId::value_t column = startColumn; column < _numRegisters + 1;
          column++) {
       for (size_t i = 0; i < _numRows; i++) {
@@ -299,10 +294,6 @@ void AqlItemBlock::initFromSlice(VPackSlice slice) {
 
   TRI_ASSERT(runLength == 0);
   TRI_ASSERT(runType == NoRun);
-}
-
-SerializationFormat AqlItemBlock::getFormatType() const {
-  return _manager.getFormatType();
 }
 
 /// @brief destroy the block, used in the destructor and elsewhere
@@ -783,10 +774,6 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
   RegisterId::value_t const subqueryDepthColumn =
       std::numeric_limits<RegisterId::value_t>::max();
   RegisterId::value_t startColumn = subqueryDepthColumn;
-  if (getFormatType() == SerializationFormat::CLASSIC) {
-    // skip shadow rows
-    startColumn = 0;
-  }
 
   // we start the serializaton at the fake register, which may then overflow to
   // 0...
@@ -1210,7 +1197,8 @@ size_t AqlItemBlock::decrRefCount() const noexcept {
 size_t AqlItemBlock::getAddress(size_t index,
                                 RegisterId::value_t reg) const noexcept {
   TRI_ASSERT(index < _numRows);
-  TRI_ASSERT(reg < _numRegisters);
+  TRI_ASSERT(reg < _numRegisters)
+      << "violated " << reg << " < " << _numRegisters;
   return index * _numRegisters + reg;
 }
 

@@ -43,9 +43,13 @@
         try { db._dropDatabase(newDbName); } catch (err) {}
         db._createDatabase(newDbName, dbArgs);
         db._useDatabase(newDbName);
+        let numberOfShards = 3;
+        if (dbArgs.sharding === "single") {
+          numberOfShards = 1;
+        }
 
-        let c = db._create(cn, { numberOfShards: 3 });
-        let c1 = db._create(cn1, { numberOfShards: 3 });
+        let c = db._create(cn, { numberOfShards });
+        let c1 = db._create(cn1, { numberOfShards });
         if (isSearchAlias) {
           let props = {
             type: "inverted", includeAllFields: true,
@@ -107,7 +111,7 @@
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testQueryResultsWithSortFields() {
-        let query = "FOR d IN " + vn + " SORT d.obj.a.a1 DESC, d.obj.b.b1 LIMIT 2 RETURN d";
+        let query = "FOR d IN " + vn + " SORT NOOPT(d.obj.a.a1) DESC, d.obj.b.b1 LIMIT 2 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
@@ -120,7 +124,7 @@
         assertEqual(0, expectedKeys.size);
       },
       testQueryResultsWithStoredFields() {
-        let query = "FOR d IN " + vn + " SORT d.obj.d.d1, d.obj.f DESC LIMIT 2 RETURN d";
+        let query = "FOR d IN " + vn + " SORT NOOPT(d.obj.d.d1), d.obj.f DESC LIMIT 2 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
@@ -133,7 +137,7 @@
         assertEqual(0, expectedKeys.size);
       },
       testQueryResultsWithMixedSortAndStoredFields() {
-        let query = "FOR d IN " + vn + " SORT d.obj.d.d1, d.obj.b.b1 DESC LIMIT 2 RETURN d";
+        let query = "FOR d IN " + vn + " SORT NOOPT(d.obj.d.d1), d.obj.b.b1 DESC LIMIT 2 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
@@ -159,7 +163,7 @@
         assertEqual(0, expectedKeys.size);
       },
       testQueryResultsWithSEARCH() {
-        let query = "FOR d IN " + vn + " SEARCH d.obj.h in [7, 27] SORT d.obj.e.e1 LIMIT 2 RETURN d";
+        let query = "FOR d IN " + vn + " SEARCH d.obj.h in [7, 27] SORT NOOPT(d.obj.e.e1) LIMIT 2 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
@@ -172,7 +176,7 @@
         assertEqual(0, expectedKeys.size);
       },
       testQueryResultsWithTwoDifferentAccessesToCommonFieldOfColumn() {
-        let query = "FOR d IN " + vn + " LET c = d.obj.b SORT d.obj.b.b1, c LIMIT 2 RETURN d";
+        let query = "FOR d IN " + vn + " LET c = d.obj.b SORT NOOPT(d.obj.b.b1), c LIMIT 2 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         assertEqual(1, plan.nodes.filter(obj => {
@@ -204,7 +208,7 @@
         assertEqual(0, expectedKeys.size);
       },
       testQueryLateMaterializationForSortedView() {
-        let query = "FOR d IN " + vn + " SEARCH d.obj.f != 15 SORT d.obj.a.a1 ASC LIMIT 10 SORT d.obj.c LIMIT 2  RETURN d";
+        let query = "FOR d IN " + vn + " SEARCH d.obj.f != 15 SORT NOOPT(d.obj.a.a1) ASC LIMIT 10 SORT d.obj.c LIMIT 2  RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         assertEqual(2, plan.nodes.filter(obj => {

@@ -48,7 +48,6 @@ function randomTestSuite() {
   const m = 300000; // edges
   
   let checkCancel = function(pid) {
-    pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
     pregel.cancel(pid);
     let i = 10000;
     do {
@@ -88,7 +87,6 @@ function randomTestSuite() {
       graph._addVertexCollection(vColl);
       db._createEdgeCollection(eColl, {
         numberOfShards: 4,
-        replicationFactor: 1,
         shardKeys: ["vertex"],
         distributeShardsLike: vColl
       });
@@ -165,7 +163,7 @@ function randomTestSuite() {
     testStatusWithNumericId: function () {
       let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: true });
       assertTrue(typeof pid === "string");
-      pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
+      pregelTestHelpers.waitUntilRunFinishedSuccessfully(Number(pid));
     },
     
     testStatusWithStringId: function () {
@@ -175,19 +173,22 @@ function randomTestSuite() {
     },
     
     testCancelWithNumericId: function () {
-      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false });
-      assertTrue(typeof key === "string");
-      checkCancel(Number(key));
+      let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false });
+      assertTrue(typeof pid === "string");
+      pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
+      checkCancel(Number(pid));
     },
     
     testCancelWithStringId: function () {
-      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false });
-      assertTrue(typeof key === "string");
-      checkCancel(key);
+      let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false });
+      assertTrue(typeof pid === "string");
+      pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
+      checkCancel(pid);
     },
     
     test_garbage_collects_job: function () {
-      let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 15 });
+      const ttl = 15;
+      let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: ttl });
       assertTrue(typeof pid === "string");
           
       let stats = pregel.status(pid);
@@ -197,25 +198,12 @@ function randomTestSuite() {
       assertEqual("hits", stats.algorithm);
       assertTrue(stats.hasOwnProperty('created'));
       assertTrue(stats.hasOwnProperty('ttl'));
-      assertEqual(15, stats.ttl);
+      assertEqual(ttl, stats.ttl);
 
       stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
       assertTrue(stats.hasOwnProperty('expires'));
       assertTrue(stats.expires > stats.created);
-
-      // wait for garbage collection
-      let i = 1000;
-      do {
-        try {
-          stats = pregel.status(pid);
-          assertEqual(pregelTestHelpers.runFinishedSuccessfully(stats), stats.state);
-        } catch (err) {
-          // run was garbage collected and therefore does not exist anymore
-          break;
-        }
-        internal.sleep(0.2);
-      } while (i-- >= 0);
-      assertTrue(i > 0, "timeout in pregel execution");
+      pregelTestHelpers.waitForResultsBeeingGarbageCollected(pid, 2 * ttl);
     }
   };
 }

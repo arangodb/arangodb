@@ -3,7 +3,8 @@ import Ajv from "ajv";
 import { useFormikContext } from "formik";
 import { ValidationError } from "jsoneditor-react";
 import React, { useState } from "react";
-import { ControlledJSONEditor } from "./ControlledJSONEditor";
+import { JSONErrors } from "../../../../../components/jsonEditor/JSONErrors";
+import { ControlledJSONEditor } from "../../../../../components/jsonEditor/ControlledJSONEditor";
 import { useInvertedIndexJSONSchema } from "./useInvertedIndexJSONSchema";
 
 const ajv = new Ajv({
@@ -25,6 +26,7 @@ export const InvertedIndexFormJSONEditor = ({
     <Box height="100%" backgroundColor="white" position="relative" minWidth={0}>
       <ControlledJSONEditor
         value={values}
+        isDisabled={isFormDisabled}
         onValidationError={errors => {
           setErrors(errors);
         }}
@@ -45,31 +47,6 @@ export const InvertedIndexFormJSONEditor = ({
         }}
       />
       {!isFormDisabled && <JSONErrors errors={errors} />}
-    </Box>
-  );
-};
-
-const JSONErrors = ({ errors }: { errors?: ValidationError[] }) => {
-  if (!errors || errors.length === 0) {
-    return null;
-  }
-  return (
-    <Box
-      maxHeight={"80px"}
-      paddingX="2"
-      paddingY="1"
-      fontSize="sm"
-      color="red"
-      background="red.100"
-      overflow={"auto"}
-    >
-      {errors.map(error => {
-        return (
-          <Box>{`${error.keyword} error: ${
-            error.message
-          }. Schema: ${JSON.stringify(error.params)}`}</Box>
-        );
-      })}
     </Box>
   );
 };

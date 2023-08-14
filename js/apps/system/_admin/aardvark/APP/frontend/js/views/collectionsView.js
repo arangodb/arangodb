@@ -498,6 +498,8 @@
           var tableContent = [];
           var advanced = {};
           var advancedTableContent = [];
+          var collectionNameValidations = 
+            window.arangoValidationHelper.getCollectionNameValidations();
 
           tableContent.push(
             window.modalView.createTextEntry(
@@ -507,12 +509,7 @@
               false,
               '',
               true,
-              [
-                {
-                  rule: Joi.string().required(),
-                  msg: 'No collection name given.'
-                }
-              ]
+              collectionNameValidations
             )
           );
 
@@ -653,7 +650,7 @@
                 false,
                 [
                   {
-                    rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                    rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                     msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
                   }
                 ]

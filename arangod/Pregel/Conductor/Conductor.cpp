@@ -39,6 +39,8 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/StatusWriter/StatusEntry.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
 
@@ -52,7 +54,6 @@
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -69,16 +70,18 @@ using namespace arangodb::basics;
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
-      << "[job " << _specifications.executionNumber.value << "] "
+      << "[ExecutionNumber " << _specifications.executionNumber.value << "] "
 
 const char* arangodb::pregel::ExecutionStateNames[9] = {
     "none", "loading", "running", "storing", "done", "canceled", "fatal error"};
 
 Conductor::Conductor(ExecutionSpecifications const& specifications,
-                     TRI_vocbase_t& vocbase, PregelFeature& feature)
+                     std::string user, TRI_vocbase_t& vocbase,
+                     PregelFeature& feature)
     : _feature(feature),
       _vocbaseGuard(vocbase),
       _specifications(specifications),
+      _user(std::move(user)),
       _algorithm(AlgoRegistry::createAlgorithm(
           specifications.algorithm, specifications.userParameters.slice())),
       _created(std::chrono::system_clock::now()) {
@@ -382,77 +385,11 @@ void Conductor::cancelNoLock() {
   _workHandle.reset();
 }
 
-// resolves into an ordered list of shards for each collection on each server
-static void resolveInfo(
-    TRI_vocbase_t* vocbase, CollectionID const& collectionID,
-    std::unordered_map<CollectionID, std::string>& collectionPlanIdMap,
-    std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
-    std::vector<ShardID>& allShards) {
-  ServerState* ss = ServerState::instance();
-  if (!ss->isRunningInCluster()) {  // single server mode
-    auto lc = vocbase->lookupCollection(collectionID);
-
-    if (lc == nullptr || lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                     collectionID);
-    }
-
-    collectionPlanIdMap.try_emplace(collectionID,
-                                    std::to_string(lc->planId().id()));
-    allShards.push_back(collectionID);
-    serverMap[ss->getId()][collectionID].push_back(collectionID);
-
-  } else if (ss->isCoordinator()) {  // we are in the cluster
-
-    ClusterInfo& ci =
-        vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    std::shared_ptr<LogicalCollection> lc =
-        ci.getCollection(vocbase->name(), collectionID);
-    if (lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                     collectionID);
-    }
-    collectionPlanIdMap.try_emplace(collectionID,
-                                    std::to_string(lc->planId().id()));
-
-    std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci.getShardList(std::to_string(lc->id().id()));
-    allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
-
-    for (auto const& shard : *shardIDs) {
-      std::shared_ptr<std::vector<ServerID> const> servers =
-          ci.getResponsibleServer(shard);
-      if (servers->size() > 0) {
-        serverMap[(*servers)[0]][lc->name()].push_back(shard);
-      }
-    }
-  } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
-  }
-}
-
 /// should cause workers to start a new execution
 ErrorCode Conductor::_initializeWorkers() {
-  std::unordered_map<CollectionID, std::string> collectionPlanIdMap;
-  std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
-      edgeMap;
-  std::vector<ShardID> shardList;
-
-  // resolve plan id's and shards on the servers
-  for (CollectionID const& collectionID : _specifications.vertexCollections) {
-    resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap,
-                vertexMap,
-                shardList);  // store or
-  }
-  for (CollectionID const& collectionID : _specifications.edgeCollections) {
-    resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap,
-                edgeMap,
-                shardList);  // store or
-  }
-
   _dbServers.clear();
-  for (auto const& pair : vertexMap) {
-    _dbServers.push_back(pair.first);
+  for (auto server : _specifications.graphSerdeConfig.responsibleServerSet()) {
+    _dbServers.push_back(server);
   }
   _status = ConductorStatus::forWorkers(_dbServers);
 
@@ -462,25 +399,18 @@ ErrorCode Conductor::_initializeWorkers() {
   network::ConnectionPool* pool = nf.pool();
   std::vector<futures::Future<network::Response>> responses;
 
-  for (auto const& [server, vertexShardMap] : vertexMap) {
-    auto const& edgeShardMap = edgeMap[server];
-
+  for (auto const& server : _dbServers) {
     auto createWorker = worker::message::CreateWorker{
         .executionNumber = _specifications.executionNumber,
         .algorithm = std::string{_algorithm->name()},
         .userParameters = _specifications.userParameters,
         .coordinatorId = coordinatorId,
         .parallelism = _specifications.parallelism,
-        .edgeCollectionRestrictions =
-            _specifications.edgeCollectionRestrictions,
-        .vertexShards = vertexShardMap,
-        .edgeShards = edgeShardMap,
-        .collectionPlanIds = collectionPlanIdMap,
-        .allShards = shardList};
+        .graphSerdeConfig = _specifications.graphSerdeConfig,
+    };
 
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
-      TRI_ASSERT(vertexMap.size() == 1);
       if (_feature.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
@@ -627,7 +557,6 @@ bool Conductor::canBeGarbageCollected() const {
 
   if (guard.owns_lock()) {
     if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
-        _state == ExecutionState::FATAL_ERROR ||
         _state == ExecutionState::FATAL_ERROR) {
       return (_expires != std::chrono::system_clock::time_point{} &&
               _expires <= std::chrono::system_clock::now());
@@ -719,7 +648,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
       result.add(VPackValue(gssTime.elapsedSeconds().count()));
     }
   }
-  _masterContext->_aggregators->serializeValues(result);
   _statistics.serializeValues(result);
   if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
@@ -727,6 +655,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   }
   result.add("parallelism", VPackValue(_specifications.parallelism));
   if (_masterContext) {
+    _masterContext->_aggregators->serializeValues(result);
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
@@ -763,12 +692,7 @@ void Conductor::persistPregelState(ExecutionState state) {
 
     // Additional attributes added during actor rework
     stateBuilder.add("graphLoaded", VPackValue(_graphLoaded));
-    std::string user = ExecContext::current().user();
-    if (!user.empty()) {
-      stateBuilder.add("user", VPackValue(user));
-    } else {
-      stateBuilder.add("user", VPackSlice::nullSlice());
-    }
+    stateBuilder.add("user", VPackValue(_user));
   };
 
   auto addAdditionalOutputToBuilder = [&](VPackBuilder& builder) -> void {
@@ -796,7 +720,6 @@ void Conductor::persistPregelState(ExecutionState state) {
         builder.add(VPackValue(gssTime.elapsedSeconds().count()));
       }
     }
-    _masterContext->_aggregators->serializeValues(builder);
     _statistics.serializeValues(builder);
     if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
       builder.add("vertexCount", VPackValue(_totalVerticesCount));
@@ -804,6 +727,7 @@ void Conductor::persistPregelState(ExecutionState state) {
     }
     builder.add("parallelism", VPackValue(_specifications.parallelism));
     if (_masterContext) {
+      _masterContext->_aggregators->serializeValues(builder);
       VPackObjectBuilder ob(&builder, "masterContext");
       _masterContext->serializeValues(builder);
     }
@@ -813,56 +737,29 @@ void Conductor::persistPregelState(ExecutionState state) {
     serialize(builder, conductorStatus);
   };
 
-  if (_state == ExecutionState::DONE) {
-    // TODO: What I wanted to do here is to just use the already available
-    // toVelocyPack() method. This fails currently because of the lock:
-    // "[void arangodb::Mutex::lock()]: _holder != Thread::currentThreadId()"
-    // Therefore, for now - do it manually. Let's clean this up ASAP.
-    // this->toVelocyPack(stateBuilder);
-    // After this works, we can remove all of that code below (same scope).
-    // Including those lambda helper methods.
-
-    stateBuilder.openObject();  // opens main builder
-    addMinimalOutputToBuilder(stateBuilder);
-    addAdditionalOutputToBuilder(stateBuilder);
-    stateBuilder.close();  // closes main builder
-  } else {
-    // minimalistic update during runs or errors (cancel, fatal)
-    // TODO: We should introduce an inspector here as well.
-    stateBuilder.openObject();  // opens main builder
-    addMinimalOutputToBuilder(stateBuilder);
-    stateBuilder.close();  // closes main builder
-  }
+  // TODO: What I wanted to do here is to just use the already available
+  // toVelocyPack() method. This fails currently because of the lock:
+  // "[void arangodb::Mutex::lock()]: _holder != Thread::currentThreadId()"
+  // Therefore, for now - do it manually. Let's clean this up ASAP.
+  // this->toVelocyPack(stateBuilder);
+  // After this works, we can remove all of that code below (same scope).
+  // Including those lambda helper methods.
+  stateBuilder.openObject();  // opens main builder
+  addMinimalOutputToBuilder(stateBuilder);
+  addAdditionalOutputToBuilder(stateBuilder);
+  stateBuilder.close();  // closes main builder
 
   TRI_ASSERT(state != ExecutionState::DEFAULT);
-  if (state == ExecutionState::LOADING) {
-    // During state LOADING we need to initially create the document in the
-    // collection
-    auto storeResult = cWriter.createResult(stateBuilder.slice());
-    if (storeResult.ok()) {
-      LOG_PREGEL("063x1", INFO)
-          << "Stored result into: \"" << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    } else {
-      LOG_PREGEL("063x2", INFO)
-          << "Could not store result into: \""
-          << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    }
+  auto updateResult = cWriter.updateResult(stateBuilder.slice());
+  if (updateResult.ok()) {
+    LOG_PREGEL("07323", INFO) << fmt::format(
+        "Updated state in \"{}\" collection", StaticStrings::PregelCollection);
   } else {
-    // During all other states, we will just simply update the already created
-    // document
-    auto updateResult = cWriter.updateResult(stateBuilder.slice());
-    if (updateResult.ok()) {
-      LOG_PREGEL("063x3", INFO)
-          << "Updated state into: \"" << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    } else {
-      LOG_PREGEL("063x4", INFO)
-          << "Could not store result into: \""
-          << StaticStrings::PregelCollection
-          << "\" collection for PID: " << executionNumber();
-    }
+    LOG_PREGEL("0ffa4", INFO) << fmt::format(
+        "Could not store state {} in \"{}\" collection, error message: "
+        "{}",
+        stateBuilder.slice().toJson(), StaticStrings::PregelCollection,
+        updateResult.errorMessage());
   }
 }
 

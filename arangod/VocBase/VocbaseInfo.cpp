@@ -62,8 +62,18 @@ void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
   _shardingPrototype = type;
 }
 
+void CreateDatabaseInfo::setSharding(std::string_view sharding) {
+  // sharding -- must be "", "flexible" or "single"
+  bool isValidProperty =
+      (sharding.empty() || sharding == "flexible" || sharding == "single");
+  TRI_ASSERT(isValidProperty);
+  if (isValidProperty) {
+    _sharding = sharding;
+  }
+}
+
 Result CreateDatabaseInfo::load(std::string_view name, uint64_t id) {
-  _name = methods::Databases::normalizeName(name);
+  _name = name;
   _id = id;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -90,7 +100,7 @@ Result CreateDatabaseInfo::load(VPackSlice options, VPackSlice users) {
 
 Result CreateDatabaseInfo::load(std::string_view name, VPackSlice options,
                                 VPackSlice users) {
-  _name = methods::Databases::normalizeName(name);
+  _name = name;
 
   Result res = extractOptions(options, true /*getId*/, false /*getName*/);
   if (res.ok()) {
@@ -109,7 +119,7 @@ Result CreateDatabaseInfo::load(std::string_view name, VPackSlice options,
 
 Result CreateDatabaseInfo::load(std::string_view name, uint64_t id,
                                 VPackSlice options, VPackSlice users) {
-  _name = methods::Databases::normalizeName(name);
+  _name = name;
   _id = id;
 
   Result res = extractOptions(options, false /*getId*/, false /*getUser*/);
@@ -251,7 +261,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice options, bool extractId,
       if (!nameSlice.isString()) {
         return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
       }
-      _name = methods::Databases::normalizeName(nameSlice.copyString());
+      _name = nameSlice.copyString();
     }
     if (extractId) {
       auto idSlice = options.get(StaticStrings::DatabaseId);
@@ -302,6 +312,19 @@ Result CreateDatabaseInfo::checkOptions() {
 
   return DatabaseNameValidator::validateName(isSystem, extendedNames, _name);
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+CreateDatabaseInfo::CreateDatabaseInfo(CreateDatabaseInfo::MockConstruct,
+                                       ArangodServer& server,
+                                       ExecContext const& execContext,
+                                       std::string const& name,
+                                       std::uint64_t id)
+    : _server(server),
+      _context(execContext),
+      _id(id),
+      _name(name),
+      _valid(true) {}
+#endif
 
 VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
                                  bool strictValidation) {

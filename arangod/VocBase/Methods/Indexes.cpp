@@ -257,7 +257,6 @@ arangodb::Result Indexes::getAll(
       }
     }
     tmp.close();
-
   } else {
     std::shared_ptr<transaction::Methods> trx;
     if (inputTrx) {
@@ -267,10 +266,6 @@ arangodb::Result Indexes::getAll(
       trx = std::make_shared<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(collection.vocbase()),
           collection, AccessMode::Type::READ);
-
-      // we actually need this hint here, so that the collection is not
-      // loaded if it has status unloaded.
-      trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
       Result res = trx->begin();
       if (!res.ok()) {
@@ -394,15 +389,16 @@ arangodb::Result Indexes::getAll(
 /// @brief ensures an index, locally
 ////////////////////////////////////////////////////////////////////////////////
 
-static Result EnsureIndexLocal(arangodb::LogicalCollection& collection,
-                               VPackSlice definition, bool create,
-                               VPackBuilder& output) {
+static Result EnsureIndexLocal(
+    arangodb::LogicalCollection& collection, VPackSlice definition, bool create,
+    VPackBuilder& output,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   return arangodb::basics::catchVoidToResult([&]() -> void {
     bool created = false;
     std::shared_ptr<arangodb::Index> idx;
 
     if (create) {
-      idx = collection.createIndex(definition, created);
+      idx = collection.createIndex(definition, created, std::move(progress));
       TRI_ASSERT(idx != nullptr);
     } else {
       idx = collection.lookupIndex(definition);
@@ -437,8 +433,10 @@ Result Indexes::ensureIndexCoordinator(
       cluster.indexCreationTimeout());
 }
 
-Result Indexes::ensureIndex(LogicalCollection& collection, VPackSlice input,
-                            bool create, VPackBuilder& output) {
+Result Indexes::ensureIndex(
+    LogicalCollection& collection, VPackSlice input, bool create,
+    VPackBuilder& output,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;
   // always log a message at the end of index creation
   auto logResultToAuditLog = scopeGuard([&]() noexcept {
@@ -596,7 +594,8 @@ Result Indexes::ensureIndex(LogicalCollection& collection, VPackSlice input,
       }
     }
   } else {
-    res = EnsureIndexLocal(collection, indexDef, create, output);
+    res = EnsureIndexLocal(collection, indexDef, create, output,
+                           std::move(progress));
   }
 
   ensureIndexResult = res.errorNumber();

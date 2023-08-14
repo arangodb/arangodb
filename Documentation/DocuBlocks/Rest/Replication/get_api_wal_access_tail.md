@@ -1,6 +1,5 @@
 
 @startDocuBlock get_api_wal_access_tail
-@brief Fetch recent operations
 
 @RESTHEADER{GET /_api/wal/tail, Tail recent server operations, getWalTail}
 
@@ -22,7 +21,7 @@ Inclusive upper bound tick value for results.
 
 @RESTQUERYPARAM{lastScanned,number,optional}
 Should be set to the value of the `x-arango-replication-lastscanned` header
-or alternatively 0 on first try. This allows the RocksDB storage engine to break up
+or alternatively `0` on the first try. This allows the RocksDB storage engine to break up
 large transactions over multiple responses.
 
 @RESTQUERYPARAM{chunkSize,number,optional}
@@ -73,9 +72,9 @@ It must be specified in bytes. The `chunkSize` value is only honored
 approximately. Otherwise, a too low `chunkSize` value could cause the server
 to not be able to put just one log entry into the result and return it.
 Therefore, the `chunkSize` value is only consulted after a log entry has
-been written into the result. If the result size is then bigger than
+been written into the result. If the result size is then greater than
 `chunkSize`, the server responds with as many log entries as there are
-in the response already. If the result size is still smaller than `chunkSize`,
+in the response already. If the result size is still less than `chunkSize`,
 the server tries to return more data if there's more data left to return.
 
 If `chunkSize` is not specified, some server-side default value is used.

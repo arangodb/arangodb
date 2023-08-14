@@ -1752,11 +1752,6 @@ function GeneralGraphCommonNeighborsSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks GRAPH_COMMON_NEIGHBORS() and GRAPH_COMMON_PROPERTIES()
-////////////////////////////////////////////////////////////////////////////////
-
-
     testNeighborsAnyV3: function () {
       actual = testGraph._neighbors(v3, {includeData: true}).sort();
       assertTrue(actual[0]._id, v2);
@@ -1784,9 +1779,6 @@ function GeneralGraphCommonNeighborsSuite() {
       actual = testGraph._countCommonNeighbors(v3, v6);
       assertEqual(actual[0][v3][0][v6], 2);
     },
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks GRAPH_COMMON_NEIGHBORS()
-////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsIn: function () {
       actual = testGraph._commonNeighbors({}, {}, {direction: 'inbound'}, {direction: 'inbound'});
@@ -1796,11 +1788,6 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual.length, 5);
 
     },
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks GRAPH_COMMON_NEIGHBORS()
-////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsOut: function () {
       actual = testGraph._commonNeighbors(
@@ -1880,10 +1867,6 @@ function GeneralGraphCommonNeighborsSuite() {
         }
       }
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks GRAPH_COMMON_PROPERTIES()
-////////////////////////////////////////////////////////////////////////////////
 
     testCommonProperties: function () {
       actual = testGraph._commonProperties({}, {}, {});

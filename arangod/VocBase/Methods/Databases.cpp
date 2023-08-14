@@ -56,6 +56,8 @@
 #include <chrono>
 #include <thread>
 
+#include <absl/strings/str_cat.h>
+
 #include <v8.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -64,10 +66,6 @@
 using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
-
-std::string Databases::normalizeName(std::string_view name) {
-  return normalizeUtf8ToNFC(name);
-}
 
 std::vector<std::string> Databases::list(ArangodServer& server,
                                          std::string const& user) {
@@ -90,7 +88,7 @@ std::vector<std::string> Databases::list(ArangodServer& server,
   }
 }
 
-Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
+Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
   if (ServerState::instance()->isCoordinator()) {
     auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
     auto [acb, idx] = cache.read(std::vector<std::string>{
@@ -184,13 +182,39 @@ Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  bool extendedNames =
-      info.server().getFeature<DatabaseFeature>().extendedNames();
+  DatabaseFeature& databaseFeature =
+      info.server().getFeature<DatabaseFeature>();
+
+  bool extendedNames = databaseFeature.extendedNames();
 
   if (auto res = DatabaseNameValidator::validateName(
           /*allowSystem*/ false, extendedNames, info.getName());
       res.fail()) {
     return res;
+  }
+
+  auto& agencyCache = info.server().getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.read(
+      std::vector<std::string>{AgencyCommHelper::path("Plan/Databases")});
+
+  velocypack::Slice databaseSlice =
+      acb->slice()[0].get(std::initializer_list<std::string_view>{
+          AgencyCommHelper::path(), "Plan", "Databases"});
+
+  // databases are stored in an object with database names as keys.
+  if (databaseSlice.isObject() &&
+      databaseSlice.length() >= databaseFeature.maxDatabases()) {
+    // we already have reached the maximum number of databases and we
+    // cannot create an additional one.
+    // note: when more than one coordinator is used, it is possible to
+    // exceed the maximum number of databases during the time window in
+    // which the number of databases stored in the agency is below the
+    // limit, but multiple coordinators are creating new databases.
+    return {
+        TRI_ERROR_RESOURCE_LIMIT,
+        absl::StrCat("unable to create additional database because it would "
+                     "exceed the configured maximum number of databases (",
+                     databaseFeature.maxDatabases(), ")")};
   }
 
   LOG_TOPIC("56372", DEBUG, Logger::CLUSTER)
@@ -328,8 +352,8 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 }
 
 Result Databases::create(ArangodServer& server, ExecContext const& exec,
-                         std::string const& dbName, VPackSlice const& users,
-                         VPackSlice const& options) {
+                         std::string const& dbName, velocypack::Slice users,
+                         velocypack::Slice options) {
   Result res = basics::catchToResult([&]() {
     Result res;
 
@@ -339,6 +363,14 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
     }
     if (ServerState::readOnly() && !exec.isSuperuser()) {
       return res.reset(TRI_ERROR_FORBIDDEN, "server is in read-only mode");
+    }
+
+    bool extendedNames = server.getFeature<DatabaseFeature>().extendedNames();
+
+    if (auto res = DatabaseNameValidator::validateName(
+            /*allowSystem*/ false, extendedNames, dbName);
+        res.fail()) {
+      return res;
     }
 
     CreateDatabaseInfo createInfo(server, exec);
@@ -463,6 +495,15 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
     return TRI_ERROR_FORBIDDEN;
   }
 
+  bool extendedNames =
+      systemVocbase->server().getFeature<DatabaseFeature>().extendedNames();
+
+  if (auto res = DatabaseNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames, dbName);
+      res.fail()) {
+    return res;
+  }
+
   Result res;
   auto& server = systemVocbase->server();
   if (server.hasFeature<V8DealerFeature>() &&
@@ -531,7 +572,14 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
     auto cb = [&](auth::User& entry) -> bool {
       return entry.removeDatabase(dbName);
     };
-    res = um->enumerateUsers(cb, /*retryOnConflict*/ true);
+    if (auto cleanupUsersRes = um->enumerateUsers(cb, /*retryOnConflict*/ true);
+        cleanupUsersRes.fail()) {
+      LOG_TOPIC("9f8b7", WARN, Logger::AUTHORIZATION)
+          << "Failed to cleanup "
+             "users permissions after dropping "
+             "database "
+          << dbName << ": " << cleanupUsersRes;
+    }
   }
 
   events::DropDatabase(dbName, res, exec);

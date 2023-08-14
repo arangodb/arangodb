@@ -24,19 +24,20 @@
 #pragma once
 
 #include <cstdint>
+#include <iosfwd>
+#include <string>
 
 namespace arangodb::transaction {
 
 class Hints {
  public:
-  typedef std::uint32_t ValueType;
+  using ValueType = std::uint32_t;
 
   /// @brief individual hint flags that can be used for transactions
   enum class Hint : ValueType {
     NONE = 0,
     SINGLE_OPERATION = 1,
     LOCK_NEVER = 2,
-    NO_USAGE_LOCK = 4,
     NO_DLD = 8,        // disable deadlock detection, unsupported in RocksDB
     NO_INDEXING = 16,  // use DisableIndexing for RocksDB
     INTERMEDIATE_COMMITS = 32,  // enable intermediate commits in rocksdb
@@ -53,30 +54,32 @@ class Hints {
                // DBServers), and if that fails revert to slow-lock path
   };
 
-  Hints() : _value(0) {}
-  explicit Hints(Hint value) : _value(static_cast<ValueType>(value)) {}
-  explicit Hints(ValueType value) : _value(value) {}
+  Hints() noexcept : _value(0) {}
+  explicit Hints(Hint value) noexcept : _value(static_cast<ValueType>(value)) {}
+  explicit Hints(ValueType value) noexcept : _value(value) {}
 
-  inline bool has(ValueType value) const noexcept {
-    return (_value & value) != 0;
-  }
+  bool has(ValueType value) const noexcept { return (_value & value) != 0; }
 
-  inline bool has(Hint value) const noexcept {
+  bool has(Hint value) const noexcept {
     return has(static_cast<ValueType>(value));
   }
 
-  inline void set(ValueType value) { _value |= value; }
+  void set(ValueType value) noexcept { _value |= value; }
 
-  inline void set(Hint value) { set(static_cast<ValueType>(value)); }
+  void set(Hint value) noexcept { set(static_cast<ValueType>(value)); }
 
-  inline void unset(ValueType value) { _value &= ~value; }
+  void unset(ValueType value) noexcept { _value &= ~value; }
 
-  inline void unset(Hint value) { unset(static_cast<ValueType>(value)); }
+  void unset(Hint value) noexcept { unset(static_cast<ValueType>(value)); }
 
-  inline ValueType toInt() const { return static_cast<ValueType>(_value); }
+  ValueType toInt() const noexcept { return static_cast<ValueType>(_value); }
+
+  std::string toString() const;
 
  private:
   ValueType _value;
 };
+
+std::ostream& operator<<(std::ostream&, Hints const&);
 
 }  // namespace arangodb::transaction

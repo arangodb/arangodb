@@ -158,10 +158,50 @@ std::pair<uint64_t, uint64_t> getMinMaxDepths(AstNode const* steps) {
   return {minDepth, maxDepth};
 }
 
-void parseGraphCollectionRestriction(std::vector<std::string>& collections,
+void parseGraphCollectionRestriction(Ast* ast, std::string_view typeName,
+                                     std::vector<std::string>& collections,
                                      AstNode const* src) {
+  auto addCollection = [&collections, typeName, ast](std::string&& name) {
+    // throws if data source cannot be found
+    ast->createNodeDataSource(ast->query().resolver(), name,
+                              AccessMode::Type::READ, true, true);
+
+    // now get the collection and inspect its type
+    Collection const* collection = ast->query().collections().get(name);
+    TRI_ASSERT(collection != nullptr);
+    if (collection == nullptr) {
+      // should not happen
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          absl::StrCat("data source for '", typeName,
+                       "' option must be a collection"));
+    }
+
+    TRI_col_type_e type = TRI_COL_TYPE_DOCUMENT;
+    try {
+      // throws when called on a view
+      type = collection->type();
+    } catch (...) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+          absl::StrCat("data source type for '", typeName,
+                       "' option must be a collection"));
+    }
+
+    if (typeName == "edgeCollections") {
+      if (type != TRI_COL_TYPE_EDGE) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+            absl::StrCat("data source type for '", typeName,
+                         "' option must be an edge collection"));
+      }
+    }
+
+    collections.emplace_back(std::move(name));
+  };
+
   if (src->isStringValue()) {
-    collections.emplace_back(src->getString());
+    addCollection(src->getString());
   } else if (src->type == NODE_TYPE_ARRAY) {
     size_t const n = src->numMembers();
     collections.reserve(n);
@@ -170,10 +210,11 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections,
       if (!c->isStringValue()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "collection restrictions option must be either a string or an "
-            "array of collection names");
+            absl::StrCat(
+                "collection restrictions option for '", typeName,
+                "' must be either a string or an array of collection names"));
       }
-      collections.emplace_back(c->getStringValue(), c->getStringLength());
+      addCollection(c->getString());
     }
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -259,9 +300,11 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
                 "or 'none' instead");
           }
         } else if (name == "edgeCollections") {
-          parseGraphCollectionRestriction(options->edgeCollections, value);
+          parseGraphCollectionRestriction(ast, name, options->edgeCollections,
+                                          value);
         } else if (name == "vertexCollections") {
-          parseGraphCollectionRestriction(options->vertexCollections, value);
+          parseGraphCollectionRestriction(ast, name, options->vertexCollections,
+                                          value);
         } else if (name == StaticStrings::GraphQueryOrder && !hasBFS) {
           // dfs is the default
           if (value->stringEqualsCaseInsensitive(
@@ -458,8 +501,10 @@ ExecutionPlan::~ExecutionPlan() {
     // only track memory usage here and access ast/query if we are allowed to do
     // so. this can be inherently unsafe from within the gtest unit tests, so it
     // is protected by an option here
-    _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() *
-                                                        sizeof(ExecutionNode));
+    for (auto const& [id, node] : _ids) {
+      _ast->query().resourceMonitor().decreaseMemoryUsage(
+          node->getMemoryUsedBytes());
+    }
   }
 
   for (auto& x : _ids) {
@@ -785,7 +830,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
 
         // and register a reference to the subquery result in the expression
         v = _ast->variables()->createTemporaryVariable();
-        auto en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
+        auto en = createNode<SubqueryNode>(this, nextId(), subquery, v);
         _subqueries[v->id] = en;
         en->addDependency(previous);
         previous = en;
@@ -1076,8 +1121,9 @@ ExecutionNode* ExecutionPlan::registerNode(
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   {
-    ResourceUsageScope scope(_ast->query().resourceMonitor(),
-                             _trackMemoryUsage ? sizeof(ExecutionNode) : 0);
+    ResourceUsageScope scope(
+        _ast->query().resourceMonitor(),
+        _trackMemoryUsage ? node->getMemoryUsedBytes() : 0);
 
     auto emplaced =
         _ids.try_emplace(node->id(), node.get()).second;  // take ownership
@@ -1160,8 +1206,8 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                      "no collection for EnumerateCollection");
     }
     IndexHint hint(_ast->query(), options);
-    en = registerNode(new EnumerateCollectionNode(this, nextId(), collection, v,
-                                                  false, hint));
+    en = createNode<EnumerateCollectionNode>(this, nextId(), collection, v,
+                                             false, hint);
     if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES)) {
       // this is a FOR node that belongs to an UPSERT query
       ExecutionNode::castTo<EnumerateCollectionNode*>(en)->setCanReadOwnWrites(
@@ -1204,7 +1250,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(inVariable != nullptr);
-    en = registerNode(new EnumerateListNode(this, nextId(), inVariable, v));
+    en = createNode<EnumerateListNode>(this, nextId(), inVariable, v);
   } else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(expression, previous);
@@ -1352,7 +1398,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   TRI_ASSERT(direction->isIntValue());
 
   // First create the node
-  auto travNode = new TraversalNode(
+  auto travNode = createNode<TraversalNode>(
       this, nextId(), &(_ast->query().vocbase()), direction, start, graph,
       std::move(pruneExpression), std::move(options));
 
@@ -1379,9 +1425,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     }
   }
 
-  ExecutionNode* en = registerNode(travNode);
-  TRI_ASSERT(en != nullptr);
-  return addDependency(previous, en);
+  return addDependency(previous, travNode);
 }
 
 AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode*& previous,
@@ -1508,7 +1552,7 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new FilterNode(this, nextId(), v));
+    en = createNode<FilterNode>(this, nextId(), v);
   } else {
     // operand is some misc expression
     if (expression->isTrue()) {
@@ -1525,10 +1569,10 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
     if (expression->isFalse()) {
       // filter expression is known to be always false, so
       // replace the FILTER with a NoResultsNode
-      en = registerNode(new NoResultsNode(this, nextId()));
+      en = createNode<NoResultsNode>(this, nextId());
     } else {
       auto calc = createTemporaryCalculation(expression, previous);
-      en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
+      en = createNode<FilterNode>(this, nextId(), getOutVariable(calc));
       previous = calc;
     }
   }
@@ -1561,7 +1605,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
+    en = createNode<SubqueryNode>(this, nextId(), subquery, v);
     _subqueries[ExecutionNode::castTo<SubqueryNode*>(en)->outVariable()->id] =
         en;
   } else {
@@ -1648,11 +1692,14 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       // sort operand is a variable
       auto v = static_cast<Variable*>(expression->getData());
       TRI_ASSERT(v != nullptr);
-      elements.emplace_back(v, isAscending);
+      auto elem = SortElement{v, isAscending, _ast->query().resourceMonitor()};
+      elements.emplace_back(std::move(elem));
     } else {
       // sort operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
-      elements.emplace_back(getOutVariable(calc), isAscending);
+      auto elem = SortElement{getOutVariable(calc), isAscending,
+                              _ast->query().resourceMonitor()};
+      elements.emplace_back(std::move(elem));
       previous = calc;
     }
   }
@@ -1664,7 +1711,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
   }
 
   // at least one sort criterion remained
-  auto en = registerNode(new SortNode(this, nextId(), elements, false));
+  auto en = createNode<SortNode>(this, nextId(), elements, false);
 
   return addDependency(previous, en);
 }
@@ -1817,9 +1864,9 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
     countValue = count->getIntValue();
   }
 
-  auto en = registerNode(new LimitNode(this, nextId(),
-                                       static_cast<size_t>(offsetValue),
-                                       static_cast<size_t>(countValue)));
+  auto en =
+      createNode<LimitNode>(this, nextId(), static_cast<size_t>(offsetValue),
+                            static_cast<size_t>(countValue));
 
   if (_nestingLevel == 0) {
     _lastLimitNode = en;
@@ -1842,11 +1889,11 @@ ExecutionNode* ExecutionPlan::fromNodeReturn(ExecutionNode* previous,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new ReturnNode(this, nextId(), v));
+    en = createNode<ReturnNode>(this, nextId(), v);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(new ReturnNode(this, nextId(), getOutVariable(calc)));
+    en = createNode<ReturnNode>(this, nextId(), getOutVariable(calc));
     previous = calc;
   }
 
@@ -1889,8 +1936,8 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
 
-    en = registerNode(new RemoveNode(this, nextId(), collection, options,
-                                     getOutVariable(calc), outVariableOld));
+    en = createNode<RemoveNode>(this, nextId(), collection, options,
+                                getOutVariable(calc), outVariableOld);
     previous = calc;
   }
 
@@ -1935,15 +1982,15 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
     auto v = static_cast<Variable*>(expression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new InsertNode(this, nextId(), collection, options, v,
-                                     outVariableOld, outVariableNew));
+    en = createNode<InsertNode>(this, nextId(), collection, options, v,
+                                outVariableOld, outVariableNew);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
 
-    en = registerNode(new InsertNode(this, nextId(), collection, options,
-                                     getOutVariable(calc), outVariableOld,
-                                     outVariableNew));
+    en = createNode<InsertNode>(this, nextId(), collection, options,
+                                getOutVariable(calc), outVariableOld,
+                                outVariableNew);
     previous = calc;
   }
 
@@ -2002,16 +2049,15 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
     auto v = static_cast<Variable*>(docExpression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new UpdateNode(this, nextId(), collection, options, v,
-                                     keyVariable, outVariableOld,
-                                     outVariableNew));
+    en = createNode<UpdateNode>(this, nextId(), collection, options, v,
+                                keyVariable, outVariableOld, outVariableNew);
   } else {
     // document operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression, previous);
 
-    en = registerNode(new UpdateNode(this, nextId(), collection, options,
-                                     getOutVariable(calc), keyVariable,
-                                     outVariableOld, outVariableNew));
+    en = createNode<UpdateNode>(this, nextId(), collection, options,
+                                getOutVariable(calc), keyVariable,
+                                outVariableOld, outVariableNew);
     previous = calc;
   }
 
@@ -2070,16 +2116,15 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
     auto v = static_cast<Variable*>(docExpression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new ReplaceNode(this, nextId(), collection, options, v,
-                                      keyVariable, outVariableOld,
-                                      outVariableNew));
+    en = createNode<ReplaceNode>(this, nextId(), collection, options, v,
+                                 keyVariable, outVariableOld, outVariableNew);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression, previous);
 
-    en = registerNode(new ReplaceNode(this, nextId(), collection, options,
-                                      getOutVariable(calc), keyVariable,
-                                      outVariableOld, outVariableNew));
+    en = createNode<ReplaceNode>(this, nextId(), collection, options,
+                                 getOutVariable(calc), keyVariable,
+                                 outVariableOld, outVariableNew);
     previous = calc;
   }
 
@@ -2174,7 +2219,8 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 
     // add a sort on rangeVariable in front of the WINDOW
     SortElementVector elements;
-    elements.emplace_back(rangeVar, /*isAscending*/ true);
+    elements.emplace_back(SortElement{rangeVar, /*isAscending*/ true,
+                                      _ast->query().resourceMonitor()});
     auto en = registerNode(
         std::make_unique<SortNode>(this, nextId(), elements, false));
     previous = addDependency(previous, en);
@@ -2235,7 +2281,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  ExecutionNode* en = registerNode(new SingletonNode(this, nextId()));
+  ExecutionNode* en = createNode<SingletonNode>(this, nextId());
 
   size_t const n = node->numMembers();
 
@@ -2342,6 +2388,8 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
     }
+
+    TRI_ASSERT(en != nullptr);
 
     if (en == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "type not handled");

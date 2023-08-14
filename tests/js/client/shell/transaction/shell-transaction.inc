@@ -192,6 +192,14 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testRemoveInsertWithSameRev: function () {
+      if (isCluster) {
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({
@@ -212,6 +220,14 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testUpdateWithSameRevTransaction: function () {
+      if (isCluster) {
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({
@@ -231,6 +247,14 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testUpdateAbortWithSameRev: function () {
+      if (isCluster) {
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({
@@ -816,7 +840,6 @@ function transactionInvocationSuite (dbParams) {
         }
       }
     },
-
   };
 }
 
@@ -827,11 +850,13 @@ function transactionInvocationSuite (dbParams) {
 function transactionCollectionsSuite (dbParams) {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
-  var cn1 = 'UnitTestsTransaction1';
-  var cn2 = 'UnitTestsTransaction2';
+  const cn1 = 'UnitTestsTransaction1';
+  const cn2 = 'UnitTestsTransaction2';
+  const cn3 = 'UnitTestsTransaction3';
 
-  var c1 = null;
-  var c2 = null;
+  let c1 = null;
+  let c2 = null;
+  let c3 = null;
 
   return {
     setUpAll: function () {
@@ -850,6 +875,9 @@ function transactionCollectionsSuite (dbParams) {
 
       db._drop(cn2);
       c2 = db._create(cn2, {numberOfShards: 4});
+
+      db._drop(cn3);
+      c3 = db._create(cn3, {numberOfShards: 4, shardKeys: ["Hallo"]});
     },
 
     tearDown: function () {
@@ -983,6 +1011,26 @@ function transactionCollectionsSuite (dbParams) {
         assertEqual(arangodb.errors.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       } finally {
         if (trx) {
+          trx.abort();
+        }
+      }
+    },
+
+    testReadFromNonDeclaredCollection: function () {
+      const trxOpts = { collections: {} };
+      const doc1 = db[cn1].insert({});
+      const doc2 = db[cn2].insert({});
+      const doc3 = db[cn3].insert({});
+      for (let i = 0; i < 100; ++i) {
+        const trx = db._createTransaction(trxOpts);
+        try {
+          let tc1 = trx.collection(c1.name());
+          tc1.document(doc1._key);
+          let tc2 = trx.collection(c2.name());
+          tc2.document(doc2._key);
+          let tc3 = trx.collection(c3.name());
+          tc3.document(doc3._key);
+        } finally {
           trx.abort();
         }
       }

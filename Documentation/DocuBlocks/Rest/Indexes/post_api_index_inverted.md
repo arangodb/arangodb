@@ -1,6 +1,5 @@
 
 @startDocuBlock post_api_index_inverted
-@brief Creates an inverted index
 
 @RESTHEADER{POST /_api/index#inverted, Create an inverted index, createIndexInverted}
 
@@ -72,7 +71,8 @@ You cannot use an array expansion if `searchField` is enabled.
 Default: the value defined by the top-level `searchField` option.
 
 @RESTSTRUCT{trackListPositions,post_api_index_inverted_fields,boolean,optional,}
-This option only applies if you use the inverted index in a `search-alias` Views.
+This option only applies if you use the inverted index in a `search-alias` Views,
+and `searchField` needs to be `true`.
 
 If set to `true`, then track the value position in arrays for array values.
 For example, when querying a document like `{ attr: [ "valueX", "valueY", "valueZ" ] }`,
@@ -87,13 +87,25 @@ Default: the value defined by the top-level `trackListPositions` option.
 @RESTSTRUCT{cache,post_api_index_inverted_fields,boolean,optional,}
 Enable this option to always cache the field normalization values in memory
 for this specific field. This can improve the performance of scoring and
-ranking queries.
+ranking queries. Otherwise, these values are memory-mapped and it is up to the
+operating system to load them from disk into memory and to evict them from memory.
 
 Normalization values are computed for fields which are processed with Analyzers
 that have the `"norm"` feature enabled. These values are used to score fairer if
 the same tokens occur repeatedly, to emphasize these documents less.
 
+You can also enable this option to always cache auxiliary data used for querying
+fields that are indexed with Geo Analyzers in memory for this specific field.
+This can improve the performance of geo-spatial queries.
+
 Default: the value defined by the top-level `cache` option.
+
+This property is available in the Enterprise Edition only.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTSTRUCT{nested,post_api_index_inverted_fields,array,optional,post_api_index_inverted_nested}
 Index the specified sub-objects that are stored in an array. Other than with the
@@ -140,9 +152,25 @@ Default: the value defined by the top-level `searchField` option.
 @RESTSTRUCT{cache,post_api_index_inverted_nested,boolean,optional,}
 Enable this option to always cache the field normalization values in memory
 for this specific nested field. This can improve the performance of scoring and
-ranking queries.
+ranking queries. Otherwise, these values are memory-mapped and it is up to the
+operating system to load them from disk into memory and to evict them from memory.
+
+Normalization values are computed for fields which are processed with Analyzers
+that have the `"norm"` feature enabled. These values are used to score fairer if
+the same tokens occur repeatedly, to emphasize these documents less.
+
+You can also enable this option to always cache auxiliary data used for querying
+fields that are indexed with Geo Analyzers in memory for this specific nested field.
+This can improve the performance of geo-spatial queries.
 
 Default: the value defined by the top-level `cache` option.
+
+This property is available in the Enterprise Edition only.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTSTRUCT{nested,post_api_index_inverted_nested,array,optional,object}
 You can recursively index sub-objects. See the above description of the
@@ -166,13 +194,25 @@ Default: `false`
 @RESTBODYPARAM{cache,boolean,optional,}
 Enable this option to always cache the field normalization values in memory
 for all fields by default. This can improve the performance of scoring and
-ranking queries.
+ranking queries. Otherwise, these values are memory-mapped and it is up to the
+operating system to load them from disk into memory and to evict them from memory.
 
 Normalization values are computed for fields which are processed with Analyzers
 that have the `"norm"` feature enabled. These values are used to score fairer if
 the same tokens occur repeatedly, to emphasize these documents less.
 
+You can also enable this option to always cache auxiliary data used for querying
+fields that are indexed with Geo Analyzers in memory for all fields by default.
+This can improve the performance of geo-spatial queries.
+
 Default: `false`
+
+This property is available in the Enterprise Edition only.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{storedValues,array,optional,post_api_index_inverted_storedvalues}
 The optional `storedValues` attribute can contain an array of objects with paths
@@ -211,9 +251,18 @@ Defines how to compress the attribute values. Possible values:
 
 @RESTSTRUCT{cache,post_api_index_inverted_storedvalues,boolean,optional,}
 Enable this option to always cache stored values in memory. This can improve the
-query performance if stored values are involved.
+query performance if stored values are involved. Otherwise, these values are
+memory-mapped and it is up to the operating system to load them from disk into
+memory and to evict them from memory.
 
 Default: `false`
+
+This property is available in the Enterprise Edition only.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{primarySort,object,optional,post_api_index_inverted_primarysort}
 You can define a primary sort order to enable an AQL optimization. If a query
@@ -240,37 +289,30 @@ Defines how to compress the primary sort data. Possible values:
 @RESTSTRUCT{cache,post_api_index_inverted_primarysort,boolean,optional,}
 Enable this option to always cache the primary sort columns in memory. This can
 improve the performance of queries that utilize the primary sort order.
+Otherwise, these values are memory-mapped and it is up to the operating system
+to load them from disk into memory and to evict them from memory.
 
 Default: `false`
+
+This property is available in the Enterprise Edition only.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{primaryKeyCache,boolean,optional,}
 Enable this option to always cache the primary key column in memory. This can
-improve the performance of queries that return many documents.
+improve the performance of queries that return many documents. Otherwise, these
+values are memory-mapped and it is up to the operating system to load them from
+disk into memory and to evict them from memory.
 
 Default: `false`
 
-@RESTBODYPARAM{optimizeTopK,array,optional,string}
-This option only applies if you use the inverted index in a `search-alias` Views.
-
-An array of strings defining sort expressions that you want to optimize.
-This is also known as _WAND optimization_.
-
-If you query a View with the `SEARCH` operation in combination with a
-`SORT` and `LIMIT` operation, search results can be retrieved faster if the
-`SORT` expression matches one of the optimized expressions.
-
-Only sorting by highest rank is supported, that is, sorting by the result
-of a scoring function in descending order (`DESC`). Use `@doc` in the expression
-where you would normally pass the document variable emitted by the `SEARCH`
-operation to the scoring function.
-
-You can define up tp 64 expressions per View.
-
-Example: `["BM25(@doc) DESC", "TFIDF(@doc, true) DESC"]`
-
-Default: `[]`
-
-This property is available in the Enterprise Edition only.
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache. You can reduce the memory usage of the column
+cache in cluster deployments by only using the cache for leader shards, see the
+`--arangosearch.columns-cache-only-leader` startup option (introduced in v3.10.6).
 
 @RESTBODYPARAM{analyzer,string,optional,string}
 The name of an Analyzer to use by default. This Analyzer is applied to the
@@ -301,7 +343,8 @@ Default: `false`
 with complex Analyzers may significantly slow down the indexing process.
 
 @RESTBODYPARAM{trackListPositions,boolean,optional,}
-This option only applies if you use the inverted index in a `search-alias` Views.
+This option only applies if you use the inverted index in a `search-alias` Views,
+and `searchField` needs to be `true`.
 
 If set to `true`, then track the value position in arrays for array values.
 For example, when querying a document like `{ attr: [ "valueX", "valueY", "valueZ" ] }`,

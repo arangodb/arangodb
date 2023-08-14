@@ -425,6 +425,27 @@ void auth::UserManager::triggerCacheRevalidation() {
   loadFromDB();
 }
 
+void auth::UserManager::setGlobalVersion(uint64_t version) noexcept {
+  uint64_t previous = _globalVersion.load(std::memory_order_relaxed);
+  while (version > previous) {
+    if (_globalVersion.compare_exchange_strong(previous, version,
+                                               std::memory_order_release,
+                                               std::memory_order_relaxed)) {
+      break;
+    }
+  }
+}
+
+/// @brief reload user cache and token caches
+void auth::UserManager::triggerLocalReload() noexcept {
+  _internalVersion.store(0, std::memory_order_release);
+}
+
+/// @brief used for caching
+uint64_t auth::UserManager::globalVersion() const noexcept {
+  return _globalVersion.load(std::memory_order_acquire);
+}
+
 /// Trigger eventual reload, user facing API call
 void auth::UserManager::triggerGlobalReload() {
   if (!ServerState::instance()->isCoordinator()) {
@@ -805,7 +826,7 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
 
 auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
                                                    std::string const& dbname,
-                                                   std::string const& coll,
+                                                   std::string_view coll,
                                                    bool configured) {
   if (coll.empty()) {
     return auth::Level::NONE;

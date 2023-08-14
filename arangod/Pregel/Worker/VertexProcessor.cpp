@@ -33,6 +33,7 @@
 #include "Pregel/Algos/SCC/SCCValue.h"
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
+#include "Pregel/Statistics.h"
 
 using namespace arangodb::pregel;
 
@@ -44,17 +45,24 @@ VertexProcessor<V, E, M>::VertexProcessor(
     std::unique_ptr<Algorithm<V, E, M>>& algorithm,
     std::unique_ptr<WorkerContext>& workerContext,
     std::unique_ptr<MessageCombiner<M>>& messageCombiner,
-    std::unique_ptr<MessageFormat<M>>& messageFormat) {
+    std::unique_ptr<MessageFormat<M>>& messageFormat, size_t messageBatchSize) {
   if (messageCombiner != nullptr) {
     localMessageCache = std::make_shared<CombiningInCache<M>>(
-        std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get(),
+        messageCombiner.get());
     outCache = std::make_shared<CombiningOutCache<M>>(
-        workerConfig, messageFormat.get(), messageCombiner.get());
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+        messageFormat.get(), messageCombiner.get());
   } else {
     localMessageCache = std::make_shared<ArrayInCache<M>>(
-        std::set<PregelShard>{}, messageFormat.get());
-    outCache =
-        std::make_shared<ArrayOutCache<M>>(workerConfig, messageFormat.get());
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get());
+    outCache = std::make_shared<ArrayOutCache<M>>(
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+        messageFormat.get());
   }
 
   outCache->setBatchSize(messageBatchSize);
@@ -101,6 +109,90 @@ auto VertexProcessor<V, E, M>::result() -> VertexProcessorResult {
                                    memoryBytesUsedForMessages)};
 }
 
+template<typename V, typename E, typename M>
+ActorVertexProcessor<V, E, M>::ActorVertexProcessor(
+    std::shared_ptr<WorkerConfig const> workerConfig,
+    std::unique_ptr<Algorithm<V, E, M>>& algorithm,
+    std::unique_ptr<WorkerContext>& workerContext,
+    std::unique_ptr<MessageCombiner<M>>& messageCombiner,
+    std::unique_ptr<MessageFormat<M>>& messageFormat,
+    std::function<void(actor::ActorPID receiver,
+                       worker::message::PregelMessage message)>
+        dispatch,
+    std::unordered_map<ShardID, actor::ActorPID> const&
+        responsibleActorPerShard) {
+  if (messageCombiner != nullptr) {
+    localMessageCache = std::make_shared<CombiningInCache<M>>(
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get(),
+        messageCombiner.get());
+    outCache = std::make_shared<CombiningOutActorCache<M>>(
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+        messageFormat.get(), messageCombiner.get());
+  } else {
+    localMessageCache = std::make_shared<ArrayInCache<M>>(
+        containers::FlatHashSet<PregelShard>{}, messageFormat.get());
+    outCache = std::make_shared<ArrayOutActorCache<M>>(
+        workerConfig,
+        workerConfig->graphSerdeConfig().localPregelShardIDs(
+            ServerState::instance()->getId()),
+
+        messageFormat.get());
+  }
+
+  outCache->setBatchSize(messageBatchSize);
+  outCache->setLocalCache(localMessageCache.get());
+  outCache->setDispatch(dispatch);
+  outCache->setResponsibleActorPerShard(responsibleActorPerShard);
+
+  workerAggregator = std::make_unique<AggregatorHandler>(algorithm.get());
+
+  vertexComputation = std::shared_ptr<VertexComputation<V, E, M>>(
+      algorithm->createComputation(workerConfig));
+  vertexComputation->_gss = workerConfig->globalSuperstep();
+  vertexComputation->_lss = workerConfig->localSuperstep();
+  vertexComputation->_context = workerContext.get();
+  vertexComputation->_readAggregators = workerContext->_readAggregators.get();
+
+  vertexComputation->_writeAggregators = workerAggregator.get();
+  vertexComputation->_cache = outCache.get();
+}
+
+template<typename V, typename E, typename M>
+ActorVertexProcessor<V, E, M>::~ActorVertexProcessor() {}
+
+template<typename V, typename E, typename M>
+auto ActorVertexProcessor<V, E, M>::process(Vertex<V, E>* vertexEntry,
+                                            MessageIterator<M> messages)
+    -> ActorVertexProcessorStatus {
+  messagesReceived += messages.size();
+  memoryBytesUsedForMessages += messages.size() * sizeof(M);
+
+  if (messages.size() > 0 || vertexEntry->active()) {
+    vertexComputation->_vertexEntry = vertexEntry;
+    vertexComputation->compute(messages);
+    if (vertexEntry->active()) {
+      activeCount++;
+    }
+  }
+  verticesProcessed += 1;
+  return ActorVertexProcessorStatus{
+      .messageStats = MessageStats{outCache->sendCount(), messagesReceived,
+                                   memoryBytesUsedForMessages},
+      .verticesProcessed = verticesProcessed};
+}
+
+template<typename V, typename E, typename M>
+auto ActorVertexProcessor<V, E, M>::result() -> ActorVertexProcessorResult {
+  return ActorVertexProcessorResult{
+      .activeCount = activeCount,
+      .workerAggregator = std::move(workerAggregator),
+      .messageStats = MessageStats(outCache->sendCount(), messagesReceived,
+                                   memoryBytesUsedForMessages),
+      .verticesProcessed = verticesProcessed,
+      .sendCountPerActor = outCache->sendCountPerActor()};
+}
 }  // namespace arangodb::pregel
 
 // template types to create
@@ -130,4 +222,34 @@ template struct arangodb::pregel::VertexProcessor<algos::LPValue, int8_t,
 template struct arangodb::pregel::VertexProcessor<algos::SLPAValue, int8_t,
                                                   uint64_t>;
 template struct arangodb::pregel::VertexProcessor<
+    algos::ColorPropagationValue, int8_t, algos::ColorPropagationMessageValue>;
+
+template struct arangodb::pregel::ActorVertexProcessor<int64_t, int64_t,
+                                                       int64_t>;
+template struct arangodb::pregel::ActorVertexProcessor<uint64_t, uint8_t,
+                                                       uint64_t>;
+template struct arangodb::pregel::ActorVertexProcessor<float, float, float>;
+template struct arangodb::pregel::ActorVertexProcessor<double, float, double>;
+template struct arangodb::pregel::ActorVertexProcessor<float, uint8_t, float>;
+
+// custom algorithm types
+template struct arangodb::pregel::ActorVertexProcessor<uint64_t, uint64_t,
+                                                       SenderMessage<uint64_t>>;
+template struct arangodb::pregel::ActorVertexProcessor<
+    algos::WCCValue, uint64_t, SenderMessage<uint64_t>>;
+template struct arangodb::pregel::ActorVertexProcessor<algos::SCCValue, int8_t,
+                                                       SenderMessage<uint64_t>>;
+template struct arangodb::pregel::ActorVertexProcessor<algos::HITSValue, int8_t,
+                                                       SenderMessage<double>>;
+template struct arangodb::pregel::ActorVertexProcessor<
+    algos::HITSKleinbergValue, int8_t, SenderMessage<double>>;
+template struct arangodb::pregel::ActorVertexProcessor<algos::ECValue, int8_t,
+                                                       HLLCounter>;
+template struct arangodb::pregel::ActorVertexProcessor<algos::DMIDValue, float,
+                                                       DMIDMessage>;
+template struct arangodb::pregel::ActorVertexProcessor<algos::LPValue, int8_t,
+                                                       uint64_t>;
+template struct arangodb::pregel::ActorVertexProcessor<algos::SLPAValue, int8_t,
+                                                       uint64_t>;
+template struct arangodb::pregel::ActorVertexProcessor<
     algos::ColorPropagationValue, int8_t, algos::ColorPropagationMessageValue>;

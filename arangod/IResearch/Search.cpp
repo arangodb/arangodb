@@ -566,14 +566,6 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
   return r;
 }
 
-void Search::open() {
-  // if (ServerState::instance()->isSingleServer()) {
-  //   auto& engine =
-  //       vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  //   _inRecovery.store(engine.inRecovery(), std::memory_order_seq_cst);
-  // }
-}
-
 bool Search::visitCollections(CollectionVisitor const& visitor) const {
   std::shared_lock lock{_mutex};
   for (auto& [cid, handles] : _indexes) {
@@ -828,11 +820,14 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
           first = false;
         } else if (auto error = checkFieldsSameCollection(merged, indexMeta);
                    !error.empty()) {
-          return {TRI_ERROR_BAD_PARAMETER,
-                  absl::StrCat(
-                      "You cannot add to view indexes to the same collection,"
-                      " if them index the same fields. Error for: ",
-                      error, inverted.index().collection().name(), "'")};
+          return {
+              TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("You can only have several indexes from the same "
+                           "collection if they index different fields. Adding "
+                           "multiple indexes to the collection for the same "
+                           "fields is not permitted. Error '",
+                           error, "' for '",
+                           inverted.index().collection().name(), "'")};
         } else {
           add(merged, indexMeta);
         }

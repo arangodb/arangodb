@@ -143,13 +143,15 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     }
   }
 
-  [[nodiscard]] bool waitForSync() const { return _options.waitForSync; }
-  void waitForSync(bool value) { _options.waitForSync = value; }
+  [[nodiscard]] bool waitForSync() const noexcept {
+    return _options.waitForSync;
+  }
+  void waitForSync(bool value) noexcept { _options.waitForSync = value; }
 
-  [[nodiscard]] bool allowImplicitCollectionsForRead() const {
+  [[nodiscard]] bool allowImplicitCollectionsForRead() const noexcept {
     return _options.allowImplicitCollectionsForRead;
   }
-  void allowImplicitCollectionsForRead(bool value) {
+  void allowImplicitCollectionsForRead(bool value) noexcept {
     _options.allowImplicitCollectionsForRead = value;
   }
 
@@ -162,7 +164,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
       std::string_view name, AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
-  [[nodiscard]] Result addCollection(DataSourceId cid, std::string const& cname,
+  [[nodiscard]] Result addCollection(DataSourceId cid, std::string_view cname,
                                      AccessMode::Type accessType,
                                      bool lockUsage);
 
@@ -223,14 +225,14 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] virtual bool ensureSnapshot() = 0;
 
   /// @brief begin a transaction
-  virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
+  virtual Result beginTransaction(transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
-  virtual futures::Future<arangodb::Result> commitTransaction(
+  virtual futures::Future<Result> commitTransaction(
       transaction::Methods* trx) = 0;
 
   /// @brief abort a transaction
-  virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
+  virtual Result abortTransaction(transaction::Methods* trx) = 0;
 
   virtual Result triggerIntermediateCommit() = 0;
 
@@ -373,11 +375,11 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
  private:
   /// @brief check if current user can access this collection
-  Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
+  Result checkCollectionPermission(DataSourceId cid, std::string_view cname,
                                    AccessMode::Type);
 
   /// @brief helper function for addCollection
-  Result addCollectionInternal(DataSourceId cid, std::string const& cname,
+  Result addCollectionInternal(DataSourceId cid, std::string_view cname,
                                AccessMode::Type accessType, bool lockUsage);
 
  protected:
@@ -388,6 +390,9 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// @brief current status
   transaction::Status _status = transaction::Status::CREATED;
 
+  // in case of read-only transactions collections can be added lazily.
+  // this can happen concurrently, so for this we need to protect the list
+  mutable std::mutex _collectionsLock;
   containers::SmallVector<TransactionCollection*, 8> _collections;
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0

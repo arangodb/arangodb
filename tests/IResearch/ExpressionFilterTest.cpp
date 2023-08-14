@@ -55,6 +55,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -186,7 +187,8 @@ struct custom_sort final : public irs::ScorerBase<void> {
             ctxImpl.sort_.scorerScore(doc_id, res);
           }
         },
-        *this, segment, features, stats, doc_attrs);
+        irs::ScoreFunction::DefaultMin, *this, segment, features, stats,
+        doc_attrs);
   }
 
   irs::TermCollector::ptr prepare_term_collector() const final {
@@ -1117,7 +1119,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
+    EXPECT_TRUE(score->IsDefault());
 
     // set reachable filter condition
     {
@@ -1264,7 +1266,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_FALSE(*score == irs::ScoreFunction::DefaultScore);
+    EXPECT_FALSE(score->IsDefault());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),
@@ -1388,7 +1390,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
+    EXPECT_TRUE(score->IsDefault());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),

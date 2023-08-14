@@ -50,6 +50,7 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utilities/NameValidator.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-deadline.h"
@@ -172,6 +173,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
 
       if (!res) {
         setCustomError(500, "unable to create connection");
+        LOG_TOPIC("9daaa", DEBUG, arangodb::Logger::HTTPCLIENT)
+            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "' failed fatally";
         return nullptr;
       }
 
@@ -200,6 +204,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
             }
           }
           setCustomError(_lastHttpReturnCode, errorMessage);
+          LOG_TOPIC("9daab", DEBUG, arangodb::Logger::HTTPCLIENT)
+              << "Connection attempt to endpoint '" << _client.endpoint()
+              << "' failed: " << errorMessage;
           return nullptr;
         }
       }
@@ -210,6 +217,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
                            res->payload().size());
         msg += "'";
         setCustomError(503, msg);
+        LOG_TOPIC("9daac", DEBUG, arangodb::Logger::HTTPCLIENT)
+            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "' failed: " << msg;
         return nullptr;
       }
 
@@ -258,6 +268,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
       if (retryCount <= 0) {
         std::string msg(fu::to_string(e));
         setCustomError(503, msg);
+        LOG_TOPIC("9daad", DEBUG, arangodb::Logger::HTTPCLIENT)
+            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "' failed: " << msg;
         return nullptr;
       } else {
         newConnection = _builder.connect(_loop);
@@ -314,7 +327,7 @@ std::string V8ClientConnection::endpointSpecification() const {
 ArangoshServer& V8ClientConnection::server() { return _server; }
 
 void V8ClientConnection::setDatabaseName(std::string const& value) {
-  _databaseName = normalizeUtf8ToNFC(value);
+  _databaseName = value;
 }
 
 double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
@@ -613,11 +626,16 @@ static void ClientConnection_reconnect(
     // Note that there are two additional parameters, which aren't advertised,
     // namely `warnConnect` and `jwtSecret`.
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "reconnect(<endpoint>, <database>, [ <username>, <password> ])");
+        "reconnect(<endpoint>, <database> [, <username>, <password> ])");
   }
 
   std::string const endpoint = TRI_ObjectToString(isolate, args[0]);
   std::string databaseName = TRI_ObjectToString(isolate, args[1]);
+
+  if (auto res = DatabaseNameValidator::validateName(true, true, databaseName);
+      res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
 
   std::string username;
 
@@ -651,11 +669,6 @@ static void ClientConnection_reconnect(
     warnConnect = TRI_ObjectToBoolean(isolate, args[4]);
   }
 
-  std::string jwtSecret;
-  if (args.Length() > 5 && !args[5]->IsUndefined()) {
-    jwtSecret = TRI_ObjectToString(isolate, args[5]);
-  }
-
   V8SecurityFeature& v8security =
       v8connection->server().getFeature<V8SecurityFeature>();
   if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint, endpoint)) {
@@ -663,12 +676,20 @@ static void ClientConnection_reconnect(
         TRI_ERROR_FORBIDDEN,
         std::string("not allowed to connect to this endpoint") + endpoint);
   }
+
+  if (args.Length() > 5 && !args[5]->IsUndefined()) {
+    // only use JWT from parameters when specified
+    client->setJwtSecret(TRI_ObjectToString(isolate, args[5]));
+  } else if (args.Length() >= 4) {
+    // password specified, but no JWT
+    client->setJwtSecret("");
+  }
+
   client->setEndpoint(endpoint);
   client->setDatabaseName(databaseName);
   client->setUsername(username);
   client->setPassword(password);
   client->setWarnConnect(warnConnect);
-  client->setJwtSecret(jwtSecret);
 
   try {
     v8connection->reconnect();
@@ -683,6 +704,39 @@ static void ClientConnection_reconnect(
       isolate, isolate->GetCurrentContext(),
       TRI_V8_STRING(isolate, "require('internal').db._flushCache();"),
       TRI_V8_ASCII_STRING(isolate, "reload db object"), false);
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void ClientConnection_setJwtSecret(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
+  if (v8connection == nullptr || client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "setJwtSecret() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  if (args.Length() != 1 || !args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("setJwtSecret(<value>)");
+  }
+
+  std::string const value = TRI_ObjectToString(isolate, args[0]);
+  client->setJwtSecret(value);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -2876,6 +2930,10 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
       isolate, "setDatabaseName",
       v8::FunctionTemplate::New(isolate, ClientConnection_setDatabaseName,
                                 v8client));
+
+  connection_proto->Set(isolate, "setJwtSecret",
+                        v8::FunctionTemplate::New(
+                            isolate, ClientConnection_setJwtSecret, v8client));
 
   connection_proto->Set(
       isolate, "importCsv",

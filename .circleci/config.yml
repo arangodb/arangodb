@@ -3,7 +3,7 @@ version: 2.1
 setup: true
 
 orbs:
-  continuation: circleci/continuation@0.3.1
+  continuation: circleci/continuation@0.4.0
 
 parameters:
   enterprise-branch:
@@ -15,10 +15,35 @@ parameters:
 
 # our defined job, and its steps
 jobs:
-  setup:
+  # this is in a separate job from "setup" to make it as cheap as possible (because it uses the bare base image)
+  check-build-trigger:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - when:
+          condition:
+            not:
+              or:
+                - equal: [devel, << pipeline.git.branch >>]
+                - equal: [api, << pipeline.trigger_source >>]
+                - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
+          steps:
+            - run: |
+                echo "Intentional build failure - to run an actual build please trigger a pipeline manually."
+                exit 1
+      - run: echo "Check successful - generating config."
+
+  generate-config:
     docker:
       - image: cimg/python:3.11.1
     executor: continuation/default
+    parameters:
+      definitions:
+        type: string
+      default-enterprise-branch:
+        type: string
+        default: "devel"
     steps:
       - run:
           name: Checkout
@@ -26,20 +51,25 @@ jobs:
             # We do not want to clone the whole repository since we only need a few files.
             # Unfortunately GitHub does not support the git-archive protocol, so we need to fetch the required files by hand.
             (mkdir .circleci && cd .circleci && curl https://api.github.com/repos/arangodb/arangodb/contents/.circleci?ref=$CIRCLE_SHA1 | jq ".[].download_url" | xargs wget)
-            (mkdir tests && cd tests && wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/tests/test-definitions.txt)
+            (mkdir tests && cd tests && wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/<< parameters.definitions >>)
       - run:
           name: Generate config
           command: |
             pip install pyyaml
-            python3 ".circleci/generate_config.py" -o generated_config.yml ./.circleci/base_config.yml "tests/test-definitions.txt"
+            python3 ".circleci/generate_config.py" -o generated_config.yml ./.circleci/base_config.yml << parameters.definitions >>
 
       - continuation/continue:
           configuration_path: generated_config.yml # use newly generated config to continue
+          parameters: '{"default-enterprise-branch": "<< parameters.default-enterprise-branch >>"}'
 
 # our single workflow, that triggers the setup job defined above
 workflows:
   setup:
-    when:
-      equal: [api, << pipeline.trigger_source >>]
     jobs:
-      - setup
+      # we always create a workflow and let the build fail in check-build-trigger unless it has been triggered manually
+      # or runs on the devel branch (see condition in check-build-trigger)
+      - check-build-trigger
+      - generate-config:
+          definitions: "tests/test-definitions.txt"
+          requires:
+            - check-build-trigger

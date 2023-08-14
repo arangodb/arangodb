@@ -26,10 +26,20 @@
 #include <Inspection/VPackSaveInspector.h>
 #include <Basics/ErrorT.h>
 
+#include <memory>
+#include <velocypack/String.h>
+
+namespace arangodb::velocypack {
+class SharedSlice;
+template<typename Allocator>
+struct BasicString;
+using String = BasicString<>;
+}  // namespace arangodb::velocypack
+
 namespace arangodb::inspection {
 
 template<typename T>
-[[nodiscard]] auto serializeWithErrorT(T& value)
+[[nodiscard]] auto serializeWithErrorT(T const& value)
     -> errors::ErrorT<Status, velocypack::SharedSlice> {
   auto builder = velocypack::Builder();
   VPackSaveInspector<> inspector(builder);
@@ -49,6 +59,20 @@ template<typename T>
     -> errors::ErrorT<Status, T> {
   inspection::VPackLoadInspector<> inspector(slice.slice(),
                                              inspection::ParseOptions{});
+  T data{};
+
+  auto res = inspector.apply(data);
+  if (res.ok()) {
+    return errors::ErrorT<Status, T>::ok(std::move(data));
+  } else {
+    return errors::ErrorT<Status, T>::error(std::move(res));
+  }
+}
+
+template<typename T>
+[[nodiscard]] auto deserializeWithErrorT(velocypack::String const& vpack)
+    -> errors::ErrorT<Status, T> {
+  inspection::VPackLoadInspector<> inspector(vpack, inspection::ParseOptions{});
   T data{};
 
   auto res = inspector.apply(data);

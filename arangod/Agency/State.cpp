@@ -430,8 +430,8 @@ index_t State::logFollower(VPackSlice transactions) {
     if (useSnapshot) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
-      Store snapshot(_agent->server(), _agent, "snapshot");
-      snapshot = transactions[0];
+      Store snapshot("snapshot");
+      snapshot.setNodeValue(transactions[0]);
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
             << "Could not restore received log snapshot.";
@@ -606,18 +606,14 @@ void State::logEraseNoLock(std::deque<log_t>::iterator rbegin,
   _log_size -= delSize;
 }
 
-/// Get log entries from indices "start" to "end"
-std::vector<log_t> State::get(index_t start, index_t end) const {
-  std::vector<log_t> entries;
-  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
-
-  if (_log.empty()) {
-    return entries;
-  }
+std::pair<index_t, index_t> State::determineLogBounds(
+    index_t start, index_t end) const noexcept {
+  // _logLock must be held when this method is called
+  TRI_ASSERT(!_log.empty());
 
   // start must be greater than or equal to the lowest index
   // and smaller than or equal to the largest index
-  if (start < _log[0].index) {
+  if (start < _log.front().index) {
     start = _log.front().index;
   } else if (start > _log.back().index) {
     start = _log.back().index;
@@ -636,11 +632,58 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
   start -= _cur;
   end -= (_cur - 1);
 
-  for (size_t i = start; i < end; ++i) {
+  TRI_ASSERT(start <= end);
+  return std::make_pair(start, end);
+}
+
+/// Get log entries from indices "start" to "end"
+std::vector<log_t> State::get(index_t start, index_t end) const {
+  std::vector<log_t> entries;
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
+
+  if (_log.empty()) {
+    return entries;
+  }
+
+  auto [s, e] = determineLogBounds(start, end);
+
+  for (size_t i = s; i < e; ++i) {
+    // only for debugging purposes
+    TRI_ASSERT(i < _log.size()) << [this, sNow = s, eNow = e, start, end]() {
+      std::stringstream s;
+      s << "log size: " << _log.size() << ", start: " << sNow
+        << ", end: " << eNow << ", cur: " << _cur << ", orig start: " << start
+        << ", orig end: " << end << ", log entry indexes:";
+      for (auto const& it : _log) {
+        s << " " << it.index;
+      }
+      return s.str();
+    }();
+
     entries.push_back(_log[i]);
   }
 
   return entries;
+}
+
+/// Get log entries from indices "start" to "end", into the builder as an array
+index_t State::toVelocyPack(velocypack::Builder& result, index_t start,
+                            index_t end) const {
+  VPackArrayBuilder guard(&result, /*allowUnindexed*/ true);
+
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
+
+  if (_log.empty()) {
+    return 0;
+  }
+
+  auto [s, e] = determineLogBounds(start, end);
+
+  for (size_t i = s; i < e; ++i) {
+    _log[i].toVelocyPackCompact(result);
+  }
+
+  return _log[s].index;
 }
 
 /// Get log entries from indices "start" to "end"
@@ -661,7 +704,7 @@ log_t State::atNoLock(index_t index) const {
   }
 
   auto pos = index - _cur;
-  if (pos > _log.size()) {
+  if (pos >= _log.size()) {
     std::string excMessage =
         std::string(
             "Access beyond the end of the log deque: (last, requested): (") +
@@ -902,6 +945,8 @@ bool State::loadPersisted() {
   // in log and compact cannot be mitigated after this point. We are here
   // because of the above missing / incomplete log / compaction. Including the
   // case of only one of the two collections being present.
+  dropCollection("log");
+  dropCollection("compact");
   ensureCollection("log", true);
   ensureCollection("compact", true);
 
@@ -941,7 +986,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
 
     VPackSlice ii = result[0];
     try {
-      store = ii;
+      store.setNodeValue(ii);
       index = extractIndexFromKey(ii);
       term = ii.get("term").getNumber<uint64_t>();
     } catch (std::exception const& e) {
@@ -999,16 +1044,20 @@ index_t State::loadCompacted() {
 
 /// Load persisted configuration
 bool State::loadOrPersistConfiguration() {
-  std::string const aql(
-      "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
+  auto loadConfiguration = [&]() -> aql::QueryResult {
+    std::string const aql(
+        "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
 
-  TRI_ASSERT(nullptr !=
-             _vocbase);  // this check was previously in the Query constructor
-  auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+    TRI_ASSERT(nullptr !=
+               _vocbase);  // this check was previously in the Query constructor
+    auto query = arangodb::aql::Query::create(
+        transaction::StandaloneContext::Create(*_vocbase),
+        aql::QueryString(aql), nullptr);
 
-  aql::QueryResult queryResult = query->executeSync();
+    return query->executeSync();
+  };
+
+  aql::QueryResult queryResult = loadConfiguration();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1268,7 +1317,7 @@ bool State::compact(index_t cind, index_t keep) {
       (std::max)(_nextCompactionAfter.load(),
                  cind + _agent->config().compactionStepSize());
 
-  Store snapshot(_agent->server(), _agent, "snapshot");
+  Store snapshot("snapshot");
   index_t index;
   term_t term;
   if (!loadLastCompactedSnapshot(snapshot, index, term)) {
@@ -1285,8 +1334,7 @@ bool State::compact(index_t cind, index_t keep) {
     // Apply log entries to snapshot up to and including index cind:
     auto logs = slices(index + 1, cind);
     log_t last = at(cind);
-    snapshot.applyLogEntries(logs, cind, last.term,
-                             false /* do not perform callbacks */);
+    snapshot.applyLogEntries(logs, cind, last.term);
 
     if (!persistCompactionSnapshot(cind, last.term, snapshot)) {
       LOG_TOPIC("3b34a", ERR, Logger::AGENCY)
@@ -1690,13 +1738,13 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   VPackSlice result = queryResult.data->slice();
   TRI_ASSERT(result.isArray());
 
-  Store store(vocbase.server(), nullptr);
+  Store store;
   index = 0;
   term = 0;
   if (result.length() == 1) {
     // Result can only have length 0 or 1.
     VPackSlice s = result[0];
-    store = s;
+    store.setNodeValue(s);
     index = extractIndexFromKey(s);
     term = s.get("term").getNumber<uint64_t>();
     LOG_TOPIC("d838b", INFO, Logger::AGENCY)
@@ -1758,7 +1806,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
         }
       }
     }
-    store.applyLogEntries(b, index, term, false);
+    store.applyLogEntries(b, index, term);
   }
 
   auto builder = std::make_shared<VPackBuilder>();

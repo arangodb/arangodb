@@ -54,28 +54,74 @@ const Graph = graphGeneration.Graph;
 const epsilon = 0.00001;
 
 const runFinishedSuccessfully = (stats) => stats.state === "done";
-const runFinishedUnsuccessfully = (stats) => stats.state === "canceled" || stats.state === "fatal error";
-const runFinished = (stats) => runFinishedSuccessfully(stats) || runFinishedUnsuccessfully(stats);
 const runCanceled = (stats) => stats.state === "canceled";
+const runInFatalError = (stats) => stats.state === "fatal error";
+const runFinishedUnsuccessfully = (stats) => runCanceled(stats) || runInFatalError(stats);
+const runFinished = (stats) => runFinishedSuccessfully(stats) || runFinishedUnsuccessfully(stats);
 
 const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sleepIntervalSeconds = 0.2) {
   let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
   var status;
+  // Note: This is added because there is a race between the conductor for pid
+  // being created and the user asking for the status of a pregel run for the
+  // first time.
+  //
+  // The *correct* fix for this is that once a client gets to know an
+  // ExecutionNumber this should be valid for being requested.
   do {
     internal.sleep(sleepIntervalSeconds);
-    status = pregel.status(pid);
+    try {
+      status = pregel.status(pid);
+    } catch(e) {
+      require('console').warn(`ExecutionNumber ${pid} does not exist (yet).`);
+    }
     if (wakeupsLeft-- === 0) {
-      assertTrue(false, "timeout in pregel execution");
+      assertTrue(false, "Pregel did not start after timeout");
+      return;
+    }
+  } while(status === undefined);
+  do {
+    internal.sleep(sleepIntervalSeconds);
+    try {
+      status = pregel.status(pid);
+    } catch(e) {
+      require('console').warn("ExecutionNumber ${pid} does not exist.");
+      return;
+    }
+    if (wakeupsLeft-- === 0) {
+      assertTrue(false, "Pregel did not finish after timeout but is in state " + status.state);
       return;
     }
   } while (!runFinished(status));
 
-  if (runFinishedUnsuccessfully(status)) {
-    assertTrue(false, "Pregel run finished unsuccessfully in state " + status.state);
-    return;
+  if (runFinishedSuccessfully(status)) {
+    return status;
   }
 
+  if (runInFatalError(status)) {
+    assertTrue(false, "Pregel run finished unsuccessfully with error " + status.errorMessage);
+    return status;
+  }
+
+  assertTrue(false, "Pregel run finished unsuccessfully in state " + status.state);
   return status;
+};
+
+const waitForResultsBeeingGarbageCollected = function (pid, ttl) {
+  // garbage collection runs every 20s, therefore we should wait at least that long plus the ttl given
+	const maxWaitSeconds = ttl + 100;
+	const sleepIntervalSeconds = 0.2;
+  let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
+	let array;
+  do {
+    internal.sleep(sleepIntervalSeconds);
+    array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
+    assertEqual(array.length, 1);
+    if (wakeupsLeft-- === 0) {
+      assertTrue(false, "Pregel results were not garbage collected");
+      return;
+    }
+  } while (array[0].length !== 0);
 };
 
 const uniquePregelResults = function (documentCursor) {
@@ -265,21 +311,19 @@ const pregelRunSmallInstanceGetComponents = function (algName, graphName, parame
 };
 
 const makeSetUp = function (smart, smartAttribute, numberOfShards) {
-    return function () {
-        if (smart) {
-            smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
-                {smartGraphAttribute: smartAttribute, numberOfShards: numberOfShards});
-        } else {
-            db._create(vColl, {numberOfShards: numberOfShards});
-            db._createEdgeCollection(eColl, {
-                numberOfShards: numberOfShards,
-                replicationFactor: 1,
-                shardKeys: ["vertex"],
-                distributeShardsLike: vColl
-            });
-            general_graph_module._create(graphName, [general_graph_module._relation(eColl, vColl, vColl)], []);
-        }
-    };
+  return function () {
+    if (smart) {
+      smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
+        {smartGraphAttribute: smartAttribute, numberOfShards: numberOfShards});
+    } else {
+      db._create(vColl, {numberOfShards: numberOfShards});
+      db._createEdgeCollection(eColl, {
+        shardKeys: ["vertex"],
+        distributeShardsLike: vColl
+      });
+      general_graph_module._create(graphName, [general_graph_module._relation(eColl, vColl, vColl)], []);
+    }
+  };
 };
 
 const makeTearDown = function (smart) {
@@ -1786,4 +1830,5 @@ exports.runFinished = runFinished;
 exports.runCanceled = runCanceled;
 exports.runFinishedSuccessfully = runFinishedSuccessfully;
 exports.waitUntilRunFinishedSuccessfully = waitUntilRunFinishedSuccessfully;
+exports.waitForResultsBeeingGarbageCollected = waitForResultsBeeingGarbageCollected;
 exports.uniquePregelResults = uniquePregelResults;

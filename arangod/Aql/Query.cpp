@@ -51,7 +51,6 @@
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -60,6 +59,8 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
@@ -98,7 +99,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
              std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase(), id),
-      _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
+      _itemBlockManager(_resourceMonitor),
       _queryString(std::move(queryString)),
       _transactionContext(std::move(ctx)),
       _sharedState(std::move(sharedState)),
@@ -177,10 +178,12 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 /// that call sites only create Query objects using the `create` factory
 /// method
 Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
-             std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options)
+             std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
+             Scheduler* scheduler)
     : Query(0, ctx, std::move(queryString), std::move(bindParameters),
             std::move(options),
-            std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
+            std::make_shared<SharedQueryState>(ctx->vocbase().server(),
+                                               scheduler)) {}
 
 Query::~Query() {
   if (_planSliceCopy != nullptr) {
@@ -247,16 +250,17 @@ void Query::destroy() {
 /// ensure that Query objects are always created using shared_ptrs.
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
-    std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options) {
+    std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
+    Scheduler* scheduler) {
   TRI_ASSERT(ctx != nullptr);
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : Query {
     MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
                     QueryString queryString,
                     std::shared_ptr<velocypack::Builder> bindParameters,
-                    QueryOptions options)
+                    QueryOptions options, Scheduler* scheduler)
         : Query{std::move(ctx), std::move(queryString),
-                std::move(bindParameters), std::move(options)} {}
+                std::move(bindParameters), std::move(options), scheduler} {}
 
     ~MakeSharedQuery() final {
       // Destroy this query, otherwise it's still
@@ -268,7 +272,7 @@ std::shared_ptr<Query> Query::create(
   TRI_ASSERT(ctx != nullptr);
   return std::make_shared<MakeSharedQuery>(
       std::move(ctx), std::move(queryString), std::move(bindParameters),
-      std::move(options));
+      std::move(options), scheduler);
 }
 
 /// @brief return the user that started the query
@@ -312,7 +316,7 @@ void Query::ensureExecutionTime() noexcept {
   }
 }
 
-void Query::prepareQuery(SerializationFormat format) {
+void Query::prepareQuery() {
   try {
     init(/*createProfile*/ true);
 
@@ -352,7 +356,7 @@ void Query::prepareQuery(SerializationFormat format) {
 
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
 
     _plans.push_back(std::move(plan));
 
@@ -457,7 +461,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-  Optimizer opt(_queryOptions.maxNumberOfPlans);
+  Optimizer opt(_resourceMonitor, _queryOptions.maxNumberOfPlans);
   // get enabled/disabled rules
   opt.createPlans(std::move(plan), _queryOptions, false);
   // Now plan and all derived plans belong to the optimizer
@@ -511,7 +515,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
         // will throw if it fails
         if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-          prepareQuery(SerializationFormat::SHADOWROWS);
+          prepareQuery();
         }
 
         logAtStart();
@@ -737,7 +741,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
 
     // will throw if it fails
-    prepareQuery(SerializationFormat::SHADOWROWS);
+    prepareQuery();
 
     logAtStart();
 
@@ -1029,7 +1033,7 @@ QueryResult Query::explain() {
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-    Optimizer opt(_queryOptions.maxNumberOfPlans);
+    Optimizer opt(_resourceMonitor, _queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
     opt.createPlans(std::move(plan), _queryOptions, true);
 
@@ -1287,7 +1291,7 @@ void Query::logAtEnd(QueryResult const& queryResult) const {
 
   // log failed queries?
   bool logFailed = feature.logFailedQueries() && queryResult.result.fail();
-  // log queries exceeded memory usage threshold
+  // log queries exceeding memory usage threshold
   bool logMemoryUsage =
       resourceMonitor().peak() >= feature.peakMemoryUsageThreshold();
 
@@ -1564,8 +1568,13 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   auto const& serverQueryIds = query.serverQueryIds();
   TRI_ASSERT(!serverQueryIds.empty());
 
-  NetworkFeature const& nf =
-      query.vocbase().server().getFeature<NetworkFeature>();
+  auto& server = query.vocbase().server();
+
+  auto* manager = server.getFeature<transaction::ManagerFeature>().manager();
+  // used by hotbackup to prevent commits
+  auto commitGuard = manager->getTransactionCommitGuard();
+
+  NetworkFeature const& nf = server.getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     return futures::makeFuture(Result{TRI_ERROR_SHUTTING_DOWN});
@@ -1574,8 +1583,12 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   network::RequestOptions options;
   options.database = query.vocbase().name();
   options.timeout = network::Timeout(60.0);  // Picked arbitrarily
-  options.continuationLane = RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR;
-  //  options.skipScheduler = true;
+  options.continuationLane = RequestLane::CLUSTER_INTERNAL;
+  // Most coordinator AQL code might be executed on the MEDIUM prio lane,
+  // since it comes from a continuation. Therefore, to avoid deadlock, we
+  // must use a lane which has priority HIGH. We do not want to skip the
+  // scheduler, since the cleanup code acquires locks and does some
+  // non-trivial work.
 
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
@@ -1648,7 +1661,8 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   }
 
   return futures::collectAll(std::move(futures))
-      .thenValue([](std::vector<futures::Try<Result>>&& results) -> Result {
+      .thenValue([commitGuard = std::move(commitGuard)](
+                     std::vector<futures::Try<Result>>&& results) -> Result {
         for (futures::Try<Result>& tryRes : results) {
           if (tryRes.get().fail()) {
             return std::move(tryRes).get();
@@ -1757,13 +1771,14 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     // we only get here if something in the network stack is out of order.
     // so there is no need to retry on cleaning up the engines, caller can
     // continue Also note: If an error in cleanup happens the query was
-    // completed already, so this error does not need to be reported to client.
+    // completed already, so this error does not need to be reported to
+    // client.
     _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
 
     if (isModificationQuery()) {
-      // For modification queries these left-over locks will have negative side
-      // effects We will report those to the user. Lingering Read-locks should
-      // not block the system.
+      // For modification queries these left-over locks will have negative
+      // side effects We will report those to the user. Lingering Read-locks
+      // should not block the system.
       std::vector<std::string_view> writeLocked{};
       std::vector<std::string_view> exclusiveLocked{};
       _collections.visit([&](std::string const& name, Collection& col) -> bool {
@@ -1785,12 +1800,14 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       LOG_TOPIC("63572", WARN, Logger::QUERIES)
           << " Failed to cleanup leftovers of a query due to communication "
              "errors. "
-          << " The DBServers will eventually clean up the state. The following "
+          << " The DBServers will eventually clean up the state. The "
+             "following "
              "locks still exist: "
           << " write: " << writeLocked
           << ": you may not drop these collections until the locks time out."
           << " exclusive: " << exclusiveLocked
-          << ": you may not be able to write into these collections until the "
+          << ": you may not be able to write into these collections until "
+             "the "
              "locks time out.";
 
       for (auto const& [server, queryId, rebootId] : _serverQueryIds) {
@@ -1866,9 +1883,10 @@ void Query::debugKillQuery() {
   // A query can only be killed under certain circumstances.
   // We assert here that one of those is true.
   // a) Query is in the list of current queries, this can be requested by the
-  // user and the query can be killed by user b) Query is in the query registry.
-  // In this case the query registry can hit a timeout, which triggers the kill
-  // c) The query id has been handed out to the user (stream query only)
+  // user and the query can be killed by user b) Query is in the query
+  // registry. In this case the query registry can hit a timeout, which
+  // triggers the kill c) The query id has been handed out to the user (stream
+  // query only)
   bool isStreaming = queryOptions().stream;
   bool isInList = false;
   bool isInRegistry = false;

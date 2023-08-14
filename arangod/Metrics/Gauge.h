@@ -33,16 +33,22 @@
 namespace arangodb::metrics {
 
 template<typename T>
-class Gauge final : public Metric {
+class Gauge : public Metric {
  public:
+  using Value = T;
+
   Gauge(T t, std::string_view name, std::string_view help,
         std::string_view labels)
       : Metric{name, help, labels}, _g{t} {}
 
   [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
 
-  void toPrometheus(std::string& result, std::string_view globals) const final {
+  void toPrometheus(std::string& result, std::string_view globals,
+                    bool ensureWhitespace) const final {
     Metric::addMark(result, name(), globals, labels());
+    if (ensureWhitespace) {
+      result.push_back(' ');
+    }
     result.append(std::to_string(load())) += '\n';
   }
 

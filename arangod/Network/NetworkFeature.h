@@ -36,7 +36,13 @@
 namespace arangodb {
 namespace network {
 struct RequestOptions;
-}
+
+struct RetryableRequest {
+  virtual ~RetryableRequest() = default;
+  virtual void retry() = 0;
+  virtual void cancel() = 0;
+};
+}  // namespace network
 
 class NetworkFeature final : public ArangodFeature {
  public:
@@ -79,6 +85,9 @@ class NetworkFeature final : public ArangodFeature {
                    std::unique_ptr<fuerte::Request>&& req,
                    RequestCallback&& cb);
 
+  void retryRequest(std::shared_ptr<network::RetryableRequest>, RequestLane,
+                    std::chrono::steady_clock::duration);
+
  protected:
   void prepareRequest(network::ConnectionPool const& pool,
                       std::unique_ptr<fuerte::Request>& req);
@@ -102,6 +111,10 @@ class NetworkFeature final : public ArangodFeature {
   std::unique_ptr<network::ConnectionPool> _pool;
   std::atomic<network::ConnectionPool*> _poolPtr;
 
+  std::unordered_map<std::shared_ptr<network::RetryableRequest>,
+                     Scheduler::WorkHandle>
+      _retryRequests;
+
   /// @brief number of cluster-internal forwarded requests
   /// (from one coordinator to another, in case load-balancing
   /// is used)
@@ -112,6 +125,11 @@ class NetworkFeature final : public ArangodFeature {
 
   metrics::Counter& _requestTimeouts;
   metrics::Histogram<metrics::FixScale<double>>& _requestDurations;
+
+  metrics::Counter& _unfinishedSends;
+  metrics::Histogram<metrics::FixScale<double>>& _dequeueDurations;
+  metrics::Histogram<metrics::FixScale<double>>& _sendDurations;
+  metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
 };
 
 }  // namespace arangodb

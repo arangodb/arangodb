@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_collection
-@brief creates a collection
 
-@RESTHEADER{POST /_api/collection, Create collection, createCollection}
+@RESTHEADER{POST /_api/collection, Create a collection, createCollection}
 
 @HINTS
 {% hint 'warning' %}
@@ -164,7 +163,7 @@ It determines how many copies of each shard are required to be
 in sync on the different DB-Servers. If there are less than these many copies
 in the cluster, a shard refuses to write. Writes to shards with enough
 up-to-date copies succeed at the same time, however. The value of
-`writeConcern` cannot be larger than `replicationFactor`.
+`writeConcern` cannot be greater than `replicationFactor`.
 For SatelliteCollections, the `writeConcern` is automatically controlled to
 equal the number of DB-Servers and has a value of `0`. _(cluster only)_
 

@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_collection_collection_properties
-@brief changes a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/properties, Change properties of a collection, updateCollectionProperties}
+@RESTHEADER{PUT /_api/collection/{collection-name}/properties, Change the properties of a collection, updateCollectionProperties}
 
 @HINTS
 {% hint 'warning' %}
@@ -22,12 +21,12 @@ created except for the listed properties, as well as the collection name via
 the rename endpoint (but not in clusters).
 
 @RESTBODYPARAM{waitForSync,boolean,optional,}
-If *true* then the data is synchronized to disk before returning from a
+If `true` then the data is synchronized to disk before returning from a
 document create, update, replace or removal operation. (default: false)
 
 @RESTBODYPARAM{cacheEnabled,boolean,optional,}
 Whether the in-memory hash cache for documents should be enabled for this
-collection (default: *false*). Can be controlled globally with the `--cache.size`
+collection (default: `false`). Can be controlled globally with the `--cache.size`
 startup option. The cache can speed up repeated reads of the same documents via
 their document keys. If the same documents are not fetched often or are
 modified frequently, then you may disable the cache to avoid the maintenance
@@ -69,7 +68,7 @@ Whether to let the write operation fail if the expression produces a warning.
 The default is `false`.
 
 @RESTBODYPARAM{replicationFactor,integer,optional,int64}
-(The default is *1*): in a cluster, this attribute determines how many copies
+(The default is `1`): in a cluster, this attribute determines how many copies
 of each shard are kept on different DB-Servers. The value 1 means that only one
 copy (no synchronous replication) is kept. A value of k means that k-1 replicas
 are kept. For SatelliteCollections, it needs to be the string `"satellite"`,
@@ -89,18 +88,18 @@ It determines how many copies of each shard are required to be
 in sync on the different DB-Servers. If there are less than these many copies
 in the cluster, a shard refuses to write. Writes to shards with enough
 up-to-date copies succeed at the same time, however. The value of
-`writeConcern` cannot be larger than `replicationFactor`.
+`writeConcern` cannot be greater than `replicationFactor`.
 For SatelliteCollections, the `writeConcern` is automatically controlled to
 equal the number of DB-Servers and has a value of `0`. _(cluster only)_
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *collection-name* is missing, then a *HTTP 400* is
+If the `collection-name` is missing, then a *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *collection-name* is unknown, then a *HTTP 404*
+If the `collection-name` is unknown, then a *HTTP 404*
 is returned.
 
 @EXAMPLES

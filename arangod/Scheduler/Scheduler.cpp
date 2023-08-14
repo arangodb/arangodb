@@ -38,6 +38,7 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
@@ -79,8 +80,14 @@ Scheduler::Scheduler(ArangodServer& server)
 Scheduler::~Scheduler() = default;
 
 bool Scheduler::start() {
-  _cronThread.reset(new SchedulerCronThread(_server, *this));
+  _cronThread = std::make_unique<SchedulerCronThread>(_server, *this);
   return _cronThread->start();
+}
+
+void Scheduler::schedulerJobMemoryAccounting(std::int64_t x) noexcept {
+  if (SchedulerFeature::SCHEDULER) {
+    SchedulerFeature::SCHEDULER->trackQueueItemSize(x);
+  }
 }
 
 void Scheduler::shutdown() {

@@ -85,10 +85,15 @@ class State {
   std::vector<log_t> get(
       index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
+  /// Get log entries from indices "start" to "end", into the builder as an
+  /// array
+  index_t toVelocyPack(velocypack::Builder& result, index_t start,
+                       index_t end) const;
+
   /// @brief load a compacted snapshot, returns the number of entries read.
   uint64_t toVelocyPack(index_t lastIndex, VPackBuilder& builder) const;
 
-  /// @brief dump the entire in-memory state to velocypacj
+  /// @brief dump the entire in-memory state to velocypack
   /// should be used for testing only
   void toVelocyPack(velocypack::Builder& builder) const;
 
@@ -99,6 +104,12 @@ class State {
 
   /// @brief non-locking version of at
   log_t atNoLock(index_t) const;
+
+  /// @brief determine safe bounds for the log, ideally from start to end,
+  /// but taking into account the actual boundary values.
+  /// _logLock must be held when this method is called
+  std::pair<index_t, index_t> determineLogBounds(index_t start,
+                                                 index_t end) const noexcept;
 
   /**
    * @brief Erase element range from _log

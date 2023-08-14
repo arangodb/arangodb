@@ -1,8 +1,7 @@
 
 @startDocuBlock put_api_collection_collection_loadIndexesIntoMemory
-@brief Load Indexes into Memory
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/loadIndexesIntoMemory, Load Indexes into Memory, loadCollectionIndexes}
+@RESTHEADER{PUT /_api/collection/{collection-name}/loadIndexesIntoMemory, Load collection indexes into memory, loadCollectionIndexes}
 
 @HINTS
 {% hint 'warning' %}
@@ -31,7 +30,7 @@ I/O activity and background load.
 
 This feature honors memory limits. If the indexes you want to load are smaller
 than your memory limit, this feature guarantees that most index values are
-cached. If the index is larger than your memory limit, this feature fills
+cached. If the index is greater than your memory limit, this feature fills
 up values up to this limit. You cannot control which indexes of the collection
 should have priority over others.
 

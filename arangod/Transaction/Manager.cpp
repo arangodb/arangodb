@@ -26,10 +26,12 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -89,9 +91,8 @@ struct MGMethods final : arangodb::transaction::Methods {
 Manager::Manager(ManagerFeature& feature)
     : _feature(feature),
       _nrRunning(0),
-      _nrReadLocked(0),
       _disallowInserts(false),
-      _writeLockHeld(false),
+      _hotbackupCommitLockHeld(false),
       _streamingLockTimeout(feature.streamingLockTimeout()),
       _softShutdownOngoing(false) {}
 
@@ -103,35 +104,14 @@ void Manager::registerTransaction(TransactionId transactionId,
   TRI_ASSERT(!isFollowerTransaction ||
              transactionId.isFollowerTransactionId() ||
              transactionId.isLegacyTransactionId());
-  if (!isReadOnlyTransaction && !isFollowerTransaction) {
-    LOG_TOPIC("ccdea", TRACE, Logger::TRANSACTIONS)
-        << "Acquiring read lock for tid " << transactionId.id();
-    _rwLock.lockRead();
-    _nrReadLocked.fetch_add(1, std::memory_order_relaxed);
-    LOG_TOPIC("ccdeb", TRACE, Logger::TRANSACTIONS)
-        << "Got read lock for tid " << transactionId.id()
-        << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
-  }
-
   _nrRunning.fetch_add(1, std::memory_order_relaxed);
 }
 
 // unregisters a transaction
 void Manager::unregisterTransaction(TransactionId transactionId,
                                     bool isReadOnlyTransaction,
-                                    bool isFollowerTransaction) {
+                                    bool isFollowerTransaction) noexcept {
   // always perform an unlock when we leave this function
-  auto guard = scopeGuard([this, transactionId, &isReadOnlyTransaction,
-                           &isFollowerTransaction]() noexcept {
-    if (!isReadOnlyTransaction && !isFollowerTransaction) {
-      _rwLock.unlockRead();
-      _nrReadLocked.fetch_sub(1, std::memory_order_relaxed);
-      LOG_TOPIC("ccded", TRACE, Logger::TRANSACTIONS)
-          << "Released lock for tid " << transactionId.id()
-          << " nrReadLocked: " << _nrReadLocked.load(std::memory_order_relaxed);
-    }
-  });
-
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 }
@@ -306,7 +286,7 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
   arangodb::cluster::CallbackGuard rGuard = buildCallbackGuard(*state);
 
   TransactionId const tid = state->id();
-  size_t const bucket = getBucket(tid);
+  size_t bucket = getBucket(tid);
   {
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
@@ -325,7 +305,7 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
 }
 
 void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
-  const size_t bucket = getBucket(tid);
+  size_t bucket = getBucket(tid);
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto& buck = _transactions[bucket];
@@ -785,7 +765,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
 
   TRI_IF_FAILURE("leaseManagedTrxFail") { return nullptr; }
 
-  auto const role = ServerState::instance()->getRole();
+  auto role = ServerState::instance()->getRole();
   std::chrono::steady_clock::time_point endTime;
   if (!ServerState::isDBServer(role)) {  // keep end time as small as possible
     endTime = std::chrono::steady_clock::now() +
@@ -799,7 +779,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
 
   TRI_ASSERT(!isSideUser || AccessMode::isRead(mode));
 
-  size_t const bucket = getBucket(tid);
+  size_t bucket = getBucket(tid);
   int i = 0;
   do {
     READ_LOCKER(locker, _transactions[bucket]._lock);
@@ -810,8 +790,17 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
     }
 
     ManagedTrx& mtrx = it->second;
-    if (mtrx.type == MetaType::Tombstone || mtrx.expired() ||
-        !::authorized(mtrx.user)) {
+    if (mtrx.type == MetaType::Tombstone) {
+      if (mtrx.finalStatus == transaction::Status::ABORTED) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_ABORTED,
+                                       "transaction " +
+                                           std::to_string(tid.id()) +
+                                           " has already been aborted");
+      }
+      return nullptr;
+    }
+
+    if (mtrx.expired() || !::authorized(mtrx.user)) {
       return nullptr;  // no need to return anything
     }
 
@@ -913,7 +902,7 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
   bool isSoftAborted = false;
 
   {
-    size_t const bucket = getBucket(tid);
+    size_t bucket = getBucket(tid);
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     auto it = _transactions[bucket]._managed.find(tid);
@@ -995,7 +984,7 @@ Result Manager::statusChangeWithTimeout(TransactionId tid,
     if (res.ok() || !res.is(TRI_ERROR_LOCKED)) {
       break;
     }
-    double const now = TRI_microtime();
+    double now = TRI_microtime();
     if (startTime <= 0.0001) {  // fp tolerance
       startTime = now;
     } else if (now - startTime > maxWaitTime) {
@@ -1009,6 +998,7 @@ Result Manager::statusChangeWithTimeout(TransactionId tid,
 
 Result Manager::commitManagedTrx(TransactionId tid,
                                  std::string const& database) {
+  READ_LOCKER(guard, _hotbackupCommitLock);
   return statusChangeWithTimeout(tid, database, transaction::Status::COMMITTED);
 }
 
@@ -1029,7 +1019,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
       << "'";
 
   Result res;
-  size_t const bucket = getBucket(tid);
+  size_t bucket = getBucket(tid);
   bool wasExpired = false;
   auto buildErrorMessage = [](TransactionId tid, transaction::Status status,
                               bool found) -> std::string {
@@ -1175,8 +1165,8 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
                      "transaction was not running");
   }
 
-  bool const isCoordinator = state->isCoordinator();
-  bool const intermediateCommits = state->numCommits() > 0;
+  bool isCoordinator = state->isCoordinator();
+  bool intermediateCommits = state->numCommits() > 0;
 
   transaction::Options trxOpts;
   MGMethods trx(std::make_shared<ManagedContext>(tid, std::move(state),
@@ -1320,7 +1310,7 @@ bool Manager::garbageCollect(bool abortAll) {
 
   // remove all expired tombstones
   for (TransactionId tid : toErase) {
-    size_t const bucket = getBucket(tid);
+    size_t bucket = getBucket(tid);
     WRITE_LOCKER(locker, _transactions[bucket]._lock);
     _transactions[bucket]._managed.erase(tid);
   }
@@ -1527,7 +1517,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username,
 }
 
 bool Manager::transactionIdExists(TransactionId const& tid) const {
-  size_t const bucket = getBucket(tid);
+  size_t bucket = getBucket(tid);
   // quick check whether ID exists
   READ_LOCKER(readLocker, _transactions[bucket]._lock);
 
@@ -1547,7 +1537,7 @@ bool Manager::storeManagedState(
   arangodb::cluster::CallbackGuard rGuard = buildCallbackGuard(*state);
 
   // add transaction to bucket
-  size_t const bucket = getBucket(tid);
+  size_t bucket = getBucket(tid);
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.try_emplace(
@@ -1570,6 +1560,11 @@ std::shared_ptr<ManagedContext> Manager::buildManagedContextUnderLock(
     mtrx.rwlock.unlock();
     throw;
   }
+}
+
+Manager::TransactionCommitGuard Manager::getTransactionCommitGuard() {
+  READ_LOCKER(guard, _hotbackupCommitLock);
+  return guard;
 }
 
 }  // namespace transaction

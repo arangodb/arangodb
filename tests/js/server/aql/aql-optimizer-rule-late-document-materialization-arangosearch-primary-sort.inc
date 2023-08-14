@@ -48,8 +48,13 @@
         db._createDatabase(newDbName, dbArgs);
         db._useDatabase(newDbName);
 
-        let c = db._create(cn, {numberOfShards: 3});
-        let c2 = db._create(cn1, {numberOfShards: 3});
+        let numberOfShards = 3;
+        if (dbArgs.sharding === "single") {
+          numberOfShards = 1;
+        }
+
+        let c = db._create(cn, {numberOfShards});
+        let c2 = db._create(cn1, {numberOfShards});
         if (isSearchAlias) {
           let props = {
             type: "inverted", includeAllFields: true,
@@ -265,7 +270,7 @@
         assertEqual(0, expectedKeys.size);
       },
       testQueryResultsWithTwoSortFields() {
-        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC, d.foo LIMIT 10 RETURN d";
+        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT NOOPT(d.value) DESC, d.foo LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
@@ -278,7 +283,7 @@
         assertEqual(0, expectedKeys.size);
       },
       testQueryResultsWithMultipleCollections() {
-        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 10 RETURN d";
+        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT NOOPT(d.value) DESC LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
@@ -291,7 +296,7 @@
         assertEqual(0, expectedKeys.size);
       },
       testQueryResultsWithMultipleCollectionsWithAfterSort() {
-        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 10 SORT NOOPT(d.value) ASC RETURN d";
+        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT NOOPT(d.value) DESC LIMIT 10 SORT NOOPT(d.value) ASC RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
@@ -307,9 +312,24 @@
         });
         assertEqual(0, expectedKeys.size);
       },
-      testQueryResultsWithMultipleCollectionsWithMultiSort() {
+      testQueryResultsWithMultipleCollectionsWithMultiSortWithHeapSort() {
         let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] " +
                     "SORT d.value DESC LIMIT 10 SORT TFIDF(d) DESC LIMIT 4 RETURN d";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(4, result.json.length);
+        // should be sorted by increasing cat frequency
+        let expectedKeys = ['c_2', 'c_1', 'c2', 'c1'];
+        result.json.forEach(function(doc) {
+          assertEqual(expectedKeys[0], doc._key);
+          expectedKeys.shift();
+        });
+        assertEqual(0, expectedKeys.length);
+      },
+      testQueryResultsWithMultipleCollectionsWithMultiSort() {
+        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] " +
+                    "SORT NOOPT(d.value) DESC LIMIT 10 SORT NOOPT(TFIDF(d)) DESC LIMIT 4 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let materializeNodeFound = false;
@@ -339,7 +359,7 @@
         assertEqual(0, expectedKeys.length);
       },
       testQueryResultsWithMultipleCollectionsAfterCalc() {
-        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 10 LET c = CONCAT(NOOPT(d._key), '-C') RETURN c";
+        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT NOOPT(d.value) DESC LIMIT 10 LET c = CONCAT(NOOPT(d._key), '-C') RETURN c";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
@@ -352,7 +372,7 @@
         assertEqual(0, expected.size);
       },
       testQueryResultsSkipSome() {
-        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 3, 1 RETURN d";
+        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT NOOPT(d.value) DESC LIMIT 3, 1 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
@@ -360,7 +380,7 @@
         assertEqual(result.json[0]._key, 'c1');
       },
       testQueryResultsSkipAll() {
-        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 5, 10 RETURN d";
+        let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT NOOPT(d.value) DESC LIMIT 5, 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
@@ -368,7 +388,7 @@
       },
       testQueryResultsInSubquery() {
         let query = "FOR c IN " + vn + " SEARCH c.value == 1 " +
-                    "FOR d IN " + svn + " SEARCH d.value IN [c.value, c.value + 1] SORT d.value DESC LIMIT 10 RETURN d";
+                    "FOR d IN " + svn + " SEARCH d.value IN [c.value, c.value + 1] SORT NOOPT(d.value) DESC LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
@@ -381,7 +401,7 @@
         assertEqual(0, expected.size);
       },
       testQueryResultsInOuterSubquery() {
-        let query = "FOR c IN " + svn + " SEARCH c.value == 1 SORT c.value DESC LIMIT 10 " +
+        let query = "FOR c IN " + svn + " SEARCH c.value == 1 SORT NOOPT(c.value) DESC LIMIT 10 " +
                     "FOR d IN " + vn + " SEARCH d.value IN [c.value, c.value + 1] RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -395,7 +415,7 @@
         assertEqual(0, expected.size);
       },
       testQueryResultsMultipleLimits() {
-        let query = "FOR d IN " + svn + " SEARCH d.value > 5 SORT d.value DESC " +
+        let query = "FOR d IN " + svn + " SEARCH d.value > 5 SORT NOOPT(d.value) DESC " +
                     "LIMIT 1, 5 SORT d.foo LIMIT 1, 3 SORT NOOPT(d.str) DESC " +
                     "LIMIT 1, 1 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
@@ -421,7 +441,7 @@
         // almost the same as testQueryResultsMultipleLimits but without last sort - this
         // will not create addition variable for sort
         // value but it should not affect results especially on cluster!
-        let query = " FOR d IN " + svn  + " SEARCH d.value > 5 SORT d.value DESC " +
+        let query = " FOR d IN " + svn  + " SEARCH d.value > 5 SORT NOOPT(d.value) DESC " +
                     " LIMIT 1, 5 SORT d.foo LIMIT 1, 3 " +
                     " RETURN d ";
         let plan = AQL_EXPLAIN(query).plan;

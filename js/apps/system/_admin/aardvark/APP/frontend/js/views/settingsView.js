@@ -146,7 +146,8 @@
 
           var buttons = [];
           var tableContent = [];
-
+          var collectionNameValidations = 
+            window.arangoValidationHelper.getCollectionNameValidations();
           if (!isCoordinator) {
             if (this.model.get('name').substr(0, 1) === '_') {
               tableContent.push(
@@ -157,12 +158,7 @@
                   false,
                   '',
                   true,
-                  [
-                    {
-                      rule: Joi.string().required(),
-                      msg: 'No collection name given.'
-                    }
-                  ]
+                  collectionNameValidations
                 )
               );
             } else {
@@ -174,12 +170,7 @@
                   false,
                   '',
                   true,
-                  [
-                    {
-                      rule: Joi.string().required(),
-                      msg: 'No collection name given.'
-                    }
-                  ]
+                  collectionNameValidations
                 )
               );
             }
@@ -299,7 +290,7 @@
                       true,
                       [
                         {
-                          rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                          rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                           msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
                         }
                       ]

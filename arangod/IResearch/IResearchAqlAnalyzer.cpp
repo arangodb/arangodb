@@ -46,6 +46,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/FunctionUtils.h"
+#include "Inspection/VPack.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
@@ -56,14 +57,10 @@
 #include "VocBase/vocbase.h"
 
 #include <Containers/HashSet.h>
-#include "VPackDeserializer/deserializer.h"
 
 #include <absl/strings/str_cat.h>
 
 namespace {
-using namespace arangodb::velocypack::deserializer;
-using namespace arangodb::aql;
-
 constexpr const char QUERY_STRING_PARAM_NAME[] = "queryString";
 constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] =
     "collapsePositions";
@@ -75,85 +72,95 @@ constexpr const char RETURN_TYPE_PARAM_NAME[] = "returnType";
 
 constexpr const uint32_t MAX_BATCH_SIZE{1000};
 constexpr const uint32_t MAX_MEMORY_LIMIT{33554432U};  // 32Mb
+}  // namespace
 
-using Options = arangodb::iresearch::AqlAnalyzer::Options;
+namespace arangodb::iresearch {
+template<class Inspector>
+inline auto inspect(Inspector& f, AnalyzerValueType& x) {
+  return f.enumeration(x).values(
+      AnalyzerValueType::String, ANALYZER_VALUE_TYPE_STRING,
+      AnalyzerValueType::Number, ANALYZER_VALUE_TYPE_NUMBER,
+      AnalyzerValueType::Bool, ANALYZER_VALUE_TYPE_BOOL,
+      AnalyzerValueType::Null, ANALYZER_VALUE_TYPE_NULL,
+      AnalyzerValueType::Array, ANALYZER_VALUE_TYPE_ARRAY,
+      AnalyzerValueType::Object, ANALYZER_VALUE_TYPE_OBJECT);
+}
 
-struct OptionsValidator {
-  std::optional<deserialize_error> operator()(Options const& opts) const {
-    if (opts.queryString.empty()) {
-      return deserialize_error{absl::StrCat("Value of '",
-                                            QUERY_STRING_PARAM_NAME,
-                                            "' should be non empty string")};
-    }
-    if (opts.batchSize == 0) {
-      return deserialize_error{absl::StrCat("Value of '", BATCH_SIZE_PARAM_NAME,
-                                            "' should be greater than 0")};
-    }
-    if (opts.batchSize > MAX_BATCH_SIZE) {
-      return deserialize_error{absl::StrCat("Value of '", BATCH_SIZE_PARAM_NAME,
-                                            "' should be less or equal to ",
-                                            MAX_BATCH_SIZE)};
-    }
-    if (opts.memoryLimit == 0) {
-      return deserialize_error{absl::StrCat(
-          "Value of '", MEMORY_LIMIT_PARAM_NAME, "' should be greater than 0")};
-    }
-    if (opts.memoryLimit > MAX_MEMORY_LIMIT) {
-      return deserialize_error{
-          absl::StrCat("Value of '", MEMORY_LIMIT_PARAM_NAME,
-                       "' should be less or equal to ", MAX_MEMORY_LIMIT)};
-    }
-    if (opts.returnType != arangodb::iresearch::AnalyzerValueType::String &&
-        opts.returnType != arangodb::iresearch::AnalyzerValueType::Number &&
-        opts.returnType != arangodb::iresearch::AnalyzerValueType::Bool) {
-      return deserialize_error{
-          absl::StrCat("Value of '", RETURN_TYPE_PARAM_NAME, "' should be ",
-                       arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING, " or ",
-                       arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER, " or ",
-                       arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL)};
-    }
-    return {};
-  }
-};
+template<class Inspector>
+inline auto inspect(Inspector& f,
+                    arangodb::iresearch::AqlAnalyzer::Options& o) {
+  using namespace arangodb::iresearch;
+  return f.object(o).fields(
+      f.field(QUERY_STRING_PARAM_NAME, o.queryString)
+          .invariant([](std::string const& v) -> arangodb::inspection::Status {
+            if (v.empty()) {
+              return {absl::StrCat("Value of '", QUERY_STRING_PARAM_NAME,
+                                   "' should be non empty string")};
+            }
+            return {};
+          }),
+      f.field(COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, o.collapsePositions)
+          .fallback(false),
+      f.field(KEEP_NULL_PARAM_NAME, o.keepNull).fallback(true),
+      f.field(BATCH_SIZE_PARAM_NAME, o.batchSize)
+          .fallback(10u)
+          .invariant([](uint32_t v) -> arangodb::inspection::Status {
+            if (v == 0) {
+              return {absl::StrCat("Value of '", BATCH_SIZE_PARAM_NAME,
+                                   "' should be greater than 0")};
+            }
+            if (v > MAX_BATCH_SIZE) {
+              return {absl::StrCat("Value of '", BATCH_SIZE_PARAM_NAME,
+                                   "' should be less or equal to ",
+                                   MAX_BATCH_SIZE)};
+            }
+            return {};
+          }),
+      f.field(MEMORY_LIMIT_PARAM_NAME, o.memoryLimit)
+          .fallback(1048576U)
+          .invariant([](uint32_t v) -> arangodb::inspection::Status {
+            if (v == 0) {
+              return {absl::StrCat("Value of '", MEMORY_LIMIT_PARAM_NAME,
+                                   "' should be greater than 0")};
+            }
+            if (v > MAX_MEMORY_LIMIT) {
+              return {absl::StrCat("Value of '", MEMORY_LIMIT_PARAM_NAME,
+                                   "' should be less or equal to ",
+                                   MAX_MEMORY_LIMIT)};
+            }
+            return {};
+          }),
+      f.field(RETURN_TYPE_PARAM_NAME, o.returnType)
+          .fallback(AnalyzerValueType::String)
+          .invariant([](AnalyzerValueType v) -> arangodb::inspection::Status {
+            if (v != AnalyzerValueType::String &&
+                v != AnalyzerValueType::Number &&
+                v != AnalyzerValueType::Bool) {
+              return {absl::StrCat("Value of '", RETURN_TYPE_PARAM_NAME,
+                                   "' should be ", ANALYZER_VALUE_TYPE_STRING,
+                                   " or ", ANALYZER_VALUE_TYPE_NUMBER, " or ",
+                                   ANALYZER_VALUE_TYPE_BOOL)};
+            }
+            return {};
+          }));
+}
+}  // namespace arangodb::iresearch
 
-using OptionsDeserializer = utilities::constructing_deserializer<
-    Options,
-    parameter_list<
-        factory_deserialized_parameter<QUERY_STRING_PARAM_NAME,
-                                       values::value_deserializer<std::string>,
-                                       true>,
-        factory_simple_parameter<COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, bool,
-                                 false, values::numeric_value<bool, false>>,
-        factory_simple_parameter<KEEP_NULL_PARAM_NAME, bool, false,
-                                 values::numeric_value<bool, true>>,
-        factory_simple_parameter<BATCH_SIZE_PARAM_NAME, uint32_t, false,
-                                 values::numeric_value<uint32_t, 10>>,
-        factory_simple_parameter<MEMORY_LIMIT_PARAM_NAME, uint32_t, false,
-                                 values::numeric_value<uint32_t, 1048576U>>,
-        factory_deserialized_default<
-            RETURN_TYPE_PARAM_NAME,
-            arangodb::iresearch::AnalyzerValueTypeEnumDeserializer,
-            values::numeric_value<
-                arangodb::iresearch::AnalyzerValueType,
-                static_cast<std::underlying_type_t<
-                    arangodb::iresearch::AnalyzerValueType>>(
-                    arangodb::iresearch::AnalyzerValueType::String)>>>>;
-
-using ValidatingOptionsDeserializer =
-    validate<OptionsDeserializer, OptionsValidator>;
+namespace {
+using namespace arangodb::aql;
 
 bool parse_options_slice(VPackSlice const& slice,
                          arangodb::iresearch::AqlAnalyzer::Options& options) {
-  auto const res = deserialize<ValidatingOptionsDeserializer,
-                               hints::hint_list<hints::ignore_unknown>>(slice);
+  auto const res = arangodb::velocypack::deserializeWithStatus(
+      slice, options, {.ignoreUnknownFields = true});
+
   if (!res.ok()) {
     LOG_TOPIC("d88b8", WARN, arangodb::iresearch::TOPIC)
         << "Failed to deserialize options from JSON while constructing '"
         << arangodb::iresearch::AqlAnalyzer::type_name()
-        << "' analyzer, error: '" << res.error().message << "'";
+        << "' analyzer, error: '" << res.error() << "' path: " << res.path();
     return false;
   }
-  options = res.get();
   return true;
 }
 
@@ -318,10 +325,8 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     : _options(options),
       _query(arangodb::aql::StandaloneCalculation::buildQueryContext(
           arangodb::DatabaseFeature::getCalculationVocbase())),
-      _itemBlockManager(_query->resourceMonitor(),
-                        SerializationFormat::SHADOWROWS),
-      _engine(0, *_query, _itemBlockManager, SerializationFormat::SHADOWROWS,
-              nullptr),
+      _itemBlockManager(_query->resourceMonitor()),
+      _engine(0, *_query, _itemBlockManager, nullptr),
       _resetImpl(&resetFromQuery) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;
@@ -481,7 +486,7 @@ bool AqlAnalyzer::reset(std::string_view field) noexcept {
       // necessary optimizer rules (we skip all other rules to save time). we
       // have to execute the "splice-subqueries" rule here so we replace all
       // SubqueryNodes with SubqueryStartNodes and SubqueryEndNodes.
-      Optimizer optimizer(1);
+      Optimizer optimizer(_query->resourceMonitor(), 1);
       // disable all rules which are not necessary
       optimizer.disableRules(plan.get(), [](OptimizerRule const& rule) -> bool {
         return rule.canBeDisabled() || rule.isClusterOnly();

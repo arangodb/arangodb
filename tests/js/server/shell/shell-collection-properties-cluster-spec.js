@@ -1,4 +1,4 @@
-/*global describe, it, ArangoAgency, beforeEach, afterEach */
+/*global describe, it, ArangoAgency, beforeEach, afterEach, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster collection creation tests
@@ -265,4 +265,22 @@ describe('Replication factor constraints', function() {
         expect(db[cn1].properties()['numberOfShards']).to.equal(db[cn2].properties()['numberOfShards']);
         expect(db[cn2].properties()['distributeShardsLike']).to.equal(cn1);
     });
+    
+    /* This is the expected implementation as soon as we drop backwards compatibility with 3.11
+    it('distributeShardsLike should fail on additional parameters', function () {
+        db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
+        try {
+            db._create(cn2, {
+                distributeShardsLike: cn1,
+                replicationFactor: 5,
+                numberOfShards: 99,
+                enforceReplicationFactor: false
+            }, {waitForSyncReplication: true});
+            fail();
+        } catch (e) {
+            expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
+        }
+        expect(db._collection(cn2)).to.be.null;
+    });
+    */
 });

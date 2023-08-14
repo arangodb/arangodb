@@ -97,7 +97,6 @@ ServerState::ServerState(ArangodServer& server)
       _shortId(0),
       _rebootId(0),
       _state(STATE_UNDEFINED),
-      _initialized(false),
       _foxxmasterSince(0),
       _foxxmasterQueueupdate(false) {
   TRI_ASSERT(Instance == nullptr);
@@ -914,12 +913,12 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm,
     if (latestIdSlice.isNumber()) {
       num = latestIdSlice.getNumber<uint32_t>();
       latestIdBuilder.add(VPackValue(num));
-      latestIdPrecondition.reset(
-          new AgencyPrecondition(targetIdPath, AgencyPrecondition::Type::VALUE,
-                                 latestIdBuilder.slice()));
+      latestIdPrecondition = std::make_unique<AgencyPrecondition>(
+          targetIdPath, AgencyPrecondition::Type::VALUE,
+          latestIdBuilder.slice());
     } else {
-      latestIdPrecondition.reset(new AgencyPrecondition(
-          targetIdPath, AgencyPrecondition::Type::EMPTY, true));
+      latestIdPrecondition = std::make_unique<AgencyPrecondition>(
+          targetIdPath, AgencyPrecondition::Type::EMPTY, true);
     }
 
     VPackBuilder localIdBuilder;

@@ -49,12 +49,6 @@ class GraphManager {
 
   std::shared_ptr<transaction::Context> ctx() const;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief find or create collection by name and type
-  ////////////////////////////////////////////////////////////////////////////////
-  Result createCollection(std::string const& name, TRI_col_type_e colType,
-                          bool waitForSyncReplication, VPackSlice options);
-
  public:
   explicit GraphManager(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {}
 
@@ -92,19 +86,6 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   Result findOrCreateCollectionsByEdgeDefinition(
       Graph& graph, EdgeDefinition const& edgeDefinition, bool waitForSync);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create a vertex collection
-  ////////////////////////////////////////////////////////////////////////////////
-  Result createVertexCollection(std::string const& name,
-                                bool waitForSyncReplication,
-                                VPackSlice options);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create an edge collection
-  ////////////////////////////////////////////////////////////////////////////////
-  Result createEdgeCollection(std::string const& name,
-                              bool waitForSyncReplication, VPackSlice options);
 
   /// @brief rename a collection used in an edge definition
   bool renameGraphCollection(std::string const& oldName,
@@ -176,12 +157,6 @@ class GraphManager {
       std::function<Result(std::unique_ptr<Graph>)> const& callback) const;
 
  private:
-#ifdef USE_ENTERPRISE
-  std::pair<Result, std::string> ensureEnterpriseCollectionSharding(
-      Graph const* graph, bool waitForSync, bool waitForSyncReplication,
-      std::unordered_set<std::string>& documentCollections) const;
-#endif
-
   Result ensureCollections(
       Graph& graph,
       std::unordered_set<std::string>& documentCollectionsToCreate,
@@ -213,13 +188,6 @@ class GraphManager {
       Graph const& graph,
       std::unordered_set<std::string> const& followersToBeRemoved,
       std::unordered_set<std::string> const& leadersToBeRemoved);
-
-  ResultT<std::vector<CollectionCreationInfo>> prepareCollectionsToCreate(
-      Graph const* graph, bool waitForSync,
-      std::unordered_set<std::string> const& documentsCollectionNames,
-      std::unordered_set<std::string> const& edgeCollectionNames,
-      std::unordered_set<std::string> const& satellites,
-      std::vector<std::shared_ptr<VPackBuffer<uint8_t>>>& vpackLake) const;
 
   Result ensureVertexShardingMatches(
       Graph const& graph, LogicalCollection& edgeColl,

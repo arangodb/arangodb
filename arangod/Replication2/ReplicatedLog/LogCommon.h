@@ -54,6 +54,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
+#include "Inspection/Format.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
 #include "Basics/ErrorCode.h"
@@ -166,6 +167,7 @@ struct LogRange {
   [[nodiscard]] auto empty() const noexcept -> bool;
   [[nodiscard]] auto count() const noexcept -> std::size_t;
   [[nodiscard]] auto contains(LogIndex idx) const noexcept -> bool;
+  [[nodiscard]] auto contains(LogRange idx) const noexcept -> bool;
 
   friend auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream&;
   friend auto intersect(LogRange a, LogRange b) noexcept -> LogRange;
@@ -184,12 +186,11 @@ struct LogRange {
     LogIndex current;
   };
 
-  friend auto operator==(LogRange, LogRange) noexcept -> bool = default;
-
   [[nodiscard]] auto begin() const noexcept -> Iterator;
   [[nodiscard]] auto end() const noexcept -> Iterator;
 };
 
+auto operator==(LogRange, LogRange) noexcept -> bool;
 auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream&;
 
 template<class Inspector>
@@ -233,8 +234,9 @@ auto to_string(LogId logId) -> std::string;
 
 struct GlobalLogIdentifier {
   GlobalLogIdentifier(std::string database, LogId id);
-  std::string database;
-  LogId id;
+  GlobalLogIdentifier() = default;
+  std::string database{};
+  LogId id{};
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, GlobalLogIdentifier& gid) {
@@ -351,14 +353,13 @@ struct CommitFailReason {
     }
   };
   struct NonEligibleServerRequiredForQuorum {
-    enum Why {
+    enum class Why {
       kNotAllowedInQuorum,
       // WrongTerm might be misleading, because the follower might be in the
       // right term, it just never has acked an entry of the current term.
       kWrongTerm,
       kSnapshotMissing,
     };
-    static auto to_string(Why) noexcept -> std::string_view;
 
     using CandidateMap = std::unordered_map<ParticipantId, Why>;
 
@@ -435,6 +436,10 @@ struct CommitFailReason {
   explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
 };
 
+auto to_string(
+    CommitFailReason::NonEligibleServerRequiredForQuorum::Why) noexcept
+    -> std::string_view;
+
 auto operator<<(std::ostream&,
                 CommitFailReason::QuorumSizeNotReached::ParticipantInfo)
     -> std::ostream&;
@@ -474,9 +479,11 @@ struct CompactionStopReason {
         -> bool = default;
   };
   struct LeaderBlocksReleaseEntry {
+    LogIndex lowestIndexToKeep;
     template<class Inspector>
     friend auto inspect(Inspector& f, LeaderBlocksReleaseEntry& x) {
-      return f.object(x).fields();
+      return f.object(x).fields(
+          f.field("lowestIndexToKeep", x.lowestIndexToKeep));
     }
     friend auto operator==(LeaderBlocksReleaseEntry const& left,
                            LeaderBlocksReleaseEntry const& right) noexcept
@@ -520,6 +527,7 @@ auto to_string(CompactionStopReason const&) -> std::string;
 
 struct CompactionResult {
   std::size_t numEntriesCompacted{0};
+  LogRange range;
   std::optional<CompactionStopReason> stopReason;
 
   friend auto operator==(CompactionResult const& left,
@@ -589,6 +597,10 @@ struct velocypack::Extractor<replication2::LogId> {
 template<>
 struct fmt::formatter<arangodb::replication2::LogId>
     : fmt::formatter<arangodb::basics::Identifier> {};
+
+template<>
+struct fmt::formatter<arangodb::replication2::GlobalLogIdentifier>
+    : arangodb::inspection::inspection_formatter {};
 
 template<>
 struct std::hash<arangodb::replication2::LogIndex> {

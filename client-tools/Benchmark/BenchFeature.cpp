@@ -371,7 +371,7 @@ void BenchFeature::start() {
 
     VPackBuilder b;
     b.openObject();
-    b.add("name", VPackValue(normalizeUtf8ToNFC(connectDB)));
+    b.add("name", VPackValue(connectDB));
     b.close();
 
     std::unordered_map<std::string, std::string> headers;

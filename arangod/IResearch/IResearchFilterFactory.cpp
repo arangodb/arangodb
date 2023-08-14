@@ -4272,7 +4272,11 @@ Result FilterFactory::filter(irs::boolean_filter* filter,
   const auto res = makeFilter(filter, filterCtx, node);
 
   if (res.fail()) {
-    LOG_TOPIC("dfa15", WARN, TOPIC) << res.errorMessage();
+    if (filter) {
+      LOG_TOPIC("dfa15", WARN, TOPIC) << res.errorMessage();
+    } else {
+      LOG_TOPIC("dfa16", TRACE, TOPIC) << res.errorMessage();
+    }
   }
 
   return res;

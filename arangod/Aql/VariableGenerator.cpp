@@ -24,6 +24,7 @@
 #include "Aql/VariableGenerator.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -32,7 +33,10 @@
 using namespace arangodb::aql;
 
 /// @brief create the generator
-VariableGenerator::VariableGenerator() : _id(0) { _variables.reserve(8); }
+VariableGenerator::VariableGenerator(arangodb::ResourceMonitor& resourceMonitor)
+    : _id(0), _resourceMonitor(resourceMonitor) {
+  _variables.reserve(8);
+}
 
 /// @brief visit all variables
 void VariableGenerator::visit(std::function<void(Variable*)> const& visitor) {
@@ -70,7 +74,8 @@ Variable* VariableGenerator::createVariable(std::string_view name,
             TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, temp.c_str()));
   }
 
-  auto variable = std::make_unique<Variable>(std::move(temp), nextId(), false);
+  auto variable = std::make_unique<Variable>(std::move(temp), nextId(), false,
+                                             _resourceMonitor);
 
   TRI_ASSERT(!isUserDefined || variable->isUserDefined());
 
@@ -98,7 +103,7 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
 
 /// @brief generate a variable from VelocyPack
 Variable* VariableGenerator::createVariable(VPackSlice slice) {
-  auto variable = std::make_unique<Variable>(slice);
+  auto variable = std::make_unique<Variable>(slice, _resourceMonitor);
   VariableId const id = variable->id;
 
   // make sure _id is at least as high as the highest variable id

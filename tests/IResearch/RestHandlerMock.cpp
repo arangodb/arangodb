@@ -41,7 +41,9 @@ GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase)
 }
 GeneralRequestMock::~GeneralRequestMock() = default;
 
-size_t GeneralRequestMock::contentLength() const { return _contentLength; }
+size_t GeneralRequestMock::contentLength() const noexcept {
+  return _contentLength;
+}
 
 std::string_view GeneralRequestMock::rawPayload() const {
   return std::string_view(reinterpret_cast<char const*>(_payload.data()),
