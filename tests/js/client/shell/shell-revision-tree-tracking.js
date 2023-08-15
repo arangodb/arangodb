@@ -50,12 +50,12 @@ function RevisionTreeTrackingSuite () {
 
   const n = 10000;
   
-  let insertDocuments = (collName, with_batches = true) => {
+  let insertDocuments = (collName) => {
     let c = db._collection(collName);
     let docs = [];
     for (let i = 0; i < n; ++i) {
       docs.push({value: i});
-      if (with_batches && docs.length === 5000) {
+      if (docs.length === 5000) {
         c.insert(docs);
         docs = [];
       }
@@ -66,12 +66,12 @@ function RevisionTreeTrackingSuite () {
     }
   };
 
-  let insertEdges = (collName, with_batches = true) => {
+  let insertEdges = (collName) => {
     let c = db._collection(collName);
     let docs = [];
     for (let i = 0; i < n; ++i) {
       docs.push({_from: i, _to: i+1});
-      if (with_batches && docs.length === 5000) {
+      if (docs.length === 5000) {
         c.insert(docs);
         docs = [];
       }
@@ -126,8 +126,10 @@ function RevisionTreeTrackingSuite () {
       assertNull(res);
       
       let initial = getMetric();
-      db._create(cn);
-      insertDocuments(cn, false);
+      let c = db._create(cn);
+      for (let i = 0; i < n; ++i) {
+        c.insert({value: i});
+      }
 
       // must have more memory allocated for the documents
       let metric = getMetric();

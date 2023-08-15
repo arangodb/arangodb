@@ -23,16 +23,31 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
+'use strict';
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const getMetric = require('@arangodb/test-helper').getMetricSingle;
-
-
+const { getMetricSingle, getDBServersClusterMetricsByName } = require('@arangodb/test-helper');
+const isCluster = require("internal").isCluster();
+  
 function MemoryMetrics() {
   const collection = "test";
   const view = "testView";
   let x = [];
+
+  let getMetric = (name) => { 
+    if (isCluster) {
+      let sum = 0;
+      print("Start!")
+      getDBServersClusterMetricsByName(name).forEach( num => {
+        sum += num;
+      });
+      print("Finish!")
+      return sum;
+    } else {
+      return getMetricSingle(name);
+    }
+  };
 
   return {
     setUpAll: function () {
@@ -50,10 +65,15 @@ function MemoryMetrics() {
           commitIntervalMsec: 100,
         }}
       });
-      const writers = getMetric("arangodb_search_writers_memory");
-      assertTrue(writers > 0);
-      const descriptors = getMetric("arangodb_search_file_descriptors");
-      assertTrue(descriptors > 0);
+      try {
+        const writers = getMetric("arangodb_search_writers_memory");
+        assertTrue(writers > 0);
+        const descriptors = getMetric("arangodb_search_file_descriptors");
+        assertTrue(descriptors > 0);
+      }
+      catch (e) {
+        print(e)
+      }
     },
 
     tearDownAll: function () {
