@@ -22,7 +22,10 @@
 
 #include "Replication2/Helper/ReplicatedLogTestSetup.h"
 
+#include "Containers/Enumerate.h"
 #include "Futures/Utilities.h"
+
+#include <regex>
 
 namespace arangodb::replication2::test {
 
@@ -31,22 +34,17 @@ void LogConfig::installConfig(bool establishLeadership) {
   for (auto& follower : followers) {
     futures.emplace_back(follower.get().updateConfig(*this));
   }
-  futures.emplace_back(leader.updateConfig(*this));
-
-  // futures.emplace_back(leader.installLogMethodsOnLeadership());
-  // for (auto& follower : followers) {
-  //   EXPECT_CALL(*follower.get().stateHandleMock, resignCurrentState);
-  // }
+  futures.emplace_back(leader.get().updateConfig(*this));
 
   if (establishLeadership) {
     auto future = futures::collectAll(std::move(futures));
-    while (leader.hasWork() || IHasScheduler::hasWork(followers)) {
-      leader.runAll();
+    while (leader.get().hasWork() || IHasScheduler::hasWork(followers)) {
+      leader.get().runAll();
       IHasScheduler::runAll(followers);
     }
 
     EXPECT_TRUE(future.hasValue());
-    auto leaderStatus = leader.log->getQuickStatus();
+    auto leaderStatus = leader.get().log->getQuickStatus();
     EXPECT_EQ(leaderStatus.role, replicated_log::ParticipantRole::kLeader);
     EXPECT_TRUE(leaderStatus.leadershipEstablished);
     for (auto& follower : followers) {
@@ -59,4 +57,51 @@ void LogConfig::installConfig(bool establishLeadership) {
   }
 }
 
+void PrintTo(PartialLogEntry const& point, std::ostream* os) {
+  *os << "(";
+  if (point.term) {
+    *os << *point.term;
+  } else {
+    *os << "?";
+  }
+  *os << ":";
+  if (point.index) {
+    *os << *point.index;
+  } else {
+    *os << "?";
+  }
+  *os << ";";
+  std::visit(overload{
+                 [&](std::nullopt_t) { *os << "?"; },
+                 [&](PartialLogEntry::IsMeta const&) { *os << "meta=?"; },
+                 [&](PartialLogEntry::IsPayload const& pl) {
+                   *os << "payload=";
+                   if (pl.payload.has_value()) {
+                     *os << "\""
+                         << std::regex_replace(*pl.payload, std::regex{"\""},
+                                               "\\\"")
+                         << "\"";
+                   } else {
+                     *os << "?";
+                   }
+                 },
+             },
+             point.payload);
+  *os << ")";
+}
 }  // namespace arangodb::replication2::test
+
+namespace arangodb::replication2 {
+void PrintTo(arangodb::replication2::LogEntry const& entry, std::ostream* os) {
+  *os << "(";
+  *os << entry.logIndex() << ":" << entry.logTerm() << ";";
+  if (entry.hasPayload()) {
+    *os << "payload=" << entry.logPayload()->slice().toJson();
+  } else {
+    auto builder = velocypack::Builder();
+    entry.meta()->toVelocyPack(builder);
+    *os << "meta=" << builder.slice().toJson();
+  }
+  *os << ")";
+}
+}  // namespace arangodb::replication2

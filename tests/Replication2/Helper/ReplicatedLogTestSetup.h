@@ -67,7 +67,7 @@ struct ConfigArguments {
 };
 struct LogWithFakes;
 struct LogConfig {
-  LogWithFakes& leader;
+  std::reference_wrapper<LogWithFakes> leader;
   std::vector<std::reference_wrapper<LogWithFakes>> followers;
   agency::LogPlanTermSpecification termSpec;
   agency::ParticipantsConfig participantsConfig;
@@ -91,7 +91,7 @@ struct LogWithFakes : IHasScheduler {
         options(std::move(fakeArguments.options)) {}
 
   [[nodiscard]] auto updateConfig(LogConfig conf) {
-    if (&conf.leader == this) {
+    if (&conf.leader.get() == this) {
       stateHandleMock->expectLeader();
       for (auto const it : conf.followers) {
         auto& followerContainer = it.get();
@@ -239,6 +239,78 @@ struct ReplicatedLogTest : ::testing::Test {
                      .termSpec = std::move(logSpec),
                      .participantsConfig = std::move(participantsConfig)};
   }
+
+  template<std::size_t replicationFactor>
+  requires requires { replicationFactor >= 1; }
+  auto createLogs(LogConfig config)
+      -> std::pair<LogWithFakes,
+                   std::array<LogWithFakes, replicationFactor - 1>> {
+    auto leader = makeLogWithFakes({});
+    auto logs = std::array<LogWithFakes, replicationFactor>{};
+    for (auto&& [i, log] : enumerate(logs)) {
+      auto& follower = config.followers[i];
+      log = makeLogWithFakes({});
+    }
+    return logs;
+  }
 };
 
+}  // namespace arangodb::replication2::test
+
+// TODO Maybe move the rest of this file into a separate header
+namespace arangodb::replication2 {
+void PrintTo(LogEntry const& entry, std::ostream* os);
+}  // namespace arangodb::replication2
+
+namespace arangodb::replication2::test {
+// Allows matching a log entry partially in gtest EXPECT_THAT. Members set to
+// std::nullopt are ignored when matching; only the set members are matched.
+struct PartialLogEntry {
+  std::optional<LogTerm> term{};
+  std::optional<LogIndex> index{};
+  // Note: Add more (optional) fields to IsMeta/IsPayload as needed;
+  // then match them in MatchesMapLogEntry, and print them in PrintTo.
+  struct IsMeta {};
+  struct IsPayload {
+    // Taking a string should suffice for the tests. If you need e.g. velocypack
+    // instead, make it a variant (and add a nullopt as well).
+    std::optional<std::string> payload{};
+  };
+  std::variant<std::nullopt_t, IsMeta, IsPayload> payload = std::nullopt;
+
+  friend void PrintTo(PartialLogEntry const& point, std::ostream* os);
+};
+using PartialLogEntries = std::initializer_list<PartialLogEntry>;
+
+MATCHER_P2(IsTermIndexPair, term, index, "") {
+  return arg.term == term and arg.index == index;
+}
+
+// Matches a map entry pair (LogIndex, LogEntry) against a PartialLogEntry.
+MATCHER(MatchesMapLogEntry,
+        fmt::format("{} log entries", negation ? "doesn't match" : "matches")) {
+  auto const& logIndex = std::get<0>(arg).first;
+  auto const& logEntry = std::get<0>(arg).second;
+  auto const& partialLogEntry = std::get<1>(arg);
+  return (not partialLogEntry.term.has_value() or
+          partialLogEntry.term == logEntry.logTerm()) and
+         (not partialLogEntry.index.has_value() or
+          (partialLogEntry.index == logIndex and
+           partialLogEntry.index == logEntry.logIndex())) and
+         (std::visit(
+             overload{
+                 [](std::nullopt_t) { return true; },
+                 [&](PartialLogEntry::IsPayload const& payload) {
+                   return logEntry.hasPayload() &&
+                          (!payload.payload.has_value() ||
+                           (logEntry.logPayload()->slice().isString() &&
+                            payload.payload ==
+                                logEntry.logPayload()->slice().stringView()));
+                 },
+                 [&](PartialLogEntry::IsMeta const& payload) {
+                   return logEntry.hasMeta();
+                 },
+             },
+             partialLogEntry.payload));
+}
 }  // namespace arangodb::replication2::test

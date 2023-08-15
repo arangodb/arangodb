@@ -65,22 +65,28 @@ struct ReplicatedStateHandleMock : replicated_log::IReplicatedStateHandle {
   MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
 
   void expectLeader() {
-    EXPECT_CALL(*this, leadershipEstablished)
-        .WillOnce(testing::MoveArg<0>(&logLeaderMethods));
-    EXPECT_CALL(*this, resignCurrentState)
-        // .WillOnce(testing::Return(std::move(logLeaderMethods)));
-        .WillOnce([&]() {
-          TRI_ASSERT(logLeaderMethods != nullptr);
-          return std::move(logLeaderMethods);
-        });
+    {
+      testing::InSequence seq;
+      EXPECT_CALL(*this, leadershipEstablished)
+          .WillOnce(testing::MoveArg<0>(&logLeaderMethods));
+      EXPECT_CALL(*this, resignCurrentState).WillOnce([&]() {
+        TRI_ASSERT(logLeaderMethods != nullptr);
+        return std::move(logLeaderMethods);
+      });
+    }
 
     EXPECT_CALL(*this, becomeFollower).Times(0);
   }
   void expectFollower() {
-    EXPECT_CALL(*this, becomeFollower)
-        .WillOnce(testing::MoveArg<0>(&logFollowerMethods));
-    EXPECT_CALL(*this, resignCurrentState)
-        .WillOnce(testing::Return(std::move(logFollowerMethods)));
+    {
+      testing::InSequence seq;
+      EXPECT_CALL(*this, becomeFollower)
+          .WillOnce(testing::MoveArg<0>(&logFollowerMethods));
+      EXPECT_CALL(*this, resignCurrentState).WillOnce([&]() {
+        TRI_ASSERT(logFollowerMethods != nullptr);
+        return std::move(logFollowerMethods);
+      });
+    }
 
     EXPECT_CALL(*this, leadershipEstablished).Times(0);
   }

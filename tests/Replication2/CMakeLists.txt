@@ -114,6 +114,7 @@ add_library(arango_tests_replication2_pure OBJECT
   ReplicatedLog/Components/SnapshotManagerTest.cpp
 
   ReplicatedLog/AppendEntriesBatchTest.cpp
+  ReplicatedLog/MultiTermTest.cpp
   ReplicatedLog/RewriteLogTest.cpp
   )
 
