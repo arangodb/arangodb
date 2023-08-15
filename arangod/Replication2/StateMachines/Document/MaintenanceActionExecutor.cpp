@@ -57,7 +57,7 @@ auto MaintenanceActionExecutor::executeCreateCollectionAction(
   if (work) {
     return {TRI_ERROR_INTERNAL};
   }
-  return {};
+  return createCollectionAction.result();
 }
 
 auto MaintenanceActionExecutor::executeDropCollectionAction(
@@ -80,7 +80,7 @@ auto MaintenanceActionExecutor::executeDropCollectionAction(
   if (work) {
     return {TRI_ERROR_INTERNAL};
   }
-  return {};
+  return dropCollectionAction.result();
 }
 
 auto MaintenanceActionExecutor::executeModifyCollectionAction(
@@ -105,7 +105,7 @@ auto MaintenanceActionExecutor::executeModifyCollectionAction(
   if (work) {
     return {TRI_ERROR_INTERNAL};
   }
-  return {};
+  return updateCollectionAction.result();
 }
 
 void MaintenanceActionExecutor::addDirty() {
