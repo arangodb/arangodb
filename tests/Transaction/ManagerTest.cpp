@@ -441,6 +441,85 @@ TEST_F(TransactionManagerTest, lock_conflict_side_user) {
             transaction::Status::ABORTED);
 }
 
+
+TEST_F(TransactionManagerTest, return_side_user_after_main) {
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json =
+        VPackParser::fromJson(R"({ "name": "testCollection", "id": 42 })");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_NE(coll, nullptr);
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      R"({ "collections":{"write": ["42"]}})");
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
+  ASSERT_TRUE(res.ok());
+  {
+    transaction::Options opts;
+    bool responsible;
+
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+    ASSERT_NE(ctx.get(), nullptr);
+    auto state1 = ctx->acquireState(opts, responsible);
+    ASSERT_NE(state1.get(), nullptr);
+    ASSERT_TRUE(!responsible);
+    ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false));
+
+    auto ctxSide = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, true);
+    ASSERT_NE(ctxSide.get(), nullptr);
+    auto state2 = ctxSide->acquireState(opts, responsible);
+    ASSERT_NE(state2.get(), nullptr);
+    ASSERT_TRUE(!responsible);
+
+    // Simulate return in wrong ordering
+    ctx = nullptr;
+  }
+  ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
+            transaction::Status::ABORTED);
+}
+
+TEST_F(TransactionManagerTest, only_side_user_in_context) {
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json =
+        VPackParser::fromJson(R"({ "name": "testCollection", "id": 42 })");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_NE(coll, nullptr);
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      R"({ "collections":{"write": ["42"]}})");
+  Result res = mgr->ensureManagedTrx(vocbase, tid, json->slice(), false);
+  ASSERT_TRUE(res.ok());
+  {
+    transaction::Options opts;
+    bool responsible;
+
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, true);
+    ASSERT_NE(ctx.get(), nullptr);
+    auto state1 = ctx->acquireState(opts, responsible);
+    ASSERT_NE(state1.get(), nullptr);
+    ASSERT_TRUE(!responsible);
+
+    // Can add another side user!
+    auto ctxSide = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, true);
+    ASSERT_NE(ctxSide.get(), nullptr);
+    auto state2 = ctxSide->acquireState(opts, responsible);
+    ASSERT_NE(state2.get(), nullptr);
+    ASSERT_TRUE(!responsible);
+
+    // It seems we can also add the main user.
+    auto mainCtx = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false);
+
+  }
+  ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
+            transaction::Status::ABORTED);
+}
+
+
 TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
   std::shared_ptr<LogicalCollection> coll;
   {
