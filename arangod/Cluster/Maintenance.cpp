@@ -117,7 +117,6 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
       if (planned.isNone()) {
         continue;
       }
-
       bool isSame = true;
       // Register any change
       if (property == StaticStrings::Schema) {
@@ -126,6 +125,20 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
         // compare them in a more fuzzy way
         if (!ValidatorBase::isSame(planned, second.get(property))) {
           isSame = false;
+        }
+      } else if (property == StaticStrings::ComputedValues) {
+        auto const isEmpty = [](VPackSlice slice) {
+          // do to an oversight in the collection api it can happen that
+          // having no computed values is encoded as `computedValues: []`.
+          // This would trip a simple comparison. Instead, handle special cases.
+          return slice.isNone() || slice.isNull() || slice.isEmptyArray();
+        };
+
+        if (!isEmpty(planned) || !isEmpty(second.get(property))) {
+          if (!basics::VelocyPackHelper::equal(planned, second.get(property),
+                                               false)) {
+            isSame = false;
+          }
         }
       } else if (!basics::VelocyPackHelper::equal(planned, second.get(property),
                                                   false)) {

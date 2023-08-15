@@ -77,6 +77,9 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
   [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId) override;
 
+  /// @brief provide debug info for transaction state
+  std::string debugInfo() const override;
+
  protected:
   // IRocksDBTransactionCallback methods
   rocksdb::SequenceNumber prepare() override;
