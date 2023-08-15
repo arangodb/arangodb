@@ -1,9 +1,6 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
-* BTS-1549: adjust permission handling in experimental dump to the same behavior
-  as in non-experimental dump.
-
 * Prevent potential buffer overflow in the crash handler.
 
 * Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used in
