@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where
+  the inner amount of a limit in the LimitExecutor is set to a wrong
+  value which lead to some data rows not being returned to the client.
+
 * Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition
   was executed through an index lookup.
 
