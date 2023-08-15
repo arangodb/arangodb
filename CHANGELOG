@@ -1,6 +1,11 @@
 v3.11.3 (XXXX-XX-XX)
 --------------------
 
+* BTS-1544: The _system database now properly reports its sharding value.
+
+* Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition
+  was executed through an index lookup.
+
 * BTS-1549: adjust permission handling in experimental dump to the same behavior
   as in non-experimental dump.
 
