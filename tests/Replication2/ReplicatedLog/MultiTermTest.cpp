@@ -33,6 +33,7 @@ using namespace arangodb::replication2::test;
 struct MultiTermTest : ReplicatedLogTest {};
 
 TEST_F(MultiTermTest, add_follower_test) {
+  // TODO Add expectations for internalStatus calls
   auto leaderLogContainer = makeLogWithFakes({});
   auto leaderLog = leaderLogContainer.log;
   auto config = makeConfig(leaderLogContainer, {}, {.term = 1_T});
@@ -100,34 +101,43 @@ TEST_F(MultiTermTest, add_follower_test) {
   }
 }
 
-// TODO Reenable the rest as well
-#if 0
 TEST_F(MultiTermTest, resign_leader_wait_for) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto followerLog = makeReplicatedLog(LogId{2});
-  {
-    auto follower =
-        followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+  // TODO Add expectations for internalStatus calls
+  auto leaderLogContainer = makeLogWithFakes({});
+  auto leaderLog = leaderLogContainer.log;
+  auto followerLogContainer = makeLogWithFakes({});
+  auto followerLog = followerLogContainer.log;
+  auto config = makeConfig(leaderLogContainer, {followerLogContainer},
+                           {.term = 1_T, .writeConcern = 2});
 
-    auto idx = leader->insert(LogPayload::createFromString("first entry"),
-                              false, LogLeader::doNotTriggerAsyncReplication);
-    auto f = leader->waitFor(idx);
+  config.installConfig(true);
+  {
+    auto idx = leaderLogContainer.stateHandleMock->logLeaderMethods->insert(
+        LogPayload::createFromString("first entry"), false);
+    auto f = leaderLog->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f.isReady());
-    leader->triggerAsyncReplication();
-    auto newLeader =
-        leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
+    leaderLogContainer.runAll();
+    // note we don't run the follower, so the leader can't commit the entry
+    auto oldLeader = leaderLog->getParticipant();
+    // TODO Move config manipulation into LogConfig methods
+    config = makeConfig(leaderLogContainer, {followerLogContainer},
+                        {.term = 2_T, .writeConcern = 2});
+    config.installConfig(false);
     ASSERT_TRUE(f.isReady());
     EXPECT_ANY_THROW({ std::ignore = f.get(); });
-    EXPECT_ANY_THROW({ std::ignore = leader->getStatus(); });
-    EXPECT_ANY_THROW({
-      std::ignore =
-          leader->insert(LogPayload::createFromString("second entry"), false,
-                         LogLeader::doNotTriggerAsyncReplication);
-    });
+    EXPECT_ANY_THROW({ std::ignore = oldLeader->getStatus(); });
+    EXPECT_EQ(leaderLog->getQuickStatus().local.value().spearHead,
+              TermIndexPair(LogTerm{2}, LogIndex{3}));
   }
+  // TODO Implement dropWork on IHasScheduler, use it here and drop the
+  //      EXPECT_CALL.
+  EXPECT_CALL(*followerLogContainer.stateHandleMock, updateCommitIndex)
+      .Times(testing::AtLeast(1));
+  IHasScheduler::runAll(leaderLogContainer, followerLogContainer);
 }
 
+// TODO Reenable the rest as well
+#if 0
 TEST_F(MultiTermTest, resign_leader_release) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto followerLog = makeReplicatedLog(LogId{2});

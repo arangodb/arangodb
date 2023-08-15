@@ -97,8 +97,11 @@ struct LogWithFakes : IHasScheduler {
         auto& followerContainer = it.get();
         fakeFollowerFactory->followerThunks.try_emplace(
             followerContainer.serverInstance.serverId, [&followerContainer]() {
+              if (followerContainer.delayedLogFollower != nullptr) {
+                followerContainer.delayedLogFollower->scheduler.dropWork();
+              }
               // Note: Follower instances must have their config installed
-              // already for this to work.
+              // already for getAsFollower to work.
               // TODO catch exception and print an error?
               followerContainer.delayedLogFollower =
                   std::make_shared<DelayedLogFollower>(
@@ -221,7 +224,8 @@ struct ReplicatedLogTest : ::testing::Test {
   auto makeConfig(LogWithFakes& leader,
                   std::vector<std::reference_wrapper<LogWithFakes>> follower,
                   ConfigArguments configArguments) {
-    auto logConfig = agency::LogPlanConfig{};
+    auto logConfig = agency::LogPlanConfig{configArguments.writeConcern,
+                                           configArguments.waitForSync};
     auto participants = agency::ParticipantsFlagsMap{};
     auto const logToParticipant = [&](LogWithFakes& f) {
       return std::pair(f.serverInstance.serverId, ParticipantFlags{});

@@ -143,6 +143,8 @@ struct DelayedScheduler : IScheduler, IHasScheduler {
 
   auto hasWork() const noexcept -> bool override { return not _queue.empty(); }
 
+  void dropWork() noexcept /*override*/ { _queue.clear(); }
+
   ~DelayedScheduler() override {
     EXPECT_TRUE(_queue.empty())
         << "Unresolved item(s) in the DelayedScheduler queue";

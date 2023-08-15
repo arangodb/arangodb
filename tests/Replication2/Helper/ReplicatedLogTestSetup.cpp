@@ -51,8 +51,7 @@ void LogConfig::installConfig(bool establishLeadership) {
       auto followerStatus = follower.get().log->getQuickStatus();
       EXPECT_EQ(followerStatus.role,
                 replicated_log::ParticipantRole::kFollower);
-      EXPECT_EQ(followerStatus.localState,
-                replicated_log::LocalStateMachineStatus::kOperational);
+      EXPECT_TRUE(followerStatus.leadershipEstablished);
     }
   }
 }
