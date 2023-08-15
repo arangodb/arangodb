@@ -38,17 +38,14 @@ class AgentCallback final {
  public:
   AgentCallback();
 
-  AgentCallback(Agent*, std::string const&, index_t, size_t);
+  AgentCallback(Agent*, std::string, index_t, size_t);
 
-  bool operator()(network::Response const& r);
-
-  void shutdown();
+  bool operator()(network::Response const& r) const;
 
  private:
-  application_features::ApplicationServer* _server;
   Agent* _agent;
   index_t _last;
-  std::string _slaveID;
+  std::string _followerId;
   size_t _toLog;
   double _startTime;
 };
