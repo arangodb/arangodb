@@ -121,9 +121,18 @@
           obj: {ps:sort + 1, a: {a1: 30}, b: {b1: 31}, c: i, d: {d1: 33}, e: {e1: 34}, f: j + 1, g: 36, h: 37, j: 38}});
           cats = cats + " cat";
           sort = sort + 2;
+
+          if (data.length === 250) {
+            // start publishing data already when we have a few smaller batches ready.
+            // this allows background indexing of arangosearch to process the initial
+            // batches already while we are inserting further batches. also reduces
+            // memory usage of the test
+            c.save(data);
+            c1.save(data2);
+            data = [];
+            data2 = [];
+          }
         }
-        c.save(data);
-        c1.save(data2);
         // trigger view sync
         db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
       },
