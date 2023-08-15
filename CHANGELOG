@@ -1,6 +1,8 @@
 v3.10.10 (XXXX-XX-XX)
 ---------------------
 
+* BTS-1544: The _system database now properly reports its sharding value.
+
 * Prevent potential buffer overflow in the crash handler.
 
 * Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used in
