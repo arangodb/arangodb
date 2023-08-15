@@ -367,7 +367,7 @@ bool DocumentProducingFunctionContext::checkUniqueness(
       return false;
     }
     // increase memory usage for unique values in set.
-    // note: we assume some there is some overhead here for
+    // note: we assume that there is some overhead here for
     // managing the set. right now there is no way to track
     // this overhead accurately, so we don't even try.
     // this is ok as long as recorded memory usage grows
