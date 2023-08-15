@@ -35,6 +35,8 @@
 #include <fuerte/message.h>
 
 #include <chrono>
+#include <cstdint>
+#include <string>
 #include <memory>
 
 namespace arangodb {
@@ -138,7 +140,7 @@ struct RequestOptions {
   std::string acceptType;   // uses vpack by default
   fuerte::StringMap parameters;
   Timeout timeout = TimeoutDefault;
-  bool retryNotFound = false;  // retry if answers is "datasource not found"
+  bool retryNotFound = false;  // retry if answer is "datasource not found"
   bool skipScheduler = false;  // do not use Scheduler queue
   RequestLane continuationLane = RequestLane::CONTINUATION;
 
