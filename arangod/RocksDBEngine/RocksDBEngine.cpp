@@ -172,10 +172,6 @@ DECLARE_GAUGE(arangodb_revision_tree_memory_usage, uint64_t,
 DECLARE_GAUGE(
     arangodb_revision_tree_buffered_memory_usage, uint64_t,
     "Total memory consumed by buffered updates for all revision trees");
-DECLARE_GAUGE(arangodb_internal_transactions_memory_usage, uint64_t,
-              "Memory accounting for ongoing internal transactions");
-DECLARE_GAUGE(arangodb_rest_transactions_memory_usage, uint64_t,
-              "Memory accounting for ongoing rest transactions");
 DECLARE_GAUGE(arangodb_index_estimates_memory_usage, uint64_t,
               "Total memory consumed by all index selectivity estimates");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total,
@@ -335,12 +331,6 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _metricsTreeResurrections(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_revision_tree_resurrections_total{})),
-      _metricsTransactionMemoryInternal(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_internal_transactions_memory_usage{})),
-      _metricsTransactionMemoryRest(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_rest_transactions_memory_usage{})),
       _metricsEdgeCacheEntriesSizeInitial(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_cache_edge_inserts_uncompressed_entries_size_total{})),
