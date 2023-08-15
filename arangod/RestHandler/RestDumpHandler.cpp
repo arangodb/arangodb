@@ -140,12 +140,12 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
         return {TRI_ERROR_BAD_PARAMETER};
       }
 
-      // make this version of dump compatible with the previous version of
-      // arangodump. the previous version assumed that as long as you are
-      // an admin user, you can dump every collection
-      ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+      if (!ServerState::instance()->isDBServer()) {
+        // make this version of dump compatible with the previous version of
+        // arangodump. the previous version assumed that as long as you are
+        // an admin user, you can dump every collection
+        ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-      if (!ExecContext::current().isSuperuser()) {
         if (auto s = body.get("shards"); !s.isArray()) {
           return Result(
               TRI_ERROR_BAD_PARAMETER,
@@ -183,13 +183,6 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
     if (!DBserver.empty()) {
       // if DBserver property present, add user header
       _request->addHeader("x-arango-dump-auth-user", _request->user());
-
-      // forward JWT
-      auto auth = AuthenticationFeature::instance();
-      if (auth != nullptr && auth->isActive()) {
-        _request->addHeader(StaticStrings::Authorization,
-                            "bearer " + auth->tokenCache().jwtToken());
-      }
       return std::make_pair(DBserver, true);
     }
 
