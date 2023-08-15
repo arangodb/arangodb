@@ -348,27 +348,21 @@ index_t Agent::index() {
     return 0;
   }
 
-  std::lock_guard tiLocker{_tiLock};
-  TRI_ASSERT(_lastAckedIndex.find(id()) != _lastAckedIndex.end());
-  return _lastAckedIndex.at(id()).second;
-}
-
-///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
-index_t Agent::confirmed(std::string const& agentId) const {
-  auto const& id = agentId.empty() ? _config.id() : agentId;
-  TRI_ASSERT(_lastAckedIndex.find(id) != _lastAckedIndex.end());
-  return _lastAckedIndex.at(id).second;
+  return _followerData.getLockedGuard()->at(id())._lastAckedIndex;
 }
 
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
   auto startTime = steady_clock::now();
 
+  auto followerLock = _followerData.getLockedGuard();
+  FollowerData& follower = followerLock->operator[](peerId);
+
   if (index == 0) {
     // This is only the empty case (=heartbeat)
-    std::lock_guard locker{_emptyAppendLock};
     auto n = steady_clock::now();
-    auto lastTime = _lastEmptyAcked[peerId];  // intentional to add entry to map
+    // intentional to add entry to map
+    auto lastTime = follower._lastEmptyAcked;
     if (lastTime < n) {
       std::chrono::duration<double> d = n - lastTime;
       auto secsSince = d.count();
@@ -383,21 +377,19 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
           << std::chrono::duration_cast<std::chrono::microseconds>(
                  n.time_since_epoch())
                  .count();
-      _lastEmptyAcked[peerId] = n;
+      follower._lastEmptyAcked = n;
     }
     return;
   }
 
   // only update the time stamps here:
   {
-    std::lock_guard tiLocker{_tiLock};
-
     // Update last acknowledged answer
     auto t = steady_clock::now();
 
-    TRI_ASSERT(_lastAckedIndex.find(peerId) != _lastAckedIndex.end());
     // Reference here, the entry will be updated.
-    auto& [lastTime, lastIndex] = _lastAckedIndex[peerId];
+    auto& lastTime = follower._lastAckedTime;
+    auto& lastIndex = follower._lastAckedIndex;
     LOG_TOPIC("9ee0b", DEBUG, Logger::AGENCY)
         << "Setting _lastAcked[" << peerId << "] to time "
         << std::chrono::duration_cast<std::chrono::microseconds>(
@@ -411,7 +403,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
         LOG_TOPIC("ba4d2", DEBUG, Logger::AGENCY)
             << "Got call back of " << toLog
             << " logs, resetting _earliestPackage to now for id " << peerId;
-        _earliestPackage[peerId] = steady_clock::now();
+        follower._earliestPackage = steady_clock::now();
       }
       wakeupMainLoop();  // only necessary for non-empty callbacks
     }
@@ -425,19 +417,20 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 }
 
 /// @brief Report a failed append entry call from AgentCallback
-void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
+void Agent::reportFailed(std::string const& followerId, size_t toLog,
+                         bool sent) {
+  auto follower = getFollower(followerId);
+
   if (toLog > 0) {
     // This is only used for non-empty appendEntriesRPC calls. If such calls
     // fail, we have to set this earliestPackage time to now such that the
     // main thread tries again immediately: and for that agent starting at 0
     // which effectively will be _state.firstIndex().
-    std::lock_guard guard{_tiLock};
+
     LOG_TOPIC("9e856", DEBUG, Logger::AGENCY)
-        << "Resetting _earliestPackage to now for id " << slaveId;
-    _earliestPackage[slaveId] = steady_clock::now() + seconds(1);
-    TRI_ASSERT(_lastAckedIndex.find(slaveId) != _lastAckedIndex.end());
-    auto& [unused, lastIndex] = _lastAckedIndex.at(slaveId);
-    lastIndex = 0;
+        << "Resetting _earliestPackage to now for id " << followerId;
+    follower->_earliestPackage = steady_clock::now() + seconds(1);
+    follower->_lastAckedIndex = 0;
   } else {
     // answer to sendAppendEntries to empty request, when follower's highest
     // log index is 0. This is necessary so that a possibly restarted agent
@@ -445,10 +438,7 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
     // this, when the agent was able to answer and no or corrupt answer is
     // handled
     if (sent) {
-      std::lock_guard guard{_tiLock};
-      TRI_ASSERT(_lastAckedIndex.find(slaveId) != _lastAckedIndex.end());
-      auto& [unused, lastIndex] = _lastAckedIndex.at(slaveId);
-      lastIndex = 0;
+      follower->_lastAckedIndex = 0;
     }
   }
 }
@@ -607,21 +597,11 @@ void Agent::sendAppendEntriesRPC() {
 
   for (auto const& followerId : _config.active()) {
     if (followerId != myid && leading()) {
-      term_t t(0);
+      term_t t(term());
 
-      index_t lastConfirmed;
       auto startTime = steady_clock::now();
-      SteadyTimePoint earliestPackage;
-      SteadyTimePoint lastAcked;
-      SteadyTimePoint lastSent;
-
-      {
-        t = this->term();
-        std::lock_guard tiLocker{_tiLock};
-        TRI_ASSERT(_lastAckedIndex.find(followerId) != _lastAckedIndex.end());
-        std::tie(lastAcked, lastConfirmed) = _lastAckedIndex.at(followerId);
-        lastSent = _lastSent[followerId];
-      }
+      FollowerData follower = getFollower(followerId).get();
+      auto lastConfirmed = follower._lastAckedIndex;
 
       // We essentially have to send some log entries from their lastConfirmed+1
       // on. However, we have to take care of the case that their lastConfirmed
@@ -635,8 +615,8 @@ void Agent::sendAppendEntriesRPC() {
       // snapshot in this special case, and we will always fetch enough
       // entries from the log to fulfill our duties.
 
-      if ((steady_clock::now() - earliestPackage).count() < 0 ||
-          _state.lastIndex() <= lastConfirmed) {
+      if ((steady_clock::now() - follower._earliestPackage).count() < 0 ||
+          _state.lastIndex() <= follower._lastAckedIndex) {
         LOG_TOPIC("cfeed", DEBUG, Logger::AGENCY) << "Nothing to append.";
         continue;
       }
@@ -689,15 +669,16 @@ void Agent::sendAppendEntriesRPC() {
       // if lastConfirmed is equal to the last index in our log, in which
       // case there is nothing to replicate.
 
-      duration<double> m = steady_clock::now() - lastSent;
+      duration<double> m = steady_clock::now() - follower._lastSent;
 
       if (m.count() > _config.minPing() &&
-          lastSent.time_since_epoch().count() != 0) {
+          follower._lastSent.time_since_epoch().count() != 0) {
         LOG_TOPIC("0ddbd", DEBUG, Logger::AGENCY)
             << "Note: sent out last AppendEntriesRPC "
             << "to follower " << followerId
             << " more than minPing ago: " << m.count() << " lastAcked: "
-            << duration_cast<duration<double>>(lastAcked.time_since_epoch())
+            << duration_cast<duration<double>>(
+                   follower._lastAckedTime.time_since_epoch())
                    .count();
       }
       index_t lowest = unconfirmed.front().index;
@@ -781,11 +762,8 @@ void Agent::sendAppendEntriesRPC() {
 
       // Postpone sending the next message for 30 seconds or until an
       // error or successful result occurs.
-      earliestPackage = steady_clock::now() + std::chrono::seconds(30);
-      {
-        std::lock_guard tiLocker{_tiLock};
-        _earliestPackage[followerId] = earliestPackage;
-      }
+      auto earliestPackage = steady_clock::now() + std::chrono::seconds(30);
+      getFollower(followerId)->_earliestPackage = earliestPackage;
       LOG_TOPIC("99061", DEBUG, Logger::AGENCY)
           << "Setting _earliestPackage to now + 30s for id " << followerId;
 
@@ -811,10 +789,7 @@ void Agent::sendAppendEntriesRPC() {
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
 
-      {
-        std::lock_guard tiLocker{_tiLock};
-        _lastSent[followerId] = steady_clock::now();
-      }
+      getFollower(followerId)->_lastSent = steady_clock::now();
       // _constituent.notifyHeartbeatSent(followerId);
       // Do not notify constituent, because the AppendEntriesRPC here could
       // take a very long time, so this must not disturb the empty ones
@@ -919,11 +894,9 @@ void Agent::advanceCommitIndex() {
   // Determine median _confirmed value of followers:
   std::vector<index_t> temp;
   {
-    std::lock_guard _tiLocker{_tiLock};
-    for (auto const& id : config().active()) {
-      if (_lastAckedIndex.find(id) != _lastAckedIndex.end()) {
-        temp.push_back(_lastAckedIndex[id].second);
-      }
+    auto guard = _followerData.getLockedGuard();
+    for (auto const& follower : guard.get()) {
+      temp.push_back(follower.second._lastAckedIndex);
     }
   }
 
@@ -1116,18 +1089,20 @@ void Agent::load() {
 
 /// Still leading? Under MUTEX from ::read or ::write
 bool Agent::challengeLeadership() {
-  std::lock_guard tiLocker{_emptyAppendLock};
+  auto followerGuard = _followerData.getLockedGuard();
   size_t good = 0;
 
   std::string const myid = id();
 
-  for (auto const& i : _lastEmptyAcked) {
-    if (i.first != myid) {  // do not count ourselves
-      duration<double> m = steady_clock::now() - i.second;
+  for (auto const& follower : followerGuard.get()) {
+    auto i = follower.second._lastEmptyAcked;
+    if (follower.first != myid) {  // do not count ourselves
+      duration<double> m = steady_clock::now() - i;
       LOG_TOPIC("22f78", DEBUG, Logger::AGENCY)
           << "challengeLeadership: found "
              "_lastAcked["
-          << i.first << "] to be " << m.count() << " seconds in the past.";
+          << follower.first << "] to be " << m.count()
+          << " seconds in the past.";
 
       // This is rather arbitrary here: We used to have 0.9 here to absolutely
       // ensure that a leader resigns before another one even starts an
@@ -1155,15 +1130,11 @@ bool Agent::challengeLeadership() {
 
 /// Get last acknowledged responses on leader
 void Agent::lastAckedAgo(Builder& ret) const {
-  std::unordered_map<std::string, std::pair<SteadyTimePoint, index_t>>
-      lastAckedIndex;
-  std::unordered_map<std::string, SteadyTimePoint> lastSent;
+  std::unordered_map<std::string, FollowerData> followerData;
   index_t lastCompactionAt, nextCompactionAfter;
 
   {
-    std::lock_guard tiLocker{_tiLock};
-    lastAckedIndex = _lastAckedIndex;
-    lastSent = _lastSent;
+    followerData = _followerData.copy();
     lastCompactionAt = _state.lastCompactionAt();
     nextCompactionAfter = _state.nextCompactionAfter();
   }
@@ -1184,23 +1155,24 @@ void Agent::lastAckedAgo(Builder& ret) const {
   if (leading()) {
     ret.add(VPackValue("lastAcked"));
     VPackObjectBuilder b(&ret);
-    for (auto const& [key, pair] : lastAckedIndex) {
-      auto lsit = lastSent.find(key);
+    for (auto const& [followerId, follower] : followerData) {
       // Note that it is possible that a server is already in lastAcked
       // but not yet in lastSent, since lastSent only has times of non-empty
       // appendEntriesRPC calls, but we also get lastAcked entries for the
       // empty ones.
-      ret.add(VPackValue(key));
+      ret.add(VPackValue(followerId));
       {
         VPackObjectBuilder o(&ret);
-        ret.add("lastAckedTime", VPackValue(dur2str(key, pair.first)));
-        ret.add("lastAckedIndex", VPackValue(pair.second));
-        if (key != id()) {
-          if (lsit != lastSent.end()) {
+        ret.add("lastAckedTime",
+                VPackValue(dur2str(followerId, follower._lastAckedTime)));
+        ret.add("lastAckedIndex", VPackValue(follower._lastAckedIndex));
+        if (followerId != id()) {
+          if (follower._lastSent != SteadyTimePoint{}) {
             ret.add("lastAppend",
-                    VPackValue(dur2str(lsit->first, lsit->second)));
+                    VPackValue(dur2str(followerId, follower._lastSent)));
           } else {
-            ret.add("lastAppend", VPackValue(dur2str(key, pair.first)));
+            ret.add("lastAppend",
+                    VPackValue(dur2str(followerId, follower._lastAckedTime)));
             // This is just for the above mentioned case, which will very
             // soon be rectified.
           }
@@ -1684,9 +1656,11 @@ void Agent::persistConfiguration(term_t t) {
   {
     // Make sure we have setup the local list of lastAckedIndex
     // only containing the leader
-    std::lock_guard tiLocker{_tiLock};
-    if (_lastAckedIndex.find(id()) == _lastAckedIndex.end()) {
-      _lastAckedIndex.emplace(id(), std::make_pair(steady_clock::now(), 0));
+    auto follower = _followerData.getLockedGuard();
+    if (follower->find(id()) == follower->end()) {
+      follower->emplace(id(),
+                        FollowerData{._lastAckedTime = steady_clock::now(),
+                                     ._lastAckedIndex = 0});
     }
   }
   // In case we've lost leadership, no harm will arise as the failed write
@@ -1728,8 +1702,10 @@ bool Agent::prepareLead() {
   {
     // Erase _earliestPackage, which allows for immediate sending of
     // AppendEntriesRPC when we become a leader.
-    std::lock_guard tiLocker{_tiLock};
-    _earliestPackage.clear();
+    auto follower = _followerData.getLockedGuard();
+    for (auto& [id, data] : follower.get()) {
+      data._earliestPackage = SteadyTimePoint{};
+    }
   }
 
   {
@@ -1761,12 +1737,11 @@ void Agent::lead() {
     // DO NOT EDIT without understanding the consequences for sendAppendEntries!
     index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
-    std::lock_guard tiLocker{_tiLock};
-    std::lock_guard locker{_emptyAppendLock};
-    for (auto& i : _lastAckedIndex) {
-      if (i.first != id()) {
-        i.second.second = commitIndex;
-        _lastEmptyAcked[i.first] = steady_clock::now();
+    auto follower = _followerData.getLockedGuard();
+    for (auto& [followerId, data] : follower.get()) {
+      if (followerId != id()) {
+        data._lastAckedIndex = commitIndex;
+        data._lastEmptyAcked = steady_clock::now();
       }
     }
   }
@@ -2389,15 +2364,25 @@ void Agent::syncActiveAndAcknowledged() {
   // at least every peer. If there is a new peer it will be inserted
   // with lastAckknowledged NOW for index 0.
   {
-    std::lock_guard tiLocker{_tiLock};
+    auto follower = _followerData.getLockedGuard();
     // The number of Agents is small, so we can afford to always scan linearly
     // here
     for (auto const& peer : _config.active()) {
-      if (_lastAckedIndex.find(peer) == _lastAckedIndex.end()) {
-        _lastAckedIndex.emplace(peer, std::make_pair(steady_clock::now(), 0));
+      if (follower->find(peer) == follower->end()) {
+        follower->emplace(peer,
+                          FollowerData{._lastAckedTime = steady_clock::now(),
+                                       ._lastAckedIndex = 0});
       }
     }
   }
+}
+
+MutexGuard<Agent::FollowerData, std::unique_lock<std::mutex>>
+Agent::getFollower(std::string const& followerId) {
+  auto guard = _followerData.getLockedGuard();
+  auto it = guard->find(followerId);
+  TRI_ASSERT(it != guard->end());
+  return MutexGuard(it->second, std::move(guard));
 }
 
 }  // namespace consensus
