@@ -49,6 +49,7 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 class PhysicalCollection;
+struct ResourceMonitor;
 enum class ReadOwnWrites : bool;
 namespace aql {
 struct AqlValue;
@@ -146,6 +147,8 @@ struct DocumentProducingFunctionContext {
   Expression* _filter;
   aql::Projections const& _projections;
   aql::Projections const& _filterProjections;
+  ResourceMonitor& _resourceMonitor;
+
   uint64_t _numScanned;
   uint64_t _numFiltered;
 
