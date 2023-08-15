@@ -93,22 +93,17 @@ during CI runs. The script will fail with a non-zero status if id collisions are
 found. You can use `openssl rand -hex 3 | sed 's/.//;s/\(.*\)/"\1"/'` or
 anything that suits you to generate a **5 hex digit log** id.
 
-### JSLint
-
-We switched to eslint a while back, but it is still named jslint for historical
-reasons.
-
-#### Checker Script
+### ESLint
 
 Use:
 
-    ./utils/gitjslint.sh
+    ./utils/giteslint.sh
 
 to lint your modified files.
 
-    ./utils/jslint.sh
+    ./utils/eslint.sh
 
-to find out whether all of your files comply to jslint. This is required to
+to find out whether all of your files comply to eslint. This is required to
 make continuous integration work smoothly.
 
 If you want to add new files / patterns to this make target, edit the respective
@@ -116,14 +111,7 @@ shell scripts.
 
 To be safe from committing non-linted stuff add **.git/hooks/pre-commit** with:
 
-    ./utils/jslint.sh
-
-#### Use jslint standalone for your js file
-
-If you want to search errors in your js file, jslint is very handy - like a
-compiler is for C/C++. You can invoke it like this:
-
-    bin/arangosh --jslint js/client/modules/@arangodb/testing.js
+    ./utils/eslint.sh
 
 ### Adding startup options
 
