@@ -288,6 +288,9 @@ struct TRI_vocbase_t {
   /// @brief sets prototype collection for sharding (_users or _graphs)
   void setShardingPrototype(ShardingPrototype type);
 
+  /// @brief sets sharding property for sharding (e.g. single, flexible);
+  void setSharding(std::string_view sharding);
+
   /// @brief gets prototype collection for sharding (_users or _graphs)
   ShardingPrototype shardingPrototype() const;
 
