@@ -79,7 +79,7 @@ jobs:
           name: Install eslint
           command: |
             apk add --no-cache npm
-            npm -g install eslint
+            npm -g install eslint@5.16.0
       - run:
           name: Run eslint
           command: |
@@ -94,7 +94,7 @@ jobs:
       enterprise:
         type: boolean
     docker:
-      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.0.9
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.0.10
     resource_class: xlarge
     environment:
       GIT_SSH_COMMAND: ssh
