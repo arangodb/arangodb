@@ -34,7 +34,7 @@ namespace arangodb::replication2::test {
 template<class T>
 concept PointerLike = requires {
   // gcc-11's STL has ::pointer defined even for non-pointers (e.g.,
-  // std::shared_ptr<int>::pointer is int).
+  // std::pointer_traits<int>::pointer is int).
   typename std::pointer_traits<T>::element_type;
 };
 
