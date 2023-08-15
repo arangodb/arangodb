@@ -1,6 +1,8 @@
 v3.11.3 (XXXX-XX-XX)
 --------------------
 
+* BTS-1544: The _system database now properly reports its sharding value.
+
 * Updated arangosync to v2.19.3.
 
 * Harden HTTP/2 internal callback functions against exceptions.
