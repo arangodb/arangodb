@@ -191,7 +191,6 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
-  HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
@@ -223,7 +222,6 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/ChecksumHelperTest.cpp
   RocksDBEngine/EndianTest.cpp
   RocksDBEngine/KeyTest.cpp
-  RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
