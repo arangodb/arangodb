@@ -29,6 +29,7 @@
 
 #include <cstdint>
 #include <sstream>
+#include <string_view>
 
 #include <openssl/ssl.h>
 
@@ -44,6 +45,9 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/asio_ns.h"
 #include "Basics/build-date.h"
+#ifdef __linux__
+#include "Basics/build-id.h"
+#endif
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
@@ -310,6 +314,25 @@ void Version::initialize() {
   Values["libunwind"] = "false";
 #endif
 
+#ifdef __linux__
+  {
+    auto const* note = build_id_find_nhdr_by_name("");
+    if (note != nullptr) {
+      auto const* build_id = build_id_data(note);
+      auto len = build_id_length(note);
+
+      std::string buffer;
+      constexpr char chars[] = "0123456789abcdef";
+      for (decltype(len) i = 0; i < len; ++i) {
+        auto c = build_id[i];
+        buffer.push_back(chars[c >> 4U]);
+        buffer.push_back(chars[c & 0xfU]);
+      }
+      Values["build-id"] = std::move(buffer);
+    }
+  }
+#endif
+
   if (::arangodb::replication2::EnableReplication2) {
     Values["replication2-enabled"] = "true";
   } else {
@@ -556,6 +579,10 @@ std::string Version::getVerboseVersionString() {
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
           << "V8 " << getV8Version() << ", " << getOpenSSLVersion(false);
+
+  if (Values.contains("build-id")) {
+    version << ", build-id: " << Values["build-id"];
+  }
 
   return version.str();
 }

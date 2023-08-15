@@ -51,6 +51,9 @@
 #include "Basics/SizeLimitedString.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#ifdef __linux__
+#include "Basics/build-id.h"
+#endif
 #include "Basics/files.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
@@ -165,19 +168,44 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
                      siginfo_t const* info, void* ucontext) {
   // build a crash message
   buffer.append("💥 ArangoDB ").append(ARANGODB_VERSION_FULL);
+
+#ifdef __linux__
+  {
+    // append build-id, if we have one
+    auto const* note = build_id_find_nhdr_by_name("");
+    if (note != nullptr) {
+      buffer.append(", build-id ");
+
+      auto const* build_id = build_id_data(note);
+      auto len = build_id_length(note);
+
+      constexpr char chars[] = "0123456789abcdef";
+      for (decltype(len) i = 0; i < len; ++i) {
+        auto c = build_id[i];
+        buffer.push_back(chars[c >> 4U]);
+        buffer.push_back(chars[c & 0xfU]);
+      }
+    }
+  }
+#endif
+
+  // append thread id
   buffer.append(", thread ")
       .appendUInt64(uint64_t(arangodb::Thread::currentThreadNumber()));
 
 #ifdef __linux__
+  // append thread name
   arangodb::ThreadNameFetcher nameFetcher;
   buffer.append(" [").append(nameFetcher.get()).append("]");
 #endif
 
+  // append signal number and name
   bool printed = false;
   buffer.append(" caught unexpected signal ").appendUInt64(uint64_t(signal));
   buffer.append(" (").append(arangodb::signals::name(signal));
 #ifndef _WIN32
   if (info != nullptr) {
+    // pid that sent the signal
     buffer.append(") from pid ").appendUInt64(uint64_t(info->si_pid));
     printed = true;
   }
@@ -187,6 +215,7 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
   }
 
   if (char const* ss = ::stateString.load(); ss != nullptr) {
+    // append application server state
     buffer.append(" in state \"").append(ss).append("\"");
   }
 

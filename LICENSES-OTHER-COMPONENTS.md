@@ -33,6 +33,16 @@
 * License Name: Boost Software License 1.0
 * License Id: BSL-1.0
 
+### build-id
+
+* Name: build-id
+* Version: unknown
+* Date: 2022-04-03 16:23:16 -0700 
+* Project Home: https://github.com/mattst88/build-id
+* License: https://github.com/mattst88/build-id/blob/master/LICENSE 
+* License Name: MIT License
+* License Id: MIT
+
 ### cmdline
 
 * Name: cmdline

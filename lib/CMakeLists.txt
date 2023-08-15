@@ -110,6 +110,12 @@ else ()
           )
 endif ()
 
+if (LINUX)
+  target_sources(arango_lightweight PRIVATE
+          Basics/build-id.cpp
+          )
+endif ()
+
 target_include_directories(arango_lightweight PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # some auto-generated headers live here, like "Basics/build.h"
 target_include_directories(arango_lightweight PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
