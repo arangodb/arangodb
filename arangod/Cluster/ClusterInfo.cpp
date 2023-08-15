@@ -1067,7 +1067,7 @@ void ClusterInfo::loadPlan() {
     return;
   }
 
-  std::set<std::string> buildingDatabases;
+  containers::FlatHashSet<std::string> buildingDatabases;
   decltype(_plannedDatabases) newDatabases{_resourceMonitor};
   decltype(_shards) newShards{_resourceMonitor};
   decltype(_shardsToPlanServers) newShardsToPlanServers{_resourceMonitor};
@@ -1539,14 +1539,13 @@ void ClusterInfo::loadPlan() {
               collectionId);  // delete from maps with shardID as key
           newShardToName.erase(collectionId);
         }
-        auto copy_it = it++;
-        _newPlannedCollections.erase(copy_it);
+        _newPlannedCollections.erase(it);
       }
       continue;
     }
 
     // Skip databases that are still building.
-    if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
+    if (buildingDatabases.contains(databaseName)) {
       continue;
     }
 
