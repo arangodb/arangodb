@@ -1374,7 +1374,7 @@ Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
 }
 
 TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info)
-    : _server(info.server()), _info(std::move(info)), _deadlockDetector(false) {
+    : _server(info.server()), _info(std::move(info)) {
   TRI_ASSERT(_info.valid());
 
   if (_info.server().hasFeature<QueryRegistryFeature>()) {
@@ -1407,8 +1407,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_t::MockConstruct,
                              CreateDatabaseInfo&& info)
     : _server(info.server()),
       _info(std::move(info)),
-      _logManager(std::make_shared<VocBaseLogManager>(*this, name())),
-      _deadlockDetector(false) {}
+      _logManager(std::make_shared<VocBaseLogManager>(*this, name())) {}
 #endif
 
 TRI_vocbase_t::~TRI_vocbase_t() {
