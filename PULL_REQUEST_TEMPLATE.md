@@ -1,4 +1,13 @@
-### Scope & Purpose
+#### Related Information
+
+*(Please reference tickets / specification / other PRs etc)*
+
+- [ ] Docs PR: 
+- [ ] Enterprise PR:
+- [ ] GitHub issue / Jira ticket:
+- [ ] Design document: 
+
+#### Scope & Purpose
 
 *(Please describe the changes in this PR for reviewers, motivation, rationale - **mandatory**)*
 
@@ -7,7 +16,7 @@
 - [ ] :fire: Performance improvement
 - [ ] :hammer: Refactoring/simplification
 
-### Checklist
+#### Checklist
 
 - [ ] Tests
   - [ ] **Regression tests**
@@ -20,13 +29,3 @@
   - [ ] Backport for 3.11: *(Please link PR)*
   - [ ] Backport for 3.10: *(Please link PR)*
   - [ ] Backport for 3.9: *(Please link PR)*
-
-#### Related Information
-
-*(Please reference tickets / specification / other PRs etc)*
-
-- [ ] Docs PR: 
-- [ ] Enterprise PR:
-- [ ] GitHub issue / Jira ticket:
-- [ ] Design document: 
-
