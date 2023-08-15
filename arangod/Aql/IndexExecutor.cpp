@@ -278,6 +278,10 @@ arangodb::aql::Projections const& IndexExecutorInfos::getFilterProjections()
   return _filterProjections;
 }
 
+ResourceMonitor& IndexExecutorInfos::getResourceMonitor() noexcept {
+  return _query.resourceMonitor();
+}
+
 QueryContext& IndexExecutorInfos::query() noexcept { return _query; }
 
 Expression* IndexExecutorInfos::getFilter() const noexcept { return _filter; }
