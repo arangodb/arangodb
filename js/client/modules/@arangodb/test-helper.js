@@ -46,6 +46,7 @@ const inst = require('@arangodb/testutils/instance');
 const request = require('@arangodb/request');
 const arangosh = require('@arangodb/arangosh');
 const jsunity = require('jsunity');
+const { getDBServerEndpoints } = require('../../../../build/bin/arangodb3e-linux-3.12.0-nightly_x86_64/usr/share/arangodb3/js/client/modules/@arangodb/test-helper');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
@@ -552,6 +553,26 @@ exports.triggerMetrics = function () {
     exports.getRawMetric(c, '?mode=trigger_global');
   }
   require("internal").sleep(2);
+};
+
+exports.getDBServersClusterAllMetrics = function () {
+  exports.triggerMetrics();
+  let res = [];
+  let dbServerEndpoints = exports.getDBServerEndpoints();
+  print(exports.getCoordinatorEndpoints());
+  dbServerEndpoints.forEach(server => {
+    res.push(exports.getAllMetric(server, ''));
+  });
+  return res;
+};
+
+exports.getDBServersClusterMetricsByName = function (name) {
+  let dbServersMetrics = exports.getDBServersClusterAllMetrics();
+  let res = [];
+  dbServersMetrics.forEach(text => {
+    res.push(getMetricName(text, name));
+  });
+  return res;
 };
 
 exports.getEndpoints = function (role) {

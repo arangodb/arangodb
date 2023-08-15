@@ -28,7 +28,8 @@
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const internal = require("internal");
-const { getMetricSingle } = require('@arangodb/test-helper');
+const { getMetricSingle, getDBServersClusterMetricsByName } = require('@arangodb/test-helper');
+const isCluster = require("internal").isCluster();
   
 const cn = "UnitTestsCollection";
 
@@ -36,7 +37,41 @@ function IndexEstimatesMemorySuite () {
   'use strict';
       
   let getMetric = () => { 
-    return getMetricSingle("arangodb_index_estimates_memory_usage");
+    if (isCluster) {
+      let sum = 0;
+      getDBServersClusterMetricsByName("arangodb_index_estimates_memory_usage").forEach( num => {
+        sum += num;
+      });
+      return sum;
+    } else {
+      return getMetricSingle("arangodb_index_estimates_memory_usage");
+    }
+  };
+
+  const n = 10000;
+  
+  let insertDocuments = (collName) => {
+    let c = db._collection(collName);
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({value: i});
+      if (docs.length === 5000) {
+        c.insert(docs);
+        docs = [];
+      }
+    }
+  };
+
+  let insertEdges = (collName) => {
+    let c = db._collection(collName);
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({_from: i, _to: i+1});
+      if (docs.length === 5000) {
+        c.insert(docs);
+        docs = [];
+      }
+    }
   };
   
   return {
@@ -61,7 +96,22 @@ function IndexEstimatesMemorySuite () {
       // there may still be buffered index estimates updates that are
       // processed in the background while this test is running.
       let metric = getMetric();
+      print(metric, initial);
       assertTrue(metric <= initial, { metric, initial });
+    },
+
+    testEstimatesShouldChangeWhenCreatingEdgeCollection: function () {
+      const initial = getMetric();
+
+      db._createEdgeCollection(cn);
+      
+      // estimates should not have changed.
+      // we allow it to go down here because from a previous testsuite
+      // there may still be buffered index estimates updates that are
+      // processed in the background while this test is running.
+      let metric = getMetric();
+      print(metric, initial);
+      assertTrue(metric > initial, { metric, initial });
     },
     
     testEstimatesShouldNotChangeWhenCreatingPersistentIndexWithoutEstimates: function () {
@@ -75,6 +125,7 @@ function IndexEstimatesMemorySuite () {
       // there may still be buffered index estimates updates that are
       // processed in the background while this test is running.
       let metric = getMetric();
+      print(metric, initial);
       assertTrue(metric <= initial, { metric, initial });
     },
     
@@ -89,6 +140,7 @@ function IndexEstimatesMemorySuite () {
       // there may still be buffered index estimates updates that are
       // processed in the background while this test is running.
       let metric = getMetric();
+      print(metric, initial);
       assertTrue(metric > initial, { metric, initial });
     },
     
@@ -105,21 +157,14 @@ function IndexEstimatesMemorySuite () {
       
       const initial = getMetric();
 
-      const n = 10000;
+      insertDocuments(cn);
 
-      let docs = [];
-      for (let i = 0; i < n; ++i) {
-        docs.push({value: i});
-        if (docs.length === 5000) {
-          c.insert(docs);
-          docs = [];
-        }
-      }
-      
       let metric = getMetric();
       // memory usage tracking. assumption is each index modification takes
       // at least 8 bytes. we do not expect the exact amount here, as it depends
       // on how many batches we will use etc.
+      print(metric, initial);
+
       assertTrue(metric >= initial + n * 8, { metric, initial });
     },
 

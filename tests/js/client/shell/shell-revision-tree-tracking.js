@@ -28,7 +28,8 @@
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const internal = require("internal");
-const { getMetricSingle } = require('@arangodb/test-helper');
+const { getMetricSingle, getDBServersClusterMetricsByName } = require('@arangodb/test-helper');
+const isCluster = require("internal").isCluster();
   
 const cn = "UnitTestsCollection";
 
@@ -36,7 +37,49 @@ function RevisionTreeTrackingSuite () {
   'use strict';
       
   let getMetric = () => { 
-    return getMetricSingle("arangodb_revision_tree_buffered_memory_usage");
+    if (isCluster) {
+      let sum = 0;
+      getDBServersClusterMetricsByName("arangodb_revision_tree_buffered_memory_usage").forEach( num => {
+        sum += num;
+      });
+      return sum;
+    } else {
+      return getMetricSingle("arangodb_revision_tree_buffered_memory_usage");
+    }
+  };
+
+  const n = 10000;
+  
+  let insertDocuments = (collName, with_batches = true) => {
+    let c = db._collection(collName);
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({value: i});
+      if (with_batches && docs.length === 5000) {
+        c.insert(docs);
+        docs = [];
+      }
+    }
+    if (docs.length > 0) {
+      c.insert(docs);
+      docs = [];
+    }
+  };
+
+  let insertEdges = (collName, with_batches = true) => {
+    let c = db._collection(collName);
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({_from: i, _to: i+1});
+      if (with_batches && docs.length === 5000) {
+        c.insert(docs);
+        docs = [];
+      }
+    }
+    if (docs.length > 0) {
+      c.insert(docs);
+      docs = [];
+    }
   };
   
   return {
@@ -61,19 +104,9 @@ function RevisionTreeTrackingSuite () {
       res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
       assertNull(res);
       
-      const initial = getMetric();
-
-      const n = 100000;
-
-      let c = db._create(cn);
-      let docs = [];
-      for (let i = 0; i < n; ++i) {
-        docs.push({value: i});
-        if (docs.length === 5000) {
-          c.insert(docs);
-          docs = [];
-        }
-      }
+      let initial = getMetric();
+      db._create(cn);
+      insertDocuments(cn);
 
       // must have more memory allocated for the documents
       let metric = getMetric();
@@ -92,14 +125,9 @@ function RevisionTreeTrackingSuite () {
       res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
       assertNull(res);
       
-      const initial = getMetric();
-
-      const n = 10000;
-
-      let c = db._create(cn);
-      for (let i = 0; i < n; ++i) {
-        c.insert({value: i});
-      }
+      let initial = getMetric();
+      db._create(cn);
+      insertDocuments(cn, false);
 
       // must have more memory allocated for the documents
       let metric = getMetric();
