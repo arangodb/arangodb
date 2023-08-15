@@ -84,6 +84,11 @@ Expression* EnumerateCollectionExecutorInfos::getFilter() const noexcept {
   return _filter;
 }
 
+ResourceMonitor&
+EnumerateCollectionExecutorInfos::getResourceMonitor() noexcept {
+  return _query.resourceMonitor();
+}
+
 arangodb::aql::Projections const&
 EnumerateCollectionExecutorInfos::getProjections() const noexcept {
   return _projections;
