@@ -1,8 +1,12 @@
-v3.10.10 (XXXX-XX-XX)
+v3.10.11 (XXXX-XX-XX)
 ---------------------
 
 * BTS-1549: adjust permission handling in experimental dump to the same behavior
   as in non-experimental dump.
+
+
+v3.10.10 (XXXX-XX-XX)
+---------------------
 
 * Prevent potential buffer overflow in the crash handler.
 
