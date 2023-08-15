@@ -46,7 +46,6 @@ const inst = require('@arangodb/testutils/instance');
 const request = require('@arangodb/request');
 const arangosh = require('@arangodb/arangosh');
 const jsunity = require('jsunity');
-const { getDBServerEndpoints } = require('../../../../build/bin/arangodb3e-linux-3.12.0-nightly_x86_64/usr/share/arangodb3/js/client/modules/@arangodb/test-helper');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
