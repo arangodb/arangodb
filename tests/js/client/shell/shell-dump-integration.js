@@ -2,9 +2,6 @@
 /* global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoTransaction sTests
-// /
-// /
 // / DISCLAIMER
 // /
 // / Copyright 2018 ArangoDB GmbH, Cologne, Germany
@@ -192,7 +189,7 @@ function dumpIntegrationSuite() {
     } else {
       if (readable) {
         files.forEach((f) => {
-          data = data.concat(fs.readGzip(fs.join(path, f)).toString().trim().split('\n'));
+          data = data.concat(fs.readFileSync(fs.join(path, f)).toString().trim().split('\n'));
         });
         checkFn(data, envelopes);
       } else {
@@ -247,8 +244,16 @@ function dumpIntegrationSuite() {
       escapedName = cn;
     }
     return checkDataFileInternal(tree, path, /*split*/ false, compressed, envelopes, readable, cn, escapedName, function (data, envelopes) {
-      assertEqual(1000, data.length);
+      if (cn.startsWith('_')) {
+        // system collection
+        assertTrue(data.length > 0);
+      } else {
+        assertEqual(1000, data.length);
+      }
       data.forEach(function (line) {
+        if (line.trim() === '') {
+          return;
+        }
         line = JSON.parse(line);
         if (envelopes) {
           assertEqual(2300, line.type);
@@ -346,13 +351,21 @@ function dumpIntegrationSuite() {
       });
     },
     
+    setUp: function () {
+      db._useDatabase("_system");
+    },
+    
+    tearDown: function () {
+      db._useDatabase("_system");
+    },
+    
     testNonExperimentalDump: function () {
       let path = fs.getTempFile();
       let args = ['--collection', cn, '--compress-output', 'false', '--use-experimental-dump', 'false'];
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);
-      checkDataFile(tree, path, /*split*/ false, false, false, false, cn);
+      checkDataFile(tree, path, /*split*/ false, false, false, true, cn);
       fs.removeDirectoryRecursive(path, true);
     },
     
@@ -378,7 +391,7 @@ function dumpIntegrationSuite() {
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);
-      checkDataFile(tree, path, /*split*/ false, false, false, false, cn);
+      checkDataFile(tree, path, /*split*/ false, false, false, true, cn);
       fs.removeDirectoryRecursive(path, true);
     },
     
@@ -399,7 +412,7 @@ function dumpIntegrationSuite() {
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);
       // experimental dump and thus splitting are not supported in single server
-      checkDataFile(tree, path, /*split*/ false, false, false, false, cn);
+      checkDataFile(tree, path, /*split*/ false, false, false, true, cn);
       fs.removeDirectoryRecursive(path, true);
     },
     
@@ -412,7 +425,37 @@ function dumpIntegrationSuite() {
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);
-      checkDataFile(tree, path, /*split*/ true, false, false, false, cn);
+      checkDataFile(tree, path, /*split*/ true, false, false, true, cn);
+      fs.removeDirectoryRecursive(path, true);
+    },
+    
+    testExperimentalDumpIncludeSystemCollections: function () {
+      if (!isCluster) {
+        return;
+      }
+      let path = fs.getTempFile();
+      let args = ['--compress-output', 'false', '--use-experimental-dump', 'true', '--include-system-collections', 'true'];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkStructureFile(tree, path, true, "_apps");
+      checkDataFile(tree, path, /*split*/ false, false, false, true, cn);
+      checkDataFile(tree, path, /*split*/ false, false, false, true, "_apps");
+      fs.removeDirectoryRecursive(path, true);
+    },
+    
+    testExperimentalDumpUsersCollection: function () {
+      if (!isCluster) {
+        return;
+      }
+      let path = fs.getTempFile();
+      let args = ['--collection', cn, '--compress-output', 'false', '--use-experimental-dump', 'true', '--collection', '_users'];
+      let tree = runDump(path, args, 0);
+      checkEncryption(tree, path, "none");
+      checkStructureFile(tree, path, true, cn);
+      checkStructureFile(tree, path, true, "_users");
+      checkDataFile(tree, path, /*split*/ false, false, false, true, cn);
+      checkDataFile(tree, path, /*split*/ false, false, false, true, "_users");
       fs.removeDirectoryRecursive(path, true);
     },
 
@@ -422,7 +465,7 @@ function dumpIntegrationSuite() {
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn + "WithSchema");
-      checkDataFile(tree, path, /*split*/ false, false, false, false, cn + "WithSchema");
+      checkDataFile(tree, path, /*split*/ false, false, false, true, cn + "WithSchema");
       fs.removeDirectoryRecursive(path, true);
     },
 
