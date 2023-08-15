@@ -1,4 +1,4 @@
-v3.10.10 (XXXX-XX-XX)
+v3.10.10 (2023-08-15)
 ---------------------
 
 * Prevent potential buffer overflow in the crash handler.
