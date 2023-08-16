@@ -1304,6 +1304,17 @@ std::tuple<Result, aql::AstNodeType, size_t> buildBinaryArrayComparisonPreFilter
 }
 
 struct ByTermsOptimizationContext {
+
+  void Finalize() noexcept {
+    if (allMatch) {
+      for (auto& f : filters) {
+        TRI_ASSERT(f.second);
+        auto* opt = f.second->mutable_options();
+        opt->min_match = opt->terms.size();
+      }
+    }
+  }
+
   containers::FlatHashMap<std::string, irs::by_terms*> filters;
   bool useByTerms{false};
   bool allMatch{false};
@@ -1343,12 +1354,10 @@ Result appendByTermsFilter(irs::boolean_filter* filter, ScopedAqlValue const& va
     }
     case SCOPED_VALUE_TYPE_DOUBLE: {
       double dblValue;
-
       if (!value.getDouble(dblValue)) {
         // something went wrong
         return {TRI_ERROR_BAD_PARAMETER, "could not get double value"};
       }
-
       kludge::mangleNumeric(name);
       auto terms_filter = makeFilter();
       irs::numeric_token_stream stream;
@@ -1634,12 +1643,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
         }
       }
     }
-    if (filter && byTermFilters.allMatch) {
-      for (auto& f : byTermFilters.filters) {
-        auto* opt = f.second->mutable_options();
-        opt->min_match = opt->terms.size();
-      }
-    }
+    byTermFilters.Finalize();
     return {};
   }
 
@@ -1705,12 +1709,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
                                        rv.errorMessage()));
         }
       }
-      if (byTermFilters.allMatch) {
-        for (auto& f : byTermFilters.filters) {
-          auto* opt = f.second->mutable_options();
-          opt->min_match = opt->terms.size();
-        }
-      }
+      byTermFilters.Finalize();
       return {};
     }
     default:
