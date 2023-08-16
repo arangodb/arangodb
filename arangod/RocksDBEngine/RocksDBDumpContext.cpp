@@ -320,16 +320,13 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   for (it->Seek(lowerBound.string()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(ci.upper) < 0);
 
-    // check if we have reached our current end position
-    if (it->key().compare(upperBound.string()) >= 0) {
-      break;
-    }
-
     ++docsProduced;
 
     if (batch == nullptr) {
       batch = std::make_unique<Batch>();
       batch->shard = ci.guard.collection()->name();
+      // save at least a few small (re)allocations
+      batch->content.reserve(64 * 1024);
       // make sink point into the string of the current batch
       sink.setBuffer(&batch->content);
     }
