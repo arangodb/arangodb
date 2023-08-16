@@ -1683,16 +1683,16 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       if (!buildRes.ok()) {
         return buildRes;
       }
-      TRI_ASSERT(!filter || filter->type() == irs::type<irs::And>::id() ||
-                  filter->type() == irs::type<irs::Or>::id());
-      byTermFilters.useByTerms =
-          byTermFilters.useByTerms && (matchCount == 1 || matchCount == n);
-      byTermFilters.allMatch = n == matchCount;
       filter->boost(filterCtx.boost);
       if (aql::NODE_TYPE_ROOT == arrayExpansionNodeType) {
         // nothing to do more
         return {};
       }
+      TRI_ASSERT(!filter || filter->type() == irs::type<irs::And>::id() ||
+                 filter->type() == irs::type<irs::Or>::id());
+      byTermFilters.useByTerms =
+          byTermFilters.useByTerms && (matchCount == 1 || matchCount == n);
+      byTermFilters.allMatch = n == matchCount;
       FilterContext const subFilterCtx{
           .query = filterCtx.query,
           .contextAnalyzer = filterCtx.contextAnalyzer,
