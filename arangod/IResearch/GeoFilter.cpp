@@ -365,7 +365,7 @@ irs::filter::prepared::ptr makeQuery(irs::IResourceManager& manager,
 }
 
 std::pair<GeoStates, irs::bstring> prepareStates(
-    irs::PrepareContext const ctx, std::span<const std::string> geoTerms,
+    irs::PrepareContext const& ctx, std::span<const std::string> geoTerms,
     std::string_view field) {
   TRI_ASSERT(!geoTerms.empty());
 
