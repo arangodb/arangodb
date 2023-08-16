@@ -30,7 +30,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RequestLane.h"
 #include "Inspection/VPack.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
@@ -131,13 +130,6 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
     if (!DBserver.empty()) {
       // if DBserver property present, add user header
       _request->addHeader(StaticStrings::DumpAuthUser, _request->user());
-
-      // forward JWT
-      auto auth = AuthenticationFeature::instance();
-      if (auth != nullptr && auth->isActive()) {
-        _request->addHeader(StaticStrings::Authorization,
-                            "bearer " + auth->tokenCache().jwtToken());
-      }
       return std::make_pair(DBserver, true);
     }
 
@@ -271,16 +263,16 @@ Result RestDumpHandler::validateRequest() {
         return {TRI_ERROR_BAD_PARAMETER};
       }
 
-      // validate permissions for all participating shards
-      RocksDBDumpContextOptions opts;
-      velocypack::deserializeUnsafe(body, opts);
+      if (!ServerState::instance()->isDBServer()) {
+        // make this version of dump compatible with the previous version of
+        // arangodump. the previous version assumed that as long as you are
+        // an admin user, you can dump every collection
+        ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-      // make this version of dump compatible with the previous version of
-      // arangodump. the previous version assumed that as long as you are
-      // an admin user, you can dump every collection
-      ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+        // validate permissions for all participating shards
+        RocksDBDumpContextOptions opts;
+        velocypack::deserializeUnsafe(body, opts);
 
-      if (!ExecContext::current().isSuperuser()) {
         for (auto const& it : opts.shards) {
           // get collection name
           auto collectionName = _clusterInfo.getCollectionNameForShard(it);
