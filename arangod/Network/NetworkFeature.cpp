@@ -27,6 +27,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
@@ -508,13 +509,23 @@ void NetworkFeature::retryRequest(
       }
     }
   };
+
+  // this will automatically cancel the request when we leave this
+  // method, unless we are canceling this scopeGuard explicitly.
+  // note that the mutex lock will be unlocked before the scopeGuard
+  // fires.
+  auto cancelGuard = scopeGuard([req]() noexcept {
+    if (req) {
+      req->cancel();
+    }
+  });
+
   // we need the mutex during `queueDelayed` because the lambda might be
   // executed faster than we can add the work item to the _retryRequests map.
   std::unique_lock guard(_workItemMutex);
 
   if (server().isStopping()) {
-    guard.unlock();
-    req->cancel();
+    // with trigger cancelGuard - cancels request
     return;
   }
 
@@ -528,15 +539,14 @@ void NetworkFeature::retryRequest(
       }
 
       _retryRequests.emplace(std::move(req), std::move(item));
-      return;
+      // the request successfully made it into _retryRequests.
+      // now abandon the automatic cancelation.
+      cancelGuard.cancel();
     } catch (...) {
     }
   }
-
-  guard.unlock();
-  if (req) {
-    req->cancel();
-  }
+  // if we get here and haven't canceled cancelGuard,
+  // the request will be automatically canceled
 }
 
 }  // namespace arangodb
