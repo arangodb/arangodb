@@ -1258,14 +1258,12 @@ ErrorCode TRI_CreateLockFile(char const* filename) {
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
 ErrorCode TRI_VerifyLockFile(char const* filename) {
-  HANDLE fd;
-
   if (!TRI_ExistsFile(filename)) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  fd = CreateFile(filename, GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
-                  FILE_ATTRIBUTE_NORMAL, NULL);
+  HANDLE fd = CreateFile(filename, GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
+                         FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (fd == INVALID_HANDLE_VALUE) {
     if (GetLastError() == ERROR_SHARING_VIOLATION) {
@@ -1303,22 +1301,21 @@ ErrorCode TRI_VerifyLockFile(char const* filename) {
     return TRI_ERROR_INTERNAL;
   }
 
+  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
+
   char buffer[128];
   memset(buffer, 0,
          sizeof(buffer));  // not really necessary, but this shuts up valgrind
   TRI_read_return_t n =
       TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
-  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
-
   if (n <= 0 || n == sizeof(buffer)) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  uint32_t fc = TRI_UInt32String(buffer);
-  auto res = TRI_errno();
+  uint32_t fc = basics::StringUtils::uint32(&buffer[0], n);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (fc == 0) {
     // invalid pid value
     return TRI_ERROR_NO_ERROR;
   }
