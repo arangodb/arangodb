@@ -1464,6 +1464,9 @@ aql::Collection const* IResearchViewNode::collection() const {
   if (c.empty()) {
     return nullptr;
   }
+  // this API should not be used for multicollection views
+  // doing so migth break satellite join assumptions
+  TRI_ASSERT(c.size() == 1);
   return &c.front().first.get();
 }
 
