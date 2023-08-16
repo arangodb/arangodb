@@ -95,7 +95,6 @@ class VelocyPackHelper {
  public:
   /// @brief static initializer for all VPack values
   static void initialize();
-  static void disableAssemblerFunctions();
 
   static arangodb::velocypack::AttributeTranslator* getTranslator();
 

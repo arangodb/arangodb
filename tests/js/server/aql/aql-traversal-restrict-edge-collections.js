@@ -2,10 +2,6 @@
 /*global AQL_EXPLAIN, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for regression returning blocks to the manager
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2014 triagens GmbH, Cologne, Germany

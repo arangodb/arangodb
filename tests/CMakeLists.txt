@@ -204,6 +204,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/RandomTest.cpp
   Basics/ReadWriteLockTest.cpp
   Basics/RecursiveLockerTest.cpp
+  Basics/SizeLimitedStringTest.cpp
   Basics/SpinLockTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
@@ -243,7 +244,6 @@ set(ARANGODB_TESTS_SOURCES
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
   Greenspun/PrimitivesTest.cpp
-  HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
@@ -276,7 +276,6 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/CachedCollectionNameTest.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
-  RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp

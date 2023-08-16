@@ -5,6 +5,29 @@ v3.10.10 (XXXX-XX-XX)
   the inner amount of a limit in the LimitExecutor is set to a wrong
   value which lead to some data rows not being returned to the client.
 
+* Prevent potential buffer overflow in the crash handler.
+
+* Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used in
+  the row based variant like (e.g. WINDOW { preceding: 1, following: 1 }) it
+  errored with:  mandatory variable "inVariable" not found. This variable is now
+  correctly treated as optional.
+
+* Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used
+  on a OneShardDatabase, or on data from a collection that only has one shard,
+  the preceding and following clauses were flipped.
+
+* Updated arangosync to v2.19.3.
+
+* Prevent potential buffer overflow in the crash handler.
+
+* Updated OpenSSL to 3.0.10 and OpenLDAP to 2.6.6.
+
+* Updated ArangoDB Starter to 0.17.0.
+
+* ES-1566: instead of potentially accessing a nullptr inside graph traversal
+  setup, throw an exception. This will be handled properly and returned with
+  a proper error message.
+
 * BTS-1511: AQL: Fixed access of integers in the ranges
   [-36028797018963968, -281474976710657] and
   [281474976710656, 36028797018963968], i.e. those whose representation require
