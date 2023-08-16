@@ -55,7 +55,7 @@ using Disjunction =
     irs::disjunction_iterator<irs::doc_iterator::ptr, irs::NoopAggregator>;
 
 // Return a filter matching all documents with a given geo field
-irs::filter::prepared::ptr matchAll(const irs::PrepareContext& ctx,
+irs::filter::prepared::ptr matchAll(irs::PrepareContext const& ctx,
                                     std::string_view field) {
   // Return everything we've stored
   irs::by_column_existence filter;
