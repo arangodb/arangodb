@@ -320,6 +320,11 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   for (it->Seek(lowerBound.string()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(ci.upper) < 0);
 
+    // check if we have reached our current end position
+    if (it->key().compare(upperBound.string()) >= 0) {
+      break;
+    }
+
     ++docsProduced;
 
     if (batch == nullptr) {
