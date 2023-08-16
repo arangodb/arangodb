@@ -513,6 +513,7 @@ void NetworkFeature::retryRequest(
 
   if (server().isStopping()) {
     req->cancel();
+    return;
   }
 
   auto item = SchedulerFeature::SCHEDULER->queueDelayed(
