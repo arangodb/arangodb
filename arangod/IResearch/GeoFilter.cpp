@@ -381,7 +381,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
 
   auto const size = sortedTerms.size();
   irs::field_collectors fieldStats{ctx.scorers};
-  irs::ManagedVector<irs::seek_cookie::ptr> termStates;
+  irs::ManagedVector<irs::seek_cookie::ptr> termStates{{ctx.memory}};
 
   for (auto const& segment : ctx.index) {
     auto const* reader = segment.field(field);
