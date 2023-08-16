@@ -37,7 +37,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
-#include "Basics/terminal-utils.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
