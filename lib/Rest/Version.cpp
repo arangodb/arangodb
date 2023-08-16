@@ -27,6 +27,7 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <cstdint>
 #include <sstream>
 
 #include <openssl/ssl.h>
@@ -38,6 +39,7 @@
 #include <velocypack/Version.h>
 
 #include "Basics/FeatureFlags.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/asio_ns.h"
@@ -48,6 +50,7 @@
 
 #include "../3rdParty/iresearch/core/utils/version_defines.hpp"
 
+using namespace arangodb;
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
@@ -329,7 +332,7 @@ int32_t Version::getNumericServerVersion() {
   }
 
   TRI_ASSERT(*p == '.');
-  int32_t major = TRI_Int32String(apiVersion, (p - apiVersion));
+  int32_t major = NumberUtils::atoi_positive_unchecked<int32_t>(apiVersion, p);
 
   apiVersion = ++p;
 
@@ -339,7 +342,7 @@ int32_t Version::getNumericServerVersion() {
   }
 
   TRI_ASSERT((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion);
-  int32_t minor = TRI_Int32String(apiVersion, (p - apiVersion));
+  int32_t minor = NumberUtils::atoi_positive_unchecked<int32_t>(apiVersion, p);
 
   int32_t patch = 0;
   if (*p == '.') {
@@ -351,7 +354,7 @@ int32_t Version::getNumericServerVersion() {
     }
 
     if (p != apiVersion) {
-      patch = TRI_Int32String(apiVersion, (p - apiVersion));
+      patch = NumberUtils::atoi_positive_unchecked<int32_t>(apiVersion, p);
     }
   }
 

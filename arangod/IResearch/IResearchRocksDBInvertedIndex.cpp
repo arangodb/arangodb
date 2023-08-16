@@ -254,11 +254,11 @@ void IResearchRocksDBInvertedIndex::insertMetrics() {
                      .server()
                      .getFeature<metrics::MetricsFeature>();
   _writersMemory =
-      &metric.add(getMetric<arangodb_search_writers_memory>(*this));
+      &metric.add(getMetric<arangodb_search_writers_memory_usage>(*this));
   _readersMemory =
-      &metric.add(getMetric<arangodb_search_readers_memory>(*this));
-  _consolidationsMemory =
-      &metric.add(getMetric<arangodb_search_consolidations_memory>(*this));
+      &metric.add(getMetric<arangodb_search_readers_memory_usage>(*this));
+  _consolidationsMemory = &metric.add(
+      getMetric<arangodb_search_consolidations_memory_usage>(*this));
   _fileDescriptorsCount =
       &metric.add(getMetric<arangodb_search_file_descriptors>(*this));
   _mappedMemory = &metric.add(getMetric<arangodb_search_mapped_memory>(*this));
@@ -282,15 +282,16 @@ void IResearchRocksDBInvertedIndex::removeMetrics() {
                      .getFeature<metrics::MetricsFeature>();
   if (_writersMemory != &irs::IResourceManager::kNoop) {
     _writersMemory = &irs::IResourceManager::kNoop;
-    metric.remove(getMetric<arangodb_search_writers_memory>(*this));
+    metric.remove(getMetric<arangodb_search_writers_memory_usage>(*this));
   }
   if (_readersMemory != &irs::IResourceManager::kNoop) {
     _readersMemory = &irs::IResourceManager::kNoop;
-    metric.remove(getMetric<arangodb_search_readers_memory>(*this));
+    metric.remove(getMetric<arangodb_search_readers_memory_usage>(*this));
   }
   if (_consolidationsMemory != &irs::IResourceManager::kNoop) {
     _consolidationsMemory = &irs::IResourceManager::kNoop;
-    metric.remove(getMetric<arangodb_search_consolidations_memory>(*this));
+    metric.remove(
+        getMetric<arangodb_search_consolidations_memory_usage>(*this));
   }
   if (_fileDescriptorsCount != &irs::IResourceManager::kNoop) {
     _fileDescriptorsCount = &irs::IResourceManager::kNoop;

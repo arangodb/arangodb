@@ -39,10 +39,10 @@
 #include "LoggerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
-#include "Basics/conversions.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
@@ -641,9 +641,11 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
 #ifdef ARANGODB_HAVE_SETGID
   if (!_fileGroup.empty()) {
-    int gidNumber = TRI_Int32String(_fileGroup.c_str());
+    bool valid = false;
+    int gidNumber = NumberUtils::atoi_positive<int>(
+        _fileGroup.data(), _fileGroup.data() + _fileGroup.size(), valid);
 
-    if (TRI_errno() == TRI_ERROR_NO_ERROR && gidNumber >= 0) {
+    if (valid && gidNumber >= 0) {
 #ifdef ARANGODB_HAVE_GETGRGID
       group* g = getgrgid(gidNumber);
 
@@ -655,8 +657,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
     } else {
 #ifdef ARANGODB_HAVE_GETGRNAM
-      std::string name = _fileGroup;
-      group* g = getgrnam(name.c_str());
+      group* g = getgrnam(_fileGroup.c_str());
 
       if (g != nullptr) {
         gidNumber = g->gr_gid;
