@@ -35,6 +35,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #include <absl/cleanup/cleanup.h>
+#include <absl/strings/str_cat.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
@@ -45,6 +46,8 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
     : RocksDBTransactionMethods(state), _callback(callback), _db(db) {
   TRI_ASSERT(_state != nullptr);
 
+  // create memory tracker instance for the transaction, depending on
+  // the type of transaction
   switch (_state->getTrxTypeHint()) {
     case transaction::TrxType::kREST:
       _memoryTracker = std::make_unique<MemoryTrackerMetric>(
@@ -157,18 +160,15 @@ rocksdb::SequenceNumber RocksDBTrxBaseMethods::GetSequenceNumber()
 /// @brief add an operation for a transaction
 Result RocksDBTrxBaseMethods::addOperation(
     TRI_voc_document_operation_e operationType) {
-  TRI_IF_FAILURE("addOperationSizeError") {
-    return Result(TRI_ERROR_RESOURCE_LIMIT);
-  }
+  TRI_IF_FAILURE("addOperationSizeError") { return {TRI_ERROR_RESOURCE_LIMIT}; }
 
-  size_t currentSize = currentWriteBatchSize();
-  if (currentSize > _state->options().maxTransactionSize) {
+  if (_memoryTracker->memoryUsage() > _state->options().maxTransactionSize) {
     // we hit the transaction size limit
-    std::string message =
-        "aborting transaction because maximal transaction size limit of " +
-        std::to_string(_state->options().maxTransactionSize) +
-        " bytes is reached";
-    return Result(TRI_ERROR_RESOURCE_LIMIT, std::move(message));
+    return {
+        TRI_ERROR_RESOURCE_LIMIT,
+        absl::StrCat(
+            "aborting transaction because maximal transaction size limit of ",
+            _state->options().maxTransactionSize, " bytes is reached")};
   }
 
   switch (operationType) {

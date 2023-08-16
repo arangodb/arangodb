@@ -114,6 +114,9 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   rocksdb::WriteBatchWithIndex* _readWriteBatch{nullptr};
   bool _ownsReadWriteBatch{false};
 
+  // only relevant if _ownsReadWriteBatch == true.
+  std::uint64_t _memoryUsedByReadWriteBatch{0};
+
   std::atomic<std::size_t> _numActiveReadOnlyQueries{0};
   std::atomic<bool> _hasActiveModificationQuery{false};
 };
