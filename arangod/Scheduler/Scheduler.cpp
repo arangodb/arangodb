@@ -29,6 +29,7 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "GeneralServer/Acceptor.h"
@@ -160,24 +161,25 @@ void Scheduler::runCronThread() {
 Scheduler::WorkHandle Scheduler::queueDelayed(
     std::string_view name, RequestLane lane, clock::duration delay,
     fu2::unique_function<void(bool cancelled)> handler) noexcept try {
-  TRI_ASSERT(!isStopping());
-
   std::shared_ptr<DelayedWorkItem> item;
 
   try {
+    TRI_IF_FAILURE("Scheduler::queueDelayedFail1") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
     item =
         std::make_shared<DelayedWorkItem>(name, std::move(handler), lane, this);
   } catch (...) {
-    // try to call cancelation handler
-    if (handler) {
-      handler(/*cancelled*/ true);
-    }
     return nullptr;
   }
 
   {
-    std::unique_lock<std::mutex> guard(_cronQueueMutex);
     try {
+      TRI_IF_FAILURE("Scheduler::queueDelayedFail2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      std::unique_lock<std::mutex> guard(_cronQueueMutex);
       _cronQueue.emplace(clock::now() + delay, item);
     } catch (...) {
       // if emplacing throws, we can cancel the item directly
@@ -186,7 +188,6 @@ Scheduler::WorkHandle Scheduler::queueDelayed(
     }
 
     if (delay < std::chrono::milliseconds(50)) {
-      guard.unlock();
       // wakeup thread
       _croncv.notify_one();
     }

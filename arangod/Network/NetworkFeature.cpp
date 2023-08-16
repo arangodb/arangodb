@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -512,6 +513,7 @@ void NetworkFeature::retryRequest(
   std::unique_lock guard(_workItemMutex);
 
   if (server().isStopping()) {
+    guard.unlock();
     req->cancel();
     return;
   }
@@ -520,7 +522,20 @@ void NetworkFeature::retryRequest(
       "retry-requests", lane, duration, std::move(cb));
 
   if (item != nullptr) {
-    _retryRequests.emplace(std::move(req), std::move(item));
+    try {
+      TRI_IF_FAILURE("NetworkFeature::retryRequestFail") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      _retryRequests.emplace(std::move(req), std::move(item));
+      return;
+    } catch (...) {
+    }
+  }
+
+  guard.unlock();
+  if (req) {
+    req->cancel();
   }
 }
 
