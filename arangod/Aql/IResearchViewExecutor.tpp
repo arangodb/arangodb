@@ -686,6 +686,7 @@ template<typename Impl, typename ExecutionTraits>
 IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
     Fetcher&, Infos& infos)
     : _trx(infos.getQuery().newTrxContext()),
+      _memory(infos.getQuery().resourceMonitor()),
       _infos(infos),
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
       _indexReadBuffer(_infos.getScoreRegisters().size(),
@@ -943,7 +944,12 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
     }
 
     // compile filter
-    _filter = root.prepare(*_reader, _scorers, irs::kNoBoost, &_filterCtx);
+    _filter = root.prepare({
+        .index = *_reader,
+        .memory = _memory,
+        .scorers = _scorers,
+        .ctx = &_filterCtx,
+    });
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(_filterCookie);
