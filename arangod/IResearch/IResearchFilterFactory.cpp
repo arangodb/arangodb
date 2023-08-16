@@ -1313,15 +1313,14 @@ Result appendByTermsFilter(irs::boolean_filter* filter, ScopedAqlValue const& va
                            std::string& name,
                            FilterContext const& filterCtx,
                            ByTermsOptimizationContext& termsOpt) {
-  irs::by_terms* terms_filter{nullptr};
   auto makeFilter = [&]() -> irs::by_terms* {
     auto existing = termsOpt.filters.find(name);
     if (existing == termsOpt.filters.end()) {
-      terms_filter = &filter->add<irs::by_terms>();
-      *terms_filter->mutable_field() = name;
-      terms_filter->boost(filterCtx.boost);
-      termsOpt.filters.emplace(name, terms_filter);
-      return terms_filter;
+      auto& terms_filter = filter->add<irs::by_terms>();
+      *terms_filter.mutable_field() = name;
+      terms_filter.boost(filterCtx.boost);
+      termsOpt.filters.emplace(name, &terms_filter);
+      return &terms_filter;
     } else {
       return existing->second;
     }
@@ -1329,14 +1328,14 @@ Result appendByTermsFilter(irs::boolean_filter* filter, ScopedAqlValue const& va
   switch (value.type()) {
     case SCOPED_VALUE_TYPE_NULL: {
       kludge::mangleNull(name);
-      terms_filter = makeFilter();
+      auto terms_filter = makeFilter();
       terms_filter->mutable_options()->terms.emplace(
           irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()));
       return {};
     }
     case SCOPED_VALUE_TYPE_BOOL:
       kludge::mangleBool(name);
-      terms_filter = makeFilter();
+      auto terms_filter = makeFilter();
       terms_filter->mutable_options()->terms.emplace(
           irs::ViewCast<irs::byte_type>(
               irs::boolean_token_stream::value(value.getBoolean())));
@@ -1350,7 +1349,7 @@ Result appendByTermsFilter(irs::boolean_filter* filter, ScopedAqlValue const& va
       }
 
       kludge::mangleNumeric(name);
-      terms_filter = makeFilter();
+      auto terms_filter = makeFilter();
       irs::numeric_token_stream stream;
       irs::term_attribute const* token = irs::get<irs::term_attribute>(stream);
       TRI_ASSERT(token);
@@ -1580,10 +1579,14 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
     NormalizedCmpNode normalized;
     aql::AstNode toNormalize(arrayExpansionNodeType);
     toNormalize.reserve(2);
+    TRI_ASSERT(filter->type() == irs::type<irs::And>::id() ||
+               filter->type() == irs::type<irs::Or>::id());
+    // We can handle only 1 or all cases as due to mangling
+    // filters are distributed over several index fields. And
+    // for n-matches case we need to support premutations, but in that case
+    // it is cheaper to run min-match disjunction
     byTermFilters.useByTerms = byTermFilters.useByTerms &&
-                                (matchCount == 1 || matchCount == n) &&
-                                (filter->type() == irs::type<irs::And>::id() ||
-                                 filter->type() == irs::type<irs::Or>::id());
+                                (matchCount == 1 || matchCount == n);
     byTermFilters.allMatch = n == matchCount;
     for (size_t i = 0; i < n; ++i) {
       auto const* member = valueNode->getMemberUnchecked(i);
@@ -1630,7 +1633,6 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
         }
       }
     }
-    // TODO: Make finalize method in ByTermsOptimizationContext
     if (filter && byTermFilters.allMatch) {
       for (auto& f : byTermFilters.filters) {
         auto* opt = f.second->mutable_options();
@@ -1676,10 +1678,10 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       if (!buildRes.ok()) {
         return buildRes;
       }
+      TRI_ASSERT((filter->type() == irs::type<irs::And>::id() ||
+                  filter->type() == irs::type<irs::Or>::id()));
       byTermFilters.useByTerms =
-          byTermFilters.useByTerms && (matchCount == 1 || matchCount == n) &&
-          (filter->type() == irs::type<irs::And>::id() ||
-           filter->type() == irs::type<irs::Or>::id());
+          byTermFilters.useByTerms && (matchCount == 1 || matchCount == n);
       byTermFilters.allMatch = n == matchCount;
       filter->boost(filterCtx.boost);
       if (aql::NODE_TYPE_ROOT == arrayExpansionNodeType) {
