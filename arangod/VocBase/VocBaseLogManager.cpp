@@ -378,12 +378,12 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
     }
   };
 
-  auto sched = std::make_shared<MyScheduler>();
   auto maybeMetadata = storage->readMetadata();
   if (!maybeMetadata) {
     throw basics::Exception(std::move(maybeMetadata).result(), ADB_HERE);
   }
 
+  auto sched = std::make_shared<MyScheduler>();
   auto& logFeature = server.getFeature<ReplicatedLogFeature>();
   auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
   auto& log = stateAndLog.log = std::invoke([&]() {
@@ -393,7 +393,8 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
         std::make_shared<replicated_log::DefaultParticipantsFactory>(
             std::make_shared<NetworkFollowerFactory>(vocbase, id,
                                                      logFeature.options()),
-            sched, std::make_shared<replicated_log::DefaultRebootIdCache>(ci)),
+            std::move(sched),
+            std::make_shared<replicated_log::DefaultRebootIdCache>(ci)),
         logContext, myself);
   });
 

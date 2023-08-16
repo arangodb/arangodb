@@ -159,20 +159,31 @@ void Scheduler::runCronThread() {
 
 Scheduler::WorkHandle Scheduler::queueDelayed(
     std::string_view name, RequestLane lane, clock::duration delay,
-    fu2::unique_function<void(bool cancelled)> handler) noexcept {
+    fu2::unique_function<void(bool cancelled)> handler) noexcept try {
   TRI_ASSERT(!isStopping());
 
-  if (delay < std::chrono::milliseconds(1)) {
-    // execute directly
-    queue(lane, [handler = std::move(handler)]() mutable { handler(false); });
+  std::shared_ptr<DelayedWorkItem> item;
+
+  try {
+    item =
+        std::make_shared<DelayedWorkItem>(name, std::move(handler), lane, this);
+  } catch (...) {
+    // try to call cancelation handler
+    if (handler) {
+      handler(/*cancelled*/ true);
+    }
     return nullptr;
   }
 
-  auto item =
-      std::make_shared<DelayedWorkItem>(name, std::move(handler), lane, this);
   {
     std::unique_lock<std::mutex> guard(_cronQueueMutex);
-    _cronQueue.emplace(clock::now() + delay, item);
+    try {
+      _cronQueue.emplace(clock::now() + delay, item);
+    } catch (...) {
+      // if emplacing throws, we can cancel the item directly
+      item->cancel();
+      return nullptr;
+    }
 
     if (delay < std::chrono::milliseconds(50)) {
       guard.unlock();
@@ -182,6 +193,8 @@ Scheduler::WorkHandle Scheduler::queueDelayed(
   }
 
   return item;
+} catch (...) {
+  return nullptr;
 }
 
 /*

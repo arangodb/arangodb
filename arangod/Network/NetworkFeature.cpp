@@ -301,6 +301,7 @@ void NetworkFeature::beginShutdown() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
     for (auto const& [req, item] : _retryRequests) {
+      TRI_ASSERT(item != nullptr);
       item->cancel();
     }
     _retryRequests.clear();
@@ -317,6 +318,7 @@ void NetworkFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
     for (auto const& [req, item] : _retryRequests) {
+      TRI_ASSERT(item != nullptr);
       item->cancel();
     }
     _retryRequests.clear();
@@ -493,9 +495,6 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
 void NetworkFeature::retryRequest(
     std::shared_ptr<network::RetryableRequest> req, RequestLane lane,
     std::chrono::steady_clock::duration duration) {
-  if (server().isStopping()) {
-    req->cancel();
-  }
   auto cb = [this, weak = std::weak_ptr(req)](bool cancelled) {
     std::unique_lock guard(_workItemMutex);
     if (auto self = weak.lock(); self) {
@@ -511,9 +510,17 @@ void NetworkFeature::retryRequest(
   // we need the mutex during `queueDelayed` because the lambda might be
   // executed faster than we can add the work item to the _retryRequests map.
   std::unique_lock guard(_workItemMutex);
+
+  if (server().isStopping()) {
+    req->cancel();
+  }
+
   auto item = SchedulerFeature::SCHEDULER->queueDelayed(
       "retry-requests", lane, duration, std::move(cb));
-  _retryRequests.emplace(std::move(req), std::move(item));
+
+  if (item != nullptr) {
+    _retryRequests.emplace(std::move(req), std::move(item));
+  }
 }
 
 }  // namespace arangodb
