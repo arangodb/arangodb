@@ -1333,13 +1333,14 @@ Result appendByTermsFilter(irs::boolean_filter* filter, ScopedAqlValue const& va
           irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()));
       return {};
     }
-    case SCOPED_VALUE_TYPE_BOOL:
+    case SCOPED_VALUE_TYPE_BOOL: {
       kludge::mangleBool(name);
       auto terms_filter = makeFilter();
       terms_filter->mutable_options()->terms.emplace(
           irs::ViewCast<irs::byte_type>(
               irs::boolean_token_stream::value(value.getBoolean())));
       return {};
+    }
     case SCOPED_VALUE_TYPE_DOUBLE: {
       double dblValue;
 
@@ -1374,7 +1375,7 @@ Result appendByTermsFilter(irs::boolean_filter* filter, ScopedAqlValue const& va
         }
 
         kludge::mangleField(name, ctx.isOldMangling, analyzer);
-        terms_filter = makeFilter();
+        auto terms_filter = makeFilter();
         terms_filter->mutable_options()->terms.emplace(
             irs::ViewCast<irs::byte_type>(strValue));
       }
@@ -1579,7 +1580,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
     NormalizedCmpNode normalized;
     aql::AstNode toNormalize(arrayExpansionNodeType);
     toNormalize.reserve(2);
-    TRI_ASSERT(filter->type() == irs::type<irs::And>::id() ||
+    TRI_ASSERT(!filter || filter->type() == irs::type<irs::And>::id() ||
                filter->type() == irs::type<irs::Or>::id());
     // We can handle only 1 or all cases as due to mangling
     // filters are distributed over several index fields. And
@@ -1678,8 +1679,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       if (!buildRes.ok()) {
         return buildRes;
       }
-      TRI_ASSERT((filter->type() == irs::type<irs::And>::id() ||
-                  filter->type() == irs::type<irs::Or>::id()));
+      TRI_ASSERT(!filter || filter->type() == irs::type<irs::And>::id() ||
+                  filter->type() == irs::type<irs::Or>::id());
       byTermFilters.useByTerms =
           byTermFilters.useByTerms && (matchCount == 1 || matchCount == n);
       byTermFilters.allMatch = n == matchCount;
