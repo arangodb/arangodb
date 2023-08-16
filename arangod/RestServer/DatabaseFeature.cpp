@@ -442,11 +442,6 @@ void DatabaseFeature::start() {
     }
   }
 
-  // activate deadlock detection in case we're not running in cluster mode
-  if (!ServerState::instance()->isRunningInCluster()) {
-    enableDeadlockDetection();
-  }
-
   _started.store(true);
 }
 
@@ -741,10 +736,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
         LOG_TOPIC("56c41", ERR, Logger::FIXME) << msg;
         return Result(TRI_ERROR_INTERNAL, std::move(msg));
       }
-
-      // enable deadlock detection
-      vocbase->_deadlockDetector.enabled(
-          !ServerState::instance()->isRunningInCluster());
 
       auto& dealer = server().getFeature<V8DealerFeature>();
       if (dealer.isEnabled()) {
@@ -1161,7 +1152,7 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
         << "processing database: " << it.toJson();
 
     velocypack::Slice deleted = it.get("deleted");
-    if (deleted.isBoolean() && deleted.getBoolean()) {
+    if (deleted.isTrue()) {
       // ignore deleted databases here
       continue;
     }
@@ -1255,17 +1246,6 @@ void DatabaseFeature::closeDroppedDatabases() {
 
   for (auto p : dropped) {
     p->shutdown();
-  }
-}
-
-void DatabaseFeature::enableDeadlockDetection() {
-  auto databases = _databases.load();
-
-  for (auto& p : *databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    TRI_ASSERT(vocbase != nullptr);
-
-    vocbase->_deadlockDetector.enabled(true);
   }
 }
 
