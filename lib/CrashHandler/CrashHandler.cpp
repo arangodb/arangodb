@@ -51,9 +51,6 @@
 #include "Basics/SizeLimitedString.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#ifdef __linux__
-#include "Basics/build-id.h"
-#endif
 #include "Basics/files.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
@@ -171,20 +168,10 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
 
 #ifdef __linux__
   {
-    // append build-id, if we have one
-    auto const* note = build_id_find_nhdr_by_name("");
-    if (note != nullptr) {
-      buffer.append(", build-id ");
-
-      auto const* build_id = build_id_data(note);
-      auto len = build_id_length(note);
-
-      constexpr char chars[] = "0123456789abcdef";
-      for (decltype(len) i = 0; i < len; ++i) {
-        auto c = build_id[i];
-        buffer.push_back(chars[c >> 4U]);
-        buffer.push_back(chars[c & 0xfU]);
-      }
+    // get build-id by reference, so we can avoid a copy here
+    std::string const& buildId = arangodb::rest::Version::getBuildId();
+    if (!buildId.empty()) {
+      buffer.append(", build-id ").append(buildId);
     }
   }
 #endif
