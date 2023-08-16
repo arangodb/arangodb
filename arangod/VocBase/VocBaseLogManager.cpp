@@ -393,8 +393,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
         std::make_shared<replicated_log::DefaultParticipantsFactory>(
             std::make_shared<NetworkFollowerFactory>(vocbase, id,
                                                      logFeature.options()),
-            std::move(sched),
-            std::make_shared<replicated_log::DefaultRebootIdCache>(ci)),
+            sched, std::make_shared<replicated_log::DefaultRebootIdCache>(ci)),
         logContext, myself);
   });
 
