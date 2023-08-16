@@ -231,7 +231,11 @@ function getMetricName(text, name) {
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+  let res = 0;
+  for(let i = 0; i < matches.length; i+= 1) {
+    res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+  }
+  return res;
 }
 
 exports.getMetric = function (endpoint, name) {
@@ -558,7 +562,6 @@ exports.getDBServersClusterAllMetrics = function () {
   exports.triggerMetrics();
   let res = [];
   let dbServerEndpoints = exports.getDBServerEndpoints();
-  print(exports.getCoordinatorEndpoints());
   dbServerEndpoints.forEach(server => {
     res.push(exports.getAllMetric(server, ''));
   });

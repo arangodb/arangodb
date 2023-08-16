@@ -38,11 +38,11 @@ function MemoryMetrics() {
   let getMetric = (name) => { 
     if (isCluster) {
       let sum = 0;
-      print("Start!")
-      getDBServersClusterMetricsByName(name).forEach( num => {
+      let metrics = getDBServersClusterMetricsByName(name)
+      assertTrue(metrics.length == 3);
+      metrics.forEach( num => {
         sum += num;
       });
-      print("Finish!")
       return sum;
     } else {
       return getMetricSingle(name);
@@ -54,7 +54,7 @@ function MemoryMetrics() {
       for (let i = 0; i < 10000; i++) {
         x.push({stringValue: "" + i, numericValue: i});
       }
-      let c = db._create(collection);
+      let c = db._create(collection, {replicationFactor:3, writeConcern:3, numberOfShards : 3});
       c.insert(x);
       db._createView(view, "arangosearch", {
       links: {[collection]: {
@@ -65,17 +65,11 @@ function MemoryMetrics() {
           commitIntervalMsec: 100,
         }}
       });
-      try {
-        const writers = getMetric("arangodb_search_writers_memory");
-        assertTrue(writers > 0);
-        const descriptors = getMetric("arangodb_search_file_descriptors");
-        assertTrue(descriptors > 0);
-      }
-      catch (e) {
-        print(e)
-      }
+      const writers = getMetric("arangodb_search_writers_memory");
+      assertTrue(writers > 0);
+      const descriptors = getMetric("arangodb_search_file_descriptors");
+      assertTrue(descriptors > 0);
     },
-
     tearDownAll: function () {
       db._dropView(view);
       db._drop(collection);
@@ -84,9 +78,11 @@ function MemoryMetrics() {
     testSimple: function () {
       let c = db._collection(collection);
       for (let i = 0; i < 3; i++) {
+        print('ITERATION')
         const oldValue = getMetric("arangodb_search_writers_memory");
         c.insert(x);
         const newValue = getMetric("arangodb_search_writers_memory");
+        print(oldValue, newValue);
         assertNotEqual(oldValue, newValue);
       }
       let readers = 0;
