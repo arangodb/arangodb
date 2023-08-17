@@ -204,9 +204,10 @@ class Scheduler {
   }
 
  public:
-  // delay Future returns a future that will be fulfilled after the given
-  // duration requires scheduler If d is zero, the future is fulfilled
-  // immediately. Throws a logic error if delay was cancelled.
+  // delay Future. returns a future that will be fulfilled after the given
+  // duration expires. If d is zero or we cannot post the future
+  // to the scheduler, the future is fulfilled immediately.
+  // Throws a logic error if delay was cancelled.
   futures::Future<futures::Unit> delay(std::string_view name,
                                        clock::duration d) {
     if (d == clock::duration::zero()) {
@@ -220,6 +221,10 @@ class Scheduler {
                              [pr = std::move(p)](bool cancelled) mutable {
                                pr.setValue(cancelled);
                              });
+
+    if (item == nullptr) {
+      return futures::makeFuture();
+    }
 
     return std::move(f).thenValue([item = std::move(item)](bool cancelled) {
       if (cancelled) {
@@ -304,7 +309,6 @@ class Scheduler {
   // ---------------------------------------------------------------------------
   // Start/Stop/IsRunning stuff
   // ---------------------------------------------------------------------------
- public:
   virtual bool start();
   virtual void shutdown();
 
