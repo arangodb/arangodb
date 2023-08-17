@@ -354,7 +354,7 @@ const replicatedStateFollowerSuite = function (dbParams) {
   let logs = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
-    lh.testHelperFunctions(database, {replicationVersion: "2"});
+    lh.testHelperFunctions(database, dbParams);
 
   return {
     setUpAll,
@@ -363,8 +363,12 @@ const replicatedStateFollowerSuite = function (dbParams) {
       collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": rc, "replicationFactor": rc});
       shards = collection.shards();
       shardId = shards[0];
-      shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
-      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+      if (isReplication2) {
+        shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+        logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+      } else {
+        shardsToLogs = {[shardId]: null};
+      }
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
