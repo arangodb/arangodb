@@ -174,11 +174,9 @@ auto VocBaseLogManager::dropReplicatedState(arangodb::replication2::LogId id)
       data.statesAndLogs.erase(iter);
 
       return Result();
-    } else {
-      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    return Result();
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   });
 
   if (result.ok()) {

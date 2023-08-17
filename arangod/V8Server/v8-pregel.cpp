@@ -219,9 +219,7 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_ObjectToUInt64(isolate, args[0], true)};
   pregel::statuswriter::CollectionStatusWriter cWriter{vocbase, executionNum};
   handlePregelHistoryV8Result(cWriter.readResult(), true);
-  return;
 
-  return;
   TRI_V8_TRY_CATCH_END
 }
 

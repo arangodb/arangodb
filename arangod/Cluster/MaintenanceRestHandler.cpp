@@ -59,7 +59,6 @@ RestStatus MaintenanceRestHandler::execute() {
     // administrative commands for hot restore
     case rest::RequestType::POST:
       return postAction();
-      break;
 
     // add an action to the list (or execute it directly)
     case rest::RequestType::PUT:

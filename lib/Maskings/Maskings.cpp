@@ -51,10 +51,6 @@
 using namespace arangodb;
 using namespace arangodb::maskings;
 
-namespace {
-std::string const xxxx("xxxx");
-}
-
 MaskingsResult Maskings::fromFile(std::string const& filename) {
   std::string definition;
 
@@ -210,10 +206,7 @@ VPackValue Maskings::maskedItem(Collection const& collection,
                                 VPackSlice const& data) const {
   if (path.size() == 1 && path[0].size() >= 1 && path[0][0] == '_') {
     if (data.isString()) {
-      velocypack::ValueLength length;
-      char const* c = data.getString(length);
-      buffer = std::string(c, length);
-      return VPackValue(buffer);
+      return VPackValue(data.stringView());
     } else if (data.isInteger()) {
       return VPackValue(data.getInt());
     }
@@ -225,34 +218,25 @@ VPackValue Maskings::maskedItem(Collection const& collection,
     if (data.isBool()) {
       return VPackValue(data.getBool());
     } else if (data.isString()) {
-      velocypack::ValueLength length;
-      char const* c = data.getString(length);
-      buffer = std::string(c, length);
-      return VPackValue(buffer);
+      return VPackValue(data.stringView());
     } else if (data.isInteger()) {
       return VPackValue(data.getInt());
     } else if (data.isDouble()) {
       return VPackValue(data.getDouble());
-    } else {
-      return VPackValue(VPackValueType::Null);
     }
+    return VPackValue(VPackValueType::Null);
   } else {
     if (data.isBool()) {
       return func->mask(data.getBool(), buffer);
     } else if (data.isString()) {
-      velocypack::ValueLength length;
-      char const* c = data.getString(length);
-      return func->mask(std::string(c, length), buffer);
+      return func->mask(data.copyString(), buffer);
     } else if (data.isInteger()) {
       return func->mask(data.getInt(), buffer);
     } else if (data.isDouble()) {
       return func->mask(data.getDouble(), buffer);
-    } else {
-      return VPackValue(VPackValueType::Null);
     }
+    return VPackValue(VPackValueType::Null);
   }
-
-  return VPackValue(xxxx);
 }
 
 void Maskings::addMaskedArray(Collection const& collection,
