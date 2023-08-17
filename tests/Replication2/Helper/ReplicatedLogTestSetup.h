@@ -91,30 +91,45 @@ struct LogWithFakes : IHasScheduler {
         options(std::move(fakeArguments.options)) {}
 
   [[nodiscard]] auto updateConfig(LogConfig conf) {
-    if (&conf.leader.get() == this) {
+    bool const isLeader = &conf.leader.get() == this;
+    if (isLeader) {
       stateHandleMock->expectLeader();
       for (auto const it : conf.followers) {
         auto& followerContainer = it.get();
         fakeFollowerFactory->followerThunks.try_emplace(
             followerContainer.serverInstance.serverId, [&followerContainer]() {
+              auto follower = followerContainer.getAsFollower();
               if (followerContainer.delayedLogFollower != nullptr) {
-                followerContainer.delayedLogFollower->scheduler.dropWork();
+                // followerContainer.delayedLogFollower->scheduler.dropWork();
+                // followerContainer.delayedLogFollower->replaceFollowerWith(
+                //     follower);
+              } else {
+                // // Note: Follower instances must have their config installed
+                // // already for getAsFollower to work.
+                // // TODO catch exception and print an error?
+                followerContainer.delayedLogFollower =
+                    std::make_shared<DelayedLogFollower>(follower);
               }
-              // Note: Follower instances must have their config installed
-              // already for getAsFollower to work.
-              // TODO catch exception and print an error?
-              followerContainer.delayedLogFollower =
-                  std::make_shared<DelayedLogFollower>(
-                      followerContainer.getAsFollower());
               return followerContainer.delayedLogFollower;
             });
       }
     } else {
       stateHandleMock->expectFollower();
+      if (delayedLogFollower == nullptr) {
+        delayedLogFollower = std::make_shared<DelayedLogFollower>(nullptr);
+      }
     }
-    return log->updateConfig(std::move(conf.termSpec),
-                             std::move(conf.participantsConfig),
-                             serverInstance);
+    auto fut =
+        log->updateConfig(std::move(conf.termSpec),
+                          std::move(conf.participantsConfig), serverInstance);
+    if (!isLeader) {
+      return std::move(fut).thenValue([&](futures::Unit&&) {
+        delayedLogFollower->scheduler.dropWork();
+        delayedLogFollower->replaceFollowerWith(getAsFollower());
+      });
+    } else {
+      return fut;
+    }
   }
   [[nodiscard]] auto getAsLeader() {
     auto const leader = std::dynamic_pointer_cast<replicated_log::ILogLeader>(
@@ -146,6 +161,13 @@ struct LogWithFakes : IHasScheduler {
       return IHasScheduler::hasWork(logScheduler, storageExecutor,
                                     delayedLogFollower->scheduler);
     }
+  }
+  auto stealFollower() {
+    auto scheduler = std::make_shared<DelayedScheduler>();
+    auto follower = std::make_shared<DelayedLogFollower>(nullptr);
+    std::swap(scheduler, logScheduler);
+    std::swap(follower, delayedLogFollower);
+    return std::pair(std::move(follower), std::move(scheduler));
   }
 
   LoggerContext loggerContext;
@@ -184,7 +206,7 @@ struct LogWithFakes : IHasScheduler {
           serverInstance);
 
   test::ReplicatedStateHandleMock* stateHandleMock =
-      new test::ReplicatedStateHandleMock();
+      new testing::NiceMock<test::ReplicatedStateHandleMock>();
   replicated_log::ReplicatedLogConnection connection = log->connect(
       std::unique_ptr<replicated_log::IReplicatedStateHandle>(stateHandleMock));
 

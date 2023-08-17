@@ -27,6 +27,7 @@
 
 #include "Replication2/ReplicatedLog/Components/LogFollower.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
 
 #include "Replication2/Mocks/SchedulerMocks.h"
 
@@ -34,41 +35,32 @@ namespace arangodb::replication2::test {
 
 // Queues appendEntries calls on its own DelayedScheduler. Keeps a queue of
 // pending requests to inspect.
+// It also serves as a proxy to the follower instance: The internal follower can
+// be replaced without the leader noticing, like a reinstantiation on the other
+// DBServer would.
+// When requests in the queue are to be delivered, the current follower is
+// looked up and used, rather than the follower being saved on the appendEntries
+// call.
 struct DelayedLogFollower : replicated_log::ILogFollower {
   explicit DelayedLogFollower(
-      std::shared_ptr<replicated_log::ILogFollower> follower)
-      : _follower(std::move(follower)) {
-    // Let's not accidentally wrap a DelayedLogFollower in another
-    ADB_PROD_ASSERT(std::dynamic_pointer_cast<DelayedLogFollower>(follower) ==
-                    nullptr);
-  }
+      std::shared_ptr<replicated_log::ILogFollower> follower);
+  // Just here to point out that we may instantiate this without a follower.
+  // Just don't do anything with it except calling appendEntries.
+  explicit DelayedLogFollower(std::nullptr_t);
+
+  void replaceFollowerWith(
+      std::shared_ptr<replicated_log::ILogFollower> follower);
+
+  void swapFollowerAndQueueWith(DelayedLogFollower& other);
 
   auto appendEntries(replicated_log::AppendEntriesRequest req)
       -> arangodb::futures::Future<
-          replicated_log::AppendEntriesResult> override {
-    auto p = _asyncQueue.emplace_back(
-        std::make_shared<AsyncRequest>(std::move(req)));
+          replicated_log::AppendEntriesResult> override;
 
-    scheduler.queue([p, this]() {
-      p->promise.setValue(std::move(p->request));
-      auto it = std::find(_asyncQueue.begin(), _asyncQueue.end(), p);
-      if (it != _asyncQueue.end()) {
-        _asyncQueue.erase(it);
-      }
-    });
+  // TODO rename to deliver-sth
+  auto runAsyncAppendEntries() -> std::size_t;
 
-    return p->promise.getFuture().thenValue([this](auto&& result) mutable {
-      return _follower->appendEntries(std::forward<decltype(result)>(result));
-    });
-  }
-
-  auto runAsyncAppendEntries() { return scheduler.runAllCurrent(); }
-
-  void runAllAsyncAppendEntries() {
-    while (hasPendingAppendEntries()) {
-      runAsyncAppendEntries();
-    }
-  }
+  void runAllAsyncAppendEntries();
 
   using WaitForAsyncPromise =
       futures::Promise<replicated_log::AppendEntriesRequest>;
@@ -80,12 +72,8 @@ struct DelayedLogFollower : replicated_log::ILogFollower {
     WaitForAsyncPromise promise;
   };
   [[nodiscard]] auto pendingAppendEntries() const
-      -> std::list<std::shared_ptr<AsyncRequest>> {
-    return _asyncQueue;
-  }
-  [[nodiscard]] auto hasPendingAppendEntries() const -> bool {
-    return scheduler.hasWork();
-  }
+      -> std::list<std::shared_ptr<AsyncRequest>>;
+  [[nodiscard]] auto hasPendingAppendEntries() const -> bool;
 
   auto getParticipantId() const noexcept -> ParticipantId const& override {
     return _follower->getParticipantId();

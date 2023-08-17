@@ -102,7 +102,6 @@ TEST_F(MultiTermTest, add_follower_test) {
 }
 
 TEST_F(MultiTermTest, resign_leader_wait_for) {
-  // TODO Add expectations for internalStatus calls
   auto leaderLogContainer = makeLogWithFakes({});
   auto leaderLog = leaderLogContainer.log;
   auto followerLogContainer = makeLogWithFakes({});
@@ -136,106 +135,66 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
   IHasScheduler::runAll(leaderLogContainer, followerLogContainer);
 }
 
-// TODO Reenable the rest as well
-#if 0
-TEST_F(MultiTermTest, resign_leader_release) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto followerLog = makeReplicatedLog(LogId{2});
-  {
-    auto follower =
-        followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
-
-    auto idx = leader->insert(LogPayload::createFromString("first entry"),
-                              false, LogLeader::doNotTriggerAsyncReplication);
-    auto f = leader->waitFor(idx);
-    EXPECT_FALSE(f.isReady());
-    leader->triggerAsyncReplication();
-    follower->runAsyncAppendEntries();
-    auto newLeader =
-        leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
-    ASSERT_TRUE(f.isReady());
-    ASSERT_FALSE(f.hasException());
-    auto res = leader->release(idx);
-    EXPECT_EQ(res.errorNumber(),
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-  }
-}
-
-TEST_F(MultiTermTest, resign_follower_release) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto followerLog = makeReplicatedLog(LogId{2});
-  {
-    auto follower =
-        followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
-
-    auto idx = leader->insert(LogPayload::createFromString("first entry"),
-                              false, LogLeader::doNotTriggerAsyncReplication);
-    auto f = follower->waitFor(idx);
-    EXPECT_FALSE(f.isReady());
-    leader->triggerAsyncReplication();
-    follower->runAllAsyncAppendEntries();
-    auto newFollower =
-        followerLog->becomeFollower("follower", LogTerm{2}, "leader");
-    ASSERT_TRUE(f.isReady());
-    ASSERT_FALSE(f.hasException());
-    auto res = follower->release(idx);
-    EXPECT_EQ(res.errorNumber(),
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
-  }
-}
-
 TEST_F(MultiTermTest, resign_follower_wait_for) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto followerLog = makeReplicatedLog(LogId{2});
+  auto leaderLogContainer = makeLogWithFakes({});
+  auto followerLogContainer = makeLogWithFakes({});
+  auto leaderLog = leaderLogContainer.log;
+  auto followerLog = followerLogContainer.log;
+  auto config = makeConfig(leaderLogContainer, {followerLogContainer},
+                           {.term = 1_T, .writeConcern = 2});
+  config.installConfig(true);
   {
-    auto follower =
-        followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
-
-    auto idx = leader->insert(LogPayload::createFromString("first entry"),
-                              false, LogLeader::doNotTriggerAsyncReplication);
-    auto f = leader->waitFor(idx);
+    auto idx = leaderLogContainer.stateHandleMock->logLeaderMethods->insert(
+        LogPayload::createFromString("first entry"), false);
+    auto f = leaderLog->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f.isReady());
-    leader->triggerAsyncReplication();
+    leaderLogContainer.runAll();
 
     {
-      auto stats =
-          std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
+      auto stats = leaderLog->getQuickStatus().local.value();
       // Note that the leader inserts an empty log entry in becomeLeader
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{2}));
-      EXPECT_EQ(stats.commitIndex, LogIndex{0});
+      EXPECT_EQ(stats.commitIndex, LogIndex{1});
     }
 
-    EXPECT_TRUE(follower->hasPendingAppendEntries());
-    auto newFollower =
-        followerLog->becomeFollower("follower", LogTerm{2}, "leader");
+    EXPECT_TRUE(
+        followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
+    auto [oldFollower, oldScheduler] = followerLogContainer.stealFollower();
+    //  TODO Move config manipulation into LogConfig methods
+    config = makeConfig(leaderLogContainer, {followerLogContainer},
+                        {.term = 2_T, .writeConcern = 2});
+    std::ignore = followerLogContainer.updateConfig(config);
 
     // now run the old followers append entry requests
-    follower->runAsyncAppendEntries();
-    // we expect a leader retry
-    EXPECT_TRUE(follower->hasPendingAppendEntries());
-    EXPECT_ANY_THROW({ std::ignore = follower->getStatus(); });
+    oldFollower->runAllAsyncAppendEntries();
+    oldScheduler->runAll();
+    leaderLogContainer.runAll();
+    EXPECT_TRUE(oldFollower->hasPendingAppendEntries());
 
-    // now create a new leader
-    auto newLeader =
-        leaderLog->becomeLeader("leader", LogTerm{2}, {newFollower}, 2);
-    newLeader->triggerAsyncReplication();
-    EXPECT_TRUE(newFollower->hasPendingAppendEntries());
+    // now update the leader's config as well
+    std::ignore = leaderLogContainer.updateConfig(config);
+    leaderLogContainer.runAll();
+    EXPECT_TRUE(
+        followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
 
     // run the old followers append entries
-    follower->runAsyncAppendEntries();
+    oldFollower->runAsyncAppendEntries();
+    leaderLogContainer.runAll();
     // we expect no new append entries
-    EXPECT_FALSE(follower->hasPendingAppendEntries());
+    EXPECT_FALSE(oldFollower->hasPendingAppendEntries());
 
-    while (newFollower->hasPendingAppendEntries()) {
-      newFollower->runAsyncAppendEntries();
-    }
+    IHasScheduler::runAll(leaderLogContainer, followerLogContainer,
+                          oldFollower->scheduler, oldScheduler);
 
     {
-      auto stats =
-          std::get<FollowerStatus>(newFollower->getStatus().getVariant()).local;
+      auto stats = leaderLog->getQuickStatus().local.value();
+      // Note that the leader inserts an empty log entry in becomeLeader, which
+      // happened twice already.
+      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
+      EXPECT_EQ(stats.commitIndex, LogIndex{3});
+    }
+    {
+      auto stats = followerLog->getQuickStatus().local.value();
       // Note that the leader inserts an empty log entry in becomeLeader, which
       // happened twice already.
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
@@ -264,69 +223,89 @@ struct FollowerProxy : AbstractFollower {
 };
 
 TEST_F(MultiTermTest, resign_leader_append_entries) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto followerLog = makeReplicatedLog(LogId{2});
+  auto leaderLogContainer = makeLogWithFakes({});
+  auto followerLogContainer = makeLogWithFakes({});
+  auto leaderLog = leaderLogContainer.log;
+  auto followerLog = followerLogContainer.log;
+  auto config = makeConfig(leaderLogContainer, {followerLogContainer},
+                           {.term = 1_T, .writeConcern = 2});
+  config.installConfig(true);
   {
-    auto follower =
-        followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-    auto followerProxy = std::make_shared<FollowerProxy>(follower);
+    // auto followerProxy =
+    //     std::make_shared<FollowerProxy>(followerLogContainer.getAsFollower());
 
-    auto leader =
-        leaderLog->becomeLeader("leader", LogTerm{1}, {followerProxy}, 2);
-
-    auto idx = leader->insert(LogPayload::createFromString("first entry"),
-                              false, LogLeader::doNotTriggerAsyncReplication);
-    auto f = leader->waitFor(idx);
+    auto idx = leaderLogContainer.stateHandleMock->logLeaderMethods->insert(
+        LogPayload::createFromString("first entry"), false);
+    auto f = leaderLog->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f.isReady());
-    leader->triggerAsyncReplication();
+    leaderLogContainer.runAll();
     EXPECT_FALSE(f.isReady());
 
     {
-      auto stats =
-          std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
+      auto stats = leaderLog->getQuickStatus().local.value();
       // Note that the leader inserts an empty log entry in becomeLeader
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{2}));
-      EXPECT_EQ(stats.commitIndex, LogIndex{0});
+      EXPECT_EQ(stats.commitIndex, LogIndex{1});
     }
 
     // now create a new leader and delete the old one
-    leader =
-        leaderLog->becomeLeader("newLeader", LogTerm{2}, {followerProxy}, 2);
+    auto newLeaderLogContainer = makeLogWithFakes({});
+    config = makeConfig(leaderLogContainer, {followerLogContainer},
+                        {.term = 2_T, .writeConcern = 2});
+    std::ignore = newLeaderLogContainer.updateConfig(config);
+    newLeaderLogContainer.runAll();
+    // leaderLogContainer.runAll();
+    // leader =
+    //     leaderLog->becomeLeader("newLeader", LogTerm{2}, {followerProxy}, 2);
 
-    EXPECT_TRUE(follower->hasPendingAppendEntries());
-    follower->runAsyncAppendEntries();
+    EXPECT_TRUE(
+        followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
+    // followerLogContainer.delayedLogFollower->runAsyncAppendEntries();
+    followerLogContainer.runAll();
+    IHasScheduler::runAll(followerLogContainer, leaderLogContainer,
+                          newLeaderLogContainer);
     // the old leader is already gone, so we expect no new append entries
-    EXPECT_FALSE(follower->hasPendingAppendEntries());
+    EXPECT_FALSE(
+        followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
 
     // the old future should have failed
     ASSERT_TRUE(f.isReady());
     EXPECT_TRUE(f.hasException());
 
-    auto f2 = leader->waitFor(idx);
+    auto f2 = newLeaderLogContainer.log->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f2.isReady());
-    leader->triggerAsyncReplication();
 
     // run the old followers append entries
-    follower->runAsyncAppendEntries();
+    IHasScheduler::runAll(followerLogContainer, newLeaderLogContainer);
     // we expect a retry request
-    EXPECT_TRUE(follower->hasPendingAppendEntries());
-    auto newFollower =
-        followerLog->becomeFollower("newFollower", LogTerm{2}, "newLeader");
-    // simulate the database server has updated its follower
-    followerProxy->replaceFollower(newFollower);
+    EXPECT_TRUE(
+        followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
+    // TODO this swapping here should be replaced by something in the test
+    //      framework (i.e. LogWithFakes, LogConfig etc.)
+    auto oldFollower = DelayedLogFollower(nullptr);
+    auto oldScheduler = DelayedScheduler();
+    followerLogContainer.delayedLogFollower->swapFollowerAndQueueWith(
+        oldFollower);
+    std::swap(oldScheduler, *followerLogContainer.logScheduler);
+    std::ignore = followerLogContainer.updateConfig(config);
+    // auto newFollower =
+    //     followerLog->becomeFollower("newFollower", LogTerm{2}, "newLeader");
+    // // simulate the database server has updated its follower
+    // followerProxy->replaceFollower(newFollower);
 
-    EXPECT_TRUE(follower->hasPendingAppendEntries());
-    follower->runAsyncAppendEntries();
-    EXPECT_FALSE(follower->hasPendingAppendEntries());
+    EXPECT_TRUE(oldFollower.hasPendingAppendEntries());
+    oldFollower.runAsyncAppendEntries();
+    oldScheduler.runAll();
+    EXPECT_FALSE(oldFollower.hasPendingAppendEntries());
 
     ASSERT_FALSE(f2.isReady());
-    while (newFollower->hasPendingAppendEntries()) {
-      newFollower->runAsyncAppendEntries();
-    }
+    // while (newFollower->hasPendingAppendEntries()) {
+    //   newFollower->runAsyncAppendEntries();
+    // }
+    followerLogContainer.runAll();
 
     {
-      auto stats =
-          std::get<FollowerStatus>(newFollower->getStatus().getVariant()).local;
+      auto stats = followerLogContainer.log->getQuickStatus().local.value();
       // Note that the leader inserts an empty log entry in becomeLeader, which
       // happened twice already.
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
@@ -342,4 +321,3 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     }
   }
 }
-#endif

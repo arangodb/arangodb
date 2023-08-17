@@ -27,6 +27,8 @@
 
 #include <deque>
 
+#include <gtest/gtest.h>
+
 namespace arangodb::replication2::test {
 
 struct SyncScheduler : IScheduler {
@@ -85,6 +87,10 @@ struct FakeScheduler : IScheduler {
 };
 
 struct DelayedScheduler : IScheduler, IHasScheduler {
+  DelayedScheduler() = default;
+  DelayedScheduler(DelayedScheduler&&) = default;
+  auto operator=(DelayedScheduler&&) -> DelayedScheduler& = default;
+
   auto delayedFuture(std::chrono::nanoseconds duration, std::string_view name)
       -> arangodb::futures::Future<arangodb::futures::Unit> override {
     if (name.data() == nullptr) {
@@ -127,7 +133,9 @@ struct DelayedScheduler : IScheduler, IHasScheduler {
     auto queue = std::move(_queue);
     auto const tasks = queue.size();
     while (not queue.empty()) {
-      runOnce();
+      auto f = std::move(queue.front());
+      queue.pop_front();
+      f.operator()();
     }
     return tasks;
   }

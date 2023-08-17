@@ -64,6 +64,9 @@ struct ReplicatedStateHandleMock : replicated_log::IReplicatedStateHandle {
               (const, override));
   MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
 
+  // In order to get access to the IReplicatedLogLeaderMethods, call this method
+  // to set expectations and install handling of log methods.
+  // getInternalStatus and updateCommitIndex don't get expectations.
   void expectLeader() {
     {
       testing::InSequence seq;
@@ -76,7 +79,14 @@ struct ReplicatedStateHandleMock : replicated_log::IReplicatedStateHandle {
     }
 
     EXPECT_CALL(*this, becomeFollower).Times(0);
+    EXPECT_CALL(*this, acquireSnapshot).Times(0);
   }
+
+  // In order to get access to the IReplicatedLogFollowerMethods, call this
+  // method to set expectations and install handling of log methods.
+  // getInternalStatus and updateCommitIndex don't get expectations.
+  // Note that acquireSnapshot is expected not to be called: Override with your
+  // own EXPECT_CALL if necessary.
   void expectFollower() {
     {
       testing::InSequence seq;
@@ -89,6 +99,7 @@ struct ReplicatedStateHandleMock : replicated_log::IReplicatedStateHandle {
     }
 
     EXPECT_CALL(*this, leadershipEstablished).Times(0);
+    EXPECT_CALL(*this, acquireSnapshot).Times(0);
   }
   std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> logLeaderMethods;
   std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
