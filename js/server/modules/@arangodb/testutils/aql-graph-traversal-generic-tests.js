@@ -35,6 +35,8 @@ const aql = require("@arangodb").aql;
 const protoGraphs = require('@arangodb/testutils/aql-graph-traversal-generic-graphs').protoGraphs;
 const _ = require("lodash");
 const {getCompactStatsNodes, TraversalBlock } = require("@arangodb/testutils/aql-profiler-test-helper");
+const isCluster = require("@arangodb/cluster").isCluster();
+const errors = internal.errors;
 
 
 /*
@@ -2694,13 +2696,15 @@ function testSmallCircleTraversalStartInUnknownCollection(testGraph) {
     // This query should work without throwing.
     assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
     try {
-      // This query shou[d return the unknown Collections vertex as a result.
+      // This query should return the unknown Collections vertex as a result.
       // As this is not part of the Graph, we throw an error here.
       const brokenQuery = `FOR x IN 0..1 OUTBOUND "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
       db._query(brokenQuery);
-      assertEqual(true, false, `We executed a query that is requried to throw`);
+      if (isCluster) {
+        assertEqual(true, false, `We executed a query that is requried to throw`);
+      }
     } catch (err) {
-      require("internal").print(err);
+      assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
     }
   } finally {
     db._drop(collName);
@@ -2717,13 +2721,15 @@ function testSmallCircleShortestPathStartInUnknownCollection(testGraph) {
     // This query should work without throwing.
     assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
     try {
-      // This query shou[d return the unknown Collections vertex as a result.
+      // This query should return the unknown Collections vertex as a result.
       // As this is not part of the Graph, we throw an error here.
       const brokenQuery = `FOR x IN OUTBOUND SHORTEST_PATH "${collName}/1" TO "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
       db._query(brokenQuery);
-      assertEqual(true, false, `We executed a query that is requried to throw`);
+      if (isCluster) {
+        assertEqual(true, false, `We executed a query that is requried to throw`);
+      }
     } catch (err) {
-      require("internal").print(err);
+      assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code); 
     }
   } finally {
     db._drop(collName);
@@ -2735,19 +2741,27 @@ function testSmallCircleKPathStartInUnknownCollection(testGraph) {
   try {
     db._create(collName);
     db._collection(collName).save([{_key: "1"}, {_key: "2"}]);
-    const q = `FOR x IN 1 OUTBOUND K_PATHS "${collName}/1" TO "${collName}/2" GRAPH "${testGraph.name()}" RETURN x`;
-    const res = db._query(q).toArray();
-    // This query should work without throwing.
-    assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
     try {
-      // This query shou[d return the unknown Collections vertex as a result.
+      const q = `FOR x IN 1 OUTBOUND K_PATHS "${collName}/1" TO "${collName}/2" GRAPH "${testGraph.name()}" RETURN x`;
+      const res = db._query(q).toArray();
+      // This query should return the unknown Collections vertex as a result.
+      // As this is not part of the Graph, we throw an error here.
+      if (isCluster) {
+        assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
+      }
+    } catch (err) {
+      assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
+    }
+    try {
+      // This query should return the unknown Collections vertex as a result.
       // As this is not part of the Graph, we throw an error here.
       const brokenQuery = `FOR x IN 0..1 OUTBOUND K_PATHS "${collName}/1" TO "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
       db._query(brokenQuery);
-      assertEqual(true, false, `We executed a query that is requried to throw`);
+      if (isCluster) {
+        assertEqual(true, false, `We executed a query that is requried to throw`);
+      }
     } catch (err) {
-      require("internal").print(err);
-      throw err;
+      assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
     }
   } finally {
     db._drop(collName);
