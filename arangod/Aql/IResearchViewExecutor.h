@@ -657,6 +657,7 @@ class IResearchViewExecutorBase {
 
  protected:
   transaction::Methods _trx;
+  iresearch::MonitorManager _memory;
   AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   Infos& _infos;
   InputAqlItemRow _inputRow;

@@ -22,6 +22,7 @@
 #pragma once
 
 #include "resource_manager.hpp"
+#include "Basics/ResourceUsage.h"
 #include "Metrics/Gauge.h"
 
 namespace arangodb::iresearch {
@@ -30,9 +31,8 @@ struct ResourceManager final : metrics::Gauge<uint64_t>, irs::IResourceManager {
   using Value = uint64_t;
   using metrics::Gauge<uint64_t>::Gauge;
 
-  bool Increase(size_t v) noexcept final {
-    fetch_add(v);
-    return true;
+  void Increase(size_t v) noexcept final {
+    fetch_add(v);  //
   }
 
   void Decrease(size_t v) noexcept final {
@@ -46,14 +46,13 @@ struct LimitedResourceManager final : metrics::Gauge<uint64_t>,
   using Value = uint64_t;
   using metrics::Gauge<uint64_t>::Gauge;
 
-  bool Increase(size_t v) noexcept final {
+  void Increase(size_t v) final {
     uint64_t current = load();
     do {
       if (limit < current + v) {
-        return false;
+        throw std::bad_alloc{};
       }
     } while (!compare_exchange_weak(current, current + v));
-    return true;
   }
 
   void Decrease(size_t v) noexcept final {
@@ -62,6 +61,21 @@ struct LimitedResourceManager final : metrics::Gauge<uint64_t>,
   }
 
   uint64_t limit{0};
+};
+
+struct MonitorManager final : irs::IResourceManager {
+  explicit MonitorManager(ResourceMonitor& monitor) noexcept
+      : _monitor{monitor} {}
+
+  void Increase(size_t bytes) final {
+    _monitor.increaseMemoryUsage(bytes);  //
+  }
+
+  void Decrease(size_t bytes) noexcept final {
+    _monitor.decreaseMemoryUsage(bytes);
+  }
+
+  ResourceMonitor& _monitor;
 };
 
 }  // namespace arangodb::iresearch
