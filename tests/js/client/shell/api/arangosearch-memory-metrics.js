@@ -29,35 +29,60 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const { getMetricSingle, getDBServersClusterMetricsByName } = require('@arangodb/test-helper');
 const isCluster = require("internal").isCluster();
+const isWindows = (require("internal").platform.substr(0, 3) === 'win');
   
 function MemoryMetrics() {
-  const collection = "test";
-  const view = "testView";
-  let x = [];
+  const collectionName = "test";
+  const viewName = "testView";
 
-  let getMetric = (name) => { 
+  let getMetric = (name) => {
     if (isCluster) {
-      let sum = 0;
       let metrics = getDBServersClusterMetricsByName(name)
       assertTrue(metrics.length == 3);
-      metrics.forEach( num => {
-        sum += num;
-      });
-      return sum;
+      // print(typeof name)
+      if (typeof name == "string") {
+        let sum = 0;
+        metrics.forEach( num => {
+          sum += num;
+        });
+        return sum;
+      } else {
+        return metrics.reduce((acc, metrics) => acc.map((sum, i) => sum + metrics[i]), new Array(metrics[0].length).fill(0));
+      }
     } else {
       return getMetricSingle(name);
     }
   };
 
+  let generateAndInsert = (collName) => {
+    if( typeof generateAndInsert.counter == 'undefined' ) {
+      generateAndInsert.counter = 0;
+    }
+    if( typeof generateAndInsert.factor == 'undefined' ) {
+      generateAndInsert.factor = 0;
+    }
+    generateAndInsert.factor++;
+
+    let docs = [];
+    for (let i = 0; i < 1000 * generateAndInsert.factor; i++) {
+      let custom_field = "field_" + generateAndInsert.counter;
+      let d = {
+        'stringValue': "" + generateAndInsert.counter, 
+        'numericValue': generateAndInsert.counter
+      };
+      d[custom_field] = generateAndInsert.counter;
+      docs.push(d);
+      generateAndInsert.counter++
+    }
+    db._collection(collName).save(docs);
+  };
+
   return {
     setUpAll: function () {
-      for (let i = 0; i < 10000; i++) {
-        x.push({stringValue: "" + i, numericValue: i});
-      }
-      let c = db._create(collection, {replicationFactor:3, writeConcern:3, numberOfShards : 3});
-      c.insert(x);
-      db._createView(view, "arangosearch", {
-      links: {[collection]: {
+      db._create(collectionName, {replicationFactor:3, writeConcern:3, numberOfShards : 3});
+      generateAndInsert(collectionName)
+      db._createView(viewName, "arangosearch", {
+      links: {[collectionName]: {
           includeAllFields: true,
           primarySort: {"fields": [{ "field": "stringValue", "desc": true }]},
           storedValues: ["numericValue"],
@@ -71,45 +96,63 @@ function MemoryMetrics() {
       assertTrue(descriptors > 0);
     },
     tearDownAll: function () {
-      db._dropView(view);
-      db._drop(collection);
+      db._dropView(viewName);
+      db._drop(collectionName);
     },
 
     testSimple: function () {
-      let c = db._collection(collection);
-      for (let i = 0; i < 3; i++) {
-        print('ITERATION')
-        const oldValue = getMetric("arangodb_search_writers_memory");
-        c.insert(x);
-        const newValue = getMetric("arangodb_search_writers_memory");
-        print(oldValue, newValue);
-        assertNotEqual(oldValue, newValue);
+
+      for (let i = 0; i < 5; i++) {
+        let writersOldest = getMetric("arangodb_search_writers_memory");
+        generateAndInsert(collectionName)
+        db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
+        let writersOlder = getMetric("arangodb_search_writers_memory");
+        assertNotEqual(writersOldest, writersOlder);
       }
-      let readers = 0;
-      let consolidations = 0;
-      let mapped = 0;
+
+      let readers, consolidations, descriptors, mapped;
       for (let i = 0; i < 100; ++i) {
-        if (readers === 0) {
-          readers = getMetric("arangodb_search_readers_memory");
-        }
-        if (consolidations === 0) {
-          consolidations = getMetric("arangodb_search_consolidations_memory");
-        }
-        // TODO(MBkkt) linux only check?
-        mapped = getMetric("arangodb_search_mapped_memory");
-        if (readers > 0 && consolidations > 0) {
+
+        generateAndInsert(collectionName)
+        db._query(`for d in ${viewName} SEARCH d.numericValue == 100 RETURN d`);
+
+        [readers, consolidations, descriptors, mapped] = getMetric([
+          "arangodb_search_readers_memory", 
+          "arangodb_search_consolidations_memory", 
+          "arangodb_search_file_descriptors",
+          "arangodb_search_mapped_memory"
+        ]);
+
+        if (readers > 0 && consolidations > 0 && descriptors > 0 && (isWindows || mapped > 0)) {
           break;
         }
-        require("internal").sleep(0.1);
       }
+
       assertTrue(readers > 0);
       assertTrue(consolidations > 0);
+      if (!isWindows) {
+        assertTrue(mapped > 0);
+      }
+
       {
         const oldValue = getMetric("arangodb_search_writers_memory");
-        db._query("FOR d IN " + collection + " REMOVE d IN " + collection);
+        db._query("FOR d IN " + collectionName + " REMOVE d IN " + collectionName);
         const newValue = getMetric("arangodb_search_writers_memory");
         assertNotEqual(oldValue, newValue);
       }
+
+      db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
+      [readers, consolidations, descriptors, mapped] = getMetric([
+        "arangodb_search_readers_memory", 
+        "arangodb_search_consolidations_memory",
+        "arangodb_search_file_descriptors",
+        "arangodb_search_mapped_memory"
+      ]);
+
+      assertTrue(readers == 0);
+      assertTrue(consolidations == 0);
+      assertTrue(descriptors == 0);
+      assertTrue(mapped == 0);
     },
   };
 }

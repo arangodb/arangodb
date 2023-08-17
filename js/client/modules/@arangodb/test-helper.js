@@ -225,17 +225,31 @@ exports.getAllMetric = function (endpoint, tags) {
   return res.body;
 };
 
-function getMetricName(text, name) {
-  let re = new RegExp("^" + name);
-  let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-  if (!matches.length) {
-    throw "Metric " + name + " not found";
+function getMetricName(text, args) {
+  let func = (name) => {
+    let re = new RegExp("^" + name);
+    let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+    if (!matches.length) {
+      throw "Metric " + name + " not found";
+    }
+    let res = 0;
+    for(let i = 0; i < matches.length; i+= 1) {
+      res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+    }
+    return res;
+  };
+
+  if (typeof args == "object") {
+    let res = [];
+    args.forEach(name => {
+      res.push(func(name));
+    });
+    return res;
+  } else if (typeof args == "string") {
+    return func(args);
+  } else {
+    throw `Value ${args} is not supported!`
   }
-  let res = 0;
-  for(let i = 0; i < matches.length; i+= 1) {
-    res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
-  }
-  return res;
 }
 
 exports.getMetric = function (endpoint, name) {

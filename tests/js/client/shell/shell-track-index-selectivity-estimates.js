@@ -96,7 +96,6 @@ function IndexEstimatesMemorySuite () {
       // there may still be buffered index estimates updates that are
       // processed in the background while this test is running.
       let metric = getMetric();
-      print(metric, initial);
       assertTrue(metric <= initial, { metric, initial });
     },
 
@@ -110,7 +109,6 @@ function IndexEstimatesMemorySuite () {
       // there may still be buffered index estimates updates that are
       // processed in the background while this test is running.
       let metric = getMetric();
-      print(metric, initial);
       assertTrue(metric > initial, { metric, initial });
     },
     
@@ -125,7 +123,6 @@ function IndexEstimatesMemorySuite () {
       // there may still be buffered index estimates updates that are
       // processed in the background while this test is running.
       let metric = getMetric();
-      print(metric, initial);
       assertTrue(metric <= initial, { metric, initial });
     },
     
@@ -140,7 +137,6 @@ function IndexEstimatesMemorySuite () {
       // there may still be buffered index estimates updates that are
       // processed in the background while this test is running.
       let metric = getMetric();
-      print(metric, initial);
       assertTrue(metric > initial, { metric, initial });
     },
     
