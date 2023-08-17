@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertTrue, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -30,8 +30,9 @@
 
 let db = require("@arangodb").db;
 let jsunity = require("jsunity");
-let helper = require("@arangodb/aql-helper");
-  
+let helper = require("@arangodb/test-helper.js");
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
+
 const ruleName = "undistribute-remove-after-enum-coll";
 const rulesNone        = { optimizer: { rules: [ "-all" ] } };
 const rulesAll         = { optimizer: { rules: [ "+all", "-cluster-one-shard" ] } };

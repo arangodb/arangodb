@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertTrue, assertFalse, AQL_EXPLAIN */
+/*global fail, assertEqual, assertTrue, assertFalse */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -30,6 +30,7 @@
 let jsunity = require("jsunity");
 let errors = require("internal").errors;
 let db = require("@arangodb").db;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 /// @brief test suite
 function explainSuite () {

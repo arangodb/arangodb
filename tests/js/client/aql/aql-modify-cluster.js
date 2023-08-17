@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -27,11 +27,12 @@
 const internal = require("internal");
 const db = require("@arangodb").db;
 const jsunity = require("jsunity");
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 const getModifyQueryResults = helper.getModifyQueryResults;
 const assertQueryError = helper.assertQueryError;
 const sanitizeStats = helper.sanitizeStats;
 const errors = internal.errors;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

@@ -1,6 +1,6 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
 /*global assertEqual, assertFalse, assertNull, assertNotNull, assertTrue, 
-  assertNotEqual, assertUndefined, fail, AQL_EXECUTE */
+  assertNotEqual, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -28,13 +28,14 @@
 const internal = require("internal");
 const db = require("@arangodb").db;
 const jsunity = require("jsunity");
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 const getModifyQueryResults = helper.getModifyQueryResults;
 const getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
 const sanitizeStats = helper.sanitizeStats;
 const isEqual = helper.isEqual;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 let validateDocuments = function (documents, isEdgeCollection) {
   for (let index in documents) {

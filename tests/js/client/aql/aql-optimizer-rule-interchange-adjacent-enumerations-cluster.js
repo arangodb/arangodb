@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 const isEqual = helper.isEqual;
 const db = require("@arangodb").db;
 const _ = require("lodash");

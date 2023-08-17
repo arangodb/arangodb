@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -34,6 +34,7 @@ let {db, isCluster} = require("internal");
 const ruleName = "move-filters-into-enumerate";
 const lateRuleName = "late-document-materialization";
 const cn = "UnitTestsCollection";
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function optimizerRuleTestSuite () {
   return {

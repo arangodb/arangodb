@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, modification blocks
@@ -31,9 +31,10 @@
 const internal = require("internal");
 const db = require("@arangodb").db;
 const jsunity = require("jsunity");
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 const errors = internal.errors;
 const isCluster = require('@arangodb/cluster').isCluster();
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 const collectionName = "UnitTestAqlModify";
 let col;

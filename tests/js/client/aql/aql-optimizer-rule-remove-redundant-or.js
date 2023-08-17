@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, skiplist index queries
@@ -30,8 +30,9 @@
 // TODO add some test which don't use number values!
 
 var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
+var helper = require("@arangodb/test-helper.js");
 var getQueryResults = helper.getQueryResults;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -29,9 +29,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
+var helper = require("@arangodb/test-helper.js");
 var isEqual = helper.isEqual;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

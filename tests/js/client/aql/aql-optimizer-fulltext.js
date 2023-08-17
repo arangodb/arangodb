@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertFalse, assertTrue, assertNotEqual */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -29,10 +29,11 @@
 const expect = require('chai').expect;
 var internal = require("internal");
 var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
+var helper = require("@arangodb/test-helper.js");
 var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
 var db = require('internal').db;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for late document materialization arangosearch rule
@@ -32,6 +32,7 @@ let jsunity = require("jsunity");
 let db = require("@arangodb").db;
 let isCluster = require("internal").isCluster();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function noDocumentMaterializationViewRuleTestSuite(isSearchAlias) {
   const cn = "UnitTestsCollection";

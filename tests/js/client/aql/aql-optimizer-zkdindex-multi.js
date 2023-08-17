@@ -1,4 +1,3 @@
-/* global AQL_EXPLAIN, AQL_EXECUTE */
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -28,6 +27,7 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const aql = arangodb.aql;
 const {assertTrue, assertEqual} = jsunity.jsUnity.assertions;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";

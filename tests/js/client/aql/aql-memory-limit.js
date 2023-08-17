@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, fail, AQL_EXECUTE */
+/*global assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for memory limits
@@ -33,6 +33,7 @@ const errors = internal.errors;
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const isCluster = require('@arangodb/cluster').isCluster();
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function ahuacatlMemoryLimitStaticQueriesTestSuite () {
   return {

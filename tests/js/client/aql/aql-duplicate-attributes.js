@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertMatch, assertNotMatch, AQL_EXECUTE */
+/*global assertEqual, assertMatch, assertNotMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for duplicate attributes
@@ -28,6 +28,7 @@
 
 const jsunity = require("jsunity");
 let db = require("internal").db;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function ahuacatlDuplicateAttributesTestSuite () {
   const cn = "UnitTestsDuplicate";

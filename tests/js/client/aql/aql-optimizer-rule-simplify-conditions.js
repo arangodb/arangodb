@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function optimizerRuleTestSuite () {
   const ruleName = "simplify-conditions";

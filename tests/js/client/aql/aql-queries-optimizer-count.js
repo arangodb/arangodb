@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXPLAIN */
+/*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, sort optimizations
@@ -30,8 +30,9 @@
 
 let jsunity = require("jsunity");
 let internal = require("internal");
-let helper = require("@arangodb/aql-helper");
+let helper = require("@arangodb/test-helper.js");
 let getQueryResults = helper.getQueryResults;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

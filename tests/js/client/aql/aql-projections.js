@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -30,6 +30,7 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const ruleName = "reduce-extraction-to-projection";
 const cn = "UnitTestsOptimizer";
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function projectionsPlansTestSuite () {
   let c = null;

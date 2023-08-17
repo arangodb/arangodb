@@ -30,7 +30,7 @@
 
 var db = require("@arangodb").db;
 var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
+var helper = require("@arangodb/test-helper.js");
 const _ = require('lodash');
 
 ////////////////////////////////////////////////////////////////////////////////

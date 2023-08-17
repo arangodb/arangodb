@@ -659,3 +659,55 @@ exports.AQL_EXECUTE = function(query, bindVars, options) {
     plan: extra.plan,
     cached: cursor.cached};
 };
+
+function normalizeRow (row, recursive) {
+  if (row !== null &&
+    typeof row === 'object' &&
+    !Array.isArray(row)) {
+    var keys = Object.keys(row);
+
+    keys.sort();
+
+    var i, n = keys.length, out = { };
+    for (i = 0; i < n; ++i) {
+      var key = keys[i];
+
+      if (key[0] !== '_') {
+        out[key] = row[key];
+      }
+    }
+
+    return out;
+  }
+
+  if (recursive && Array.isArray(row)) {
+    row = row.map(normalizeRow);
+  }
+
+  return row;
+}
+
+exports.getQueryResults = function(query, bindVars, recursive, options = {}) {
+  var finalOptions = Object.assign({ count: true, batchSize: 3000 }, options);
+  var result = db._query(query, bindVars, finalOptions).toArray();
+
+  if (Array.isArray(result)) {
+    result = result.map(function (row) {
+      return normalizeRow(row, recursive);
+    });
+  }
+
+  return result;
+}
+
+exports.assertQueryError = function(errorCode, query, bindVars, options = {}) {
+  try {
+    exports.getQueryResults(query, bindVars, options);
+    fail();
+  } catch (e) {
+    assertFalse(e === "fail", "no exception thrown by query");
+    assertTrue(e.errorNum !== undefined, 'unexpected error format while calling [' + query + ']');
+    assertEqual(errorCode, e.errorNum, 'unexpected error code (' + e.errorMessage +
+      " while executing: '" + query + "' expecting: " + errorCode + '): ');
+  }
+}

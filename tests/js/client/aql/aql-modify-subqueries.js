@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -27,13 +27,14 @@
 const internal = require("internal");
 const db = require("@arangodb").db;
 const jsunity = require("jsunity");
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 const getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
 const assertQueryError = helper.assertQueryError;
 const sanitizeStats = helper.sanitizeStats;
 const isCluster = require('@arangodb/cluster').isCluster();
 const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations" ] } };
 const disableRestrictToSingleShard = { optimizer : { rules : [ "-restrict-to-single-shard" ] } };
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 const disableSingleDocOpRestrictToSingleShard = {
   optimizer : {

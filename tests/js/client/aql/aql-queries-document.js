@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 850 */
-/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language
@@ -28,7 +28,8 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var helper = require("@arangodb/aql-helper");
+var helper = require("@arangodb/test-helper.js");
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function ahuacatlDocumentsTestSuite () {
   var c = null;

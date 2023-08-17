@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for late document materialization rule
@@ -32,6 +32,7 @@ let jsunity = require("jsunity");
 let db = require("@arangodb").db;
 const internal = require('internal');
 let isCluster = internal.isCluster();
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 
 function lateDocumentMaterializationRuleTestSuite () {

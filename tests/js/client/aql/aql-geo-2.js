@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -30,6 +30,7 @@ const base = require("fs").join(require('internal').pathForTesting('server'),
   'aql', 'aql-geo.inc');
 const geoSuite = require("internal").load(base);
 const isEnterprise = require("internal").isEnterprise();
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function testGeo() {
   let suite = {};

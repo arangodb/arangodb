@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -32,11 +32,12 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
 const db = require("@arangodb").db;
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 const assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function optimizerCollectInClusterSuite(isSearchAlias) {
   let c;

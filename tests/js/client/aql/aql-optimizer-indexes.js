@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for index usage
@@ -31,6 +30,7 @@
 const jsunity = require('jsunity');
 const assert = require('jsunity').jsUnity.assertions;
 const {assertTrue, assertFalse, assertEqual, assertNotEqual} = assert;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 const db = require('@arangodb').db;
 const _ = require('lodash');
 

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, fail, AQL_EXPLAIN */
+/*global assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for registers limits
@@ -28,6 +28,7 @@
 
 let internal = require("internal");
 let jsunity = require("jsunity");
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function aqlRegistersLimitTestSuite () {
   const errors = internal.errors;

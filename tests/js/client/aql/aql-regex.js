@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:5000 */
-/*global assertEqual, AQL_EXECUTE */
+/*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, functions
@@ -31,6 +31,7 @@
 var internal = require("internal");
 var jsunity = require("jsunity");
 var db = internal.db;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

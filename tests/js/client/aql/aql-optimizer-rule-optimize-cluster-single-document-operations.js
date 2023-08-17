@@ -30,7 +30,7 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
 const db = require("@arangodb").db;
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 
 function optimizerClusterSingleDocumentTestSuite() {
   var ruleName = "optimize-cluster-single-document-operations";

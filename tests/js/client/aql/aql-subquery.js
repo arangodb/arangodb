@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, subqueries
@@ -30,12 +29,13 @@
 
 const jsunity = require("jsunity");
 const { assertEqual, assertNotEqual, assertTrue } = jsunity.jsUnity.assertions;
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 const getQueryResults = helper.getQueryResults;
 const findExecutionNodes = helper.findExecutionNodes;
 const { db } = require("@arangodb");
 const isCoordinator = require('@arangodb/cluster').isCoordinator();
 const isEnterprise = require("internal").isEnterprise();
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

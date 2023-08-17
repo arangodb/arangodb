@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, AQL_EXPLAIN */
+/*global assertEqual, assertFalse, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for read own writes
@@ -28,6 +28,7 @@
 
 const db = require("@arangodb").db;
 const jsunity = require("jsunity");
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function readOwnWritesSuite () {
   const cn = "UnitTestsCollection";

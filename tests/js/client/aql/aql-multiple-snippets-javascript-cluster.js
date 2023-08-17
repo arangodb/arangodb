@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, assertMatch, AQL_EXECUTE, AQL_EXPLAIN */
+/*global fail, assertEqual, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -28,6 +28,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const errors = require("internal").errors;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function MultipleSnippetsInCoordinatorSuite () {
   'use strict';

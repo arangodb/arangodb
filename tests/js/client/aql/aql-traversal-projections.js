@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXPLAIN */
+/*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -28,6 +28,7 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const cn = "UnitTestsOptimizer";
 const isCluster = require("internal").isCluster();
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function projectionsTestSuite () {
   return {

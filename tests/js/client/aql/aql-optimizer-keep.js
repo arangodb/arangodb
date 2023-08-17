@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ KEEP
@@ -33,8 +32,9 @@ const {assertTrue, assertFalse, assertEqual, assertNotEqual} = jsunity.jsUnity.a
 const internal = require("internal");
 const errors = internal.errors;
 const db = require("@arangodb").db;
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 const assertQueryError = helper.assertQueryError;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

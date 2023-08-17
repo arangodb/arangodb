@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -33,13 +32,14 @@ const db = internal.db;
 const jsunity = require("jsunity");
 const assert = require("jsunity").jsUnity.assertions;
 const {assertEqual, assertFalse, assertTrue, assertNotEqual} = assert;
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 const isEqual = helper.isEqual;
 const findExecutionNodes = helper.findExecutionNodes;
 const findReferencedNodes = helper.findReferencedNodes;
 const getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 const removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
-  
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
+
 const ruleName = "use-index-for-sort";
 
 ////////////////////////////////////////////////////////////////////////////////

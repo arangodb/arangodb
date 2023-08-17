@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertFalse, AQL_EXECUTE */
+/*global assertUndefined, assertEqual, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for index usage
@@ -30,6 +30,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function optimizerFullcountTestSuite () {
   let c;

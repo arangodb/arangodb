@@ -1,10 +1,11 @@
 /*jshint globalstrict:false, strict:false, maxlen: 7000 */
-/*global assertEqual, assertTrue, assertFalse, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, assertFalse */
 
 const jsunity = require("jsunity");
 const db = require("internal").db;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const cn = 'UnitTestsCollection';
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 let setupCollection = function(cn, n) {
   db._drop(cn);

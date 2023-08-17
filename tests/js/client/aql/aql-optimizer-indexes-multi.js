@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertTrue, assertEqual, assertNotEqual */
 
 "use strict";
 
@@ -33,6 +33,7 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

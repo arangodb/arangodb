@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_PARSE, AQL_EXECUTE */
+/*global assertEqual, AQL_PARSE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for with collections
@@ -33,6 +33,7 @@ var internal = require("internal");
 var db = require("org/arangodb").db;
 var helper = require("org/arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

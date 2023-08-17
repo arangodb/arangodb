@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for late document materialization arangosearch rule
@@ -31,6 +31,7 @@
 (function() {
   var db = require("@arangodb").db;
   const analyzers = require("@arangodb/analyzers");
+  const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
   return function (isSearchAlias, isCluster, newDbName, dbArgs) {
     const ruleName = "late-document-materialization-arangosearch";

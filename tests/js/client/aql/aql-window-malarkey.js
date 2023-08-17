@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, fail, AQL_EXPLAIN */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -31,6 +31,7 @@ const errors = internal.errors;
 const cluster = require('@arangodb/cluster');
 const isCoordinator = cluster.isCoordinator();
 const isEnterprise = require("internal").isEnterprise();
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function checkQueryError(query, message, errorCode) {
   if (errorCode === undefined) {

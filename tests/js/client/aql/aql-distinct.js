@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, fail, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -31,10 +31,11 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var internal = require("internal");
-var helper = require("@arangodb/aql-helper");
+var helper = require("@arangodb/test-helper.js");
 var errors = internal.errors;
 var _ = require("lodash");
-  
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
+
 var containsDistinct = function(query) {
   var plan = AQL_EXPLAIN(query).plan;
 

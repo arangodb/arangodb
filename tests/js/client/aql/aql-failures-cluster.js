@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, assertTrue, AQL_EXECUTE */
+/*global fail, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure scenarios
@@ -34,6 +34,7 @@ var db = arangodb.db;
 var internal = require("internal");
 
 const {ERROR_QUERY_COLLECTION_LOCK_FAILED, ERROR_CLUSTER_TIMEOUT} = internal.errors;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 
 ////////////////////////////////////////////////////////////////////////////////

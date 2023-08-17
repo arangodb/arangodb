@@ -35,7 +35,7 @@ const OptimizeTraversalRule = "optimize-traversals";
 const FilterRemoveRule = "remove-filter-covered-by-traversal";
 const deactivateOptimizer = { optimizer: { rules: [ "-all" ] } };
 const activateOptimizer = { optimizer: { rules: [ "+all" ] } };
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 const findExecutionNodes = helper.findExecutionNodes;
 
 describe('Single Traversal Optimizer', function () {

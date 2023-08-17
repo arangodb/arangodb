@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertFalse, assertTrue, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -31,13 +31,14 @@
 const expect = require('chai').expect;
 const internal = require("internal");
 const jsunity = require("jsunity");
-const helper = require("@arangodb/aql-helper");
+const helper = require("@arangodb/test-helper.js");
 const isEqual = helper.isEqual;
 const findExecutionNodes = helper.findExecutionNodes;
 const findReferencedNodes = helper.findReferencedNodes;
 const getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 const removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 const db = require('internal').db;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function legacyOptimizerRuleTestSuite() {
   // quickly disable tests here

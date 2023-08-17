@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -31,11 +31,12 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var errors = internal.errors;
 var db = require("@arangodb").db;
-var helper = require("@arangodb/aql-helper");
+var helper = require("@arangodb/test-helper.js");
 const isEnterprise = require("internal").isEnterprise();
 var assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function viewCountOptimization(isSearchAlias) {
   return {

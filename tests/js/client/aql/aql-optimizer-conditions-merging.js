@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for filters
@@ -28,6 +28,7 @@
 
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function OptimizerConditionsMergingSuite () {
   const cn = "UnitTestsCollection";

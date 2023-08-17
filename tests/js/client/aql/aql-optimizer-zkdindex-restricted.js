@@ -1,4 +1,3 @@
-/* global AQL_EXPLAIN, AQL_EXECUTE */
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -28,6 +27,7 @@ const arangodb = require("@arangodb");
 const internal = require("internal");
 const db = arangodb.db;
 const {assertEqual} = jsunity.jsUnity.assertions;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function optimizerRuleZkd2dIndexTestSuite() {
     const colName = 'UnitTestZkdIndexCollection';

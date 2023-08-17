@@ -1,5 +1,4 @@
 /* jshint esnext: true */
-/* global AQL_EXECUTE, AQL_EXPLAIN */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief SpedgeCollection for the AQL FOR x IN GRAPH name statemedgeNamet
@@ -32,6 +31,7 @@
 
 const jsunity = require('jsunity');
 const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 const internal = require('internal');
 const db = internal.db;

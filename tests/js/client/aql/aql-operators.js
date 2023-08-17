@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, AQL_EXECUTE */
+/*global assertEqual, assertFalse, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, operators
@@ -31,7 +31,8 @@
 var jsunity = require("jsunity");
 var aql = require("@arangodb/aql");
 var db = require("internal").db;
-      
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
+
 var LOGICAL_AND = function (a, b) {
   return db._query("RETURN " + JSON.stringify(a) + " && " + JSON.stringify(b)).toArray()[0];
 };

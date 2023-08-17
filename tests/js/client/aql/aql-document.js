@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNull, AQL_EXECUTE */
+/*global assertEqual, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for DOCUMENT function
@@ -29,6 +29,7 @@
 let internal = require("internal");
 let db = require("@arangodb").db;
 let jsunity = require("jsunity");
+const {AQL_EXPLAIN, AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function ahuacatlDocumentSuite () {
   let cn = "UnitTestsAhuacatlDocument";

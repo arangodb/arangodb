@@ -27,6 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {AQL_EXECUTE} = require('@arangodb/test-helper.js');
 
 function arrayAccessTestSuite () {
   const persons = [
