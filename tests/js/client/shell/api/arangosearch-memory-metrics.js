@@ -90,11 +90,12 @@ function MemoryMetrics() {
           commitIntervalMsec: 100,
         }}
       });
-      const writers = getMetric("arangodb_search_writers_memory");
+      const writers = getMetric("arangodb_search_writers_memory_usage");
       assertTrue(writers > 0);
       const descriptors = getMetric("arangodb_search_file_descriptors");
       assertTrue(descriptors > 0);
     },
+    
     tearDownAll: function () {
       db._dropView(viewName);
       db._drop(collectionName);
@@ -103,10 +104,10 @@ function MemoryMetrics() {
     testSimple: function () {
 
       for (let i = 0; i < 5; i++) {
-        let writersOldest = getMetric("arangodb_search_writers_memory");
+        let writersOldest = getMetric("arangodb_search_writers_memory_usage");
         generateAndInsert(collectionName)
         db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
-        let writersOlder = getMetric("arangodb_search_writers_memory");
+        let writersOlder = getMetric("arangodb_search_writers_memory_usage");
         assertNotEqual(writersOldest, writersOlder);
       }
 
@@ -117,7 +118,7 @@ function MemoryMetrics() {
         db._query(`for d in ${viewName} SEARCH d.numericValue == 100 RETURN d`);
 
         [readers, consolidations, descriptors, mapped] = getMetric([
-          "arangodb_search_readers_memory", 
+          "arangodb_search_readers_memory_usage", 
           "arangodb_search_consolidations_memory", 
           "arangodb_search_file_descriptors",
           "arangodb_search_mapped_memory"
@@ -135,15 +136,15 @@ function MemoryMetrics() {
       }
 
       {
-        const oldValue = getMetric("arangodb_search_writers_memory");
+        const oldValue = getMetric("arangodb_search_writers_memory_usage");
         db._query("FOR d IN " + collectionName + " REMOVE d IN " + collectionName);
-        const newValue = getMetric("arangodb_search_writers_memory");
+        const newValue = getMetric("arangodb_search_writers_memory_usage");
         assertNotEqual(oldValue, newValue);
       }
 
       db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
       [readers, consolidations, descriptors, mapped] = getMetric([
-        "arangodb_search_readers_memory", 
+        "arangodb_search_readers_memory_usage", 
         "arangodb_search_consolidations_memory",
         "arangodb_search_file_descriptors",
         "arangodb_search_mapped_memory"
@@ -153,7 +154,7 @@ function MemoryMetrics() {
       assertTrue(consolidations == 0);
       assertTrue(descriptors == 0);
       assertTrue(mapped == 0);
-    },
+    }
   };
 }
 

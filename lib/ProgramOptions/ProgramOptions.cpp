@@ -174,9 +174,9 @@ void ProgramOptions::printUsage() const {
 // hidden
 void ProgramOptions::printHelp(std::string const& search) const {
   bool const colors = (isatty(STDOUT_FILENO) != 0);
-  TRI_TerminalSize ts = TRI_DefaultTerminalSize();
-  size_t const tw = ts.columns;
-  size_t const ow = optionsWidth();
+  auto ts = terminal_utils::defaultTerminalSize();
+  size_t tw = ts.columns;
+  size_t ow = optionsWidth();
 
   std::string normalized = search;
   if (normalized == "uncommon" || normalized == "hidden") {

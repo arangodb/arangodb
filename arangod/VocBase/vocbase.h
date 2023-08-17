@@ -34,7 +34,6 @@
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
@@ -220,9 +219,6 @@ struct TRI_vocbase_t {
       -> arangodb::DatabaseConfiguration;
 
  public:
-  arangodb::basics::DeadlockDetector<arangodb::TransactionId,
-                                     arangodb::LogicalCollection>
-      _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase

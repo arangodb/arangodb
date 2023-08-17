@@ -61,9 +61,7 @@ class PrimaryKeysFilterBase : public irs::filter,
     return irs::type<PrimaryKeysFilterBase>::id();
   }
 
-  filter::prepared::ptr prepare(
-      irs::IndexReader const& rdr, irs::Scorers const& ord, irs::score_t boost,
-      irs::attribute_provider const* ctx) const final {
+  filter::prepared::ptr prepare(irs::PrepareContext const& ctx) const final {
     if (_pks.empty()) {
       return irs::filter::prepared::empty();
     }
