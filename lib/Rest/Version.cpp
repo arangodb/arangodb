@@ -47,6 +47,7 @@
 #include "Basics/asio_ns.h"
 #include "Basics/build-date.h"
 #ifdef __linux__
+#include "Basics/BuildId.h"
 #include "Basics/build-id.h"
 #endif
 #include "Basics/build-repository.h"
@@ -316,21 +317,11 @@ void Version::initialize() {
 #endif
 
 #ifdef __linux__
-  {
-    auto const* note = build_id_find_nhdr_by_name("");
-    if (note != nullptr) {
-      auto const* build_id = build_id_data(note);
-      auto len = build_id_length(note);
-
-      std::string buffer;
-      constexpr char chars[] = "0123456789abcdef";
-      for (decltype(len) i = 0; i < len; ++i) {
-        auto c = build_id[i];
-        buffer.push_back(chars[c >> 4U]);
-        buffer.push_back(chars[c & 0xfU]);
-      }
-      Values["build-id"] = std::move(buffer);
-    }
+  auto maybeBuildId = arangodb::build_id::getBuildId();
+  if (maybeBuildId.has_value()) {
+    Values["build-id"] = maybeBuildId->toHexString();
+  } else {
+    Values["build-id"] = "Failed to obtain build-id";
   }
 #endif
 

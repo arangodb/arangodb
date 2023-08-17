@@ -44,6 +44,7 @@ add_library(arango_lightweight STATIC
         ApplicationFeatures/ShellColorsFeature.cpp
         Basics/ArangoGlobalContext.cpp
         Basics/CleanupFunctions.cpp
+        Basics/BuildId.cpp
         Basics/ErrorCode.cpp
         Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
         Basics/FileResult.cpp
