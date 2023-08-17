@@ -3275,6 +3275,81 @@ function testSmallCircleFilterOptimizationOverlappingVariable(testGraph) {
   }
 }
 
+/*
+ * In this test we create an additional Collection that is not connected
+ * to the graph at all. This should not return an error if we cannot find
+ * a connection.
+ */
+function testSmallCircleTraversalStartInUnknownCollection(testGraph) {
+  const collName = "UnitTestNonGraphCollection";
+  try {
+    db._create(collName);
+    db._collection(collName).save([{_key: "1"}, {_key: "2"}]);
+    const q = `FOR x IN 1 OUTBOUND "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
+    const res = db._query(q).toArray();
+    // This query should work without throwing.
+    assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
+    try {
+      // This query shou[d return the unknown Collections vertex as a result.
+      // As this is not part of the Graph, we throw an error here.
+      const brokenQuery = `FOR x IN 0..1 OUTBOUND "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
+      db._query(brokenQuery);
+      assertEqual(true, false, `We executed a query that is requried to throw`);
+    } catch (err) {
+      require("internal").print(err);
+    }
+  } finally {
+    db._drop(collName);
+  }
+}
+
+function testSmallCircleShortestPathStartInUnknownCollection(testGraph) {
+  const collName = "UnitTestNonGraphCollection";
+  try {
+    db._create(collName);
+    db._collection(collName).save([{_key: "1"}, {_key: "2"}]);
+    const q = `FOR x IN OUTBOUND SHORTEST_PATH "${collName}/1" TO "${collName}/2" GRAPH "${testGraph.name()}" RETURN x`;
+    const res = db._query(q).toArray();
+    // This query should work without throwing.
+    assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
+    try {
+      // This query shou[d return the unknown Collections vertex as a result.
+      // As this is not part of the Graph, we throw an error here.
+      const brokenQuery = `FOR x IN OUTBOUND SHORTEST_PATH "${collName}/1" TO "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
+      db._query(brokenQuery);
+      assertEqual(true, false, `We executed a query that is requried to throw`);
+    } catch (err) {
+      require("internal").print(err);
+    }
+  } finally {
+    db._drop(collName);
+  }
+}
+
+function testSmallCircleKPathStartInUnknownCollection(testGraph) {
+  const collName = "UnitTestNonGraphCollection";
+  try {
+    db._create(collName);
+    db._collection(collName).save([{_key: "1"}, {_key: "2"}]);
+    const q = `FOR x IN 1 OUTBOUND K_PATHS "${collName}/1" TO "${collName}/2" GRAPH "${testGraph.name()}" RETURN x`;
+    const res = db._query(q).toArray();
+    // This query should work without throwing.
+    assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
+    try {
+      // This query shou[d return the unknown Collections vertex as a result.
+      // As this is not part of the Graph, we throw an error here.
+      const brokenQuery = `FOR x IN 0..1 OUTBOUND K_PATHS "${collName}/1" TO "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
+      db._query(brokenQuery);
+      assertEqual(true, false, `We executed a query that is requried to throw`);
+    } catch (err) {
+      require("internal").print(err);
+      throw err;
+    }
+  } finally {
+    db._drop(collName);
+  }
+}
+
 function testCompleteGraphDfsUniqueVerticesPathD1(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
@@ -6784,7 +6859,10 @@ const testsByGraph = {
     testSmallCircleKShortestPathEnabledWeightCheckIndexedWithMultipleLimits,
     testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsWT,
     testSmallCircleFilterOptimization,
-    testSmallCircleFilterOptimizationOverlappingVariable
+    testSmallCircleFilterOptimizationOverlappingVariable,
+    testSmallCircleTraversalStartInUnknownCollection,
+    testSmallCircleShortestPathStartInUnknownCollection,
+    testSmallCircleKPathStartInUnknownCollection
   },
   completeGraph: {
     testCompleteGraphDfsUniqueVerticesPathD1,
