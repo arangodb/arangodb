@@ -1324,7 +1324,7 @@ function testOpenDiamondPathVarOptimization(testGraph, mode) {
 
   // Now return p, to make sure the rule is not being executed.
   const optPlans = AQL_EXPLAIN(buildQuery('[p]'), {}, { optimizer: { rules: optimizerRuleToDeactivate } }).plan;
-  assertEqual(optPlans.rules, []);
+  assertFalse(optPlans.rules.includes("remove-redundant-path-var"));
 }
 
 const testOpenDiamondDfsPathVarOptimization = (testGraph) => testOpenDiamondPathVarOptimization(testGraph, "dfs");
