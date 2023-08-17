@@ -39,50 +39,98 @@
     const isCluster = require("internal").isCluster();
 
     return function (dbName, databaseCreationOptions, collectionCreationOptions, shardingEnabled = false) {
-        let getMetric = () => { 
-            if (isCluster) {
+        const collectionName = "test";
+        const viewName = "testView";
+        const n = 10000;
+      
+        let getMetric = (name) => {
+          if (isCluster) {
+            let metrics = getDBServersClusterMetricsByName(name)
+            assertTrue(metrics.length == 3);
+            if (typeof name == "string") {
               let sum = 0;
-              getDBServersClusterMetricsByName("arangodb_revision_tree_buffered_memory_usage").forEach( num => {
+              metrics.forEach( num => {
                 sum += num;
               });
               return sum;
             } else {
-              return getMetricSingle("arangodb_revision_tree_buffered_memory_usage");
+              return metrics.reduce((acc, metrics) => acc.map((sum, i) => sum + metrics[i]), new Array(metrics[0].length).fill(0));
             }
-          };
+          } else {
+            return getMetricSingle(name);
+          }
+        };
+      
+        let generateAndInsert = (collName) => {
+          if( typeof generateAndInsert.counter == 'undefined' ) {
+            generateAndInsert.counter = 0;
+          }
+          if( typeof generateAndInsert.factor == 'undefined' ) {
+            generateAndInsert.factor = 0;
+          }
+          generateAndInsert.factor++;
+      
+          let docs = [];
+          for (let i = 0; i < 1000 * generateAndInsert.factor; i++) {
+            let custom_field = "field_" + generateAndInsert.counter;
+            let d = {
+              'stringValue': "" + generateAndInsert.counter, 
+              'numericValue': generateAndInsert.counter
+            };
+            d[custom_field] = generateAndInsert.counter;
+            docs.push(d);
+            generateAndInsert.counter++
+          }
+          db._collection(collName).save(docs);
+        };
         
-          const n = 10000;
-          
-          let insertDocuments = (collName) => {
-            let c = db._collection(collName);
-            let docs = [];
-            for (let i = 0; i < n; ++i) {
-              docs.push({value: i});
-              if (docs.length === 5000) {
-                c.insert(docs);
-                docs = [];
-              }
+        let insertDocuments = (collName) => {
+        let c = db._collection(collName);
+        let docs = [];
+        for (let i = 0; i < n; ++i) {
+            docs.push({value: i});
+            if (docs.length === 5000) {
+            c.insert(docs);
+            docs = [];
             }
-            if (docs.length > 0) {
-              c.insert(docs);
-              docs = [];
+        }
+        if (docs.length > 0) {
+            c.insert(docs);
+            docs = [];
+        }
+        };
+    
+        let insertEdges = (collName) => {
+        let c = db._collection(collName);
+        let docs = [];
+        for (let i = 0; i < n; ++i) {
+            docs.push({_from: i, _to: i+1});
+            if (docs.length === 5000) {
+            c.insert(docs);
+            docs = [];
             }
-          };
+        }
+        if (docs.length > 0) {
+            c.insert(docs);
+            docs = [];
+        }
+        };
+
+        return {
+            setUpAll: function () {
+                // wait until all pending estimates & revision tree buffers have been applied
+                let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+                assertNull(res);
+                db._create(collectionName, collectionCreationOptions);
+
+            },
+            tearDownAll: function () {
+                internal.debugClearFailAt();
+                db._dropView(viewName);
+                db._drop(collectionName);
+                db._drop(cn);
+            },
         
-          let insertEdges = (collName) => {
-            let c = db._collection(collName);
-            let docs = [];
-            for (let i = 0; i < n; ++i) {
-              docs.push({_from: i, _to: i+1});
-              if (docs.length === 5000) {
-                c.insert(docs);
-                docs = [];
-              }
-            }
-            if (docs.length > 0) {
-              c.insert(docs);
-              docs = [];
-            }
-          };
+        }
     }
 }())
