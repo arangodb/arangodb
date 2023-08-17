@@ -2679,6 +2679,265 @@ function testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsGen(tes
   });
 }
 
+function testSmallCircleFilterOptimization(testGraph) {
+  // Which Graph is used here does not matter, enough to test with one of the graphs
+  // we picked the smallCircle graph at random
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+
+  const optimizableConditions = [
+    `v.color == "blue"`,
+    `"blue" == e.color`,
+    `p.edges[1].color == "blue"`,
+    `"blue" == p.vertices[1].color`,
+    `p.edges[*].color ALL == "blue"`,
+    `p.vertices[*].color ALL == "blue"`
+  ];
+
+  // Optimize a single condition
+  const filtersToTest = optimizableConditions.map(f => `FILTER ${f}`);
+  // More complex test.
+  for (let first = 0; first < optimizableConditions.length; ++first) {
+    for (let second = first + 1; second < optimizableConditions.length; ++second) {
+      // Optimize two filter nodes, and erase the filter nodes
+      filtersToTest.push(`FILTER ${optimizableConditions[first]} FILTER ${optimizableConditions[second]}`);
+    }
+  }
+
+  for (const filterCondition of filtersToTest) {
+    const query = `
+      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH "${testGraph.name()}"
+        ${filterCondition}
+        return v
+    `;
+    const plan = AQL_EXPLAIN(query, {});
+
+
+    assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query + " Still has FilterNode");
+
+    const traversals = findExecutionNodes(plan, "TraversalNode");
+    assertEqual(traversals.length, 1, query + " Somehow we have removed the Traversal");
+    const travNode = traversals[0];
+    assertTrue(travNode.hasOwnProperty("condition"));
+  }
+
+  // Non optimizable filters
+  const nonOptimizableFilters = [
+    `DOCUMENT(v.docId).color == "blue"`,
+    `DOCUMENT(e.docId).color == "blue"`,
+    /* ASSSERT has side-effects on false so it should not be optimized */
+    `ASSERT(v.color == "blue", "Color is not blue")`,
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(p.vertices[0].timestamp, 1, "y"))`,
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(DOCUMENT("${testGraph.vertex('A')}").timestamp, 1, "y"))`
+  ];
+
+  /* Note: this set has a chance to be optimized, we cannot reliably detect methods yet
+  * therefore the FILTER node will stay in place, but the Methods is already moved into the Traversal
+  */
+  const optimizedButFilterIsKept = [
+    `DATE_MONTH(v.timestamp) == 11`,
+    `25 == DATE_DAY(e.timestamp)`,
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(0, 100, "y"))`,
+  ];
+
+  // This is a pair of FilterCondition and LeftOver non-optimized condition.
+  // The FILTER node needs to stay, and needs to cover the non-optimized condition
+  const nonOptFiltersToTest = nonOptimizableFilters.map(f => [`FILTER ${f}`, `${f}`, false]);
+
+  for (const c of optimizedButFilterIsKept.map(f => [`FILTER ${f}`, `${f}`, true])) {
+    nonOptFiltersToTest.push(c);
+  }
+
+  // NOTE: we only detect one of the two AND branches to be covered.
+  // Actually both are covered, our optimizer does not detect this yet.
+  // NOTE: We only iterate up to 2 as the following all cover Path only conditions which are optimized
+  for (let first = 0; first < 2; ++first) {
+    for (let second = first + 1; second < optimizableConditions.length; ++second) {
+      nonOptFiltersToTest.push([`FILTER ${optimizableConditions[first]} && ${optimizableConditions[second]}`, `${optimizableConditions[first]}`, true]);
+    }
+  }
+
+  // More complex test.
+  for (let first = 0; first < nonOptimizableFilters.length; ++first) {
+    for (let second = 0; second < optimizableConditions.length; ++second) {
+      // Add two filter nodes, one can be optimized, one note. The optimizable one should be erased.
+      nonOptFiltersToTest.push([`FILTER ${nonOptimizableFilters[first]} FILTER ${optimizableConditions[second]}`, `${nonOptimizableFilters[first]}`, true]);
+      // Put it into one big condition, where parts can be optimized, parts not
+      nonOptFiltersToTest.push([`FILTER ${nonOptimizableFilters[first]} && ${optimizableConditions[second]}`, `${nonOptimizableFilters[first]}`, true]);
+    }
+  }
+
+  for (const [filterCondition, _, somethingOptimizedInTraversal] of nonOptFiltersToTest) {
+    const query = `
+      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH "${testGraph.name()}"
+        ${filterCondition}
+        return v
+    `;
+    const plan = AQL_EXPLAIN(query, {});
+
+    const filters = findExecutionNodes(plan, "FilterNode");
+
+    assertEqual(filters.length, 1, query + " Optimized out the FilterNode");
+    const filterCalc = findExecutionNodes(plan, "CalculationNode").find(n => n.id === filters[0].dependencies[0]);
+    assertNotEqual(filterCalc, undefined);
+
+    // TODO it would be nice to analyse that calculation matches the leftOver condition
+    // but this would require to reverse-implement node structure.
+    const traversals = findExecutionNodes(plan, "TraversalNode");
+    assertEqual(traversals.length, 1, query + " Somehow we have removed the Traversal");
+    const travNode = traversals[0];
+    assertEqual(travNode.hasOwnProperty("condition"), somethingOptimizedInTraversal, JSON.stringify(travNode.condition));
+  }
+
+}
+
+
+function testSmallCircleFilterOptimizationOverlappingVariable(testGraph) {
+  // Which Graph is used here does not matter, enough to test with one of the graphs
+  // we picked the smallCircle graph at random
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+
+  // The purpose of this test:
+  // We are reusing the StartVertex variable in different places that can be optimized into
+  // the traversal, we need to make sure the variable is retained long enough.
+  const filters = [
+    `FILTER v._id == startVertex`,
+    `FILTER e.secondFrom == startVertex`,
+    `FILTER p.vertices[-1]._id == startVertex`,
+    `FILTER p.edges[-1].secondFrom == startVertex`,
+    `FILTER p.edges[0].secondFrom == startVertex`,
+    `FILTER p.vertices[0]._id == startVertex`,
+    `FILTER startVertex IN p.vertices[*]._id`,
+    `FILTER startVertex IN p.edges[*].secondFrom`
+  ];
+
+  for (const filter of filters) {
+    // The Circle has 4 steps, so for each start vertex we do one roundtrip
+    const query = `
+      FOR startVertex IN ["${testGraph.vertex('A')}", "${testGraph.vertex('B')}", "${testGraph.vertex('C')}"]
+        FOR v,e,p IN 1..4 OUTBOUND startVertex GRAPH "${testGraph.name()}"
+          ${filter}
+          RETURN v._key
+    `;
+    const nonOptimizedResult = db._query(query, {}, {optimizer: {rules: ["-optimize-traversals"]}}).toArray();
+    assertTrue(nonOptimizedResult.length > 0, `Test queries are desigend in a way that they should always yield results This does not ${query}`);
+    const optimizedResult = db._query(query).toArray();
+    // NOTE: As we have a circle and cannot branch, the order of result is deterministic, so the two queries need to return perfect
+    // copies as results.
+    assertEqual(nonOptimizedResult, optimizedResult, `Optimized and non-optimized results do not match on query ${query}`);
+  }
+
+  const optimizableConditions = [
+    `v.color == "blue"`,
+    `"blue" == e.color`,
+    `p.edges[1].color == "blue"`,
+    `"blue" == p.vertices[1].color`,
+    `p.edges[*].color ALL == "blue"`,
+    `p.vertices[*].color ALL == "blue"`
+  ];
+
+  // Optimize a single condition
+  const filtersToTest = optimizableConditions.map(f => `FILTER ${f}`);
+  // More complex test.
+  for (let first = 0; first < optimizableConditions.length; ++first) {
+    for (let second = first + 1; second < optimizableConditions.length; ++second) {
+      // Optimize two filter nodes, and erase the filter nodes
+      filtersToTest.push(`FILTER ${optimizableConditions[first]} FILTER ${optimizableConditions[second]}`);
+    }
+  }
+
+  for (const filterCondition of filtersToTest) {
+    const query = `
+      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH "${testGraph.name()}"
+        ${filterCondition}
+        return v
+    `;
+    const plan = AQL_EXPLAIN(query, {});
+
+
+    assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query + " Still has FilterNode");
+
+    const traversals = findExecutionNodes(plan, "TraversalNode");
+    assertEqual(traversals.length, 1, query + " Somehow we have removed the Traversal");
+    const travNode = traversals[0];
+    assertTrue(travNode.hasOwnProperty("condition"));
+  }
+}
+
+/*
+ * In this test we create an additional Collection that is not connected
+ * to the graph at all. This should not return an error if we cannot find
+ * a connection.
+ */
+function testSmallCircleTraversalStartInUnknownCollection(testGraph) {
+  const collName = "UnitTestNonGraphCollection";
+  try {
+    db._create(collName);
+    db._collection(collName).save([{_key: "1"}, {_key: "2"}]);
+    const q = `FOR x IN 1 OUTBOUND "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
+    const res = db._query(q).toArray();
+    // This query should work without throwing.
+    assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
+    try {
+      // This query shou[d return the unknown Collections vertex as a result.
+      // As this is not part of the Graph, we throw an error here.
+      const brokenQuery = `FOR x IN 0..1 OUTBOUND "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
+      db._query(brokenQuery);
+      assertEqual(true, false, `We executed a query that is requried to throw`);
+    } catch (err) {
+      require("internal").print(err);
+    }
+  } finally {
+    db._drop(collName);
+  }
+}
+
+function testSmallCircleShortestPathStartInUnknownCollection(testGraph) {
+  const collName = "UnitTestNonGraphCollection";
+  try {
+    db._create(collName);
+    db._collection(collName).save([{_key: "1"}, {_key: "2"}]);
+    const q = `FOR x IN OUTBOUND SHORTEST_PATH "${collName}/1" TO "${collName}/2" GRAPH "${testGraph.name()}" RETURN x`;
+    const res = db._query(q).toArray();
+    // This query should work without throwing.
+    assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
+    try {
+      // This query shou[d return the unknown Collections vertex as a result.
+      // As this is not part of the Graph, we throw an error here.
+      const brokenQuery = `FOR x IN OUTBOUND SHORTEST_PATH "${collName}/1" TO "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
+      db._query(brokenQuery);
+      assertEqual(true, false, `We executed a query that is requried to throw`);
+    } catch (err) {
+      require("internal").print(err);
+    }
+  } finally {
+    db._drop(collName);
+  }
+}
+
+function testSmallCircleKPathStartInUnknownCollection(testGraph) {
+  const collName = "UnitTestNonGraphCollection";
+  try {
+    db._create(collName);
+    db._collection(collName).save([{_key: "1"}, {_key: "2"}]);
+    const q = `FOR x IN 1 OUTBOUND K_PATHS "${collName}/1" TO "${collName}/2" GRAPH "${testGraph.name()}" RETURN x`;
+    const res = db._query(q).toArray();
+    // This query should work without throwing.
+    assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
+    try {
+      // This query shou[d return the unknown Collections vertex as a result.
+      // As this is not part of the Graph, we throw an error here.
+      const brokenQuery = `FOR x IN 0..1 OUTBOUND K_PATHS "${collName}/1" TO "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
+      db._query(brokenQuery);
+      assertEqual(true, false, `We executed a query that is requried to throw`);
+    } catch (err) {
+      require("internal").print(err);
+      throw err;
+    }
+  } finally {
+    db._drop(collName);
+  }
+}
+
 function testCompleteGraphDfsUniqueVerticesPathD1(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
@@ -6164,7 +6423,10 @@ const testsByGraph = {
     testSmallCircleKShortestPathWithMultipleLimitsWT,
     testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimits,
     testSmallCircleKShortestPathEnabledWeightCheckIndexedWithMultipleLimits,
-    testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsWT
+    testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsWT,
+    testSmallCircleTraversalStartInUnknownCollection,
+    testSmallCircleShortestPathStartInUnknownCollection,
+    testSmallCircleKPathStartInUnknownCollection
   },
   completeGraph: {
     testCompleteGraphDfsUniqueVerticesPathD1,
