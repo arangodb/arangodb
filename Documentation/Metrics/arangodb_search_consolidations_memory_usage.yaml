@@ -1,0 +1,13 @@
+name: arangodb_search_consolidations_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Amount of memory in bytes that is used for consolidating this index.
+unit: bytes
+type: gauge
+category: ArangoSearch
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Amount of memory in bytes that is used for consolidating this index.
