@@ -231,9 +231,6 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
                            {.term = 1_T, .writeConcern = 2});
   config.installConfig(true);
   {
-    // auto followerProxy =
-    //     std::make_shared<FollowerProxy>(followerLogContainer.getAsFollower());
-
     auto idx = leaderLogContainer.stateHandleMock->logLeaderMethods->insert(
         LogPayload::createFromString("first entry"), false);
     auto f = leaderLog->getParticipant()->waitFor(idx);
@@ -249,34 +246,21 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     }
 
     // now create a new leader and delete the old one
-    auto newLeaderLogContainer = makeLogWithFakes({});
     config = makeConfig(leaderLogContainer, {followerLogContainer},
                         {.term = 2_T, .writeConcern = 2});
-    std::ignore = newLeaderLogContainer.updateConfig(config);
-    newLeaderLogContainer.runAll();
-    // leaderLogContainer.runAll();
-    // leader =
-    //     leaderLog->becomeLeader("newLeader", LogTerm{2}, {followerProxy}, 2);
-
-    EXPECT_TRUE(
-        followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
-    // followerLogContainer.delayedLogFollower->runAsyncAppendEntries();
-    followerLogContainer.runAll();
-    IHasScheduler::runAll(followerLogContainer, leaderLogContainer,
-                          newLeaderLogContainer);
-    // the old leader is already gone, so we expect no new append entries
-    EXPECT_FALSE(
-        followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
+    std::ignore = leaderLogContainer.updateConfig(config);
+    leaderLogContainer.runAll();
 
     // the old future should have failed
     ASSERT_TRUE(f.isReady());
     EXPECT_TRUE(f.hasException());
 
-    auto f2 = newLeaderLogContainer.log->getParticipant()->waitFor(idx);
+    auto f2 = leaderLogContainer.log->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f2.isReady());
 
     // run the old followers append entries
-    IHasScheduler::runAll(followerLogContainer, newLeaderLogContainer);
+    followerLogContainer.runAll();
+    leaderLogContainer.runAll();
     // we expect a retry request
     EXPECT_TRUE(
         followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
@@ -287,11 +271,8 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     followerLogContainer.delayedLogFollower->swapFollowerAndQueueWith(
         oldFollower);
     std::swap(oldScheduler, *followerLogContainer.logScheduler);
+    // simulate the database server has updated its follower
     std::ignore = followerLogContainer.updateConfig(config);
-    // auto newFollower =
-    //     followerLog->becomeFollower("newFollower", LogTerm{2}, "newLeader");
-    // // simulate the database server has updated its follower
-    // followerProxy->replaceFollower(newFollower);
 
     EXPECT_TRUE(oldFollower.hasPendingAppendEntries());
     oldFollower.runAsyncAppendEntries();
@@ -299,10 +280,10 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     EXPECT_FALSE(oldFollower.hasPendingAppendEntries());
 
     ASSERT_FALSE(f2.isReady());
-    // while (newFollower->hasPendingAppendEntries()) {
-    //   newFollower->runAsyncAppendEntries();
-    // }
+    IHasScheduler::runAll(leaderLogContainer, followerLogContainer);
     followerLogContainer.runAll();
+    EXPECT_FALSE(oldFollower.scheduler.hasWork());
+    EXPECT_FALSE(oldScheduler.hasWork());
 
     {
       auto stats = followerLogContainer.log->getQuickStatus().local.value();
