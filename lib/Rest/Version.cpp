@@ -48,7 +48,6 @@
 #include "Basics/build-date.h"
 #ifdef __linux__
 #include "Basics/BuildId.h"
-#include "Basics/build-id.h"
 #endif
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
