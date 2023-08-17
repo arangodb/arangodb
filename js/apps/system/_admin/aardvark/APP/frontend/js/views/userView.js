@@ -1,3 +1,5 @@
+/* global frontendConfig */
+
 (function () {
   'use strict';
 
