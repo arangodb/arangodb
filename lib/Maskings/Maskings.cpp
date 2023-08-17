@@ -206,7 +206,10 @@ VPackValue Maskings::maskedItem(Collection const& collection,
                                 VPackSlice const& data) const {
   if (path.size() == 1 && path[0].size() >= 1 && path[0][0] == '_') {
     if (data.isString()) {
-      return VPackValue(data.stringView());
+      velocypack::ValueLength length;
+      char const* c = data.getString(length);
+      buffer = std::string(c, length);
+      return VPackValue(buffer);
     } else if (data.isInteger()) {
       return VPackValue(data.getInt());
     }
@@ -218,25 +221,29 @@ VPackValue Maskings::maskedItem(Collection const& collection,
     if (data.isBool()) {
       return VPackValue(data.getBool());
     } else if (data.isString()) {
-      return VPackValue(data.stringView());
+      velocypack::ValueLength length;
+      char const* c = data.getString(length);
+      buffer = std::string(c, length);
+      return VPackValue(buffer);
     } else if (data.isInteger()) {
       return VPackValue(data.getInt());
     } else if (data.isDouble()) {
       return VPackValue(data.getDouble());
     }
-    return VPackValue(VPackValueType::Null);
   } else {
     if (data.isBool()) {
       return func->mask(data.getBool(), buffer);
     } else if (data.isString()) {
-      return func->mask(data.copyString(), buffer);
+      velocypack::ValueLength length;
+      char const* c = data.getString(length);
+      return func->mask(std::string(c, length), buffer);
     } else if (data.isInteger()) {
       return func->mask(data.getInt(), buffer);
     } else if (data.isDouble()) {
       return func->mask(data.getDouble(), buffer);
     }
-    return VPackValue(VPackValueType::Null);
   }
+  return VPackValue(VPackValueType::Null);
 }
 
 void Maskings::addMaskedArray(Collection const& collection,
