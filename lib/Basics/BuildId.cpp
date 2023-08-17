@@ -88,8 +88,6 @@ struct MMappedElfHeader {
     return reinterpret_cast<const char*>(_memory);
   }
 
-  auto valid() const -> bool { return _memory != nullptr; }
-
  private:
   void* _memory;
   size_t _size;
