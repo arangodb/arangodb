@@ -115,7 +115,6 @@ std::vector<AqlCall> buildTestingAqlCalls = [] {
     for (auto const& soft : mySoftLimits) {
       if (off == 0 && soft == 0) {
         // soft limit = 0 and offset = 0 must not occur together.
-        // Skip the case where offset = 0 and soft limit = 0
         continue;
       }
       calls.emplace_back(off, false, soft, AqlCall::LimitType::SOFT);
@@ -131,7 +130,7 @@ std::vector<AqlCall> buildTestingAqlCalls = [] {
    */
   for (auto const& off : myOffsets) {
     for (auto const& hard : myHardLimits) {
-      // Note that fullCount does only make sense with a hard limit, and
+      // Note that fullCount does only make sense with a hard limit
       calls.emplace_back(off, true, hard, AqlCall::LimitType::HARD);
     }
   }
