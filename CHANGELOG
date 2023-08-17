@@ -1,6 +1,8 @@
 v3.11.3 (XXXX-XX-XX)
 --------------------
 
+* Backport multiple fixes for the scheduler behavior during ArangoDB shutdown.
+
 * Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where the inner
   amount of a limit in the LimitExecutor is set to a wrong value which lead to
   some data rows not being returned to the client.
