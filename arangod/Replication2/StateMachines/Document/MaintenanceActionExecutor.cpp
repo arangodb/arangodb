@@ -53,10 +53,7 @@ auto MaintenanceActionExecutor::executeCreateCollectionAction(
       maintenance::HIGHER_PRIORITY, false, std::move(properties));
   maintenance::CreateCollection createCollectionAction(_maintenanceFeature,
                                                        actionDescription);
-  bool work = createCollectionAction.first();
-  if (work) {
-    return {TRI_ERROR_INTERNAL};
-  }
+  createCollectionAction.first();
   return createCollectionAction.result();
 }
 
@@ -76,10 +73,7 @@ auto MaintenanceActionExecutor::executeDropCollectionAction(
       maintenance::HIGHER_PRIORITY, false);
   maintenance::DropCollection dropCollectionAction(_maintenanceFeature,
                                                    actionDescription);
-  bool work = dropCollectionAction.first();
-  if (work) {
-    return {TRI_ERROR_INTERNAL};
-  }
+  dropCollectionAction.first();
   return dropCollectionAction.result();
 }
 
@@ -101,10 +95,7 @@ auto MaintenanceActionExecutor::executeModifyCollectionAction(
 
   maintenance::UpdateCollection updateCollectionAction(_maintenanceFeature,
                                                        actionDescription);
-  bool work = updateCollectionAction.first();
-  if (work) {
-    return {TRI_ERROR_INTERNAL};
-  }
+  updateCollectionAction.first();
   return updateCollectionAction.result();
 }
 
