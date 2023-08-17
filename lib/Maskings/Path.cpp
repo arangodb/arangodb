@@ -125,7 +125,7 @@ ParseResult<Path> Path::parse(std::string const& def) {
   return ParseResult<Path>(Path(wildcard, false, components));
 }
 
-bool Path::match(std::vector<std::string> const& path) const {
+bool Path::match(std::vector<std::string_view> const& path) const {
   size_t cs = _components.size();
   size_t ps = path.size();
 

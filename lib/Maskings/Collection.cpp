@@ -23,23 +23,26 @@
 
 #include "Collection.h"
 
-#include "Logger/Logger.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::maskings;
 
 ParseResult<Collection> Collection::parse(Maskings* maskings,
-                                          VPackSlice const& def) {
+                                          velocypack::Slice def) {
   if (!def.isObject()) {
     return ParseResult<Collection>(
         ParseResult<Collection>::PARSE_FAILED,
         "expecting an object for collection definition");
   }
 
-  std::string type = "";
+  std::string type;
   std::vector<AttributeMasking> attributes;
 
-  for (auto const& entry : VPackObjectIterator(def, false)) {
+  for (auto entry : VPackObjectIterator(def, false)) {
     std::string key = entry.key.copyString();
 
     if (key == "type") {
@@ -91,7 +94,7 @@ ParseResult<Collection> Collection::parse(Maskings* maskings,
 }
 
 MaskingFunction* Collection::masking(
-    std::vector<std::string> const& path) const {
+    std::vector<std::string_view> const& path) const {
   for (auto const& m : _maskings) {
     if (m.match(path)) {
       return m.func();

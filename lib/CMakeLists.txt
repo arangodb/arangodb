@@ -198,6 +198,7 @@ add_library(arango STATIC
   Endpoint/EndpointList.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
+  Maskings/MaskingFunction.cpp
   Maskings/Maskings.cpp
   Maskings/Path.cpp
   Maskings/RandomMask.cpp

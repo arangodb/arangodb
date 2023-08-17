@@ -27,6 +27,10 @@
 
 #include "Maskings/ParseResult.h"
 
+#include <string>
+#include <string_view>
+#include <vector>
+
 namespace arangodb {
 namespace maskings {
 class Path {
@@ -34,12 +38,12 @@ class Path {
   static ParseResult<Path> parse(std::string const&);
 
  public:
-  Path() : _wildcard(false) {}
+  Path() : _wildcard(false), _any(false) {}
 
   Path(bool wildcard, bool any, std::vector<std::string> const& components)
       : _wildcard(wildcard), _any(any), _components(components) {}
 
-  bool match(std::vector<std::string> const& path) const;
+  bool match(std::vector<std::string_view> const& path) const;
 
  private:
   bool _wildcard;

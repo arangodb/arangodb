@@ -37,22 +37,22 @@ void arangodb::maskings::InstallMaskings() {
 }
 
 std::unordered_map<std::string, ParseResult<AttributeMasking> (*)(
-                                    Path, Maskings*, VPackSlice const&)>
+                                    Path, Maskings*, velocypack::Slice)>
     AttributeMasking::_maskings;
 
 ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
-                                                      VPackSlice const& def) {
+                                                      velocypack::Slice def) {
   if (!def.isObject()) {
     return ParseResult<AttributeMasking>(
         ParseResult<AttributeMasking>::PARSE_FAILED,
         "expecting an object for collection definition");
   }
 
-  std::string path = "";
-  std::string type = "";
+  std::string path;
+  std::string type;
 
-  for (auto const& entry : VPackObjectIterator(def, false)) {
-    std::string key = entry.key.copyString();
+  for (auto entry : VPackObjectIterator(def, false)) {
+    auto key = entry.key.stringView();
 
     if (key == "type") {
       if (!entry.value.isString()) {
@@ -97,6 +97,6 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
   return it->second(ap.result, maskings, def);
 }
 
-bool AttributeMasking::match(std::vector<std::string> const& path) const {
+bool AttributeMasking::match(std::vector<std::string_view> const& path) const {
   return _path.match(path);
 }
