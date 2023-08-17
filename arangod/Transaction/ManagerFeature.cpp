@@ -77,6 +77,8 @@ ManagerFeature::ManagerFeature(Server& server)
   };
 }
 
+ManagerFeature::~ManagerFeature() = default;
+
 void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("transaction", "transactions");
 
@@ -168,6 +170,18 @@ void ManagerFeature::stop() {
 }
 
 void ManagerFeature::unprepare() { MANAGER.reset(); }
+
+double ManagerFeature::streamingLockTimeout() const noexcept {
+  return _streamingLockTimeout;
+}
+
+double ManagerFeature::streamingIdleTimeout() const noexcept {
+  return _streamingIdleTimeout;
+}
+
+/*static*/ transaction::Manager* ManagerFeature::manager() noexcept {
+  return MANAGER.get();
+}
 
 void ManagerFeature::queueGarbageCollection() {
   // The RequestLane needs to be something which is `HIGH` priority, otherwise

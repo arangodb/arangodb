@@ -18,30 +18,47 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
-/// @author Manuel Pöter
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Transaction/ReplicatedContext.h"
+#pragma once
 
-#include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
-#include "StorageEngine/TransactionState.h"
+#include <cstddef>
+#include <cstdint>
+#include <deque>
+#include <memory>
+#include <shared_mutex>
 
-namespace arangodb::transaction {
-
-ReplicatedContext::ReplicatedContext(TransactionId globalId,
-                                     std::shared_ptr<TransactionState> state)
-    : SmartContext(state->vocbase(), globalId, state){};
-
-std::shared_ptr<TransactionState> ReplicatedContext::acquireState(
-    Options const& options, bool& responsibleForCommit,
-    TrxType /*trxTypeHint*/) {
-  TRI_ASSERT(_state);
-  responsibleForCommit = true;
-  return _state;
+namespace arangodb {
+namespace velocypack {
+class Builder;
 }
 
-void ReplicatedContext::unregisterTransaction() noexcept { _state.reset(); }
+namespace transaction {
+class HistoryEntry;
+class Methods;
 
-}  // namespace arangodb::transaction
+class History {
+  History(History const&) = delete;
+  History& operator=(History const&) = delete;
+
+ public:
+  explicit History(std::size_t maxSize);
+  ~History();
+
+  void insert(Methods const& trx);
+  void toVelocyPack(velocypack::Builder& result) const;
+
+  void garbageCollect() noexcept;
+  void clear() noexcept;
+
+ private:
+  std::size_t const _maxSize;
+
+  std::shared_mutex mutable _mutex;
+  std::deque<std::shared_ptr<HistoryEntry>> _history;
+  std::uint64_t _id;
+};
+
+}  // namespace transaction
+}  // namespace arangodb

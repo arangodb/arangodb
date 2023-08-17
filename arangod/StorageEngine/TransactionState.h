@@ -98,7 +98,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   TransactionState& operator=(TransactionState const&) = delete;
 
   TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                   transaction::Options const& options);
+                   transaction::Options const& options,
+                   transaction::TrxType trxTypeHint);
   virtual ~TransactionState();
 
   /// @return a cookie associated with the specified key, nullptr if none
@@ -325,9 +326,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void acceptAnalyzersRevision(
       QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
-  void setTrxTypeHint(transaction::TrxType trxTypeHint) noexcept;
-
-  [[nodiscard]] transaction::TrxType getTrxTypeHint() const noexcept;
+  [[nodiscard]] transaction::TrxType trxTypeHint() const noexcept;
 
   [[nodiscard]] QueryAnalyzerRevisions const& analyzersRevision()
       const noexcept {
@@ -415,8 +414,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
 
-  transaction::TrxType _trxTypeHint;
-
   ServerState::RoleEnum const _serverRole;  /// role of the server
 
   transaction::Options _options;
@@ -456,6 +453,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   std::unique_ptr<containers::FlatHashMap<ShardID, ServerID>> _chosenReplicas;
 
   QueryAnalyzerRevisions _analyzersRevision;
+
+  transaction::TrxType const _trxTypeHint;
   bool _registeredTransaction = false;
 };
 

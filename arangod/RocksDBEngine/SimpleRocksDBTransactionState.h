@@ -34,7 +34,8 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
                                             public IRocksDBTransactionCallback {
  public:
   SimpleRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                transaction::Options const& options);
+                                transaction::Options const& options,
+                                transaction::TrxType trxTypeHint);
 
   ~SimpleRocksDBTransactionState() override;
 

@@ -62,8 +62,8 @@ using namespace arangodb;
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : TransactionState(vocbase, tid, options),
+    transaction::Options const& options, transaction::TrxType trxType)
+    : TransactionState(vocbase, tid, options, trxType),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _users(0),
 #endif

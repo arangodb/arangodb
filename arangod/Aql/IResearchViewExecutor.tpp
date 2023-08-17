@@ -685,7 +685,7 @@ void IndexReadBuffer<ValueType, copyStored>::assertSizeCoherence()
 template<typename Impl, typename ExecutionTraits>
 IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
     Fetcher&, Infos& infos)
-    : _trx(infos.getQuery().newTrxContext(), infos.getQuery().getTrxTypeHint()),
+    : _trx(infos.getQuery().newTrxContext(), infos.getQuery().trxTypeHint()),
       _memory(infos.getQuery().resourceMonitor()),
       _infos(infos),
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
@@ -711,7 +711,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
     auto const& revision = _trx.state()->analyzersRevision();
     auto getAnalyzer = [&](std::string_view shortName) -> FieldMeta::Analyzer {
       auto analyzer = analyzerFeature.get(shortName, vocbase, revision,
-                                          _trx.getTrxTypeHint());
+                                          _trx.state()->trxTypeHint());
       if (!analyzer) {
         return makeEmptyAnalyzer();
       }

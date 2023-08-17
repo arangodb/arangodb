@@ -62,7 +62,8 @@ VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
 /// @brief get transaction state, determine commit responsibility
 /*virtual*/ std::shared_ptr<TransactionState>
 transaction::V8Context::acquireState(transaction::Options const& options,
-                                     bool& responsibleForCommit) {
+                                     bool& responsibleForCommit,
+                                     TrxType trxTypeHint) {
   if (_currentTransaction) {
     responsibleForCommit = false;
     return _currentTransaction;
@@ -78,7 +79,8 @@ transaction::V8Context::acquireState(transaction::Options const& options,
   }
 
   if (!_currentTransaction) {
-    _currentTransaction = transaction::Context::createState(options);
+    _currentTransaction =
+        transaction::Context::createState(options, trxTypeHint);
     responsibleForCommit = true;
   } else {
     if (!isEmbeddable()) {

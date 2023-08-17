@@ -255,7 +255,8 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   std::unique_ptr<transaction::Methods> trx;
 
   try {
-    trx = createTransaction(cName, AccessMode::Type::READ, OperationOptions());
+    trx = createTransaction(cName, AccessMode::Type::READ, OperationOptions(),
+                            transaction::TrxType::kREST);
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,

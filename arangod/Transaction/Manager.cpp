@@ -48,6 +48,9 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Transaction/History.h"
+#endif
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
@@ -97,7 +100,13 @@ Manager::Manager(ManagerFeature& feature)
       _disallowInserts(false),
       _hotbackupCommitLockHeld(false),
       _streamingLockTimeout(feature.streamingLockTimeout()),
-      _softShutdownOngoing(false) {}
+      _softShutdownOngoing(false) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _history = std::make_unique<transaction::History>(/*maxSize*/ 256);
+#endif
+}
+
+Manager::~Manager() = default;
 
 void Manager::registerTransaction(TransactionId transactionId,
                                   bool isReadOnlyTransaction,
@@ -333,7 +342,8 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 }
 
 ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase,
-                                                 VPackSlice trxOpts,
+                                                 velocypack::Slice trxOpts,
+                                                 TrxType trxTypeHint,
                                                  bool allowDirtyReads) {
   if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
     return {TRI_ERROR_SHUTTING_DOWN};
@@ -359,11 +369,11 @@ ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase,
   }
 
   return createManagedTrx(vocbase, reads, writes, exclusives,
-                          std::move(options));
+                          std::move(options), trxTypeHint);
 }
 
 Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                                 VPackSlice trxOpts,
+                                 velocypack::Slice trxOpts, TrxType trxTypeHint,
                                  bool isFollowerTransaction) {
   TRI_ASSERT(
       (ServerState::instance()->isSingleServer() && !isFollowerTransaction) ||
@@ -377,7 +387,7 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
 
   return ensureManagedTrx(vocbase, tid, reads, writes, exclusives,
-                          std::move(options));
+                          std::move(options), trxTypeHint, /*ttl*/ 0.0);
 }
 
 transaction::Hints Manager::ensureHints(transaction::Options& options) const {
@@ -398,7 +408,6 @@ Result Manager::beginTransaction(transaction::Hints hints,
                                  std::shared_ptr<TransactionState>& state) {
   Result res;
   try {
-    state->setTrxTypeHint(transaction::TrxType::kREST);
     res = state->beginTransaction(hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {
     res.reset(ex.code(), ex.what());
@@ -564,8 +573,8 @@ bool Manager::isFollowerTransactionOnDBServer(
 ResultT<TransactionId> Manager::createManagedTrx(
     TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
-    std::vector<std::string> const& exclusiveCollections,
-    transaction::Options options, double ttl) {
+    std::vector<std::string> const& exclusiveCollections, Options options,
+    TrxType trxTypeHint) {
   // We cannot run this on FollowerTransactions.
   // They need to get injected the TransactionIds.
   TRI_ASSERT(!isFollowerTransactionOnDBServer(options));
@@ -590,7 +599,7 @@ ResultT<TransactionId> Manager::createManagedTrx(
     StorageEngine& engine =
         vocbase.server().getFeature<EngineSelectorFeature>().engine();
     // now start our own transaction
-    return engine.createTransactionState(vocbase, tid, options);
+    return engine.createTransactionState(vocbase, tid, options, trxTypeHint);
   });
   if (!maybeState.ok()) {
     return std::move(maybeState).result();
@@ -641,7 +650,7 @@ ResultT<TransactionId> Manager::createManagedTrx(
   // During beginTransaction we may reroll the Transaction ID.
   tid = state->id();
 
-  bool stored = storeManagedState(tid, std::move(state), ttl);
+  bool stored = storeManagedState(tid, std::move(state), /*ttl*/ 0.0);
   if (!stored) {
     return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
                      std::string("transaction id ") + std::to_string(tid.id()) +
@@ -659,8 +668,8 @@ Result Manager::ensureManagedTrx(
     TRI_vocbase_t& vocbase, TransactionId tid,
     std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
-    std::vector<std::string> const& exclusiveCollections,
-    transaction::Options options, double ttl) {
+    std::vector<std::string> const& exclusiveCollections, Options options,
+    TrxType trxTypeHint, double ttl) {
   Result res;
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -712,7 +721,7 @@ Result Manager::ensureManagedTrx(
     StorageEngine& engine =
         vocbase.server().getFeature<EngineSelectorFeature>().engine();
     // now start our own transaction
-    return engine.createTransactionState(vocbase, tid, options);
+    return engine.createTransactionState(vocbase, tid, options, trxTypeHint);
   });
   if (!maybeState.ok()) {
     return std::move(maybeState).result();
@@ -1232,6 +1241,13 @@ void Manager::iterateManagedTrx(
 
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // clear transaction history as well
+  if (_history != nullptr) {
+    _history->garbageCollect();
+  }
+#endif
+
   bool didWork = false;
   containers::SmallVector<TransactionId, 8> toAbort;
   containers::SmallVector<TransactionId, 8> toErase;
@@ -1442,6 +1458,13 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     }
   });
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+History& Manager::history() noexcept {
+  TRI_ASSERT(_history != nullptr);
+  return *_history;
+}
+#endif
 
 Result Manager::abortAllManagedWriteTrx(std::string const& username,
                                         bool fanout) {

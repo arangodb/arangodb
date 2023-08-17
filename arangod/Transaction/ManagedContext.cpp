@@ -67,12 +67,14 @@ ManagedContext::~ManagedContext() {
 
 /// @brief get transaction state, determine commit responsiblity
 /*virtual*/ std::shared_ptr<TransactionState>
-transaction::ManagedContext::acquireState(transaction::Options const& options,
-                                          bool& responsibleForCommit) {
+transaction::ManagedContext::acquireState(
+    transaction::Options const& options, bool& responsibleForCommit,
+    transaction::TrxType /*trxTypeHint*/) {
   TRI_ASSERT(_state);
   // single document transaction should never be leased out
   TRI_ASSERT(!_state->hasHint(Hints::Hint::SINGLE_OPERATION));
   responsibleForCommit = _responsibleForCommit;
+  // intentionally do not update trxTypeHint of existing _state
   return _state;
 }
 

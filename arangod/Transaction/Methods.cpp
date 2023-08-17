@@ -55,11 +55,11 @@
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
+#include "Metrics/Counter.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
-#include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
@@ -72,7 +72,12 @@
 #include "Transaction/BatchOptions.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Transaction/History.h"
+#endif
 #include "Transaction/IndexesSnapshot.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Options.h"
 #include "Transaction/ReplicatedContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -1658,10 +1663,6 @@ void transaction::Methods::addHint(transaction::Hints::Hint hint) noexcept {
   _localHints.set(hint);
 }
 
-transaction::TrxType transaction::Methods::getTrxTypeHint() const noexcept {
-  return _trxTypeHint;
-}
-
 /// @brief whether or not the transaction consists of a single operation only
 bool transaction::Methods::isSingleOperationTransaction() const noexcept {
   return _state->isSingleOperation();
@@ -1701,10 +1702,7 @@ static bool findRefusal(
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
                               transaction::TrxType trxTypeHint,
                               transaction::Options const& options)
-    : _state(nullptr),
-      _transactionContext(ctx),
-      _trxTypeHint(trxTypeHint),
-      _mainTransaction(false) {
+    : _state(nullptr), _transactionContext(ctx), _mainTransaction(false) {
   TRI_ASSERT(_transactionContext != nullptr);
   if (ADB_UNLIKELY(_transactionContext == nullptr)) {
     // in production, we must not go on with undefined behavior, so we bail out
@@ -1713,8 +1711,9 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
                                    "invalid transaction context pointer");
   }
 
-  // initialize the transaction
-  _state = _transactionContext->acquireState(options, _mainTransaction);
+  // initialize the transaction. this can update _mainTransaction!
+  _state =
+      _transactionContext->acquireState(options, _mainTransaction, trxTypeHint);
   TRI_ASSERT(_state != nullptr);
 }
 
@@ -1840,10 +1839,18 @@ Result transaction::Methods::begin() {
     TRI_ASSERT(!(a && b));
 #endif
 
-    _state->setTrxTypeHint(_trxTypeHint);
     res = _state->beginTransaction(_localHints);
     if (res.ok()) {
       res = applyStatusChangeCallbacks(*this, Status::RUNNING);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      // track currently ongoing transaction in history
+      transaction::Manager* mgr = transaction::ManagerFeature::manager();
+      if (mgr != nullptr) {
+        // note: transaction manager can be a nullptr during unit tests
+        mgr->history().insert(*this);
+      }
+#endif
     }
   } else {
     TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
@@ -3055,7 +3062,7 @@ Result transaction::Methods::addCollection(DataSourceId cid,
     throwCollectionNotFound(collectionName);
   }
 
-  const bool lockUsage = !_mainTransaction;
+  bool lockUsage = !_mainTransaction;
 
   auto addCollectionCallback = [this, &collectionName, type,
                                 lockUsage](DataSourceId cid) -> void {

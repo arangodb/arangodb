@@ -1427,15 +1427,16 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
 
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options) {
+    transaction::Options const& options, transaction::TrxType trxType) {
   if (vocbase.replicationVersion() == replication::Version::TWO &&
       (tid.isLeaderTransactionId() || tid.isLegacyTransactionId()) &&
       ServerState::instance()->isRunningInCluster() &&
       !options.allowDirtyReads && options.requiresReplication) {
-    return std::make_shared<ReplicatedRocksDBTransactionState>(vocbase, tid,
-                                                               options);
+    return std::make_shared<ReplicatedRocksDBTransactionState>(
+        vocbase, tid, options, trxType);
   }
-  return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
+  return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options,
+                                                         trxType);
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,

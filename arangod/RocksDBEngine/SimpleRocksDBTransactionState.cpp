@@ -38,8 +38,8 @@ using namespace arangodb;
 
 SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : RocksDBTransactionState(vocbase, tid, options) {}
+    transaction::Options const& options, transaction::TrxType trxTypeHint)
+    : RocksDBTransactionState(vocbase, tid, options, trxTypeHint) {}
 
 SimpleRocksDBTransactionState::~SimpleRocksDBTransactionState() {}
 

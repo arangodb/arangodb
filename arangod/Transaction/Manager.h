@@ -34,12 +34,15 @@
 #include "Metrics/Fwd.h"
 #include "Transaction/ManagedContext.h"
 #include "Transaction/Status.h"
+#include "Transaction/TrxType.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
+
 #include <absl/hash/hash.h>
 #include <atomic>
 #include <functional>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -55,6 +58,9 @@ namespace transaction {
 class Context;
 class ManagerFeature;
 class Hints;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class History;
+#endif
 struct Options;
 
 struct IManager {
@@ -118,6 +124,7 @@ class Manager final : public IManager {
   Manager& operator=(Manager const&) = delete;
 
   explicit Manager(ManagerFeature& feature);
+  ~Manager();
 
   static constexpr double idleTTLDBServer = 5 * 60.0;  //  5 minutes
 
@@ -147,19 +154,13 @@ class Manager final : public IManager {
   /// @brief create managed transaction, also generate a tranactionId
   ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase,
                                           velocypack::Slice trxOpts,
+                                          TrxType trxTypeHint,
                                           bool allowDirtyReads);
-
-  /// @brief create managed transaction, also generate a tranactionId
-  ResultT<TransactionId> createManagedTrx(
-      TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
-      std::vector<std::string> const& writeCollections,
-      std::vector<std::string> const& exclusiveCollections,
-      transaction::Options options, double ttl = 0.0);
 
   /// @brief ensure managed transaction, either use the one on the given tid
   ///        or create a new one with the given tid
   Result ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                          velocypack::Slice trxOpts,
+                          velocypack::Slice trxOpts, TrxType trxTypeHint,
                           bool isFollowerTransaction);
 
   /// @brief ensure managed transaction, either use the one on the given tid
@@ -168,7 +169,7 @@ class Manager final : public IManager {
                           std::vector<std::string> const& readCollections,
                           std::vector<std::string> const& writeCollections,
                           std::vector<std::string> const& exclusiveCollections,
-                          transaction::Options options, double ttl = 0.0);
+                          Options options, TrxType trxTypeHint, double ttl);
 
   Result beginTransaction(transaction::Hints hints,
                           std::shared_ptr<TransactionState>& state);
@@ -203,6 +204,13 @@ class Manager final : public IManager {
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     std::string const& database, std::string const& username,
                     bool fanout) const;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// @brief a history of currently ongoing and recently finished
+  /// transactions. currently only used for testing. NOT AVAILABLE
+  /// IN PRODUCTION!
+  History& history() noexcept;
+#endif
 
   // ---------------------------------------------------------------------------
   // Hotbackup Stuff
@@ -249,6 +257,13 @@ class Manager final : public IManager {
   }
 
  private:
+  /// @brief create managed transaction, also generate a tranactionId
+  ResultT<TransactionId> createManagedTrx(
+      TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
+      std::vector<std::string> const& writeCollections,
+      std::vector<std::string> const& exclusiveCollections, Options options,
+      TrxType trxTypeHint);
+
   Result prepareOptions(transaction::Options& options);
   bool isFollowerTransactionOnDBServer(
       transaction::Options const& options) const;
@@ -313,6 +328,14 @@ class Manager final : public IManager {
   double _streamingLockTimeout;
 
   std::atomic<bool> _softShutdownOngoing;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// @brief a history of currently ongoing and recently finished
+  /// transactions. currently only used for testing. NOT AVAILABLE
+  /// IN PRODUCTION!
+  std::unique_ptr<History> _history;
+#endif
 };
+
 }  // namespace transaction
 }  // namespace arangodb

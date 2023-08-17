@@ -85,7 +85,7 @@ class QueryContext {
   /// @brief get the vocbase
   TRI_vocbase_t& vocbase() const noexcept;
 
-  transaction::TrxType getTrxTypeHint() const noexcept;
+  transaction::TrxType trxTypeHint() const noexcept;
 
   Collections& collections();
   Collections const& collections() const;
@@ -189,7 +189,7 @@ class QueryContext {
   /// messages)
   std::atomic<QueryExecutionState::ValueType> _execState;
 
-  transaction::TrxType _trxTypeHint;
+  transaction::TrxType const _trxTypeHint;
 
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines

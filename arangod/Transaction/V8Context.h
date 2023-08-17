@@ -50,7 +50,8 @@ class V8Context final : public Context {
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(
-      transaction::Options const& options, bool& responsibleForCommit) override;
+      transaction::Options const& options, bool& responsibleForCommit,
+      TrxType trxTypeHint) override;
 
   void enterV8Context();
   void exitV8Context() noexcept;

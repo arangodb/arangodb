@@ -48,13 +48,12 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
 
   // create memory tracker instance for the transaction, depending on
   // the type of transaction
-  switch (_state->getTrxTypeHint()) {
+  switch (_state->trxTypeHint()) {
     case transaction::TrxType::kREST:
       _memoryTracker = std::make_unique<MemoryTrackerMetric>(
           &state->statistics()._restTransactionsMemoryUsage);
       break;
     case transaction::TrxType::kAQL:
-      TRI_ASSERT(!_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
       _memoryTracker = std::make_unique<MemoryTrackerAqlQuery>();
       break;
     case transaction::TrxType::kInternal:

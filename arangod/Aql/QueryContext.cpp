@@ -77,7 +77,7 @@ QueryContext::~QueryContext() {
 
 TRI_vocbase_t& QueryContext::vocbase() const noexcept { return _vocbase; }
 
-transaction::TrxType QueryContext::getTrxTypeHint() const noexcept {
+transaction::TrxType QueryContext::trxTypeHint() const noexcept {
   return _trxTypeHint;
 }
 

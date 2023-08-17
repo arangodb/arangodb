@@ -79,8 +79,8 @@ auto DocumentStateHandlersFactory::createTransaction(
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
 
-  auto state =
-      std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
+  auto state = std::make_shared<SimpleRocksDBTransactionState>(
+      vocbase, tid, options, transaction::TrxType::kInternal);
 
   auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
 

@@ -55,12 +55,13 @@ using namespace arangodb;
 
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                   transaction::Options const& options)
+                                   transaction::Options const& options,
+                                   transaction::TrxType trxTypeHint)
     : _vocbase(vocbase),
-      _trxTypeHint(transaction::TrxType::kInternal),
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
-      _id(tid) {
+      _id(tid),
+      _trxTypeHint(trxTypeHint) {
   // patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   transaction::Options::adjustIntermediateCommitCount(_options);
@@ -369,12 +370,7 @@ void TransactionState::acceptAnalyzersRevision(
   _analyzersRevision = analyzersRevision;
 }
 
-void TransactionState::setTrxTypeHint(
-    transaction::TrxType trxTypeHint) noexcept {
-  _trxTypeHint = trxTypeHint;
-}
-
-[[nodiscard]] transaction::TrxType TransactionState::getTrxTypeHint()
+[[nodiscard]] transaction::TrxType TransactionState::trxTypeHint()
     const noexcept {
   return _trxTypeHint;
 }

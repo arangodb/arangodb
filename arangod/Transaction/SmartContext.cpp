@@ -63,24 +63,25 @@ TransactionId transaction::SmartContext::generateId() const {
 /// @brief get transaction state, determine commit responsiblity
 /*virtual*/ std::shared_ptr<TransactionState>
 transaction::AQLStandaloneContext::acquireState(
-    transaction::Options const& options, bool& responsibleForCommit) {
-  if (!_state) {
+    transaction::Options const& options, bool& responsibleForCommit,
+    TrxType trxTypeHint) {
+  if (_state) {
+    responsibleForCommit = false;
+  } else {
     responsibleForCommit = true;
-    _state = transaction::Context::createState(options);
+    _state = transaction::Context::createState(options, trxTypeHint);
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     mgr->registerAQLTrx(_state);
-  } else {
-    responsibleForCommit = false;
   }
-
+  TRI_ASSERT(_state != nullptr);
   return _state;
 }
 
 /// @brief unregister the transaction
 void AQLStandaloneContext::unregisterTransaction() noexcept {
   TRI_ASSERT(_state != nullptr);
-  _state = nullptr;
+  _state.reset();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
   mgr->unregisterAQLTrx(_globalId);

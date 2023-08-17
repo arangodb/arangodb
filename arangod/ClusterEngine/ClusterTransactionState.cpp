@@ -49,8 +49,9 @@ using namespace arangodb;
 /// @brief transaction type
 ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : TransactionState(vocbase, tid, options), _numIntermediateCommits(0) {
+    transaction::Options const& options, transaction::TrxType trxTypeHint)
+    : TransactionState(vocbase, tid, options, trxTypeHint),
+      _numIntermediateCommits(0) {
   // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
   // we have to read revisions here as validateAndOptimize is executed before

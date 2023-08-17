@@ -185,7 +185,7 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
   if (args.size() > 1) {
     auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
     pool = analyzers.get(name, trx.vocbase(), trx.state()->analyzersRevision(),
-                         expressionContext->trx().getTrxTypeHint());
+                         trx.state()->trxTypeHint());
   } else {  // do not look for identity, we already have reference)
     pool = IResearchAnalyzerFeature::identity();
   }

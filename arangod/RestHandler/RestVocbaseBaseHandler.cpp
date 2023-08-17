@@ -560,9 +560,10 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type,
-    OperationOptions const& opOptions, transaction::Options&& trxOpts) const {
-  bool const isFollower = !opOptions.isSynchronousReplicationFrom.empty() &&
-                          ServerState::instance()->isDBServer();
+    OperationOptions const& opOptions, transaction::TrxType trxTypeHint,
+    transaction::Options&& trxOpts) const {
+  bool isFollower = !opOptions.isSynchronousReplicationFrom.empty() &&
+                    ServerState::instance()->isDBServer();
 
   bool found = false;
   std::string const& value =
@@ -573,7 +574,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     }
     auto tmp = std::make_unique<SingleCollectionTransaction>(
         transaction::StandaloneContext::Create(_vocbase), collectionName, type,
-        transaction::TrxType::kREST, std::move(trxOpts));
+        trxTypeHint, std::move(trxOpts));
     if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
@@ -605,8 +606,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
         _request->header(StaticStrings::TransactionBody, found);
     if (found) {
       auto trxOpts = VPackParser::fromJson(trxDef);
-      Result res =
-          mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), isFollower);
+      Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
+                                         trxTypeHint, isFollower);
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -620,7 +621,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   // lock on the context for the entire duration of the query. if this is the
   // case, then the query already has the lock, and it is ok if we lease the
   // context here without acquiring it again.
-  bool const isSideUser =
+  bool isSideUser =
       (ServerState::instance()->isDBServer() && AccessMode::isRead(type) &&
        !_request->header(StaticStrings::AqlDocumentCall).empty());
 
@@ -640,8 +641,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     // a write request from synchronous replication
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     // inject at least the required collection name
-    trx = std::make_unique<transaction::Methods>(
-        std::move(ctx), collectionName, type, transaction::TrxType::kREST);
+    trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName,
+                                                 type, trxTypeHint);
   } else {
     if (isSideUser) {
       // this is a call from the DOCUMENT() AQL function into an existing AQL
@@ -651,15 +652,15 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
                              "invalid access mode for request", ADB_HERE);
       }
     }
-    trx = std::make_unique<transaction::Methods>(std::move(ctx),
-                                                 transaction::TrxType::kREST);
+    trx = std::make_unique<transaction::Methods>(std::move(ctx), trxTypeHint);
   }
   return trx;
 }
 
 /// @brief create proper transaction context, including the proper IDs
 std::shared_ptr<transaction::Context>
-RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
+RestVocbaseBaseHandler::createTransactionContext(
+    AccessMode::Type mode, transaction::TrxType trxTypeHint) const {
   bool found = false;
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
@@ -700,8 +701,8 @@ RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
           _request->header(StaticStrings::TransactionBody, found);
       if (found) {
         auto trxOpts = VPackParser::fromJson(trxDef);
-        Result res =
-            mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), false);
+        Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
+                                           trxTypeHint, false);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
         }

@@ -33,8 +33,9 @@ struct ReplicatedContext final : public SmartContext {
                     std::shared_ptr<TransactionState> state);
 
   /// @brief get transaction state, determine commit responsibility
-  std::shared_ptr<TransactionState> acquireState(
-      transaction::Options const& options, bool& responsibleForCommit) override;
+  std::shared_ptr<TransactionState> acquireState(Options const& options,
+                                                 bool& responsibleForCommit,
+                                                 TrxType trxTypeHint) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;

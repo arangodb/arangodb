@@ -186,12 +186,13 @@ CollectionNameResolver const& transaction::Context::resolver() {
 }
 
 std::shared_ptr<TransactionState> transaction::Context::createState(
-    transaction::Options const& options) {
+    transaction::Options const& options, TrxType trxTypeHint) {
   // now start our own transaction
   TRI_ASSERT(vocbase().server().hasFeature<EngineSelectorFeature>());
   StorageEngine& engine =
       vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  return engine.createTransactionState(_vocbase, generateId(), options);
+  return engine.createTransactionState(_vocbase, generateId(), options,
+                                       trxTypeHint);
 }
 
 /// @brief unregister the transaction

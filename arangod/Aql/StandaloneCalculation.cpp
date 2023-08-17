@@ -53,9 +53,10 @@ namespace {
 /// statuses to keep ASSERT happy
 class CalculationTransactionState final : public arangodb::TransactionState {
  public:
-  explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
+  explicit CalculationTransactionState(TRI_vocbase_t& vocbase,
+                                       transaction::TrxType trxType)
       : TransactionState(vocbase, arangodb::TransactionId(0),
-                         arangodb::transaction::Options()) {
+                         arangodb::transaction::Options(), trxType) {
     updateStatus(arangodb::transaction::Status::RUNNING);  // always running to
                                                            // make ASSERTS happy
   }
@@ -144,16 +145,17 @@ class CalculationTransactionState final : public arangodb::TransactionState {
 /// @brief Dummy transaction context which just gives dummy state
 struct CalculationTransactionContext final
     : public arangodb::transaction::SmartContext {
-  explicit CalculationTransactionContext(TRI_vocbase_t& vocbase)
+  explicit CalculationTransactionContext(TRI_vocbase_t& vocbase,
+                                         transaction::TrxType trxTypeHint)
       : SmartContext(vocbase,
                      arangodb::transaction::Context::makeTransactionId(),
                      nullptr),
-        _calculationTransactionState(vocbase) {}
+        _calculationTransactionState(vocbase, trxTypeHint) {}
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<arangodb::TransactionState> acquireState(
-      arangodb::transaction::Options const& options,
-      bool& responsibleForCommit) override {
+      arangodb::transaction::Options const& options, bool& responsibleForCommit,
+      arangodb::transaction::TrxType /*trxTypeHint*/) override {
     return {std::shared_ptr<arangodb::TransactionState>(),
             &_calculationTransactionState};
   }
@@ -178,7 +180,7 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
                                    transaction::TrxType trxTypeHint)
       : QueryContext(vocbase, trxTypeHint),
         _resolver(vocbase),
-        _transactionContext(vocbase) {
+        _transactionContext(vocbase, trxTypeHint) {
     _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
     _trx = AqlTransaction::create(
         newTrxContext(), _collections, _queryOptions.transactionOptions,

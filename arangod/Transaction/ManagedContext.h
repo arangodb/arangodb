@@ -41,7 +41,8 @@ struct ManagedContext final : public SmartContext {
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(
-      transaction::Options const& options, bool& responsibleForCommit) override;
+      transaction::Options const& options, bool& responsibleForCommit,
+      transaction::TrxType trxTypeHint) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;

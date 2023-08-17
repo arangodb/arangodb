@@ -58,12 +58,12 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
             /*write*/ {},
             /*exclusive*/ {info._aqlCollection->name()},
             opts,
-            info._query.getTrxTypeHint()};
+            info._query.trxTypeHint()};
   }
   // write transaction
   return {
       std::move(ctx),   /*read*/ {}, /*write*/ {info._aqlCollection->name()},
-      /*exclusive*/ {}, opts,        info._query.getTrxTypeHint()};
+      /*exclusive*/ {}, opts,        info._query.trxTypeHint()};
 }
 
 [[nodiscard]] auto MultipleRemoteModificationExecutor::produceRows(

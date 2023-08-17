@@ -51,7 +51,7 @@ CalculationExecutorInfos::CalculationExecutorInfos(
 template<CalculationType calculationType>
 CalculationExecutor<calculationType>::CalculationExecutor(
     Fetcher& fetcher, CalculationExecutorInfos& infos)
-    : _trx(infos.getQuery().newTrxContext(), infos.getQuery().getTrxTypeHint()),
+    : _trx(infos.getQuery().newTrxContext(), infos.getQuery().trxTypeHint()),
       _infos(infos),
       _fetcher(fetcher),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),

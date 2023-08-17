@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Containers/SmallVector.h"
+#include "Transaction/TrxType.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
@@ -44,8 +45,6 @@ class CollectionNameResolver;
 class TransactionState;
 
 namespace transaction {
-
-class Methods;
 struct Options;
 
 class Context {
@@ -102,7 +101,8 @@ class Context {
 
   /// @brief get transaction state, determine commit responsiblity
   virtual std::shared_ptr<TransactionState> acquireState(
-      transaction::Options const& options, bool& responsibleForCommit) = 0;
+      transaction::Options const& options, bool& responsibleForCommit,
+      TrxType trxTypeHint) = 0;
 
   /// @brief whether or not is from a streaming transaction (used to know
   /// whether or not can read from query cache)
@@ -155,7 +155,7 @@ class Context {
 
  protected:
   std::shared_ptr<TransactionState> createState(
-      transaction::Options const& options);
+      transaction::Options const& options, TrxType trxTypeHint);
 
   TRI_vocbase_t& _vocbase;
   std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;

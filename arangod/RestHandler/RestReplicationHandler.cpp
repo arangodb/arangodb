@@ -43,6 +43,7 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Cluster/ServerState.h"
+#include "Containers/HashSet.h"
 #include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -81,7 +82,7 @@
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
-#include <Containers/HashSet.h>
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -2417,21 +2418,21 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   LOG_TOPIC("40b17", DEBUG, Logger::REPLICATION)
       << "Compare Leader: " << referenceChecksum.get()
-      << " == Follower: " << checksumSlice.copyString();
+      << " == Follower: " << checksumSlice.stringView();
   if (!checksumSlice.isEqualString(referenceChecksum.get())) {
     LOG_TOPIC("94ebe", DEBUG, Logger::REPLICATION)
         << followerId << " is not yet in sync with " << _vocbase.name() << "/"
         << col->name();
-    std::string const checksum = checksumSlice.copyString();
     LOG_TOPIC("592ef", WARN, Logger::REPLICATION)
         << "Cannot add follower " << followerId << " for shard "
         << _vocbase.name() << "/" << col->name() << ", mismatching checksums. "
         << "Expected (leader): " << referenceChecksum.get()
-        << ", actual (follower): " << checksum;
+        << ", actual (follower): " << checksumSlice.stringView();
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-        "'checksum' is wrong. Expected (leader): " + referenceChecksum.get() +
-            ". actual (follower): " + checksum);
+        absl::StrCat(
+            "'checksum' is wrong. Expected (leader): ", referenceChecksum.get(),
+            ". actual (follower): ", checksumSlice.stringView()));
     return;
   }
 
@@ -3398,7 +3399,8 @@ Result RestReplicationHandler::createBlockingTransaction(
 
   transaction::Options opts;
   opts.lockTimeout = ttl;  // not sure if appropriate ?
-  Result res = mgr->ensureManagedTrx(_vocbase, id, read, {}, exc, opts, ttl);
+  Result res = mgr->ensureManagedTrx(_vocbase, id, read, {}, exc, opts,
+                                     transaction::TrxType::kInternal, ttl);
 
   if (res.fail()) {
     return res;

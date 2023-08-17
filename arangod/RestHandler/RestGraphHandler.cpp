@@ -29,6 +29,7 @@
 #include "Graph/GraphManager.h"
 #include "Graph/GraphOperations.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/TrxType.h"
 #include "Utils/OperationOptions.h"
 
 #include <velocypack/Collection.h>
@@ -292,7 +293,8 @@ void RestGraphHandler::vertexActionRead(Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::READ);
+  auto ctx = createTransactionContext(AccessMode::Type::READ,
+                                      transaction::TrxType::kREST);
   GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
   OperationResult result = gops.getVertex(collectionName, key, maybeRev);
 
@@ -564,7 +566,8 @@ void RestGraphHandler::edgeActionRead(Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::READ);
+  auto ctx = createTransactionContext(AccessMode::Type::READ,
+                                      transaction::TrxType::kREST);
   GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
   OperationResult result = gops.getEdge(definitionName, key, maybeRev);
 
@@ -611,7 +614,8 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
+                                      transaction::TrxType::kREST);
   GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
 
   OperationResult result =
@@ -725,7 +729,8 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph,
       _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
   // simon: why is this part of el-cheapo ??
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
+                                      transaction::TrxType::kREST);
   GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
   OperationOptions options(_context);
   OperationResult result(Result(), options);
@@ -788,7 +793,8 @@ Result RestGraphHandler::modifyVertexDefinition(
   bool createCollection =
       _request->parsedValue(StaticStrings::GraphCreateCollection, true);
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
+                                      transaction::TrxType::kREST);
   GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
   OperationOptions options(_context);
   OperationResult result(Result(), options);
@@ -852,7 +858,8 @@ Result RestGraphHandler::documentModify(graph::Graph& graph,
   std::unique_ptr<VPackBuilder> builder;
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
+                                      transaction::TrxType::kREST);
   GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
 
   OperationOptions options(_context);
@@ -916,7 +923,8 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph,
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
+                                      transaction::TrxType::kREST);
   GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
 
   OperationOptions options(_context);
@@ -960,7 +968,8 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
+                                      transaction::TrxType::kREST);
   GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
 
   OperationResult result =

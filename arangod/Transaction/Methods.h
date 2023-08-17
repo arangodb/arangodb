@@ -197,8 +197,6 @@ class Methods {
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) noexcept;
 
-  transaction::TrxType getTrxTypeHint() const noexcept;
-
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const noexcept;
 
@@ -425,6 +423,13 @@ class Methods {
   TransactionCollection* trxCollection(
       DataSourceId cid, AccessMode::Type type = AccessMode::Type::READ) const;
 
+  Future<Result> replicateOperations(
+      TransactionCollection& collection,
+      std::shared_ptr<const std::vector<std::string>> const& followers,
+      OperationOptions const& options,
+      velocypack::Builder const& replicationData,
+      TRI_voc_document_operation_e operation);
+
  private:
   // perform a (deferred) intermediate commit if required
   futures::Future<Result> performIntermediateCommitIfRequired(
@@ -565,20 +570,10 @@ class Methods {
   /// @brief the transaction context
   std::shared_ptr<transaction::Context> _transactionContext;
 
-  transaction::TrxType _trxTypeHint;
-
-  bool _mainTransaction;
-
- public:
-  Future<Result> replicateOperations(
-      TransactionCollection& collection,
-      std::shared_ptr<const std::vector<std::string>> const& followers,
-      OperationOptions const& options,
-      velocypack::Builder const& replicationData,
-      TRI_voc_document_operation_e operation);
-
   /// @brief transaction hints
   transaction::Hints _localHints;
+
+  bool _mainTransaction;
 
   /// @brief name-to-cid lookup cache for last collection seen
   struct {
