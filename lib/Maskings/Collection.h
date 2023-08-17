@@ -50,7 +50,7 @@ class Collection {
 
   CollectionSelection selection() const noexcept { return _selection; }
 
-  MaskingFunction* masking(std::vector<std::string> const& path);
+  MaskingFunction* masking(std::vector<std::string> const& path) const;
 
  private:
   CollectionSelection _selection;

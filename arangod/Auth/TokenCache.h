@@ -25,7 +25,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/LruCache.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"

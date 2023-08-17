@@ -25,11 +25,10 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "Basics/Common.h"
-
-#include "Basics/Mutex.h"
 
 namespace arangodb {
 namespace basics {
@@ -77,7 +76,7 @@ class CleanupFunctions {
    * This is NOT performance critical as those functions
    * only kick in on startup (insert) and shutdown (execute)
    */
-  static Mutex _functionsMutex;
+  static std::mutex _functionsMutex;
 
   /**
    * @brief A list of functions to be executed during cleanup

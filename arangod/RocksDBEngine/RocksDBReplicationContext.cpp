@@ -25,7 +25,6 @@
 #include "RocksDBReplicationContext.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -131,7 +130,7 @@ RocksDBReplicationContext::RocksDBReplicationContext(RocksDBEngine& engine,
 }
 
 RocksDBReplicationContext::~RocksDBReplicationContext() {
-  MUTEX_LOCKER(guard, _contextLock);
+  std::lock_guard guard{_contextLock};
   _iterators.clear();
 
   size_t removed = 0;
@@ -163,7 +162,7 @@ std::shared_ptr<rocksdb::ManagedSnapshot> RocksDBReplicationContext::snapshot()
 }
 
 uint64_t RocksDBReplicationContext::snapshotTick() {
-  MUTEX_LOCKER(locker, _contextLock);
+  std::lock_guard locker{_contextLock};
   lazyCreateSnapshot();
   TRI_ASSERT(_snapshot != nullptr);
   TRI_ASSERT(_snapshot->snapshot() != nullptr);
@@ -174,7 +173,7 @@ uint64_t RocksDBReplicationContext::snapshotTick() {
 bool RocksDBReplicationContext::containsVocbase(TRI_vocbase_t& vocbase) {
   bool found = false;
 
-  MUTEX_LOCKER(locker, _contextLock);
+  std::lock_guard locker{_contextLock};
 
   auto it = _iterators.begin();
   while (it != _iterators.end()) {
@@ -198,7 +197,7 @@ bool RocksDBReplicationContext::containsVocbase(TRI_vocbase_t& vocbase) {
 /// invalidate all iterators with that collection
 bool RocksDBReplicationContext::containsCollection(
     LogicalCollection& collection) const {
-  MUTEX_LOCKER(locker, _contextLock);
+  std::lock_guard locker{_contextLock};
 
   for (auto const& it : _iterators) {
     if (it.second->logical != nullptr &&
@@ -212,7 +211,7 @@ bool RocksDBReplicationContext::containsCollection(
 /// remove matching iterator
 void RocksDBReplicationContext::releaseIterators(TRI_vocbase_t& vocbase,
                                                  DataSourceId cid) {
-  MUTEX_LOCKER(locker, _contextLock);
+  std::lock_guard locker{_contextLock};
 
   auto it = _iterators.find(cid);
 
@@ -245,7 +244,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
       << "binding replication context " << id() << " to collection '" << cname
       << "'";
 
-  MUTEX_LOCKER(writeLocker, _contextLock);
+  std::lock_guard writeLocker{_contextLock};
 
   auto it = _iterators.find(cid);
   if (it != _iterators.end()) {  // nothing to do here
@@ -322,7 +321,7 @@ void RocksDBReplicationContext::removeBlocker(
       [&](TRI_vocbase_t& vocbase, LogicalCollection& collection) {
         DataSourceId id = collection.id();
 
-        MUTEX_LOCKER(guard, _contextLock);
+        std::lock_guard guard{_contextLock};
 
         auto it = _blockers.find(dbName);
         if (it != _blockers.end()) {
@@ -397,7 +396,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
                 });
             trxId = TransactionId(transaction::Context::makeTransactionId());
 
-            MUTEX_LOCKER(guard, _contextLock);
+            std::lock_guard guard{_contextLock};
             // will create blocker entry for dbName if it doesn't exist
             auto& entry = _blockers[vocbase.name()];
             [[maybe_unused]] rocksdb::SequenceNumber blockerSeq =
@@ -427,7 +426,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
   }
   double ttl{};
   {
-    MUTEX_LOCKER(locker, _contextLock);
+    std::lock_guard locker{_contextLock};
     lazyCreateSnapshot();
     ttl = _ttl;
   }
@@ -446,7 +445,7 @@ Result RocksDBReplicationContext::getInventory(
     TRI_vocbase_t& vocbase, std::string const& collectionName,
     VPackBuilder& result) {
   {
-    MUTEX_LOCKER(locker, _contextLock);
+    std::lock_guard locker{_contextLock};
     lazyCreateSnapshot();
   }
 
@@ -511,7 +510,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
       return DumpResult(TRI_ERROR_BAD_PARAMETER);
     }
 
-    MUTEX_LOCKER(writeLocker, _contextLock);
+    std::lock_guard writeLocker{_contextLock};
     cIter =
         getCollectionIterator(vocbase, cid, /*sorted*/ false, /*create*/ true);
     if (!cIter || cIter->sorted() || !cIter->iter) {
@@ -584,7 +583,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
       return DumpResult(TRI_ERROR_BAD_PARAMETER);
     }
 
-    MUTEX_LOCKER(writeLocker, _contextLock);
+    std::lock_guard writeLocker{_contextLock};
     TRI_ASSERT(chunkSize > 0);
     cIter =
         getCollectionIterator(vocbase, cid, /*sorted*/ false, /*create*/ true);
@@ -658,7 +657,7 @@ Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase,
   TRI_ASSERT(_snapshot->snapshot() != nullptr);
 
   {
-    MUTEX_LOCKER(writeLocker, _contextLock);
+    std::lock_guard writeLocker{_contextLock};
     TRI_ASSERT(chunkSize > 0);
     cIter =
         getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
@@ -788,7 +787,7 @@ Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   TRI_ASSERT(_snapshot->snapshot() != nullptr);
 
   {
-    MUTEX_LOCKER(writeLocker, _contextLock);
+    std::lock_guard writeLocker{_contextLock};
     TRI_ASSERT(chunkSize > 0);
     cIter =
         getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ false);
@@ -917,7 +916,7 @@ Result RocksDBReplicationContext::dumpDocuments(
   TRI_ASSERT(_snapshot->snapshot() != nullptr);
 
   {
-    MUTEX_LOCKER(writeLocker, _contextLock);
+    std::lock_guard writeLocker{_contextLock};
     TRI_ASSERT(chunkSize > 0);
     cIter =
         getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
@@ -1086,14 +1085,14 @@ void RocksDBReplicationContext::handleCollectionCountAdjustment(
 }
 
 double RocksDBReplicationContext::expires() const {
-  MUTEX_LOCKER(locker, _contextLock);
+  std::lock_guard locker{_contextLock};
   return _expires;
 }
 
 void RocksDBReplicationContext::extendLifetime(double ttl) {
   double now = TRI_microtime();
 
-  MUTEX_LOCKER(locker, _contextLock);
+  std::lock_guard locker{_contextLock};
 
   ttl = std::max(_ttl, ttl);
   TRI_ASSERT(ttl > 0.0);
@@ -1112,7 +1111,6 @@ void RocksDBReplicationContext::extendLifetime(double ttl) {
 
 /// create rocksdb snapshot, must hold _contextLock
 void RocksDBReplicationContext::lazyCreateSnapshot() {
-  _contextLock.assertLockedByCurrentThread();
   if (_snapshot == nullptr) {
     _snapshot = std::make_shared<rocksdb::ManagedSnapshot>(_engine.db());
 
@@ -1243,7 +1241,6 @@ RocksDBReplicationContext::CollectionIterator*
 RocksDBReplicationContext::getCollectionIterator(TRI_vocbase_t& vocbase,
                                                  DataSourceId cid, bool sorted,
                                                  bool allowCreate) {
-  _contextLock.assertLockedByCurrentThread();
   lazyCreateSnapshot();
 
   CollectionIterator* cIter{nullptr};
@@ -1304,7 +1301,7 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
   if (it) {
     TRI_ASSERT(it->isUsed());
     if (!it->hasMore()) {
-      MUTEX_LOCKER(locker, _contextLock);
+      std::lock_guard locker{_contextLock};
       it->vocbase.replicationClients().track(syncerId(),
                                              replicationClientServerId(),
                                              clientInfo(), _snapshotTick, _ttl);

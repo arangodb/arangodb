@@ -319,18 +319,9 @@ NonConstExpressionContainer IndexNode::buildNonConstExpressions() const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-
-  if (!engine.waitForSatellites(engine.getQuery(), collection())) {
-    double maxWait = engine.getQuery().queryOptions().satelliteSyncWait;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + collection()->name() +
-                                       " did not come into sync in time (" +
-                                       std::to_string(maxWait) + ")");
-  }
 
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes
@@ -511,6 +502,8 @@ void IndexNode::getVariablesUsedHere(VarSet& vars) const {
 
 ExecutionNode::NodeType IndexNode::getType() const { return INDEX; }
 
+size_t IndexNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 Condition* IndexNode::condition() const { return _condition.get(); }
 
 IndexIteratorOptions IndexNode::options() const { return _options; }
@@ -593,7 +586,8 @@ void IndexNode::prepareProjections() {
 
     if (Ast::getReferencedAttributesRecursive(
             this->filter()->node(), this->outVariable(),
-            /*expectedAttribute*/ "", attributes)) {
+            /*expectedAttribute*/ "", attributes,
+            plan()->getAst()->query().resourceMonitor())) {
       if (!attributes.empty()) {
         Projections filterProjections(std::move(attributes));
         if (idx->covers(filterProjections)) {

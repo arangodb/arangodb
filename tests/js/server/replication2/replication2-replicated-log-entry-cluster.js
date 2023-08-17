@@ -86,10 +86,11 @@ const replicatedLogEntrySuite = function () {
       lh.replicatedLogDeleteTarget(database, logId);
     },
 
-    testCheckUpdateParticipantsConfig: function () {
+    testCheckUpdateInnerTermConfig: function () {
       const {logId, servers, followers} = lh.createReplicatedLog(database, targetConfig);
       waitForReplicatedLogAvailable(logId);
       const follower = _.sample(followers);
+      const rebootIds = Object.fromEntries(servers.map(server => [server, lh.getServerRebootId(server)]));
 
       lh.replicatedLogUpdateTargetParticipants(database, logId, {
         [follower]: {forced: true},
@@ -110,10 +111,12 @@ const replicatedLogEntrySuite = function () {
       assertEqual(entry.logPayload, undefined);
       assertTrue(entry.meta !== undefined);
       const meta = entry.meta;
-      assertEqual(meta.type, "UpdateParticipantsConfig");
+      assertEqual(meta.type, "UpdateInnerTermConfig");
       assertEqual(meta.leader, undefined);
       assertEqual(meta.participants.generation, 2);
       assertEqual(Object.keys(meta.participants.participants).sort(), servers.sort());
+      assertEqual(Object.keys(meta.safeRebootIds).sort(), servers.sort());
+      assertEqual(meta.safeRebootIds, rebootIds);
       lh.replicatedLogDeleteTarget(database, logId);
     },
 

@@ -124,7 +124,7 @@ var role = function () {
 // /////////////////////////////////////////////////////////////////////////////
 
 var status = function () {
-  if (!isCluster() || !global.ArangoServerState.initialized()) {
+  if (!isCluster()) {
     return undefined;
   }
 

@@ -32,6 +32,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <thread>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -370,7 +371,7 @@ void BenchFeature::start() {
 
     VPackBuilder b;
     b.openObject();
-    b.add("name", VPackValue(normalizeUtf8ToNFC(connectDB)));
+    b.add("name", VPackValue(connectDB));
     b.close();
 
     std::unordered_map<std::string, std::string> headers;
@@ -489,8 +490,8 @@ void BenchFeature::start() {
 
     // broadcast the start signal to all threads
     {
-      CONDITION_LOCKER(guard, startCondition);
-      guard.broadcast();
+      std::lock_guard guard{startCondition.mutex};
+      startCondition.cv.notify_all();
     }
 
     uint64_t const stepValue = _operations / 20;

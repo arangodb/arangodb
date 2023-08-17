@@ -42,7 +42,6 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
-#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
@@ -261,11 +260,22 @@ CommTask::Flow CommTask::prepareExecution(
     }
       [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
+      bool allowReconnect = false;
+      TRI_IF_FAILURE("CommTask::allowReconnectRequests") {
+        // allow special requests that are necessary to reconnect to an endpoint
+        // from inside tests. these are currently:
+        // - GET /_api/version
+        // - GET /_api/database/current
+        // we need to allow such requests from a specific test even in TRYAGAIN
+        // mode. these are normally disallowed even in TRYAGAIN mode.
+        allowReconnect = true;
+      }
       // the following paths are allowed on followers in active failover
       if (!path.starts_with("/_admin/shutdown") &&
           !path.starts_with("/_admin/cluster/health") &&
           !path.starts_with("/_admin/cluster/maintenance") &&
           path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
+          !path.starts_with("/_admin/debug/") &&
           !path.starts_with("/_admin/log") &&
           !path.starts_with("/_admin/metrics") &&
           !path.starts_with("/_admin/server/") &&
@@ -277,12 +287,16 @@ CommTask::Flow CommTask::prepareExecution(
           !(req.requestType() == RequestType::GET &&
             path.starts_with("/_api/collection")) &&
           !path.starts_with("/_api/cluster/") &&
+          path != "/_api/database/current" &&
           !path.starts_with("/_api/engine/stats") &&
           !path.starts_with("/_api/replication") &&
           !path.starts_with("/_api/ttl/statistics") &&
+          !(req.requestType() == RequestType::GET && path == "/_api/user") &&
           (mode == ServerState::Mode::TRYAGAIN ||
            !path.starts_with("/_api/version")) &&
-          !path.starts_with("/_api/wal")) {
+          !path.starts_with("/_api/wal") &&
+          !(allowReconnect && (path.starts_with("/_api/version") ||
+                               path.starts_with("/_api/database/current")))) {
         LOG_TOPIC("a5119", TRACE, arangodb::Logger::FIXME)
             << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
@@ -447,21 +461,18 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   TRI_ASSERT(request != nullptr);
   TRI_ASSERT(response != nullptr);
 
+  if (request == nullptr || response == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid object setup for executeRequest");
+  }
+
   DTRACE_PROBE1(arangod, CommTaskExecuteRequest, this);
 
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);
 
   // store the message id for error handling
-  uint64_t messageId = 0UL;
-  if (request) {
-    messageId = request->messageId();
-  } else if (response) {
-    messageId = response->messageId();
-  } else {
-    LOG_TOPIC("2cece", WARN, Logger::REQUESTS)
-        << "could not find corresponding request/response";
-  }
+  uint64_t messageId = request->messageId();
 
   rest::ContentType const respType = request->contentTypeResponse();
 
@@ -504,12 +515,11 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
     statistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal(
-        [self(shared_from_this()), handler(std::move(handler)),
-         messageId](futures::Try<Result>&& /*ignored*/) -> void {
-          self->sendResponse(handler->stealResponse(),
-                             self->stealStatistics(messageId));
-        });
+    std::move(res).thenFinal([self(shared_from_this()), h(std::move(handler)),
+                              messageId](
+                                 futures::Try<Result>&& /*ignored*/) -> void {
+      self->sendResponse(h->stealResponse(), self->stealStatistics(messageId));
+    });
     return;
   }
 
@@ -528,6 +538,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     RequestStatistics::Item stats = stealStatistics(messageId);
     stats.SET_ASYNC();
     handler->setStatistics(std::move(stats));
+    handler->setIsAsyncRequest();
 
     uint64_t jobId = 0;
 
@@ -861,7 +872,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
                  path.starts_with(std::string{::pathPrefixApiUser} + username +
                                   '/')) {
         // simon: unauthorized users should be able to call
-        // `/_api/users/<name>` to check their passwords
+        // `/_api/user/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
       } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {

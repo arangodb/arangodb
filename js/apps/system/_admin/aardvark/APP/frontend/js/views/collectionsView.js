@@ -52,9 +52,9 @@
           });
 
           this.collection.each(function (model) {
-            $('#collection_' + model.get('name')).removeClass('locked');
-            if ($('#collection_' + model.get('name') + ' .corneredBadge').hasClass('inProgress')) {
-              $('#collection_' + model.get('name') + ' .corneredBadge').removeClass('inProgress');
+            $('#collection_' + window.CSS.escape(model.get('name'))).removeClass('locked');
+            if ($('#collection_' + window.CSS.escape(model.get('name')) + ' .corneredBadge').hasClass('inProgress')) {
+              $('#collection_' + window.CSS.escape(model.get('name')) + ' .corneredBadge').removeClass('inProgress');
             }
           });
         }
@@ -239,7 +239,7 @@
 
     search: function () {
       var searchOptions = this.collection.searchOptions;
-      var searchPhrase = $('#searchInput').val();
+      var searchPhrase = $('#searchInput').val().normalize();
       if (searchPhrase === searchOptions.searchPhrase) {
         return;
       }
@@ -264,12 +264,12 @@
           (
             event.originalEvent.key &&
             (
-              event.originalEvent.key === 'Control' || 
-              event.originalEvent.key === 'Alt' || 
+              event.originalEvent.key === 'Control' ||
+              event.originalEvent.key === 'Alt' ||
               event.originalEvent.key === 'Shift'
             )
-          ) || 
-          event.originalEvent.ctrlKey || 
+          ) ||
+          event.originalEvent.ctrlKey ||
           event.originalEvent.altKey
         )
       ) {
@@ -316,13 +316,13 @@
       }
     },
 
-    submitCreateCollection: function () {
+    submitCreateCollection: function (isOneShardDB) {
       var self = this;
       var callbackCoord = function (error, isCoordinator) {
         if (error) {
           arangoHelper.arangoError('DB', 'Could not check coordinator state');
         } else {
-          var collName = $('#new-collection-name').val();
+          var collName = String($('#new-collection-name').val()).normalize();
           var collSize = $('#new-collection-size').val();
           var replicationFactor = Number($('#new-replication-factor').val());
           var writeConcern = Number($('#new-write-concern').val());
@@ -431,21 +431,30 @@
             collName: collName,
             wfs: wfs,
             isSystem: isSystem,
-            collType: collType,
-            shards: shards,
-            shardKeys: shardKeys
+            collType: collType
           };
 
-          if (smartJoinAttribute !== '') {
-            tmpObj.smartJoinAttribute = smartJoinAttribute;
-          }
+          if (!isOneShardDB) {
+            if (smartJoinAttribute !== '') {
+              tmpObj.smartJoinAttribute = smartJoinAttribute;
+            }
 
-          tmpObj.distributeShardsLike = distributeShardsLike;
-          if (distributeShardsLike === '' && window.App.isCluster) {
-            // if we are in the cluster and are not using distribute shards like
-            // then we want to make use of the replication factor
-            tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
-            tmpObj.writeConcern = Number(writeConcern);
+            // If we are in a oneShardDB we are not allowed to set those values
+            // They are always inferred
+            if (window.App.isCluster) {
+              tmpObj.shardKeys = shardKeys;
+              if (distributeShardsLike === '') {
+                // if we are not using distribute shards like
+                // then we want to make use of the given shard information
+                tmpObj.shards = shards;
+                tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
+                tmpObj.writeConcern = Number(writeConcern);
+              } else {
+                // If we use distribute shards like on purpose do not add other
+                // sharding information. All of it will be deferred.
+                tmpObj.distributeShardsLike = distributeShardsLike;
+              }
+            }
           }
 
           if (!abort) {
@@ -487,6 +496,8 @@
           var tableContent = [];
           var advanced = {};
           var advancedTableContent = [];
+          var collectionNameValidations = 
+            window.arangoValidationHelper.getCollectionNameValidations();
 
           tableContent.push(
             window.modalView.createTextEntry(
@@ -496,20 +507,7 @@
               false,
               '',
               true,
-              [
-                {
-                  rule: Joi.string().regex(/^[a-zA-Z]/),
-                  msg: 'Collection name must always start with a letter.'
-                },
-                {
-                  rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-                  msg: 'Only symbols, "_" and "-" are allowed.'
-                },
-                {
-                  rule: Joi.string().required(),
-                  msg: 'No collection name given.'
-                }
-              ]
+              collectionNameValidations
             )
           );
 
@@ -557,10 +555,10 @@
                 false
               )
             );
-          
+
             if (window.App.isCluster) {
-              var minReplicationFactor = (this.minReplicationFactor ? this.minReplicationFactor : 1); 
-              var maxReplicationFactor = (this.maxReplicationFactor ? this.maxReplicationFactor : 10); 
+              var minReplicationFactor = (this.minReplicationFactor ? this.minReplicationFactor : 1);
+              var maxReplicationFactor = (this.maxReplicationFactor ? this.maxReplicationFactor : 10);
 
               // clamp replicationFactor between min & max allowed values
               var replicationFactor = '';
@@ -579,14 +577,14 @@
                   'new-replication-factor',
                   'Replication factor',
                   String(replicationFactor),
-                  'Numeric value. Must be between ' + minReplicationFactor + ' and ' + 
+                  'Numeric value. Must be between ' + minReplicationFactor + ' and ' +
                   maxReplicationFactor + '. Total number of copies of the data in the cluster',
                   '',
                   false,
                   [
                     {
                       rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
-                      msg: 'Must be a number between ' + minReplicationFactor +  
+                      msg: 'Must be a number between ' + minReplicationFactor +
                            ' and ' + maxReplicationFactor + '.'
                     }
                   ]
@@ -598,7 +596,7 @@
           buttons.push(
             window.modalView.createSuccessButton(
               'Save',
-              this.submitCreateCollection.bind(this)
+              this.submitCreateCollection.bind(this, properties.sharding === 'single' || frontendConfig.forceOneShard)
             )
           );
           if (window.App.isCluster) {
@@ -650,7 +648,7 @@
                 false,
                 [
                   {
-                    rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                    rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                     msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
                   }
                 ]

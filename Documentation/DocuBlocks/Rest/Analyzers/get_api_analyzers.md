@@ -1,15 +1,14 @@
-@startDocuBlock get_api_analyzers
-@brief returns a listing of available Analyzer definitions
+@startDocuBlock get_api_analyzer
 
-@RESTHEADER{GET /_api/analyzer, List all Analyzers, RestAnalyzerHandler:List}
+@RESTHEADER{GET /_api/analyzer, List all Analyzers, listAnalyzers}
 
 @RESTDESCRIPTION
 Retrieves a an array of all Analyzer definitions.
 The resulting array contains objects with the following attributes:
-- *name*: the Analyzer name
-- *type*: the Analyzer type
-- *properties*: the properties used to configure the specified type
-- *features*: the set of features to set on the Analyzer generated fields
+- `name`: the Analyzer name
+- `type`: the Analyzer type
+- `properties`: the properties used to configure the specified type
+- `features`: the set of features to set on the Analyzer generated fields
 
 @RESTRETURNCODES
 

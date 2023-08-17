@@ -38,6 +38,8 @@ const isCluster = internal.isCluster();
 const request = require('@arangodb/request');
 
 const defaultReplicationFactor = db._properties().replicationFactor;
+const replication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
+
 
 function getEndpointsByType(type) {
   const isType = (d) => (d.instanceRole === type);
@@ -115,7 +117,8 @@ function OneShardPropertiesSuite () {
         assertEqual(props.sharding, "single");
         assertEqual(props.replicationFactor, 2);
         assertEqual(props.writeConcern, 2);
-
+        let c = db._create("test", { writeConcern: 1, replicationFactor: 1, numberOfShards: 2, distributeShardsLike: "" });
+        /* Expected implementation, if we can drop backwards compatibility with 3.11
         try {
           // Disallow using a different distributeShardsLike
           db._create("test", {distributeShardsLike: ""});
@@ -137,22 +140,33 @@ function OneShardPropertiesSuite () {
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
-        try {
-          // Allow using a different writeConcern
-          db._create("test", {writeConcern: 1});
-          // For Replication1 this should be allowed.
-          // WriteConcern is per Collection basis
-        } catch (err) {
-          fail();
-        } finally {
-          db._drop("test");
+        if (replication2Enabled) {
+          try {
+            // With Replication2 the writeConcern is defined by the CollectionGroup
+            // it cannot be individual by collection anymore.
+            db._create("test", {writeConcern: 1});
+            fail();
+          } catch (err) {
+            assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+          }
+        } else {
+          try {
+            // Allow using a different writeConcern
+            db._create("test", {writeConcern: 1});
+            // For Replication1 this should be allowed.
+            // WriteConcern is per Collection basis
+          } catch (err) {
+            fail();
+          } finally {
+            db._drop("test");
+          }
         }
-
 
         // Allow creation where all values match
         let c = db._create("test", {writeConcern: 2, replicationFactor: 2, numberOfShards: 1});
+        */
         props = c.properties();
-        assertEqual(2, props.writeConcern);
+        assertEqual(1, props.writeConcern);
         assertEqual(2, props.replicationFactor);
         assertEqual(1, props.numberOfShards);
 
@@ -161,6 +175,44 @@ function OneShardPropertiesSuite () {
         assertEqual(props.sharding, undefined);
         assertEqual(props.replicationFactor, undefined);
         assertEqual(props.writeConcern, undefined);
+      }
+    },
+
+    testCreationWithDistributeShardsLike : function () {
+      if (isCluster) {
+        assertTrue(db._createDatabase(dn, { replicationFactor: 2, writeConcern: 2, sharding: "single" }));
+        db._useDatabase(dn);
+        // We need to create a new collection that we can use as a leader
+        db._create("leading");
+        try {
+          const c = db._create("test", {distributeShardsLike: "leading"});
+          // We can create an illegal distribute shards like. For one shard
+          // it will just be ignored
+          const props = c.properties();
+          assertEqual(2, props.writeConcern);
+          assertEqual(2, props.replicationFactor);
+          assertEqual(1, props.numberOfShards);
+          assertEqual("_graphs", props.distributeShardsLike);
+        } finally {
+          db._drop("test");
+        }
+        /* Expected Test Code as soon as we drop compatibility with 3.11
+        try {
+          db._create("test", {distributeShardsLike: "leading"});
+          fail();
+        } catch (err) {
+          // We cannot create the collection, as the leader is not allowed! We will have a chain of distributeShardsLike
+          assertEqual(ERRORS.ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE.code, err.errorNum);
+        }
+        */
+        // It should be allowed to create a collection following the OneShard leader (_graphs for every non _system db)
+        const c = db._create("test", {distributeShardsLike: "_graphs"});
+        const props = c.properties();
+        assertEqual(2, props.writeConcern);
+        assertEqual(2, props.replicationFactor);
+        assertEqual(1, props.numberOfShards);
+
+        checkDBServerSharding(dn, "single");
       }
     },
     
@@ -322,6 +374,17 @@ function OneShardPropertiesSuite () {
           }
         }
 
+        {
+          // we want to create a normal collection
+          let col = db._create("overrideOneShardCollection", { distributeShardsLike: ""});
+          let colProperties = col.properties();
+
+          if (isCluster) {
+            assertEqual(colProperties.distributeShardsLike, "_graphs");
+            assertEqual(colProperties.replicationFactor, db._properties().replicationFactor);
+          }
+        }
+        /* Expected Test Code as soon as we drop compatibility with 3.11
         if (isCluster) {
           try {
             // We set distributeShardsLike to an illegal value
@@ -334,7 +397,22 @@ function OneShardPropertiesSuite () {
           // Should be allowed on single server
           db._create("overrideOneShardCollection", {distributeShardsLike: ""});
         }
+        */
+        {
+          // we want to create a normal collection and have a different replication factor
+          let nonDefaultReplicationFactor = 1;
+          assertNotEqual(db._properties.ReplicationFactor, nonDefaultReplicationFactor);
+          let col = db._create("overrideOneShardAndReplicationFactor", { distributeShardsLike: "", replicationFactor: nonDefaultReplicationFactor });
+          let colProperties = col.properties();
+          let graphsProperties = db._collection("_graphs").properties();
 
+          if (isCluster) {
+            assertEqual(colProperties.distributeShardsLike, "_graphs");
+            assertEqual(colProperties.replicationFactor, db._properties().replicationFactor);
+          }
+        }
+
+        /* Expected Test Code as soon as we drop compatibility with 3.11
         {
           // we want to create a normal collection and have a different replication factor
           let nonDefaultReplicationFactor = 1;
@@ -348,6 +426,7 @@ function OneShardPropertiesSuite () {
             assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
           }
         }
+        */
       }
     },
     
@@ -375,7 +454,7 @@ function OneShardPropertiesSuite () {
         }
 
         {
-          let col = db._create("overrideCollection1", { writeConcern : 1});
+          let col = db._create("overrideCollection1", {writeConcern: 1});
           let colProperties = col.properties();
           assertEqual(colProperties.minReplicationFactor, 1);  // deprecated
           assertEqual(colProperties.writeConcern, 1);
@@ -388,27 +467,55 @@ function OneShardPropertiesSuite () {
           assertEqual(colProperties.writeConcern, 1);
         }
 
-        // we want to create a normal collection and have a different replication factor
-        try {
-          // Write concern is not inherited, the replicationFactor is. The default for the database is 2
-          // we inherit replication factor 1 by distribute shards like, with default wc 2. This is forbidden,
-          // as writeConcern is higher than replicationFactor.
-          db._create("overrideCollection3", {distributeShardsLike: "overrideCollection2"});
-          fail();
-        } catch (err) {
-          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        if (replication2Enabled) {
+          // we want to create a normal collection and have a different replication factor
+          try {
+            // Write concern is defined by collection group and cannot be changed here
+            db._create("overrideCollection3", {distributeShardsLike: "overrideCollection2", writeConcern: 2});
+            fail();
+          } catch (err) {
+            assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+          }
+
+          let col2 = db._collection("overrideCollection2");
+          // Inheriting the writeConcern from original collection should be allowed, even if default is higher
+          let col3 = db._create("overrideCollection3", {distributeShardsLike: "overrideCollection2"});
+          let col2Properties = col2.properties();
+          let col3Properties = col3.properties();
+
+          assertEqual(col3Properties.distributeShardsLike, col2.name());
+          assertEqual(col3Properties.replicationFactor, col2Properties.replicationFactor);
+          assertEqual(col3Properties.writeConcern, col2Properties.writeConcern);
+
+          // Explicitly setting the same writeConcern as original collection should be allowed, even if default is higher
+          let col4 = db._create("overrideCollection4", {distributeShardsLike: "overrideCollection2", writeConcern: 1});
+          let col4Properties = col4.properties();
+
+          assertEqual(col4Properties.distributeShardsLike, col2.name());
+          assertEqual(col4Properties.replicationFactor, col2Properties.replicationFactor);
+          assertEqual(col4Properties.writeConcern, col2Properties.writeConcern);
+        } else {
+          // we want to create a normal collection and have a different replication factor
+          try {
+            // Write concern is not inherited, the replicationFactor is. The default for the database is 2
+            // we inherit replication factor 1 by distribute shards like, with default wc 2. This is forbidden,
+            // as writeConcern is higher than replicationFactor.
+            db._create("overrideCollection3", {distributeShardsLike: "overrideCollection2"});
+            fail();
+          } catch (err) {
+            assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+          }
+
+          let col2 = db._collection("overrideCollection2");
+          // Giving correct write concern we can do distributeShardsLike properly
+          let col3 = db._create("overrideCollection3", {distributeShardsLike: "overrideCollection2", writeConcern: 1});
+          let col2Properties = col2.properties();
+          let col3Properties = col3.properties();
+
+          assertEqual(col3Properties.distributeShardsLike, col2.name());
+          assertEqual(col3Properties.replicationFactor, col2Properties.replicationFactor);
         }
-
-        let col2 = db._collection("overrideCollection2");
-        // Giving correct write concern we can do distributeShardsLike properly
-        let col3 = db._create("overrideCollection3", {distributeShardsLike: "overrideCollection2", writeConcern: 1});
-        let col2Properties = col2.properties();
-        let col3Properties = col3.properties();
-
-        assertEqual(col3Properties.distributeShardsLike, col2.name());
-        assertEqual(col3Properties.replicationFactor, col2Properties.replicationFactor);
-        }
-
+      }
     },
 
     testSatelliteDB : function () {

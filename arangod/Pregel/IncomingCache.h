@@ -27,9 +27,12 @@
 
 #include <atomic>
 #include <string>
-#include <map>
 
 #include "Basics/Common.h"
+
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
+#include "Containers/NodeHashMap.h"
 
 #include "Pregel/Iterators.h"
 #include "Pregel/MessageCombiner.h"
@@ -38,8 +41,6 @@
 
 namespace arangodb {
 namespace pregel {
-
-class WorkerConfig;
 
 /* In the longer run, maybe write optimized implementations for certain use
 cases. For example threaded
@@ -73,8 +74,7 @@ class InCache {
   void storeMessage(PregelShard shard, std::string_view vertexId,
                     M const& data);
 
-  virtual void mergeCache(std::shared_ptr<WorkerConfig const> config,
-                          InCache<M> const* otherCache) = 0;
+  virtual void mergeCache(InCache<M> const* otherCache) = 0;
   /// @brief get messages for vertex id. (Don't use keys from _from or _to
   /// directly, they contain the collection name)
   virtual MessageIterator<M> getMessages(PregelShard shard,
@@ -95,19 +95,19 @@ class InCache {
 /// containing all messages for this vertex
 template<typename M>
 class ArrayInCache : public InCache<M> {
-  typedef std::unordered_map<std::string, std::vector<M>> HMap;
-  std::map<PregelShard, HMap> _shardMap;
+  using HMap = containers::NodeHashMap<std::string, std::vector<M>>;
+  containers::FlatHashMap<PregelShard, HMap> _shardMap;
+  containers::FlatHashSet<PregelShard> _localShards;
 
  protected:
   void _set(PregelShard shard, std::string_view const& vertexId,
             M const& data) override;
 
  public:
-  ArrayInCache(std::shared_ptr<WorkerConfig const> config,
+  ArrayInCache(containers::FlatHashSet<PregelShard> localShards,
                MessageFormat<M> const* format);
 
-  void mergeCache(std::shared_ptr<WorkerConfig const> config,
-                  InCache<M> const* otherCache) override;
+  void mergeCache(InCache<M> const* otherCache) override;
   MessageIterator<M> getMessages(PregelShard shard,
                                  std::string_view const& key) override;
   void clear() override;
@@ -120,24 +120,24 @@ class ArrayInCache : public InCache<M> {
 /// Cache which stores one value per vertex id
 template<typename M>
 class CombiningInCache : public InCache<M> {
-  typedef std::unordered_map<std::string, M> HMap;
+  using HMap = containers::NodeHashMap<std::string, M>;
 
   MessageCombiner<M> const* _combiner;
-  std::map<PregelShard, HMap> _shardMap;
+  containers::FlatHashMap<PregelShard, HMap> _shardMap;
+  containers::FlatHashSet<PregelShard> _localShards;
 
  protected:
   void _set(PregelShard shard, std::string_view const& vertexId,
             M const& data) override;
 
  public:
-  CombiningInCache(std::shared_ptr<WorkerConfig const> config,
+  CombiningInCache(containers::FlatHashSet<PregelShard> localShards,
                    MessageFormat<M> const* format,
                    MessageCombiner<M> const* combiner);
 
   MessageCombiner<M> const* combiner() const { return _combiner; }
 
-  void mergeCache(std::shared_ptr<WorkerConfig const> config,
-                  InCache<M> const* otherCache) override;
+  void mergeCache(InCache<M> const* otherCache) override;
   MessageIterator<M> getMessages(PregelShard shard,
                                  std::string_view const& key) override;
   void clear() override;

@@ -28,14 +28,19 @@
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
+#include "Agency/NodeDeserialization.h"
+#include "Agency/ReconfigureReplicatedLog.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
-#include "VocBase/LogicalCollection.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
                                std::string const& jobId,
@@ -72,10 +77,8 @@ JOB_STATUS CleanOutServer::status() {
     return _status;
   }
 
-  Node::Children const& todos =
-      _snapshot.hasAsChildren(toDoPrefix).value().get();
-  Node::Children const& pends =
-      _snapshot.hasAsChildren(pendingPrefix).value().get();
+  Node::Children const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  Node::Children const& pends = *_snapshot.hasAsChildren(pendingPrefix);
   size_t found = 0;
 
   for (auto const& subJob : todos) {
@@ -94,8 +97,7 @@ JOB_STATUS CleanOutServer::status() {
     return considerCancellation() ? FAILED : PENDING;
   }
 
-  Node::Children const& failed =
-      _snapshot.hasAsChildren(failedPrefix).value().get();
+  Node::Children const& failed = *_snapshot.hasAsChildren(failedPrefix);
   size_t failedFound = 0;
   for (auto const& subJob : failed) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
@@ -231,9 +233,9 @@ bool CleanOutServer::start(bool& aborts) {
 
   // Check that _to is not in `Target/CleanedServers`:
   VPackBuilder cleanedServersBuilder;
-  auto const& cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
+  auto const& cleanedServersNode = _snapshot.get(cleanedPrefix);
   if (cleanedServersNode) {
-    cleanedServersNode->get().toBuilder(cleanedServersBuilder);
+    cleanedServersNode->toBuilder(cleanedServersBuilder);
   } else {
     // ignore this check
     cleanedServersBuilder.clear();
@@ -251,12 +253,12 @@ bool CleanOutServer::start(bool& aborts) {
 
   // Check that _to is not in `Target/FailedServers`:
   //  (this node is expected to NOT exists, so make test before processing
-  //   so that hasAsNode does not generate a warning log message)
+  //   so that get does not generate a warning log message)
   VPackBuilder failedServersBuilder;
   if (_snapshot.has(failedServersPrefix)) {
-    auto const& failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
+    auto const& failedServersNode = _snapshot.get(failedServersPrefix);
     if (failedServersNode) {
-      failedServersNode->get().toBuilder(failedServersBuilder);
+      failedServersNode->toBuilder(failedServersBuilder);
     } else {
       // ignore this check
       failedServersBuilder.clear();
@@ -351,9 +353,8 @@ bool CleanOutServer::start(bool& aborts) {
                                   Supervision::HEALTH_STATUS_GOOD);
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
-      addPreconditionUnchanged(
-          *pending, planVersion,
-          _snapshot.get(planVersion).value().get().slice());
+      addPreconditionUnchanged(*pending, planVersion,
+                               _snapshot.get(planVersion)->toBuilder().slice());
     }
   }  // array for transaction done
 
@@ -373,17 +374,56 @@ bool CleanOutServer::start(bool& aborts) {
   return false;
 }
 
+void CleanOutServer::scheduleJobsR2(std::shared_ptr<Builder>& trx,
+                                    DatabaseID const& database, size_t& sub) {
+  auto replicatedLogsPath =
+      basics::StringUtils::concatT("/Target/ReplicatedLogs/", database);
+  auto logsChild = _snapshot.hasAsChildren(replicatedLogsPath);
+  TRI_ASSERT(logsChild);
+  auto logs = logsChild;
+
+  for (auto const& [logIdString, logNode] : *logs) {
+    auto logTarget = deserialize<replication2::agency::LogTarget>(logNode);
+    bool removeServer = logTarget.participants.contains(_server);
+
+    if (removeServer) {
+      auto replacement =
+          findOtherHealthyParticipant(_snapshot, logTarget, {_server});
+
+      if (replacement.empty()) {
+        continue;
+      }
+
+      std::vector<ReconfigureOperation> ops;
+      ops.emplace_back(ReconfigureOperation{
+          ReconfigureOperation::RemoveParticipant{.participant = _server}});
+      if (logTarget.leader == _server) {
+        ops.emplace_back(ReconfigureOperation{
+            ReconfigureOperation::SetLeader{.participant = replacement}});
+      }
+
+      ReconfigureReplicatedLog(_snapshot, _agent,
+                               _jobId + "-" + std::to_string(sub++), _jobId,
+                               database, logTarget.id, ops)
+          .create(trx);
+    }
+  }
+}
+
 bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   std::vector<std::string> servers = availableServers(_snapshot);
 
   Node::Children const& databaseProperties =
-      _snapshot.hasAsChildren(planDBPrefix).value().get();
-  Node::Children const& databases =
-      _snapshot.hasAsChildren(planColPrefix).value().get();
+      *_snapshot.hasAsChildren(planDBPrefix);
+  Node::Children const& databases = *_snapshot.hasAsChildren(planColPrefix);
   size_t sub = 0;
 
   for (auto const& database : databases) {
     const bool isRepl2 = isReplicationTwoDB(databaseProperties, database.first);
+    if (isRepl2) {
+      scheduleJobsR2(trx, database.first, sub);
+      continue;
+    }
 
     // Find shardsLike dependencies
     for (auto const& collptr : database.second->children()) {
@@ -393,27 +433,19 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         continue;
       }
 
-      for (auto const& shard :
-           collection.hasAsChildren("shards").value().get()) {
+      for (auto const& shard : *collection.hasAsChildren("shards")) {
         // Only shards, which are affected
         int found = -1;
-        if (!isRepl2) {
-          int count = 0;
-          for (VPackSlice dbserver :
-               VPackArrayIterator(shard.second->slice())) {
-            if (dbserver.stringView() == _server) {
-              found = count;
-              break;
-            }
-            count++;
+
+        int count = 0;
+        for (VPackSlice dbserver : *shard.second->getArray()) {
+          if (dbserver.stringView() == _server) {
+            found = count;
+            break;
           }
-        } else {
-          auto stateId = LogicalCollection::shardIdToStateId(shard.first);
-          if (isServerLeaderForState(_snapshot, database.first, stateId,
-                                     _server)) {
-            found = 0;
-          }
+          count++;
         }
+
         if (found == -1) {
           continue;
         }
@@ -426,16 +458,10 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
         if (isSatellite) {
           if (isLeader) {
-            std::string toServer;
-            if (isRepl2) {
-              auto stateId = LogicalCollection::shardIdToStateId(shard.first);
-              toServer = Job::findOtherHealthyParticipant(
-                  _snapshot, database.first, stateId, _server);
-            } else {
-              toServer = Job::findNonblockedCommonHealthyInSyncFollower(
-                  _snapshot, database.first, collptr.first, shard.first,
-                  _server);
-            }
+            std::string toServer =
+                Job::findNonblockedCommonHealthyInSyncFollower(
+                    _snapshot, database.first, collptr.first, shard.first,
+                    _server);
 
             MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                       _jobId, database.first, collptr.first, shard.first,
@@ -456,8 +482,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           decltype(servers) serversCopy(servers);  // a copy
 
           // Only destinations, which are not already holding this shard
-          for (VPackSlice dbserver :
-               VPackArrayIterator(shard.second->slice())) {
+          for (VPackSlice dbserver : *shard.second->getArray()) {
             serversCopy.erase(
                 std::remove(serversCopy.begin(), serversCopy.end(),
                             dbserver.copyString()),
@@ -507,7 +532,7 @@ bool CleanOutServer::checkFeasibility() {
   std::vector<std::string> tooLargeCollections;
   std::vector<uint64_t> tooLargeFactors;
   Node::Children const& databases =
-      _snapshot.hasAsChildren("/Plan/Collections").value().get();
+      *_snapshot.hasAsChildren("/Plan/Collections");
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
       try {
@@ -564,10 +589,8 @@ arangodb::Result CleanOutServer::abort(std::string const& reason) {
   }
 
   // Abort all our subjobs:
-  Node::Children const& todos =
-      _snapshot.hasAsChildren(toDoPrefix).value().get();
-  Node::Children const& pends =
-      _snapshot.hasAsChildren(pendingPrefix).value().get();
+  Node::Children const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  Node::Children const& pends = *_snapshot.hasAsChildren(pendingPrefix);
 
   std::string childAbortReason = "parent job aborted - reason: " + reason;
 

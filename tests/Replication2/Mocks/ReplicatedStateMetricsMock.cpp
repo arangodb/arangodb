@@ -24,5 +24,7 @@
 
 using namespace arangodb;
 
+namespace arangodb::replication2::tests {
 ReplicatedStateMetricsMock::ReplicatedStateMetricsMock(std::string_view impl)
     : ReplicatedStateMetrics(nullptr, impl) {}
+}  // namespace arangodb::replication2::tests

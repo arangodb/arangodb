@@ -1,8 +1,7 @@
 
 @startDocuBlock get_admin_license
-@brief Get license information
 
-@RESTHEADER{GET /_admin/license, Return information about the current license, getLicense}
+@RESTHEADER{GET /_admin/license, Get information about the current license, getLicense}
 
 @RESTDESCRIPTION
 View the license information and status of an Enterprise Edition instance.
@@ -13,6 +12,7 @@ Can be called on single servers, Coordinators, and DB-Servers.
 @RESTRETURNCODE{200}
 
 @RESTREPLYBODY{features,object,required,license_features}
+The properties of the license.
 
 @RESTSTRUCT{expires,license_features,number,required,}
 The `expires` key lists the expiry date as Unix timestamp (seconds since

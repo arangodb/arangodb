@@ -61,15 +61,13 @@ using namespace arangodb::basics;
 
 namespace arangodb::iresearch {
 
-aql::Variable const* replaceOffsetInfo(aql::CalculationNode& calcNode,
-                                       aql::Variable const& ref,
-                                       aql::AstNode const& node);
+Variable const* replaceOffsetInfo(CalculationNode& calcNode,
+                                  Variable const& ref, AstNode const& node);
 
 #ifndef USE_ENTERPRISE
-aql::Variable const* replaceOffsetInfo(aql::CalculationNode& calcNode,
-                                       aql::Variable const& ref,
-                                       aql::AstNode const& node) {
-  aql::functions::NotImplementedEE(nullptr, node, {});  // will throw
+Variable const* replaceOffsetInfo(CalculationNode& calcNode,
+                                  Variable const& ref, AstNode const& node) {
+  functions::NotImplementedEE(nullptr, node, {});  // will throw
   return nullptr;
 }
 #endif
@@ -115,38 +113,34 @@ IResearchViewStoredValues const& getStoredValues(
 /// @brief Moves all FCALLs in every AND node to the bottom of the AND node
 /// @param condition SEARCH condition node
 /// @param starts_with Function to push
-void pushFuncToBack(arangodb::aql::AstNode& condition,
-                    arangodb::aql::Function const* starts_with) {
+void pushFuncToBack(AstNode& condition, Function const* starts_with) {
   auto numMembers = condition.numMembers();
   for (size_t memberIdx = 0; memberIdx < numMembers; ++memberIdx) {
     auto current = condition.getMemberUnchecked(memberIdx);
     TRI_ASSERT(current);
     auto const numAndMembers = current->numMembers();
-    if (current->type ==
-            arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
+    if (current->type == AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
         numAndMembers > 1) {
       size_t movePoint = numAndMembers - 1;
       do {
         auto candidate = current->getMemberUnchecked(movePoint);
-        if (candidate->type != arangodb::aql::AstNodeType::NODE_TYPE_FCALL ||
-            static_cast<arangodb::aql::Function const*>(candidate->getData()) !=
-                starts_with) {
+        if (candidate->type != AstNodeType::NODE_TYPE_FCALL ||
+            static_cast<Function const*>(candidate->getData()) != starts_with) {
           break;
         }
       } while ((--movePoint) != 0);
       for (size_t andMemberIdx = 0; andMemberIdx < movePoint; ++andMemberIdx) {
         auto andMember = current->getMemberUnchecked(andMemberIdx);
-        if (andMember->type == arangodb::aql::AstNodeType::NODE_TYPE_FCALL &&
-            static_cast<arangodb::aql::Function const*>(andMember->getData()) ==
-                starts_with) {
+        if (andMember->type == AstNodeType::NODE_TYPE_FCALL &&
+            static_cast<Function const*>(andMember->getData()) == starts_with) {
           TEMPORARILY_UNLOCK_NODE(current);
           auto tmp = current->getMemberUnchecked(movePoint);
           current->changeMember(movePoint--, andMember);
           current->changeMember(andMemberIdx, tmp);
           while (movePoint > andMemberIdx &&
                  current->getMemberUnchecked(movePoint)->type ==
-                     arangodb::aql::AstNodeType::NODE_TYPE_FCALL &&
-                 static_cast<arangodb::aql::Function const*>(
+                     AstNodeType::NODE_TYPE_FCALL &&
+                 static_cast<Function const*>(
                      current->getMemberUnchecked(movePoint)->getData()) ==
                      starts_with) {
             --movePoint;
@@ -161,16 +155,13 @@ void pushFuncToBack(arangodb::aql::AstNode& condition,
   }
 }
 
-bool addView(arangodb::LogicalView const& view,
-             arangodb::aql::QueryContext& query) {
+bool addView(LogicalView const& view, aql::QueryContext& query) {
   auto& collections = query.collections();
 
   // linked collections
-  auto visitor = [&collections](arangodb::DataSourceId cid,
-                                LogicalView::Indexes*) {
+  auto visitor = [&collections](DataSourceId cid, LogicalView::Indexes*) {
     collections.add(arangodb::basics::StringUtils::itoa(cid.id()),
-                    arangodb::AccessMode::Type::READ,
-                    arangodb::aql::Collection::Hint::Collection);
+                    AccessMode::Type::READ, Collection::Hint::Collection);
     return true;
   };
 
@@ -178,8 +169,7 @@ bool addView(arangodb::LogicalView const& view,
 }
 
 bool optimizeSearchCondition(IResearchViewNode& viewNode,
-                             arangodb::aql::QueryContext& query,
-                             ExecutionPlan& plan) {
+                             aql::QueryContext& query, ExecutionPlan& plan) {
   auto view = viewNode.view();
 
   // add view and linked collections to the query
@@ -212,7 +202,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
     auto const& varsValid = viewNode.getVarsValid();
 
     // remove all invalid variables from the condition
-    if (searchCondition.removeInvalidVariables(varsValid)) {
+    [[maybe_unused]] bool noRemoves = true;
+    if (searchCondition.removeInvalidVariables(varsValid, noRemoves)) {
       // removing left a previously non-empty OR block empty...
       // this means we can't use the index to restrict the results
       return false;
@@ -221,8 +212,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
 
   // check filter condition if present
   if (searchCondition.root()) {
-    if (viewNode.filterOptimization() !=
-        arangodb::iresearch::FilterOptimization::NONE) {
+    if (viewNode.filterOptimization() != FilterOptimization::NONE) {
       // we could benefit from merging STARTS_WITH and LEVENSHTEIN_MATCH
       auto& server = plan.getAst()->query().vocbase().server();
       auto starts_with =
@@ -231,7 +221,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
       pushFuncToBack(*searchCondition.root(), starts_with);
     }
 
-    arangodb::iresearch::QueryContext ctx{
+    QueryContext ctx{
         .trx = &query.trxForOptimization(),
         .ref = &viewNode.outVariable(),
         // we don't care here as we are checking condition in general
@@ -263,16 +253,13 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
 }
 
 bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
-  if (!plan->contains(ExecutionNode::LIMIT) ||
-      !plan->contains(ExecutionNode::SORT)) {
-    return false;
-  }
-
   auto current = static_cast<ExecutionNode*>(&viewNode);
-  auto viewVariable = viewNode.outVariable();
-  auto const& scorers = viewNode.scorers();
+  auto const& viewVariable = viewNode.outVariable();
+  auto& scorers = viewNode.scorers();
   SortNode* sortNode = nullptr;
   LimitNode const* limitNode = nullptr;
+  QueryContext ctx{
+      .ast = plan->getAst(), .ref = &viewVariable, .isSearchQuery = true};
   while ((current = current->getFirstParent())) {
     switch (current->getType()) {
       case ExecutionNode::SORT:
@@ -308,59 +295,161 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
   // we've found all we need
   auto const& sortElements = sortNode->elements();
-  std::vector<std::pair<size_t, bool>> scoresSort;
+  TRI_ASSERT(!sortElements.empty());
+  std::vector<HeapSortElement> heapSort;
+  std::vector<std::vector<latematerialized::ColumnVariant<true>>> usedColumns;
+  auto const& primarySort = getPrimarySort(viewNode.meta(), viewNode.view());
+  auto const& storedValues = getStoredValues(viewNode.meta(), viewNode.view());
+  auto const columnsCount = storedValues.columns().size() + 1;
+  usedColumns.resize(columnsCount);
+  std::vector<
+      latematerialized::AttributeAndField<latematerialized::IndexFieldData>>
+      attrs;
+  // maps attribute bucket to actual sort bucket
+  containers::FlatHashMap<size_t, size_t> storedMaps;
   for (auto const& sort : sortElements) {
     TRI_ASSERT(sort.var);
-
     auto const* varSetBy = plan->getVarSetBy(sort.var->id);
     TRI_ASSERT(varSetBy);
-
-    aql::Variable const* sortVariable{};
     switch (varSetBy->getType()) {
+      case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+        if (&viewNode != varSetBy) {
+          // we can't use column from another index
+          return false;
+        }
+        auto source = viewNode.getSourceColumnInfo(sort.var->id);
+        TRI_ASSERT(source.first != std::numeric_limits<ptrdiff_t>::max());
+        heapSort.push_back(HeapSortElement{.source = source.first,
+                                           .fieldNumber = source.second,
+                                           .ascending = sort.ascending});
+      } break;
       case ExecutionNode::CALCULATION: {
         auto* calc = ExecutionNode::castTo<CalculationNode const*>(varSetBy);
         TRI_ASSERT(calc->expression());
 
         auto const* astCalcNode = calc->expression()->node();
-        if (!astCalcNode ||
-            astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
-          // Not a reference?  Seems that it is not
-          // something produced by during search function replacement.
-          // e.g. it is expected to be LET sortVar = scorerVar;
+        if (!ADB_UNLIKELY(astCalcNode)) {
           // Definately not something we could handle.
           return false;
         }
-
-        sortVariable =
-            reinterpret_cast<aql::Variable const*>(astCalcNode->getData());
-        TRI_ASSERT(sortVariable);
-        break;
-      }
-      case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-        // FIXME (Dronplane): here we should deal with stored
-        //                    values when we will support such optimization
-        [[fallthrough]];
+        switch (astCalcNode->type) {
+          case AstNodeType::NODE_TYPE_REFERENCE: {
+            // something produced by during search function replacement.
+            // e.g. it is expected to be LET sortVar = scorerVar;
+            auto sortVariable =
+                reinterpret_cast<Variable const*>(astCalcNode->getData());
+            TRI_ASSERT(sortVariable);
+            auto const s = std::find_if(
+                std::begin(scorers), std::end(scorers),
+                [sortVariableId = sortVariable->id](auto const& t) noexcept {
+                  return t.var->id == sortVariableId;
+                });
+            if (s == std::end(scorers)) {
+              return false;
+            }
+            heapSort.push_back(
+                HeapSortElement{.source = std::distance(scorers.begin(), s),
+                                .ascending = sort.ascending});
+          } break;
+          case AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS:
+            if (checkAttributeAccess(astCalcNode, viewVariable, false)) {
+              // direct access to view variable
+              latematerialized::AttributeAndField<
+                  latematerialized::IndexFieldData>
+                  af;
+              // sort.attributePath is empty so we extract the name ourselves
+              std::string name;
+              if (!nameFromAttributeAccess(name, *astCalcNode, ctx, false)) {
+                return false;
+              }
+              try {
+                TRI_ParseAttributeString(name, af.attr, false);
+              } catch (::arangodb::basics::Exception const&) {
+                return false;
+              }
+              heapSort.push_back(HeapSortElement{.ascending = sort.ascending});
+              attrs.push_back(std::move(af));
+              storedMaps.insert({attrs.size() - 1, heapSort.size() - 1});
+            } else {
+              // this could be stored column access but with postfix.
+              HeapSortElement element;
+              size_t usedVars{0};
+              visitReferencedVariables(
+                  *astCalcNode, [&](aql::Variable const& var) {
+                    if (++usedVars < 2) {
+                      // only one variable allowed e.g. LET x = y.foo
+                      auto column = viewNode.getSourceColumnInfo(var.id);
+                      std::string name;
+                      if (column.first !=
+                              std::numeric_limits<ptrdiff_t>::max() &&
+                          nameFromAttributeAccess(name, *astCalcNode, ctx,
+                                                  false)) {
+                        element.source = column.first;
+                        element.fieldNumber = column.second;
+                        element.postfix = name;
+                        element.ascending = sort.ascending;
+                      }
+                    }
+                  });
+              if (usedVars != 1 || element.isScore()) {
+                return false;
+              }
+              heapSort.push_back(std::move(element));
+            }
+            break;
+          default:
+            return false;
+        }
+      } break;
       default:
         TRI_ASSERT(false);
         return false;
     }
-
-    TRI_ASSERT(sortVariable);
-    auto const s = std::find_if(
-        std::begin(scorers), std::end(scorers),
-        [sortVariableId = sortVariable->id](auto const& t) noexcept {
-          return t.var->id == sortVariableId;
-        });
-    if (s == std::end(scorers)) {
+  }
+  if (!attrs.empty()) {
+    if (latematerialized::attributesMatch<true>(
+            primarySort, storedValues, attrs, usedColumns, columnsCount)) {
+      latematerialized::setAttributesMaxMatchedColumns<true>(usedColumns,
+                                                             columnsCount);
+      auto const attrCount = attrs.size();
+      for (size_t i = 0; i < attrCount; ++i) {
+        auto const& a = attrs[i];
+        TRI_ASSERT(storedMaps.contains(i));
+        auto& sortBucket = heapSort[storedMaps[i]];
+        sortBucket.source = a.afData.columnNumber;
+        sortBucket.fieldNumber = a.afData.fieldNumber;
+        TRI_ASSERT(sortBucket.postfix.empty());
+        TRI_ASSERT(a.afData.field);
+        auto const fieldSize = a.afData.field->size();
+        TRI_ASSERT(fieldSize > a.afData.postfix);
+        for (size_t i = a.afData.postfix + 1; i < fieldSize; ++i) {
+          if (i != a.afData.postfix + 1) {
+            sortBucket.postfix += ".";
+          }
+          sortBucket.postfix += a.afData.field->at(i).name;
+        }
+      }
+    } else {
       return false;
     }
-    scoresSort.emplace_back(std::distance(scorers.begin(), s), sort.ascending);
   }
-  // all sort elements are covered by view's scorers
-  viewNode.setScorersSort(std::move(scoresSort),
-                          limitNode->offset() + limitNode->limit());
+  if (auto& front = heapSort.front(); front.isScore() && front.source != 0) {
+    auto idx = front.source;
+    std::swap(scorers.front(), scorers[idx]);
+    for (auto it = heapSort.begin(); it != heapSort.end(); ++it) {
+      if (it->isScore() && it->source == 0) {
+        it->source = idx;
+      } else if (it->isScore() && it->source == idx) {
+        it->source = 0;
+      }
+    }
+  }
+  TRI_ASSERT(!viewNode.isHeapSort());
+  // all sort elements are covered by view's scorers / stored values
+  viewNode.setHeapSort(std::move(heapSort),
+                       limitNode->offset() + limitNode->limit());
   sortNode->_reinsertInCluster = false;
-  if (!arangodb::ServerState::instance()->isCoordinator()) {
+  if (!ServerState::instance()->isCoordinator()) {
     // in cluster node will be unlinked later by 'distributeSortToClusterRule'
     plan->unlinkNode(sortNode);
   }
@@ -490,7 +579,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     viewNode.setSort(primarySort, sortElements.size());
 
     sortNode->_reinsertInCluster = false;
-    if (!arangodb::ServerState::instance()->isCoordinator()) {
+    if (!ServerState::instance()->isCoordinator()) {
       // in cluster node will be unlinked later by
       // 'distributeSortToClusterRule'
       plan->unlinkNode(sortNode);
@@ -636,11 +725,10 @@ bool noDocumentMaterialization(
 
 enum class SearchFuncType { kInvalid, kScorer, kOffsetInfo };
 
-std::pair<aql::Variable const*, SearchFuncType> resolveSearchFunc(
-    aql::AstNode const& node) {
-  if (aql::NODE_TYPE_FCALL == node.type ||
-      aql::NODE_TYPE_FCALL_USER == node.type) {
-    auto* impl = static_cast<aql::Function*>(node.getData());
+std::pair<Variable const*, SearchFuncType> resolveSearchFunc(
+    AstNode const& node) {
+  if (NODE_TYPE_FCALL == node.type || NODE_TYPE_FCALL_USER == node.type) {
+    auto* impl = static_cast<Function*>(node.getData());
 
     if (isScorer(*impl)) {
       return {getSearchFuncRef(node.getMember(0)), SearchFuncType::kScorer};
@@ -652,9 +740,8 @@ std::pair<aql::Variable const*, SearchFuncType> resolveSearchFunc(
   return {nullptr, SearchFuncType::kInvalid};
 }
 
-aql::Variable const* replaceScorer(aql::CalculationNode& calcNode,
-                                   aql::Variable const& ref,
-                                   aql::AstNode const& node) {
+Variable const* replaceScorer(CalculationNode& calcNode, Variable const& ref,
+                              AstNode const& node) {
   arangodb::iresearch::QueryContext const ctx{.ref = &ref};
 
   if (!order_factory::scorer(nullptr, node, ctx)) {
@@ -669,10 +756,9 @@ aql::Variable const* replaceScorer(aql::CalculationNode& calcNode,
   return vars->createTemporaryVariable();
 }
 
-aql::Variable const* replaceSearchFunc(aql::CalculationNode& calcNode,
-                                       aql::Variable const& ref,
-                                       aql::AstNode const& node,
-                                       SearchFuncType type) {
+Variable const* replaceSearchFunc(CalculationNode& calcNode,
+                                  Variable const& ref, AstNode const& node,
+                                  SearchFuncType type) {
   switch (type) {
     case SearchFuncType::kScorer:
       return replaceScorer(calcNode, ref, node);
@@ -684,9 +770,8 @@ aql::Variable const* replaceSearchFunc(aql::CalculationNode& calcNode,
   }
 }
 
-aql::AstNode* replaceSearchFunc(aql::CalculationNode& calcNode,
-                                aql::AstNode& exprNode,
-                                DedupSearchFuncs& dedup) {
+AstNode* replaceSearchFunc(CalculationNode& calcNode, AstNode& exprNode,
+                           DedupSearchFuncs& dedup) {
   auto const [var, type] = resolveSearchFunc(exprNode);
 
   if (!var || type == SearchFuncType::kInvalid) {
@@ -712,8 +797,7 @@ aql::AstNode* replaceSearchFunc(aql::CalculationNode& calcNode,
   return ast->createNodeReference(it->second);
 }
 
-void replaceSearchFunc(aql::CalculationNode& calcNode,
-                       DedupSearchFuncs& dedup) {
+void replaceSearchFunc(CalculationNode& calcNode, DedupSearchFuncs& dedup) {
   auto* expr = calcNode.expression();
 
   if (ADB_UNLIKELY(!expr)) {
@@ -741,18 +825,18 @@ void replaceSearchFunc(aql::CalculationNode& calcNode,
     calcNode.expression()->replaceNode(newNode);
   } else if (bool const hasFunc = !arangodb::iresearch::visit<true>(
                  *exprNode,
-                 [](aql::AstNode const& node) {
+                 [](AstNode const& node) {
                    auto const [var, _] = resolveSearchFunc(node);
                    return !var;
                  });
              hasFunc) {
-    auto replaceFunc = [&](aql::AstNode* node) -> aql::AstNode* {
+    auto replaceFunc = [&](AstNode* node) -> AstNode* {
       TRI_ASSERT(node);  // ensured by 'Ast::traverseAndModify(...)'
       return replaceSearchFunc(calcNode, *node, dedup);
     };
 
     auto* exprClone = exprNode->clone(ast);
-    aql::Ast::traverseAndModify(exprClone, replaceFunc);
+    Ast::traverseAndModify(exprClone, replaceFunc);
     expr->replaceNode(exprClone);
   }
 }
@@ -760,14 +844,14 @@ void replaceSearchFunc(aql::CalculationNode& calcNode,
 void extractScorers(IResearchViewNode const& viewNode, DedupSearchFuncs& dedup,
                     std::vector<SearchFunc>& funcs) {
   auto* viewVar = &viewNode.outVariable();
-  arangodb::aql::VarSet usedVars;
+  VarSet usedVars;
 
   for (auto it = std::begin(dedup); it != std::end(dedup);) {
     auto& func = it->first;
     if (isScorer(*func.node) && func.var == viewVar) {
       // extract all variables used in scorer
       usedVars.clear();
-      aql::Ast::getReferencedVariables(func.node, usedVars);
+      Ast::getReferencedVariables(func.node, usedVars);
 
       // get all variables valid in view node
       auto const& validVars = viewNode.getVarsValid();
@@ -817,7 +901,7 @@ void lateDocumentMaterializationArangoSearchRule(
 
   VarSet currentUsedVars;
   // nodes variables can be replaced
-  containers::SmallVector<aql::CalculationNode*, 16> calcNodes;
+  containers::SmallVector<CalculationNode*, 16> calcNodes;
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto* limitNode : nodes) {
@@ -825,7 +909,8 @@ void lateDocumentMaterializationArangoSearchRule(
     if (loop != nullptr &&
         ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(loop);
-      if (viewNode.isNoMaterialization() || viewNode.isLateMaterialized()) {
+      if (viewNode.isNoMaterialization() || viewNode.isLateMaterialized() ||
+          viewNode.isHeapSort()) {
         continue;  // loop is already optimized
       }
       auto* current = limitNode->getFirstDependency();
@@ -1016,7 +1101,7 @@ void handleConstrainedSortInView(Optimizer* opt,
       continue;
     }
 
-    if (!viewNode.scorers().empty() && !viewNode.isInInnerLoop()) {
+    if (!viewNode.isInInnerLoop()) {
       // check if we can optimize away a sort that follows the EnumerateView
       // node this is only possible if the view node itself is not contained in
       // another loop

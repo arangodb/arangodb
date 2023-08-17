@@ -7,6 +7,8 @@ add_library(arango_rocksdb STATIC
   RocksDBCommon.cpp
   RocksDBComparator.cpp
   RocksDBCuckooIndexEstimator.cpp
+  RocksDBDumpContext.cpp
+  RocksDBDumpManager.cpp
   RocksDBEdgeIndex.cpp
   RocksDBEngine.cpp
   RocksDBFormat.cpp
@@ -26,7 +28,6 @@ add_library(arango_rocksdb STATIC
   RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
   RocksDBOptionsProvider.cpp
-  RocksDBPersistedLog.cpp
   RocksDBPrimaryIndex.cpp
   RocksDBRecoveryManager.cpp
   RocksDBReplicationCommon.cpp
@@ -86,7 +87,7 @@ if (USE_ENTERPRISE)
     arango_rclone)
 endif()
 
-if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND NOT BUILDING_FOR_ARM64)
+if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND ARCH_AMD64)
   target_compile_options(arango_rocksdb PUBLIC "-maes")
 endif ()
 

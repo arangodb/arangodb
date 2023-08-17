@@ -98,26 +98,30 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
  * returned.
  * @return The _key attribute
  */
-std::string_view transaction::helpers::extractKeyPart(VPackSlice slice) {
+std::string_view transaction::helpers::extractKeyPart(velocypack::Slice slice,
+                                                      bool& keyPresent) {
   slice = slice.resolveExternal();
+  keyPresent = false;
 
   // extract _key
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
+    keyPresent = !k.isNone();
     if (!k.isString()) {
       return std::string_view();  // fail
     }
     return k.stringView();
   }
   if (slice.isString()) {
-    std::string_view key = slice.stringView();
-    size_t pos = key.find('/');
-    if (pos == std::string::npos) {
-      return key;
-    }
-    return key.substr(pos + 1);
+    keyPresent = true;
+    return extractKeyPart(slice.stringView());
   }
   return std::string_view();
+}
+
+std::string_view transaction::helpers::extractKeyPart(velocypack::Slice slice) {
+  [[maybe_unused]] bool unused;
+  return extractKeyPart(slice, unused);
 }
 
 /** @brief Given a string, returns the substring after the first '/' or
@@ -506,9 +510,8 @@ Result transaction::helpers::mergeObjectsForUpdate(
   // _from, _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
     auto& server = trx.vocbase().server();
-    bool extendedNames =
-        server.hasFeature<DatabaseFeature>() &&
-        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+    bool extendedNames = server.hasFeature<DatabaseFeature>() &&
+                         server.getFeature<DatabaseFeature>().extendedNames();
 
     if (fromSlice.isNone()) {
       fromSlice = oldValue.get(StaticStrings::FromString);
@@ -678,9 +681,8 @@ Result transaction::helpers::newObjectForInsert(
   // _from and _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
     auto& server = trx.vocbase().server();
-    bool extendedNames =
-        server.hasFeature<DatabaseFeature>() &&
-        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+    bool extendedNames = server.hasFeature<DatabaseFeature>() &&
+                         server.getFeature<DatabaseFeature>().extendedNames();
 
     VPackSlice fromSlice = value.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
@@ -782,9 +784,8 @@ Result transaction::helpers::newObjectForReplace(
   // _from and _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
     auto& server = trx.vocbase().server();
-    bool extendedNames =
-        server.hasFeature<DatabaseFeature>() &&
-        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+    bool extendedNames = server.hasFeature<DatabaseFeature>() &&
+                         server.getFeature<DatabaseFeature>().extendedNames();
 
     VPackSlice fromSlice = newValue.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {

@@ -30,6 +30,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl.tpp"
@@ -46,6 +47,7 @@
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/MultipleRemoteModificationNode.h"
 #include "Aql/MutexNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
@@ -111,6 +113,8 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::ENUMERATE_PATHS), "EnumeratePathsNode"},
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
+    {static_cast<int>(ExecutionNode::REMOTE_MULTIPLE),
+     "MultipleRemoteModificationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
      "EnumerateViewNode"},
     {static_cast<int>(ExecutionNode::SUBQUERY_START), "SubqueryStartNode"},
@@ -128,6 +132,57 @@ std::unordered_map<int, std::string const> const typeNames{
 }  // namespace
 
 namespace arangodb::aql {
+
+size_t estimateListLength(ExecutionPlan const* plan, Variable const* var) {
+  // Well, what can we say? The length of the list can in general
+  // only be determined at runtime... If we were to know that this
+  // list is constant, then we could maybe multiply by the length
+  // here... For the time being, we assume 100
+  size_t length = 100;
+
+  auto setter = plan->getVarSetBy(var->id);
+
+  if (setter != nullptr) {
+    if (setter->getType() == ExecutionNode::CALCULATION) {
+      // list variable introduced by a calculation
+      auto expression =
+          ExecutionNode::castTo<CalculationNode*>(setter)->expression();
+
+      if (expression != nullptr) {
+        auto node = expression->node();
+
+        if (node->type == NODE_TYPE_ARRAY) {
+          // this one is easy
+          length = node->numMembers();
+        }
+        if (node->type == NODE_TYPE_RANGE) {
+          auto low = node->getMember(0);
+          auto high = node->getMember(1);
+
+          if (low->isConstant() && high->isConstant() &&
+              (low->isValueType(VALUE_TYPE_INT) ||
+               low->isValueType(VALUE_TYPE_DOUBLE)) &&
+              (high->isValueType(VALUE_TYPE_INT) ||
+               high->isValueType(VALUE_TYPE_DOUBLE))) {
+            // create a temporary range to determine the size
+            Range range(low->getIntValue(), high->getIntValue());
+
+            length = range.size();
+          }
+        }
+      }
+    } else if (setter->getType() == ExecutionNode::SUBQUERY) {
+      // length will be set by the subquery's cost estimator
+      CostEstimate subEstimate =
+          ExecutionNode::castTo<SubqueryNode const*>(setter)
+              ->getSubquery()
+              ->getCost();
+      length = subEstimate.estimatedNrItems;
+    }
+  }
+  return length;
+}
+
 ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice);
 
 #ifndef USE_ENTERPRISE
@@ -204,7 +259,8 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
   for (VPackSlice it : VPackArrayIterator(elementsSlice)) {
     bool ascending = it.get("ascending").getBoolean();
     Variable* v = Variable::varFromVPack(plan->getAst(), it, "inVariable");
-    elements.emplace_back(v, ascending);
+    elements.emplace_back(
+        SortElement{v, ascending, plan->getAst()->query().resourceMonitor()});
     // Is there an attribute path?
     VPackSlice path = it.get("path");
     if (path.isArray()) {
@@ -212,7 +268,8 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
       auto& element = elements.back();
       for (auto const& it2 : VPackArrayIterator(path)) {
         if (it2.isString()) {
-          element.attributePath.push_back(it2.copyString());
+          element.attributePath.emplace_back(MonitoredString{
+              it2.copyString(), plan->getAst()->query().resourceMonitor()});
         }
       }
     }
@@ -220,7 +277,8 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
 }
 
 ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
-                                               VPackSlice const& slice) {
+                                               velocypack::Slice slice) {
+  TRI_ASSERT(slice.get("typeID").isNumber()) << slice.toJson();
   int nodeTypeID = slice.get("typeID").getNumericValue<int>();
   validateType(nodeTypeID);
 
@@ -356,6 +414,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new EnumeratePathsNode(plan, slice);
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
+    case REMOTE_MULTIPLE:
+      return new MultipleRemoteModificationNode(plan, slice);
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
     case SUBQUERY_START:
@@ -390,7 +450,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
           Variable* outVar =
               Variable::varFromVPack(plan->getAst(), it, "outVariable");
           Variable* inVar =
-              Variable::varFromVPack(plan->getAst(), it, "inVariable");
+              Variable::varFromVPack(plan->getAst(), it, "inVariable", true);
 
           std::string const type = it.get("type").copyString();
           aggregateVariables.emplace_back(
@@ -413,7 +473,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
 }
 
 /// @brief create an ExecutionNode from VPackSlice
-ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
+ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
       _depth(slice.get("depth").getNumericValue<unsigned int>()),
       _varUsageValid(true),
@@ -449,7 +509,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
       varsUsedLater.reserve(stackEntrySlice.length());
       for (auto it : VPackArrayIterator(stackEntrySlice)) {
-        Variable oneVarUsedLater(it);
+        Variable oneVarUsedLater(it, plan->getAst()->query().resourceMonitor());
         Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
 
         if (oneVariable == nullptr) {
@@ -481,7 +541,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
       varsValid.reserve(stackEntrySlice.length());
       for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
-        Variable oneVarValid(it);
+        Variable oneVarValid(it, plan->getAst()->query().resourceMonitor());
         Variable* oneVariable = allVars->getVariable(oneVarValid.id);
 
         if (oneVariable == nullptr) {
@@ -1544,6 +1604,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case SHORTEST_PATH:
     case ENUMERATE_PATHS:
     case REMOTESINGLE:
+    case REMOTE_MULTIPLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case DISTRIBUTE_CONSUMER:
     case SUBQUERY_START:
@@ -1606,8 +1667,7 @@ auto ExecutionNode::getVarsValidStack() const noexcept -> VarSetStack const& {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   auto registerInfos = createRegisterInfos({}, {});
   IdExecutorInfos infos(false);
 
@@ -1640,6 +1700,8 @@ SingletonNode::SingletonNode(ExecutionPlan* plan,
 
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
 
+size_t SingletonNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -1664,18 +1726,9 @@ void EnumerateCollectionNode::doToVelocyPack(velocypack::Builder& builder,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-
-  if (!engine.waitForSatellites(engine.getQuery(), collection())) {
-    double maxWait = engine.getQuery().queryOptions().satelliteSyncWait;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + collection()->name() +
-                                       " did not come into sync in time (" +
-                                       std::to_string(maxWait) + ")");
-  }
 
   // check which variables are used by the node's post-filter
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
@@ -1807,8 +1860,7 @@ void EnumerateListNode::doToVelocyPack(velocypack::Builder& nodes,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
@@ -1840,52 +1892,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 
 /// @brief the cost of an enumerate list node
 CostEstimate EnumerateListNode::estimateCost() const {
-  // Well, what can we say? The length of the list can in general
-  // only be determined at runtime... If we were to know that this
-  // list is constant, then we could maybe multiply by the length
-  // here... For the time being, we assume 100
-  size_t length = 100;
-
-  auto setter = _plan->getVarSetBy(_inVariable->id);
-
-  if (setter != nullptr) {
-    if (setter->getType() == ExecutionNode::CALCULATION) {
-      // list variable introduced by a calculation
-      auto expression =
-          ExecutionNode::castTo<CalculationNode*>(setter)->expression();
-
-      if (expression != nullptr) {
-        auto node = expression->node();
-
-        if (node->type == NODE_TYPE_ARRAY) {
-          // this one is easy
-          length = node->numMembers();
-        }
-        if (node->type == NODE_TYPE_RANGE) {
-          auto low = node->getMember(0);
-          auto high = node->getMember(1);
-
-          if (low->isConstant() && high->isConstant() &&
-              (low->isValueType(VALUE_TYPE_INT) ||
-               low->isValueType(VALUE_TYPE_DOUBLE)) &&
-              (high->isValueType(VALUE_TYPE_INT) ||
-               high->isValueType(VALUE_TYPE_DOUBLE))) {
-            // create a temporary range to determine the size
-            Range range(low->getIntValue(), high->getIntValue());
-
-            length = range.size();
-          }
-        }
-      }
-    } else if (setter->getType() == ExecutionNode::SUBQUERY) {
-      // length will be set by the subquery's cost estimator
-      CostEstimate subEstimate =
-          ExecutionNode::castTo<SubqueryNode const*>(setter)
-              ->getSubquery()
-              ->getCost();
-      length = subEstimate.estimatedNrItems;
-    }
-  }
+  size_t length = estimateListLength(_plan, _inVariable);
 
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
@@ -1907,6 +1914,8 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id,
 ExecutionNode::NodeType EnumerateListNode::getType() const {
   return ENUMERATE_LIST;
 }
+
+size_t EnumerateListNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 /// @brief replaces variables in the internals of the execution node
 /// replacements are { old variable id => new variable }
@@ -1936,8 +1945,7 @@ LimitNode::LimitNode(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -1988,6 +1996,8 @@ LimitNode::LimitNode(ExecutionPlan* plan, ExecutionNodeId id, size_t offset,
 
 ExecutionNode::NodeType LimitNode::getType() const { return LIMIT; }
 
+size_t LimitNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
   auto c = std::make_unique<LimitNode>(plan, _id, _offset, _limit);
@@ -2011,7 +2021,7 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
                                  arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _expression(new Expression(plan->getAst(), base)) {}
+      _expression(std::make_unique<Expression>(plan->getAst(), base)) {}
 
 CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
                                  std::unique_ptr<Expression> expr,
@@ -2097,8 +2107,7 @@ void CalculationNode::doToVelocyPack(velocypack::Builder& nodes,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -2188,6 +2197,8 @@ CostEstimate CalculationNode::estimateCost() const {
 }
 
 ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
+
+size_t CalculationNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 Variable const* CalculationNode::outVariable() const { return _outVariable; }
 
@@ -2334,8 +2345,7 @@ bool SubqueryNode::mayAccessCollections() {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
-    ExecutionEngine&,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& /*engine*/) const {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "cannot instantiate SubqueryExecutor");
@@ -2477,6 +2487,8 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan, ExecutionNodeId id,
 
 ExecutionNode::NodeType SubqueryNode::getType() const { return SUBQUERY; }
 
+size_t SubqueryNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 Variable const* SubqueryNode::outVariable() const { return _outVariable; }
 
 ExecutionNode* SubqueryNode::getSubquery() const { return _subquery; }
@@ -2506,8 +2518,7 @@ void FilterNode::doToVelocyPack(velocypack::Builder& nodes,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
@@ -2556,6 +2567,8 @@ FilterNode::FilterNode(ExecutionPlan* plan, ExecutionNodeId id,
 
 ExecutionNode::NodeType FilterNode::getType() const { return FILTER; }
 
+size_t FilterNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 /// @brief replaces variables in the internals of the execution node
 /// replacements are { old variable id => new variable }
 void FilterNode::replaceVariables(
@@ -2585,8 +2598,7 @@ void ReturnNode::doToVelocyPack(velocypack::Builder& nodes,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -2661,6 +2673,8 @@ ReturnNode::ReturnNode(ExecutionPlan* plan, ExecutionNodeId id,
 
 ExecutionNode::NodeType ReturnNode::getType() const { return RETURN; }
 
+size_t ReturnNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 void ReturnNode::setCount() { _count = true; }
 
 /// @brief replaces variables in the internals of the execution node
@@ -2685,8 +2699,7 @@ void NoResultsNode::doToVelocyPack(velocypack::Builder&, unsigned) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -2720,12 +2733,20 @@ ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
                      withDependencies, withProperties);
 }
 
-SortElement::SortElement(Variable const* v, bool asc)
-    : var(v), ascending(asc) {}
+size_t NoResultsNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 SortElement::SortElement(Variable const* v, bool asc,
-                         std::vector<std::string> const& path)
-    : var(v), ascending(asc), attributePath(path) {}
+                         arangodb::ResourceMonitor& resourceMonitor)
+    : var(v),
+      ascending(asc),
+      attributePath(
+          ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
+              resourceMonitor}) {}
+
+SortElement::SortElement(Variable const* v, bool asc,
+                         MonitoredStringVector const& path,
+                         arangodb::ResourceMonitor& resourceMonitor)
+    : var(v), ascending(asc), attributePath(path, resourceMonitor) {}
 
 std::string SortElement::toString() const {
   std::string result("$");
@@ -2747,6 +2768,10 @@ EnumerateCollectionNode::EnumerateCollectionNode(
 
 ExecutionNode::NodeType EnumerateCollectionNode::getType() const {
   return ENUMERATE_COLLECTION;
+}
+
+size_t EnumerateCollectionNode::getMemoryUsedBytes() const {
+  return sizeof(*this);
 }
 
 IndexHint const& EnumerateCollectionNode::hint() const { return _hint; }
@@ -2795,8 +2820,7 @@ void AsyncNode::doToVelocyPack(velocypack::Builder&, unsigned) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> AsyncNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   return std::make_unique<ExecutionBlockImpl<AsyncExecutor>>(&engine, this);
 }
 
@@ -2819,6 +2843,8 @@ AsyncNode::AsyncNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base) {}
 
 ExecutionNode::NodeType AsyncNode::getType() const { return ASYNC; }
+
+size_t AsyncNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
@@ -2886,6 +2912,8 @@ void MaterializeNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inNonMaterializedDocId);
 }
 
+size_t MaterializeNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 std::vector<Variable const*> MaterializeNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
 }
@@ -2908,8 +2936,7 @@ void MaterializeMultiNode::doToVelocyPack(velocypack::Builder& nodes,
 }
 
 std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -2984,8 +3011,7 @@ void MaterializeSingleNode<localDocumentId>::doToVelocyPack(
 template<bool localDocumentId>
 std::unique_ptr<ExecutionBlock>
 MaterializeSingleNode<localDocumentId>::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   RegisterId outDocumentRegId;

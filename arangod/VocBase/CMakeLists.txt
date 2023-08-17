@@ -6,6 +6,7 @@ add_library(arango_vocbase STATIC
   LogicalView.cpp
   Validators.cpp
   VocbaseInfo.cpp
+  VocBaseLogManager.cpp
   ticks.cpp
   vocbase.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Aql/QueryCursor.cpp

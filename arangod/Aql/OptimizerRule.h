@@ -204,6 +204,9 @@ struct OptimizerRule {
     // sort values used in IN comparisons of remaining filters
     sortInValuesRule,
 
+    // Replaces the last element of the path on traversals, by direct output.
+    replaceLastAccessOnGraphPathRule,
+
     // merge filters into graph traversals
     optimizeTraversalsRule,
 
@@ -229,6 +232,9 @@ struct OptimizerRule {
     // when we have single document operations, fill in special cluster
     // handling.
     substituteSingleDocumentOperations,
+
+    // special cluster handling for multiple operations (babies)
+    substituteMultipleDocumentOperations,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,
@@ -398,11 +404,17 @@ struct OptimizerRule {
   RuleFunction func;
   RuleLevel level;
   std::underlying_type<Flags>::type flags;
+  std::string_view description;
 
   OptimizerRule() = delete;
   OptimizerRule(std::string_view name, RuleFunction const& ruleFunc,
-                RuleLevel level, std::underlying_type<Flags>::type flags)
-      : name(name), func(ruleFunc), level(level), flags(flags) {}
+                RuleLevel level, std::underlying_type<Flags>::type flags,
+                std::string_view description)
+      : name(name),
+        func(ruleFunc),
+        level(level),
+        flags(flags),
+        description(description) {}
 
   OptimizerRule(OptimizerRule&& other) = default;
   OptimizerRule& operator=(OptimizerRule&& other) = default;

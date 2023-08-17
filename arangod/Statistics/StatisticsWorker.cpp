@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/process-utils.h"
@@ -1077,9 +1076,11 @@ void StatisticsWorker::saveSlice(VPackSlice slice,
   Result res = trx.begin();
 
   if (!res.ok()) {
-    LOG_TOPIC("ecdb9", WARN, Logger::STATISTICS)
-        << "could not start transaction on " << collection << ": "
-        << res.errorMessage();
+    if (!res.is(TRI_ERROR_SHUTTING_DOWN)) {
+      LOG_TOPIC("ecdb9", WARN, Logger::STATISTICS)
+          << "could not start transaction on " << collection << ": "
+          << res.errorMessage();
+    }
     return;
   }
 
@@ -1100,8 +1101,8 @@ void StatisticsWorker::beginShutdown() {
   Thread::beginShutdown();
 
   // wake up
-  CONDITION_LOCKER(guard, _cv);
-  guard.signal();
+  std::lock_guard guard{_cv.mutex};
+  _cv.cv.notify_one();
 }
 
 void StatisticsWorker::run() {
@@ -1136,8 +1137,8 @@ void StatisticsWorker::run() {
   uint64_t seconds = 0;
   while (!isStopping()) {
     TRI_IF_FAILURE("StatisticsWorker::bypass") {
-      CONDITION_LOCKER(guard, _cv);
-      guard.wait(1000 * 1000);
+      std::unique_lock guard{_cv.mutex};
+      _cv.cv.wait_for(guard, std::chrono::seconds{1});
       continue;
     }
 
@@ -1165,7 +1166,7 @@ void StatisticsWorker::run() {
           << "caught unknown exception in StatisticsWorker";
     }
 
-    CONDITION_LOCKER(guard, _cv);
-    guard.wait(1000 * 1000);
+    std::unique_lock guard{_cv.mutex};
+    _cv.cv.wait_for(guard, std::chrono::seconds{1});
   }
 }

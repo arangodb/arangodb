@@ -43,6 +43,7 @@
 #include "Logger/LogMacros.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
@@ -196,7 +197,7 @@ struct CoveringValue {
 
   irs::doc_iterator::ptr itr;
   std::string_view column;
-  const irs::payload* value{};
+  irs::payload const* value{};
 };
 
 /// @brief Represents virtual "vector" of stored values in the irsesearch index
@@ -391,13 +392,13 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
           irs::proxy_filter::cache_ptr newCache;
           if (condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND) {
             auto res = proxy_filter.set_filter<irs::And>();
-            _immutablePartCache[condition] = res.second;
             immutableRoot = &res.first;
+            _immutablePartCache[condition] = std::move(res.second);
           } else {
             TRI_ASSERT((condition->type == aql::NODE_TYPE_OPERATOR_NARY_OR));
             auto res = proxy_filter.set_filter<irs::Or>();
-            _immutablePartCache[condition] = res.second;
             immutableRoot = &res.first;
+            _immutablePartCache[condition] = std::move(res.second);
           }
 
           auto const conditionSize =
@@ -405,6 +406,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
           for (int64_t i = 0; i < conditionSize; ++i) {
             if (i != _mutableConditionIdx) {
+              // cppcheck-suppress invalidLifetime
               auto& tmp_root = append<irs::Or>(*immutableRoot, filterCtx);
               auto rv = FilterFactory::filter(&tmp_root, filterCtx,
                                               *condition->getMember(i));
@@ -426,7 +428,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       // sorting case
       append<irs::all>(root, filterCtx);
     }
-    _filter = root.prepare(_snapshot, irs::Order::kUnordered, irs::kNoBoost,
+    _filter = root.prepare(_snapshot, irs::Scorers::kUnordered, irs::kNoBoost,
                            &kEmptyAttributeProvider);
     TRI_ASSERT(_filter);
     if (ADB_UNLIKELY(!_filter)) {
@@ -530,10 +532,12 @@ class IResearchInvertedIndexIterator final
         }
         _projections.reset(segmentReader);
 
-        _itr = segmentReader.mask(_filter->execute(
-            irs::ExecutionContext{.segment = segmentReader,
-                                  .scorers = irs::Order::kUnordered,
-                                  .ctx = &kEmptyAttributeProvider}));
+        _itr = segmentReader.mask(_filter->execute({
+            .segment = segmentReader,
+            .scorers = irs::Scorers::kUnordered,
+            .ctx = &kEmptyAttributeProvider,
+            .wand = {},
+        }));
         _doc = irs::get<irs::document>(*_itr);
       } else {
         if constexpr (produce) {
@@ -595,7 +599,7 @@ class IResearchInvertedIndexIterator final
   irs::doc_iterator::ptr _itr;
   irs::doc_iterator::ptr _pkDocItr;
   irs::document const* _doc{};
-  const irs::payload* _pkValue{};
+  irs::payload const* _pkValue{};
   size_t _readerOffset{0};
   CoveringVector _projections;
 };
@@ -611,7 +615,7 @@ class IResearchInvertedIndexMergeIterator final
       aql::Variable const* variable, int mutableConditionIdx)
       : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
                                            meta, variable, mutableConditionIdx),
-        _heap_it({meta->_sort, meta->_sort.size(), _segments}),
+        _heap_it{meta->_sort, meta->_sort.size()},
         _projectionsPrototype(*meta) {}
 
   std::string_view typeName() const noexcept final {
@@ -630,7 +634,7 @@ class IResearchInvertedIndexMergeIterator final
                       .empty());  // at least sort column should be here
       _segments.emplace_back(std::move(it), segment, _projectionsPrototype);
     }
-    _heap_it.reset(_segments.size());
+    _heap_it.Reset(_segments);
   }
 
   bool nextImpl(LocalDocumentIdCallback const& callback,
@@ -660,9 +664,8 @@ class IResearchInvertedIndexMergeIterator final
     if (_segments.empty() && _snapshot.size()) {
       reset();
     }
-    while (limit && _heap_it.next()) {
-      auto const currentIdx = _heap_it.value();
-      auto& segment = _segments[currentIdx];
+    while (limit && _heap_it.Next()) {
+      auto& segment = _heap_it.Lead();
       if constexpr (produce) {
         // For !withCovering that means actual doc reading
         // if combined with "produce".
@@ -679,6 +682,7 @@ class IResearchInvertedIndexMergeIterator final
           if (readSuccess) {
             if constexpr (withCovering) {
               segment.projections.seek(segment.doc->value);
+              size_t const currentIdx = &segment - _segments.data();
               SearchDoc doc(_snapshot.segment(currentIdx), segment.doc->value);
               TRI_ASSERT(documentId.isSet() == emitLocalDocumentId);
               bool emitRes = [&]() {
@@ -741,14 +745,14 @@ class IResearchInvertedIndexMergeIterator final
 
   class MinHeapContext {
    public:
-    MinHeapContext(IResearchInvertedIndexSort const& sort, size_t sortBuckets,
-                   std::vector<Segment>& segments) noexcept
-        : _less(sort, sortBuckets), _segments(&segments) {}
+    using Value = Segment;
+
+    MinHeapContext(IResearchInvertedIndexSort const& sort,
+                   size_t sortBuckets) noexcept
+        : _less{sort, sortBuckets} {}
 
     // advance
-    bool operator()(size_t i) const {
-      assert(i < _segments->size());
-      auto& segment = (*_segments)[i];
+    bool operator()(Value& segment) const {
       while (segment.doc && segment.itr->next()) {
         auto const doc = segment.doc->value;
         segment.projections.seek(doc);
@@ -761,19 +765,17 @@ class IResearchInvertedIndexMergeIterator final
     }
 
     // compare
-    bool operator()(size_t lhs, size_t rhs) const {
-      assert(lhs < _segments->size());
-      assert(rhs < _segments->size());
-      return _less.Compare(refFromSlice((*_segments)[rhs].sortValue),
-                           refFromSlice((*_segments)[lhs].sortValue)) < 0;
+    bool operator()(Value const& lhs, Value const& rhs) const {
+      return _less.Compare(refFromSlice(lhs.sortValue),
+                           refFromSlice(rhs.sortValue)) < 0;
     }
 
+   private:
     VPackComparer<IResearchInvertedIndexSort> _less;
-    std::vector<Segment>* _segments;
   };
 
   std::vector<Segment> _segments;
-  irs::ExternalHeapIterator<MinHeapContext> _heap_it;
+  irs::ExternalMergeIterator<MinHeapContext> _heap_it;
   CoveringVector const _projectionsPrototype;
 };
 
@@ -797,6 +799,10 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
     builder.add(StaticStrings::LinkError,
                 VPackValue(StaticStrings::LinkErrorOutOfSync));
   }
+}
+
+std::string const& IResearchInvertedIndex::getDbName() const noexcept {
+  return index().collection().vocbase().name();
 }
 
 std::vector<std::vector<basics::AttributeName>> IResearchInvertedIndex::fields(
@@ -860,7 +866,8 @@ Result IResearchInvertedIndex::init(
     irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
     setupReaderEntepriseOptions(readerOptions,
-                                index().collection().vocbase().server(), _meta);
+                                index().collection().vocbase().server(), _meta,
+                                _useSearchCache);
 #endif
     auto r = initDataStore(pathExists, initCallback,
                            static_cast<uint32_t>(_meta._version), isSorted(),
@@ -921,8 +928,8 @@ bool IResearchInvertedIndex::covers(aql::Projections& projections) const {
     aql::latematerialized::AttributeAndField<
         aql::latematerialized::IndexFieldData>
         af;
-    af.attr.reserve(projections[i].path.path.size());
-    for (auto const& a : projections[i].path.path) {
+    af.attr.reserve(projections[i].path._path.size());
+    for (auto const& a : projections[i].path._path) {
       af.attr.emplace_back(a, false);  // TODO: false?
     }
     attrs.emplace_back(af);

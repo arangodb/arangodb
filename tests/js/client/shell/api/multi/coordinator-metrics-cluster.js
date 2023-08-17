@@ -27,6 +27,7 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const {getEndpointsByType, getRawMetric, getAllMetric} = require("@arangodb/test-helper");
+const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 const parsePrometheusTextFormat = require("parse-prometheus-text-format");
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
@@ -35,7 +36,20 @@ const db = arangodb.db;
 
 function checkMetrics(metrics) {
 
+  assertNotEqual(null, metrics);
+  assertNotEqual(undefined, metrics);
+
+  assertNotEqual(undefined, metrics["arangodb_search_num_docs"]);
+  assertNotEqual(undefined, metrics["arangodb_search_num_live_docs"]);
+
+  assertNotEqual(undefined, metrics["arangodb_search_num_segments"]);
+  assertNotEqual(undefined, metrics["arangodb_search_num_files"]);
+  assertNotEqual(undefined, metrics["arangodb_search_index_size"]);
   if (isEnterprise) {
+    // 'arangodb_search_num_primary_docs' is available only in enterprise.
+    // So make sure that it is exists before checking other metrics.
+    assertNotEqual(undefined, metrics["arangodb_search_num_primary_docs"]);
+    
     // nested documents are treated like a real documents
     assertEqual(metrics["arangodb_search_num_docs"]["foo1"], 2000);
     assertEqual(metrics["arangodb_search_num_docs"]["foo2"], 4001);
@@ -96,8 +110,10 @@ function checkCoordinators(coordinators, mode) {
   assertTrue(coordinators.length > 1);
   for (let i = 1; i < coordinators.length; i++) {
     let c = coordinators[i];
-    let txt = getAllMetric(c, mode);
-    checkRawMetrics(txt, false);
+    checkIndexMetrics(function() {
+      let txt = getAllMetric(c, mode);
+      checkRawMetrics(txt, false);
+    });
   }
 }
 

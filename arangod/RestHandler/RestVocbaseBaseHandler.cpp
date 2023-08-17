@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
@@ -48,8 +47,9 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Builder.h>
-#include <velocypack/Dumper.h>
 #include <velocypack/Exception.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
@@ -273,34 +273,13 @@ RestVocbaseBaseHandler::forwardingTarget() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string RestVocbaseBaseHandler::assembleDocumentId(
-    std::string const& collectionName, std::string const& key, bool urlEncode) {
+    std::string_view collectionName, std::string_view key,
+    bool urlEncode) const {
   if (urlEncode) {
-    return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR +
-           StringUtils::urlEncode(key);
+    return absl::StrCat(collectionName, TRI_DOCUMENT_HANDLE_SEPARATOR_STR,
+                        StringUtils::urlEncode(key));
   }
-  return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Generate a result for successful save
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateSaved(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
-  generate20x(result, collectionName, type, options, isMultiple,
-              rest::ResponseCode::CREATED);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Generate a result for successful delete
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateDeleted(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
-  generate20x(result, collectionName, type, options, isMultiple,
-              rest::ResponseCode::OK);
+  return absl::StrCat(collectionName, TRI_DOCUMENT_HANDLE_SEPARATOR_STR, key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -308,9 +287,9 @@ void RestVocbaseBaseHandler::generateDeleted(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generate20x(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options, bool isMultiple,
-    rest::ResponseCode waitForSyncResponseCode) {
+    OperationResult const& result, std::string_view collectionName,
+    TRI_col_type_e type, velocypack::Options const* options, bool isMultiple,
+    bool silent, rest::ResponseCode waitForSyncResponseCode) {
   if (result.options.waitForSync) {
     resetResponse(waitForSyncResponseCode);
   } else {
@@ -328,24 +307,29 @@ void RestVocbaseBaseHandler::generate20x(
   }
 
   VPackSlice slice = result.slice();
-  if (slice.isNone()) {
-    // will happen if silent == true
-    slice = arangodb::velocypack::Slice::emptyObjectSlice();
+  if (slice.isNone() || (!isMultiple && silent && result.ok())) {
+    // slice::none case will happen if silent == true on single server.
+    // in the cluster (coordinator case), we may get the actual operation
+    // result here for _single_ operations even if silent === true.
+    // thus we fake the result here to be empty again, so that no data
+    // is returned if silent === true.
+    slice = velocypack::Slice::emptyObjectSlice();
   } else {
     TRI_ASSERT(slice.isObject() || slice.isArray());
     if (slice.isObject()) {
       _response->setHeaderNC(
           StaticStrings::Etag,
-          "\"" + slice.get(StaticStrings::RevString).copyString() + "\"");
+          absl::StrCat("\"", slice.get(StaticStrings::RevString).stringView(),
+                       "\""));
       // pre 1.4 location headers withdrawn for >= 3.0
       std::string escapedHandle(assembleDocumentId(
-          collectionName, slice.get(StaticStrings::KeyString).copyString(),
+          collectionName, slice.get(StaticStrings::KeyString).stringView(),
           true));
       _response->setHeaderNC(
           StaticStrings::Location,
-          std::string("/_db/" +
-                      StringUtils::urlEncode(_request->databaseName()) +
-                      DOCUMENT_PATH + "/" + escapedHandle));
+          absl::StrCat("/_db/",
+                       StringUtils::urlEncode(_request->databaseName()),
+                       DOCUMENT_PATH, "/", escapedHandle));
     }
   }
 
@@ -359,15 +343,19 @@ void RestVocbaseBaseHandler::generate20x(
 void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
                                                    bool precFailed) {
   TRI_ASSERT(opres.errorNumber() == TRI_ERROR_ARANGO_CONFLICT);
-  const auto code =
+  auto code =
       precFailed ? ResponseCode::PRECONDITION_FAILED : ResponseCode::CONFLICT;
   resetResponse(code);
 
   VPackSlice slice = opres.slice();
   if (slice.isObject()) {  // single document case
-    std::string const rev =
-        VelocyPackHelper::getStringValue(slice, StaticStrings::RevString, "");
-    _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
+    if (auto rev = slice.get(StaticStrings::RevString); rev.isString()) {
+      // we need to check whether we actually have a revision id here.
+      // this method is called not only for returned documents, but also
+      // from code locations that do not return documents!
+      _response->setHeaderNC(StaticStrings::Etag,
+                             absl::StrCat("\"", rev.stringView(), "\""));
+    }
   }
   VPackBuilder builder;
   {
@@ -399,30 +387,30 @@ void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
 
 void RestVocbaseBaseHandler::generateNotModified(RevisionId rid) {
   resetResponse(rest::ResponseCode::NOT_MODIFIED);
-  _response->setHeaderNC(StaticStrings::Etag, "\"" + rid.toString() + "\"");
+  _response->setHeaderNC(StaticStrings::Etag,
+                         absl::StrCat("\"", rid.toString(), "\""));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
-                                              bool generateBody,
-                                              VPackOptions const* options) {
-  VPackSlice document = input.resolveExternal();
-
-  std::string rev;
-  if (document.isObject()) {
-    rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString,
-                                           "");
-  }
-
+void RestVocbaseBaseHandler::generateDocument(
+    velocypack::Slice input, bool generateBody,
+    velocypack::Options const* options) {
   // and generate a response
   resetResponse(rest::ResponseCode::OK);
 
+  VPackSlice document = input.resolveExternal();
   // set ETAG header
-  if (!rev.empty()) {
-    _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
+  if (document.isObject()) {
+    // we need to check whether we actually have a revision id here.
+    // this method is called not only for returned documents, but also
+    // from code locations that do not return documents!
+    if (auto rev = document.get(StaticStrings::RevString); rev.isString()) {
+      _response->setHeaderNC(StaticStrings::Etag,
+                             absl::StrCat("\"", rev.stringView(), "\""));
+    }
   }
   if (_potentialDirtyReads) {
     _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
@@ -444,8 +432,8 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateTransactionError(
-    std::string const& collectionName, OperationResult const& result,
-    std::string const& key, RevisionId rev) {
+    std::string_view collectionName, OperationResult const& result,
+    std::string_view key, RevisionId rev) {
   auto const code = result.errorNumber();
   switch (static_cast<int>(code)) {
     case static_cast<int>(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND):
@@ -455,8 +443,9 @@ void RestVocbaseBaseHandler::generateTransactionError(
                       "no collection name specified");
       } else {
         // collection name specified but collection not found
-        generateError(rest::ResponseCode::NOT_FOUND, code,
-                      "collection '" + collectionName + "' not found");
+        generateError(
+            rest::ResponseCode::NOT_FOUND, code,
+            absl::StrCat("collection '", collectionName, "' not found"));
       }
       return;
 
@@ -483,7 +472,8 @@ void RestVocbaseBaseHandler::generateTransactionError(
       }
       return;
     case static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND):
-      generateDocumentNotFound(collectionName, key);
+      generateError(rest::ResponseCode::NOT_FOUND,
+                    TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       return;
 
     case static_cast<int>(TRI_ERROR_ARANGO_CONFLICT):
@@ -571,6 +561,9 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type,
     OperationOptions const& opOptions, transaction::Options&& trxOpts) const {
+  bool const isFollower = !opOptions.isSynchronousReplicationFrom.empty() &&
+                          ServerState::instance()->isDBServer();
+
   bool found = false;
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
@@ -581,8 +574,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     auto tmp = std::make_unique<SingleCollectionTransaction>(
         transaction::StandaloneContext::Create(_vocbase), collectionName, type,
         std::move(trxOpts));
-    if (!opOptions.isSynchronousReplicationFrom.empty() &&
-        ServerState::instance()->isDBServer()) {
+    if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
     return tmp;
@@ -613,9 +605,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
         _request->header(StaticStrings::TransactionBody, found);
     if (found) {
       auto trxOpts = VPackParser::fromJson(trxDef);
-      Result res = mgr->ensureManagedTrx(
-          _vocbase, tid, trxOpts->slice(),
-          !opOptions.isSynchronousReplicationFrom.empty());
+      Result res =
+          mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), isFollower);
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -641,19 +632,17 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
         << "Transaction with id " << tid << " not found";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_TRANSACTION_NOT_FOUND,
-        std::string("transaction ") + std::to_string(tid.id()) + " not found");
+        absl::StrCat("transaction ", tid.id(), " not found"));
   }
 
   std::unique_ptr<transaction::Methods> trx;
-  if (ServerState::instance()->isDBServer() &&
-      !opOptions.isSynchronousReplicationFrom.empty()) {
+  if (isFollower) {
     // a write request from synchronous replication
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     // inject at least the required collection name
     trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName,
                                                  type);
   } else {
-    trx = std::make_unique<transaction::Methods>(std::move(ctx));
     if (isSideUser) {
       // this is a call from the DOCUMENT() AQL function into an existing AQL
       // query. locks are already acquired by the AQL transaction.
@@ -662,6 +651,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
                              "invalid access mode for request", ADB_HERE);
       }
     }
+    trx = std::make_unique<transaction::Methods>(std::move(ctx));
   }
   return trx;
 }
@@ -722,10 +712,9 @@ RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
   if (!ctx) {
     LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS)
         << "Transaction with id '" << tid << "' not found";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND,
-                                   std::string("transaction '") +
-                                       std::to_string(tid.id()) +
-                                       "' not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_TRANSACTION_NOT_FOUND,
+        absl::StrCat("transaction '", tid.id(), "' not found"));
   }
   ctx->setStreaming();
   return ctx;

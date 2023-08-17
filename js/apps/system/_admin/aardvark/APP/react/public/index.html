@@ -10,6 +10,20 @@
     <meta name="description" content="ArangoDB Admin Web Interface">
     <meta name="author" content="Heiko Kernbach, Michael Hackstein">
     <script src="%REACT_APP_ARANGODB_CONFIG_PATH%"></script>
+
+    <script>
+      window.addEventListener("error", function (e) {
+        // This is an error which only crashes dev, and can be safely ignored
+        // See: https://stackoverflow.com/a/50387233 & 
+        //      https://github.com/WICG/resize-observer/issues/38#issuecomment-422126006
+        if (e.message === "ResizeObserver loop limit exceeded") {
+          console.error(e.message);
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+
+      });
+    </script>
   </head>
 
   <body>
@@ -17,7 +31,7 @@
       You need to enable JavaScript to run this app.
     </noscript>
     
-    ${require("../../frontend/html/body.html")}
+    <include src="../../frontend/html/body.html"></include>
 
     <div id="root"></div>
   </body>

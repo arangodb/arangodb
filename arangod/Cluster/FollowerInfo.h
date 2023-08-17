@@ -24,7 +24,8 @@
 
 #pragma once
 
-#include "Basics/Mutex.h"
+#include <mutex>
+
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
@@ -72,7 +73,7 @@ class FollowerInfo {
   // 1.) _agencyMutex
   // 2.) _canWriteLock
   // 3.) _dataLock
-  mutable Mutex _agencyMutex;
+  mutable std::mutex _agencyMutex;
   mutable arangodb::basics::ReadWriteLock _canWriteLock;
   mutable arangodb::basics::ReadWriteLock _dataLock;
 
@@ -95,6 +96,15 @@ class FollowerInfo {
   std::shared_ptr<std::vector<ServerID> const> get() const {
     READ_LOCKER(readLocker, _dataLock);
     return _followers;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get a copy of the information about current followers of a shard.
+  ////////////////////////////////////////////////////////////////////////////////
+  std::vector<ServerID> getCopy() const {
+    READ_LOCKER(readLocker, _dataLock);
+    TRI_ASSERT(_followers != nullptr);
+    return *_followers;
   }
 
   ////////////////////////////////////////////////////////////////////////////////

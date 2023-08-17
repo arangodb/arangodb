@@ -1,0 +1,17 @@
+name: arangodb_network_response_duration
+introducedIn: "3.10.6"
+help: |
+  Internal request duration from fully sent till response received in seconds.
+unit: seconds
+type: histogram
+category: Network
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Histogram providing the time from when the request was fully sent off
+  until the response has been received of internal requests in seconds.
+troubleshoot: |
+  Counts in the high brackets indicate problems with the network infrastructure.

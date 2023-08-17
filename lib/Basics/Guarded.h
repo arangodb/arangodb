@@ -81,11 +81,11 @@ namespace basics {
 class UnshackledMutex;
 }
 
-class Mutex;
-
 template<class T, class L>
 class MutexGuard {
  public:
+  template<typename S>
+  explicit MutexGuard(T& value, MutexGuard<S, L>&& alias);
   explicit MutexGuard(T& value, L mutexLock);
   ~MutexGuard() = default;
 
@@ -125,6 +125,9 @@ class MutexGuard {
   auto isLocked() const noexcept -> bool;
 
  private:
+  template<typename S, typename M>
+  friend class MutexGuard;
+
   struct nop {
     void operator()(T*) {}
   };
@@ -135,6 +138,15 @@ class MutexGuard {
 template<class T, class L>
 MutexGuard<T, L>::MutexGuard(T& value, L mutexLock)
     : _value(&value), _mutexLock(std::move(mutexLock)) {
+  if (ADB_UNLIKELY(!_mutexLock.owns_lock())) {
+    throw std::invalid_argument("Lock not owned");
+  }
+}
+
+template<class T, class L>
+template<typename S>
+MutexGuard<T, L>::MutexGuard(T& value, MutexGuard<S, L>&& alias)
+    : _value(&value), _mutexLock(std::move(alias._mutexLock)) {
   if (ADB_UNLIKELY(!_mutexLock.owns_lock())) {
     throw std::invalid_argument("Lock not owned");
   }
@@ -239,7 +251,7 @@ class Guarded {
  private:
   template<class F, class R = std::invoke_result_t<F, value_type&>,
            class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
-  [[nodiscard]] static auto tryCallUnderLock(M& Mutex, F&& callback, T& value)
+  [[nodiscard]] static auto tryCallUnderLock(M& mutex, F&& callback, T& value)
       -> std::optional<Q>;
 
   value_type _value;

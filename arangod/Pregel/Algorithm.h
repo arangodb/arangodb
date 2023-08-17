@@ -116,7 +116,7 @@ struct Algorithm : IAlgorithm {
   }
   virtual std::set<std::string> initialActiveSet() { return {}; }
 
-  [[deprecated]] [[nodiscard]] virtual uint32_t messageBatchSize(
+  [[deprecated]] [[nodiscard]] virtual size_t messageBatchSize(
       std::shared_ptr<WorkerConfig const> config,
       MessageStats const& stats) const {
     if (config->localSuperstep() == 0) {
@@ -126,7 +126,7 @@ struct Algorithm : IAlgorithm {
           static_cast<double>(stats.sendCount) / stats.superstepRuntimeSecs;
       msgsPerSec /= static_cast<double>(config->parallelism());  // per thread
       msgsPerSec *= 0.06;
-      return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
+      return msgsPerSec > 250.0 ? (size_t)msgsPerSec : 250;
     }
   }
 };

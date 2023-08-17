@@ -37,6 +37,11 @@ TraverserEngineShardLists::TraverserEngineShardLists(
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
+  if (edges.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "edges list in TraverserEngineShardLists should not be empty");
+  }
   auto const& restrictToShards = query.queryOptions().restrictToShards;
 #ifdef USE_ENTERPRISE
   transaction::Methods trx{query.newTrxContext()};

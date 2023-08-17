@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/system-functions.h"
 #include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
@@ -48,7 +47,7 @@ RocksDBReplicationManager::RocksDBReplicationManager(RocksDBEngine& engine)
 
 /// @brief destroy a context repository
 RocksDBReplicationManager::~RocksDBReplicationManager() {
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
   _contexts.clear();
 }
 
@@ -67,7 +66,7 @@ RocksDBReplicationContextGuard RocksDBReplicationManager::createContext(
 
   RocksDBReplicationId const id = context->id();
 
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   if (engine.server().isStopping()) {
     // do not accept any further contexts when we are already shutting down
@@ -116,7 +115,7 @@ RocksDBReplicationContextGuard RocksDBReplicationManager::createContext(
 /// @brief remove a context by id
 ResultT<std::tuple<SyncerId, ServerId, std::string>>
 RocksDBReplicationManager::remove(RocksDBReplicationId id) {
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   auto it = _contexts.find(id);
 
@@ -145,7 +144,7 @@ RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 /// it must be returned later using release()
 RocksDBReplicationContextGuard RocksDBReplicationManager::find(
     RocksDBReplicationId id, double ttl) {
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   auto it = _contexts.find(id);
 
@@ -169,7 +168,7 @@ RocksDBReplicationContextGuard RocksDBReplicationManager::find(
 /// populates clientId
 ResultT<std::tuple<SyncerId, ServerId, std::string>>
 RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   auto it = _contexts.find(id);
 
@@ -199,7 +198,7 @@ void RocksDBReplicationManager::release(
     std::shared_ptr<RocksDBReplicationContext>&& context, bool deleted) {
   TRI_ASSERT(context != nullptr);
 
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   if (deleted) {
     // remove from map
@@ -222,7 +221,7 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t& vocbase) {
   LOG_TOPIC("ce3b0", TRACE, Logger::REPLICATION)
       << "dropping all replication contexts for database " << vocbase.name();
 
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   for (auto it = _contexts.begin(); it != _contexts.end();
        /* no hoisting */) {
@@ -241,7 +240,7 @@ void RocksDBReplicationManager::drop(LogicalCollection& collection) {
       << "dropping all replication contexts for collection "
       << collection.name();
 
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   for (auto it = _contexts.begin(); it != _contexts.end();
        /* no hoisting */) {
@@ -259,7 +258,7 @@ void RocksDBReplicationManager::dropAll() {
   LOG_TOPIC("bc8a8", TRACE, Logger::REPLICATION)
       << "deleting all replication contexts";
 
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
   _contexts.clear();
 }
 
@@ -271,7 +270,7 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
   auto const now = TRI_microtime();
   size_t deleted = 0;
 
-  MUTEX_LOCKER(mutexLocker, _lock);
+  std::lock_guard mutexLocker{_lock};
 
   for (auto it = _contexts.begin(); it != _contexts.end();
        /* no hoisting */) {

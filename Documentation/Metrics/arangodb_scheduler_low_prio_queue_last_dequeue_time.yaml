@@ -14,7 +14,7 @@ exposedBy:
 description: |
   Last recorded dequeue time for a low priority queue item, i.e., the amount of
   time the job was sitting in the queue. If there is nothing to do for a long
-  time, this metric will be reset to zero.
+  time, this metric is reset to zero.
   A large value for this metric indicates that the server is under heavy load
   and low priority jobs cannot be dequeued in a timely manner
 threshold: Normally this time should be clearly sub-second.

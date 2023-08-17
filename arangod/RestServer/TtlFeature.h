@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Basics/Mutex.h"
 #include "RestServer/arangod.h"
+#include <mutex>
 
 namespace arangodb {
 namespace velocypack {
@@ -113,15 +113,15 @@ class TtlFeature final : public ArangodFeature {
 
  private:
   /// @brief protects _properties and _active
-  mutable Mutex _propertiesMutex;
+  mutable std::mutex _propertiesMutex;
   TtlProperties _properties;
 
   /// @brief protects _statistics
-  mutable Mutex _statisticsMutex;
+  mutable std::mutex _statisticsMutex;
   TtlStatistics _statistics;
 
   /// @brief protects _thread
-  mutable Mutex _threadMutex;
+  mutable std::mutex _threadMutex;
   std::unique_ptr<TtlThread> _thread;
 
   /// @brief internal active flag, used by HeartbeatThread in active failover

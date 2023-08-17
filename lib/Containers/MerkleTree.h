@@ -302,7 +302,11 @@ class MerkleTree : public MerkleTreeBase {
   MerkleTree& operator=(
       std::unique_ptr<MerkleTree<Hasher, BranchingBits>>&& other);
 
+  /// @brief base memory usage for struct + dynamic memory usage
   std::uint64_t memoryUsage() const;
+
+  /// @brief only dynamic memory usage (excluding base memory usage)
+  std::uint64_t dynamicMemoryUsage() const;
 
   /**
    * @brief Returns the number of hashed keys contained in the tree

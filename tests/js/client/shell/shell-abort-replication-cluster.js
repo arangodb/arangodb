@@ -33,7 +33,7 @@ const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
-let { waitForShardsInSync } = require('@arangodb/test-helper');
+const { waitForShardsInSync } = require('@arangodb/test-helper');
   
 const cn = "UnitTestsCollection";
 
@@ -92,7 +92,7 @@ function abortReplicationSuite () {
         });
       
         // wait for shards to get into sync - this really can take long on a slow CI
-        waitForShardsInSync(cn, 180);
+        waitForShardsInSync(cn, 180, servers.length - 1);
 
       } finally {
         servers.forEach((server) => {

@@ -1,0 +1,13 @@
+name: arangodb_search_file_descriptors
+introducedIn: "3.12.0"
+help: |
+  Count of opened file descriptors for this index.
+unit: number
+type: gauge
+category: ArangoSearch
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Count of opened file descriptors for this index.

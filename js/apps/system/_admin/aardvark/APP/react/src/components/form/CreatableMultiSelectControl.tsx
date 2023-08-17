@@ -1,8 +1,7 @@
 import { useField, useFormikContext } from "formik";
 import React from "react";
-import { MultiValue, Props as ReactSelectProps, PropsValue } from "react-select";
-import CreatableSelect from "react-select/creatable";
-import { getSelectBase } from "../select/SelectBase";
+import { Props as ReactSelectProps, PropsValue } from "react-select";
+import CreatableMultiSelect from "../select/CreatableMultiSelect";
 import { BaseFormControlProps, FormikFormControl } from "./FormikFormControl";
 
 type OptionType = {
@@ -10,30 +9,29 @@ type OptionType = {
   value: string;
 };
 export type InputControlProps = BaseFormControlProps & {
-  selectProps?: ReactSelectProps<OptionType>;
+  selectProps?: ReactSelectProps<OptionType, true>;
 };
-
-const CreatableSelectBase = getSelectBase(CreatableSelect);
 
 export const CreatableMultiSelectControl = (props: InputControlProps) => {
   const { name, label, selectProps, ...rest } = props;
-  const [field, , helper] = useField(name);
+  const [field, , helper] = useField<string | string[] | undefined>(name);
   const { isSubmitting } = useFormikContext();
-  const value = selectProps?.options?.find(option => {
-    return (option as OptionType).value === field.value;
-  }) as PropsValue<OptionType>;
+  const value: PropsValue<OptionType> = getValue({
+    field,
+    options: selectProps?.options as OptionType[]
+  });
+
   return (
     <FormikFormControl name={name} label={label} {...rest}>
-      <CreatableSelectBase
+      <CreatableMultiSelect
         {...field}
-        isMulti
         value={value}
         inputId={name}
-        isDisabled={isSubmitting}
+        isDisabled={rest.isDisabled || isSubmitting}
         {...selectProps}
-        onChange={values => {
-          const valueStringArray = (values as MultiValue<OptionType>)?.map(value => {
-            return value.value
+        onChange={selectedOptions => {
+          const valueStringArray = selectedOptions.map(value => {
+            return value.value;
           });
           helper.setValue(valueStringArray);
         }}
@@ -42,3 +40,52 @@ export const CreatableMultiSelectControl = (props: InputControlProps) => {
   );
 };
 
+const createValue = (value: string | string[]) => {
+  if (Array.isArray(value)) {
+    return value.map(value => {
+      return {
+        value,
+        label: value
+      };
+    });
+  }
+  return [
+    {
+      value,
+      label: value
+    }
+  ];
+};
+
+const getValue = ({
+  field,
+  options
+}: {
+  field: { value: string | string[] | undefined };
+  options?: readonly OptionType[];
+}) => {
+  if (!field.value) {
+    return [];
+  }
+
+  // if no options provided, it's a newly created value
+  if (!options || !options.length) {
+    return createValue(field.value);
+  }
+
+  if (typeof field.value === "string") {
+    // if it's a string, find matching options
+    const foundValues = options.filter(option => {
+      return option.value === field.value;
+    });
+    if (foundValues && foundValues.length > 0) {
+      return foundValues;
+    } else {
+      // if not found, it's a newly created value
+      return createValue(field.value);
+    }
+  }
+
+  // if not a string, simply convert to array of objects
+  return createValue(field.value);
+};

@@ -96,6 +96,7 @@ function IResearchFeatureDDLTestSuite1() {
     tearDownAll: function () {
       db._useDatabase("_system");
 
+      db._drop("FiguresCollection");
       db._dropView("TestView");
       db._dropView("TestView1");
       db._dropView("TestView2");
@@ -110,6 +111,30 @@ function IResearchFeatureDDLTestSuite1() {
         db._dropDatabase("TestDB");
       } catch (_) {
       }
+    },
+
+    testInvertedIndexFigures: function() {
+      let c = db._create("FiguresCollection");
+      let sync = 'FOR d in FiguresCollection OPTIONS { indexHint: "i", forceIndexHint: true, waitForSync:true } FILTER d.a == "a" RETURN d';
+      let doc = {"a": "b", "_key": "1"};
+
+      c.save({"a": "a"});
+      c.ensureIndex({"name": "i", "type": "inverted", "fields": ["a"]});
+      let figures = c.figures(true);
+      assertEqual(figures.engine.indexes[1].type, "inverted");
+      assertEqual(figures.engine.indexes[1].count, 1);
+
+      c.save(doc);
+      db._query(sync);
+      figures = c.figures(true);
+      assertEqual(figures.engine.indexes[1].type, "inverted");
+      assertEqual(figures.engine.indexes[1].count, 2);
+
+      c.remove(doc);
+      db._query(sync);
+      figures = c.figures(true);
+      assertEqual(figures.engine.indexes[1].type, "inverted");
+      assertEqual(figures.engine.indexes[1].count, 1);
     },
 
     testViewIsBuilding: function () {
@@ -2336,6 +2361,39 @@ function IResearchFeatureDDLTestSuite2() {
       } finally {
         db._dropView(viewName);
         db._drop(colName);
+      }
+    },
+    testViewOnlyOptions : function() {
+      if (!isEnterprise) {
+        return;
+      }
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        let view = db._createView(viewName, "arangosearch", {
+          consolidationIntervalMsec: 0,
+          commitIntervalMsec: 0,
+          primarySortCache: true,
+          primaryKeyCache: true,
+          optimizeTopK: ["BM25(@doc) DESC"],
+          links: {
+            [colName]: {
+              storeValues: 'id',
+              includeAllFields:true
+            }}});
+        let props = view.properties();
+        assertUndefined(props.links[colName].primarySortCache);
+        assertUndefined(props.links[colName].primaryKeyCache);
+        assertUndefined(props.links[colName].optimizeTopK);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
       }
     }
   }; // return

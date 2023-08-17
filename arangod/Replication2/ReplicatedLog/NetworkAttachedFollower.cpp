@@ -37,14 +37,14 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-NetworkAttachedFollower::NetworkAttachedFollower(network::ConnectionPool* pool,
-                                                 ParticipantId id,
-                                                 DatabaseID database,
-                                                 LogId logId)
+NetworkAttachedFollower::NetworkAttachedFollower(
+    network::ConnectionPool* pool, ParticipantId id, DatabaseID database,
+    LogId logId, std::shared_ptr<ReplicatedLogGlobalSettings const> options)
     : pool(pool),
       id(std::move(id)),
       database(std::move(database)),
-      logId(logId) {}
+      logId(logId),
+      options(std::move(options)) {}
 
 auto NetworkAttachedFollower::getParticipantId() const noexcept
     -> ParticipantId const& {
@@ -54,6 +54,7 @@ auto NetworkAttachedFollower::getParticipantId() const noexcept
 auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
   VPackBufferUInt8 buffer;
+  buffer.reserve(options->defaultThresholdNetworkBatchSize);
   {
     VPackBuilder builder(buffer);
     request.toVelocyPack(builder);

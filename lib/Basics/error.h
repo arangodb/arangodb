@@ -31,7 +31,7 @@
 ErrorCode TRI_errno();
 
 /// @brief returns the last error as string
-std::string_view TRI_last_error();
+std::string TRI_last_error();
 
 /// @brief sets the last error
 ErrorCode TRI_set_errno(ErrorCode);

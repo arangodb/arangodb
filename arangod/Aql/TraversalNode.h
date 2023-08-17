@@ -119,11 +119,12 @@ class TraversalNode : public virtual GraphNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -242,6 +243,10 @@ class TraversalNode : public virtual GraphNode {
                       unsigned flags) const override final;
 
  private:
+  // validates collections in OPTIONS against contents of named graph (GRAPH
+  // attribute). throws if invalid collections are used.
+  void validateCollections() const;
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
@@ -281,10 +286,14 @@ class TraversalNode : public virtual GraphNode {
   std::vector<AstNode const*> _globalVertexConditions;
 
   /// @brief List of all depth specific conditions for edges
+  /// Note about memory: No need to track memory here separately. Inner
+  /// AstNodes and ExecutionNodes are already been kept into account.
   std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>>
       _edgeConditions;
 
   /// @brief List of all depth specific conditions for vertices
+  /// Note about memory: No need to track memory here separately.
+  /// AstNodes are already been kept into account.
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
 
   /// @brief the hashSet for variables used in pruning

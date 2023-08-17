@@ -27,7 +27,10 @@
 #include <limits>
 #include <memory>
 #include <string>
-#include "velocypack/Builder.h"
+
+#include <velocypack/Builder.h>
+
+#include "Inspection/Factory.h"
 
 namespace arangodb {
 class RebootId {
@@ -93,5 +96,12 @@ struct velocypack::Extractor<arangodb::RebootId> {
     return RebootId{slice.getNumericValue<std::size_t>()};
   }
 };
+
+namespace inspection {
+template<>
+struct Factory<RebootId> : BaseFactory<RebootId> {
+  static auto make_value() -> RebootId { return RebootId(0); }
+};
+}  // namespace inspection
 
 }  // namespace arangodb

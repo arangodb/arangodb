@@ -31,7 +31,7 @@
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchInvertedIndexMeta.h"
 
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 #include "Cluster/ClusterInfo.h"

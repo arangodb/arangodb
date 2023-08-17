@@ -25,7 +25,6 @@
 
 #include "Aql/QueryCache.h"
 #include "Logger/LogMacros.h"
-#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -49,7 +48,7 @@ RocksDBTrxMethods::~RocksDBTrxMethods() {
   // and call it ourselves here, because the call in the base class would only
   // execute the base class implementation, therefore leaking the
   // iteratorReadSnapshot.
-  cleanupTransaction();
+  RocksDBTrxMethods::cleanupTransaction();
 }
 
 Result RocksDBTrxMethods::beginTransaction() {

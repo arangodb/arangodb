@@ -164,15 +164,17 @@ window.ArangoUsers = Backbone.Collection.extend({
     }
 
     var url = 'whoAmI?_=' + Date.now();
-    if (frontendConfig.react) {
-      url = arangoHelper.databaseUrl('/_admin/aardvark/' + url);
-    }
 
     $.ajax({
       type: 'GET',
       url: url,
-      success: function (data) {
+      success: function (data, _status, request) {
         self.activeUser = data.user;
+        var autoLoginEnabled = request.getResponseHeader(
+          "x-arango-graph-auto-login"
+        ) === 'true';
+        arangoHelper.setAutoLoginEnabled(autoLoginEnabled);
+        data.user && arangoHelper.setCurrentJwtUser(data.user);
         callback(false, data.user);
       },
       error: function () {

@@ -31,7 +31,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#include "Enterprise/RocksDBEngine/RocksDBHotBackup/RocksDBHotBackup.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
@@ -55,7 +55,7 @@ arangodb::Result HotBackup::execute(std::string const& command,
                                     VPackBuilder& report) {
   switch (_engine) {
     case BACKUP_ENGINE::ROCKSDB:
-      return executeRocksDB(command, payload, report);
+      return executeDBServer(command, payload, report);
     case BACKUP_ENGINE::CLUSTER:
       return executeCoordinator(command, payload, report);
   }
@@ -64,9 +64,12 @@ arangodb::Result HotBackup::execute(std::string const& command,
                           "hot backup not implemented for this storage engine");
 }
 
-arangodb::Result HotBackup::executeRocksDB(std::string const& command,
-                                           VPackSlice const payload,
-                                           VPackBuilder& report) {
+arangodb::Result HotBackup::executeDBServer(std::string const& command,
+                                            VPackSlice const payload,
+                                            VPackBuilder& report) {
+  // Either on a dbserver or we are in the (un)lock command
+  TRI_ASSERT(_engine != BACKUP_ENGINE::CLUSTER || command == "lock" ||
+             command == "unlock");
 #ifdef USE_ENTERPRISE
   auto& feature = _server.getFeature<HotBackupFeature>();
   auto operation =
@@ -94,9 +97,9 @@ arangodb::Result HotBackup::executeCoordinator(std::string const& command,
   auto& feature = _server.getFeature<ClusterFeature>();
   if (command == "create") {
     return hotBackupCoordinator(feature, payload, report);
-  } else if (command == "lock") {
-    return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED,
-                            "backup locks not implemented on coordinators");
+  } else if (command == "lock" || command == "unlock") {
+    // forward to dbserver part
+    return executeDBServer(command, payload, report);
   } else if (command == "restore") {
     return hotRestoreCoordinator(feature, payload, report);
   } else if (command == "delete") {

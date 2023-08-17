@@ -294,7 +294,7 @@ auto SingleServerProvider<StepType>::fetchVertices(
     -> futures::Future<std::vector<Step*>> {
   // We will never need to fetch anything
   TRI_ASSERT(false);
-  return std::move(fetch(looseEnds));
+  return fetch(looseEnds);
 }
 
 template<class StepType>

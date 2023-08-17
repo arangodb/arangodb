@@ -29,6 +29,8 @@
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 

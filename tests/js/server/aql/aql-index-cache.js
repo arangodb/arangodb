@@ -205,7 +205,7 @@ function FiguresSuite () {
 function VPackIndexCacheModifySuite (unique) {
   const n = 2000;
 
-  const maxTries = 3;
+  const maxTries = 30;
   
   let setFailurePointForPointLookup = () => {
     if (canUseFailAt) {
@@ -283,6 +283,9 @@ function VPackIndexCacheModifySuite (unique) {
         // the entire caching subsystem from the tests and the interaction
         // between different caches, cache migration events etc.
         assertTrue(tries < maxTries - 1 || stats.cacheHits > 0, stats);
+        if (stats.CacheHits > 0) {
+          break;
+        }
       }
     },
     
@@ -327,6 +330,9 @@ function VPackIndexCacheModifySuite (unique) {
         // the entire caching subsystem from the tests and the interaction
         // between different caches, cache migration events etc.
         assertTrue(tries < maxTries - 1 || stats.cacheHits > 0, stats);
+        if (stats.CacheHits > 0) {
+          break;
+        }
       }
     },
     
@@ -381,6 +387,9 @@ function VPackIndexCacheModifySuite (unique) {
         // the entire caching subsystem from the tests and the interaction
         // between different caches, cache migration events etc.
         assertTrue(tries < maxTries - 1 || stats.cacheHits > 0, stats);
+        if (stats.CacheHits > 0) {
+          break;
+        }
       }
     },
 

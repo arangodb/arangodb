@@ -97,7 +97,7 @@ bool DropIndex::first() {
 
     LOG_TOPIC("837c5", DEBUG, Logger::MAINTENANCE)
         << "Dropping local index " << shard << "/" << id;
-    result(Indexes::drop(col.get(), index.slice()));
+    result(Indexes::drop(*col, index.slice()));
 
   } catch (std::exception const& e) {
     std::stringstream error;

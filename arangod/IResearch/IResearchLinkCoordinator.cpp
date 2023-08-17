@@ -53,7 +53,7 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
     IndexId id, LogicalCollection& collection)
     :  // we don`t have objectId`s on coordinator
       Index{id, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()},
-      IResearchLink{collection.vocbase().server()} {
+      IResearchLink{collection.vocbase().server(), collection} {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse

@@ -1,6 +1,7 @@
 import { ArangojsResponse } from "arangojs/lib/request";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { encodeHelper } from "../../../../utils/encodeHelper";
 
 export type IndexType = {
   id: string;
@@ -12,8 +13,9 @@ interface CollectionsListResponse extends ArangojsResponse {
 }
 
 export const useInvertedIndexList = (collection: string) => {
+  const { encoded: encodedCollectionName } = encodeHelper(collection);
   const { data, ...rest } = useSWR<CollectionsListResponse>(
-    ["/index", `collection=${collection}`],
+    ["/index", `collection=${encodedCollectionName}`],
     (args: string[]) => {
       const [path, qs] = args;
       if (collection) {
@@ -21,8 +23,8 @@ export const useInvertedIndexList = (collection: string) => {
       }
     }
   );
-  const invertedIndexes = data?.body.indexes.filter((indexValue) => {
-    return indexValue.type === 'inverted';
-  })
+  const invertedIndexes = data?.body.indexes.filter(indexValue => {
+    return indexValue.type === "inverted";
+  });
   return { indexesList: invertedIndexes, ...rest };
 };

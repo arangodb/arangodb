@@ -53,7 +53,18 @@ function runSetup () {
 
   db._createDatabase('UnitTestsRecovery2');
 
-  fs.write(fs.join(appPath, 'UnitTestsRecovery2', 'bar.json'), 'test');
+  const path = fs.join(appPath, 'UnitTestsRecovery2', 'bar.json');
+  fs.write(path, 'test');
+
+  // tries to force the operating system to refresh its inode cache
+  function fileExists(path) {
+    try {
+      fs.readFileSync(path);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
 
   db._dropDatabase('UnitTestsRecovery2');
   // garbage-collect once
@@ -61,11 +72,10 @@ function runSetup () {
 
   // we need to wait long enough for the DatabaseManagerThread to 
   // physically carry out the deletion
-  let path = fs.join(appPath, 'UnitTestsRecovery2');
   let gone = false;
   let tries = 0;
   while (++tries < 120) {
-    if (!fs.isDirectory(path)) {
+    if (!fileExists(path)) {
       gone = true;
       require("console").log("database directory for UnitTestsRecovery2 is gone");
       break;

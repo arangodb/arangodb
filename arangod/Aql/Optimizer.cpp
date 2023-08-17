@@ -36,8 +36,11 @@
 
 using namespace arangodb::aql;
 
-Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {}
+Optimizer::Optimizer(ResourceMonitor& resourceMonitor, size_t maxNumberOfPlans)
+    : _plans(resourceMonitor),
+      _newPlans(resourceMonitor),
+      _maxNumberOfPlans(maxNumberOfPlans),
+      _runOnlyRequiredRules(false) {}
 
 void Optimizer::disableRules(
     ExecutionPlan* plan,
@@ -107,6 +110,7 @@ class PlanChecker
       case ExecutionNode::REMOVE:
       case ExecutionNode::GATHER:
       case ExecutionNode::REMOTESINGLE:
+      case ExecutionNode::REMOTE_MULTIPLE:
         if (node->getParents().size() > 1) {
           errors.emplace_back()
               << "#parents == " << node->getParents().size() << " at ["

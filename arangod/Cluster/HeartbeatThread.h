@@ -27,7 +27,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/DBServerAgencySync.h"
@@ -39,6 +38,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 
 namespace arangodb {
@@ -140,12 +140,6 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   void runSingleServer();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief heartbeat main loop for agents
-  //////////////////////////////////////////////////////////////////////////////
-
-  void runAgent();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a plan change, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
@@ -162,6 +156,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   //////////////////////////////////////////////////////////////////////////////
 
   bool sendServerState();
+  void sendServerStateAsync();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get some regular news from the agency, a closure which calls this
@@ -215,7 +210,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// @brief status lock
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::Mutex> _statusLock;
+  std::shared_ptr<std::mutex> _statusLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyComm instance
@@ -251,7 +246,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// @brief current number of fails in a row
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t _numFails;
+  std::atomic<uint64_t> _numFails;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief last successfully dispatched version

@@ -33,7 +33,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
@@ -53,8 +52,10 @@
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utilities/NameValidator.h"
@@ -66,7 +67,16 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <atomic>
+#include <chrono>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+
 #include <absl/strings/str_cat.h>
+
+using namespace arangodb::options;
 
 namespace arangodb {
 namespace {
@@ -216,6 +226,17 @@ void DatabaseManagerThread::run() {
             vocbase->replicationClients().garbageCollect(now);
           }
         }
+
+        // unfortunately the FileDescriptorsFeature can only be used
+        // if the following ifdef applies
+#ifdef TRI_HAVE_GETRLIMIT
+        // update metric for the number of open file descriptors.
+        // technically this does not belong here, but there is no other
+        // ideal place for this
+        FileDescriptorsFeature& fds =
+            server().getFeature<FileDescriptorsFeature>();
+        fds.countOpenFilesIfNeeded();
+#endif
       }
     } catch (...) {
     }
@@ -240,15 +261,23 @@ void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("database", "database options");
 
+  auto static const allowedReplicationVersions = [] {
+    auto result = std::unordered_set<std::string>();
+    for (auto const& version : replication::allowedVersions) {
+      result.emplace(replication::versionToString(version));
+    }
+    return result;
+  }();
+
   options
       ->addOption("--database.default-replication-version",
-                  "default replication version, can be overwritten "
+                  "The default replication version, can be overwritten "
                   "when creating a new database, possible values: 1, 2",
-                  new replication::ReplicationVersionParameter(
-                      &_defaultReplicationVersion),
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_defaultReplicationVersion, allowedReplicationVersions),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(31200);
 
   options->addOption(
       "--database.wait-for-sync",
@@ -271,13 +300,17 @@ void DatabaseFeature::collectOptions(
                      options::makeDefaultFlags(options::Flags::Uncommon));
 
   options
-      ->addOption("--database.extended-names-databases",
-                  "Allow most UTF-8 characters in database names. Once in use, "
+      ->addOption("--database.extended-names",
+                  "Allow most UTF-8 characters in the names of databases, "
+                  "collections, Views, and indexes. Once in use, "
                   "this option cannot be turned off again.",
-                  new options::BooleanParameter(&_extendedNamesForDatabases),
+                  new options::BooleanParameter(&_extendedNames),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
       .setIntroducedIn(30900);
+
+  options->addOldOption("database.extended-names-databases",
+                        "database.extended-names");
 
   options
       ->addOption("--database.io-heartbeat",
@@ -286,6 +319,15 @@ void DatabaseFeature::collectOptions(
                   options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30807)
       .setIntroducedIn(30902);
+
+  options
+      ->addOption("--database.max-databases",
+                  "The maximum number of databases that can exist in parallel.",
+                  new options::SizeTParameter(&_maxDatabases))
+      .setLongDescription(R"(If the maximum number of databases is reached, no
+additional databases can be created in the deployment. In order to create additional
+databases, other databases need to be removed first.")")
+      .setIntroducedIn(31200);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
@@ -342,10 +384,12 @@ void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
 }
 
 void DatabaseFeature::start() {
-  if (_extendedNamesForDatabases) {
-    LOG_TOPIC("2c0c6", WARN, Logger::FIXME)
-        << "Extended names for databases are an experimental feature which "
-           "can cause incompatibility issues with not-yet-prepared drivers and "
+  if (_extendedNames) {
+    LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
+        << "Enabling extended names for databases, collections, view, and "
+           "indexes "
+        << " is an experimental feature which can "
+           "cause incompatibility issues with not-yet-prepared drivers and "
            "applications - do not use in production!";
   }
 
@@ -398,11 +442,6 @@ void DatabaseFeature::start() {
     }
   }
 
-  // activate deadlock detection in case we're not running in cluster mode
-  if (!ServerState::instance()->isRunningInCluster()) {
-    enableDeadlockDetection();
-  }
-
   _started.store(true);
 }
 
@@ -424,6 +463,7 @@ void DatabaseFeature::beginShutdown() {
 
     // throw away all open cursors in order to speed up shutdown
     vocbase->cursorRepository()->garbageCollect(true);
+    vocbase->shutdownReplicatedLogs();
   }
 }
 
@@ -561,9 +601,19 @@ void DatabaseFeature::recoveryDone() {
 
   // '_pendingRecoveryCallbacks' will not change because
   // !StorageEngine.inRecovery()
+  // It's single active thread before recovery done,
+  // so we could use general purpose thread pool for this
+  std::vector<futures::Future<Result>> futures;
+  futures.reserve(_pendingRecoveryCallbacks.size());
   for (auto& entry : _pendingRecoveryCallbacks) {
-    auto result = entry();
-
+    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+        RequestLane::CLIENT_SLOW, std::move(entry)));
+  }
+  _pendingRecoveryCallbacks.clear();
+  // TODO(MBkkt) use single wait with early termination
+  // when it would be available
+  for (auto& future : futures) {
+    auto result = std::move(future).get();
     if (!result.ok()) {
       LOG_TOPIC("772a7", ERR, Logger::FIXME)
           << "recovery failure due to error from callback, error '"
@@ -573,8 +623,6 @@ void DatabaseFeature::recoveryDone() {
       THROW_ARANGO_EXCEPTION(result);
     }
   }
-
-  _pendingRecoveryCallbacks.clear();
 
   if (ServerState::instance()->isCoordinator()) {
     return;
@@ -632,10 +680,11 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   }
   result = nullptr;
 
-  bool extendedNames = extendedNamesForDatabases();
-  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false,
-                                            extendedNames, name)) {
-    return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
+  bool extendedNames = this->extendedNames();
+  if (auto res = DatabaseNameValidator::validateName(/*allowSystem*/ false,
+                                                     extendedNames, name);
+      res.fail()) {
+    return res;
   }
 
   std::unique_ptr<TRI_vocbase_t> vocbase;
@@ -654,6 +703,18 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
         // name already in use
         return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                       std::string("duplicate database name '") + name + "'");
+      }
+
+      if (ServerState::instance()->isSingleServerOrCoordinator() &&
+          databases->size() >= maxDatabases()) {
+        // intentionally do not validate number of databases on DB servers,
+        // because they only carry out operations that are initiated by
+        // coordinators
+        return {TRI_ERROR_RESOURCE_LIMIT,
+                absl::StrCat(
+                    "unable to create additional database because it would "
+                    "exceed the configured maximum number of databases (",
+                    maxDatabases(), ")")};
       }
     }
 
@@ -675,10 +736,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
         LOG_TOPIC("56c41", ERR, Logger::FIXME) << msg;
         return Result(TRI_ERROR_INTERNAL, std::move(msg));
       }
-
-      // enable deadlock detection
-      vocbase->_deadlockDetector.enabled(
-          !ServerState::instance()->isRunningInCluster());
 
       auto& dealer = server().getFeature<V8DealerFeature>();
       if (dealer.isEnabled()) {
@@ -774,7 +831,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
       server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(
           *vocbase);
     }
-
+    vocbase->shutdownReplicatedLogs();
     auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry != nullptr) {
       queryRegistry->destroy(vocbase->name());
@@ -1095,7 +1152,7 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
         << "processing database: " << it.toJson();
 
     velocypack::Slice deleted = it.get("deleted");
-    if (deleted.isBoolean() && deleted.getBoolean()) {
+    if (deleted.isTrue()) {
       // ignore deleted databases here
       continue;
     }
@@ -1121,19 +1178,23 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     if (res.fail()) {
       std::string errorMsg;
-      if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID)) {
+      // note: TRI_ERROR_ARANGO_DATABASE_NAME_INVALID should not be
+      // used anymore in 3.11 and higher.
+      if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID) ||
+          res.is(TRI_ERROR_ARANGO_ILLEGAL_NAME)) {
         // special case: if we find an invalid database name during startup,
         // we will give the user some hint how to fix it
         absl::StrAppend(&errorMsg, res.errorMessage(), ": '", name, "'");
         // check if the name would be allowed when using extended names
-        if (DatabaseNameValidator::isAllowedName(
-                /*isSystem*/ false, /*extendedNames*/ true, name)) {
+        if (DatabaseNameValidator::validateName(
+                /*isSystem*/ false, /*extendedNames*/ true, name)
+                .ok()) {
           errorMsg.append(
               ". This database name would be allowed when using the "
               "extended naming convention for databases, which is "
               "currently disabled. The extended naming convention can "
               "be enabled via the startup option "
-              "`--database.extended-names-databases true`");
+              "`--database.extended-names true`");
         }
       } else {
         absl::StrAppend(&errorMsg, "when opening database '", name,
@@ -1185,17 +1246,6 @@ void DatabaseFeature::closeDroppedDatabases() {
 
   for (auto p : dropped) {
     p->shutdown();
-  }
-}
-
-void DatabaseFeature::enableDeadlockDetection() {
-  auto databases = _databases.load();
-
-  for (auto& p : *databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    TRI_ASSERT(vocbase != nullptr);
-
-    vocbase->_deadlockDetector.enabled(true);
   }
 }
 

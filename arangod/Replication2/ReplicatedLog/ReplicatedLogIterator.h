@@ -41,11 +41,12 @@
 #endif
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntryView.h"
 
 namespace arangodb::replication2::replicated_log {
 
-class ReplicatedLogIterator : public LogRangeIterator {
+class ReplicatedLogIterator : public LogViewRangeIterator {
  public:
   using log_type = ::immer::flex_vector<InMemoryLogEntry,
                                         arangodb::immer::arango_memory_policy>;
@@ -82,37 +83,11 @@ class ReplicatedLogIterator : public LogRangeIterator {
   log_type::const_iterator _end;
 };
 
-class InMemoryPersistedLogIterator : public PersistedLogIterator {
- public:
+struct InMemoryLogIteratorImpl : InMemoryLogIterator {
   using log_type = ::immer::flex_vector<InMemoryLogEntry,
                                         arangodb::immer::arango_memory_policy>;
 
-  explicit InMemoryPersistedLogIterator(log_type container)
-      : _container(std::move(container)),
-        _begin(_container.begin()),
-        _end(_container.end()) {}
-
-  auto next() -> std::optional<PersistingLogEntry> override {
-    if (_begin != _end) {
-      auto const& it = *_begin;
-      ++_begin;
-      return it.entry();
-    }
-    return std::nullopt;
-  }
-
- private:
-  log_type _container;
-  log_type::const_iterator _begin;
-  log_type::const_iterator _end;
-};
-
-class InMemoryLogIterator : public TypedLogIterator<InMemoryLogEntry> {
- public:
-  using log_type = ::immer::flex_vector<InMemoryLogEntry,
-                                        arangodb::immer::arango_memory_policy>;
-
-  explicit InMemoryLogIterator(log_type container)
+  explicit InMemoryLogIteratorImpl(log_type container)
       : _container(std::move(container)),
         _begin(_container.begin()),
         _end(_container.end()) {}

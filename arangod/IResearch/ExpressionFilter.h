@@ -83,29 +83,33 @@ class ByExpression final : public irs::filter {
     return "arangodb::iresearch::ByExpression";
   }
 
-  ByExpression() noexcept;
+  ByExpression() noexcept = default;
 
   void init(QueryContext const& ctx, aql::AstNode& node) noexcept;
 
   void init(QueryContext const& ctx,
             std::shared_ptr<aql::AstNode>&& node) noexcept;
 
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<ByExpression>::id();
+  }
+
   using irs::filter::prepare;
 
-  virtual irs::filter::prepared::ptr prepare(
-      irs::IndexReader const& index, irs::Order const& ord, irs::score_t boost,
-      irs::attribute_provider const* ctx) const override;
+  irs::filter::prepared::ptr prepare(
+      irs::IndexReader const& index, irs::Scorers const& order,
+      irs::score_t filter_boost,
+      irs::attribute_provider const* ctx) const final;
 
-  virtual size_t hash() const noexcept override;
+  size_t hash() const noexcept final;
 
   ExpressionCompilationContext const& context() const noexcept { return _ctx; }
 
   explicit operator bool() const noexcept { return bool(_ctx); }
 
- protected:
-  virtual bool equals(irs::filter const& rhs) const noexcept override;
-
  private:
+  bool equals(irs::filter const& rhs) const noexcept final;
+
   ExpressionCompilationContext _ctx;
   std::string _allColumn;
 };

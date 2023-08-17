@@ -160,10 +160,12 @@ var logPlainResponse = internal.appendPlainResponse(plainAppender, plainAppender
 var logErrorResponse = function (response) {
     allErrors += "Server reply was: " + JSON.stringify(response) + "\n";
 };
-var globalAssert = function(condition, testname, sourceFile) {
+var globalAssert = function(condition, testname, sourceFile, fnsource) {
   if (! condition) {
-    internal.output(hashes + '\nASSERTION FAILED: ' + testname + ' in file ' + sourceFile + '\n' + hashes + '\n');
-    throw new Error('assertion ' + testname + ' in file ' + sourceFile + ' failed');
+    let msg = `${hashes}\nASSERTION FAILED: \n${testname} in file ${sourceFile}\nIn this Function:\n${fnsource}\n${hashes}\n`;
+    allErrors += msg;
+    internal.output(msg);
+    throw new Error(msg);
   }
 };
 

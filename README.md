@@ -7,8 +7,6 @@
 ArangoDB
 ========
 
-Community chat: [![Slack Badge](https://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
-
 ArangoDB is a scalable graph database system to drive value from connected data,
 faster. Native graphs, an integrated search engine, and JSON support, via a
 single query language. ArangoDB runs on-prem, in the cloud – anywhere.
@@ -119,7 +117,7 @@ Stay in Contact
   [https://stackoverflow.com/questions/tagged/arangodb](https://stackoverflow.com/questions/tagged/arangodb)
 
 - Chat with the community and the developers on Slack:
-  [https://slack.arangodb.com/](https://slack.arangodb.com/)
+  [https://arangodb-community.slack.com/](https://arangodb-community.slack.com/)
 
 - Learn more about ArangoDB with our YouTube channel: 
   [https://www.youtube.com/@ArangoDB](https://www.youtube.com/@ArangoDB)

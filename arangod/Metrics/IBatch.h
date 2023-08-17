@@ -36,8 +36,8 @@ namespace arangodb::metrics {
 
 class IBatch {
  public:
-  virtual void toPrometheus(std::string& result,
-                            std::string_view globals) const = 0;
+  virtual void toPrometheus(std::string& result, std::string_view globals,
+                            bool ensureWhitespace) const = 0;
 
   virtual void toVPack(velocypack::Builder& builder, ArangodServer&) const = 0;
 

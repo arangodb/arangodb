@@ -208,6 +208,10 @@ class SiteConfig:
         self.run_root = base_source_dir / "testrun"
         if self.run_root.exists():
             shutil.rmtree(self.run_root)
+        self.xml_report_dir = base_source_dir / 'testrunXml'
+        if self.xml_report_dir.exists():
+            shutil.rmtree(self.xml_report_dir)
+        self.xml_report_dir.mkdir(parents=True)
         self.test_data_dir_x = self.run_root / "run"
         self.test_data_dir_x.mkdir(parents=True)
         self.test_report_dir = self.run_root / "report"

@@ -33,6 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingStrategyDefault.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -163,15 +164,21 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
   }
 
   // set the sharding strategy
-  if (!ServerState::instance()->isRunningInCluster()) {
-    // shortcut, so we do not need to set up the whole application server for
-    // testing
+
+  auto& server = _collection->vocbase().server();
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  auto const& engineSelection =
+      server.getFeature<arangodb::EngineSelectorFeature>();
+  if (!ServerState::instance()->isRunningInCluster() &&
+      engineSelection.engineName() == "Mock") {
+    // shortcut, so we do not need to set up the whole application
+    // server for testing
     _shardingStrategy = std::make_unique<ShardingStrategyNone>();
-  } else {
-    auto& server = _collection->vocbase().server();
-    _shardingStrategy =
-        server.getFeature<ShardingFeature>().fromVelocyPack(info, this);
+    return;
   }
+#endif
+  _shardingStrategy =
+      server.getFeature<ShardingFeature>().fromVelocyPack(info, this);
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
@@ -310,26 +317,28 @@ LogicalCollection* ShardingInfo::collection() const noexcept {
   return _collection;
 }
 
-void ShardingInfo::toVelocyPack(VPackBuilder& result,
-                                bool translateCids) const {
+void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
+                                bool includeShardsEntry) const {
   result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
-  result.add(VPackValue("shards"));
-  result.openObject();
-  auto tmpShards = _shardIds;
+  if (includeShardsEntry) {
+    result.add(VPackValue("shards"));
+    result.openObject();
+    auto tmpShards = _shardIds;
 
-  for (auto const& shards : *tmpShards) {
-    result.add(VPackValue(shards.first));
-    result.openArray();
+    for (auto const& shards : *tmpShards) {
+      result.add(VPackValue(shards.first));
+      result.openArray();
 
-    for (auto const& servers : shards.second) {
-      result.add(VPackValue(servers));
+      for (auto const& servers : shards.second) {
+        result.add(VPackValue(servers));
+      }
+
+      result.close();  // server array
     }
 
-    result.close();  // server array
+    result.close();  // shards
   }
-
-  result.close();  // shards
 
   if (isSatellite()) {
     result.add(StaticStrings::ReplicationFactor,

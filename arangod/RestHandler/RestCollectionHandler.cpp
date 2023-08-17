@@ -291,33 +291,13 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                                /*showProperties*/ true, FiguresType::None,
                                CountType::None);
 
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto shards = ci.getShardList(std::to_string(coll->planId().id()));
-
+      auto shardsMap = coll->shardIds();
       if (_request->parsedValue("details", false)) {
         // with details
-        VPackObjectBuilder arr(&_builder, "shards", true);
-        for (ShardID const& shard : *shards) {
-          std::vector<ServerID> servers;
-          ci.getShardServers(shard, servers);
-
-          if (servers.empty()) {
-            continue;
-          }
-
-          VPackArrayBuilder arr2(&_builder, shard);
-
-          for (auto const& server : servers) {
-            arr2->add(VPackValue(server));
-          }
-        }
+        coll->shardMapToVelocyPack(_builder);
       } else {
-        // no details
-        VPackArrayBuilder arr(&_builder, "shards", true);
-
-        for (ShardID const& shard : *shards) {
-          arr->add(VPackValue(shard));
-        }
+        // without details
+        coll->shardIDsToVelocyPack(_builder);
       }
     }
     return standardResponse();
@@ -341,7 +321,8 @@ void RestCollectionHandler::handleCommandPost() {
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    events::CreateCollection(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
+    events::CreateCollection(_vocbase.name(), StaticStrings::Empty,
+                             TRI_ERROR_BAD_PARAMETER);
     return;
   }
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
@@ -352,7 +333,9 @@ void RestCollectionHandler::handleCommandPost() {
       _request->parsedValue("enforceReplicationFactor", true);
   auto config = _vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
+
   auto planCollection = CreateCollectionBody::fromCreateAPIBody(body, config);
+
   if (planCollection.fail()) {
     // error message generated in inspect
     generateError(rest::ResponseCode::BAD, planCollection.errorNumber(),
@@ -361,16 +344,15 @@ void RestCollectionHandler::handleCommandPost() {
     // empty string
     auto collectionName = VelocyPackHelper::getStringValue(
         body, StaticStrings::DataSourceName, StaticStrings::Empty);
+
     events::CreateCollection(_vocbase.name(), collectionName,
                              planCollection.errorNumber());
     return;
   }
   std::vector<CreateCollectionBody> collections{
       std::move(planCollection.get())};
-  auto parameters = planCollection->toCollectionsCreate();
 
   OperationOptions options(_context);
-  std::shared_ptr<LogicalCollection> coll;
   auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
       options, collections,
@@ -379,6 +361,7 @@ void RestCollectionHandler::handleCommandPost() {
       /*isNewDatabase*/ false    // here always false
   );
 
+  std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:
   Result res{TRI_ERROR_NO_ERROR};
   if (result.fail()) {
@@ -788,7 +771,7 @@ RestCollectionHandler::collectionRepresentationAsync(
         }
 
         if (showCount != CountType::None) {
-          auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+          auto trx = ctxt.trx(AccessMode::Type::READ, true);
           TRI_ASSERT(trx != nullptr);
           return trx->countAsync(coll->name(),
                                  showCount == CountType::Detailed
@@ -801,7 +784,7 @@ RestCollectionHandler::collectionRepresentationAsync(
       .thenValue([=, this, &ctxt](OperationResult&& opRes) -> void {
         if (opRes.fail()) {
           if (showCount != CountType::None) {
-            auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+            auto trx = ctxt.trx(AccessMode::Type::READ, true);
             TRI_ASSERT(trx != nullptr);
             std::ignore = trx->finish(opRes.result);
           }

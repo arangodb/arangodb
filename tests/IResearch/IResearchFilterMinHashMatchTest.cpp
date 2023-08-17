@@ -31,6 +31,7 @@
 #include "Aql/Function.h"
 #include "IResearch/common.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/ExpressionContextMock.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Collections.h"
@@ -40,7 +41,7 @@ using namespace std::string_view_literals;
 auto makeByTerms(std::string_view name,
                  std::span<const std::string_view> values, size_t match_count,
                  irs::score_t boost,
-                 irs::sort::MergeType type = irs::sort::MergeType::kSum) {
+                 irs::ScoreMergeType type = irs::ScoreMergeType::kSum) {
   irs::by_terms filter;
   *filter.mutable_field() = name;
   filter.boost(boost);

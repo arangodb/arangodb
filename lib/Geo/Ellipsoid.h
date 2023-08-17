@@ -54,11 +54,13 @@ inline constexpr Ellipsoid SPHERE{6371.000 * 1000, 0.0};
 
 namespace utils {
 
-constexpr Ellipsoid const& ellipsoidFromString(std::string_view type) noexcept {
+constexpr Ellipsoid const* ellipsoidFromString(std::string_view type) noexcept {
   if (type == "wgs84") {
-    return WGS84_ELLIPSOID;
+    return &WGS84_ELLIPSOID;
+  } else if (type == "sphere") {
+    return &SPHERE;
   }
-  return SPHERE;
+  return nullptr;
 }
 
 }  // namespace utils

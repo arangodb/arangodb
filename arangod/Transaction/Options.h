@@ -95,7 +95,7 @@ struct Options {
   /// abort the transaction should the coordinator die or be rebooted.
   /// the server id and reboot id are intentionally empty in single server
   /// case.
-  arangodb::cluster::RebootTracker::PeerState origin;
+  arangodb::PeerState origin;
 
   /// @brief determines whether this transaction requires the changes to be
   /// replicated. E.g., transactions that _must not_ be replicated are those

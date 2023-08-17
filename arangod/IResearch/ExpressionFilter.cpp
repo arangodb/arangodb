@@ -205,9 +205,6 @@ size_t ExpressionCompilationContext::hash() const noexcept {
       irs::hash_combine(1610612741, aql::AstNodeValueHash()(node.get())), ast);
 }
 
-ByExpression::ByExpression() noexcept
-    : irs::filter{irs::type<ByExpression>::get()} {}
-
 void ByExpression::init(QueryContext const& ctx, aql::AstNode& node) noexcept {
   return init(ctx, std::shared_ptr<aql::AstNode>{&node, [](aql::AstNode*) {}});
 }
@@ -230,7 +227,7 @@ bool ByExpression::equals(irs::filter const& rhs) const noexcept {
 size_t ByExpression::hash() const noexcept { return _ctx.hash(); }
 
 irs::filter::prepared::ptr ByExpression::prepare(
-    irs::IndexReader const& index, irs::Order const& order,
+    irs::IndexReader const& index, irs::Scorers const& order,
     irs::score_t filter_boost, irs::attribute_provider const* ctx) const {
   if (!bool(*this)) {
     // uninitialized filter

@@ -31,6 +31,7 @@
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "QueryContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -51,9 +52,11 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice slice)
     : _outVariable(
           Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
-      _projections(arangodb::aql::Projections::fromVelocyPack(slice)),
+      _projections(arangodb::aql::Projections::fromVelocyPack(
+          slice, plan->getAst()->query().resourceMonitor())),
       _filterProjections(arangodb::aql::Projections::fromVelocyPack(
-          slice, "filterProjections")),
+          slice, "filterProjections",
+          plan->getAst()->query().resourceMonitor())),
       _count(false),
       _useCache(true),
       _maxProjections(kMaxProjections) {

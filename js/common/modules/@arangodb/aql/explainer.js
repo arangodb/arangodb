@@ -245,7 +245,7 @@ function printRules(rules, stats) {
     }
   }
   stringBuilder.appendLine();
- 
+
   if (!stats || !stats.rules) {
     return;
   }
@@ -273,7 +273,7 @@ function printRules(rules, stats) {
     times.forEach(function(rule) {
       stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
     });
-  
+
     stringBuilder.appendLine();
   }
 
@@ -324,7 +324,7 @@ function printStats(stats, isCoord) {
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') + 
+    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') +
     header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
@@ -1355,7 +1355,7 @@ function processQuery(query, explain, planIndex) {
             return keyword(' LET ') + variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join('');
         }
-        
+
         var scorersSort = '';
         if (node.hasOwnProperty('scorersSort') && node.scorersSort.length > 0) {
           node.scorersSort.forEach(function(sort) {
@@ -1368,11 +1368,11 @@ function processQuery(query, explain, planIndex) {
               } else {
                 scorersSort += keyword(' DESC');
               }
-          
+
           });
            scorersSort = keyword(' SORT ') + scorersSort;
            scorersSort += keyword(' LIMIT ') + value('0, ' + JSON.stringify(node.scorersSortLimit));
-           
+
         }
         let viewAnnotation = '/* view query';
         if (node.hasOwnProperty('outNmDocId')) {
@@ -2045,6 +2045,19 @@ function processQuery(query, explain, planIndex) {
         }
       }
         break;
+      case 'MultipleRemoteModificationNode': {
+        modificationFlags = node.modificationFlags;
+        collectionVariables[node.inVariable.id] = node.collection;
+        let indexRef = `${variableName(node.inVariable)}`;
+        if (node.hasOwnProperty('indexes')) {
+          node.indexes.forEach(function (idx, i) {
+            iterateIndexes(idx, i, node, types, indexRef);
+          });
+        }
+        return `${keyword('FOR')} d ${keyword('IN')} ${variableName(node.inVariable)} ${keyword('INSERT')} d ${keyword('IN')} ${collection(node.collection)}`;
+      }
+        break;
+
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
@@ -2264,7 +2277,10 @@ function processQuery(query, explain, planIndex) {
   stringBuilder.appendLine();
 
   printRules(plan.rules, explain.stats);
-  printModificationFlags(modificationFlags);
+  // printing of "write query options" normally does not help to get any
+  // better insights, so it has been deactivated. the code is kept around
+  // in case we still need it later.
+  // printModificationFlags(modificationFlags);
   if (profileMode) {
     printStats(explain.stats, isCoord);
     printProfile(explain.profile);
@@ -2435,6 +2451,10 @@ function debug(query, bindVars, options) {
               }
             });
           } catch (err) { }
+        } else {
+          node.graph.forEach(edgeColl => {
+            collections.push({name: edgeColl});
+          });
         }
       } else if (node.type === 'SubqueryNode') {
         // recurse into subqueries
@@ -2550,11 +2570,21 @@ function inspectDump(filename, outfile) {
   }
 
   let data = JSON.parse(require('fs').read(filename));
-  if (data.version && data.version) {
-    print("/* original data is from " + data.version["server-version"] + ", " + data.version.license + " */");
+  let version = "";
+  let license = "";
+  if (data.version) {
+    version = data.version;
+    license = version.license;
+    if (version && version.details) {
+      version = version.details;
+    }
+    if (version && version.hasOwnProperty('server-version')) {
+      version = version['server-version'];
+    }
+    print("/* original data is from " + version + ", " + license + " */");
   }
   if (data.database) {
-    print("/* original data gathered from database '" + data.database + "' */");
+    print("/* original data gathered from database " + JSON.stringify(data.database) + " */");
   }
 
   try {
@@ -2666,7 +2696,7 @@ function inspectDump(filename, outfile) {
   }
 }
 
-function explainQuerysRegisters(plan) {
+function explainQueryRegisters(plan) {
 
   /**
    * @typedef Node
@@ -3070,12 +3100,12 @@ function explainRegisters(data, options, shouldPrint) {
       stringBuilder.appendLine(section("Plan #" + (i + 1) + " of " + result.plans.length));
       stringBuilder.prefix = ' ';
       stringBuilder.appendLine();
-      explainQuerysRegisters(result.plans[i]);
+      explainQueryRegisters(result.plans[i]);
       stringBuilder.prefix = '';
     }
   } else {
     // single plan
-    explainQuerysRegisters(result.plan);
+    explainQueryRegisters(result.plan);
   }
 
   if (shouldPrint === undefined || shouldPrint) {

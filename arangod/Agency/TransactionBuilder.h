@@ -50,12 +50,14 @@ inline void add_to_builder(VPackBuilder& b, VPackSlice const& v) { b.add(v); }
 template<typename V>
 auto add_to_builder(VPackBuilder& b, V const& v)
     -> std::enable_if_t<std::is_constructible_v<velocypack::Value, V>, void> {
+  // cppcheck-suppress missingReturn
   b.add(VPackValue(v));
 }
 
 template<typename Path>
 inline auto add_to_builder(VPackBuilder& b, Path const& v)
     -> std::enable_if_t<std::is_base_of_v<cluster::paths::Path, Path>, void> {
+  // cppcheck-suppress missingReturn
   b.add(VPackValue(v.str()));
 }
 
@@ -109,6 +111,20 @@ struct envelope {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("oldEmpty", VPackValue(true));
+      _builder->close();
+      return std::move(*this);
+    }
+
+    template<typename K, typename V>
+    precs_trx isIntersectionEmpty(K&& k, V const& values) && {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      detail::add_to_builder(*_builder.get(), "intersectionEmpty");
+      _builder->openArray();
+      for (auto const& v : values) {
+        detail::add_to_builder(*_builder.get(), v);
+      }
+      _builder->close();
       _builder->close();
       return std::move(*this);
     }

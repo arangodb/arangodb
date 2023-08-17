@@ -47,6 +47,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
 using namespace fakeit;
+using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace tests {
@@ -68,16 +69,8 @@ const char* agency =
 #include "FailedLeaderTest.json"
     ;
 
-Node createNodeFromBuilder(Builder const& builder) {
-  Builder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-
-  Node node("");
-  node.handle<SET>(opBuilder.slice());
-  return node;
+NodePtr createNodeFromBuilder(Builder const& builder) {
+  return Node::create(builder.slice());
 }
 
 Builder createBuilder(char const* c) {
@@ -91,7 +84,7 @@ Builder createBuilder(char const* c) {
   return builder;
 }
 
-Node createNode(char const* c) {
+NodePtr createNode(char const* c) {
   return createNodeFromBuilder(createBuilder(c));
 }
 
@@ -105,7 +98,7 @@ std::unordered_set<std::string> getKeySet(VPackSlice s) {
   return keys;
 }
 
-Node createRootNode() { return createNode(agency); }
+NodePtr createRootNode() { return createNode(agency); }
 
 char const* todo = R"=({
   "creator":"1", "type":"failedLeader", "database":"database",
@@ -137,7 +130,7 @@ class FailedLeaderTest
     bool isFollower = false;
   };
 
-  Node baseStructure;
+  NodePtr baseStructure;
   Builder builder;
   write_ret_t fakeWriteResult;
   std::shared_ptr<Builder> transBuilder;
@@ -150,7 +143,7 @@ class FailedLeaderTest
         transBuilder(std::make_shared<Builder>()),
         fakeTransResult(true, "", 1, 0, transBuilder) {
     RandomGenerator::seed(3);
-    baseStructure.toBuilder(builder);
+    baseStructure->toBuilder(builder);
     VPackArrayBuilder a(transBuilder.get());
     transBuilder->add(VPackValue((uint64_t)1));
   }
@@ -443,7 +436,9 @@ class FailedLeaderTest
       return applyJson(std::move(jsonString));
     }
 
-    auto createNode() const -> Node { return createNodeFromBuilder(_builder); }
+    auto createNode() const -> NodePtr {
+      return createNodeFromBuilder(_builder);
+    }
 
    private:
     auto vectorToArray(std::vector<std::string> servers) -> std::string {
@@ -556,7 +551,7 @@ TEST_F(FailedLeaderTest, creating_a_job_should_create_a_job_in_todo) {
   AgentInterface& agent = mockAgent.get();
 
   auto failedLeader =
-      FailedLeader(baseStructure, &agent, jobId, "unittest", DATABASE,
+      FailedLeader(*baseStructure, &agent, jobId, "unittest", DATABASE,
                    COLLECTION, SHARD, SHARD_LEADER, true);
   failedLeader.create();
 }
@@ -604,7 +599,7 @@ TEST_F(FailedLeaderTest,
   AgentInterface& agent = mockAgent.get();
 
   auto failedLeader =
-      FailedLeader(baseStructure, &agent, jobId, "unittest", DATABASE,
+      FailedLeader(*baseStructure, &agent, jobId, "unittest", DATABASE,
                    COLLECTION, SHARD, SHARD_LEADER, false);
   failedLeader.create();
 }
@@ -637,9 +632,9 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -671,8 +666,8 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -703,9 +698,9 @@ TEST_F(FailedLeaderTest, distributeshardslike_should_immediately_fail) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -737,8 +732,8 @@ TEST_F(FailedLeaderTest, distributeshardslike_should_immediately_fail) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -757,9 +752,6 @@ TEST_F(FailedLeaderTest, if_leader_is_healthy_we_fail_the_job) {
           builder->add(it.key.copyString(), childBuilder->slice());
         }
       }
-      if (path == "/arango/Supervision/Health/" + SHARD_LEADER) {
-        builder->add("Status", VPackValue("GOOD"));
-      }
       if (path == "/arango/Target/ToDo") {
         builder->add("1", createBuilder(todo).slice());
       }
@@ -769,9 +761,11 @@ TEST_F(FailedLeaderTest, if_leader_is_healthy_we_fail_the_job) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
+  agency = agency->placeAt(
+      "/arango/Supervision/Health/" + SHARD_LEADER + "/Status", "GOOD");
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact)).Do([&](velocypack::Slice q) -> trans_ret_t {
@@ -803,7 +797,7 @@ TEST_F(FailedLeaderTest, if_leader_is_healthy_we_fail_the_job) {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
   auto failedLeader =
-      FailedLeader(agency.getOrCreate(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+      FailedLeader(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
   Verify(Method(mockAgent, transact));
   Verify(Method(mockAgent, write)).Exactly(Once);
@@ -839,15 +833,15 @@ TEST_F(FailedLeaderTest, job_must_not_be_started_if_no_server_is_in_sync) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   // nothing should happen
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
 }
 
@@ -890,9 +884,9 @@ TEST_F(FailedLeaderTest,
     }
     return builder;
   };
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   // nothing should happen
   Mock<AgentInterface> mockAgent;
@@ -902,8 +896,8 @@ TEST_F(FailedLeaderTest,
         return trans_ret_t();
       });
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -928,9 +922,9 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
       });
   When(Method(moveShardMockAgent, waitFor)).Return();
   AgentInterface& moveShardAgent = moveShardMockAgent.get();
-  auto moveShard = MoveShard(
-      baseStructure.getOrCreate("arango"), &moveShardAgent, "2", "strunz",
-      DATABASE, COLLECTION, SHARD, SHARD_LEADER, FREE_SERVER, true, true);
+  auto moveShard = MoveShard(*baseStructure->get("arango"), &moveShardAgent,
+                             "2", "strunz", DATABASE, COLLECTION, SHARD,
+                             SHARD_LEADER, FREE_SERVER, true, true);
   moveShard.create();
 
   std::string jobId = "1";
@@ -966,9 +960,9 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -988,8 +982,8 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
   Verify(Method(mockAgent, write));
 }
@@ -1024,9 +1018,9 @@ TEST_F(FailedLeaderTest, job_should_be_written_to_pending) {
     }
     return builder;
   };
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
@@ -1190,8 +1184,8 @@ TEST_F(FailedLeaderTest, job_should_be_written_to_pending) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1226,9 +1220,9 @@ TEST_F(FailedLeaderTest,
     }
     return builder;
   };
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
@@ -1382,8 +1376,8 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1428,9 +1422,9 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish_2) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -1463,8 +1457,8 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish_2) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
 }
 
@@ -1519,14 +1513,14 @@ TEST_F(FailedLeaderTest, if_new_leader_doesnt_catch_up_we_wait) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
 }
 
@@ -1579,9 +1573,9 @@ TEST_F(FailedLeaderTest, if_timeout_job_should_be_aborted) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -1631,8 +1625,8 @@ TEST_F(FailedLeaderTest, if_timeout_job_should_be_aborted) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1688,9 +1682,9 @@ TEST_F(FailedLeaderTest, when_everything_is_finished_there_should_be_cleanup) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -1726,8 +1720,8 @@ TEST_F(FailedLeaderTest, when_everything_is_finished_there_should_be_cleanup) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1737,8 +1731,8 @@ TEST_F(FailedLeaderTest,
   std::string jobId = "1";
   ShardInfo si{DATABASE, COLLECTION, SHARD};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           // follower2 in sync
           .setFollowers(si, {SHARD_LEADER, SHARD_FOLLOWER2})
           // but not part of the plan => will drop collection on next occasion
@@ -1757,8 +1751,8 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1767,7 +1761,7 @@ TEST_F(FailedLeaderTest,
   std::string jobId = "1";
   ShardInfo si{DATABASE, COLLECTION, SHARD};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     // Follower 1 planned
                     .setPlannedServers(si, {SHARD_LEADER, SHARD_FOLLOWER1})
                     // Follower 2 in followers
@@ -1786,8 +1780,8 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1797,7 +1791,7 @@ TEST_F(
   std::string jobId = "1";
   ShardInfo si{DATABASE, COLLECTION, SHARD};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     // Follower 1 planned
                     .setPlannedServers(si, {SHARD_LEADER, SHARD_FOLLOWER1})
                     // Follower 2 in candidates
@@ -1818,8 +1812,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1829,7 +1823,7 @@ TEST_F(
   std::string jobId = "1";
   ShardInfo si{DATABASE, COLLECTION, SHARD};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     // Follower 1 planned
                     .setPlannedServers(si, {SHARD_LEADER, SHARD_FOLLOWER1})
                     // Follower 2 in candidates
@@ -1850,8 +1844,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1866,7 +1860,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1,
                                         SHARD_FOLLOWER2};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     // Follower 1 planned
                     .setPlannedServers(si, planned)
                     // Follower 2 in candidates
@@ -1887,8 +1881,8 @@ TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1903,7 +1897,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_add_a_follower_if_none_exists) {
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1,
                                         SHARD_FOLLOWER2};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     // Follower 1 planned
                     .setPlannedServers(si, planned)
                     // Follower 2 in candidates
@@ -1925,8 +1919,8 @@ TEST_F(FailedLeaderTest, failedleader_must_not_add_a_follower_if_none_exists) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1948,8 +1942,8 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case) {
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -1983,8 +1977,8 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2010,8 +2004,8 @@ TEST_F(
   // candidate. Can be picked
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -2045,8 +2039,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2073,8 +2067,8 @@ TEST_F(
   // Can be picked
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, reducedFollowers)
@@ -2108,8 +2102,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2133,7 +2127,7 @@ TEST_F(
   std::vector<std::string> reducedFailovers = {SHARD_LEADER};
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFailoverCandidates(si, failovers)
                     .setFollowers(si, followers)
@@ -2159,8 +2153,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2184,7 +2178,7 @@ TEST_F(
   std::vector<std::string> reducedFailovers = {SHARD_LEADER};
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFailoverCandidates(si, reducedFailovers)
                     .setFollowers(si, reducedFollowers)
@@ -2210,8 +2204,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2235,8 +2229,8 @@ TEST_F(FailedLeaderTest,
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFollowers(si, followers)
           .setPlannedServers(distLike1, planned)
@@ -2267,8 +2261,8 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2291,7 +2285,7 @@ TEST_F(
   // Follower2 has not enough followers, we cannot transact
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFollowers(si, followers)
                     .setPlannedServers(distLike1, planned)
@@ -2314,8 +2308,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2337,7 +2331,7 @@ TEST_F(
   // Follower2 has not enough followers, we cannot transact
   std::vector<std::string> reducedFollowers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFollowers(si, followers)
                     .setPlannedServers(distLike1, planned)
@@ -2361,8 +2355,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2385,7 +2379,7 @@ TEST_F(
   // Leader has not enough followers, we cannot transact
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFollowers(si, reducedFollowers)
                     .setPlannedServers(distLike1, planned)
@@ -2408,8 +2402,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2433,8 +2427,8 @@ TEST_F(FailedLeaderTest,
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -2467,8 +2461,8 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2494,8 +2488,8 @@ TEST_F(
   // candidate. Can be picked
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -2528,8 +2522,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2555,8 +2549,8 @@ TEST_F(
   // Can be picked
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, reducedFollowers)
@@ -2589,8 +2583,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2614,7 +2608,7 @@ TEST_F(
   std::vector<std::string> reducedFailovers = {SHARD_LEADER};
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFailoverCandidates(si, failovers)
                     .setFollowers(si, followers)
@@ -2639,8 +2633,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2664,7 +2658,7 @@ TEST_F(
   std::vector<std::string> reducedFailovers = {SHARD_LEADER};
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFailoverCandidates(si, reducedFailovers)
                     .setFollowers(si, reducedFollowers)
@@ -2689,8 +2683,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2716,8 +2710,8 @@ TEST_F(FailedLeaderTest,
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -2751,8 +2745,8 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2778,8 +2772,8 @@ TEST_F(
                                         SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -2813,8 +2807,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2841,8 +2835,8 @@ TEST_F(
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, resignedFollowers)
@@ -2876,8 +2870,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2904,8 +2898,8 @@ TEST_F(
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -2939,8 +2933,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 

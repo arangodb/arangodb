@@ -35,10 +35,13 @@ Counter::~Counter() { _b.push(); }
 
 std::string_view Counter::type() const noexcept { return "counter"; }
 
-void Counter::toPrometheus(std::string& result,
-                           std::string_view globals) const {
+void Counter::toPrometheus(std::string& result, std::string_view globals,
+                           bool ensureWhitespace) const {
   _b.push();
   Metric::addMark(result, name(), globals, labels());
+  if (ensureWhitespace) {
+    result.push_back(' ');
+  }
   result.append(std::to_string(load())) += '\n';
 }
 

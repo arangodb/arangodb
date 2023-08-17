@@ -29,9 +29,7 @@ const arangodb = require("@arangodb");
 const _ = require('lodash');
 const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
-const sh = require("@arangodb/testutils/replicated-state-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
-const spreds = require("@arangodb/testutils/replicated-state-predicates");
 const request = require('@arangodb/request');
 const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 
@@ -89,7 +87,7 @@ const replicatedStateSuite = function (stateType) {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
-      const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
+      const result = lh.replaceParticipant(database, logId, oldParticipant, newParticipant);
       assertEqual({}, result);
       {
         const stateAgencyContent = lh.readReplicatedLogAgency(database, logId);
@@ -124,7 +122,7 @@ const replicatedStateSuite = function (stateType) {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
-      const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
+      const result = lh.replaceParticipant(database, logId, oldParticipant, newParticipant);
       assertEqual({}, result);
       {
         const stateAgencyContent = lh.readReplicatedLogAgency(database, logId);
@@ -170,7 +168,7 @@ const replicatedStateSuite = function (stateType) {
       const newLeader = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldLeader), [newLeader]).sort();
 
-      const result = sh.replaceParticipant(database, logId, oldLeader, newLeader);
+      const result = lh.replaceParticipant(database, logId, oldLeader, newLeader);
       assertEqual({}, result);
       {
         const stateAgencyContent = lh.readReplicatedLogAgency(database, logId);
@@ -206,7 +204,7 @@ const replicatedStateSuite = function (stateType) {
       const [oldParticipant, newParticipant] = _.sampleSize(nonParticipants, 2);
 
       try {
-        const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
+        const result = lh.replaceParticipant(database, logId, oldParticipant, newParticipant);
         // noinspection ExceptionCaughtLocallyJS
         throw new Error(`replaceParticipant unexpectedly succeeded with ${JSON.stringify(result)}`);
       } catch (e) {
@@ -227,7 +225,7 @@ const replicatedStateSuite = function (stateType) {
       const [oldParticipant, newParticipant] = _.sampleSize(participants, 2);
 
       try {
-        const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
+        const result = lh.replaceParticipant(database, logId, oldParticipant, newParticipant);
         // noinspection ExceptionCaughtLocallyJS
         throw new Error(`replaceParticipant unexpectedly succeeded with ${JSON.stringify(result)}`);
       } catch (e) {
@@ -319,7 +317,6 @@ const replicatedStateSuite = function (stateType) {
       const res = dropState(database, logId);
       assertEqual(200, res.code);
 
-      lh.waitFor(spreds.replicatedStateIsGone(database, logId));
       lh.waitFor(lpreds.replicatedLogIsGone(database, logId));
     },
   };

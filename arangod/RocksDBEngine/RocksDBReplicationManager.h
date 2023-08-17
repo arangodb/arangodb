@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/ResultT.h"
 #include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
@@ -32,6 +31,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -104,7 +104,7 @@ class RocksDBReplicationManager {
   void destroy(RocksDBReplicationContext*);
 
   /// @brief mutex for the contexts repository
-  Mutex _lock;
+  std::mutex _lock;
 
   /// @brief list of current contexts
   std::unordered_map<RocksDBReplicationId,

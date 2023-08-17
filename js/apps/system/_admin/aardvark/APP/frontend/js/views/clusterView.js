@@ -549,10 +549,6 @@
         this.coordshortSuccess = false;
         var url = 'statistics/coordshort';
 
-        if (frontendConfig.react) {
-          url = arangoHelper.databaseUrl('/_admin/aardvark/' + url);
-        }
-
         $.ajax({
           url: url,
           json: true,

@@ -43,12 +43,7 @@ struct CreateWorker {
   VPackBuilder userParameters;
   std::string coordinatorId;
   size_t parallelism;
-  std::unordered_map<CollectionID, std::vector<ShardID>>
-      edgeCollectionRestrictions;
-  std::map<CollectionID, std::vector<ShardID>> vertexShards;
-  std::map<CollectionID, std::vector<ShardID>> edgeShards;
-  std::unordered_map<CollectionID, std::string> collectionPlanIds;
-  std::vector<ShardID> allShards;
+  GraphSerdeConfig graphSerdeConfig;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, CreateWorker& x) {
@@ -58,11 +53,7 @@ auto inspect(Inspector& f, CreateWorker& x) {
       f.field("userParameters", x.userParameters),
       f.field("coordinatorId", x.coordinatorId),
       f.field("parallelism", x.parallelism),
-      f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
-      f.field("vertexShards", x.vertexShards),
-      f.field("edgeShards", x.edgeShards),
-      f.field("collectionPlanIds", x.collectionPlanIds),
-      f.field("allShards", x.allShards));
+      f.field("graphSerdeConfig", x.graphSerdeConfig));
 }
 
 struct WorkerStart {};
@@ -95,20 +86,6 @@ auto inspect(Inspector& f, RunGlobalSuperStep& x) {
       f.field("aggregators", x.aggregators));
 }
 
-struct Store {};
-template<typename Inspector>
-auto inspect(Inspector& f, Store& x) {
-  return f.object(x).fields();
-}
-
-struct ProduceResults {
-  bool withID;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, ProduceResults& x) {
-  return f.object(x).fields(f.field("withID", x.withID));
-}
-
 struct PregelMessage {
   ExecutionNumber executionNumber;
   uint64_t gss;
@@ -123,11 +100,31 @@ auto inspect(Inspector& f, PregelMessage& x) {
       f.field("messages", x.messages));
 }
 
+struct Store {};
+template<typename Inspector>
+auto inspect(Inspector& f, Store& x) {
+  return f.object(x).fields();
+}
+
+struct ProduceResults {
+  bool withID = true;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ProduceResults& x) {
+  return f.object(x).fields(f.field("withID", x.withID));
+}
+
+struct Cleanup {};
+template<typename Inspector>
+auto inspect(Inspector& f, Cleanup& x) {
+  return f.object(x).fields();
+}
+
 struct WorkerMessages
     : std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
-                   Store, PregelMessage, ProduceResults> {
+                   PregelMessage, Store, ProduceResults, Cleanup> {
   using std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
-                     Store, PregelMessage, ProduceResults>::variant;
+                     PregelMessage, Store, ProduceResults, Cleanup>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerMessages& x) {
@@ -138,7 +135,8 @@ auto inspect(Inspector& f, WorkerMessages& x) {
       arangodb::inspection::type<RunGlobalSuperStep>("RunGlobalSuperStep"),
       arangodb::inspection::type<PregelMessage>("PregelMessage"),
       arangodb::inspection::type<Store>("Store"),
-      arangodb::inspection::type<ProduceResults>("ProduceResults"));
+      arangodb::inspection::type<ProduceResults>("ProduceResults"),
+      arangodb::inspection::type<Cleanup>("Cleanup"));
 }
 
 }  // namespace worker::message

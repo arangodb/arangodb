@@ -27,13 +27,13 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <mutex>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 
 #include "zlib.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Basics/operating-system.h"
 
@@ -163,7 +163,7 @@ class ManagedDirectory {
     int _fd;
     int _gzfd;  // duplicate fd for gzip close
     gzFile _gzFile;
-    Mutex mutable _mutex;
+    std::mutex mutable _mutex;
 #ifdef USE_ENTERPRISE
     std::unique_ptr<EncryptionFeature::Context> _context;
 #endif

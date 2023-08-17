@@ -27,52 +27,40 @@
 #include <memory>
 #include <optional>
 #include <vector>
+#include <mutex>
 
 #include "Basics/Thread.h"
 #include "Basics/process-utils.h"
 #include "Shell/arangosh.h"
+#include <absl/cleanup/cleanup.h>
 
 namespace arangodb {
 class ProcessMonitoringFeature;
 
-class ProcessMonitorThread : public arangodb::Thread {
-  friend ProcessMonitoringFeature;
-
+class ProcessMonitorThread final : public arangodb::Thread {
  public:
   ProcessMonitorThread(application_features::ApplicationServer& server,
                        ProcessMonitoringFeature& processMonitorFeature)
       : Thread(server, "ProcessMonitor"),
         _processMonitorFeature(processMonitorFeature) {}
-  ~ProcessMonitorThread() { shutdown(); }
+  ~ProcessMonitorThread() final { shutdown(); }
 
- protected:
+ private:
+  void run() final;
+
   ProcessMonitoringFeature& _processMonitorFeature;
-  void run() override;
 };
 
 class ProcessMonitoringFeature final : public ArangoshFeature {
-  friend ProcessMonitorThread;
-
  public:
   explicit ProcessMonitoringFeature(Server& server);
-  ~ProcessMonitoringFeature();
+  ~ProcessMonitoringFeature() final;
   static constexpr std::string_view name() noexcept { return "ProcessMonitor"; }
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief enlist external process to become monitored
-  ////////////////////////////////////////////////////////////////////////////////
-
-  void addMonitorPID(ExternalId const& pid);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief enlist external process to become monitored
-  ////////////////////////////////////////////////////////////////////////////////
-
-  void removeMonitorPID(ExternalId const& pid);
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions> /*options*/) final;
+  void start() final;
+  void beginShutdown() final;
+  void stop() final;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get info about maybe exited processes
@@ -84,9 +72,43 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   /// @brief external process stati of processes exited while being monitored
   ////////////////////////////////////////////////////////////////////////////////
 
- protected:
-  arangodb::Mutex _MonitoredExternalProcessesLock;
-  std::map<TRI_pid_t, ExternalProcessStatus> _ExitedExternalProcessStatus;
+  void addMonitorPID(ExternalId const& pid);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief enlist external process to become monitored
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void removeMonitorPID(ExternalId const& pid);
+
+  void moveMonitoringPIDToAttic(ExternalId const& pid,
+                                ExternalProcessStatus const& exitStatus);
+
+  template<typename Func>
+  void visitMonitoring(Func const& func) {
+    std::unique_lock lock{_monitoredExternalProcessesLock};
+    // if someone erase from _monitoredProcesses before visitMonitoring,
+    // it can stop waiting
+    _counter.fetch_add(1);
+    auto pids = _monitoredProcesses;
+    lock.unlock();
+    // if someone erase from _monitoredProcesses after _monitoredProcesses was
+    // copied to pids, it want to wait when we stop using pids
+    absl::Cleanup increment = [&] { _counter.fetch_add(1); };
+    for (auto const& pid : pids) {
+      func(pid);
+    }
+  }
+
+ private:
+  void removeMonitorPIDNoLock(ExternalId const& pid);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief enlist external process to become monitored
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::atomic_uint64_t _counter{0};
+  std::mutex _monitoredExternalProcessesLock;
+  std::map<TRI_pid_t, ExternalProcessStatus> _exitedExternalProcessStatus;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief external process being monitored

@@ -38,6 +38,10 @@ class TestConfig:
             self.base_logdir.mkdir()
         self.log_file = cfg.run_root / f"{self.name}.log"
 
+        self.xml_report_dir = cfg.xml_report_dir / self.name
+        if not self.xml_report_dir.exists():
+            self.xml_report_dir.mkdir(parents=True)
+
         self.temp_dir = TEMP / self.name
         # pylint: disable=global-variable-not-assigned
         global TEST_LOG_FILES
@@ -73,6 +77,8 @@ class TestConfig:
             "true",
             "--writeXmlReport",
             "true",
+            '--testXmlOutputDirectory',
+            str(self.xml_report_dir),
         ]
 
         if "filter" in os.environ:

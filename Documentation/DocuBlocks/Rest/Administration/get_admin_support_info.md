@@ -1,5 +1,4 @@
 @startDocuBlock get_admin_support_info
-@brief Get deployment information
 
 @RESTHEADER{GET /_admin/support-info, Get information about the deployment, getSupportInfo}
 

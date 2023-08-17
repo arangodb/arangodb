@@ -24,6 +24,8 @@
 
 #include "gtest/gtest.h"
 
+#include <utils/lz4compression.hpp>
+
 #include "IResearch/common.h"
 #include "IResearch/IResearchInvertedIndexMeta.h"
 #include "Mocks/LogLevels.h"

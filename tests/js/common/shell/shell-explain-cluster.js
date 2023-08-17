@@ -382,25 +382,13 @@ function ExplainSuite () {
       assertEqual(cn, node.collection);
 
       node = nodes[2];
-      assertEqual("RemoteNode", node.type);
-
-      node = nodes[3];
-      assertEqual("GatherNode", node.type);
-
-      node = nodes[4];
-      assertEqual("DistributeNode", node.type);
-
-      node = nodes[5];
-      assertEqual("RemoteNode", node.type);
-
-      node = nodes[6];
       assertEqual("UpdateNode", node.type);
       assertEqual(cn, node.collection);
 
-      node = nodes[7];
+      node = nodes[3];
       assertEqual("RemoteNode", node.type);
 
-      node = nodes[8];
+      node = nodes[4];
       assertEqual("GatherNode", node.type);
     },
 
@@ -421,25 +409,13 @@ function ExplainSuite () {
       assertEqual(cn, node.collection);
 
       node = nodes[2];
-      assertEqual("RemoteNode", node.type);
-
-      node = nodes[3];
-      assertEqual("GatherNode", node.type);
-
-      node = nodes[4];
-      assertEqual("DistributeNode", node.type);
-
-      node = nodes[5];
-      assertEqual("RemoteNode", node.type);
-
-      node = nodes[6];
       assertEqual("UpdateNode", node.type);
       assertEqual(cn, node.collection);
 
-      node = nodes[7];
+      node = nodes[3];
       assertEqual("RemoteNode", node.type);
 
-      node = nodes[8];
+      node = nodes[4];
       assertEqual("GatherNode", node.type);
     },
 

@@ -15,4 +15,4 @@ description: |
   Total number of REST handler tasks that were created for execution
   via the scheduler. This counter is increased for each incoming
   request for which a REST handler mapping exists and that does not
-  need to be forwarded to another coordinator in the cluster.
+  need to be forwarded to another Coordinator in the cluster.

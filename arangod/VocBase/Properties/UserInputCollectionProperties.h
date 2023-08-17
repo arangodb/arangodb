@@ -34,6 +34,11 @@ struct UserInputCollectionProperties : public CollectionConstantProperties,
                                        public CollectionMutableProperties,
                                        public CollectionInternalProperties,
                                        public ClusteringProperties {
+  struct Invariants {
+    [[nodiscard]] static auto isSmartConfiguration(
+        UserInputCollectionProperties const& props) -> inspection::Status;
+  };
+
   bool operator==(UserInputCollectionProperties const& other) const = default;
 
   [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
@@ -44,6 +49,8 @@ struct UserInputCollectionProperties : public CollectionConstantProperties,
 
 #ifdef USE_ENTERPRISE
   Result validateOrSetDefaultShardingStrategyEE();
+
+  Result validateOrSetSmartEdgeValidators();
 #endif
 
   void setDefaultShardKeys();
@@ -75,11 +82,13 @@ struct UserInputCollectionProperties : public CollectionConstantProperties,
 
 template<class Inspector>
 auto inspect(Inspector& f, UserInputCollectionProperties& body) {
-  return f.object(body).fields(
-      f.template embedFields<CollectionConstantProperties>(body),
-      f.template embedFields<CollectionMutableProperties>(body),
-      f.template embedFields<CollectionInternalProperties>(body),
-      f.template embedFields<ClusteringProperties>(body));
+  return f.object(body)
+      .fields(f.template embedFields<CollectionConstantProperties>(body),
+              f.template embedFields<CollectionMutableProperties>(body),
+              f.template embedFields<CollectionInternalProperties>(body),
+              f.template embedFields<ClusteringProperties>(body))
+      .invariant(
+          UserInputCollectionProperties::Invariants::isSmartConfiguration);
 }
 
 }  // namespace arangodb

@@ -75,6 +75,9 @@ class QueryRegistryFeature final : public ArangodFeature {
   bool smartJoins() const noexcept { return _smartJoins; }
   bool parallelizeTraversals() const noexcept { return _parallelizeTraversals; }
 #endif
+  size_t maxCollectionsPerQuery() const noexcept {
+    return _maxCollectionsPerQuery;
+  }
   bool allowCollectionsInExpressions() const noexcept {
     return _allowCollectionsInExpressions;
   }
@@ -107,6 +110,7 @@ class QueryRegistryFeature final : public ArangodFeature {
   bool _allowCollectionsInExpressions;
   bool _logFailedQueries;
   size_t _maxQueryStringLength;
+  size_t _maxCollectionsPerQuery;
   uint64_t _peakMemoryUsageThreshold;
   uint64_t _queryGlobalMemoryLimit;
   uint64_t _queryMemoryLimit;

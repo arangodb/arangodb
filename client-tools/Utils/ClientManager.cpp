@@ -49,7 +49,7 @@ Result ClientManager::getConnectedClient(
     bool logServerVersion, bool logDatabaseNotFound, bool quiet,
     size_t threadNumber) const {
   try {
-    httpClient = _client.createHttpClient(threadNumber);
+    httpClient = _client.createHttpClient(threadNumber, force);
   } catch (...) {
     if (!force) {
       LOG_TOPIC("2b5fd", FATAL, _topic)
@@ -247,6 +247,10 @@ Result ClientManager::getHttpErrorMessage(
     }
   } catch (...) {
     // no need to recover, fallthrough for default error message
+    code = static_cast<ErrorCode>(result->getHttpReturnCode());
+    if (code == TRI_ERROR_NO_ERROR) {
+      code = TRI_ERROR_INTERNAL;
+    }
   }
   return {code, std::move(message)};
 }

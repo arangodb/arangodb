@@ -59,9 +59,8 @@ struct Collections {
 
     ~Context();
 
-    transaction::Methods* trx(AccessMode::Type const& type, bool embeddable,
-                              bool forceLoadCollection);
-    // TRI_vocbase_t& vocbase() const;
+    transaction::Methods* trx(AccessMode::Type const& type, bool embeddable);
+
     std::shared_ptr<LogicalCollection> coll() const;
 
    private:
@@ -102,33 +101,16 @@ struct Collections {
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
       bool isRestore = false);  // whether this is being called during restore
 
-  /// Create collection, ownership of collection in callback is
-  /// transferred to callee
-  [[nodiscard]] static arangodb::Result create(  // create collection
-      TRI_vocbase_t& vocbase,                    // collection vocbase
+  /// Create shard, can only be used on DBServers.
+  /// Should only be called by Maintenance.
+  [[nodiscard]] static arangodb::Result createShard(
+      TRI_vocbase_t& vocbase,  // shard database
       OperationOptions const& options,
-      std::string const& name,                 // collection name
-      TRI_col_type_e collectionType,           // collection type
-      arangodb::velocypack::Slice properties,  // collection properties
-      bool createWaitsForSyncReplication,      // replication wait flag
-      bool enforceReplicationFactor,           // replication factor flag
-      bool isNewDatabase,
-      std::shared_ptr<LogicalCollection>& ret,  // invoke on collection creation
-      bool allowSystem = false,
-      bool allowEnterpriseCollectionsOnSingleServer = false,
-      bool isRestore = false);  // whether this is being called during restore
-
-  /// Create many collections, ownership of collections in callback is
-  /// transferred to callee
-  static Result create(TRI_vocbase_t&, OperationOptions const&,
-                       std::vector<CollectionCreationInfo> const& infos,
-                       bool createWaitsForSyncReplication,
-                       bool enforceReplicationFactor, bool isNewDatabase,
-                       std::shared_ptr<LogicalCollection> const& colPtr,
-                       std::vector<std::shared_ptr<LogicalCollection>>& ret,
-                       bool allowSystem = false,
-                       bool allowEnterpriseCollectionsOnSingleServer = false,
-                       bool isRestore = false);
+      std::string const& name,                 // shard name
+      TRI_col_type_e collectionType,           // shard type
+      arangodb::velocypack::Slice properties,  // shard properties
+      std::shared_ptr<LogicalCollection>& ret  // ReturnValue: created Shard
+  );
 
   static Result createSystem(TRI_vocbase_t& vocbase, OperationOptions const&,
                              std::string const& name, bool isNewDatabase,
@@ -136,6 +118,10 @@ struct Collections {
   static void createSystemCollectionProperties(
       std::string const& collectionName, VPackBuilder& builder,
       TRI_vocbase_t const&);
+
+  static void applySystemCollectionProperties(
+      CreateCollectionBody& col, TRI_vocbase_t const& vocbase,
+      DatabaseConfiguration const& config, bool isLegacyDatabase);
 
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,
@@ -165,6 +151,12 @@ struct Collections {
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(
       arangodb::velocypack::Slice slice, bool allowDC2DCAttributes);
+
+ private:
+  static void appendSmartEdgeCollections(
+      CreateCollectionBody& collection,
+      std::vector<CreateCollectionBody>& collectionList,
+      std::function<DataSourceId()> const&);
 };
 
 #ifdef USE_ENTERPRISE

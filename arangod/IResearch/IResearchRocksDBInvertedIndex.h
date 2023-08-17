@@ -108,8 +108,18 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
   void load() final {}
   void unload() final /*noexcept*/ { shutdownDataStore(); }
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) final {
-    IResearchDataStore::afterTruncate(tick, trx);
+  ResultT<TruncateGuard> truncateBegin(rocksdb::WriteBatch& batch) final {
+    auto r = RocksDBIndex::truncateBegin(batch);
+    if (!r.ok()) {
+      return r;
+    }
+    return IResearchDataStore::truncateBegin();
+  }
+
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) final {
+    IResearchDataStore::truncateCommit(std::move(guard), tick, trx);
+    guard = {};
   }
 
   bool matchesDefinition(velocypack::Slice const& other) const final;
@@ -150,20 +160,12 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
     return IResearchInvertedIndex::specializeCondition(trx, node, reference);
   }
 
-  Result insertInRecovery(transaction::Methods& trx,
-                          LocalDocumentId const& documentId, VPackSlice doc,
-                          rocksdb::SequenceNumber tick) {
-    return IResearchDataStore::insert<
+  void recoveryInsert(uint64_t tick, LocalDocumentId documentId,
+                      VPackSlice doc) {
+    IResearchDataStore::recoveryInsert<
         FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-        IResearchInvertedIndexMetaIndexingContext>(
-        trx, documentId, doc, *meta()._indexingContext, &tick);
-  }
-
-  Result removeInRecovery(transaction::Methods& trx,
-                          LocalDocumentId const& documentId,
-                          rocksdb::SequenceNumber tick) {
-    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
-                                      &tick);
+        IResearchInvertedIndexMetaIndexingContext>(tick, documentId, doc,
+                                                   *meta()._indexingContext);
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
@@ -172,15 +174,14 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
                 bool /*performChecks*/) final {
     return IResearchDataStore::insert<
         FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-        IResearchInvertedIndexMetaIndexingContext>(
-        trx, documentId, doc, *meta()._indexingContext, nullptr);
+        IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc,
+                                                   *meta()._indexingContext);
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
                 LocalDocumentId const& documentId, VPackSlice,
                 OperationOptions const& /*options*/) final {
-    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
-                                      nullptr);
+    return IResearchDataStore::remove(trx, documentId);
   }
 
  private:

@@ -39,16 +39,16 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
   // return mocked type
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   // Necessary overrides, all not implemented:
 
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override;
 
   std::unique_ptr<::arangodb::aql::ExecutionBlock> createBlock(
-      ::arangodb::aql::ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*,
-                         ::arangodb::aql::ExecutionBlock*> const&)
-      const override;
+      ::arangodb::aql::ExecutionEngine& engine) const override;
 
   ExecutionNode* clone(::arangodb::aql::ExecutionPlan* plan,
                        bool withDependencies,

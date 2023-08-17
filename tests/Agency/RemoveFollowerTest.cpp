@@ -42,6 +42,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
 using namespace fakeit;
+using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace tests {
@@ -70,15 +71,8 @@ const char* todo =
 #include "RemoveFollowerTestToDo.json"
     ;
 
-Node createNodeFromBuilder(Builder const& builder) {
-  Builder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-  Node node("");
-  node.handle<SET>(opBuilder.slice());
-  return node;
+NodePtr createNodeFromBuilder(Builder const& builder) {
+  return Node::create(builder.slice());
 }
 
 Builder createBuilder(char const* c) {
@@ -92,11 +86,11 @@ Builder createBuilder(char const* c) {
   return builder;
 }
 
-Node createNode(char const* c) {
+NodePtr createNode(char const* c) {
   return createNodeFromBuilder(createBuilder(c));
 }
 
-Node createRootNode() { return createNode(agency); }
+NodePtr createRootNode() { return createNode(agency); }
 
 typedef std::function<std::unique_ptr<Builder>(Slice const&,
                                                std::string const&)>
@@ -108,7 +102,7 @@ inline static std::string typeName(Slice const& slice) {
 
 class RemoveFollowerTest : public ::testing::Test {
  protected:
-  Node baseStructure;
+  NodePtr baseStructure;
   Builder builder;
   std::string jobId;
   write_ret_t fakeWriteResult;
@@ -122,7 +116,7 @@ class RemoveFollowerTest : public ::testing::Test {
         fakeTransResult(true, "", 1, 0, std::make_shared<Builder>()) {
     arangodb::RandomGenerator::initialize(
         arangodb::RandomGenerator::RandomType::MERSENNE);
-    baseStructure.toBuilder(builder);
+    baseStructure->toBuilder(builder);
   }
 };
 
@@ -162,8 +156,8 @@ TEST_F(RemoveFollowerTest, creating_a_job_should_create_a_job_in_todo) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  auto removeFollower = RemoveFollower(baseStructure, &agent, jobId, "unittest",
-                                       DATABASE, COLLECTION, SHARD);
+  auto removeFollower = RemoveFollower(*baseStructure, &agent, jobId,
+                                       "unittest", DATABASE, COLLECTION, SHARD);
 
   removeFollower.create();
 }
@@ -197,9 +191,9 @@ TEST_F(RemoveFollowerTest,
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  NodePtr agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -226,7 +220,7 @@ TEST_F(RemoveFollowerTest,
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  RemoveFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 }
 
@@ -257,7 +251,7 @@ TEST_F(
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
   auto agency = createNodeFromBuilder(*builder);
 
@@ -285,7 +279,7 @@ TEST_F(
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  RemoveFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 }
 
@@ -323,7 +317,7 @@ TEST_F(RemoveFollowerTest,
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
   auto agency = createNodeFromBuilder(*builder);
 
@@ -351,7 +345,7 @@ TEST_F(RemoveFollowerTest,
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  RemoveFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 }
 
@@ -382,9 +376,9 @@ TEST_F(
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  NodePtr agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -420,7 +414,7 @@ TEST_F(
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  RemoveFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 }
 
@@ -446,7 +440,7 @@ TEST_F(RemoveFollowerTest, all_good_should_remove_folower) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
   auto agency = createNodeFromBuilder(*builder);
 
@@ -474,7 +468,7 @@ TEST_F(RemoveFollowerTest, all_good_should_remove_folower) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  RemoveFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 
   EXPECT_NO_THROW(Verify(Method(mockAgent, write)));
@@ -510,7 +504,7 @@ TEST(RemoveFollowerLargeTest, an_agency_with_12_dbservers) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
   auto agency = createNodeFromBuilder(*builder);
 
@@ -653,7 +647,7 @@ TEST(RemoveFollowerLargeTest, an_agency_with_12_dbservers) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  RemoveFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 
   EXPECT_NO_THROW(Verify(Method(mockAgent, write)));

@@ -1,41 +1,28 @@
 
 @startDocuBlock get_api_transaction
-@brief Fetch status of a server-side transaction
 
-@RESTHEADER{GET /_api/transaction/{transaction-id}, Get transaction status, executeGetState:transaction}
-
-@RESTURLPARAMETERS
-
-@RESTURLPARAM{transaction-id,string,required}
-The transaction identifier.
+@RESTHEADER{GET /_api/transaction, List the running Stream Transactions, listStreamTransactions}
 
 @RESTDESCRIPTION
-The result is an object describing the status of the transaction.
-It has at least the following attributes:
+The result is an object with the `transactions` attribute, which contains
+an array of transactions.
+In a cluster the array will contain the transactions from all Coordinators.
 
-- *id*: the identifier of the transaction
+Each array entry contains an object with the following attributes:
 
-- *status*: the status of the transaction. One of "running", "committed" or "aborted".
+- `id`: the transaction's id
+- `state`: the transaction's status
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-If the transaction is fully executed and committed on the server,
-*HTTP 200* will be returned.
-
-@RESTRETURNCODE{400}
-If the transaction identifier specified is either missing or malformed, the server
-will respond with *HTTP 400*.
-
-@RESTRETURNCODE{404}
-If the transaction was not found with the specified identifier, the server
-will respond with *HTTP 404*.
+If the list of transactions can be retrieved successfully, *HTTP 200* will be returned.
 
 @EXAMPLES
 
-Get transaction status
+Get currently running transactions
 
-@EXAMPLE_ARANGOSH_RUN{RestTransactionGet}
+@EXAMPLE_ARANGOSH_RUN{RestTransactionsGet}
     db._drop("products");
     db._create("products");
     let body = {
@@ -44,7 +31,7 @@ Get transaction status
       }
     };
     let trx = db._createTransaction(body);
-    let url = "/_api/transaction/" + trx.id();
+    let url = "/_api/transaction";
 
     let response = logCurlRequest('GET', url);
     assert(response.code === 200);

@@ -34,7 +34,6 @@
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
@@ -66,21 +65,25 @@ struct LogPlanSpecification;
 struct LogPlanTermSpecification;
 struct ParticipantsConfig;
 }  // namespace agency
+namespace maintenance {
+struct LogStatus;
+}
 namespace replicated_log {
-class LogLeader;
-class LogFollower;
+struct ILogLeader;
+struct ILogFollower;
 struct ILogParticipant;
 struct LogStatus;
 struct QuickLogStatus;
-struct PersistedLog;
 struct ReplicatedLog;
 }  // namespace replicated_log
 namespace replicated_state {
 struct ReplicatedStateBase;
 struct StateStatus;
+}  // namespace replicated_state
+namespace storage {
 struct PersistedStateInfo;
 struct IStorageEngineMethods;
-}  // namespace replicated_state
+}  // namespace storage
 }  // namespace replication2
 namespace velocypack {
 class Builder;
@@ -97,6 +100,7 @@ class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
+struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
 struct VocBaseLogManager;
@@ -120,6 +124,13 @@ struct TRI_vocbase_t {
 
   explicit TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info);
   TEST_VIRTUAL ~TRI_vocbase_t();
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ protected:
+  struct MockConstruct {
+  } constexpr static mockConstruct = {};
+  explicit TRI_vocbase_t(MockConstruct, arangodb::CreateDatabaseInfo&& info);
+#endif
 
  private:
   // explicitly document implicit behavior (due to presence of locks)
@@ -185,10 +196,9 @@ struct TRI_vocbase_t {
       arangodb::replication2::agency::ParticipantsConfig const&)
       -> arangodb::Result;
 
-  [[nodiscard]] auto getReplicatedStatesQuickStatus() const
-      -> std::unordered_map<
-          arangodb::replication2::LogId,
-          arangodb::replication2::replicated_log::QuickLogStatus>;
+  [[nodiscard]] auto getReplicatedLogsStatusMap() const
+      -> std::unordered_map<arangodb::replication2::LogId,
+                            arangodb::replication2::maintenance::LogStatus>;
 
   [[nodiscard]] auto getReplicatedStatesStatus() const
       -> std::unordered_map<arangodb::replication2::LogId,
@@ -199,17 +209,16 @@ struct TRI_vocbase_t {
   auto getReplicatedLogById(arangodb::replication2::LogId id)
       -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
   auto getReplicatedLogLeaderById(arangodb::replication2::LogId id)
-      -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ILogLeader>;
   auto getReplicatedLogFollowerById(arangodb::replication2::LogId id)
-      -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ILogFollower>;
+
+  void shutdownReplicatedLogs() noexcept;
 
   [[nodiscard]] auto getDatabaseConfiguration()
       -> arangodb::DatabaseConfiguration;
 
  public:
-  arangodb::basics::DeadlockDetector<arangodb::TransactionId,
-                                     arangodb::LogicalCollection>
-      _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
@@ -274,6 +283,9 @@ struct TRI_vocbase_t {
 
   /// @brief sets prototype collection for sharding (_users or _graphs)
   void setShardingPrototype(ShardingPrototype type);
+
+  /// @brief sets sharding property for sharding (e.g. single, flexible);
+  void setSharding(std::string_view sharding);
 
   /// @brief gets prototype collection for sharding (_users or _graphs)
   ShardingPrototype shardingPrototype() const;
@@ -367,6 +379,12 @@ struct TRI_vocbase_t {
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> createCollections(
       arangodb::velocypack::Slice infoSlice,
       bool allowEnterpriseCollectionsOnSingleServer);
+
+  [[nodiscard]] arangodb::ResultT<
+      std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
+  createCollections(std::vector<arangodb::CreateCollectionBody> const&
+                        parametersOfCollections,
+                    bool allowEnterpriseCollectionsOnSingleServer);
 
   /// @brief creates a new collection from parameter set
   /// collection id ("cid") is normally passed with a value of 0
@@ -485,8 +503,7 @@ struct TRI_vocbase_t {
   /// methods to access the storage engine
   void registerReplicatedState(
       arangodb::replication2::LogId,
-      std::unique_ptr<
-          arangodb::replication2::replicated_state::IStorageEngineMethods>);
+      std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>);
 };
 
 /// @brief sanitize an object, given as slice, builder must contain an

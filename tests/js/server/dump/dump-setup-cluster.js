@@ -41,6 +41,7 @@ const setup = require(base);
   setup.createMany();
   setup.createOrder();
   setup.createModifyCollection();
+  setup.createExtendedName();
   setup.createMultiShard();
   setup.createComputedValues();
   setup.createPaddedKeyGen();

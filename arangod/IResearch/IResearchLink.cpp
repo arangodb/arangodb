@@ -156,16 +156,12 @@ Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
   irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
   setupReaderEntepriseOptions(readerOptions,
-                              index().collection().vocbase().server(), _meta);
+                              index().collection().vocbase().server(), _meta,
+                              _useSearchCache);
 #endif
   auto r = initDataStore(pathExists, init, _meta._version, !_meta._sort.empty(),
-#ifdef USE_ENTERPRISE
-                         _meta._hasNested,
-#else
-                         false,
-#endif
-                         _meta._storedValues.columns(), _meta._sortCompression,
-                         readerOptions);
+                         _meta.hasNested(), _meta._storedValues.columns(),
+                         _meta._sortCompression, readerOptions);
   if (r.ok() && view) {
     r = view->link(_asyncSelf);
   }
@@ -423,10 +419,6 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(
   return nullptr;
 }
 
-std::string_view IResearchLink::format() const noexcept {
-  return getFormat(LinkVersion{_meta._version});
-}
-
 IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
   return _meta._storedValues;
 }
@@ -462,6 +454,15 @@ void IResearchLink::insertMetrics() {
                      .vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>();
+  _writersMemory =
+      &metric.add(getMetric<arangodb_search_writers_memory_usage>(*this));
+  _readersMemory =
+      &metric.add(getMetric<arangodb_search_readers_memory_usage>(*this));
+  _consolidationsMemory = &metric.add(
+      getMetric<arangodb_search_consolidations_memory_usage>(*this));
+  _fileDescriptorsCount =
+      &metric.add(getMetric<arangodb_search_file_descriptors>(*this));
+  _mappedMemory = &metric.add(getMetric<arangodb_search_mapped_memory>(*this));
   _numFailedCommits =
       &metric.add(getMetric<arangodb_search_num_failed_commits>(*this));
   _numFailedCleanups =
@@ -482,6 +483,27 @@ void IResearchLink::removeMetrics() {
                      .vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>();
+  if (_writersMemory != &irs::IResourceManager::kNoop) {
+    _writersMemory = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_writers_memory_usage>(*this));
+  }
+  if (_readersMemory != &irs::IResourceManager::kNoop) {
+    _readersMemory = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_readers_memory_usage>(*this));
+  }
+  if (_consolidationsMemory != &irs::IResourceManager::kNoop) {
+    _consolidationsMemory = &irs::IResourceManager::kNoop;
+    metric.remove(
+        getMetric<arangodb_search_consolidations_memory_usage>(*this));
+  }
+  if (_fileDescriptorsCount != &irs::IResourceManager::kNoop) {
+    _fileDescriptorsCount = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_file_descriptors>(*this));
+  }
+  if (_mappedMemory) {
+    _mappedMemory = nullptr;
+    metric.remove(getMetric<arangodb_search_mapped_memory>(*this));
+  }
   if (_numFailedCommits) {
     _numFailedCommits = nullptr;
     metric.remove(getMetric<arangodb_search_num_failed_commits>(*this));

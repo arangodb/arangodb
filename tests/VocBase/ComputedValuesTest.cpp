@@ -27,7 +27,9 @@
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/ComputedValues.h"
+#include "VocBase/LogicalCollection.h"
 
 #include "gtest/gtest.h"
 

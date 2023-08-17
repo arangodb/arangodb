@@ -1,0 +1,7 @@
+.graphReactViewContainer {
+  position: relative;
+}
+
+.graphReactViewContainer *:focus-visible {
+  outline: none;
+}

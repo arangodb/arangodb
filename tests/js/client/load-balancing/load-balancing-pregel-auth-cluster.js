@@ -129,7 +129,6 @@ function PregelAuthSuite () {
     },
 
     testPregelForwardingSameUser: function() {
-      let url = baseUrl;
       const task = {
         algorithm: "pagerank",
         vertexCollections: ["vertices"],
@@ -138,39 +137,40 @@ function PregelAuthSuite () {
           resultField: "result"
         }
       };
-      let result = sendRequest(users[0], 'POST', url, task, true);
+      const postResponse = sendRequest(users[0], 'POST', baseUrl, task, true);
+      assertFalse(postResponse === undefined || postResponse === {});
+      assertEqual(postResponse.status, 200);
+      const pid = postResponse.body;
+      assertTrue(pid > 1);
 
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertTrue(result.body > 1);
+      // directly cancel pregel run (before it finishes)
+      const deleteResponse = sendRequest(users[0], 'DELETE',  `${baseUrl}/${pid}`, {}, {}, false);
+      assertFalse(deleteResponse === undefined || deleteResponse === {});
+      assertFalse(deleteResponse.body.error);
+      assertEqual(deleteResponse.status, 200);
 
-      const taskId = result.body;
-      url = `${baseUrl}/${taskId}`;
-      result = sendRequest(users[0], 'GET', url, {}, false);
+      // check that pregel status state is canceled
+      // need to wait for short time until pregel run was canceled
+      var statusResponse;
+      const sleepIntervalSeconds = 0.2;
+      const maxWaitSeconds = 10;
+      let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
+      do {
+        require("internal").sleep(sleepIntervalSeconds);
+        statusResponse = sendRequest(users[0], 'GET', `${baseUrl}/${pid}`, {}, false);
+        assertFalse(statusResponse === undefined || statusResponse === {});
+        if (wakeupsLeft-- === 0) {
+          assertTrue(false, "Pregel run was not canceled successfully but is in state " + statusResponse.body.state);
+          return;
+        }
+      } while (!pregelTestHelpers.runCanceled(statusResponse.body));
 
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertTrue(result.body.state === "loading" || result.body.state === "running");
-      // check if we've updated the persisted document state properly
-      let persistedState = db[pregelSystemCollection].document(taskId);
-      assertTrue(persistedState.data.state === "loading" || persistedState.data.state === "running");
 
-      require('internal').wait(5.0, false);
-
-      url = `${baseUrl}/${taskId}`;
-      result = sendRequest(users[0], 'DELETE', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.body.error);
-      assertEqual(result.status, 200);
-
-      // check if we've updated the persisted document state properly after deletion
-      persistedState = db[pregelSystemCollection].document(taskId);
-      assertTrue(persistedState.data.state === "canceled");
     },
 
     testPregelForwardingDifferentUser: function() {
-      let url = baseUrl;
+      const runCreator = users[0];
+      const differentUser = users[1];
       const task = {
         algorithm: "pagerank",
         vertexCollections: ["vertices"],
@@ -179,33 +179,39 @@ function PregelAuthSuite () {
           resultField: "result"
         }
       };
-      let result = sendRequest(users[0], 'POST', url, task, true);
+      const postResponse = sendRequest(runCreator, 'POST', baseUrl, task, true);
+      assertFalse(postResponse === undefined || postResponse === {});
+      assertEqual(postResponse.status, 200);
+      const pid = postResponse.body;
+      assertTrue(pid > 1);
 
-      assertFalse(result === undefined || result === {});
-      assertEqual(result.status, 200);
-      assertTrue(result.body > 1);
+      // pregel run cannot be deleted by different user
+      const deleteResponseDifferentUser = sendRequest(differentUser, 'DELETE', `${baseUrl}/${pid}`, {}, {}, false);
+      assertFalse(deleteResponseDifferentUser === undefined || deleteResponseDifferentUser === {});
+      assertTrue(deleteResponseDifferentUser.body.error);
+      assertEqual(deleteResponseDifferentUser.status, 404);
 
-      const taskId = result.body;
-      url = `${baseUrl}/${taskId}`;
-      result = sendRequest(users[1], 'GET', url, {}, false);
+      // need to wait for short time until pregel run was definitly created (check that with runCreator user)
+      const sleepIntervalSeconds = 0.2;
+      const maxWaitSeconds = 10;
+      let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
+      var statusResponse;
+      do {
+        require("internal").sleep(sleepIntervalSeconds);
+        statusResponse = sendRequest(runCreator, 'GET', `${baseUrl}/${pid}`, {}, false);
+        assertFalse(statusResponse === undefined || statusResponse === {});
+        if (wakeupsLeft-- === 0) {
+          assertTrue(false, "Cannot retrieve status of pregel run, got response code " + statusResponse.status);
+          return;
+        }
+      } while (statusResponse.status !== 200);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.body.error);
-      assertEqual(result.status, 404);
+      // pregel status of run cannot be retrieved with different user
+      const statusResponseDifferentUser = sendRequest(differentUser, 'GET', `${baseUrl}/${pid}`, {}, false);
+      assertFalse(statusResponseDifferentUser === undefined || statusResponseDifferentUser === {});
+      assertTrue(statusResponseDifferentUser.body.error);
+      assertEqual(statusResponseDifferentUser.status, 404);
 
-      url = `${baseUrl}/${taskId}`;
-      result = sendRequest(users[1], 'DELETE', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.body.error);
-      assertEqual(result.status, 404);
-
-      url = `${baseUrl}/${taskId}`;
-      result = sendRequest(users[0], 'DELETE', url, {}, {}, false);
-
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.body.error);
-      assertEqual(result.status, 200);
     },
 
   };

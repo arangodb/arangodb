@@ -153,7 +153,7 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
 // //////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestIndexHandler::getIndexes() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     // .............................................................................
     // /_api/index?collection=<collection-name>
@@ -176,8 +176,7 @@ RestStatus RestIndexHandler::getIndexes() {
     bool withHidden = _request->parsedValue("withHidden", false);
 
     VPackBuilder indexes;
-    Result res =
-        methods::Indexes::getAll(coll.get(), flags, withHidden, indexes);
+    Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());
@@ -215,11 +214,12 @@ RestStatus RestIndexHandler::getIndexes() {
     }
 
     std::string const& iid = suffixes[1];
+
     VPackBuilder tmp;
     tmp.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(coll.get(), tmp.slice(), output);
+    Result res = methods::Indexes::getIndex(*coll, tmp.slice(), output);
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -307,7 +307,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
 }
 
 RestStatus RestIndexHandler::createIndex() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -372,9 +372,8 @@ RestStatus RestIndexHandler::createIndex() {
       std::unique_lock<std::mutex> locker(_mutex);
 
       try {
-        _createInBackgroundData.result =
-            methods::Indexes::ensureIndex(collection.get(), body.slice(), true,
-                                          _createInBackgroundData.response);
+        _createInBackgroundData.result = methods::Indexes::ensureIndex(
+            *collection, body.slice(), true, _createInBackgroundData.response);
 
         if (_createInBackgroundData.result.ok()) {
           VPackSlice created =
@@ -410,7 +409,7 @@ RestStatus RestIndexHandler::createIndex() {
 }
 
 RestStatus RestIndexHandler::dropIndex() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 2) {
     events::DropIndex(_vocbase.name(), "(unknown)", "(unknown)",
                       TRI_ERROR_HTTP_BAD_PARAMETER);
@@ -437,7 +436,7 @@ RestStatus RestIndexHandler::dropIndex() {
     idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
   }
 
-  Result res = methods::Indexes::drop(coll.get(), idBuilder.slice());
+  Result res = methods::Indexes::drop(*coll, idBuilder.slice());
   if (res.ok()) {
     VPackBuilder b;
     b.openObject();

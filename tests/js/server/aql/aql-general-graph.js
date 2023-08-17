@@ -52,7 +52,6 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
   var e2 = "UnitTestsAhuacatlEdge2";
   var or = "UnitTestsAhuacatlOrphan";
 
-  // var AQL_VERTICES = "FOR v IN GRAPH_VERTICES(@name, @example, @options) SORT v RETURN v";
   var exampleFilter = "FILTER x.hugo == true OR x.heinz == 1 RETURN x";
   var AQL_PICK_START_EXAMPLE = `FOR start IN UNION (
         (FOR x IN ${v1} ${exampleFilter}),

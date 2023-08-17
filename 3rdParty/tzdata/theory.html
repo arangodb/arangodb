@@ -23,7 +23,7 @@
       <li><a href="#stability">Interface stability</a></li>
       <li><a href="#leapsec">Leap seconds</a></li>
       <li><a href="#calendar">Calendrical issues</a></li>
-      <li><a href="#planets">Time and time zones on other planets</a></li>
+      <li><a href="#planets">Time and time zones off earth</a></li>
     </ul>
   </nav>
 
@@ -60,7 +60,6 @@ with current and future timestamps in the traditional North
 American mountain time zone can choose from the timezones
 <code>America/Denver</code> which observes US-style daylight saving
 time (<abbr>DST</abbr>),
-<code>America/Mazatlan</code> which observes Mexican-style <abbr>DST</abbr>,
 and <code>America/Phoenix</code> which does not observe <abbr>DST</abbr>.
 Applications that also deal with past timestamps in the mountain time
 zone can choose from over a dozen timezones, such as
@@ -122,7 +121,7 @@ If geolocation information is available, a selection interface can
 locate the user on a timezone map or prioritize names that are
 geographically close. For an example selection interface, see the
 <code>tzselect</code> program in the <code><abbr>tz</abbr></code> code.
-The <a href="http://cldr.unicode.org">Unicode Common Locale Data
+The <a href="https://cldr.unicode.org">Unicode Common Locale Data
 Repository</a> contains data that may be useful for other selection
 interfaces; it maps timezone names like <code>Europe/Prague</code> to
 locale-dependent strings like "Prague", "Praha", "Прага", and "布拉格".
@@ -329,6 +328,7 @@ still supported.
 These legacy names are mostly defined in the file
 '<code>etcetera</code>'.
 Also, the file '<code>backward</code>' defines the legacy names
+'<code>Etc/GMT0</code>', '<code>Etc/GMT-0</code>', '<code>Etc/GMT+0</code>',
 '<code>GMT0</code>', '<code>GMT-0</code>' and '<code>GMT+0</code>',
 and the file '<code>northamerica</code>' defines the legacy names
 '<code>EST5EDT</code>', '<code>CST6CDT</code>',
@@ -376,9 +376,11 @@ The source file <code>etcetera</code> defines names that may be useful
 on platforms that do not support POSIX-style <code>TZ</code> strings;
 no other source file other than <code>backward</code>
 contains links to its zones.
-One of <code>etcetera</code>'s names is <code>GMT</code>,
+One of <code>etcetera</code>'s names is <code>Etc/UTC</code>,
 used by functions like <code>gmtime</code> to obtain leap
 second information on platforms that support leap seconds.
+Another <code>etcetera</code> name, <code>GMT</code>,
+is used by older code releases.
 </p>
 </section>
 
@@ -441,11 +443,11 @@ in decreasing order of importance:
       CAT/CAST Central Africa,
       CET/CEST/CEMT Central European,
       ChST Chamorro,
-      CST/CDT/CWT/CPT/CDDT Central [North America],
+      CST/CDT/CWT/CPT Central [North America],
       CST/CDT China,
       GMT/BST/IST/BDST Greenwich,
       EAT East Africa,
-      EST/EDT/EWT/EPT/EDDT Eastern [North America],
+      EST/EDT/EWT/EPT Eastern [North America],
       EET/EEST Eastern European,
       GST/GDT Guam,
       HST/HDT/HWT/HPT Hawaii,
@@ -458,16 +460,17 @@ in decreasing order of importance:
       MET/MEST Middle European (a backward-compatibility alias for
 	Central European),
       MSK/MSD Moscow,
-      MST/MDT/MWT/MPT/MDDT Mountain,
+      MST/MDT/MWT/MPT Mountain,
       NST/NDT/NWT/NPT/NDDT Newfoundland,
       NST/NDT/NWT/NPT Nome,
       NZMT/NZST New Zealand through 1945,
       NZST/NZDT New Zealand 1946&ndash;present,
       PKT/PKST Pakistan,
-      PST/PDT/PWT/PPT/PDDT Pacific,
+      PST/PDT/PWT/PPT Pacific,
       PST/PDT Philippine,
       SAST South Africa,
       SST Samoa,
+      UTC Universal,
       WAT/WAST West Africa,
       WET/WEST/WEMT Western European,
       WIB Waktu Indonesia Barat,
@@ -491,7 +494,7 @@ in decreasing order of importance:
     <p>
     <small>These abbreviations are:
       AMT Asunción, Athens;
-      BMT Baghdad, Bangkok, Batavia, Bermuda, Bern, Bogotá, Bridgetown,
+      BMT Baghdad, Bangkok, Batavia, Bermuda, Bern, Bogotá,
         Brussels, Bucharest;
       CMT Calamarca, Caracas, Chisinau, Colón, Córdoba;
       DMT Dublin/Dunsink;
@@ -502,13 +505,14 @@ in decreasing order of importance:
       HMT Havana, Helsinki, Horta, Howrah;
       IMT Irkutsk, Istanbul;
       JMT Jerusalem;
-      KMT Kaunas, Kiev, Kingston;
-      LMT Lima, Lisbon, local, Luanda;
+      KMT Kaunas, Kyiv, Kingston;
+      LMT Lima, Lisbon, local;
       MMT Macassar, Madras, Malé, Managua, Minsk, Monrovia, Montevideo,
 	Moratuwa, Moscow;
       PLMT Phù Liễn;
       PMT Paramaribo, Paris, Perm, Pontianak, Prague;
       PMMT Port Moresby;
+      PPMT Port-au-Prince;
       QMT Quito;
       RMT Rangoon, Riga, Rome;
       SDMT Santo Domingo;
@@ -516,8 +520,7 @@ in decreasing order of importance:
       SMT Santiago, Simferopol, Singapore, Stanley;
       TBMT Tbilisi;
       TMT Tallinn, Tehran;
-      WMT Warsaw;
-      ZMT Zomba.</small>
+      WMT Warsaw.</small>
     </p>
 
     <p>
@@ -568,7 +571,7 @@ in decreasing order of importance:
     locations while uninhabited.
     The leading '<code>-</code>' is a flag that the <abbr>UT</abbr> offset is in
     some sense undefined; this notation is derived
-    from <a href="https://tools.ietf.org/html/rfc3339">Internet
+    from <a href="https://datatracker.ietf.org/doc/html/rfc3339">Internet
     <abbr title="Request For Comments">RFC</abbr> 3339</a>.
   </li>
 </ul>
@@ -621,7 +624,7 @@ Errors in the <code><abbr>tz</abbr></code> database arise from many sources:
     should be observed.
     In her 2015 book
     <cite><a
-    href="http://www.hup.harvard.edu/catalog.php?isbn=9780674286146">The
+    href="https://www.hup.harvard.edu/catalog.php?isbn=9780674286146">The
     Global Transformation of Time, 1870&ndash;1950</a></cite>,
     Vanessa Ogle writes
     "Outside of Europe and North America there was no system of time
@@ -720,8 +723,8 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
     than what the <code><abbr>tz</abbr></code> code can handle.
     For example, from 1880 to 1916 clocks in Ireland observed Dublin Mean
     Time (estimated to be <abbr>UT</abbr>
-    &minus;00:25:21.1), but the <code><abbr>tz</abbr></code>
-    code cannot represent the fractional second.
+    &minus;00:25:21.1); although the <code><abbr>tz</abbr></code>
+    source data can represent the .1 second, TZif files and the code cannot.
     In practice these old specifications were rarely if ever
     implemented to subsecond precision.
   </li>
@@ -788,7 +791,7 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
     with days starting at midnight.
     Although <abbr>UT</abbr> equals <abbr>UTC</abbr> for modern
     timestamps, <abbr>UTC</abbr> was not defined until 1960, so
-    commentary uses the more-general abbreviation <abbr>UT</abbr> for
+    commentary uses the more general abbreviation <abbr>UT</abbr> for
     timestamps that might predate 1960.
     Since <abbr>UT</abbr>, <abbr>UT1</abbr>, etc. disagree slightly,
     and since pre-1972 <abbr>UTC</abbr> seconds varied in length,
@@ -807,7 +810,7 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
     See: Stephenson FR, Morrison LV, Hohenkerk CY.
     <a href="https://dx.doi.org/10.1098/rspa.2016.0404">Measurement of
     the Earth's rotation: 720 BC to AD 2015</a>.
-    <cite>Proc Royal Soc A</cite>. 2016 Dec 7;472:20160404.
+    <cite>Proc Royal Soc A</cite>. 2016;472:20160404.
     Also see: Espenak F. <a
     href="https://eclipse.gsfc.nasa.gov/SEhelp/uncertainty2004.html">Uncertainty
     in Delta T (ΔT)</a>.
@@ -815,7 +818,8 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
   <li>
     The relationship between POSIX time (that is, <abbr>UTC</abbr> but
     ignoring <a href="https://en.wikipedia.org/wiki/Leap_second">leap
-    seconds</a>) and <abbr>UTC</abbr> is not agreed upon after 1972.
+    seconds</a>) and <abbr>UTC</abbr> is not agreed upon.
+    This affects time stamps during the leap second era (1972&ndash;2035).
     Although the POSIX
     clock officially stops during an inserted leap second, at least one
     proposed standard has it jumping back a second instead; and in
@@ -874,7 +878,7 @@ an older <code>zic</code>.
     is error-prone in practice.
     Also, POSIX <code>TZ</code> strings cannot deal with daylight
     saving time rules not based on the Gregorian calendar (as in
-    Iran), or with situations where more than two time zone
+    Morocco), or with situations where more than two time zone
     abbreviations or <abbr>UT</abbr> offsets are used in an area.
     </p>
 
@@ -910,8 +914,8 @@ an older <code>zic</code>.
       <dt><var>date</var>[<code>/</code><var>time</var>]<code>,</code><var>date</var>[<code>/</code><var>time</var>]</dt><dd>
 	specifies the beginning and end of <abbr>DST</abbr>.
 	If this is absent, the system supplies its own ruleset
-	for <abbr>DST</abbr>, and its rules can differ from year to year;
-	typically <abbr>US</abbr> <abbr>DST</abbr> rules are used.
+	for <abbr>DST</abbr>, typically	current <abbr>US</abbr>
+	<abbr>DST</abbr> rules.
       </dd>
       <dt><var>time</var></dt><dd>
 	takes the form
@@ -971,10 +975,11 @@ an older <code>zic</code>.
     Traditionally the current <abbr>US</abbr> <abbr>DST</abbr> rules
     were used to interpret such values, but this meant that the
     <abbr>US</abbr> <abbr>DST</abbr> rules were compiled into each
-    program that did time conversion. This meant that when
+    time conversion package, and when
     <abbr>US</abbr> time conversion rules changed (as in the United
-    States in 1987), all programs that did time conversion had to be
-    recompiled to ensure proper results.
+    States in 1987 and again in 2007), all packages that
+    interpreted <code>TZ</code> values had to be updated
+    to ensure proper results.
   </li>
   <li>
     The <code>TZ</code> environment variable is process-global, which
@@ -1033,7 +1038,7 @@ an older <code>zic</code>.
     and numeric data as described <a href="#POSIX">above</a>.
     The file's format is <dfn><abbr>TZif</abbr></dfn>,
     a timezone information format that contains binary data; see
-    <a href="https://tools.ietf.org/html/8536">Internet
+    <a href="https://datatracker.ietf.org/doc/html/8536">Internet
     <abbr>RFC</abbr> 8536</a>.
     The daylight saving time rules to be used for a
     particular timezone are encoded in the
@@ -1061,11 +1066,12 @@ an older <code>zic</code>.
   </li>
   <li>
     The code supports platforms with a <abbr>UT</abbr> offset member
-    in <code>struct tm</code>, e.g., <code>tm_gmtoff</code>.
-  </li>
-  <li>
-    The code supports platforms with a time zone abbreviation member in
-    <code>struct tm</code>, e.g., <code>tm_zone</code>.
+    in <code>struct tm</code>, e.g., <code>tm_gmtoff</code>,
+    or with a time zone abbreviation member in
+    <code>struct tm</code>, e.g., <code>tm_zone</code>. As noted
+    in <a href="https://austingroupbugs.net/view.php?id=1533">Austin
+    Group defect 1533</a>, a future version of POSIX is planned to
+    require <code>tm_gmtoff</code> and <code>tm_zone</code>.
   </li>
   <li>
     Functions <code>tzalloc</code>, <code>tzfree</code>,
@@ -1126,7 +1132,8 @@ The vestigial <abbr>API</abbr>s are:
     <abbr>API</abbr>s.
     Although it can still be used in arguments to
     <code>mktime</code> to disambiguate timestamps near
-    a <abbr>DST</abbr> transition when the clock jumps back, this
+    a <abbr>DST</abbr> transition when the clock jumps back on
+    platforms lacking <code>tm_gmtoff</code>, this
     disambiguation does not work when standard time itself jumps back,
     which can occur when a location changes to a time zone with a
     lesser <abbr>UT</abbr> offset.
@@ -1168,7 +1175,7 @@ The vestigial <abbr>API</abbr>s are:
   </li>
   <li>
     The functions that are conditionally compiled
-    if <code>STD_INSPIRED</code> is defined should, at this point, be
+    if <code>STD_INSPIRED</code> is nonzero should, at this point, be
     looked on primarily as food for thought.
     They are not in any sense "standard compatible" &ndash; some are
     not, in fact, specified in <em>any</em> standard.
@@ -1235,7 +1242,7 @@ The <code><abbr>tz</abbr></code> code and data supply the following interfaces:
 Interface changes in a release attempt to preserve compatibility with
 recent releases.
 For example, <code><abbr>tz</abbr></code> data files typically do not
-rely on recently-added <code>zic</code> features, so that users can
+rely on recently added <code>zic</code> features, so that users can
 run older <code>zic</code> versions to process newer data files.
 <a href="tz-link.html#download">Downloading
 the <code><abbr>tz</abbr></code> database</a> describes how releases
@@ -1264,6 +1271,18 @@ between now and the future time.
 <section>
   <h2 id="leapsec">Leap seconds</h2>
 <p>
+Leap seconds were introduced in 1972 to accommodate the
+difference between atomic time and the less regular rotation of the earth.
+Unfortunately they caused so many problems with civil
+timekeeping that they
+are <a href="https://www.bipm.org/en/cgpm-2022/resolution-4">planned
+to be discontinued by 2035</a>, with some as-yet-undetermined
+mechanism replacing them, perhaps after the year 2135.
+Despite their impending obsolescence, a record of leap seconds is still
+needed to resolve timestamps from 1972 through 2035.
+</p>
+
+<p>
 The <code><abbr>tz</abbr></code> code and data can account for leap seconds,
 thanks to code contributed by Bradley White.
 However, the leap second support of this package is rarely used directly
@@ -1274,15 +1293,15 @@ the operating system kernel clock as described in
 <a href="tz-link.html#precision">Precision timekeeping</a>,
 and this package by default installs a <samp>leapseconds</samp> file
 commonly used by
-<a href="http://www.ntp.org"><abbr title="Network Time Protocol">NTP</abbr></a>
+<a href="https://www.ntp.org"><abbr title="Network Time Protocol">NTP</abbr></a>
 software that adjusts the kernel clock.
 However, kernel-clock twiddling approximates UTC only roughly,
-and systems needing more-precise UTC can use this package's leap
+and systems needing more precise UTC can use this package's leap
 second support directly.
 </p>
 
 <p>
-The directly-supported mechanism assumes that <code>time_t</code>
+The directly supported mechanism assumes that <code>time_t</code>
 counts of seconds since the POSIX epoch normally include leap seconds,
 as opposed to POSIX <code>time_t</code> counts which exclude leap seconds.
 This modified timescale is converted to <abbr>UTC</abbr>
@@ -1295,7 +1314,8 @@ Because a leap second adjustment may be needed even
 if no time zone correction is desired,
 calls to <code>gmtime</code>-like functions
 also need to consult a <abbr>TZif</abbr> file,
-conventionally named <samp><abbr>GMT</abbr></samp>,
+conventionally named <samp><abbr>Etc/UTC</abbr></samp>
+(<samp><abbr>GMT</abbr></samp> in previous versions),
 to see whether leap second corrections are needed.
 To convert an application's <code>time_t</code> timestamps to or from
 POSIX <code>time_t</code> timestamps (for use when, say,
@@ -1342,7 +1362,15 @@ They sometimes disagree.
 </section>
 
 <section>
-  <h2 id="planets">Time and time zones on other planets</h2>
+  <h2 id="planets">Time and time zones off Earth</h2>
+<p>
+The European Space Agency is <a
+href='https://www.esa.int/Applications/Navigation/Telling_time_on_the_Moon'>considering</a>
+the establishment of a reference timescale for the Moon, which has
+days roughly equivalent to 29.5 Earth days, and where relativistic
+effects cause clocks to tick slightly faster than on Earth.
+</p>
+
 <p>
 Some people's work schedules have used
 <a href="https://en.wikipedia.org/wiki/Timekeeping_on_Mars">Mars time</a>.

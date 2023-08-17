@@ -82,8 +82,8 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
       v8::Local<v8::Value> sub;
       if (v.isString()) {
         char const* p = v.getString(l);
-        // value of _key, _id, _from, _to, and _rev is ASCII too
-        sub = TRI_V8_ASCII_PAIR_STRING(isolate, p, l);
+        // value of _key, _id, _from, _to, and _rev
+        sub = TRI_V8_PAIR_STRING(isolate, p, l);
       } else {
         sub = TRI_VPackToV8(isolate, v, options, &slice);
       }

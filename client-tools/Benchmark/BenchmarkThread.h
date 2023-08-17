@@ -31,7 +31,6 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -198,8 +197,8 @@ class BenchmarkThread : public arangodb::Thread {
     // wait for start condition to be broadcasted
     {
       // cppcheck-suppress redundantPointerOp
-      CONDITION_LOCKER(guard, (*_startCondition));
-      guard.wait();
+      std::unique_lock guard{_startCondition->mutex};
+      _startCondition->cv.wait(guard);
     }
 
     while (!isStopping()) {

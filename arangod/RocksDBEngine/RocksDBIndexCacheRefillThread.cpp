@@ -23,7 +23,6 @@
 
 #include "RocksDBIndexCacheRefillThread.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
@@ -62,11 +61,11 @@ RocksDBIndexCacheRefillThread::~RocksDBIndexCacheRefillThread() { shutdown(); }
 void RocksDBIndexCacheRefillThread::beginShutdown() {
   Thread::beginShutdown();
 
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   // clear all remaining operations, so that we don't try applying them anymore.
   _operations.clear();
   // wake up the thread that may be waiting in run()
-  guard.broadcast();
+  _condition.cv.notify_all();
 }
 
 void RocksDBIndexCacheRefillThread::trackRefill(
@@ -76,7 +75,7 @@ void RocksDBIndexCacheRefillThread::trackRefill(
   size_t const n = keys.size();
 
   {
-    CONDITION_LOCKER(guard, _condition);
+    std::lock_guard guard{_condition.mutex};
 
     if (_numQueued + n >= _maxCapacity) {
       // we have reached the maximum queueing capacity, so give up on whatever
@@ -117,7 +116,7 @@ void RocksDBIndexCacheRefillThread::trackRefill(
   }
 
   // wake up background thread
-  _condition.signal();
+  _condition.cv.notify_one();
   // increase metric
   _totalNumQueued += n;
 }
@@ -126,7 +125,7 @@ void RocksDBIndexCacheRefillThread::waitForCatchup() {
   // give up after 10 seconds max
   auto end = std::chrono::steady_clock::now() + std::chrono::seconds(10);
 
-  CONDITION_LOCKER(guard, _condition);
+  std::unique_lock guard{_condition.mutex};
 
   while (_proceeding > 0 || _numQueued > 0) {
     guard.unlock();
@@ -195,7 +194,7 @@ void RocksDBIndexCacheRefillThread::run() {
       size_t numQueued = 0;
 
       {
-        CONDITION_LOCKER(guard, _condition);
+        std::lock_guard guard{_condition.mutex};
 
         operations = std::move(_operations);
         numQueued = _numQueued;
@@ -217,11 +216,11 @@ void RocksDBIndexCacheRefillThread::run() {
             << "(re-)inserted " << numQueued << " entries into index caches";
       }
 
-      CONDITION_LOCKER(guard, _condition);
+      std::unique_lock guard{_condition.mutex};
       _proceeding = 0;
 
       if (!isStopping() && _operations.empty()) {
-        guard.wait(std::chrono::microseconds(10'000'000));
+        _condition.cv.wait_for(guard, std::chrono::seconds{10});
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("443da", ERR, Logger::ENGINES)

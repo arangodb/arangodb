@@ -30,7 +30,6 @@
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Finding.h"
-#include "Cache/FrequencyBuffer.h"
 #include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
@@ -76,7 +75,7 @@ class PlainCache final : public Cache {
   /// value if it fails to acquire a lock in a timely fashion. Should not block
   /// for long.
   //////////////////////////////////////////////////////////////////////////////
-  Result insert(CachedValue* value) override;
+  ::ErrorCode insert(CachedValue* value) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to remove the given key.
@@ -86,15 +85,17 @@ class PlainCache final : public Cache {
   /// acquire a lock in a timely fashion. Makes more attempts to acquire a lock
   /// before quitting, so may block for longer than find or insert.
   //////////////////////////////////////////////////////////////////////////////
-  Result remove(void const* key, std::uint32_t keySize) override;
+  ::ErrorCode remove(void const* key, std::uint32_t keySize) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Does nothing; convenience method inheritance compliance
   //////////////////////////////////////////////////////////////////////////////
-  Result banish(void const* key, std::uint32_t keySize) override;
+  ::ErrorCode banish(void const* key, std::uint32_t keySize) override;
 
   /// @brief returns the name of the hasher
   std::string_view hasherName() const noexcept;
+
+  static constexpr uint64_t allocationSize() { return sizeof(PlainCache); }
 
  private:
   // friend class manager and tasks
@@ -102,29 +103,22 @@ class PlainCache final : public Cache {
   friend class Manager;
   friend class MigrateTask;
 
-  static constexpr uint64_t allocationSize(bool enableWindowedStats) {
-    return sizeof(PlainCache) +
-           (enableWindowedStats
-                ? (sizeof(StatBuffer) +
-                   StatBuffer::allocationSize(findStatsCapacity))
-                : 0);
-  }
-
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
                                        Metadata&& metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
-  virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
+  bool freeMemoryWhile(std::function<bool(std::uint64_t)> const& cb) override;
   virtual void migrateBucket(void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
                              Table& newTable) override;
 
   // helpers
   std::pair<::ErrorCode, Table::BucketLocker> getBucket(
-      std::uint32_t hash, std::uint64_t maxTries, bool singleOperation = true);
+      Table::HashOrId bucket, std::uint64_t maxTries,
+      bool singleOperation = true);
 
-  static Table::BucketClearer bucketClearer(Metadata* metadata);
+  static Table::BucketClearer bucketClearer(Cache* cache, Metadata* metadata);
 };
 
 }  // end namespace arangodb::cache

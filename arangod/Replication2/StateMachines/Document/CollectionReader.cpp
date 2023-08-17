@@ -28,32 +28,68 @@
 #include "StorageEngine/ReplicationIterator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb::replication2::replicated_state::document {
-CollectionReader::CollectionReader(
-    std::shared_ptr<LogicalCollection> logicalCollection)
-    : _logicalCollection(std::move(logicalCollection)),
-      _ctx(transaction::StandaloneContext::Create(
-          _logicalCollection->vocbase())) {
+
+SnapshotTransaction::SnapshotTransaction(
+    std::shared_ptr<transaction::Context> ctx)
+    : transaction::Methods(std::move(ctx), options()) {}
+
+auto SnapshotTransaction::options() -> transaction::Options {
   transaction::Options options;
   options.requiresReplication = false;
+  options.fillBlockCache = false;  // TODO - check whether this is a good idea
+  return options;
+}
 
-  _trx = std::make_unique<SingleCollectionTransaction>(
-      _ctx, *_logicalCollection, AccessMode::Type::READ, options);
+void SnapshotTransaction::addCollection(LogicalCollection const& collection) {
+  transaction::Methods::addCollectionAtRuntime(
+      collection.id(), collection.name(), AccessMode::Type::READ);
+}
 
+DatabaseSnapshot::DatabaseSnapshot(TRI_vocbase_t& vocbase)
+    : _vocbase(vocbase),
+      _ctx(transaction::StandaloneContext::Create(vocbase)),
+      _trx(std::make_unique<SnapshotTransaction>(_ctx)) {
   // We call begin here so that rocksMethods are initialized
   if (auto res = _trx->begin(); res.fail()) {
     LOG_TOPIC("b4e74", ERR, Logger::REPLICATION2)
-        << "Failed to begin transaction for collection "
-        << _logicalCollection->name() << ": " << res.errorMessage();
+        << "Failed to begin transaction: " << res.errorMessage();
     THROW_ARANGO_EXCEPTION(res);
   }
+}
+
+auto DatabaseSnapshot::createCollectionReader(std::string_view collectionName)
+    -> std::unique_ptr<ICollectionReader> {
+  auto logicalCollection = _vocbase.lookupCollection(collectionName);
+  if (logicalCollection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   collectionName);
+  }
+  return std::make_unique<CollectionReader>(std::move(logicalCollection),
+                                            *_trx);
+}
+
+auto DatabaseSnapshot::resetTransaction() -> Result {
+  _trx.reset();
+  _ctx = transaction::StandaloneContext::Create(_vocbase);
+  _trx = std::make_unique<SnapshotTransaction>(_ctx);
+  return _trx->begin();
+}
+
+CollectionReader::CollectionReader(
+    std::shared_ptr<LogicalCollection> logicalCollection,
+    SnapshotTransaction& trx)
+    : _logicalCollection(std::move(logicalCollection)) {
+  trx.addCollection(*_logicalCollection);
 
   OperationOptions countOptions(ExecContext::current());
-  OperationResult countResult = _trx->count(
-      _logicalCollection->name(), transaction::CountType::Normal, countOptions);
+  OperationResult countResult =
+      trx.countAsync(_logicalCollection->name(), transaction::CountType::Normal,
+                     countOptions)
+          .get();
   if (countResult.ok()) {
     _totalDocs = countResult.slice().getNumber<uint64_t>();
   } else {
@@ -74,7 +110,7 @@ CollectionReader::CollectionReader(
   }
 
   _it = physicalCollection->getReplicationIterator(
-      ReplicationIterator::Ordering::Revision, *_trx);
+      ReplicationIterator::Ordering::Revision, trx);
   TRI_ASSERT(_it != nullptr);
 }
 
@@ -102,20 +138,12 @@ void CollectionReader::read(VPackBuilder& builder,
   }
 }
 
-CollectionReaderFactory::CollectionReaderFactory(TRI_vocbase_t& vocbase)
+DatabaseSnapshotFactory::DatabaseSnapshotFactory(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase) {}
 
-auto CollectionReaderFactory::createCollectionReader(
-    std::string_view collectionName)
-    -> ResultT<std::unique_ptr<ICollectionReader>> {
-  auto logicalCollection = _vocbase.lookupCollection(collectionName);
-  if (logicalCollection == nullptr) {
-    return ResultT<std::unique_ptr<ICollectionReader>>::error(
-        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        fmt::format("Collection {} not found", collectionName));
-  }
-  return ResultT<std::unique_ptr<ICollectionReader>>::success(
-      std::make_unique<CollectionReader>(std::move(logicalCollection)));
+auto DatabaseSnapshotFactory::createSnapshot()
+    -> std::unique_ptr<IDatabaseSnapshot> {
+  return std::make_unique<DatabaseSnapshot>(_vocbase);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

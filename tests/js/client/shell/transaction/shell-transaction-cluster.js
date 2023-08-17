@@ -37,10 +37,8 @@ const _ = require('lodash');
 const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
 const internal = require('internal');
-const replicatedStateHelper = require('@arangodb/testutils/replicated-state-helper');
-const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
-const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
-const replicatedStatePredicates = require('@arangodb/testutils/replicated-state-predicates');
+const lh = require('@arangodb/testutils/replicated-logs-helper');
+const dh = require('@arangodb/testutils/document-state-helper');
 const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
 
 /**
@@ -51,11 +49,11 @@ function transactionReplication2ReplicateOperationSuite() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
-  const rc = replicatedLogsHelper.dbservers.length;
+  const rc = lh.dbservers.length;
   var c = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
-    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: "2"});
+    lh.testHelperFunctions(dbn, {replicationVersion: "2"});
 
   return {
     setUpAll,
@@ -79,7 +77,8 @@ function transactionReplication2ReplicateOperationSuite() {
       trx.abort();
 
       let shards = c.shards();
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+      const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
+      let logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
 
       let allEntries = {};
       let abortCount = 0;
@@ -87,7 +86,7 @@ function transactionReplication2ReplicateOperationSuite() {
         let entries = log.head(1000);
         allEntries[log.id()] = entries;
         for (const entry of entries) {
-          if (entry.hasOwnProperty("payload") && entry.payload.operation === "Abort") {
+          if (dh.getOperationType(entry) === "Abort") {
             ++abortCount;
             break;
           }
@@ -121,24 +120,27 @@ function transactionReplication2ReplicateOperationSuite() {
       }
 
       let shards = c.shards();
-      let servers = Object.assign({}, ...replicatedLogsHelper.dbservers.map(
-        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+      let servers = Object.assign({}, ...lh.dbservers.map(
+        (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
+      const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
+      let logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
 
-      for (const log of logs) {
+      for (let idx = 0; idx < logs.size; ++idx) {
+        let log = logs[idx];
+        let shardId = shards[idx];
         let entries = log.head(1000);
         let commitFound = false;
         let keysFound = [];
-        const shardId = `s${log.id()}`;
 
         // Gather all log entries and see if we have any inserts on this shard.
         for (const entry of entries) {
-          if (entry.hasOwnProperty("payload")) {
-            let payload = entry.payload;
+          let payload = dh.getOperationPayload(entry);
+          if (payload !== null) {
             assertEqual(shardId, payload.shardId);
-            if (payload.operation === "Commit") {
+            let opType = dh.getOperationType(entry);
+            if (opType === "Commit") {
               commitFound = true;
-            } else if (payload.operation === "Insert") {
+            } else if (opType === "Insert") {
               keysFound.push(payload.data[0]._key);
             }
           }
@@ -159,9 +161,9 @@ function transactionReplication2ReplicateOperationSuite() {
           for (const key in keysFound) {
             let localValues = {};
             for (const [serverId, endpoint] of Object.entries(servers)) {
-              replicatedLogsHelper.waitFor(
-                replicatedStatePredicates.localKeyStatus(endpoint, dbn, shard, key, shard === shardId));
-              localValues[serverId] = replicatedStateHelper.getLocalValue(endpoint, dbn, shard, key);
+              lh.waitFor(
+                dh.localKeyStatus(endpoint, dbn, shard, key, shard === shardId));
+              localValues[serverId] = dh.getLocalValue(endpoint, dbn, shard, key);
             }
             for (const [serverId, res] of Object.entries(localValues)) {
               if (shard === shardId) {
@@ -196,10 +198,7 @@ function transactionReplication2ReplicateOperationSuite() {
       tc.save({_key: 'foo'});
       tc.save({_key: 'bar'});
 
-      // TODO this is not safe, we might loose already committed log entries.
-      //      either force the leader in the first place, or make sure a leader
-      //      election is done (by deleting the current leader when increasing the term)
-      replicatedLogsHelper.bumpTermOfLogsAndWaitForConfirmation(dbn, c);
+      lh.bumpTermOfLogsAndWaitForConfirmation(dbn, c);
 
       let committed = false;
       try {
@@ -213,9 +212,10 @@ function transactionReplication2ReplicateOperationSuite() {
       assertFalse(committed, "Transaction should not have been committed!");
 
       const shards = c.shards();
-      const logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+      const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
+      let logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
 
-      const logsWithCommit = logs.filter(log => log.head(1000).some(entry => entry.hasOwnProperty('payload') && entry.payload.operation === 'Commit'));
+      const logsWithCommit = logs.filter(log => log.head(1000).some(entry => dh.getOperationType(entry) === 'Commit'));
       if (logsWithCommit.length > 0) {
         fail(`Found commit operation(s) in one or more log ${JSON.stringify(logsWithCommit[0].head(1000))}.`);
       }
@@ -232,12 +232,12 @@ function transactionReplicationOnFollowersSuite(dbParams) {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
-  const rc = replicatedLogsHelper.dbservers.length;
+  const rc = lh.dbservers.length;
   const isReplication2 = dbParams.replicationVersion === "2";
   let c = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
-    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: isReplication2 ? "2" : "1"});
+    lh.testHelperFunctions(dbn, {replicationVersion: isReplication2 ? "2" : "1"});
 
   return {
     setUpAll,
@@ -261,18 +261,19 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       trx.abort();
 
       let shards = c.shards();
-      let servers = Object.assign({}, ...replicatedLogsHelper.dbservers.map(
-        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
+      let servers = Object.assign({}, ...lh.dbservers.map(
+        (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
       let localValues = {};
       for (const [serverId, endpoint] of Object.entries(servers)) {
-        replicatedLogsHelper.waitFor(
-          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shards[0], "foo", false));
-        localValues[serverId] = replicatedStateHelper.getLocalValue(endpoint, dbn, shards[0], "foo");
+        lh.waitFor(
+          dh.localKeyStatus(endpoint, dbn, shards[0], "foo", false));
+        localValues[serverId] = dh.getLocalValue(endpoint, dbn, shards[0], "foo");
       }
 
       let replication2Log = '';
       if (isReplication2) {
-        let log = db._replicatedLog(shards[0].slice(1));
+        const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
+        let log = db._replicatedLog(shardsToLogs[shards[0]]);
         let entries = log.head(1000);
         replication2Log = `Log entries: ${JSON.stringify(entries)}`;
       }
@@ -292,8 +293,8 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       };
 
       let shards = c.shards();
-      let servers = Object.assign({}, ...replicatedLogsHelper.dbservers.map(
-        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
+      let servers = Object.assign({}, ...lh.dbservers.map(
+        (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       let trx;
       try {
@@ -306,15 +307,17 @@ function transactionReplicationOnFollowersSuite(dbParams) {
         if (trx) {
           let localValues = {};
           for (const [serverId, endpoint] of Object.entries(servers)) {
-            replicatedLogsHelper.waitFor(
-              replicatedStatePredicates.localKeyStatus(endpoint, dbn, shards[0], "foo", false));
-            localValues[serverId] = replicatedStateHelper.getLocalValue(endpoint, dbn, shards[0], "foo");
+            lh.waitFor(
+              dh.localKeyStatus(endpoint, dbn, shards[0], "foo", false));
+            localValues[serverId] = dh.getLocalValue(endpoint, dbn, shards[0], "foo");
           }
 
           // Make sure nothing is committed just yet
           let replication2Log = '';
           if (isReplication2) {
-            let log = db._replicatedLog(shards[0].slice(1));
+            const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
+            const logId = shardsToLogs[shards[0]];
+            let log = db._replicatedLog(logId);
             let entries = log.head(1000);
             replication2Log = `Log entries: ${JSON.stringify(entries)}`;
           }
@@ -332,14 +335,16 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 
       let localValues = {};
       for (const [serverId, endpoint] of Object.entries(servers)) {
-        replicatedLogsHelper.waitFor(
-          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shards[0], "foo", true));
-        localValues[serverId] = replicatedStateHelper.getLocalValue(endpoint, dbn, shards[0], "foo");
+        lh.waitFor(
+          dh.localKeyStatus(endpoint, dbn, shards[0], "foo", true));
+        localValues[serverId] = dh.getLocalValue(endpoint, dbn, shards[0], "foo");
       }
 
       let replication2Log = '';
       if (isReplication2) {
-        let log = db._replicatedLog(shards[0].slice(1));
+        const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
+        const logId = shardsToLogs[shards[0]];
+        let log = db._replicatedLog(logId);
         let entries = log.head(1000);
         replication2Log = `Log entries: ${JSON.stringify(entries)}`;
       }

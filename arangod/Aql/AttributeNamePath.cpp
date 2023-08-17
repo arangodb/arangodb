@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AttributeNamePath.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/fasthash.h"
@@ -32,29 +33,37 @@
 namespace arangodb {
 namespace aql {
 
-AttributeNamePath::AttributeNamePath(std::string attribute) {
-  path.emplace_back(std::move(attribute));
+AttributeNamePath::AttributeNamePath(
+    arangodb::ResourceMonitor& resourceMonitor) noexcept
+    : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
+          resourceMonitor}) {}
+
+AttributeNamePath::AttributeNamePath(std::string attribute,
+                                     arangodb::ResourceMonitor& resourceMonitor)
+    : _path(ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
+          resourceMonitor}) {
+  _path.emplace_back(std::move(attribute));
 }
 
-AttributeNamePath::AttributeNamePath(std::vector<std::string> p)
-    : path(std::move(p)) {}
+AttributeNamePath::AttributeNamePath(MonitoredStringVector p) noexcept
+    : _path(std::move(p)) {}
 
-bool AttributeNamePath::empty() const noexcept { return path.empty(); }
+bool AttributeNamePath::empty() const noexcept { return _path.empty(); }
 
-size_t AttributeNamePath::size() const noexcept { return path.size(); }
+size_t AttributeNamePath::size() const noexcept { return _path.size(); }
 
 AttributeNamePath::Type AttributeNamePath::type() const noexcept {
   TRI_ASSERT(!empty());
 
   Type type = Type::SingleAttribute;
   if (size() == 1) {
-    if (path[0] == StaticStrings::IdString) {
+    if (_path[0] == std::string_view{StaticStrings::IdString}) {
       type = Type::IdAttribute;
-    } else if (path[0] == StaticStrings::KeyString) {
+    } else if (_path[0] == std::string_view{StaticStrings::KeyString}) {
       type = Type::KeyAttribute;
-    } else if (path[0] == StaticStrings::FromString) {
+    } else if (_path[0] == std::string_view{StaticStrings::FromString}) {
       type = Type::FromAttribute;
-    } else if (path[0] == StaticStrings::ToString) {
+    } else if (_path[0] == std::string_view{StaticStrings::ToString}) {
       type = Type::ToAttribute;
     }
   } else {
@@ -69,24 +78,24 @@ size_t AttributeNamePath::hash() const noexcept {
   // platform-dependent. however, we need portable hash values because we are
   // testing for them in unit tests.
   uint64_t hash = 0x0404b00b1e5;
-  for (auto const& it : path) {
+  for (auto const& it : _path) {
     hash = fasthash64(it.data(), it.size(), hash);
   }
   return static_cast<size_t>(hash);
 }
 
-std::string const& AttributeNamePath::operator[](size_t index) const noexcept {
-  TRI_ASSERT(index < path.size());
-  return path[index];
+std::string_view AttributeNamePath::operator[](size_t index) const noexcept {
+  TRI_ASSERT(index < _path.size());
+  return std::string_view{_path[index]};
 }
 
 bool AttributeNamePath::operator==(
     AttributeNamePath const& other) const noexcept {
-  if (path.size() != other.path.size()) {
+  if (_path.size() != other._path.size()) {
     return false;
   }
-  for (size_t i = 0; i < path.size(); ++i) {
-    if (path[i] != other.path[i]) {
+  for (size_t i = 0; i < _path.size(); ++i) {
+    if (_path[i] != other._path[i]) {
       return false;
     }
   }
@@ -97,23 +106,23 @@ bool AttributeNamePath::operator<(
     AttributeNamePath const& other) const noexcept {
   size_t const commonLength = std::min(size(), other.size());
   for (size_t i = 0; i < commonLength; ++i) {
-    if (path[i] < other[i]) {
+    if (_path[i] < other[i]) {
       return true;
-    } else if (path[i] > other[i]) {
+    } else if (_path[i] > other[i]) {
       return false;
     }
   }
   return (size() < other.size());
 }
 
-std::vector<std::string> const& AttributeNamePath::get() const noexcept {
-  return path;
+MonitoredStringVector const& AttributeNamePath::get() const noexcept {
+  return _path;
 }
 
-void AttributeNamePath::clear() noexcept { path.clear(); }
+void AttributeNamePath::clear() noexcept { _path.clear(); }
 
 AttributeNamePath& AttributeNamePath::reverse() {
-  std::reverse(path.begin(), path.end());
+  std::reverse(_path.begin(), _path.end());
   return *this;
 }
 
@@ -122,7 +131,7 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
   if (length >= size()) {
     return *this;
   }
-  path.erase(path.begin() + length, path.end());
+  _path.erase(_path.begin() + length, _path.end());
   return *this;
 }
 
@@ -141,8 +150,8 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
 
 std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path) {
   stream << "[";
-  for (auto const& it : path.path) {
-    stream << ' ' << it;
+  for (auto const& it : path._path) {
+    stream << ' ' << std::string_view{it};
   }
   stream << " ]";
   return stream;

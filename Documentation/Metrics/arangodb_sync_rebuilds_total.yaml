@@ -20,6 +20,6 @@ description: |
   completely rebuilt from leader data, in order to increase its
   chances of getting in sync.
 troubleshoot: |
-  This number will always be 0 from version 3.9.3 onwards. If it is
+  This number is always `0` from version 3.9.3 onwards. If it is
   non-zero in previous versions, then something is wrong, please 
   contact ArangoDB customer support in this case.

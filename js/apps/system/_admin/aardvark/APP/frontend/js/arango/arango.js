@@ -7,9 +7,6 @@
   window.isCoordinator = function (callback) {
     if (isCoordinator === null) {
       var url = 'cluster/amICoordinator';
-      if (frontendConfig.react) {
-        url = arangoHelper.databaseUrl('/_admin/aardvark/cluster/amICoordinator');
-      }
       $.ajax(
         url,
         {
@@ -105,6 +102,16 @@
     setCurrentJwt: function (jwt, username) {
       sessionStorage.setItem('jwt', jwt);
       sessionStorage.setItem('jwtUser', username);
+    },
+
+    setCurrentJwtUser: function (username) {
+      sessionStorage.setItem('jwtUser', username);
+    },
+    setAutoLoginEnabled: function (autoLoginEnabled) {
+      sessionStorage.setItem('autoLoginEnabled', autoLoginEnabled);
+    },
+    getAutoLoginEnabled: function (autoLoginEnabled) {
+      return sessionStorage.getItem('autoLoginEnabled');
     },
 
     checkJwt: function () {
@@ -227,18 +234,6 @@
       return window.App.naviView.activeSubMenu;
     },
 
-    parseError: function (title, err) {
-      var msg;
-
-      try {
-        msg = JSON.parse(err.responseText).errorMessage;
-      } catch (e) {
-        msg = e;
-      }
-
-      this.arangoError(title, msg);
-    },
-
     setCheckboxStatus: function (id) {
       _.each($(id).find('ul').find('li'), function (element) {
         if (!$(element).hasClass('nav-header')) {
@@ -261,19 +256,6 @@
           }
         }
       });
-    },
-
-    parseInput: function (element) {
-      var parsed;
-      var string = $(element).val();
-
-      try {
-        parsed = JSON.parse(string);
-      } catch (e) {
-        parsed = string;
-      }
-
-      return parsed;
     },
 
     calculateCenterDivHeight: function () {
@@ -447,7 +429,7 @@
         }
 
         $('#subNavigationBar .bottom').append(
-          '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
+          '<li class="subMenuEntry ' + cssClass + '"><a>' + arangoHelper.escapeHtml(name) + '</a></li>'
         );
         if (!menu.disabled && !disabled) {
           $('#subNavigationBar .bottom').children().last().bind('click', function () {
@@ -543,17 +525,12 @@
         Shards: {
           route: '#shards'
         },
-        "Rebalance Shards": {
-          route: '#rebalanceShards'
-        }
       };
 
       menus[activeKey].active = true;
       if (disabled) {
         menus[activeKey].disabled = true;
       }
-      menus["Rebalance Shards"].disabled = window.App.userCollection.authOptions.ro; // when user can't edit database,
-                                                                                     // the tab is not clickable
       this.buildSubNavBar(menus, disabled);
     },
 
@@ -596,14 +573,14 @@
       var defaultRoute = '#collection/' + encodeURIComponent(collectionName);
 
       var menus = {
+        "Info": {
+          route: '#cInfo/' + encodeURIComponent(collectionName)
+        },
         "Content": {
           route: defaultRoute + '/documents/1'
         },
         "Indexes": {
           route: '#cIndices/' + encodeURIComponent(collectionName)
-        },
-        "Info": {
-          route: '#cInfo/' + encodeURIComponent(collectionName)
         },
         "Settings": {
           route: '#cSettings/' + encodeURIComponent(collectionName)
@@ -1121,7 +1098,34 @@
         }, 500);
       }
     },
+    downloadQuery: function (url, body, callback) {
+      $.ajax({
+        type: 'POST',
+        data: JSON.stringify(body),
+        url: url,
+        contentType: 'application/json',
+        success: function (result, dummy, request) {
+          if (callback) {
+            callback(result);
+            return;
+          }
 
+          var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
+          var blobUrl = window.URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          document.body.appendChild(a);
+          a.style = 'display: none';
+          a.href = blobUrl;
+          a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
+          a.click();
+
+          window.setTimeout(function () {
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(a);
+          }, 500);
+        }
+      });
+    },
     download: function (url, callback) {
       $.ajax({
         type: 'GET',
@@ -1147,40 +1151,6 @@
           }, 500);
         }
       });
-    },
-
-    downloadPost: function (url, body, callback, errorCB) {
-      var xhr = new XMLHttpRequest();
-      xhr.onreadystatechange = function () {
-        if (this.readyState === 4 && this.status === 200) {
-          if (callback) {
-            callback();
-          }
-          var a = document.createElement('a');
-          a.download = this.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
-          document.body.appendChild(a);
-          var blobUrl = window.URL.createObjectURL(this.response);
-          a.href = blobUrl;
-          a.click();
-
-          window.setTimeout(function () {
-            window.URL.revokeObjectURL(blobUrl);
-            document.body.removeChild(a);
-          }, 500);
-        } else {
-          if (this.readyState === 4) {
-            if (errorCB !== undefined) {
-              errorCB(this.status, this.statusText);
-            }
-          }
-        }
-      };
-      xhr.open('POST', url);
-      if (window.arangoHelper.getCurrentJwt()) {
-        xhr.setRequestHeader('Authorization', 'bearer ' + window.arangoHelper.getCurrentJwt());
-      }
-      xhr.responseType = 'blob';
-      xhr.send(body);
     },
 
     checkCollectionPermissions: function (collectionID, roCallback) {

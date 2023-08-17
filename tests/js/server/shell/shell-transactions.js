@@ -258,6 +258,14 @@ function transactionRevisionsSuite () {
     },
 
     testRemoveInsertWithSameRev: function () {
+      if (isCluster) {
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
       db._executeTransaction({
         collections: { write: c.name() },
@@ -272,6 +280,14 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateWithSameRev: function () {
+      if (isCluster) {
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
       c.update('test', { _key: 'test', _rev: doc._rev, value: 2 }, { isRestore: true });
 
@@ -280,6 +296,14 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateWithSameRevTransaction: function () {
+      if (isCluster) {
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
       db._executeTransaction({
         collections: { write: c.name() },
@@ -293,6 +317,10 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateFailingWithSameRev: function () {
+      if (isCluster) {
+        // running this test in cluster will trigger an assertion failure
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
       try {
         db._executeTransaction({

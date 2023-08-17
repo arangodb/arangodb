@@ -166,6 +166,10 @@ ArangoStatement.prototype.execute = function () {
     body.cache = this._cache;
   }
 
+  if (this._ttl !== undefined) {
+    body.ttl = this._ttl;
+  }
+
   var requestResult = this._database._connection.POST(
     '/_api/cursor', body);
 
@@ -175,8 +179,11 @@ ArangoStatement.prototype.execute = function () {
   if (!isStream && this._options && this._options.stream) {
     isStream = this._options.stream;
   }
-
-  return new ArangoQueryCursor(this._database, requestResult, isStream);
+  let allowRetry = false;
+  if (this._options && this._options.allowRetry) {
+    allowRetry = true;
+  }
+  return new ArangoQueryCursor(this._database, requestResult, isStream, allowRetry);
 };
 
 exports.ArangoStatement = ArangoStatement;

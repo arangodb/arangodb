@@ -22,10 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <unordered_map>
-#include "Pregel/Conductor/Messages.h"
-#include "Pregel/Conductor/State.h"
-#include "Pregel/Worker/Messages.h"
 #include "State.h"
 
 namespace arangodb::pregel::conductor {
@@ -33,15 +29,17 @@ namespace arangodb::pregel::conductor {
 struct ConductorState;
 
 struct Storing : ExecutionState {
-  Storing(ConductorState& conductor);
-  ~Storing();
+  explicit Storing(ConductorState& conductor);
+  ~Storing() override = default;
 
   auto name() const -> std::string override { return "storing"; };
   auto messages()
       -> std::unordered_map<actor::ActorPID,
                             worker::message::WorkerMessages> override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override;
+      -> std::optional<StateChange> override;
+  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<StateChange> override;
 
   ConductorState& conductor;
   std::unordered_set<actor::ActorPID> respondedWorkers;

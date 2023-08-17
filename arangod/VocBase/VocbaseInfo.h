@@ -40,9 +40,6 @@ namespace application_features {
 class ApplicationServer;
 }
 
-// TODO do we need to add some sort of coordinator?
-// builder.add("coordinator", VPackValue(ServerState::instance()->getId()));
-
 struct DBUser {
   DBUser() = default;
   DBUser(DBUser const&) =
@@ -93,11 +90,7 @@ class CreateDatabaseInfo {
 
   ArangodServer& server() const;
 
-  uint64_t getId() const {
-    TRI_ASSERT(_valid);
-    TRI_ASSERT(_validId);
-    return _id;
-  }
+  uint64_t getId() const;
 
   void strictValidation(bool value) noexcept { _strictValidation = value; }
 
@@ -140,6 +133,16 @@ class CreateDatabaseInfo {
 
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
+  void setSharding(std::string_view sharding);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ protected:
+  struct MockConstruct {
+  } constexpr static mockConstruct = {};
+  CreateDatabaseInfo(MockConstruct, ArangodServer& server,
+                     ExecContext const& execContext, std::string const& name,
+                     std::uint64_t id);
+#endif
 
  private:
   Result extractUsers(VPackSlice users);

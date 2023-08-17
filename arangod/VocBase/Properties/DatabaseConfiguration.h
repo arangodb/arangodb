@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include "Replication2/Version.h"
 
 namespace arangodb {
 
@@ -53,6 +54,7 @@ struct DatabaseConfiguration {
   uint64_t defaultWriteConcern = 1;
   std::string defaultDistributeShardsLike = "";
   bool isOneShardDB = false;
+  replication::Version replicationVersion = replication::Version::ONE;
 
   std::function<DataSourceId()> idGenerator;
   std::function<ResultT<UserInputCollectionProperties>(std::string const&)>

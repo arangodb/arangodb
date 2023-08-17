@@ -131,7 +131,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       int) override;
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) final;
+
+  Result drop() override;
 
   std::shared_ptr<cache::Cache> makeCache() const override;
 
@@ -283,12 +286,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief a -1 entry means none is expanding,
   /// otherwise the non-negative number is the index of the expanding one.
   std::vector<int> _expanding;
-
-  /// @brief whether or not the user requested to use a cache for the index.
-  /// note: even if this is set to true, it may not mean that the cache is
-  /// effectively in use. for example, for system collections and on the
-  /// coordinator, no cache will actually be used although this flag may be true
-  bool const _cacheEnabled;
 
   // if true, force a refill of the in-memory cache after each
   // insert/update/replace operation

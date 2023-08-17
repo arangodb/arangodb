@@ -29,10 +29,12 @@
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Thread.h"
-#include "RocksDBOptions.h"
-
 #include "Inspection/Types.h"
 #include "Inspection/VPackLoadInspector.h"
+
+#include "CacheOptions.h"
+#include "RocksDBOptions.h"
+#include "Workloads/EdgeCache.h"
 #include "Workloads/GetByPrimaryKey.h"
 #include "Workloads/InsertDocuments.h"
 #include "Workloads/IterateDocuments.h"
@@ -79,7 +81,8 @@ auto inspect(Inspector& f, Setup& o) {
 
 using WorkloadVariants = std::variant<
     workloads::WriteWriteConflict::Options, workloads::GetByPrimaryKey::Options,
-    workloads::InsertDocuments::Options, workloads::IterateDocuments::Options>;
+    workloads::InsertDocuments::Options, workloads::IterateDocuments::Options,
+    workloads::EdgeCache::Options>;
 namespace workloads {
 // this inspect function must be in namespace workloads for ADL to pick it up
 template<class Inspector>
@@ -89,7 +92,8 @@ inline auto inspect(Inspector& f, WorkloadVariants& o) {
       insp::type<workloads::WriteWriteConflict::Options>("writeWriteConflict"),
       insp::type<workloads::GetByPrimaryKey::Options>("getByPrimaryKey"),
       insp::type<workloads::InsertDocuments::Options>("insert"),
-      insp::type<workloads::IterateDocuments::Options>("iterate"));
+      insp::type<workloads::IterateDocuments::Options>("iterate"),
+      insp::type<workloads::EdgeCache::Options>("edgeCache"));
 }
 }  // namespace workloads
 
@@ -102,6 +106,7 @@ struct Options {
   WorkloadVariants workload;
 
   RocksDBOptions rocksdb;
+  CacheOptions cache;
 };
 
 template<class Inspector>
@@ -113,8 +118,9 @@ auto inspect(Inspector& f, Options& o) {
               "sepp-" + std::to_string(Thread::currentProcessId()))),
       f.field("clearDatabaseDirectory", o.clearDatabaseDirectory)
           .fallback(true),
-      f.field("setup", o.setup).fallback(f.keep()),        //
-      f.field("workload", o.workload).fallback(f.keep()),  //
+      f.field("setup", o.setup).fallback(f.keep()),
+      f.field("workload", o.workload).fallback(f.keep()),
+      f.field("cache", o.cache).fallback(f.keep()),
       f.field("rocksdb", o.rocksdb).fallback(f.keep()));
 }
 

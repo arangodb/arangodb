@@ -70,14 +70,15 @@ class SortNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief whether or not the sort is stable
-  inline bool isStable() const { return _stable; }
+  bool isStable() const { return _stable; }
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,

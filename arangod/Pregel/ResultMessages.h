@@ -35,10 +35,15 @@ auto inspect(Inspector& f, ResultStart& x) {
   return f.object(x).fields();
 }
 
+struct OtherResultActorStarted {};
+template<typename Inspector>
+auto inspect(Inspector& f, OtherResultActorStarted& x) {
+  return f.object(x).fields();
+}
+
 struct SaveResults {
   ResultT<PregelResults> results = {PregelResults{}};
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, SaveResults& x) {
   return f.object(x).fields(f.field("results", x.results));
@@ -48,7 +53,6 @@ struct AddResults {
   ResultT<PregelResults> results = {PregelResults{}};
   bool receivedAllResults{false};
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, AddResults& x) {
   return f.object(x).fields(
@@ -56,16 +60,36 @@ auto inspect(Inspector& f, AddResults& x) {
       f.field("receivedAllResults", x.receivedAllResults));
 }
 
-struct ResultMessages : std::variant<ResultStart, SaveResults, AddResults> {
-  using std::variant<ResultStart, SaveResults, AddResults>::variant;
+struct CleanupResultWhenExpired {};
+template<typename Inspector>
+auto inspect(Inspector& f, CleanupResultWhenExpired& x) {
+  return f.object(x).fields();
+}
+
+struct CleanupResults {};
+template<typename Inspector>
+auto inspect(Inspector& f, CleanupResults& x) {
+  return f.object(x).fields();
+}
+
+struct ResultMessages
+    : std::variant<ResultStart, OtherResultActorStarted, SaveResults,
+                   AddResults, CleanupResultWhenExpired, CleanupResults> {
+  using std::variant<ResultStart, OtherResultActorStarted, SaveResults,
+                     AddResults, CleanupResultWhenExpired,
+                     CleanupResults>::variant;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, ResultMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<ResultStart>("Start"),
+      arangodb::inspection::type<OtherResultActorStarted>(
+          "OtherResultActorStarted"),
       arangodb::inspection::type<SaveResults>("SaveResults"),
-      arangodb::inspection::type<AddResults>("AddResults"));
+      arangodb::inspection::type<AddResults>("AddResults"),
+      arangodb::inspection::type<CleanupResultWhenExpired>("CleanupResult"),
+      arangodb::inspection::type<CleanupResults>("CleanupResults"));
 }
 
 }  // namespace arangodb::pregel::message

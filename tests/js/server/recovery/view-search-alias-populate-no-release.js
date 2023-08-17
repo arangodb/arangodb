@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, fail, AQL_EXECUTE */
+/* global assertEqual, assertTrue, assertFalse, assertNull, fail, print, arango, AQL_EXECUTE */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recovery tests for views
 ///
@@ -48,11 +48,23 @@ function runSetup () {
   internal.wal.flush(true, true);
   internal.debugSetFailAt("FlushCrashBeforeSyncingMinTick");
 
-  for (let i = 0; i < 10000; i++) {
-    c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+  if (global.hasOwnProperty('arango')) {
+    // we intend to crash, so we should get to know quickly:
+    print('setting short timeout');
+    arango.timeout(10);
   }
-
-  c.save({ name: 'crashme' }, { waitForSync: true });
+  try {
+    for (let i = 0; i < 100000; i++) {
+      c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+    }
+    c.save({ name: 'crashme' }, { waitForSync: true });
+  } catch (ex) {
+    if ((ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) &&
+        (ex.errorNum !== internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code)) {
+      print(ex);
+      throw ex;
+    }
+  }
 
   internal.debugTerminate('crashing server');
 }

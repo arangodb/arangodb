@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Types.h"
 
+#include <cstdint>
 #include <variant>
 
 namespace arangodb {

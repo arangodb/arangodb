@@ -26,7 +26,6 @@
 #include "Backup/arangobackup.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/Mutex.h"
 #include "Utils/ClientManager.h"
 
 namespace arangodb {

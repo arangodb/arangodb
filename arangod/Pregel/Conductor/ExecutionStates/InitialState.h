@@ -22,8 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <unordered_map>
-#include "Pregel/Conductor/ExecutionStates/State.h"
+#include "State.h"
 
 namespace arangodb::pregel::conductor {
 
@@ -35,17 +34,15 @@ struct ConductorState;
  */
 
 struct Initial : ExecutionState {
-  Initial() = default;
-  auto name() const -> std::string override { return "initial"; };
-  auto messages()
-      -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override {
-    return {};
-  }
+  explicit Initial(ConductorState& conductor);
+  ~Initial() override = default;
+  [[nodiscard]] auto name() const -> std::string override { return "initial"; };
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override {
-    return std::nullopt;
-  };
+      -> std::optional<StateChange> override;
+  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<StateChange> override;
+
+  ConductorState& conductor;
 };
 
 }  // namespace arangodb::pregel::conductor

@@ -5,7 +5,7 @@ declare module "jsoneditor-react" {
 
   type Mode = "tree" | "view" | "form" | "code" | "text";
 
-  interface JsonEditorProps {
+  export interface JsonEditorProps {
     value: any;
     /** Set the editor mode. Default 'tree' */
     mode?: Mode;
@@ -21,6 +21,10 @@ declare module "jsoneditor-react" {
      * */
     sortObjectKeys?: boolean;
 
+    /** Set a callback function triggered when json in the JSONEditor change */
+    onChangeJSON?: (value: any) => void;
+    /** Set a callback function triggered when json in the JSONEditor change */
+    onChangeText?: (value: any) => void;
     /** Set a callback function triggered when json in the JSONEditor change */
     onChange?: (value: any) => void;
     /**

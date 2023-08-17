@@ -25,7 +25,6 @@
 #include "QueryCursor.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
@@ -68,14 +67,7 @@ VPackSlice QueryResultCursor::extra() const {
 }
 
 /// @brief check whether the cursor contains more data
-bool QueryResultCursor::hasNext() {
-  if (_iterator.valid()) {
-    return true;
-  }
-
-  _isDeleted = true;
-  return false;
-}
+bool QueryResultCursor::hasNext() const noexcept { return _iterator.valid(); }
 
 /// @brief return the next element
 VPackSlice QueryResultCursor::next() {
@@ -130,7 +122,7 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 
     handleNextBatchIdValue(builder, hasNext());
 
-    if (!hasNext()) {
+    if (!hasNext() && !isRetriable()) {
       // mark the cursor as deleted
       this->setDeleted();
     }
@@ -142,7 +134,7 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
     return Result(TRI_ERROR_INTERNAL,
                   "internal error during QueryResultCursor::dump");
   }
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 // .............................................................................
@@ -158,10 +150,10 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
       _queryResultPos(0),
       _finalization(false),
       _allowDirtyReads(false) {
-  _query->prepareQuery(SerializationFormat::SHADOWROWS);
+  _query->prepareQuery();
   _allowDirtyReads = _query->allowDirtyReads();  // is set by prepareQuery!
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
-    debugKillQuery();
+    QueryStreamCursor::debugKillQuery();
   }
 
   // In all the following ASSERTs it is valid (though unlikely) that the query
@@ -175,7 +167,7 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
 
   transaction::Methods trx(_ctx);
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterTrxSetup") {
-    debugKillQuery();
+    QueryStreamCursor::debugKillQuery();
   }
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
 
@@ -463,11 +455,13 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
     TRI_ASSERT(!_extrasBuffer.empty());
     builder.add("extra", VPackSlice(_extrasBuffer.data()));
 
-    // very important here, because _query may become invalid after here!
-    guard.revert();
+    if (!isRetriable()) {
+      // very important here, because _query may become invalid after here!
+      guard.revert();
 
-    _query.reset();
-    this->setDeleted();
+      _query.reset();
+      this->setDeleted();
+    }
     return ExecutionState::DONE;
   }
 

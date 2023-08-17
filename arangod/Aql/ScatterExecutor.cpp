@@ -24,6 +24,7 @@
 #include "ScatterExecutor.h"
 
 #include "Aql/AqlCallStack.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/ExecutionBlockImpl.tpp"

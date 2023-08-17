@@ -82,6 +82,8 @@ class IResearchViewCoordinator final : public LogicalView {
 
   bool visitCollections(CollectionVisitor const& visitor) const final;
 
+  IResearchViewMeta const& meta() const noexcept { return _meta; }
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sorting order of a view, empty -> use system order
   ///////////////////////////////////////////////////////////////////////////////

@@ -77,8 +77,6 @@ function componentsTestSuite() {
             });
             graph._addVertexCollection(vColl);
             db._createEdgeCollection(eColl, {
-                numberOfShards: 4,
-                replicationFactor: 1,
                 shardKeys: ["vertex"],
                 distributeShardsLike: vColl
             });

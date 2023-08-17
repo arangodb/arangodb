@@ -59,69 +59,73 @@ while(true) {
     fails: []
   };
   let results = [];
-  for (let i = 0; i < 60; i++) {
-  const before = time();
-    let oneSet = { state: true };
-    results.push(oneSet);
-    instanceManager.arangods.forEach(arangod => {
-      let serverId = arangod.role + '_' + arangod.port;
-      let beforeCall = time();
-      let procStats = arangod._getProcessStats();
-      if (arangod.role === "agent") {
-        let reply = download(arangod.url + '/_api/version', '', opts);
-        if (reply.hasOwnProperty('error') || reply.code !== 200) {
-          print("fail: " + JSON.stringify(reply) +
-                " - ps before: " + JSON.stringify(procStats) +
-                " - ps now: " + JSON.stringify(pu.getProcessStats(arangod.pid)));
-          state.state = false;
-          oneSet.state = false;
-          oneSet[serverId] = {
-            error: true,
-            start: beforeCall,
-            delta: time() - beforeCall
-          };
+  try {
+    for (let i = 0; i < 10; i++) {
+      const before = time();
+      let oneSet = { state: true };
+      results.push(oneSet);
+      instanceManager.arangods.forEach(arangod => {
+        let serverId = arangod.instanceRole + '_' + arangod.port;
+        let beforeCall = time();
+        let procStats = arangod._getProcessStats();
+        if (arangod.instanceRole === "agent") {
+          let reply = download(arangod.url + '/_api/version', '', opts);
+          if (reply.hasOwnProperty('error') || reply.code !== 200) {
+            print("fail: " + JSON.stringify(reply) +
+                  " - ps before: " + JSON.stringify(procStats) +
+                  " - ps now: " + JSON.stringify(arangod._getProcessStats()));
+            state.state = false;
+            oneSet.state = false;
+            oneSet[serverId] = {
+              error: true,
+              start: beforeCall,
+              delta: time() - beforeCall
+            };
+          } else {
+            let statisticsReply = JSON.parse(reply.body);
+            oneSet[serverId] = {
+              error: false,
+              start: beforeCall,
+              delta: time() - beforeCall
+            };
+          }
         } else {
-          let statisticsReply = JSON.parse(reply.body);
-          oneSet[serverId] = {
-            error: false,
-            start: beforeCall,
-            delta: time() - beforeCall
-          };
+          let reply = download(arangod.url + '/_admin/statistics', '', opts);
+          if (reply.hasOwnProperty('error') || reply.code !== 200) {
+            print("fail: " + JSON.stringify(reply) +
+                  " - ps before: " + JSON.stringify(procStats) +
+                  " - ps now: " + JSON.stringify(arangod._getProcessStats()));
+            state.state = false;
+            oneSet.state = false;
+            oneSet[serverId] = {
+              error: true,
+              start: beforeCall,
+              delta: time() - beforeCall
+            };
+          } else {
+            let statisticsReply = JSON.parse(reply.body);
+            oneSet[serverId] = {
+              error: false,
+              start: beforeCall,
+              delta: time() - beforeCall,
+              uptime: statisticsReply.server.uptime
+            };
+          }
         }
-      } else {
-        let reply = download(arangod.url + '/_admin/statistics', '', opts);
-        if (reply.hasOwnProperty('error') || reply.code !== 200) {
-          print("fail: " + JSON.stringify(reply) +
-                " - ps before: " + JSON.stringify(procStats) +
-                " - ps now: " + JSON.stringify(pu.getProcessStats(arangod.pid)));
-          state.state = false;
-          oneSet.state = false;
-          oneSet[serverId] = {
-            error: true,
-            start: beforeCall,
-            delta: time() - beforeCall
-          };
-        } else {
-          let statisticsReply = JSON.parse(reply.body);
-          oneSet[serverId] = {
-            error: false,
-            start: beforeCall,
-            delta: time() - beforeCall,
-            uptime: statisticsReply.server.uptime
-          };
-        }
+      });
+      state['delta'].push(time() - before);
+      if (state.delta > 1000) {
+        print("marking FAIL since it took to long");
+        state.state = false;
       }
-    });
-    state['delta'].push(time() - before);
-    if (state.delta > 1000) {
-      print("marking FAIL since it took to long");
-      state.state = false;
+      if (!oneSet.state) {
+        state.fails.push(oneSet);
+      }
+      sleep(1);
     }
-    if (!oneSet.state) {
-      state.fails.push(oneSet);
-    }
-    sleep(1);
+  } catch (ex) {
+    print(`Exiting clusterstats because of: ${ex}`);
+    break;
   }
   fs.append(outfn, JSON.stringify(state) + "\n");
-
 }

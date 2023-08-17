@@ -404,7 +404,7 @@ def generateArangoshOutput(testName):
   var outputDir = '%s';
   var sourceFile = '%s';
   var startTime = time();
-  var assert = function(a) { globalAssert(a, testName, sourceFile); };
+  var assert = function(a) { globalAssert(a, testName, sourceFile, assert.caller.toString()); };
   internal.startCaptureMode();
 '''    %   (
         ('/'*80),
@@ -480,7 +480,7 @@ def generateArangoshRun(testName):
   var sourceFile = '%s';
   var startTime = time();
   output = '';
-  var assert = function(a) { globalAssert(a, testName, sourceFile); };
+  var assert = function(a) { globalAssert(a, testName, sourceFile, assert.caller.toString()); };
   testFunc = function() {
 %s};
 ''' %  (

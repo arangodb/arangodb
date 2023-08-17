@@ -24,28 +24,18 @@
 
 #pragma once
 
-#include <chrono>
 #include <functional>
 #include <memory>
-#include <ostream>
 #include <string>
 #include <string_view>
-#include <utility>
 #include <vector>
 
-#include <analysis/analyzer.hpp>
-#include <analysis/analyzers.hpp>
 #include "analysis/token_streams.hpp"
-#include <index/index_features.hpp>
 #include <index/field_meta.hpp>
-#include <utils/async_utils.hpp>
-#include <utils/attributes.hpp>
 #include <utils/bit_utils.hpp>
 #include <utils/hash_utils.hpp>
-#include <utils/memory.hpp>
 #include <utils/noncopyable.hpp>
 #include <utils/object_pool.hpp>
-#include <utils/string.hpp>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -59,7 +49,7 @@
 #include "IResearch/IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearch/IResearchCommon.h"
 #include "RestServer/arangod.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;  // forward declaration
 

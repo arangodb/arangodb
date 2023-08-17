@@ -32,6 +32,13 @@ BEGIN {
 	}
 	status = 1
     }
+    if (backcheck && FILENAME != backcheck && $3 != "GMT") {
+      printf "%s: Link should be in '%s'\n", $3, backcheck
+      status = 1
+    }
+    if ($4 == "#=") {
+      shortcut[$5] = $3
+    }
     used[$2] = 1
     defined[$3] = $2
 }
@@ -39,9 +46,24 @@ BEGIN {
 END {
     for (tz in used) {
 	if (defined[tz] != Zone) {
-	    printf "%s: Link to non-zone\n", tz
+	  if (!defined[tz]) {
+	    printf "%s: Link to nowhere\n", tz
 	    status = 1
+	  } else if (DATAFORM != "vanguard") {
+	    printf "%s: Link to link\n", tz
+	    status = 1
+	  }
 	}
+    }
+    for (tz in shortcut) {
+      if (defined[shortcut[tz]] != defined[tz]) {
+	target = (!defined[tz] ? "absence" \
+		  : defined[tz] == "\n" ? "zone" \
+		  : defined[tz])
+	printf "%s: target %s disagrees with %s's target %s\n", \
+	  tz, target, shortcut[tz], defined[shortcut[tz]]
+	status = 1
+      }
     }
 
     exit status

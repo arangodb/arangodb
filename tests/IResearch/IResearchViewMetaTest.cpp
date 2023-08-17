@@ -608,10 +608,15 @@ TEST_F(IResearchViewMetaTest, test_writeDefaults) {
   builder.close();
 
   auto slice = builder.slice();
-
+#ifdef USE_ENTERPRISE
+  EXPECT_EQ(13, slice.length());
+  tmpSlice = slice.get("optimizeTopK");
+  EXPECT_TRUE(tmpSlice.isEmptyArray());
+#else
   EXPECT_EQ(12, slice.length());
+#endif
   tmpSlice = slice.get("collections");
-  EXPECT_TRUE((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
+  EXPECT_TRUE(tmpSlice.isEmptyArray());
   tmpSlice = slice.get("cleanupIntervalStep");
   EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() &&
                2 == tmpSlice.getNumber<size_t>()));
@@ -767,7 +772,9 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   auto slice = builder.slice();
 
 #ifdef USE_ENTERPRISE
-  EXPECT_EQ(13, slice.length());
+  EXPECT_EQ(14, slice.length());
+  tmpSlice = slice.get("optimizeTopK");
+  EXPECT_TRUE(tmpSlice.isEmptyArray());
 #else
   EXPECT_EQ(12, slice.length());
 #endif
@@ -942,7 +949,12 @@ TEST_F(IResearchViewMetaTest, test_writeMaskAll) {
 
   auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+  EXPECT_EQ(13, slice.length());
+  EXPECT_TRUE(slice.hasKey("optimizeTopK"));
+#else
   EXPECT_EQ(12, slice.length());
+#endif
   EXPECT_TRUE(slice.hasKey("collections"));
   EXPECT_TRUE(slice.hasKey("cleanupIntervalStep"));
   EXPECT_TRUE(slice.hasKey("commitIntervalMsec"));

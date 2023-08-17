@@ -41,8 +41,6 @@
 #include "search/all_filter.hpp"
 #include "search/column_existence_filter.hpp"
 
-using namespace std::string_literals;
-
 namespace arangodb::iresearch {
 
 class ByExpression;

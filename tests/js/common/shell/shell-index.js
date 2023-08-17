@@ -139,22 +139,34 @@ function IndexSuite() {
       var res = collection.dropIndex(id.id);
       assertTrue(res);
 
-      res = collection.dropIndex(id.id);
-      assertFalse(res);
+      try {
+        collection.dropIndex(id.id);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       id = collection.ensureIndex({type: "geo", fields: ["a"]});
       res = collection.dropIndex(id);
       assertTrue(res);
 
-      res = collection.dropIndex(id);
-      assertFalse(res);
+      try {
+        collection.dropIndex(id);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       id = collection.ensureIndex({type: "geo", fields: ["a"]});
       res = internal.db._dropIndex(id);
       assertTrue(res);
 
-      res = internal.db._dropIndex(id);
-      assertFalse(res);
+      try {
+        collection.dropIndex(id);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,22 +179,34 @@ function IndexSuite() {
       var res = collection.dropIndex(collection.name() + "/" + id);
       assertTrue(res);
 
-      res = collection.dropIndex(collection.name() + "/" + id);
-      assertFalse(res);
+      try {
+        collection.dropIndex(collection.name() + "/" + id);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       id = collection.ensureIndex({type: "geo", fields: ["a"]}).id.substr(cn.length + 1);
       res = collection.dropIndex(parseInt(id, 10));
       assertTrue(res);
 
-      res = collection.dropIndex(parseInt(id, 10));
-      assertFalse(res);
+      try {
+        collection.dropIndex(parseInt(id, 10));
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       id = collection.ensureIndex({type: "geo", fields: ["a"]}).id.substr(cn.length + 1);
       res = internal.db._dropIndex(collection.name() + "/" + id);
       assertTrue(res);
 
-      res = internal.db._dropIndex(collection.name() + "/" + id);
-      assertFalse(res);
+      try {
+        collection.dropIndex(collection.name() + "/" + id);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,22 +219,34 @@ function IndexSuite() {
       var res = collection.dropIndex(collection.name() + "/" + name);
       assertTrue(res);
 
-      res = collection.dropIndex(collection.name() + "/" + name);
-      assertFalse(res);
+      try {
+        collection.dropIndex(collection.name() + "/" + name);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       name = collection.ensureIndex({type: "geo", fields: ["a"]}).name;
       res = collection.dropIndex(name);
       assertTrue(res);
 
-      res = collection.dropIndex(name);
-      assertFalse(res);
+      try {
+        collection.dropIndex(name);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
 
       name = collection.ensureIndex({type: "geo", fields: ["a"]}).name;
       res = internal.db._dropIndex(collection.name() + "/" + name);
       assertTrue(res);
 
-      res = internal.db._dropIndex(collection.name() + "/" + name);
-      assertFalse(res);
+      try {
+        collection.dropIndex(collection.name() + "/" + name);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1580,14 +1616,19 @@ function ParallelIndexSuite() {
     },
 
     tearDown: function() {
-      tasks.get().forEach(function(task) {
-        if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
-          try {
-            tasks.unregister(task);
-          } catch (err) {
-          }
+      let rounds = 0;
+      while(true) {
+        const stillRunning = tasks.get().filter(function(task) {
+          return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)); });
+        if(stillRunning.length === 0) {
+          break;
         }
-      });
+        require("internal").wait(0.5, false);
+        rounds++;
+        if(rounds % 10 === 0) {
+          console.log("After %s rounds there are still the following tasks %s", rounds, JSON.stringify(stillRunning));
+        }
+      }
       internal.db._drop(cn);
     },
 

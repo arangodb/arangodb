@@ -36,7 +36,7 @@ namespace iresearch {
 namespace {
 template<typename T>
 velocypack::Builder& addRef(velocypack::Builder& builder,
-                            std::basic_string_view<T> value) {
+                            irs::basic_string_view<T> value) {
   // store nulls verbatim
   if (irs::IsNull(value)) {
     builder.add(                                        // add value
@@ -51,7 +51,7 @@ velocypack::Builder& addRef(velocypack::Builder& builder,
 
 template<typename T>
 velocypack::Builder& addRef(velocypack::Builder& builder, std::string_view key,
-                            std::basic_string_view<T> value) {
+                            irs::basic_string_view<T> value) {
   // Builder uses memcpy(...) which cannot handle nullptr
   TRI_ASSERT(!irs::IsNull(key));
 

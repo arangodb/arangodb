@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>
 

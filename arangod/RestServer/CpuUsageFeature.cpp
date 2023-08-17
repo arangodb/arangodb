@@ -24,8 +24,6 @@
 #include "CpuUsageFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/debugging.h"
 
 #if defined(_WIN32)
@@ -182,7 +180,7 @@ CpuUsageSnapshot CpuUsageFeature::snapshot() {
   bool updateInProgress;
   {
     // read last snapshot under the mutex
-    MUTEX_LOCKER(guard, _snapshotMutex);
+    std::lock_guard guard{_snapshotMutex};
     lastSnapshot = _snapshot;
     lastDelta = _snapshotDelta;
     updateInProgress = _updateInProgress;
@@ -207,7 +205,7 @@ CpuUsageSnapshot CpuUsageFeature::snapshot() {
   auto success = _snapshotProvider->tryTakeSnapshot(next);
   {
     // snapshot must be updated and returned under mutex
-    MUTEX_LOCKER(guard, _snapshotMutex);
+    std::lock_guard guard{_snapshotMutex};
     if (success) {
       // if we failed to obtain new snapshot, we simply return whatever we had
       // before

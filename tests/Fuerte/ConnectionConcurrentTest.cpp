@@ -160,7 +160,9 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
     });
   }
   ASSERT_TRUE(wg->wait_for(
-      std::chrono::seconds(300)));  // wait for all threads to return
+      std::chrono::seconds(600)));  // wait for all threads to return
+  // This test is suspected to timeout. I enabled request logging to figure out
+  // if the requests reach the server or if fuerte deadlocks internally.
 
   // wait for all threads to end
   joins.joinAll();

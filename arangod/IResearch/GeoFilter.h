@@ -68,7 +68,7 @@ class GeoFilter;
 struct GeoFilterOptions : GeoFilterOptionsBase {
   using filter_type = GeoFilter;
 
-  bool operator==(const GeoFilterOptions& rhs) const noexcept {
+  bool operator==(GeoFilterOptions const& rhs) const noexcept {
     return type == rhs.type && shape.equals(rhs.shape);
   }
 
@@ -99,9 +99,9 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
 
   using filter::prepare;
 
-  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Order const& ord,
+  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Scorers const& ord,
                         irs::score_t boost,
-                        irs::attribute_provider const* /*ctx*/) const override;
+                        irs::attribute_provider const* /*ctx*/) const final;
 };
 
 class GeoDistanceFilter;
@@ -137,7 +137,7 @@ class GeoDistanceFilter final
 
   using filter::prepare;
 
-  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Order const& ord,
+  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Scorers const& ord,
                         irs::score_t boost,
                         irs::attribute_provider const* /*ctx*/) const final;
 };

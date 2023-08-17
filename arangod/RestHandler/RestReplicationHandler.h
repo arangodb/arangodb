@@ -280,6 +280,11 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   void handleCommandRebuildRevisionTree();
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  /// @brief intentionally corrupt the revision of a collection
+  void handleCommandCorruptRevisionTree();
+#endif
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the requested revision ranges for a given collection, if
   ///        available
@@ -323,6 +328,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   bool prepareRevisionOperation(RevisionOperationContext&);
 
  private:
+  bool prepareCollectionForRevisionOperation(RevisionOperationContext&);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////
@@ -384,12 +391,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
                     VPackBuilder& documentToInsert,
                     std::unordered_set<std::string>& documentsToRemove,
                     bool generateNewRevisionIds);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a collection, based on the VelocyPack provided
-  //////////////////////////////////////////////////////////////////////////////
-
-  ErrorCode createCollection(VPackSlice slice);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

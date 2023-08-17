@@ -50,7 +50,7 @@
         <div id="hidden_buttons" style="display: none">
           <button class="delete button-danger" <%=app.isSystem()?"disabled":""%> >Delete</button>
           <button id="app-replace" class="app-replace upgrade button-warning" <%=app.isSystem()?"disabled":"" %>>Replace</button>
-          <button id="app-switch-mode" class="app-switch-mode switch-mode button-warning"><%=app.get('development')?'Set Production':'Set Development'%></button>
+          <button id="app-switch-mode" class="app-switch-mode switch-mode button-warning" <%=app.isSystem()?"disabled":"" %>><%=app.get('development')?'Set Production':'Set Development'%></button>
         </div>
       </div>
     </section>

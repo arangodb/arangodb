@@ -22,42 +22,58 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/ResultT.h"
+#include "Basics/Guarded.h"
+#include "Basics/UnshackledMutex.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/ShardProperties.h"
 
-#include <velocypack/Builder.h>
+#include <shared_mutex>
 
-#include <string>
-#include <memory>
-
-namespace arangodb {
-class MaintenanceFeature;
-}
+struct TRI_vocbase_t;
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IMaintenanceActionExecutor;
+
 struct IDocumentStateShardHandler {
   virtual ~IDocumentStateShardHandler() = default;
-  virtual auto createLocalShard(
-      std::string const& collectionId,
-      std::shared_ptr<velocypack::Builder> const& properties)
-      -> ResultT<std::string> = 0;
-  virtual auto dropLocalShard(std::string const& collectionId) -> Result = 0;
+  virtual auto ensureShard(ShardID shard, CollectionID collection,
+                           std::shared_ptr<VPackBuilder> properties)
+      -> ResultT<bool> = 0;
+  virtual auto dropShard(ShardID const& shard) -> ResultT<bool> = 0;
+  virtual auto dropAllShards() -> Result = 0;
+  virtual auto isShardAvailable(ShardID const& shard) -> bool = 0;
+  virtual auto getShardMap() -> ShardMap = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
  public:
-  explicit DocumentStateShardHandler(GlobalLogIdentifier gid,
-                                     MaintenanceFeature& maintenanceFeature);
-  static auto stateIdToShardId(LogId logId) -> std::string;
-  auto createLocalShard(std::string const& collectionId,
-                        std::shared_ptr<velocypack::Builder> const& properties)
-      -> ResultT<std::string> override;
-  auto dropLocalShard(const std::string& collectionId) -> Result override;
+  explicit DocumentStateShardHandler(
+      GlobalLogIdentifier gid,
+      std::shared_ptr<IMaintenanceActionExecutor> maintenance)
+      : _gid(std::move(gid)), _maintenance(std::move(maintenance)) {}
+#endif
+
+ public:
+  explicit DocumentStateShardHandler(
+      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      std::shared_ptr<IMaintenanceActionExecutor> maintenance);
+  auto ensureShard(ShardID shard, CollectionID collection,
+                   std::shared_ptr<VPackBuilder> properties)
+      -> ResultT<bool> override;
+  auto dropShard(ShardID const& shard) -> ResultT<bool> override;
+  auto dropAllShards() -> Result override;
+  auto isShardAvailable(ShardID const& shardId) -> bool override;
+  auto getShardMap() -> ShardMap override;
 
  private:
   GlobalLogIdentifier _gid;
-  MaintenanceFeature& _maintenanceFeature;
+  std::shared_ptr<IMaintenanceActionExecutor> _maintenance;
+  struct {
+    ShardMap shards;
+    std::shared_mutex mutex;
+  } _shardMap;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

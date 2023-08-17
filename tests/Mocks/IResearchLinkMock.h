@@ -59,23 +59,21 @@ class IResearchLinkMock final : public Index, public IResearchLink {
     return IResearchDataStore::hasSelectivityEstimate();
   }
 
-  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                velocypack::Slice const doc) {
+  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
+                velocypack::Slice doc) {
     return IResearchDataStore::insert<FieldIterator<FieldMeta>,
                                       IResearchLinkMeta>(trx, documentId, doc,
-                                                         meta(), nullptr);
+                                                         meta());
   }
 
-  Result insertInRecovery(transaction::Methods& trx,
-                          LocalDocumentId const& documentId,
-                          velocypack::Slice doc, uint64_t tick) {
-    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
-                                      IResearchLinkMeta>(trx, documentId, doc,
-                                                         meta(), &tick);
+  void recoveryInsert(uint64_t tick, LocalDocumentId documentId,
+                      velocypack::Slice doc) {
+    IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
+                                       IResearchLinkMeta>(tick, documentId, doc,
+                                                          meta());
   }
 
-  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                bool nested, uint64_t const* recoveryTick);
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId);
 
   bool isSorted() const final { return IResearchLink::isSorted(); }
 

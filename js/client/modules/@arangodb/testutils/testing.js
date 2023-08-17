@@ -33,7 +33,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const cu = require('@arangodb/testutils/crash-utils');
 const tu = require('@arangodb/testutils/test-utils');
-const versionHas = require("@arangodb/test-helper").versionHas;
+const {versionHas, flushInstanceInfo} = require("@arangodb/test-helper");
 const internal = require('internal');
 const platform = internal.platform;
 
@@ -56,7 +56,8 @@ let optionsDocumentation = [
 
   ' The following properties of `options` are defined:',
   '',
-  '   - `testOutput`: set the output directory for testresults, defaults to `out`',
+  '   - `testOutputDirectory`: set the output directory for testresults, defaults to `out`',
+  '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `out`',
   '   - `force`: if set to true the tests are continued even if one fails',
   '',
   '   - `maxLogFileSize`: how big logs should be at max - 500k by default',
@@ -67,6 +68,7 @@ let optionsDocumentation = [
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
   '   - `skipGrey`: if set, grey tests are skipped.',
+  '   - `skipN`: skip the first N tests of the suite',
   '   - `onlyGrey`: if set, only grey tests are executed.',
   '   - `testBuckets`: split tests in to buckets and execute on, for example',
   '       10/2 will split into 10 buckets and execute the third bucket.',
@@ -110,6 +112,7 @@ let optionsDocumentation = [
   '   - `sniffProgram`: specify your own programm',
   '   - `sniffAgency`: when sniffing cluster, sniff agency traffic too? (true)',
   '   - `sniffDBServers`: when sniffing cluster, sniff dbserver traffic too? (true)',
+  '   - `sniffFilter`: only launch tcpdump for tests matching this string',
   '',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
@@ -214,21 +217,25 @@ const optionsDefaults = {
   'sniffDBServers': true,
   'sniffDevice': undefined,
   'sniffProgram': undefined,
+  'sniffFilter': undefined,
   'skipLogAnalysis': true,
   'maxLogFileSize': 500 * 1024,
   'skipMemoryIntense': false,
   'skipNightly': true,
   'skipNondeterministic': false,
   'skipGrey': false,
+  'skipN': false,
   'onlyGrey': false,
   'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   'isSan': isSan,
+  'sanOptions': {},
   'isCov': isCoverage,
   'isInstrumented': isInstrumented,
   'skipTimeCritical': false,
   'test': undefined,
   'testBuckets': undefined,
   'testOutputDirectory': 'out',
+  'testXmlOutputDirectory': 'outXml',
   'useReconnect': true,
   'username': 'root',
   'valgrind': false,
@@ -445,7 +452,7 @@ function loadTestSuites () {
   testFuncs['auto'] = autoTest;
 }
 
-function translateTestList(cases) {
+function translateTestList(cases, options) {
   let caselist = [];
   const expandWildcard = ( name ) => {
     if (!name.endsWith('*')) {
@@ -463,6 +470,10 @@ function translateTestList(cases) {
       if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
+        if (fs.exists(which)) {
+          options.test = which;
+          return translateTestList(['auto'], options);
+        }
         print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).sort().join(', '));
         throw new Error("USAGE ERROR");
       }
@@ -497,11 +508,14 @@ function iterateTests(cases, options) {
   let results = {};
   let cleanup = true;
 
+  if (options.extremeVerbosity === true) {
+    internal.logLevel('V8=debug');
+  }
   if (options.failed) {
     // we are applying the failed filter -> only consider cases with failed tests
     cases = _.filter(cases, c => options.failed.hasOwnProperty(c));
   }
-  caselist = translateTestList(cases);
+  caselist = translateTestList(cases, options);
   let optionsList = [];
   if (options.optionsJson != null) {
     optionsList = JSON.parse(options.optionsJson);
@@ -511,6 +525,9 @@ function iterateTests(cases, options) {
   }
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
+    // required, because each different test suite may operate with a different set of servers!
+    flushInstanceInfo();
+
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
     if (localOptions.failed) {
@@ -599,7 +616,26 @@ function unitTest (cases, options) {
   if (options.activefailover && (options.singles === 1)) {
     options.singles =  2;
   }
-  
+  if (options.isSan) {
+    ['ASAN_OPTIONS',
+     'LSAN_OPTIONS',
+     'UBSAN_OPTIONS',
+     'ASAN_OPTIONS',
+     'LSAN_OPTIONS',
+     'UBSAN_OPTIONS',
+     'TSAN_OPTIONS'].forEach(sanOpt => {
+       if (process.env.hasOwnProperty(sanOpt)) {
+         options.sanOptions[sanOpt] = {};
+         let opt = process.env[sanOpt];
+         opt.split(':').forEach(oneOpt => {
+           let pair = oneOpt.split('=');
+           if (pair.length === 2) {
+             options.sanOptions[sanOpt][pair[0]] = pair[1];
+           }
+         });
+       }
+     });
+  }
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
   }

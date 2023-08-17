@@ -91,9 +91,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX("0c057", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
-             !AccessMode::isWriteOrExclusive(_type));
-
   _hints = hints;  // set hints before useCollections
 
   auto& stats = statistics();
@@ -331,6 +328,11 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const noexcept {
   return std::none_of(_collections.begin(), _collections.end(), [](auto* coll) {
     return AccessMode::isWrite(coll->accessType());
   });
+}
+
+std::string RocksDBTransactionState::debugInfo() const {
+  // can be overriden by derived classes
+  return "n/a";
 }
 
 bool RocksDBTransactionState::hasFailedOperations() const noexcept {

@@ -1,8 +1,7 @@
 
 @startDocuBlock post_api_transaction_begin
-@brief begin a server-side transaction
 
-@RESTHEADER{POST /_api/transaction/begin, Begin transaction, executeBegin}
+@RESTHEADER{POST /_api/transaction/begin, Begin a Stream Transaction, beginStreamTransaction}
 
 @RESTHEADERPARAMETERS
 
@@ -14,10 +13,10 @@ This header decides about dirty reads for the entire transaction. Individual
 read operations, that are performed as part of the transaction, cannot override it.
 
 @RESTBODYPARAM{collections,string,required,string}
-*collections* must be a JSON object that can have one or all sub-attributes
-*read*, *write* or *exclusive*, each being an array of collection names or a
+`collections` must be a JSON object that can have one or all sub-attributes
+`read`, `write` or `exclusive`, each being an array of collection names or a
 single collection name as string. Collections that will be written to in the
-transaction must be declared with the *write* or *exclusive* attribute or it
+transaction must be declared with the `write` or `exclusive` attribute or it
 will fail, whereas non-declared collections from which is solely read will be
 added lazily.
 
@@ -32,27 +31,36 @@ Allow reading from undeclared collections.
 an optional numeric value that can be used to set a
 timeout in seconds for waiting on collection locks. This option is only
 meaningful when using exclusive locks. If not specified, a default
-value will be used. Setting *lockTimeout* to *0* will make ArangoDB
+value will be used. Setting `lockTimeout` to `0` will make ArangoDB
 not time out waiting for a lock.
 
 @RESTBODYPARAM{maxTransactionSize,integer,optional,int64}
 Transaction size limit in bytes.
 
 @RESTDESCRIPTION
+Begin a Stream Transaction that allows clients to call selected APIs over a
+short period of time, referencing the transaction ID, and have the server
+execute the operations transactionally.
+
+Committing or aborting a running transaction must be done by the client.
+It is bad practice to not commit or abort a transaction once you are done
+using it. It forces the server to keep resources and collection locks 
+until the entire transaction times out.
+
 The transaction description must be passed in the body of the POST request.
 If the transaction can be started on the server, *HTTP 201* will be returned.
 
 For successfully started transactions, the returned JSON object has the
 following properties:
 
-- *error*: boolean flag to indicate if an error occurred (*false*
+- `error`: boolean flag to indicate if an error occurred (`false`
   in this case)
 
-- *code*: the HTTP status code
+- `code`: the HTTP status code
 
-- *result*: result containing
-    - *id*: the identifier of the transaction
-    - *status*: containing the string 'running'
+- `result`: result containing
+    - `id`: the identifier of the transaction
+    - `status`: containing the string 'running'
 
 If the transaction specification is either missing or malformed, the server
 will respond with *HTTP 400* or *HTTP 404*.
@@ -60,13 +68,13 @@ will respond with *HTTP 400* or *HTTP 404*.
 The body of the response will then contain a JSON object with additional error
 details. The object has the following attributes:
 
-- *error*: boolean flag to indicate that an error occurred (*true* in this case)
+- `error`: boolean flag to indicate that an error occurred (`true` in this case)
 
-- *code*: the HTTP status code
+- `code`: the HTTP status code
 
-- *errorNum*: the server error number
+- `errorNum`: the server error number
 
-- *errorMessage*: a descriptive error message
+- `errorMessage`: a descriptive error message
 
 @RESTRETURNCODES
 

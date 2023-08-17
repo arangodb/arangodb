@@ -29,7 +29,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Basics/icu-helper.h"
@@ -48,21 +47,21 @@ class TestThread : public arangodb::Thread {
   TestThread(arangodb::ArangodServer& server, Function&& f, int i, char* c[])
       : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
-    CONDITION_LOCKER(guard, _wait);
+    std::unique_lock guard{_wait.mutex};
     while (true) {
       if (_done) {
         break;
       }
-      _wait.wait(uint64_t(1000000));
+      _wait.cv.wait_for(guard, std::chrono::seconds{1});
     }
   }
   ~TestThread() { shutdown(); }
 
   void run() override {
-    CONDITION_LOCKER(guard, _wait);
+    std::lock_guard guard{_wait.mutex};
     _result = _f(_i, _c);
     _done = true;
-    _wait.broadcast();
+    _wait.cv.notify_all();
   }
 
   int result() { return _result; }

@@ -657,12 +657,6 @@ RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
   TRI_ASSERT(iid.isSet());
   _unique = false;
   _sparse = true;
-  // If the legacyPolygons value is not set here, it is from a previous
-  // version, so we default to `true` here. Coming from `ensureIndex`,
-  // we have always set the value in the definition, and if the user does
-  // not specify it, it defaults to `false` via the IndexTypeFactory.
-  _legacyPolygons = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      info, StaticStrings::IndexLegacyPolygons, true);
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
 }
 

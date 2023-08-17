@@ -27,14 +27,15 @@
 #include "Dump/arangodump.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Maskings/Maskings.h"
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
 #include "Utils/ManagedDirectory.h"
+#include "Basics/BoundedChannel.h"
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -74,6 +75,7 @@ class DumpFeature final : public ArangoDumpFeature {
     bool allDatabases{false};
     bool clusterMode{false};
     bool dumpData{true};
+    bool dumpViews{true};
     bool force{false};
     bool ignoreDistributeShardsLikeErrors{false};
     bool includeSystemCollections{false};
@@ -81,6 +83,13 @@ class DumpFeature final : public ArangoDumpFeature {
     bool progress{true};
     bool useGzip{true};
     bool useEnvelope{false};
+
+    bool useExperimentalDump{false};
+    bool splitFiles{false};
+    std::uint64_t dbserverWorkerThreads{5};
+    std::uint64_t dbserverPrefetchBatches{5};
+    std::uint64_t localWriterThreads{5};
+    std::uint64_t localNetworkThreads{4};
   };
 
   /// @brief Stores stats about the overall dump progress
@@ -106,7 +115,6 @@ class DumpFeature final : public ArangoDumpFeature {
     Stats& stats;
     VPackSlice collectionInfo;
     std::string collectionName;
-    std::string collectionType;
   };
 
   /// @brief stores all necessary data to dump a single collection.
@@ -134,14 +142,71 @@ class DumpFeature final : public ArangoDumpFeature {
                  std::string const& server,
                  std::shared_ptr<ManagedDirectory::File> file);
 
-    ~DumpShardJob();
-
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
-    VPackSlice const collectionInfo;
     std::string const shardName;
     std::string const server;
     std::shared_ptr<ManagedDirectory::File> file;
+  };
+
+  struct DumpFileProvider {
+    explicit DumpFileProvider(
+        ManagedDirectory& directory,
+        std::map<std::string, arangodb::velocypack::Slice>& collectionInfo,
+        bool splitFiles);
+    std::shared_ptr<ManagedDirectory::File> getFile(
+        std::string const& collection);
+
+   private:
+    struct CollectionFiles {
+      std::size_t count{0};
+      std::shared_ptr<ManagedDirectory::File> file;
+    };
+
+    bool const _splitFiles;
+    std::mutex _mutex;
+    std::unordered_map<std::string, CollectionFiles> _filesByCollection;
+    ManagedDirectory& _directory;
+    std::map<std::string, arangodb::velocypack::Slice>& _collectionInfo;
+  };
+
+  struct ParallelDumpServer : public DumpJob {
+    struct ShardInfo {
+      std::string collectionName;
+    };
+
+    ParallelDumpServer(ManagedDirectory&, DumpFeature&, ClientManager&,
+                       Options const& options, maskings::Maskings* maskings,
+                       Stats& stats, std::shared_ptr<DumpFileProvider>,
+                       std::unordered_map<std::string, ShardInfo> shards,
+                       std::string server);
+
+    Result run(httpclient::SimpleHttpClient&) override;
+
+    std::unique_ptr<httpclient::SimpleHttpResult> receiveNextBatch(
+        httpclient::SimpleHttpClient&, std::uint64_t batchId,
+        std::optional<std::uint64_t> lastBatch);
+
+    void runNetworkThread(size_t threadId) noexcept;
+    void runWriterThread() noexcept;
+
+    void createDumpContext(httpclient::SimpleHttpClient& client);
+    void finishDumpContext(httpclient::SimpleHttpClient& client);
+
+    ClientManager& clientManager;
+    std::shared_ptr<DumpFileProvider> const fileProvider;
+    std::unordered_map<std::string, ShardInfo> const shards;
+    std::string const server;
+    std::atomic<std::uint64_t> _batchCounter{0};
+    std::string dumpId;
+    BoundedChannel<arangodb::httpclient::SimpleHttpResult> queue;
+
+    enum BlockAt { kLocalQueue = 0, kRemoteQueue = 1 };
+
+    void countBlocker(BlockAt where, int64_t c);
+    void printBlockStats();
+
+    std::atomic<std::int64_t> blockCounter[2];
   };
 
   ClientTaskQueue<DumpJob>& taskQueue();
@@ -153,7 +218,7 @@ class DumpFeature final : public ArangoDumpFeature {
   int& _exitCode;
   Options _options;
   Stats _stats;
-  Mutex _workerErrorLock;
+  std::mutex _workerErrorLock;
   std::vector<Result> _workerErrors;
   std::unique_ptr<maskings::Maskings> _maskings;
 
@@ -168,7 +233,7 @@ class DumpFeature final : public ArangoDumpFeature {
                  uint64_t batchId);
 
   Result storeDumpJson(VPackSlice body, std::string const& dbName) const;
-  Result storeViews(velocypack::Slice const&) const;
+  Result storeViews(velocypack::Slice views) const;
 };
 
 }  // namespace arangodb

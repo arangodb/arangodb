@@ -427,6 +427,12 @@ const impTodos = [{
   type: 'csv',
   create: 'true',
   batchSize: 1000
+}, {
+  id: 'json1-extended-name',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨',
+  type: 'json',
+  create: undefined
 }];
 
 class importRunner extends tu.runInArangoshRunner {

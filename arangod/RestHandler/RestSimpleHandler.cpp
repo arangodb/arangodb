@@ -24,7 +24,6 @@
 #include "RestSimpleHandler.h"
 #include "Aql/BindParameters.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/StandaloneContext.h"

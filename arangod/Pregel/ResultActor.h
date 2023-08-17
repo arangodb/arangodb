@@ -22,70 +22,134 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <chrono>
+#include <memory>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Basics/ResultT.h"
 #include "Pregel/ResultMessages.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "fmt/core.h"
 
 namespace arangodb::pregel {
 
-struct ResultState {
+struct PregelResult {
   ResultT<PregelResults> results = {PregelResults{}};
-  bool finished{false};
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, ResultState& x) {
-  return f.object(x).fields(f.field("results", x.results));
-}
-
-template<typename Runtime>
-struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
-  auto operator()(message::ResultStart start) -> std::unique_ptr<ResultState> {
-    LOG_TOPIC("ea414", INFO, Logger::PREGEL)
-        << fmt::format("Result Actor {} started", this->self);
-    return std::move(this->state);
-  }
-
-  auto operator()(message::SaveResults start) -> std::unique_ptr<ResultState> {
-    this->state->results = {start.results};
-    this->state->finished = true;
-    return std::move(this->state);
-  }
-
-  auto operator()(message::AddResults msg) -> std::unique_ptr<ResultState> {
-    if (this->state->finished) {
-      return std::move(this->state);
+  std::atomic<bool> complete{false};
+  auto add(ResultT<PregelResults> moreResults, bool lastResult) -> void {
+    if (complete.load()) {
+      return;
     }
-
-    if (this->state->results.fail()) {
-      return std::move(this->state);
+    if (results.fail()) {
+      return;
     }
-
-    if (msg.results.fail()) {
-      this->state->results = msg.results;
-      this->state->finished = true;
-      return std::move(this->state);
+    if (moreResults.fail()) {
+      results = moreResults;
+      complete.store(true);
+      return;
     }
 
     VPackBuilder newResultsBuilder;
     {
       VPackArrayBuilder ab(&newResultsBuilder);
       // Add existing results to new builder
-      if (!msg.results.get().results.isEmpty()) {
+      if (!results.get().results.isEmpty()) {
         newResultsBuilder.add(
-            VPackArrayIterator(msg.results.get().results.slice()));
+            VPackArrayIterator(results.get().results.slice()));
       }
       // add new results from message to builder
       newResultsBuilder.add(
-          VPackArrayIterator(msg.results.get().results.slice()));
+          VPackArrayIterator(moreResults.get().results.slice()));
     }
-    this->state->results = {
-        PregelResults{.results = std::move(newResultsBuilder)}};
+    results = {PregelResults{.results = std::move(newResultsBuilder)}};
 
-    this->state->finished = msg.receivedAllResults;
+    if (lastResult) {
+      complete.store(true);
+    }
+  }
+  auto set(ResultT<PregelResults> moreResults) -> void {
+    results = moreResults;
+    complete.store(true);
+  }
+  auto get() -> std::optional<ResultT<PregelResults>> {
+    if (not complete.load()) {
+      return std::nullopt;
+    }
+    return results;
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, PregelResult& x) {
+  return f.object(x).fields(f.field("results", x.results));
+}
+struct ResultState {
+  ResultState() = default;
+  ResultState(TTL ttl) : ttl{ttl} {};
+  std::shared_ptr<PregelResult> data = std::make_shared<PregelResult>();
+  std::vector<actor::ActorPID> otherResultActors;
+  TTL ttl;
+  std::chrono::system_clock::time_point expiration;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ResultState& x) {
+  return f.object(x).fields(f.field("data", x.data));
+}
 
+template<typename Runtime>
+struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
+  auto setExpiration() {
+    this->state->expiration =
+        std::chrono::system_clock::now() + this->state->ttl.duration;
+
+    this->template dispatch<pregel::message::ResultMessages>(
+        this->self, pregel::message::CleanupResultWhenExpired{});
+  }
+
+  auto operator()(message::ResultStart start) -> std::unique_ptr<ResultState> {
+    LOG_TOPIC("ea414", INFO, Logger::PREGEL)
+        << fmt::format("Result Actor {} started", this->self);
+    return std::move(this->state);
+  }
+
+  auto operator()(message::OtherResultActorStarted start)
+      -> std::unique_ptr<ResultState> {
+    this->state->otherResultActors.push_back(this->sender);
+    return std::move(this->state);
+  }
+
+  auto operator()(message::SaveResults msg) -> std::unique_ptr<ResultState> {
+    this->state->data->set(msg.results);
+    setExpiration();
+    return std::move(this->state);
+  }
+
+  auto operator()(message::AddResults msg) -> std::unique_ptr<ResultState> {
+    this->state->data->add(msg.results, msg.receivedAllResults);
+    if (this->state->data->complete.load()) {
+      setExpiration();
+    }
+    return std::move(this->state);
+  }
+
+  auto operator()(message::CleanupResultWhenExpired msg)
+      -> std::unique_ptr<ResultState> {
+    if (this->state->expiration <= std::chrono::system_clock::now()) {
+      this->finish();
+    } else {
+      // send this message every 20 seconds
+      std::chrono::seconds offset = std::chrono::seconds(20);
+      this->template dispatchDelayed<pregel::message::ResultMessages>(
+          offset, this->self, pregel::message::CleanupResultWhenExpired{});
+    }
+    return std::move(this->state);
+  }
+
+  auto operator()(message::CleanupResults msg) -> std::unique_ptr<ResultState> {
+    this->finish();
+    for (auto const& actor : this->state->otherResultActors) {
+      this->template dispatch<pregel::message::ResultMessages>(
+          actor, pregel::message::CleanupResults{});
+    }
     return std::move(this->state);
   }
 

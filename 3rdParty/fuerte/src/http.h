@@ -28,36 +28,26 @@
 #include <fuerte/types.h>
 
 #include <string>
+#include <string_view>
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
-/// url-decodes [src, src+len) into out
-void urlDecode(std::string& out, char const* src, size_t len);
-
-/// url-decodes str into out - convenience function
-inline void urlDecode(std::string& out, std::string const& str) {
-  return urlDecode(out, str.data(), str.size());
-}
+void urlDecode(std::string& out, std::string_view str);
 
 /// url-decodes str and returns it - convenience function
-inline std::string urlDecode(std::string const& str) {
+inline std::string urlDecode(std::string_view str) {
   std::string result;
-  urlDecode(result, str.c_str(), str.size());
+  urlDecode(result, str);
   return result;
 }
 
-/// url-encodes [src, src+len) into out
-void urlEncode(std::string& out, char const* src, size_t len);
-
 /// url-encodes str into out - convenience function
-inline void urlEncode(std::string& out, std::string const& str) {
-  return urlEncode(out, str.data(), str.size());
-}
+void urlEncode(std::string& out, std::string_view str);
 
 /// url-encodes str and returns it - convenience function
-inline std::string urlEncode(std::string const& str) {
+inline std::string urlEncode(std::string_view str) {
   std::string result;
-  urlEncode(result, str.c_str(), str.size());
+  urlEncode(result, str);
   return result;
 }
 

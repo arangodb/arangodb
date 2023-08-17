@@ -126,7 +126,7 @@ function testSuite() {
          const url = endpoint + mount + "/environment-variables-get-path";
          const res = download(url);
          assertEqual(204, res.code);
-         assertEqual("undefined", res.body);
+         assertEqual("", res.body);
        }
        { // modify
          const url = endpoint + mount + "/environment-variables-set-path";
@@ -138,7 +138,7 @@ function testSuite() {
          const url = endpoint + mount + "/environment-variables-get-path";
          const res = download(url);
          assertEqual(204, res.code);
-         assertEqual("undefined", res.body);
+         assertEqual("", res.body);
        }
      },
 
@@ -146,7 +146,7 @@ function testSuite() {
        const url = endpoint + mount + "/startup-options-log-file";
        const res = download(url);
        assertEqual(204, res.code);
-       assertEqual("undefined", res.body);
+       assertEqual("", res.body);
      },
 
      testReadServiceFile : function() {

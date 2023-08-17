@@ -203,6 +203,7 @@ class Logger {
   static LogTopic VALIDATION;
   static LogTopic V8;
   static LogTopic VIEWS;
+  static LogTopic DEPRECATION;
 
  public:
   struct FIXED {

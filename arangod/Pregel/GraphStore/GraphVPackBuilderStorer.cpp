@@ -55,42 +55,39 @@
 namespace arangodb::pregel {
 
 template<typename V, typename E>
-auto GraphVPackBuilderStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver)
-    -> void {
-  result = std::make_unique<VPackBuilder>();
-
+auto GraphVPackBuilderStorer<V, E>::store(Magazine<V, E> magazine)
+    -> futures::Future<futures::Unit> {
   std::string tmp;
 
-  result->openArray(/*unindexed*/ true);
-  for (auto& vertex : *quiver) {
-    ADB_PROD_ASSERT(vertex.shard().value < config->globalShardIDs().size());
-    ShardID const& shardId = config->globalShardID(vertex.shard());
-
-    result->openObject(/*unindexed*/ true);
-    if (withId) {
-      std::string const& cname = config->shardIDToCollectionName(shardId);
-      if (!cname.empty()) {
-        tmp.clear();
-        tmp.append(cname);
-        tmp.push_back('/');
-        tmp.append(vertex.key().data(), vertex.key().size());
-        result->add(StaticStrings::IdString, VPackValue(tmp));
+  for (auto& quiver : magazine) {
+    for (auto& vertex : *quiver) {
+      std::string const& cname =
+          config->graphSerdeConfig().collectionName(vertex.shard());
+      result->openObject(/*unindexed*/ true);
+      if (withId) {
+        if (!cname.empty()) {
+          tmp.clear();
+          tmp.append(cname);
+          tmp.push_back('/');
+          tmp.append(vertex.key().data(), vertex.key().size());
+          result->add(StaticStrings::IdString, VPackValue(tmp));
+        }
       }
-    }
 
-    result->add(StaticStrings::KeyString,
-                VPackValuePair(vertex.key().data(), vertex.key().size(),
-                               VPackValueType::String));
+      result->add(StaticStrings::KeyString,
+                  VPackValuePair(vertex.key().data(), vertex.key().size(),
+                                 VPackValueType::String));
 
-    V const& data = vertex.data();
-    if (auto res = graphFormat->buildVertexDocument(*result, &data); !res) {
-      LOG_PREGEL("37fde", ERR) << "Failed to build vertex document";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "Failed to build vertex document");
+      V const& data = vertex.data();
+      if (auto res = graphFormat->buildVertexDocument(*result, &data); !res) {
+        LOG_PREGEL("37fde", ERR) << "Failed to build vertex document";
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Failed to build vertex document");
+      }
+      result->close();
     }
-    result->close();
   }
-  result->close();
+  return futures::Unit{};
 }
 
 }  // namespace arangodb::pregel

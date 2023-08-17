@@ -32,6 +32,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 
 SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
@@ -183,6 +185,29 @@ bool SimpleRocksDBTransactionState::ensureSnapshot() {
 
 rocksdb::SequenceNumber SimpleRocksDBTransactionState::beginSeq() const {
   return _rocksMethods->GetSequenceNumber();
+}
+
+std::string SimpleRocksDBTransactionState::debugInfo() const {
+  // serialize transaction options
+  velocypack::Builder builder;
+  builder.openObject();
+  options().toVelocyPack(builder);
+  builder.close();
+
+  return absl::StrCat(
+      "num operations: ", numOperations(), ", tid: ", id().id(),
+      ", transaction options: ", builder.slice().toJson(),
+      ", transaction hints: ", _hints.toString(), ", actor: ", actorName(),
+      ", num collections: ", numCollections(),
+      ", num primitive operations: ", numPrimitiveOperations(),
+      ", num commits: ", numCommits(),
+      ", num intermediate commits: ", numIntermediateCommits(),
+      ", is follower trx: ", (isFollowerTransaction() ? "yes" : "no"),
+      ", is read only trx: ", (isReadOnlyTransaction() ? "yes" : "no"),
+      ", is single: ", (isSingleOperation() ? "yes" : "no"),
+      ", is only exclusive: ", (isOnlyExclusiveTransaction() ? "yes" : "no"),
+      ", is indexing disabled: ",
+      (_rocksMethods->isIndexingDisabled() ? "yes" : "no"));
 }
 
 std::unique_ptr<TransactionCollection>

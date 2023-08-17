@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Identifier.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
@@ -35,7 +36,7 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
-
+#include <absl/hash/hash.h>
 #include <atomic>
 #include <functional>
 #include <unordered_map>
@@ -61,7 +62,7 @@ struct IManager {
                                  std::string const& database) = 0;
 };
 
-/// @brief Tracks TransasctionState instances
+/// @brief Tracks TransactionState instances
 class Manager final : public IManager {
   static constexpr size_t numBuckets = 16;
   static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
@@ -127,11 +128,11 @@ class Manager final : public IManager {
   // unregister a transaction
   void unregisterTransaction(TransactionId transactionId,
                              bool isReadOnlyTransaction,
-                             bool isFollowerTransaction);
+                             bool isFollowerTransaction) noexcept;
 
   uint64_t getActiveTransactionCount();
 
-  void disallowInserts() {
+  void disallowInserts() noexcept {
     _disallowInserts.store(true, std::memory_order_release);
   }
 
@@ -177,7 +178,7 @@ class Manager final : public IManager {
                                                         bool isSideUser);
   void returnManagedTrx(TransactionId, bool isSideUser) noexcept;
 
-  /// @brief get the meta transasction state
+  /// @brief get the meta transaction state
   transaction::Status getManagedTrxStatus(TransactionId,
                                           std::string const& database) const;
 
@@ -206,19 +207,19 @@ class Manager final : public IManager {
   // Hotbackup Stuff
   // ---------------------------------------------------------------------------
 
-  // temporarily block all new transactions
+  // temporarily block all transactions from committing
   template<typename TimeOutType>
   bool holdTransactions(TimeOutType timeout) {
     bool ret = false;
-    std::unique_lock<std::mutex> guard(_mutex);
-    if (!_writeLockHeld) {
+    std::unique_lock<std::mutex> guard(_hotbackupMutex);
+    if (!_hotbackupCommitLockHeld) {
       LOG_TOPIC("eedda", TRACE, Logger::TRANSACTIONS)
           << "Trying to get write lock to hold transactions...";
-      ret = _rwLock.lockWrite(timeout);
+      ret = _hotbackupCommitLock.tryLockWriteFor(timeout);
       if (ret) {
         LOG_TOPIC("eeddb", TRACE, Logger::TRANSACTIONS)
             << "Got write lock to hold transactions.";
-        _writeLockHeld = true;
+        _hotbackupCommitLockHeld = true;
       } else {
         LOG_TOPIC("eeddc", TRACE, Logger::TRANSACTIONS)
             << "Did not get write lock to hold transactions.";
@@ -229,14 +230,18 @@ class Manager final : public IManager {
 
   // remove the block
   void releaseTransactions() noexcept {
-    std::unique_lock<std::mutex> guard(_mutex);
-    if (_writeLockHeld) {
+    std::unique_lock<std::mutex> guard(_hotbackupMutex);
+    if (_hotbackupCommitLockHeld) {
       LOG_TOPIC("eeddd", TRACE, Logger::TRANSACTIONS)
           << "Releasing write lock to hold transactions.";
-      _rwLock.unlockWrite();
-      _writeLockHeld = false;
+      _hotbackupCommitLock.unlockWrite();
+      _hotbackupCommitLockHeld = false;
     }
   }
+
+  using TransactionCommitGuard = basics::ReadLocker<basics::ReadWriteLock>;
+
+  TransactionCommitGuard getTransactionCommitGuard();
 
   void initiateSoftShutdown() {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
@@ -259,7 +264,7 @@ class Manager final : public IManager {
 
   /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TransactionId tid) const noexcept {
-    return std::hash<TransactionId>()(tid) % numBuckets;
+    return absl::Hash<uint64_t>()(tid.id()) % numBuckets;
   }
 
   std::shared_ptr<ManagedContext> buildManagedContextUnderLock(
@@ -295,15 +300,14 @@ class Manager final : public IManager {
 
   /// Nr of running transactions
   std::atomic<uint64_t> _nrRunning;
-  std::atomic<uint64_t> _nrReadLocked;
 
   std::atomic<bool> _disallowInserts;
 
-  std::mutex _mutex;  // Makes sure that we only ever get or release the
-                      // write lock and adjust _writeLockHeld at the same
-                      // time.
-  basics::ReadWriteLock _rwLock;
-  bool _writeLockHeld;
+  std::mutex _hotbackupMutex;  // Makes sure that we only ever get or release
+                               // the write lock and adjust _writeLockHeld at
+                               // the same time.
+  basics::ReadWriteLock _hotbackupCommitLock;
+  bool _hotbackupCommitLockHeld;
 
   double _streamingLockTimeout;
 

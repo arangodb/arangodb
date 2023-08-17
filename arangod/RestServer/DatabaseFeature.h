@@ -111,11 +111,11 @@ class DatabaseFeature final : public ArangodFeature {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  ///        if StorageEngine.inRecovery() -> call at start of recoveryDone()
-  ///                                         and fail recovery if callback
-  ///                                         !ok()
-  ///        if !StorageEngine.inRecovery() -> call immediately and return
-  ///                                          result
+  ///   if StorageEngine.inRecovery() ->
+  ///     call at start of recoveryDone() in parallel with other callbacks
+  ///     and fail recovery if callback !ok()
+  ///   else ->
+  ///     call immediately and return result
   //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
 
@@ -157,30 +157,22 @@ class DatabaseFeature final : public ArangodFeature {
   bool upgrade() const noexcept { return _upgrade; }
   bool waitForSync() const noexcept { return _defaultWaitForSync; }
   replication::Version defaultReplicationVersion() const noexcept {
-    return _defaultReplicationVersion;
+    return replication::parseVersion(_defaultReplicationVersion).get();
   }
 
-  /// @brief whether or not extended names for databases can be used
-  bool extendedNamesForDatabases() const noexcept {
-    return _extendedNamesForDatabases;
-  }
+  /// @brief whether or not extended names for databases, collections, views
+  /// and indexes
+  bool extendedNames() const noexcept { return _extendedNames; }
   /// @brief will be called only during startup when reading stored value from
   /// storage engine
-  void extendedNamesForDatabases(bool value) noexcept {
-    _extendedNamesForDatabases = value;
-  }
+  void extendedNames(bool value) noexcept { _extendedNames = value; }
 
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForCollections() const noexcept { return false; }
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForViews() const noexcept { return false; }
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForAnalyzers() const noexcept { return false; }
+  void enableCheckVersion() noexcept { _checkVersion = true; }
+  void enableUpgrade() noexcept { _upgrade = true; }
+  void disableUpgrade() noexcept { _upgrade = false; }
+  void isInitiallyEmpty(bool value) noexcept { _isInitiallyEmpty = value; }
 
-  void enableCheckVersion() { _checkVersion = true; }
-  void enableUpgrade() { _upgrade = true; }
-  void disableUpgrade() { _upgrade = false; }
-  void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
+  size_t maxDatabases() const noexcept { return _maxDatabases; }
 
   static TRI_vocbase_t& getCalculationVocbase();
 
@@ -198,23 +190,23 @@ class DatabaseFeature final : public ArangodFeature {
   /// @brief close all dropped databases
   void closeDroppedDatabases();
 
-  /// @brief activates deadlock detection in all existing databases
-  void enableDeadlockDetection();
-
   bool _defaultWaitForSync{false};
   bool _ignoreDatafileErrors{false};
   bool _isInitiallyEmpty{false};
   bool _checkVersion{false};
   bool _upgrade{false};
-  // allow extended database names or not
-  bool _extendedNamesForDatabases{false};
+  // allow extended names for databases, collections, views and indexes
+  bool _extendedNames{false};
   bool _performIOHeartbeat{true};
   std::atomic_bool _started{false};
 
-  replication::Version _defaultReplicationVersion{replication::Version::ONE};
+  std::string _defaultReplicationVersion{
+      replication::versionToString(replication::Version::ONE)};
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
+
+  size_t _maxDatabases{SIZE_MAX};
 
   using DatabasesList = containers::FlatHashMap<std::string, TRI_vocbase_t*>;
   class DatabasesListGuard {

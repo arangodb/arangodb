@@ -676,7 +676,7 @@ ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client,
                                            std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
-  builder.add("name", VPackValue(normalizeUtf8ToNFC(name)));
+  builder.add("name", VPackValue(name));
   builder.add("users", VPackValue(VPackValueType::Array));
   builder.openObject();
   builder.add("username", VPackValue(client.username()));

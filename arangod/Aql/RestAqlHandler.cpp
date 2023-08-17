@@ -43,6 +43,7 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
+#include "GeneralServer/RestHandler.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
@@ -343,8 +344,7 @@ void RestAqlHandler::setupClusterQuery() {
         {coordinatorId, rebootId},
         [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
          queryId = q->id()]() {
-          queryRegistry->destroyQuery(vocbaseName, queryId,
-                                      TRI_ERROR_TRANSACTION_ABORTED);
+          queryRegistry->destroyQuery(queryId, TRI_ERROR_TRANSACTION_ABORTED);
           LOG_TOPIC("42511", DEBUG, Logger::AQL)
               << "Query snippet destroyed as consequence of "
                  "RebootTracker for coordinator, db="
@@ -369,11 +369,21 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
   }
 
   if (!_engine) {  // the PUT verb
-    TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE);
+    TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE ||
+               this->state() == RestHandler::HandlerState::CONTINUED);
 
-    _engine = findEngine(idString);
-    if (!_engine) {
-      return RestStatus::DONE;
+    auto res = findEngine(idString);
+    if (res.fail()) {
+      if (res.is(TRI_ERROR_LOCKED)) {
+        // engine is still in use, but we have enqueued a callback to be woken
+        // up once it is free again
+        return RestStatus::WAITING;
+      } else {
+        TRI_ASSERT(res.is(TRI_ERROR_QUERY_NOT_FOUND));
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
+                      "query ID " + idString + " not found");
+        return RestStatus::DONE;
+      }
     }
     std::shared_ptr<SharedQueryState> ss = _engine->sharedState();
     ss->setWakeupHandler(withLogContext(
@@ -494,7 +504,6 @@ RestStatus RestAqlHandler::continueExecute() {
   if (type == rest::RequestType::PUT) {
     // This cannot be changed!
     TRI_ASSERT(suffixes.size() == 2);
-    TRI_ASSERT(_engine != nullptr);
     return useQuery(suffixes[0], suffixes[1]);
   } else if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "finish") {
     return RestStatus::DONE;  // uses futures
@@ -529,85 +538,72 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
 }
 
 // dig out the query from ID, handle errors
-ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
+Result RestAqlHandler::findEngine(std::string const& idString) {
   TRI_ASSERT(_engine == nullptr);
   uint64_t qId = arangodb::basics::StringUtils::uint64(idString);
 
-  // sleep for 10ms each time, wait for at most 30 seconds...
-  static int64_t const SingleWaitPeriod = 10 * 1000;
-  static int64_t const MaxIterations = static_cast<int64_t>(
-      30.0 * 1000000.0 / static_cast<double>(SingleWaitPeriod));
-
-  int64_t iterations = 0;
-
-  ExecutionEngine* q = nullptr;
-  // probably need to cycle here until we can get hold of the query
-  while (++iterations < MaxIterations) {
-    if (server().isStopping()) {
-      // don't loop for long here if we are shutting down anyway
-      generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
-      break;
+  TRI_IF_FAILURE("RestAqlHandler::killBeforeOpen") {
+    auto res = _queryRegistry->openExecutionEngine(qId, {});
+    // engine may not be available if the query was killed before we got here.
+    // This can happen if another db server has already processed this
+    // failure point, killed the query and reported back to the coordinator,
+    // which then sent the finish request. If this finish request is
+    // processed before the query is opened here, the query is already gone.
+    if (res.ok()) {
+      auto engine = res.get();
+      auto queryId = engine->getQuery().id();
+      _queryRegistry->destroyQuery(queryId, TRI_ERROR_QUERY_KILLED);
+      _queryRegistry->closeEngine(qId);
+      // Here Engine must be gone because we killed it and when closeEngine
+      // drops the last reference it will be destroyed
+      TRI_ASSERT(_queryRegistry->openExecutionEngine(qId, {}).is(
+          TRI_ERROR_QUERY_NOT_FOUND));
     }
-    try {
-      TRI_IF_FAILURE("RestAqlHandler::killBeforeOpen") {
-        auto engine = _queryRegistry->openExecutionEngine(qId);
-        TRI_ASSERT(engine != nullptr);
-        auto queryId = engine->getQuery().id();
-        _queryRegistry->destroyQuery(_vocbase.name(), queryId,
-                                     TRI_ERROR_QUERY_KILLED);
-        _queryRegistry->closeEngine(qId);
-        // Here Engine could be gone
-      }
-      TRI_IF_FAILURE("RestAqlHandler::completeFinishBeforeOpen") {
-        auto errorCode = TRI_ERROR_QUERY_KILLED;
-        auto engine = _queryRegistry->openExecutionEngine(qId);
-        TRI_ASSERT(engine != nullptr);
-        auto queryId = engine->getQuery().id();
-        // Unuse the engine, so we can abort properly
-        _queryRegistry->closeEngine(qId);
+  }
+  TRI_IF_FAILURE("RestAqlHandler::completeFinishBeforeOpen") {
+    auto errorCode = TRI_ERROR_QUERY_KILLED;
+    auto res = _queryRegistry->openExecutionEngine(qId, {});
+    // engine may not be available due to the race described above
+    if (res.ok()) {
+      auto engine = res.get();
+      auto queryId = engine->getQuery().id();
+      // Unuse the engine, so we can abort properly
+      _queryRegistry->closeEngine(qId);
 
-        auto fut =
-            _queryRegistry->finishQuery(_vocbase.name(), queryId, errorCode);
-        TRI_ASSERT(fut.isReady());
-        auto query = fut.get();
-        _queryRegistry->destroyQuery(_vocbase.name(), queryId, errorCode);
-        TRI_ASSERT(query != nullptr)
-            << "QueryRegistry::destroyQuery does not give us the query pointer";
+      auto fut = _queryRegistry->finishQuery(queryId, errorCode);
+      TRI_ASSERT(fut.isReady());
+      auto query = fut.get();
+      if (query != nullptr) {
         auto f = query->finalizeClusterQuery(errorCode);
         // Wait for query to be fully finalized, as a finish call would do.
         f.wait();
-        // Here Engine could be gone
+        // Here Engine must be gone because we finalized it and since there
+        // should not be any other references this should also destroy it.
+        TRI_ASSERT(_queryRegistry->openExecutionEngine(qId, {}).is(
+            TRI_ERROR_QUERY_NOT_FOUND));
       }
-      TRI_IF_FAILURE("RestAqlHandler::prematureCommitBeforeOpen") {
-        auto engine = _queryRegistry->openExecutionEngine(qId);
-        TRI_ASSERT(engine != nullptr);
-        auto queryId = engine->getQuery().id();
-        _queryRegistry->destroyQuery(_vocbase.name(), queryId,
-                                     TRI_ERROR_NO_ERROR);
-        _queryRegistry->closeEngine(qId);
-        // Here Engine could be gone
-      }
-      q = _queryRegistry->openExecutionEngine(qId);
-      // we got the query (or it was not found - at least no one else
-      // can now have access to the same query)
-      break;
-    } catch (...) {
-      // we can only get here if the query is currently used by someone
-      // else. in this case we sleep for a while and re-try
-      std::this_thread::sleep_for(std::chrono::microseconds(SingleWaitPeriod));
     }
   }
-
-  if (q == nullptr) {
-    LOG_TOPIC_IF("baef6", ERR, Logger::AQL, iterations == MaxIterations)
-        << "Timeout waiting for query " << qId;
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
-                  "query ID " + idString + " not found");
+  TRI_IF_FAILURE("RestAqlHandler::prematureCommitBeforeOpen") {
+    auto res = _queryRegistry->openExecutionEngine(qId, {});
+    if (res.ok()) {
+      auto engine = res.get();
+      auto queryId = engine->getQuery().id();
+      _queryRegistry->destroyQuery(queryId, TRI_ERROR_NO_ERROR);
+      _queryRegistry->closeEngine(qId);
+      // Here Engine could be gone
+    }
+  }
+  auto res = _queryRegistry->openExecutionEngine(
+      qId, [self = shared_from_this()]() { self->wakeupHandler(); });
+  if (res.fail()) {
+    return std::move(res).result();
   }
 
-  TRI_ASSERT(q == nullptr || q->engineId() == qId);
+  _engine = res.get();
+  TRI_ASSERT(_engine != nullptr || _engine->engineId() == qId);
 
-  return q;
+  return Result{};
 }
 
 class AqlExecuteCall {
@@ -742,14 +738,13 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 
     if (state == ExecutionState::WAITING) {
       TRI_IF_FAILURE("RestAqlHandler::killWhileWaiting") {
-        _queryRegistry->destroyQuery(_vocbase.name(), _engine->engineId(),
+        _queryRegistry->destroyQuery(_engine->engineId(),
                                      TRI_ERROR_QUERY_KILLED);
       }
       return RestStatus::WAITING;
     }
     TRI_IF_FAILURE("RestAqlHandler::killWhileWritingResult") {
-      _queryRegistry->destroyQuery(_vocbase.name(), _engine->engineId(),
-                                   TRI_ERROR_QUERY_KILLED);
+      _queryRegistry->destroyQuery(_engine->engineId(), TRI_ERROR_QUERY_KILLED);
     }
 
     auto result = AqlExecuteResult{state, skipped, std::move(items)};
@@ -806,8 +801,8 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
       querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
 
   auto f =
-      _queryRegistry->finishQuery(_vocbase.name(), qid, errorCode)
-          .thenValue([self = shared_from_this(), this, qid,
+      _queryRegistry->finishQuery(qid, errorCode)
+          .thenValue([self = shared_from_this(), this,
                       errorCode](std::shared_ptr<ClusterQuery> query) mutable
                      -> futures::Future<futures::Unit> {
             if (query == nullptr) {
@@ -817,10 +812,8 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
               // the query...
               generateError(rest::ResponseCode::NOT_FOUND,
                             TRI_ERROR_HTTP_NOT_FOUND);
-              return {};
+              return futures::Unit{};
             }
-
-            _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
             return query->finalizeClusterQuery(errorCode).thenValue(
                 [self = std::move(self), this,
                  q = std::move(query)](Result res) {

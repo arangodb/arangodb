@@ -50,11 +50,12 @@ class DistributeConsumerNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override { return DISTRIBUTE_CONSUMER; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief whether or not this node will forward initializeCursor or shutDown
   /// requests

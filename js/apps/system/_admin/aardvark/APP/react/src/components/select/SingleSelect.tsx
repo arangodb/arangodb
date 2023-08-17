@@ -1,7 +1,14 @@
 import React from "react";
 
-import { Props } from "react-select";
-import SelectBase, { OptionType } from "./SelectBase";
+import Select, { SelectInstance, Props } from "react-select";
+import { getSelectBase, OptionType } from "./SelectBase";
 
-const SingleSelect = (props: Props<OptionType>) => <SelectBase {...props} />;
+const SingleSelectBase = getSelectBase<false>(Select);
+
+const SingleSelect = React.forwardRef(
+  (
+    props: Props<OptionType, false>,
+    ref: React.Ref<SelectInstance<OptionType, false>>
+  ) => <SingleSelectBase {...props} ref={ref} />
+);
 export default SingleSelect;

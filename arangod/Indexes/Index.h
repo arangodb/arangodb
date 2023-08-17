@@ -37,6 +37,7 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 
 namespace arangodb {
 class IndexIterator;
@@ -50,7 +51,6 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
-struct AttributeNamePath;
 class Projections;
 class SortCondition;
 struct Variable;
@@ -187,8 +187,28 @@ class Index {
     return result;
   }
 
+  /// @brief return the index fields names incl. tracking the resources
+  /// using a resourceMonitor. This needed to be implemented next to the
+  /// method above as we do not have always a resourceMonitor in place
+  /// when acquiring the index fields names.
+  std::vector<MonitoredStringVector> trackedFieldNames(
+      arangodb::ResourceMonitor& resourceMonitor) const {
+    std::vector<MonitoredStringVector> result;
+    result.reserve(_fields.size());
+
+    for (auto const& it : _fields) {
+      MonitoredStringVector parts{resourceMonitor};
+      parts.reserve(it.size());
+      for (auto const& it2 : it) {
+        parts.emplace_back(it2.name);
+      }
+      result.emplace_back(std::move(parts));
+    }
+    return result;
+  }
+
   /// @brief whether or not the ith attribute is expanded (somewhere)
-  inline bool isAttributeExpanded(size_t i) const {
+  bool isAttributeExpanded(size_t i) const {
     if (i >= _fields.size()) {
       return false;
     }
@@ -196,7 +216,7 @@ class Index {
   }
 
   /// @brief whether or not any attribute is expanded
-  inline bool isAttributeExpanded(
+  bool isAttributeExpanded(
       std::vector<basics::AttributeName> const& attribute) const {
     for (auto const& it : _fields) {
       if (!basics::AttributeName::namesMatch(attribute, it)) {
@@ -208,9 +228,8 @@ class Index {
   }
 
   /// @brief whether or not any attribute is expanded
-  inline bool attributeMatches(
-      std::vector<basics::AttributeName> const& attribute,
-      bool isPrimary = false) const {
+  bool attributeMatches(std::vector<basics::AttributeName> const& attribute,
+                        bool isPrimary = false) const {
     for (auto const& it : _fields) {
       if (basics::AttributeName::isIdentical(attribute, it, true)) {
         return true;
@@ -225,7 +244,7 @@ class Index {
   }
 
   /// @brief whether or not any attribute is expanded
-  inline bool hasExpansion() const { return _useExpansion; }
+  bool hasExpansion() const { return _useExpansion; }
 
   /// @brief if index needs explicit reversal and wouldn`t be reverted by
   /// storage rollback
@@ -241,16 +260,16 @@ class Index {
   }
 
   /// @brief return the underlying collection
-  inline LogicalCollection& collection() const { return _collection; }
+  LogicalCollection& collection() const { return _collection; }
 
   /// @brief return a contextual string for logging
   std::string context() const;
 
   /// @brief whether or not the index is sparse
-  inline bool sparse() const { return _sparse; }
+  bool sparse() const { return _sparse; }
 
   /// @brief whether or not the index is unique
-  inline bool unique() const { return _unique; }
+  bool unique() const { return _unique; }
 
   /// @brief validates that field names don't start or end with ":"
   static void validateFieldsWithSpecialCase(velocypack::Slice fields);
@@ -395,10 +414,6 @@ class Index {
   // called when the index is dropped
   virtual Result drop();
 
-  /// @brief called after the collection was truncated
-  /// @param tick at which truncate was applied
-  virtual void afterTruncate(TRI_voc_tick_t, transaction::Methods*) {}
-
   /// @brief whether or not the filter condition is supported by the index
   /// returns detailed information about the costs associated with using this
   /// index
@@ -459,6 +474,13 @@ class Index {
   /// @param key the conflicting key
   Result& addErrorMsg(Result& r, std::string_view key = {}) const;
 
+  void progress(double p) noexcept {
+    _progress.store(p, std::memory_order_relaxed);
+  }
+  double progress() const noexcept {
+    return _progress.load(std::memory_order_relaxed);
+  }
+
  protected:
   static std::vector<std::vector<basics::AttributeName>> parseFields(
       velocypack::Slice fields, bool allowEmpty, bool allowExpansion);
@@ -485,6 +507,7 @@ class Index {
   LogicalCollection& _collection;
   std::string _name;
   std::vector<std::vector<basics::AttributeName>> const _fields;
+  std::atomic<double> _progress;
   bool const _useExpansion;
 
   mutable bool _unique;

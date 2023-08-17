@@ -26,17 +26,23 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Aql/AqlItemBlockSerializationFormat.h"
+#include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearchQueryCommon.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -226,7 +232,7 @@ bool findEmptyNodes(
       arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(options->slice()));
 
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 

@@ -8,7 +8,7 @@ target_sources(arangodbtests
   HashesTest.cpp
   HybridLogicalClockTest.cpp
   OverloadTest.cpp
-  PriorityQueueTest.cpp
+  SizeLimitedStringTest.cpp
   StringBufferTest.cpp
   StringBufferInternalTest.cpp
   StringTest.cpp
@@ -27,6 +27,7 @@ target_sources(arangodbtests
   RandomTest.cpp
   ReadWriteLockTest.cpp
   RecursiveLockerTest.cpp
+  ResourceUsageAllocatorTest.cpp
   SpinLockTest.cpp
   StringBufferTest.cpp
   StringUtilsTest.cpp

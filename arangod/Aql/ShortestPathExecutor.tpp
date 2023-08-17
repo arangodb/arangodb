@@ -44,6 +44,7 @@ bool ShortestPathExecutorInfos<FinderType>::useRegisterForTargetInput() const {
 template<class FinderType>
 RegisterId ShortestPathExecutorInfos<FinderType>::getSourceInputRegister()
     const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(useRegisterForSourceInput());
   return _source.reg;
 }
@@ -51,6 +52,7 @@ RegisterId ShortestPathExecutorInfos<FinderType>::getSourceInputRegister()
 template<class FinderType>
 RegisterId ShortestPathExecutorInfos<FinderType>::getTargetInputRegister()
     const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(useRegisterForTargetInput());
   return _target.reg;
 }
@@ -115,6 +117,7 @@ RegisterId ShortestPathExecutorInfos<FinderType>::findRegisterChecked(
 template<class FinderType>
 RegisterId ShortestPathExecutorInfos<FinderType>::getOutputRegister(
     OutputName type) const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(usesOutputRegister(type));
   return findRegisterChecked(type);
 }

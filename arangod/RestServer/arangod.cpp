@@ -69,6 +69,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     server.addReporter(
         {[&](ArangodServer::State state) {
+           CrashHandler::setState(ArangodServer::stringifyState(state));
+
            if (state == ArangodServer::State::IN_START) {
              // drop priveleges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
@@ -100,14 +102,17 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         },
         [](auto& server, TypeTag<RocksDBEngine>) {
           return std::make_unique<RocksDBEngine>(
-              server,
-              server.template getFeature<arangodb::RocksDBOptionFeature>());
+              server, server.template getFeature<RocksDBOptionFeature>());
         },
         [&ret](auto& server, TypeTag<ScriptFeature>) {
           return std::make_unique<ScriptFeature>(server, &ret);
         },
         [&ret](auto& server, TypeTag<ServerFeature>) {
           return std::make_unique<ServerFeature>(server, &ret);
+        },
+        [](auto& server, TypeTag<CacheManagerFeature>) {
+          return std::make_unique<CacheManagerFeature>(
+              server, server.template getFeature<CacheOptionsFeature>());
         },
         [](auto& server, TypeTag<ShutdownFeature>) {
           return std::make_unique<ShutdownFeature>(

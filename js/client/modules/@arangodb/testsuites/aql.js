@@ -48,6 +48,10 @@ const optionsDocumentation = [
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
+const GREEN = require('internal').COLORS.COLOR_GREEN;
+const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
+const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
   'shell_v8': [ tu.pathForTesting('common/v8')],
@@ -97,7 +101,7 @@ class shellv8Runner extends tu.runLocalInArangoshRunner {
 
   run(testcases) {
     let obj = this;
-    let res = {};
+    let res = {failed: 0, status: true};
     let filtered = {};
     let rootDir = fs.join(fs.getTempPath(), 'shellv8Runner');
     this.instanceManager = {
@@ -113,15 +117,29 @@ class shellv8Runner extends tu.runLocalInArangoshRunner {
         };
       }
     };
-
+    let count = 0;
     fs.makeDirectoryRecursive(rootDir);
     testcases.forEach(function (file, i) {
       if (tu.filterTestcaseByOptions(file, obj.options, filtered)) {
-        obj.runOneTest(file);
+        print('\n' + (new Date()).toISOString() + GREEN + " [============] RunInV8: Trying", file, '... ' + count, RESET);
+        res[file] = obj.runOneTest(file);
+        if (res[file].status === false) {
+          res.failed += 1;
+          res.status = false;
+        }
       } else if (obj.options.extremeVerbosity) {
         print('Skipped ' + file + ' because of ' + filtered.filter);
       }
+      count += 1;
     });
+    if (count === 0) {
+      res['ALLTESTS'] = {
+        status: true,
+        skipped: true
+      };
+      res.status = true;
+      print(RED + 'No testcase matched the filter.' + RESET);
+    }
     return res;
   }
 }

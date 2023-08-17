@@ -251,6 +251,7 @@ void ShardLocking::updateLocking(
         info.snippetInfo.try_emplace(snippetId, SnippetInformation{});
   }
   TRI_ASSERT(snippetPart != info.snippetInfo.end());
+  // cppcheck-suppress derefInvalidIteratorRedundantCheck
   SnippetInformation& snip = snippetPart->second;
 
   if (!restrictedShards.empty()) {

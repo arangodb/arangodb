@@ -24,6 +24,7 @@
 
 #include "Supervision.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <memory>
 
@@ -34,6 +35,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/VPack.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -47,14 +49,88 @@ using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
+namespace {
+
+/// The snapshot is valid if it is available and the term matches. We could have
+/// also conditioned this on the state being operational, but that cannot happen
+/// unless the follower gets an append-entries request.
+bool isSnapshotValidInTerm(LogCurrentLocalState const& state, LogTerm term) {
+  return state.snapshotAvailable && state.term == term;
+}
+
+/// Conditions
+/// - server is healthy
+/// - server has a valid snapshot in the current term
+bool isParticipantUsable(LogCurrent const& current,
+                         std::optional<LogPlanTermSpecification> currentTerm,
+                         ParticipantsHealth const& health,
+                         ParticipantId const& participantId) {
+  if (not health.notIsFailed(participantId)) {
+    // server is not healthy
+    return false;
+  }
+
+  auto local = current.localState.find(participantId);
+  if (local == current.localState.end()) {
+    // server is not in current
+    return false;
+  }
+
+  if (not currentTerm.has_value()) {
+    // no term in plan, just check if a snapshot is available
+    return local->second.snapshotAvailable;
+  }
+
+  return isSnapshotValidInTerm(local->second, currentTerm->term);
+}
+}  // namespace
+
+/// Computes the number of usable participants, i.e. those which are not failed
+/// and have a snapshot.
+/// \return Number of usable participants.
+auto computeNumUsableParticipants(
+    LogCurrent const& current,
+    std::optional<LogPlanTermSpecification> currentTerm,
+    std::vector<ParticipantId> const& participants,
+    ParticipantsHealth const& health) -> std::size_t {
+  auto count = std::count_if(
+      participants.cbegin(), participants.cend(), [&](auto const& pid) {
+        return isParticipantUsable(current, currentTerm, health, pid);
+      });
+  TRI_ASSERT(count >= 0);
+  return count;
+}
+
+/// We rely only on health information, as current is not available.
+/// You may want to use this function when the log is in the process of being
+/// created.
 auto computeEffectiveWriteConcern(LogTargetConfig const& config,
                                   ParticipantsFlagsMap const& participants,
                                   ParticipantsHealth const& health) -> size_t {
   auto const numberNotFailedParticipants =
       health.numberNotIsFailedOf(participants);
-
   return std::max(config.writeConcern, std::min(numberNotFailedParticipants,
                                                 config.softWriteConcern));
+}
+
+/// After a log has been created, we have to take into account the number of
+/// usable participants, as it is no longer sufficient for a participant to be
+/// healthy.
+auto computeEffectiveWriteConcern(LogTargetConfig const& config,
+                                  LogCurrent const& current,
+                                  LogPlanSpecification const& plan,
+                                  ParticipantsHealth const& health) -> size_t {
+  std::vector<ParticipantId> participants;
+  participants.reserve(plan.participantsConfig.participants.size());
+  for (auto const& [p, _] : plan.participantsConfig.participants) {
+    participants.emplace_back(p);
+  }
+
+  auto const numUsableParticipants = computeNumUsableParticipants(
+      current, plan.currentTerm, participants, health);
+
+  return std::max(config.writeConcern,
+                  std::min(numUsableParticipants, config.softWriteConcern));
 }
 
 auto isConfigurationCommitted(Log const& log) -> bool {
@@ -113,15 +189,25 @@ auto isLeaderFailed(ServerInstanceReference const& leader,
 //       Yet, is there a case where it is necessary to hand leadership to
 //       an otherwise healthy participant that is not in target anymore?
 auto getParticipantsAcceptableAsLeaders(
-    ParticipantId const& currentLeader,
-    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId> {
+    ParticipantId const& currentLeader, LogTerm term,
+    ParticipantsFlagsMap const& participants,
+    std::unordered_map<ParticipantId, LogCurrentLocalState> const& localStates)
+    -> std::vector<ParticipantId> {
   // A participant is acceptable if it is neither excluded nor
   // already the leader
   auto acceptableLeaderSet = std::vector<ParticipantId>{};
   for (auto const& [participant, flags] : participants) {
-    if (participant != currentLeader and flags.allowedAsLeader) {
-      acceptableLeaderSet.emplace_back(participant);
+    if (participant == currentLeader or not flags.allowedAsLeader) {
+      continue;
     }
+    // The participant should be operation and have a snapshot valid in the
+    // current term.
+    auto iter = localStates.find(participant);
+    if (iter == localStates.end() or
+        not isSnapshotValidInTerm(iter->second, term)) {
+      continue;
+    }
+    acceptableLeaderSet.emplace_back(participant);
   }
 
   return acceptableLeaderSet;
@@ -146,40 +232,117 @@ auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
   }
 }
 
+// Report whether a server is clean, meaning it hasn't lost any data since the
+// last commit. This is allowed to have false negatives (i.e. not report a
+// server as clean, which actually is clean), but not to have false positives
+// (i.e. all servers reported as clean really must be).
+// For waitForSync=true, all servers are always clean.
+// False negatives may inhibit leader election and thus stall the log, until
+// either all servers report back or the unclean server(s) are replaced.
+auto ICleanOracle::serverIsClean(ServerInstanceReference const& participant,
+                                 bool const assumedWaitForSync) -> bool {
+  if (assumedWaitForSync) {
+    return true;
+  } else {
+    return serverIsCleanWfsFalse(participant);
+  }
+}
+
+CleanOracle::CleanOracle(
+    std::unordered_map<ParticipantId, RebootId> const* const safeRebootIds)
+    : _safeRebootIds(*safeRebootIds) {}
+
+auto CleanOracle::serverIsCleanWfsFalse(
+    ServerInstanceReference const& serverInstance) -> bool {
+  // Trivial implementation. It is safe, but maximally pessimistic.
+  // To be improved later: see
+  // https://arangodb.atlassian.net/wiki/spaces/CInfra/pages/2061369370/Concept+Conservative+leader+election
+  // for details.
+  if (auto it = _safeRebootIds.find(serverInstance.serverId);
+      it != _safeRebootIds.end()) {
+    return it->second == serverInstance.rebootId;
+  }
+  return false;
+}
+
 auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsConfig const& participantsConfig,
-                         ParticipantsHealth const& health, LogTerm term)
+                         ParticipantsHealth const& health, LogTerm const term,
+                         bool const assumedWaitForSync, ICleanOracle& mrProper)
     -> LogCurrentSupervisionElection {
   auto election = LogCurrentSupervisionElection();
   election.term = term;
+  auto const getMaybeStatus =
+      [&states](ParticipantId const& p) -> std::optional<LogCurrentLocalState> {
+    auto status = states.find(p);
+    if (status != states.end()) {
+      return status->second;
+    } else {
+      return std::nullopt;
+    }
+  };
+
+  auto const participantsAttending = std::size_t(
+      std::count_if(participantsConfig.participants.begin(),
+                    participantsConfig.participants.end(), [&](auto const& it) {
+                      auto const& participantId = it.first;
+                      if (auto status = getMaybeStatus(participantId); status) {
+                        return status->term == term;
+                      } else {
+                        return false;
+                      }
+                    }));
+
+  bool const allParticipantsAttendingElection =
+      std::all_of(participantsConfig.participants.begin(),
+                  participantsConfig.participants.end(), [&](auto const& it) {
+                    auto const& participantId = it.first;
+                    if (auto status = getMaybeStatus(participantId); status) {
+                      return status->term == term;
+                    } else {
+                      return false;
+                    }
+                  });
+  TRI_ASSERT(
+      (participantsAttending == participantsConfig.participants.size()) ==
+      allParticipantsAttendingElection);
+  election.allParticipantsAttending = allParticipantsAttendingElection;
+  election.participantsAttending = participantsAttending;
 
   for (auto const& [participant, flags] : participantsConfig.participants) {
     auto const excluded = not flags.allowedAsLeader;
     auto const healthy = health.notIsFailed(participant);
 
-    auto maybeStatus = std::invoke(
-        [&states](ParticipantId const& participant)
-            -> std::optional<LogCurrentLocalState> {
-          auto status = states.find(participant);
-          if (status != states.end()) {
-            return status->second;
-          } else {
-            return std::nullopt;
-          }
-        },
-        participant);
+    auto maybeStatus = getMaybeStatus(participant);
 
     auto reason = computeReason(maybeStatus, healthy, excluded, term);
     election.detail.emplace(participant, reason);
 
     if (reason == LogCurrentSupervisionElection::ErrorCode::OK) {
-      election.participantsAvailable += 1;
+      TRI_ASSERT(maybeStatus.has_value());
+      auto const isClean = mrProper.serverIsClean(
+          {participant, maybeStatus->rebootId}, assumedWaitForSync);
+      // Servers that aren't clean can still be electible, but don't count
+      // against the quorum size when voting for a leader.
+      // With waitForSync=true, servers are always clean.
+      // If all participants are attending the election, the election can take
+      // place as if all servers were clean. Note that (only) in this situation
+      // data might have been lost with waitForSync=false.
+      // TODO It might be nice to log a warning in case an election can _only_
+      //      take place because all participants are attending, indicating
+      //      possible data loss due to waitForSync=false.
+      //      But currently, we don't have all necessary information in one
+      //      place.
+      if (isClean || allParticipantsAttendingElection) {
+        election.participantsVoting += 1;
+      }
 
       if (maybeStatus->spearhead >= election.bestTermIndex) {
         if (maybeStatus->spearhead != election.bestTermIndex) {
           election.electibleLeaderSet.clear();
         }
-        election.electibleLeaderSet.push_back(participant);
+        election.electibleLeaderSet.emplace_back(participant,
+                                                 maybeStatus->rebootId);
         election.bestTermIndex = maybeStatus->spearhead;
       }
     }
@@ -247,8 +410,10 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
       current.supervision->assumedWriteConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
+  auto cleanOracle = CleanOracle(&current.safeRebootIds);
   auto election = runElectionCampaign(
-      current.localState, plan.participantsConfig, health, currentTerm.term);
+      current.localState, plan.participantsConfig, health, currentTerm.term,
+      current.supervision->assumedWaitForSync, cleanOracle);
   election.participantsRequired = requiredNumberOfOKParticipants;
 
   auto const numElectible = election.electibleLeaderSet.size();
@@ -261,31 +426,26 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
     return;
   }
 
-  if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
-    // We randomly elect on of the electible leaders
+  if (election.participantsVoting >= requiredNumberOfOKParticipants) {
+    // We randomly elect one of the electible leaders
     auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
     auto const& newLeader =
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
-    auto const& newLeaderRebootId = health.getRebootId(newLeader);
 
-    auto effectiveWriteConcern = computeEffectiveWriteConcern(
-        log.target.config, plan.participantsConfig.participants, health);
+    TRI_ASSERT(current.supervision->assumedWriteConcern <=
+               plan.participantsConfig.config.effectiveWriteConcern);
 
-    if (newLeaderRebootId.has_value()) {
-      ctx.reportStatus<LogCurrentSupervision::LeaderElectionSuccess>(election);
-      ctx.createAction<LeaderElectionAction>(
-          ServerInstanceReference(newLeader, *newLeaderRebootId),
-          effectiveWriteConcern,
-          std::min(current.supervision->assumedWriteConcern,
-                   effectiveWriteConcern),
-          election);
-      return;
-    } else {
-      // TODO: better error
-      //       return LeaderElectionImpossibleAction();
-      //      ctx.reportStatus
-      return;
-    }
+    auto effectiveWriteConcern =
+        computeEffectiveWriteConcern(log.target.config, current, plan, health);
+    auto assumedWriteConcern = std::min(
+        current.supervision->assumedWriteConcern, effectiveWriteConcern);
+    TRI_ASSERT(assumedWriteConcern <= effectiveWriteConcern);
+
+    ctx.reportStatus<LogCurrentSupervision::LeaderElectionSuccess>(election);
+    ctx.createAction<LeaderElectionAction>(newLeader, effectiveWriteConcern,
+                                           assumedWriteConcern, election);
+    return;
+
   } else {
     // Not enough participants were available to form a quorum, so
     // we can't elect a leader
@@ -365,6 +525,10 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
 
+  if (!log.current->leader.has_value()) {
+    return;
+  }
+
   auto const& committedParticipants =
       current.leader->committedParticipantsConfig->participants;
 
@@ -376,18 +540,39 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
     }
 
     auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
-        current.leader->serverId,
-        current.leader->committedParticipantsConfig->participants);
+        leader.serverId, currentTerm.term, committedParticipants,
+        current.localState);
+
+    // If there's a new target, we don't want to switch to another server than
+    // that to avoid switching the leader too often. Note that this doesn't
+    // affect the situation where the current leader is unhealthy, which is
+    // handled in checkLeaderHealthy().
+    if (target.leader) {
+      // Unless the target leader is not permissible as a leader for some
+      // reason, we return and wait for checkLeaderSetInTarget() to do its work.
+      // Otherwise, we still continue as usual to possibly select some random
+      // participant as a follower, in order to make progress.
+      auto const& planParticipants = plan.participantsConfig.participants;
+      auto const targetLeaderConfigIt = planParticipants.find(*target.leader);
+      if (targetLeaderConfigIt != planParticipants.cend() &&
+          health.notIsFailed(*target.leader) &&
+          targetLeaderConfigIt->second.allowedAsLeader) {
+        // Let checkLeaderSetInTarget() do the work instead
+        return;
+      }
+    }
 
     //  Check whether we already have a participant that is
     //  acceptable and forced
     //
     //  if so, make them leader
     for (auto const& participant : acceptableLeaderSet) {
+      // both assertions are guaranteed by getParticipantsAcceptableAsLeaders()
       TRI_ASSERT(committedParticipants.contains(participant));
+      TRI_ASSERT(participant != leader.serverId);
       auto const& flags = committedParticipants.at(participant);
 
-      if (participant != current.leader->serverId and flags.forced) {
+      if (flags.forced) {
         auto const& rebootId = health.getRebootId(participant);
         if (rebootId.has_value()) {
           ctx.createAction<SwitchLeaderAction>(
@@ -429,7 +614,11 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
   if (!log.plan.has_value()) {
     return;
   }
+  if (!log.current.has_value()) {
+    return;
+  }
   TRI_ASSERT(log.plan.has_value());
+  TRI_ASSERT(log.current.has_value());
   auto const& plan = *log.plan;
 
   if (target.leader.has_value()) {
@@ -444,7 +633,7 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
     if (!health.notIsFailed(*target.leader)) {
       ctx.reportStatus<LogCurrentSupervision::TargetLeaderFailed>();
       return;
-    };
+    }
 
     if (hasCurrentTermWithLeader(log) and
         target.leader != plan.currentTerm->leader->serverId) {
@@ -452,16 +641,27 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
       auto const& planLeaderConfig =
           plan.participantsConfig.participants.at(*target.leader);
 
+      {
+        auto const& localStates = log.current->localState;
+        auto iter = localStates.find(*target.leader);
+        if (iter == localStates.end() or
+            not isSnapshotValidInTerm(iter->second, plan.currentTerm->term)) {
+          ctx.reportStatus<
+              LogCurrentSupervision::TargetLeaderSnapshotMissing>();
+          return;
+        }
+      }
+
+      if (!planLeaderConfig.allowedAsLeader) {
+        ctx.reportStatus<LogCurrentSupervision::TargetLeaderExcluded>();
+        return;
+      }
+
       if (planLeaderConfig.forced != true) {
         auto desiredFlags = planLeaderConfig;
         desiredFlags.forced = true;
         ctx.createAction<UpdateParticipantFlagsAction>(*target.leader,
                                                        desiredFlags);
-        return;
-      }
-
-      if (!planLeaderConfig.allowedAsLeader) {
-        ctx.reportStatus<LogCurrentSupervision::TargetLeaderExcluded>();
         return;
       }
 
@@ -595,28 +795,103 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
   auto const& targetParticipants = target.participants;
   auto const& planParticipants = plan.participantsConfig.participants;
 
-  for (auto const& [maybeRemovedParticipant, maybeRemovedParticipantFlags] :
-       planParticipants) {
+  if (planParticipants.size() == targetParticipants.size()) {
+    return;  // Nothing to do here, because checkParticipantToAdd() runs before.
+  }
+
+  auto participantsToRemain = std::vector<ParticipantId>();
+  auto participantsToRemove = std::vector<ParticipantId>();
+  for (auto const& kv : planParticipants) {
+    auto const& participantId = kv.first;
+    if (targetParticipants.contains(participantId)) {
+      participantsToRemain.emplace_back(participantId);
+    } else {
+      participantsToRemove.emplace_back(participantId);
+    }
+  }
+  auto const& current = *log.current;
+
+  // check if, after a remove, enough servers are available to form a quorum
+  auto const needed = plan.participantsConfig.config.effectiveWriteConcern;
+  auto numUsableRemaining = computeNumUsableParticipants(
+      current, plan.currentTerm, participantsToRemain, health);
+
+  // If we haven't enough servers in plan that are usable, choose some of the
+  // usable ones in the "to remove" set to remain (for now).
+  for (auto it = participantsToRemove.begin();
+       numUsableRemaining < needed && it != participantsToRemove.end();) {
+    auto const& participantId = *it;
+    auto const& planFlags = planParticipants.find(participantId)->second;
+    // To compensate for `numUsableRemaining < needed`, we select some usable
+    // participants to remain, even though they're no longer in target.
+    if (planFlags.allowedInQuorum &&
+        isParticipantUsable(current, plan.currentTerm, health, participantId)) {
+      // we choose to let this participant remain
+      participantsToRemain.emplace_back(std::move(*it));
+      std::iter_swap(it, participantsToRemove.end() - 1);
+      participantsToRemove.pop_back();
+      ++numUsableRemaining;
+    } else {
+      ++it;
+    }
+  }
+
+  TRI_ASSERT(numUsableRemaining ==
+             computeNumUsableParticipants(current, plan.currentTerm,
+                                          participantsToRemain, health));
+
+  // if there are not enough participants, make sure we can still commit
+  if (needed > numUsableRemaining) {
+    // remove all allowedInQuorum=false, when possible
+    for (auto const& [pid, flags] : planParticipants) {
+      auto shouldBeAllowedInQuorum = [&, &maybeRemovedParticipant = pid] {
+        if (auto iter = targetParticipants.find(maybeRemovedParticipant);
+            iter != targetParticipants.end()) {
+          if (not iter->second.allowedInQuorum) {
+            return false;
+          }
+        }
+
+        return true;
+      };
+
+      if (not flags.allowedInQuorum and shouldBeAllowedInQuorum()) {
+        // unset the flag for now
+        auto newFlags = flags;
+        newFlags.allowedInQuorum = true;
+        ctx.createAction<UpdateParticipantFlagsAction>(pid, newFlags);
+      }
+    }
+
+    ctx.reportStatus<LogCurrentSupervision::TargetNotEnoughParticipants>();
+    return;
+  }
+
+  if (committedParticipantsConfig.generation !=
+      plan.participantsConfig.generation) {
+    // still waiting
+    ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
+    ctx.createAction<NoActionPossibleAction>();
+    return;
+  }
+
+  for (auto const& participantToRemove : participantsToRemove) {
+    auto const& [maybeRemovedParticipant, maybeRemovedParticipantFlags] =
+        *planParticipants.find(participantToRemove);
     // never remove a leader
     if (!targetParticipants.contains(maybeRemovedParticipant) and
         maybeRemovedParticipant != leader.serverId) {
       // If the participant is not allowed in Quorum it is safe to remove it
-      if (not maybeRemovedParticipantFlags.allowedInQuorum and
-          committedParticipantsConfig.generation ==
-              plan.participantsConfig.generation) {
+      if (not maybeRemovedParticipantFlags.allowedInQuorum) {
         ctx.createAction<RemoveParticipantFromPlanAction>(
             maybeRemovedParticipant);
-      } else if (maybeRemovedParticipantFlags.allowedInQuorum) {
+      } else {
         // A participant can only be removed without risk,
         // if it is not member of any quorum
         auto newFlags = maybeRemovedParticipantFlags;
         newFlags.allowedInQuorum = false;
         ctx.createAction<UpdateParticipantFlagsAction>(maybeRemovedParticipant,
                                                        newFlags);
-      } else {
-        // still waiting
-        ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
-        ctx.createAction<NoActionPossibleAction>();
       }
     }
   }
@@ -662,8 +937,8 @@ auto checkConfigChanged(SupervisionContext& ctx, Log const& log,
   ADB_PROD_ASSERT(current.supervision.has_value());
 
   // Check write concern
-  auto effectiveWriteConcern = computeEffectiveWriteConcern(
-      target.config, plan.participantsConfig.participants, health);
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(target.config, current, plan, health);
 
   if (effectiveWriteConcern !=
       plan.participantsConfig.config.effectiveWriteConcern) {
@@ -677,9 +952,10 @@ auto checkConfigChanged(SupervisionContext& ctx, Log const& log,
 
   // Wait for sync
   if (target.config.waitForSync != plan.participantsConfig.config.waitForSync) {
-    // FIXME: assumedWaitForSync does not change here.
     ctx.createAction<UpdateWaitForSyncAction>(
-        target.config.waitForSync, current.supervision->assumedWaitForSync);
+        target.config.waitForSync,
+        std::min(target.config.waitForSync,
+                 current.supervision->assumedWaitForSync));
     return;
   }
 }
@@ -702,8 +978,7 @@ auto checkConfigCommitted(SupervisionContext& ctx, Log const& log) -> void {
   }
 
   if (plan.participantsConfig.generation ==
-      current.leader->committedParticipantsConfig->generation)
-
+      current.leader->committedParticipantsConfig->generation) {
     if (plan.participantsConfig.config.effectiveWriteConcern !=
         current.supervision->assumedWriteConcern) {
       // update assumedWriteConcern
@@ -711,16 +986,17 @@ auto checkConfigCommitted(SupervisionContext& ctx, Log const& log) -> void {
           plan.participantsConfig.config.effectiveWriteConcern);
     }
 
-  if (plan.participantsConfig.config.waitForSync !=
-      current.supervision->assumedWaitForSync) {
-    ctx.createAction<SetAssumedWaitForSyncAction>(
-        plan.participantsConfig.config.waitForSync);
+    if (plan.participantsConfig.config.waitForSync !=
+        current.supervision->assumedWaitForSync) {
+      ctx.createAction<SetAssumedWaitForSyncAction>(
+          plan.participantsConfig.config.waitForSync);
+    }
   }
 }
 
 auto checkConverged(SupervisionContext& ctx, Log const& log) {
   auto const& target = log.target;
-
+  // TODO add status report for each exit point
   if (!log.current.has_value()) {
     return;
   }
@@ -731,12 +1007,44 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
     return;
   }
 
-  if (log.plan->participantsConfig.generation !=
+  ADB_PROD_ASSERT(log.plan.has_value());
+  auto const& plan = *log.plan;
+  if (not plan.currentTerm or not plan.currentTerm->leader) {
+    return;
+  }
+
+  if (plan.participantsConfig.generation !=
       current.leader->committedParticipantsConfig->generation) {
     return;
   }
 
-  if (!current.leader->leadershipEstablished) {
+  if (current.leader->term != plan.currentTerm->term and
+      not current.leader->leadershipEstablished) {
+    return;
+  }
+
+  auto allStatesReady = std::all_of(
+      log.current->localState.begin(), log.current->localState.end(),
+      [&](auto const& pair) -> bool {
+        // Current can contain stale entries, i.e. participants that were once
+        // part of the replicated log, but no longer are. The supervision should
+        // only ever consider those entries in Current that belong to a
+        // participant in Plan.
+
+        if (not plan.participantsConfig.participants.contains(pair.first)) {
+          return true;
+        }
+
+        // Check if the follower has acked the current term. We are not
+        // interested in information from an old term.
+        if (pair.second.term != plan.currentTerm->term) {
+          return false;
+        }
+
+        return pair.second.state ==
+               replicated_log::LocalStateMachineStatus::kOperational;
+      });
+  if (!allStatesReady) {
     return;
   }
 
@@ -822,163 +1130,6 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // Check whether we have converged, and if so, report and set version
   // to target version
   checkConverged(ctx, log);
-}
-
-auto executeCheckReplicatedLog(DatabaseID const& dbName,
-                               std::string const& logIdString, Log log,
-                               ParticipantsHealth const& health,
-                               arangodb::agency::envelope envelope) noexcept
-    -> arangodb::agency::envelope {
-  SupervisionContext sctx;
-  auto const now = std::chrono::system_clock::now();
-  auto const logId = log.target.id;
-  auto const hasStatusReport = log.current && log.current->supervision &&
-                               log.current->supervision->statusReport;
-
-  // check if error reporting is enabled
-  if (log.current && log.current->supervision &&
-      log.current->supervision->lastTimeModified.has_value()) {
-    auto const lastMod = *log.current->supervision->lastTimeModified;
-    if ((now - lastMod) > std::chrono::seconds{15}) {
-      sctx.enableErrorReporting();
-    }
-  }
-
-  auto maxActionsTraceLength = std::invoke([&log]() {
-    if (log.target.supervision.has_value()) {
-      return log.target.supervision->maxActionsTraceLength;
-    } else {
-      return static_cast<size_t>(0);
-    }
-  });
-
-  checkReplicatedLog(sctx, log, health);
-
-  bool const hasNoExecutableAction =
-      std::holds_alternative<EmptyAction>(sctx.getAction()) ||
-      std::holds_alternative<NoActionPossibleAction>(sctx.getAction());
-  // now check if there is status update
-  if (hasNoExecutableAction) {
-    // there is only a status update
-    if (sctx.isErrorReportingEnabled()) {
-      // now compare the new status with the old status
-      if (log.current && log.current->supervision) {
-        if (log.current->supervision->statusReport == sctx.getReport()) {
-          // report did not change, do not create a transaction
-          return envelope;
-        }
-      }
-    }
-  }
-
-  auto actionCtx = arangodb::replication2::replicated_log::executeAction(
-      std::move(log), sctx.getAction());
-
-  if (sctx.isErrorReportingEnabled()) {
-    if (sctx.getReport().empty()) {
-      if (hasStatusReport) {
-        actionCtx.modify<LogCurrentSupervision>(
-            [&](auto& supervision) { supervision.statusReport.reset(); });
-      }
-    } else {
-      actionCtx.modify<LogCurrentSupervision>([&](auto& supervision) {
-        supervision.statusReport = std::move(sctx.getReport());
-      });
-    }
-  } else if (std::holds_alternative<ConvergedToTargetAction>(
-                 sctx.getAction())) {
-    actionCtx.modify<LogCurrentSupervision>(
-        [&](auto& supervision) { supervision.statusReport.reset(); });
-  }
-
-  // update last time modified
-  if (!hasNoExecutableAction) {
-    actionCtx.modify<LogCurrentSupervision>(
-        [&](auto& supervision) { supervision.lastTimeModified = now; });
-  }
-
-  if (!actionCtx.hasModification()) {
-    return envelope;
-  }
-
-  return buildAgencyTransaction(dbName, logId, sctx, actionCtx,
-                                maxActionsTraceLength, std::move(envelope));
-}
-
-auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
-                            SupervisionContext& sctx, ActionContext& actx,
-                            size_t maxActionsTraceLength,
-                            arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope {
-  auto planPath =
-      paths::plan()->replicatedLogs()->database(dbName)->log(logId)->str();
-
-  auto currentSupervisionPath = paths::current()
-                                    ->replicatedLogs()
-                                    ->database(dbName)
-                                    ->log(logId)
-                                    ->supervision()
-                                    ->str();
-
-  // If we want to keep a trace of actions, then only record actions
-  // that actually modify the data structure. This excludes the EmptyAction
-  // and the NoActionPossibleAction.
-  if (sctx.hasModifyingAction() && maxActionsTraceLength > 0) {
-    envelope = envelope.write()
-                   .push_queue_emplace(
-                       arangodb::cluster::paths::aliases::current()
-                           ->replicatedLogs()
-                           ->database(dbName)
-                           ->log(logId)
-                           ->actions()
-                           ->str(),
-                       // TODO: struct + inspect + transformWith
-                       [&](velocypack::Builder& b) {
-                         VPackObjectBuilder ob(&b);
-                         b.add("time", VPackValue(timepointToString(
-                                           std::chrono::system_clock::now())));
-                         b.add(VPackValue("desc"));
-                         std::visit([&b](auto&& arg) { serialize(b, arg); },
-                                    sctx.getAction());
-                       },
-                       maxActionsTraceLength)
-                   .precs()
-                   .isNotEmpty(paths::target()
-                                   ->replicatedLogs()
-                                   ->database(dbName)
-                                   ->log(logId)
-                                   ->str())
-                   .end();
-  }
-
-  return envelope.write()
-      .cond(actx.hasModificationFor<LogPlanSpecification>(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .inc(paths::plan()->version()->str())
-                  .emplace_object(planPath, [&](VPackBuilder& builder) {
-                    velocypack::serialize(
-                        builder, actx.getValue<LogPlanSpecification>());
-                  });
-            })
-      .cond(actx.hasModificationFor<LogCurrentSupervision>(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(currentSupervisionPath,
-                                  [&](VPackBuilder& builder) {
-                                    velocypack::serialize(
-                                        builder,
-                                        actx.getValue<LogCurrentSupervision>());
-                                  })
-                  .inc(paths::current()->version()->str());
-            })
-      .precs()
-      .isNotEmpty(paths::target()
-                      ->replicatedLogs()
-                      ->database(dbName)
-                      ->log(logId)
-                      ->str())
-      .end();
 }
 
 }  // namespace arangodb::replication2::replicated_log

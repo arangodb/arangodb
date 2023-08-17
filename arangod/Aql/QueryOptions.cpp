@@ -61,7 +61,7 @@ QueryOptions::QueryOptions()
           QueryOptions::defaultSpillOverThresholdMemoryUsage),
       maxDNFConditionMembers(QueryOptions::defaultMaxDNFConditionMembers),
       maxRuntime(0.0),
-      satelliteSyncWait(60.0),
+      satelliteSyncWait(std::chrono::seconds(60)),
       ttl(QueryOptions::defaultTtl),  // get global default ttl
       profile(ProfileLevel::None),
       traversalProfile(TraversalProfileLevel::None),
@@ -172,7 +172,8 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
 
   value = slice.get("satelliteSyncWait");
   if (value.isNumber()) {
-    satelliteSyncWait = value.getNumber<double>();
+    satelliteSyncWait =
+        std::chrono::duration<double>(value.getNumber<double>());
   }
 
   value = slice.get("ttl");
@@ -295,7 +296,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
               VPackValue(spillOverThresholdMemoryUsage));
   builder.add("maxDNFConditionMembers", VPackValue(maxDNFConditionMembers));
   builder.add("maxRuntime", VPackValue(maxRuntime));
-  builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
+  builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait.count()));
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
   builder.add(StaticStrings::GraphTraversalProfileLevel,

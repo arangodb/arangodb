@@ -61,7 +61,13 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
                            .getFeature<arangodb::RocksDBOptionFeature>()
                            .exclusiveWrites()) {}
 
-RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
+RocksDBTransactionCollection::~RocksDBTransactionCollection() {
+  try {
+    // cppcheck-suppress virtualCallInConstructor
+    releaseUsage();
+  } catch (...) {
+  }
+}
 
 /// @brief whether or not any write operations for the collection happened
 bool RocksDBTransactionCollection::hasOperations() const {
@@ -122,9 +128,9 @@ Result RocksDBTransactionCollection::lockUsage() {
 
 void RocksDBTransactionCollection::releaseUsage() {
   // questionable, but seems to work
-  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
-      _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     TRI_ASSERT(!_usageLocked);
+    TRI_ASSERT(!isLocked());
     _collection = nullptr;
     return;
   }
@@ -445,8 +451,7 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
 Result RocksDBTransactionCollection::ensureCollection() {
   if (_collection == nullptr) {
     // open the collection
-    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
-        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
       // use and usage-lock
       LOG_TRX("b72bb", TRACE, _transaction) << "using collection " << _cid.id();
 
@@ -471,6 +476,7 @@ Result RocksDBTransactionCollection::ensureCollection() {
       _usageLocked = true;
     } else {
       // use without usage-lock (lock already set externally)
+      TRI_ASSERT(!_usageLocked);
       _collection = _transaction->vocbase().lookupCollection(_cid);
 
       if (_collection == nullptr) {

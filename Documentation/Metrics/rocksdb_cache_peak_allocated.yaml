@@ -1,0 +1,17 @@
+name: rocksdb_cache_peak_allocated
+introducedIn: "3.10.7"
+help: |
+  Global peak memory allocation of ArangoDB in-memory caches.
+unit: bytes
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric reflects the peak global allocation for the ArangoDB
+  in-memory cache which sits in front of RocksDB. It records the peak value
+  of the metric `rocksdb_cache_allocated` during the lifetime of the
+  arangod instance.

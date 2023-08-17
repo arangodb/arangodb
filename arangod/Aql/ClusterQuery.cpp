@@ -118,7 +118,6 @@ void ClusterQuery::prepareClusterQuery(
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
-  // FIXME change this format to take the raw one?
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
   _ast->variables()->fromVelocyPack(variables);
   // creating the plan may have produced some collections
@@ -131,6 +130,10 @@ void ClusterQuery::prepareClusterQuery(
   if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
     inaccessibleCollections = _queryOptions.inaccessibleCollections;
   }
+#endif
+
+#ifdef USE_ENTERPRISE
+  waitForSatellites();
 #endif
 
   _trx = AqlTransaction::create(_transactionContext, _collections,
@@ -157,8 +160,6 @@ void ClusterQuery::prepareClusterQuery(
 
   enterState(QueryExecutionState::ValueType::PARSING);
 
-  SerializationFormat format = SerializationFormat::SHADOWROWS;
-
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](VPackSlice snippet) {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
@@ -166,7 +167,7 @@ void ClusterQuery::prepareClusterQuery(
 
     plan->findVarUsage();  // I think this is a no-op
 
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
   };
 
