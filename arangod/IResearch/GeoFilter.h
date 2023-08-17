@@ -97,11 +97,7 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
     return "arangodb::iresearch::GeoFilter";
   }
 
-  using filter::prepare;
-
-  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Scorers const& ord,
-                        irs::score_t boost,
-                        irs::attribute_provider const* /*ctx*/) const final;
+  prepared::ptr prepare(irs::PrepareContext const& ctx) const final;
 };
 
 class GeoDistanceFilter;
@@ -135,11 +131,7 @@ class GeoDistanceFilter final
     return "arangodb::iresearch::GeoDistanceFilter";
   }
 
-  using filter::prepare;
-
-  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Scorers const& ord,
-                        irs::score_t boost,
-                        irs::attribute_provider const* /*ctx*/) const final;
+  prepared::ptr prepare(irs::PrepareContext const& ctx) const final;
 };
 
 }  // namespace arangodb::iresearch
