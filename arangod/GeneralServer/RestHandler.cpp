@@ -175,6 +175,12 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     return futures::makeFuture(Result());
   }
 
+  // we must use the request's permissions here and set them in the
+  // thread-local variable when calling forwardingTarget().
+  // this is because forwardingTarget() may run permission checks.
+  ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
+  ExecContextScope scope(exec);
+
   ResultT forwardResult = forwardingTarget();
   if (forwardResult.fail()) {
     return futures::makeFuture(forwardResult.result());

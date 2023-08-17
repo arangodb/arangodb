@@ -223,6 +223,7 @@ void NetworkFeature::prepare() {
   ClusterInfo* ci = nullptr;
   if (server().hasFeature<ClusterFeature>() &&
       server().isEnabled<ClusterFeature>()) {
+    // in unit tests the ClusterInfo may not be enabled.
     ci = &server().getFeature<ClusterFeature>().clusterInfo();
   }
 
