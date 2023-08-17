@@ -37,122 +37,22 @@
 #include <optional>
 #include <string>
 
-#include <boost/align/align_up.hpp>
-
-using namespace boost::alignment;
+extern char build_id_start[];
+extern char build_id_end;
 
 namespace arangodb::build_id {
 
-// For RAII purposes, wrap the mmap of the ELF header
-// in this struct; its only reason for being here is to
-// make sure that the memory map is unmapped safely in
-// all cases.
-struct MMappedElfHeader {
-  explicit MMappedElfHeader() : _memory(MAP_FAILED), _size(0) {}
-  MMappedElfHeader(MMappedElfHeader const&) = delete;
-  MMappedElfHeader(MMappedElfHeader&& other) = delete;
-  ~MMappedElfHeader() {
-    if (_memory != MAP_FAILED) {
-      munmap(_memory, _size);
-    }
-  }
-
-  auto map() -> bool {
-    int selffd;
-    struct stat statbuf;
-
-    if (selffd = open("/proc/self/exe", O_RDONLY); selffd < 0) {
-      return false;
-    }
-
-    if (fstat(selffd, &statbuf) < 0) {
-      close(selffd);
-      return false;
-    }
-
-    _memory = mmap(0, statbuf.st_size, PROT_READ, MAP_PRIVATE, selffd, 0);
-
-    // Intentional: After mmap returned successfully, fd can be closed without
-    // the mapping becoming invalid. This way selffd is not leaked.
-    close(selffd);
-
-    if (_memory == MAP_FAILED) {
-      return false;
-    }
-
-    _size = statbuf.st_size;
-    return true;
-  }
-
-  auto get() const -> const char* {
-    return reinterpret_cast<const char*>(_memory);
-  }
-
- private:
-  void* _memory;
-  size_t _size;
-};
-
-// Read the executable's GNU BuildID by mmapping the ELF header and
-// parsing just enough of it.
-//
-// The build-id is added by the linker by passing --build-id to it.
-//
-// From the ELF Header jump to the ProgramHeaders and search for a
-// program header of type PT_NOTE;
-//
-// Parse the notes to find a note of type NT_GNU_BUILD_ID.
-//
-// This process is made awkward by the fact that while ProgramHeaders are an
-// array that can just be iterated over, the notes are variable-sized with a
-// header containing their type, and the sizes of the name and the description
-// of the note.
-//
-// To iterate over notes in a note section, care has to be taken to add the
-// correct number to the currentNoteMemory pointer to jump over a note to the
-// next one.
-//
-// This code is aimed to be the simplest possible to get at the desired
-// information
 auto getBuildId() -> std::optional<BuildId> {
-  auto mmappedElfHeader = MMappedElfHeader();
+  auto const* noteMemory = reinterpret_cast<const char*>(&build_id_start);
+  auto const* noteHeader = reinterpret_cast<ElfW(Nhdr) const*>(noteMemory);
 
-  auto mapped = mmappedElfHeader.map();
-  if (!mapped) {
-    return std::nullopt;
-  }
-
-  auto* elfHeaderMemory = mmappedElfHeader.get();
-  auto* elfHeader = reinterpret_cast<ElfW(Ehdr) const*>(elfHeaderMemory);
-
-  auto* programHeadersMemory = elfHeaderMemory + elfHeader->e_phoff;
-  auto* programHeaders =
-      reinterpret_cast<ElfW(Phdr) const*>(programHeadersMemory);
-  auto const programHeadersCount = elfHeader->e_phnum;
-
-  for (size_t i = 0; i < programHeadersCount; ++i) {
-    if (programHeaders[i].p_type == PT_NOTE) {
-      auto* currentNoteMemory = elfHeaderMemory + programHeaders[i].p_offset;
-      auto const* noteSectionMemoryEnd =
-          currentNoteMemory + programHeaders[i].p_filesz;
-
-      while (currentNoteMemory < noteSectionMemoryEnd) {
-        auto const* noteHeader =
-            reinterpret_cast<ElfW(Nhdr) const*>(currentNoteMemory);
-
-        if (noteHeader->n_type == NT_GNU_BUILD_ID) {
-          auto const* buildIdMemory = reinterpret_cast<const char*>(
-              currentNoteMemory + sizeof(ElfW(Nhdr)) + noteHeader->n_namesz);
-          return BuildId{buildIdMemory, noteHeader->n_descsz};
-        }
-
-        currentNoteMemory += sizeof(ElfW(Nhdr)) +
-                             align_up(noteHeader->n_namesz, 4) +
-                             align_up(noteHeader->n_descsz, 4);
-      }
-    }
+  if (noteHeader->n_type == NT_GNU_BUILD_ID) {
+    auto const* buildIdMemory = reinterpret_cast<const char*>(
+        noteMemory + sizeof(ElfW(Nhdr)) + noteHeader->n_namesz);
+    return BuildId{buildIdMemory, noteHeader->n_descsz};
   }
 
   return std::nullopt;
 }
+
 }  // namespace arangodb::build_id

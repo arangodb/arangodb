@@ -1,5 +1,6 @@
 target_sources(arangodbtests
   PRIVATE
+  BuildIdTest.cpp
   ConversionsTest.cpp
   CsvTest.cpp
   datetime.cpp
