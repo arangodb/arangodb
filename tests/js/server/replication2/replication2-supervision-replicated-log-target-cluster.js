@@ -914,8 +914,8 @@ const replicatedLogSuite = function () {
       // - 'RemoveParticipantFromPlanAction'  to remove old leader
       // The first of those can happen at any point, the other two must be in order.
       // So finding and removing the last UpdateParticipantFlagsAction leaves those two:
-      const idx = _.findLastIndex(actions, 'UpdateParticipantFlagsAction');
-      assertTrue(idx >= 0, JSON.stringify(actions));
+      const idx = _.findLastIndex(actions, (x) => x === 'UpdateParticipantFlagsAction');
+      assertTrue(idx >= 0, "Did not find UpdateParticipantFlagsAction: " + JSON.stringify(actions));
       actions.splice(idx, 1);
       assertEqual('UpdateParticipantFlagsAction', actions.shift());
       assertEqual('RemoveParticipantFromPlanAction', actions.shift());
