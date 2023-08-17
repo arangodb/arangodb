@@ -27,7 +27,9 @@
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
 #include "Replication2/ReplicatedLog/LogMetaPayload.h"
+#include "Replication2/ReplicatedLog/PersistedLogEntry.h"
 #include "Replication2/Storage/WAL/LogPersistor.h"
 #include "Replication2/Storage/WAL/Record.h"
 
@@ -38,9 +40,12 @@
 #include "velocypack/Slice.h"
 
 #include <absl/crc/crc32c.h>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <immer/flex_vector_transient.hpp>
+#include <ios>
+#include <memory>
 #include <variant>
 
 using namespace ::testing;
@@ -53,6 +58,11 @@ auto makeNormalLogEntry(std::uint64_t term, std::uint64_t index,
   return InMemoryLogEntry{LogEntry{LogTerm{term}, LogIndex{index},
                                    LogPayload::createFromString(payload)}};
 }
+
+auto makeMetaLogEntry(std::uint64_t term, std::uint64_t index,
+                      LogMetaPayload payload) {
+  return InMemoryLogEntry{LogEntry{LogTerm{term}, LogIndex{index}, payload}};
+}
 }  // namespace
 
 namespace arangodb::replication2::storage::wal::test {
@@ -62,6 +72,30 @@ struct LogPersistorTest : ::testing::Test {
     auto file = std::make_unique<InMemoryFileWriter>(buffer);
     EXPECT_CALL(*fileManager, createWriter(_))
         .WillOnce(Return(std::move(file)));
+    persistor = std::make_unique<LogPersistor>(LogId{42}, fileManager);
+  }
+
+  void insertEntries() {
+    log = InMemoryLog{}.append({
+        makeNormalLogEntry(1, 1, "blubb"),
+        makeNormalLogEntry(1, 2, "dummyPayload"),
+        makeMetaLogEntry(
+            1, 3,
+            LogMetaPayload::withPing(
+                "message",
+                // the timepoint is serialized as seconds, so we must avoid
+                // sub-second precision for simple equality comparison
+                LogMetaPayload::Ping::clock::time_point{
+                    std::chrono::nanoseconds(123000000000)})),
+        makeNormalLogEntry(1, 4, "entry with somewhat larger payload"),
+        makeNormalLogEntry(2, 5, "foobar"),
+    });
+
+    auto res =
+        persistor->insert(log.getLogIterator(), LogPersistor::WriteOptions{})
+            .get();
+    ASSERT_TRUE(res.ok());
+    EXPECT_EQ(res.get(), 5);
   }
 
   void checkLogEntry(StreamReader& reader, LogIndex idx, LogTerm term,
@@ -93,13 +127,13 @@ struct LogPersistorTest : ::testing::Test {
     EXPECT_EQ(idx.value, header.index) << "Log index mismatch";
     EXPECT_EQ(term.value, header.term) << "Log term mismatch";
     EXPECT_EQ(type, header.type) << "Entry type mismatch";
-    EXPECT_EQ(payloadSlice.byteSize(), header.size) << "size mismatch";
+    EXPECT_EQ(payloadSlice.byteSize(), header.payloadSize) << "size mismatch";
 
     EXPECT_TRUE(memcmp(reader.data(), payloadSlice.getDataPtr(),
                        payloadSlice.byteSize()) == 0)
         << "Payload mismatch";
 
-    auto paddedSize = Record::paddedPayloadSize(header.size);
+    auto paddedSize = Record::paddedPayloadSize(header.payloadSize);
     reader.skip(paddedSize);
 
     auto footer = reader.read<Record::Footer>();
@@ -111,27 +145,74 @@ struct LogPersistorTest : ::testing::Test {
     EXPECT_EQ(expectedSize, footer.size);
   }
 
+  void skip(std::unique_ptr<LogIterator>& iter, size_t num) {
+    for (size_t i = 0; i < num; ++i) {
+      auto v = iter->next();
+      ASSERT_TRUE(v.has_value());
+    }
+  }
+
+  void checkIterators(std::unique_ptr<PersistedLogIterator> actualIter,
+                      std::unique_ptr<LogIterator> expectedIter,
+                      size_t expectedSize) {
+    ASSERT_NE(nullptr, actualIter);
+    ASSERT_NE(nullptr, expectedIter);
+
+    auto actual = actualIter->next();
+    auto expected = expectedIter->next();
+    size_t count = 0;
+    while (expected.has_value()) {
+      ASSERT_TRUE(actual.has_value());
+      EXPECT_EQ(expected->logIndex(), actual->entry().logIndex());
+      EXPECT_EQ(expected->logTerm(), actual->entry().logTerm());
+      if (expected->hasPayload()) {
+        ASSERT_TRUE(actual->entry().hasPayload());
+        auto* expectedPayload = expected->logPayload();
+        ASSERT_NE(nullptr, expectedPayload);
+        auto* actualPayload = actual->entry().logPayload();
+        ASSERT_NE(nullptr, actualPayload);
+        ASSERT_EQ(expectedPayload->byteSize(), actualPayload->byteSize());
+        ASSERT_TRUE(
+            expectedPayload->slice().binaryEquals(actualPayload->slice()));
+      } else {
+        ASSERT_TRUE(expected->hasMeta());
+        ASSERT_TRUE(actual->entry().hasMeta());
+        auto* expectedPayload = expected->meta();
+        ASSERT_NE(nullptr, expectedPayload);
+        auto* actualPayload = actual->entry().meta();
+        ASSERT_NE(nullptr, actualPayload);
+        EXPECT_EQ(*expectedPayload, *actualPayload);
+      }
+      ++count;
+
+      actual = actualIter->next();
+      expected = expectedIter->next();
+    }
+    EXPECT_FALSE(actual.has_value());
+    EXPECT_EQ(expectedSize, count);
+  }
+
   std::string buffer;
   std::shared_ptr<MockFileManager> fileManager{
       std::make_shared<MockFileManager>()};
+
+  InMemoryLog log;
+  std::unique_ptr<LogPersistor> persistor;
 };
 
 TEST_F(LogPersistorTest, drop_calls_file_manager_removeAll) {
   EXPECT_CALL(*fileManager, removeAll).Times(1);
-  LogPersistor persistor{LogId{42}, fileManager};
-  persistor.drop();
+  persistor->drop();
   Mock::VerifyAndClearExpectations(fileManager.get());
 }
 
 TEST_F(LogPersistorTest, insert_normal_payload) {
-  LogPersistor persistor{LogId{42}, fileManager};
-
   auto payload = LogPayload::createFromString("foobar");
-  auto log = InMemoryLog{}.append(
+  log = InMemoryLog{}.append(
       {InMemoryLogEntry{LogEntry{LogTerm{1}, LogIndex{100}, payload}}});
 
   auto res =
-      persistor.insert(log.getLogIterator(), LogPersistor::WriteOptions{})
+      persistor->insert(log.getLogIterator(), LogPersistor::WriteOptions{})
           .get();
   ASSERT_TRUE(res.ok());
   EXPECT_EQ(res.get(), 100);
@@ -142,15 +223,13 @@ TEST_F(LogPersistorTest, insert_normal_payload) {
 }
 
 TEST_F(LogPersistorTest, insert_meta_payload) {
-  LogPersistor persistor{LogId{42}, fileManager};
-
   LogMetaPayload::Ping::clock::time_point tp{};
   auto payload = LogMetaPayload::withPing("message", tp);
-  auto log = InMemoryLog{}.append(
+  log = InMemoryLog{}.append(
       {InMemoryLogEntry{LogEntry{LogTerm{1}, LogIndex{100}, payload}}});
 
   auto res =
-      persistor.insert(log.getLogIterator(), LogPersistor::WriteOptions{})
+      persistor->insert(log.getLogIterator(), LogPersistor::WriteOptions{})
           .get();
   ASSERT_TRUE(res.ok());
   EXPECT_EQ(res.get(), 100);
@@ -160,115 +239,32 @@ TEST_F(LogPersistorTest, insert_meta_payload) {
 }
 
 TEST_F(LogPersistorTest, getIterator) {
-  LogPersistor persistor{LogId{42}, fileManager};
-
-  auto normalPayload = LogPayload::createFromString("dummyPayload");
-  auto metaPayload = LogMetaPayload::withPing("message");
-
-  auto log = InMemoryLog{}.append(
-      {InMemoryLogEntry{LogEntry{LogTerm{1}, LogIndex{100}, normalPayload}},
-       InMemoryLogEntry{LogEntry{LogTerm{1}, LogIndex{101}, metaPayload}}});
-
-  auto res =
-      persistor.insert(log.getLogIterator(), LogPersistor::WriteOptions{})
-          .get();
-  ASSERT_TRUE(res.ok());
-  EXPECT_EQ(res.get(), 101);
-
+  insertEntries();
   auto iter =
-      persistor.getIterator(IteratorPosition::fromLogIndex(LogIndex{0}));
+      persistor->getIterator(IteratorPosition::fromLogIndex(LogIndex{0}));
   ASSERT_NE(nullptr, iter);
-  auto entry = iter->next();
-  {
-    ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(LogIndex{100}, entry->entry().logIndex());
-    EXPECT_EQ(LogTerm{1}, entry->entry().logTerm());
-    auto* payload = entry->entry().logPayload();
-    ASSERT_NE(nullptr, payload);
-    ASSERT_EQ(normalPayload.byteSize(), payload->byteSize());
-    ASSERT_TRUE(normalPayload.slice().binaryEquals(payload->slice()));
-  }
 
-  entry = iter->next();
-  {
-    ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(LogIndex{101}, entry->entry().logIndex());
-    EXPECT_EQ(LogTerm{1}, entry->entry().logTerm());
-    auto* payload = entry->entry().meta();
-    ASSERT_NE(nullptr, payload);
-    ASSERT_TRUE(std::holds_alternative<LogMetaPayload::Ping>(payload->info));
-    auto expected = std::get<LogMetaPayload::Ping>(metaPayload.info);
-    auto actual = std::get<LogMetaPayload::Ping>(payload->info);
-    EXPECT_EQ(expected.message, actual.message);
-    EXPECT_EQ(std::chrono::floor<std::chrono::seconds>(expected.time),
-              actual.time);
-  }
-
-  entry = iter->next();
-  EXPECT_FALSE(entry.has_value());
+  auto logIter = log.getLogIterator();
+  checkIterators(std::move(iter), std::move(logIter), 5);
 }
 
 TEST_F(LogPersistorTest, getIterator_seeks_to_log_index) {
-  LogPersistor persistor{LogId{42}, fileManager};
-
-  auto normalPayload = LogPayload::createFromString("dummyPayload");
-  auto metaPayload = LogMetaPayload::withPing("message");
-
-  auto log = InMemoryLog{}.append({
-      makeNormalLogEntry(1, 1, "blubb"),
-      makeNormalLogEntry(1, 2, "dummyPayload"),
-      makeNormalLogEntry(1, 3, "entry with somewhat larger payload"),
-      makeNormalLogEntry(2, 4, "foobar"),
-  });
-
-  auto res =
-      persistor.insert(log.getLogIterator(), LogPersistor::WriteOptions{})
-          .get();
-  ASSERT_TRUE(res.ok());
-  EXPECT_EQ(res.get(), 4);
-
+  insertEntries();
   auto iter =
-      persistor.getIterator(IteratorPosition::fromLogIndex(LogIndex{3}));
-  ASSERT_NE(nullptr, iter);
-  auto entry = iter->next();
-  {
-    ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(LogIndex{3}, entry->entry().logIndex());
-    EXPECT_EQ(LogTerm{1}, entry->entry().logTerm());
-  }
-  entry = iter->next();
-  {
-    ASSERT_TRUE(entry.has_value());
-    EXPECT_EQ(LogIndex{4}, entry->entry().logIndex());
-    EXPECT_EQ(LogTerm{2}, entry->entry().logTerm());
-  }
+      persistor->getIterator(IteratorPosition::fromLogIndex(LogIndex{3}));
 
-  entry = iter->next();
-  EXPECT_FALSE(entry.has_value());
+  auto logIter = log.getLogIterator();
+  skip(logIter, 2);
+
+  checkIterators(std::move(iter), std::move(logIter), 3);
 }
 
 TEST_F(LogPersistorTest,
        getIterator_for_position_from_returned_entry_seeks_to_same_entry) {
-  LogPersistor persistor{LogId{42}, fileManager};
-
-  auto normalPayload = LogPayload::createFromString("dummyPayload");
-  auto metaPayload = LogMetaPayload::withPing("message");
-
-  auto log = InMemoryLog{}.append({
-      makeNormalLogEntry(1, 1, "blubb"),
-      makeNormalLogEntry(1, 2, "dummyPayload"),
-      makeNormalLogEntry(1, 3, "entry with somewhat larger payload"),
-      makeNormalLogEntry(2, 4, "foobar"),
-  });
-
-  auto res =
-      persistor.insert(log.getLogIterator(), LogPersistor::WriteOptions{})
-          .get();
-  ASSERT_TRUE(res.ok());
-  EXPECT_EQ(res.get(), 4);
-
+  insertEntries();
   auto iter =
-      persistor.getIterator(IteratorPosition::fromLogIndex(LogIndex{3}));
+      persistor->getIterator(IteratorPosition::fromLogIndex(LogIndex{3}));
+
   ASSERT_NE(nullptr, iter);
   auto entry = iter->next();
   {
@@ -276,7 +272,7 @@ TEST_F(LogPersistorTest,
     EXPECT_EQ(LogIndex{3}, entry->entry().logIndex());
     EXPECT_EQ(LogTerm{1}, entry->entry().logTerm());
   }
-  iter = persistor.getIterator(entry->position());
+  iter = persistor->getIterator(entry->position());
   ASSERT_NE(nullptr, iter);
   entry = iter->next();
   {
@@ -287,29 +283,13 @@ TEST_F(LogPersistorTest,
 }
 
 TEST_F(LogPersistorTest, removeBack) {
-  LogPersistor persistor{LogId{42}, fileManager};
+  insertEntries();
 
-  auto normalPayload = LogPayload::createFromString("dummyPayload");
-
-  {
-    auto log = InMemoryLog{}.append({
-        makeNormalLogEntry(1, 1, "blubb"),
-        makeNormalLogEntry(1, 2, "dummyPayload"),
-        makeNormalLogEntry(1, 3, "foobar"),
-        makeNormalLogEntry(1, 4, "entry with somewhat larger payload"),
-    });
-    auto res =
-        persistor.insert(log.getLogIterator(), LogPersistor::WriteOptions{})
-            .get();
-    ASSERT_TRUE(res.ok());
-    EXPECT_EQ(res.get(), 4);
-  }
-
-  auto res = persistor.removeBack(LogIndex{3}, {}).get();
+  auto res = persistor->removeBack(LogIndex{3}, {}).get();
   ASSERT_TRUE(res.ok()) << res.errorMessage();
 
   auto iter =
-      persistor.getIterator(IteratorPosition::fromLogIndex(LogIndex{0}));
+      persistor->getIterator(IteratorPosition::fromLogIndex(LogIndex{0}));
   ASSERT_NE(nullptr, iter);
   auto entry = iter->next();
   {
@@ -333,7 +313,7 @@ TEST_F(LogPersistorTest, removeBack) {
         makeNormalLogEntry(2, 3, "override"),
     });
     auto res =
-        persistor.insert(log.getLogIterator(), LogPersistor::WriteOptions{})
+        persistor->insert(log.getLogIterator(), LogPersistor::WriteOptions{})
             .get();
     ASSERT_TRUE(res.ok()) << res.errorMessage();
     EXPECT_EQ(res.get(), 3);
@@ -341,27 +321,20 @@ TEST_F(LogPersistorTest, removeBack) {
 }
 
 TEST_F(LogPersistorTest, removeBack_fails_no_matching_entry_found) {
-  LogPersistor persistor{LogId{42}, fileManager};
-
-  auto res = persistor.removeBack(LogIndex{2}, {}).get();
+  auto res = persistor->removeBack(LogIndex{2}, {}).get();
   ASSERT_TRUE(res.fail());
   EXPECT_EQ("log is empty", res.errorMessage());
 }
 
 TEST_F(LogPersistorTest, removeBack_fails_if_log_file_corrupt) {
-  LogPersistor persistor{LogId{42}, fileManager};
-
-  // we simulate some corrupt log file by writing some garbage to the in memory
-  // buffer
+  // we simulate a corrupt log file by writing some garbage in the memory buffer
   buffer = "xxxxyyyyzzzz";
 
-  auto res = persistor.removeBack(LogIndex{2}, {}).get();
+  auto res = persistor->removeBack(LogIndex{2}, {}).get();
   ASSERT_TRUE(res.fail());
 }
 
 TEST_F(LogPersistorTest, removeBack_fails_if_start_index_too_small) {
-  LogPersistor persistor{LogId{42}, fileManager};
-
   auto normalPayload = LogPayload::createFromString("dummyPayload");
 
   {
@@ -371,35 +344,20 @@ TEST_F(LogPersistorTest, removeBack_fails_if_start_index_too_small) {
         makeNormalLogEntry(1, 6, "foobar"),
     });
     auto res =
-        persistor.insert(log.getLogIterator(), LogPersistor::WriteOptions{})
+        persistor->insert(log.getLogIterator(), LogPersistor::WriteOptions{})
             .get();
     ASSERT_TRUE(res.ok());
     EXPECT_EQ(res.get(), 6);
   }
 
-  auto res = persistor.removeBack(LogIndex{2}, {}).get();
+  auto res = persistor->removeBack(LogIndex{2}, {}).get();
   ASSERT_TRUE(res.fail());
 }
 
 TEST_F(LogPersistorTest, removeBack_fails_if_start_index_too_large) {
-  LogPersistor persistor{LogId{42}, fileManager};
+  insertEntries();
 
-  auto normalPayload = LogPayload::createFromString("dummyPayload");
-
-  {
-    auto log = InMemoryLog{}.append({
-        makeNormalLogEntry(1, 4, "blubb"),
-        makeNormalLogEntry(1, 5, "dummyPayload"),
-        makeNormalLogEntry(1, 6, "foobar"),
-    });
-    auto res =
-        persistor.insert(log.getLogIterator(), LogPersistor::WriteOptions{})
-            .get();
-    ASSERT_TRUE(res.ok());
-    EXPECT_EQ(res.get(), 6);
-  }
-
-  auto res = persistor.removeBack(LogIndex{8}, {}).get();
+  auto res = persistor->removeBack(LogIndex{8}, {}).get();
   ASSERT_TRUE(res.fail());
   EXPECT_EQ("found index lower than start index while searching backwards",
             res.errorMessage());

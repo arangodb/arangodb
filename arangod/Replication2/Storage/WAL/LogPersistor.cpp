@@ -78,10 +78,10 @@ struct BufferWriter {
 
     auto* payload = entry.logPayload();
     TRI_ASSERT(payload != nullptr);
-    header.size = payload->byteSize();
+    header.payloadSize = payload->byteSize();
     _buffer.append(Record::CompressedHeader{header});
     _buffer.append(payload->slice().getDataPtr(), payload->byteSize());
-    return header.size;
+    return header.payloadSize;
   }
 
   std::uint32_t writeMetaEntry(LogEntry const& entry) {
@@ -90,26 +90,27 @@ struct BufferWriter {
     header.index = entry.logIndex().value;
     header.term = entry.logTerm().value;
     header.type = RecordType::wMeta;
-    header.size = 0;  // we initialize this to zero so the compiler is happy,
-                      // but will update it later
+    header.payloadSize = 0;  // we initialize this to zero so the compiler is
+                             // happy, but will update it later
 
     // the meta entry is directly encoded into the buffer, so we have to write
     // the header beforehand and update the size afterwards
     _buffer.append(Record::CompressedHeader{header});
-    auto pos = _buffer.size() - sizeof(Record::CompressedHeader::size);
+    auto pos = _buffer.size() - sizeof(Record::CompressedHeader::payloadSize);
 
     auto* payload = entry.meta();
     TRI_ASSERT(payload != nullptr);
     VPackBuilder builder(_buffer.buffer());
     payload->toVelocyPack(builder);
-    header.size = _buffer.size() - pos - sizeof(Record::CompressedHeader::size);
+    header.payloadSize =
+        _buffer.size() - pos - sizeof(Record::CompressedHeader::payloadSize);
 
     // reset to the saved position so we can write the actual size
     _buffer.resetTo(pos);
-    _buffer.append(
-        static_cast<decltype(Record::CompressedHeader::size)>(header.size));
-    _buffer.advance(header.size);
-    return header.size;
+    _buffer.append(static_cast<decltype(Record::CompressedHeader::payloadSize)>(
+        header.payloadSize));
+    _buffer.advance(header.payloadSize);
+    return header.payloadSize;
   }
 
   void writePaddingBytes(

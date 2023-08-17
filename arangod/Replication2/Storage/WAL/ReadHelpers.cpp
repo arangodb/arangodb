@@ -36,12 +36,13 @@ auto seekLogIndexForward(IFileReader& reader, LogIndex index)
 
   Record::CompressedHeader header;
   while (reader.read(header)) {
-    if (header.index() >= index.value) {
+    if (header.index >= index.value) {
       reader.seek(pos);  // reset to start of entry
       return ResultT<Record::CompressedHeader>::success(header);
     }
     pos += sizeof(Record::CompressedHeader) +
-           Record::paddedPayloadSize(header.size) + sizeof(Record::Footer);
+           Record::paddedPayloadSize(header.payloadSize) +
+           sizeof(Record::Footer);
     reader.seek(pos);
   }
   // TODO - use proper error code
@@ -74,7 +75,7 @@ auto seekLogIndexBackward(IFileReader& reader, LogIndex index)
     pos -= footer.size;
     reader.seek(pos);
     reader.read(compressedHeader);
-    auto idx = compressedHeader.index();
+    auto idx = compressedHeader.index;
     if (idx == index.value) {
       // reset reader to start of entry
       reader.seek(pos);
@@ -143,12 +144,12 @@ auto readLogEntry(IFileReader& reader) -> ResultT<PersistedLogEntry> {
 
   auto header = Record::Header{compressedHeader};
 
-  auto paddedSize = Record::paddedPayloadSize(header.size);
+  auto paddedSize = Record::paddedPayloadSize(header.payloadSize);
   velocypack::UInt8Buffer buffer(paddedSize);
   if (reader.read(buffer.data(), paddedSize) != paddedSize) {
     return RT::error(TRI_ERROR_INTERNAL, "failed to read payload");
   }
-  buffer.resetTo(header.size);
+  buffer.resetTo(header.payloadSize);
 
   auto entry = [&]() -> LogEntry {
     if (header.type == RecordType::wMeta) {

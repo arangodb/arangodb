@@ -34,7 +34,7 @@ void compareHeaders(Record::Header const& expected,
   EXPECT_EQ(expected.term, actual.term);
   EXPECT_EQ(expected.tag, actual.tag);
   EXPECT_EQ(expected.type, actual.type);
-  EXPECT_EQ(expected.size, actual.size);
+  EXPECT_EQ(expected.payloadSize, actual.payloadSize);
 }
 
 TEST(WalRecordTest, index_compress_decompress_roundtrip) {
@@ -71,7 +71,8 @@ TEST(WalRecordTest, type_compress_decompress_roundtrip) {
 
 TEST(WalRecordTest, size_compress_decompress_roundtrip) {
   Record::Header expected{};
-  expected.size = std::numeric_limits<decltype(expected.size)>::max();
+  expected.payloadSize =
+      std::numeric_limits<decltype(expected.payloadSize)>::max();
 
   auto actual = Record::Header{Record::CompressedHeader{expected}};
   compareHeaders(expected, actual);
@@ -83,7 +84,8 @@ TEST(WalRecordTest, full_compress_decompress_roundtrip) {
   expected.term = (1ul << (Record::CompressedHeader::termBits - 1)) + 1;
   expected.type =
       RecordType((1ul << (Record::CompressedHeader::typeBits - 1)) + 1);
-  expected.size = (1ul << (Record::CompressedHeader::sizeBits - 1)) + 1;
+  expected.payloadSize =
+      (1ul << (Record::CompressedHeader::payloadSizeBits - 1)) + 1;
 
   auto actual = Record::Header{Record::CompressedHeader{expected}};
   compareHeaders(expected, actual);

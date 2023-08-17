@@ -49,7 +49,7 @@ struct Record {
     std::uint64_t term = 0;
     std::uint16_t tag = 0;
     RecordType type;
-    std::uint64_t size = 0;
+    std::uint64_t payloadSize = 0;
   };
 
   struct CompressedHeader {
@@ -58,16 +58,17 @@ struct Record {
 
     std::uint64_t index;
     std::uint64_t termTagAndType;
-    std::uint64_t size;
+    std::uint64_t payloadSize;
 
     static constexpr unsigned indexBits = 64;
     static constexpr unsigned termBits = 44;
     static constexpr unsigned tagBits = 16;
     static constexpr unsigned typeBits = 4;
-    static constexpr unsigned sizeBits = 64;
+    static constexpr unsigned payloadSizeBits = 64;
 
     static_assert(termBits + tagBits + typeBits == 64);
-    static_assert(indexBits + termBits + tagBits + typeBits + sizeBits == 192);
+    static_assert(indexBits + termBits + tagBits + typeBits + payloadSizeBits ==
+                  192);
 
     std::uint64_t term() const noexcept {
       return termTagAndType >> (tagBits + typeBits);
@@ -98,12 +99,12 @@ inline Record::Header::Header(CompressedHeader h)
       term(h.term()),
       tag(h.tag()),
       type(h.type()),
-      size(h.size) {}
+      payloadSize(h.payloadSize) {}
 
 inline Record::CompressedHeader::CompressedHeader(Header h)
     : index(h.index),
       termTagAndType((h.term << (tagBits + typeBits)) | (h.tag << typeBits) |
                      static_cast<std::uint64_t>(h.type)),
-      size(h.size) {}
+      payloadSize(h.payloadSize) {}
 
 }  // namespace arangodb::replication2::storage::wal
