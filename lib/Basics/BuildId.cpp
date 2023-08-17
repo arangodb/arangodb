@@ -43,6 +43,10 @@ using namespace boost::alignment;
 
 namespace arangodb::build_id {
 
+// For RAII purposes, wrap the mmap of the ELF header
+// in this struct; its only reason for being here is to
+// make sure that the memory map is unmapped safely in
+// all cases.
 struct MMappedElfHeader {
   explicit MMappedElfHeader() : _memory(MAP_FAILED), _size(0) {}
   MMappedElfHeader(MMappedElfHeader const&) = delete;
@@ -91,6 +95,27 @@ struct MMappedElfHeader {
   size_t _size;
 };
 
+// Read the executable's GNU BuildID by mmapping the ELF header and
+// parsing just enough of it.
+//
+// The build-id is added by the linker by passing --build-id to it.
+//
+// From the ELF Header jump to the ProgramHeaders and search for a
+// program header of type PT_NOTE;
+//
+// Parse the notes to find a note of type NT_GNU_BUILD_ID.
+//
+// This process is made awkward by the fact that while ProgramHeaders are an
+// array that can just be iterated over, the notes are variable-sized with a
+// header containing their type, and the sizes of the name and the description
+// of the note.
+//
+// To iterate over notes in a note section, care has to be taken to add the
+// correct number to the currentNoteMemory pointer to jump over a note to the
+// next one.
+//
+// This code is aimed to be the simplest possible to get at the desired
+// information
 auto getBuildId() -> std::optional<BuildId> {
   auto mmappedElfHeader = MMappedElfHeader();
 
