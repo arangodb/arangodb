@@ -113,5 +113,8 @@ struct DocumentLeaderState
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
+
+  std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of the
+                                        // state machine upon resigning
 };
 }  // namespace arangodb::replication2::replicated_state::document

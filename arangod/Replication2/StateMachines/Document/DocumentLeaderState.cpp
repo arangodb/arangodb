@@ -59,6 +59,8 @@ DocumentLeaderState::DocumentLeaderState(
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
+  _resigning = true;
+
   auto core = _guardedData.doUnderLock([&](auto& data) {
     ADB_PROD_ASSERT(!data.didResign())
         << "resigning leader " << gid
@@ -104,11 +106,16 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                                    ptr = std::move(ptr)](
                                       auto& data) -> futures::Future<Result> {
     if (data.didResign()) {
-      return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
     }
 
     std::unordered_set<TransactionId> activeTransactions;
     while (auto entry = ptr->next()) {
+      if (self->_resigning) {
+        // We have not officially resigned yet, but we are about to. So, we can
+        // just stop here.
+        break;
+      }
       auto doc = entry->second;
 
       auto res = std::visit(
@@ -201,9 +208,15 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     }
 
     auto abortAllResult = data.transactionHandler->applyEntry(abortAll);
-    TRI_ASSERT(abortAllResult.ok());
+    TRI_ASSERT(abortAllResult.ok()) << abortAllRes.result();
 
-    self->release(abortAllRes.get());
+    if (self->_resigning) {
+      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+    }
+
+    if (abortAllRes.ok()) {
+      self->release(abortAllRes.get());
+    }
 
     return {TRI_ERROR_NO_ERROR};
   });
