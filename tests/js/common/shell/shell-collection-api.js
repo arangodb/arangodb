@@ -1553,7 +1553,7 @@ function IgnoreIllegalTypesSuite() {
                 } else {
                   if (ignoredValue === null) {
                     // Allowed default to one shard
-                    isAllowed(res, collname, testParam, false);
+                    isAllowed(res, collname, testParam);
                   } else {
                     isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
                   }
@@ -1610,14 +1610,19 @@ function IgnoreIllegalTypesSuite() {
               if (isCluster) {
                 // Can only be strings
                 if (ignoredValue === null) {
-                  // Allowed default to one shard
-                  isAllowed(res, collname, testParam, false);
+                  // Allowed default to no distributeShardsLike
+                  isAllowed(res, collname, testParam);
                 } else {
                   isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
                 }
               } else {
                 isAllowed(res, collname, testParam);
               }
+              break;
+            }
+            case "shardingStrategy": {
+              // Do not expect deprecation messages for null
+              isAllowed(res, collname, testParam, ignoredValue !== null);
               break;
             }
             default: {
