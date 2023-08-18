@@ -90,8 +90,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
-#include <sstream>
-
 using namespace arangodb;
 using namespace arangodb::transaction;
 using namespace arangodb::transaction::helpers;
@@ -275,13 +273,13 @@ Result buildRefusalResult(LogicalCollection const& collection,
                           std::string_view operation,
                           OperationOptions const& options,
                           std::string const& leader) {
-  std::stringstream msg;
-  msg << TRI_errno_string(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION)
-      << ": shard: " << collection.vocbase().name() << "/" << collection.name()
-      << ", operation: " << operation
-      << ", from: " << options.isSynchronousReplicationFrom
-      << ", current leader: " << leader;
-  return Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, msg.str());
+  return {TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,
+          absl::StrCat(TRI_errno_string(
+                           TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION),
+                       ": shard: ", collection.vocbase().name(), "/",
+                       collection.name(), ", operation: ", operation,
+                       ", from: ", options.isSynchronousReplicationFrom,
+                       ", current leader: ", leader)};
 }
 
 // wrap vector inside a static function to ensure proper initialization order
@@ -2005,7 +2003,7 @@ DataSourceId transaction::Methods::addCollectionAtRuntime(
           TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION), ": ",
           collectionName, " [", AccessMode::typeString(type), "]");
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, message);
+          TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, std::move(message));
     }
   }
 
@@ -3392,7 +3390,7 @@ Future<Result> Methods::replicateOperations(
               StaticStrings::ErrorCodes, found);
           if (found) {
             replicationFailureReason =
-                "got error header from follower: " + errors;
+                absl::StrCat("got error header from follower: ", errors);
           }
 
         } else {
@@ -3420,7 +3418,7 @@ Future<Result> Methods::replicateOperations(
           didRefuse = didRefuse || followerRefused;
 
           replicationFailureReason =
-              "got error from follower: " + std::string(r.errorMessage());
+              absl::StrCat("got error from follower: ", r.errorMessage());
 
           if (followerRefused) {
             ++vocbase()

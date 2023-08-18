@@ -54,6 +54,8 @@ Result SimpleRocksDBTransactionState::beginTransaction(
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
 
+  TRI_ASSERT(_rocksMethods == nullptr);
+
   if (isReadOnlyTransaction()) {
     if (isSingleOperation()) {
       _rocksMethods =
@@ -69,6 +71,8 @@ Result SimpleRocksDBTransactionState::beginTransaction(
       _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, *this, db);
     }
   }
+
+  TRI_ASSERT(_rocksMethods != nullptr);
 
   res = _rocksMethods->beginTransaction();
   if (res.ok()) {
