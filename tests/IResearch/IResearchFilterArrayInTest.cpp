@@ -85,118 +85,118 @@ namespace {
 const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
-using FilterIterator = decltype(reinterpret_cast<irs::boolean_filter*>(0)->begin());
+using FilterIterator =
+    decltype(reinterpret_cast<irs::boolean_filter*>(0)->begin());
 
-void checkTermFilter(FilterIterator begin, bool){
-  // 1st filter
-  {
-    irs::by_term expected;
-    *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
-    expected.mutable_options()->term =
-        irs::ViewCast<irs::byte_type>(std::string_view("1"));
-    EXPECT_EQ(expected, **begin);
-  }
+void checkTermFilter(FilterIterator begin, bool){// 1st filter
+                                                 {irs::by_term expected;
+*expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+expected.mutable_options()->term =
+    irs::ViewCast<irs::byte_type>(std::string_view("1"));
+EXPECT_EQ(expected, **begin);
+}  // namespace
 
-  // 2nd filter
-  {
-    ++begin;
-    EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-              (*begin)->type());
-    EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                           begin->get()));
-  }
+// 2nd filter
+{
+  ++begin;
+  EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
+            (*begin)->type());
+  EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                         begin->get()));
+}
 
-  // 3rd filter
-  {
-    ++begin;
-    irs::by_term expected;
-    *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
-    expected.mutable_options()->term =
-        irs::ViewCast<irs::byte_type>(std::string_view("3"));
-    EXPECT_EQ(expected, **begin);
-  }
-};
+// 3rd filter
+{
+  ++begin;
+  irs::by_term expected;
+  *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+  expected.mutable_options()->term =
+      irs::ViewCast<irs::byte_type>(std::string_view("3"));
+  EXPECT_EQ(expected, **begin);
+}
+}
+;
 
-void checkTermFilter2(FilterIterator begin, bool){
-  // 1st filter
-  {
-    irs::by_term expected;
-    *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
-    expected.mutable_options()->term =
-        irs::ViewCast<irs::byte_type>(std::string_view("1"));
-    EXPECT_EQ(expected, **begin);
-  }
+void checkTermFilter2(FilterIterator begin, bool){// 1st filter
+                                                  {irs::by_term expected;
+*expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+expected.mutable_options()->term =
+    irs::ViewCast<irs::byte_type>(std::string_view("1"));
+EXPECT_EQ(expected, **begin);
+}
 
-  // 2nd filter
-  {
-    ++begin;
-    EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-              (*begin)->type());
-    EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                           begin->get()));
-  }
+// 2nd filter
+{
+  ++begin;
+  EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
+            (*begin)->type());
+  EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                         begin->get()));
+}
 
-  // 3rd filter
-  {
-    ++begin;
-    EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-              (*begin)->type());
-    EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                           begin->get()));
-  }
-};
+// 3rd filter
+{
+  ++begin;
+  EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
+            (*begin)->type());
+  EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                         begin->get()));
+}
+}
+;
 
-void checkTermsFilter(FilterIterator begin, bool any){
-  // 1st filter
-  {
-    irs::by_terms expected;
-    *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
-    expected.mutable_options()->terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("1")));
-    expected.mutable_options()->terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("3")));
-    expected.mutable_options()->min_match = any ? 1 : 2;
-    EXPECT_EQ(expected, **begin);
-  }
+void checkTermsFilter(FilterIterator begin, bool any){// 1st filter
+                                                      {irs::by_terms expected;
+*expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+expected.mutable_options()->terms.emplace(
+    irs::ViewCast<irs::byte_type>(std::string_view("1")));
+expected.mutable_options()->terms.emplace(
+    irs::ViewCast<irs::byte_type>(std::string_view("3")));
+expected.mutable_options()->min_match = any ? 1 : 2;
+EXPECT_EQ(expected, **begin);
+}
 
-  // 2nd filter
-  {
-    ++begin;
-    EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-              (*begin)->type());
-    EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                           begin->get()));
-  }
-};
+// 2nd filter
+{
+  ++begin;
+  EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
+            (*begin)->type());
+  EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                         begin->get()));
+}
+}
+;
 
-void checkTermsFilter2(FilterIterator begin, bool){
-  // 1st filter
-  {
-    irs::by_terms expected;
-    *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
-    expected.mutable_options()->terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("1")));
-    expected.mutable_options()->min_match = 1;
-    EXPECT_EQ(expected, **begin);
-  }
+void checkTermsFilter2(FilterIterator begin, bool){// 1st filter
+                                                   {irs::by_terms expected;
+*expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+expected.mutable_options()->terms.emplace(
+    irs::ViewCast<irs::byte_type>(std::string_view("1")));
+expected.mutable_options()->min_match = 1;
+EXPECT_EQ(expected, **begin);
+}
 
-  // 2nd filter
-  {
-    ++begin;
-    EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-              (*begin)->type());
-    EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                           begin->get()));
-  }
+// 2nd filter
+{
+  ++begin;
+  EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
+            (*begin)->type());
+  EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                         begin->get()));
+}
 
-  // 3rd filter
-  {
-    ++begin;
-    EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-              (*begin)->type());
-    EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                           begin->get()));
-  }
-};
+// 3rd filter
+{
+  ++begin;
+  EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
+            (*begin)->type());
+  EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
+                         begin->get()));
+}
+}
+;
 
- // Auxilary check functions. Need them to check root part of expected filterd
+// Auxilary check functions. Need them to check root part of expected filterd
 // direct == check is not possible as we will have byExpresssion filters
 // generated on the fly
 template<void (*AfterCheck)(FilterIterator, bool), size_t count = 2>
@@ -244,7 +244,6 @@ void checkAtLeastImpl(irs::Or& actual, irs::score_t boost) {
   AfterCheck(root.begin(), true);
 };
 }
-
 
 class IResearchFilterArrayInTest
     : public ::testing::Test,
@@ -1688,8 +1687,6 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
                         expected);
   }
 
-
-
   // nondeterministic value
   {
     std::vector<std::pair<
@@ -1905,17 +1902,15 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
                         &actual, filterCtx, *filterNode)
                         .ok());
 
-        {
-          caseData.second(actual, 1);
-        }
+        { caseData.second(actual, 1); }
       }
     }
   }
 
   // self-referenced value
   {
-    std::vector<std::pair<
-        std::string, std::function<void(irs::Or&, irs::score_t)>>> const
+    std::vector<std::pair<std::string,
+                          std::function<void(irs::Or&, irs::score_t)>>> const
         testCases = {
             {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ANY IN "
              "d.a.b.c.e.f RETURN d",
@@ -2027,8 +2022,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
   // self-referenced value
   {
-    std::vector<std::pair<
-        std::string, std::function<void(irs::Or&, irs::score_t)>>> const
+    std::vector<std::pair<std::string,
+                          std::function<void(irs::Or&, irs::score_t)>>> const
         testCases = {
             {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ANY IN "
              "d.a.b.c.e.f, 2.5) RETURN d",

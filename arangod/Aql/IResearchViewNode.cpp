@@ -1470,9 +1470,7 @@ aql::Collection const* IResearchViewNode::collection() const {
   return &c.front().first.get();
 }
 
-bool IResearchViewNode::isUsedAsSatellite() const {
-  return _isUsedAsSatellite;
-}
+bool IResearchViewNode::isUsedAsSatellite() const { return _isUsedAsSatellite; }
 void IResearchViewNode::useAsSatelliteOf(aql::ExecutionNodeId) {
   _isUsedAsSatellite = true;
 }

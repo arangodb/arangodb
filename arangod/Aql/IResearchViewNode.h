@@ -91,7 +91,8 @@ struct HeapSortElement {
   bool ascending{true};
 };
 
-class IResearchViewNode final : public aql::ExecutionNode, public aql::DataAccessingNode {
+class IResearchViewNode final : public aql::ExecutionNode,
+                                public aql::DataAccessingNode {
  public:
   // Node options
   struct Options {
@@ -148,9 +149,7 @@ class IResearchViewNode final : public aql::ExecutionNode, public aql::DataAcces
   aql::Collection const* collection() const final;
   bool isUsedAsSatellite() const final;
   void useAsSatelliteOf(aql::ExecutionNodeId) final;
-  aql::Collection const* prototypeCollection() const final {
-    return nullptr;
-  }
+  aql::Collection const* prototypeCollection() const final { return nullptr; }
 
   // Returns the list of the linked collections.
   Collections collections() const;

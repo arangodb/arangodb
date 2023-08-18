@@ -1060,10 +1060,12 @@ Result fromRange(irs::boolean_filter* filter, FilterContext const& filterCtx,
   return {};
 }
 
-std::tuple<Result, aql::AstNodeType, size_t> buildBinaryArrayComparisonPreFilter(
-    irs::boolean_filter*& filter, aql::AstNodeType arrayComparison,
-    const aql::AstNode* quantifierNode, size_t arraySize,
-    FilterContext const& filterCtx) {
+std::tuple<Result, aql::AstNodeType, size_t>
+buildBinaryArrayComparisonPreFilter(irs::boolean_filter*& filter,
+                                    aql::AstNodeType arrayComparison,
+                                    const aql::AstNode* quantifierNode,
+                                    size_t arraySize,
+                                    FilterContext const& filterCtx) {
   TRI_ASSERT(quantifierNode);
   auto quantifierType =
       static_cast<aql::Quantifier::Type>(quantifierNode->getIntValue(true));
@@ -1310,7 +1312,6 @@ std::tuple<Result, aql::AstNodeType, size_t> buildBinaryArrayComparisonPreFilter
 }
 
 struct ByTermsOptimizationContext {
-
   void Finalize() noexcept {
     if (allMatch) {
       for (auto& f : filters) {
@@ -1326,8 +1327,8 @@ struct ByTermsOptimizationContext {
   bool allMatch{false};
 };
 
-Result appendByTermsFilter(irs::boolean_filter* filter, ScopedAqlValue const& value,
-                           std::string& name,
+Result appendByTermsFilter(irs::boolean_filter* filter,
+                           ScopedAqlValue const& value, std::string& name,
                            FilterContext const& filterCtx,
                            ByTermsOptimizationContext& termsOpt) {
   auto makeFilter = [&]() -> irs::by_terms* {
@@ -1403,7 +1404,6 @@ Result appendByTermsFilter(irs::boolean_filter* filter, ScopedAqlValue const& va
 
 class ByTermSubFilterFactory {
  public:
-
   static Result byNodeSubFilter(irs::boolean_filter* filter,
                                 NormalizedCmpNode const& node,
                                 FilterContext const& filterCtx,
@@ -1601,8 +1601,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
     // filters are distributed over several index fields. And
     // for n-matches case we will need to support premutations, but in that case
     // it is cheaper to run min-match disjunction
-    byTermFilters.useByTerms = byTermFilters.useByTerms &&
-                                (matchCount == 1 || matchCount == n);
+    byTermFilters.useByTerms =
+        byTermFilters.useByTerms && (matchCount == 1 || matchCount == n);
     byTermFilters.allMatch = n == matchCount;
     for (size_t i = 0; i < n; ++i) {
       auto const* member = valueNode->getMemberUnchecked(i);
@@ -1639,9 +1639,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
               absl::StrCat("while getting array: ", rv.errorMessage()));
         }
       } else {
-        auto rv =
-            SubFilterFactory::byNodeSubFilter(filter, normalized, subFilterCtx,
-                                              byTermFilters);
+        auto rv = SubFilterFactory::byNodeSubFilter(
+            filter, normalized, subFilterCtx, byTermFilters);
         if (rv.fail()) {
           return rv.reset(
               rv.errorNumber(),

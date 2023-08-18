@@ -206,7 +206,8 @@ std::ostream& operator<<(std::ostream& os, by_terms const& filter) {
   os << "TERMS[";
   os << filter.field() << ", {";
   for (auto& [term, boost] : filter.options().terms) {
-    os << "['" << ViewCast<char>(irs::bytes_view{term}) << "', " << boost << "],";
+    os << "['" << ViewCast<char>(irs::bytes_view{term}) << "', " << boost
+       << "],";
   }
   os << "}, " << filter.options().min_match << "]";
   return os;
