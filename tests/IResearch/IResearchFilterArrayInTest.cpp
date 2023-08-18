@@ -85,8 +85,7 @@ namespace {
 const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
-using FilterIterator =
-    decltype(reinterpret_cast<irs::boolean_filter*>(1)->begin());
+using FilterIterator = decltype(std::declval<irs::boolean_filter>().begin());
 
 void checkTermFilter(FilterIterator begin, bool) {
   {
@@ -1895,27 +1894,30 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
   // self-referenced value
   {
-    std::vector<std::pair<std::string,
-                          std::function<void(irs::Or&, irs::score_t)>>> const
-        testCases = {
-            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ANY IN "
-             "d.a.b.c.e.f RETURN d",
-             checkAnyImpl<checkTermsFilter2, 3>},
-            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ALL IN "
-             "d.a.b.c.e.f RETURN d",
-             checkAllImpl<checkTermsFilter2, 3>},
-            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] NONE IN "
-             "d.a.b.c.e.f RETURN d",
-             checkNoneImpl<checkTermsFilter2, 3>},
-            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ANY == "
-             "d.a.b.c.e.f RETURN d",
-             checkAnyImpl<checkTermsFilter2, 3>},
-            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ALL == "
-             "d.a.b.c.e.f RETURN d",
-             checkAllImpl<checkTermsFilter2, 3>},
-            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] NONE == "
-             "d.a.b.c.e.f RETURN d",
-             checkNoneImpl<checkTermsFilter2, 3>}};
+    std::vector<std::pair<
+        std::string,
+        std::function<void(irs::Or&, irs::score_t)>>> const testCases = {
+        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ANY IN "
+         "d.a.b.c.e.f RETURN d",
+         checkAnyImpl<checkTermsFilter2, 3>},
+        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ALL IN "
+         "d.a.b.c.e.f RETURN d",
+         checkAllImpl<checkTermsFilter2, 3>},
+        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] NONE IN "
+         "d.a.b.c.e.f RETURN d",
+         checkNoneImpl<checkTermsFilter2, 3>},
+        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ANY == "
+         "d.a.b.c.e.f RETURN d",
+         checkAnyImpl<checkTermsFilter2, 3>},
+        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ALL == "
+         "d.a.b.c.e.f RETURN d",
+         checkAllImpl<checkTermsFilter2, 3>},
+        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] NONE == "
+         "d.a.b.c.e.f RETURN d",
+         checkNoneImpl<checkTermsFilter2, 3>},
+        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] AT LEAST(2) == "
+         "d.a.b.c.e.f RETURN d",
+         checkAtLeastImpl<checkTermFilter2>}};
     for (auto caseData : testCases) {
       auto const& queryString = caseData.first;
       SCOPED_TRACE(
