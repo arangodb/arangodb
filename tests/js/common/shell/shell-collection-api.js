@@ -1577,7 +1577,7 @@ function IgnoreIllegalTypesSuite() {
                 } else {
                   if (ignoredValue === null) {
                     // Allowed default to one shard
-                    isAllowed(res, collname, testParam, false);
+                    isAllowed(res, collname, testParam);
                   } else {
                     isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
                   }
