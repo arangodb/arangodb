@@ -21,6 +21,20 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+///
+/// The BuildId code itself is generic and activated from the build system
+/// by setting USE_BUILD_ID=On
+///
+/// At the moment build Ids are only supported under elf-linux if the build id
+/// is provided via a note in a ProgramHeader in the ELF information on the
+/// executable.
+///
+/// On linux a little implicit linker script (BuildId.ld) is used to set two
+/// variables build_id_start[] and char build_id_end to the address of the
+/// build-id note in the executable. The variable build_id_end is not
+/// currently used but could be used to guard against out-of-bound reads on
+/// the build-id.
+///
 #pragma once
 
 #include <optional>
