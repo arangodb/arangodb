@@ -148,12 +148,9 @@ std::string VocbaseContext::authMethod() const {
   switch (_request.authenticationMethod()) {
     case rest::AuthenticationMethod::BASIC:
       return "http basic";
-      break;
     case rest::AuthenticationMethod::JWT:
       return "http jwt";
-      break;
     case rest::AuthenticationMethod::NONE:
-      return "n/a";
       break;
   }
   return "n/a";

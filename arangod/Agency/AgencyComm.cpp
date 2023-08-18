@@ -31,6 +31,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
+#include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
@@ -1470,7 +1471,7 @@ bool AgencyComm::shouldInitializeStructure() {
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    ADB_UNREACHABLE;
   }
 
   return false;
