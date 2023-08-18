@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window, JSONEditor */
+/* global frontendConfig, slicePath, icon, wheelnav, templateEngine */
 (function () {
   'use strict';
 
