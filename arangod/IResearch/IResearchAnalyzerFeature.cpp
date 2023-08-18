@@ -2553,7 +2553,6 @@ Result IResearchAnalyzerFeature::finalizeRemove(
                          "configuration for arangosearch analyzer name '",
                          name, "'")};
   }
-  return {};
 }
 
 Result IResearchAnalyzerFeature::remove(std::string_view name,

@@ -51,10 +51,6 @@
 using namespace arangodb;
 using namespace arangodb::maskings;
 
-namespace {
-std::string const xxxx("xxxx");
-}
-
 MaskingsResult Maskings::fromFile(std::string const& filename) {
   std::string definition;
 
@@ -233,8 +229,6 @@ VPackValue Maskings::maskedItem(Collection const& collection,
       return VPackValue(data.getInt());
     } else if (data.isDouble()) {
       return VPackValue(data.getDouble());
-    } else {
-      return VPackValue(VPackValueType::Null);
     }
   } else {
     if (data.isBool()) {
@@ -247,12 +241,9 @@ VPackValue Maskings::maskedItem(Collection const& collection,
       return func->mask(data.getInt(), buffer);
     } else if (data.isDouble()) {
       return func->mask(data.getDouble(), buffer);
-    } else {
-      return VPackValue(VPackValueType::Null);
     }
   }
-
-  return VPackValue(xxxx);
+  return VPackValue(VPackValueType::Null);
 }
 
 void Maskings::addMaskedArray(Collection const& collection,
