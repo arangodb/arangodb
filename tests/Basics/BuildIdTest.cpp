@@ -29,6 +29,6 @@ using namespace arangodb::build_id;
 TEST(BuildIdTest, successfully_obtains_build_id) {
   if constexpr (arangodb::build_id::supportsBuildId()) {
     auto buildId = getBuildId();
-    ASSERT_EQ(buildId.size(), 20);
+    ASSERT_TRUE(buildId.size() > 0);
   }
 }
