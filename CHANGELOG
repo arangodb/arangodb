@@ -1,6 +1,10 @@
 devel
 -----
 
+* Allow compression content-negotation in metrics API, so that responses from
+  the metrics API at `/_admin/metrics` can be sent compressed if the client
+  supports it.
+
 * Fixed BTS-1556: Potential shutdown race, when the server is shutting down
   and still AgencyCommunication was going on it could use the scheduler
   which was already deleted, causing a crash right before a normal shutdown.
