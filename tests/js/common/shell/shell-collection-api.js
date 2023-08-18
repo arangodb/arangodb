@@ -1634,7 +1634,7 @@ function IgnoreIllegalTypesSuite() {
               if (isCluster) {
                 // Can only be strings
                 if (ignoredValue === null) {
-                  // Allowed default to one shard
+                  // Allowed default to no distributeShardsLike
                   isAllowed(res, collname, testParam);
                 } else {
                   isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
