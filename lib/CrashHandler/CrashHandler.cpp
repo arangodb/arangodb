@@ -47,6 +47,7 @@
 #include <boost/core/demangle.hpp>
 
 #include "CrashHandler.h"
+#include "Basics/BuildId.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/SizeLimitedString.h"
 #include "Basics/StringUtils.h"
@@ -166,15 +167,13 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
   // build a crash message
   buffer.append("💥 ArangoDB ").append(ARANGODB_VERSION_FULL);
 
-#ifdef __linux__
-  {
+  if constexpr (arangodb::build_id::supportsBuildId()) {
     // get build-id by reference, so we can avoid a copy here
     std::string const& buildId = arangodb::rest::Version::getBuildId();
     if (!buildId.empty()) {
       buffer.append(", build-id ").append(buildId);
     }
   }
-#endif
 
   // append thread id
   buffer.append(", thread ")
