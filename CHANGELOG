@@ -1,6 +1,12 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* Fixed BTS-1556: Potential shutdown race, when the server is shutting down
+  and still AgencyCommunication was going on it could use the scheduler
+  which was already deleted, causing a crash right before a normal shutdown.
+  This should not have any negative effect, as all state preserving operations
+  are done by then, it just wasn't a clean exit.
+
 * Updated ArangoDB Starter to 0.17.1.
 
 * Whenever there is a query request timeout in AQL (e.g., a server died) which
