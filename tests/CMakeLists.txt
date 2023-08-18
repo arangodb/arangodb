@@ -268,8 +268,11 @@ endif ()
 add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
-add_link_options(arangodbtests
-  PUBLIC -T ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld)
+if (USE_BUILD_ID)
+  target_link_options(arangodbtests
+    PUBLIC ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld
+    -Wl,--build-id)
+endif ()
 
 add_subdirectory(Basics)
 add_subdirectory(Inspection)
