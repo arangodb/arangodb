@@ -21,30 +21,29 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-///
-/// The BuildId code itself is generic and activated from the build system
-/// by setting USE_BUILD_ID=On
-///
-/// At the moment build Ids are only supported under elf-linux if the build id
-/// is provided via a note in a ProgramHeader in the ELF information on the
-/// executable.
-///
-/// On linux a little implicit linker script (BuildId.ld) is used to set two
-/// variables build_id_start[] and char build_id_end to the address of the
-/// build-id note in the executable. The variable build_id_end is not
-/// currently used but could be used to guard against out-of-bound reads on
-/// the build-id.
-///
-#pragma once
+#include "BuildId/BuildId.h"
 
-#include <optional>
+#include <elf.h>
+#include <link.h>
 #include <string>
 
-#include "Basics/StringUtils.h"
+extern char build_id_start[];
+extern char build_id_end;
 
 namespace arangodb::build_id {
 
-constexpr auto supportsBuildId() -> bool { return USE_BUILD_ID; };
-auto getBuildId() -> std::string_view;
+constexpr const char* build_id_failed = "";
+
+auto getBuildId() -> std::string_view {
+  auto const* noteMemory = reinterpret_cast<const char*>(&build_id_start);
+  auto const* noteHeader = reinterpret_cast<ElfW(Nhdr) const*>(noteMemory);
+
+  if (noteHeader->n_type == NT_GNU_BUILD_ID) {
+    auto const* buildIdMemory = reinterpret_cast<const char*>(
+        noteMemory + sizeof(ElfW(Nhdr)) + noteHeader->n_namesz);
+    return std::string_view{buildIdMemory, noteHeader->n_descsz};
+  }
+  return std::string_view{build_id_failed};
+}
 
 }  // namespace arangodb::build_id

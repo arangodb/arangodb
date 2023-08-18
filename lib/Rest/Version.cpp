@@ -46,10 +46,10 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/asio_ns.h"
 #include "Basics/build-date.h"
-#include "Basics/BuildId.h"
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
+#include "BuildId/BuildId.h"
 
 #include "../3rdParty/iresearch/core/utils/version_defines.hpp"
 
@@ -313,7 +313,7 @@ void Version::initialize() {
   Values["libunwind"] = "false";
 #endif
 
-  if constexpr (arangodb::build_id::supportsBuildId()) {
+  if constexpr (arangodb::build_id::supportsBuildIdReader()) {
     Values["build-id"] =
         basics::StringUtils::encodeHex(arangodb::build_id::getBuildId());
   }

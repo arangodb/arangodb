@@ -26,13 +26,6 @@ add_executable(${BIN_ARANGOD}
   ${ProductVersionFiles}
 )
   
-if (USE_BUILD_ID)
-target_link_options(${BIN_ARANGOD}
-  PUBLIC
-    -Wl,--build-id
-    ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld)
-endif ()
-
 target_link_libraries(${BIN_ARANGOD}
   arangoserver
   arango_iresearch)

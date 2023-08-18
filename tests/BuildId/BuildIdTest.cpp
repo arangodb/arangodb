@@ -20,30 +20,15 @@
 ///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
+#include <gtest/gtest.h>
 
-#include "Basics/BuildId.h"
+#include "BuildId/BuildId.h"
 
-#include <elf.h>
-#include <link.h>
-#include <string>
+using namespace arangodb::build_id;
 
-extern char build_id_start[];
-extern char build_id_end;
-
-namespace arangodb::build_id {
-
-constexpr const char* build_id_failed = "";
-
-auto getBuildId() -> std::string_view {
-  auto const* noteMemory = reinterpret_cast<const char*>(&build_id_start);
-  auto const* noteHeader = reinterpret_cast<ElfW(Nhdr) const*>(noteMemory);
-
-  if (noteHeader->n_type == NT_GNU_BUILD_ID) {
-    auto const* buildIdMemory = reinterpret_cast<const char*>(
-        noteMemory + sizeof(ElfW(Nhdr)) + noteHeader->n_namesz);
-    return std::string_view{buildIdMemory, noteHeader->n_descsz};
+TEST(BuildIdTest, successfully_obtains_build_id) {
+  if constexpr (arangodb::build_id::supportsBuildIdReader()) {
+    auto buildId = getBuildId();
+    ASSERT_TRUE(buildId.size() > 0);
   }
-  return std::string_view{build_id_failed};
 }
-
-}  // namespace arangodb::build_id

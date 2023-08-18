@@ -57,13 +57,6 @@ add_executable(${BIN_ARANGOBENCH}
   ../cmake/activeCodePage.manifest
 )
 target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
-if (USE_BUILD_ID)
-target_link_options(${BIN_ARANGOBENCH}
-  PUBLIC
-    -Wl,--build-id
-    ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld)
-endif ()
-
 
 target_link_libraries(${BIN_ARANGOBENCH}
   arango
@@ -117,12 +110,6 @@ if (USE_ENTERPRISE)
   )
   target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
   target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/arangod)
-  if (USE_BUILD_ID)
-    target_link_options(${BIN_ARANGOBACKUP}
-    PUBLIC
-      -Wl,--build-id
-      ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld)
-  endif ()
 
   target_link_libraries(${BIN_ARANGOBACKUP}
     arango
@@ -175,13 +162,6 @@ add_executable(${BIN_ARANGODUMP}
   Dump/arangodump.cpp
 )
 target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
-if (USE_BUILD_ID)
-target_link_options(${BIN_ARANGODUMP}
-  PUBLIC
-    -Wl,--build-id
-    ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld)
-endif ()
-
 
 target_link_libraries(${BIN_ARANGODUMP}
   arango
@@ -231,13 +211,6 @@ add_executable(${BIN_ARANGOEXPORT}
   Export/arangoexport.cpp
 )
 target_include_directories(${BIN_ARANGOEXPORT} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
-if (USE_BUILD_ID)
-target_link_options(${BIN_ARANGOEXPORT}
-  PUBLIC
-    -Wl,--build-id
-    ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld)
-endif ()
-
 
 target_link_libraries(${BIN_ARANGOEXPORT}
   arango
@@ -290,13 +263,6 @@ add_executable(${BIN_ARANGOIMPORT}
   Import/arangoimport.cpp
 )
 target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
-if (USE_BUILD_ID)
-target_link_options(${BIN_ARANGOIMPORT}
-  PUBLIC
-    -Wl,--build-id
-    ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld)
-endif ()
-
 
 target_link_libraries(${BIN_ARANGOIMPORT}
   arango
@@ -359,13 +325,6 @@ add_executable(${BIN_ARANGORESTORE}
   ../cmake/activeCodePage.manifest
   Restore/arangorestore.cpp
 )
-if (USE_BUILD_ID)
-target_link_options(${BIN_ARANGORESTORE}
-  PUBLIC
-    -Wl,--build-id
-    ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld)
-endif ()
-
 
 target_link_libraries(${BIN_ARANGORESTORE}
   arango_restore
@@ -428,13 +387,6 @@ add_executable(${BIN_ARANGOSH}
   Shell/v8-deadline.cpp
   ${FUZZER}
 )
-if (USE_BUILD_ID)
-target_link_options(${BIN_ARANGOSH}
-  PUBLIC
-    -Wl,--build-id
-    ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld)
-endif ()
-
 
 target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
@@ -488,13 +440,6 @@ add_executable(${BIN_ARANGOVPACK}
   VPack/arangovpack.cpp
 )
 target_include_directories(${BIN_ARANGOVPACK} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
-if (USE_BUILD_ID)
-target_link_options(${BIN_ARANGOVPACK}
-  PUBLIC
-    -Wl,--build-id
-    ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld)
-endif ()
-
 
 target_link_libraries(${BIN_ARANGOVPACK}
   arango

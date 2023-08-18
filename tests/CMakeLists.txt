@@ -18,6 +18,7 @@ add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
 add_subdirectory(Futures)
+add_subdirectory(BuildId)
 
 # ----------------------------------------
 # Link directories
@@ -267,12 +268,6 @@ endif ()
 
 add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
-
-if (USE_BUILD_ID)
-  target_link_options(arangodbtests
-    PUBLIC ${CMAKE_SOURCE_DIR}/lib/Basics/BuildId.ld
-    -Wl,--build-id)
-endif ()
 
 add_subdirectory(Basics)
 add_subdirectory(Inspection)
