@@ -1331,30 +1331,29 @@ Result appendByTermsFilter(irs::boolean_filter* filter,
                            ScopedAqlValue const& value, std::string& name,
                            FilterContext const& filterCtx,
                            ByTermsOptimizationContext& termsOpt) {
-  auto makeFilter = [&]() -> irs::by_terms* {
+  auto makeFilter = [&]() -> irs::by_terms& {
     auto existing = termsOpt.filters.find(name);
-    if (existing == termsOpt.filters.end()) {
-      auto& terms_filter = filter->add<irs::by_terms>();
-      *terms_filter.mutable_field() = name;
-      terms_filter.boost(filterCtx.boost);
-      termsOpt.filters.emplace(name, &terms_filter);
-      return &terms_filter;
-    } else {
-      return existing->second;
+    if (existing != termsOpt.filters.end()) {
+      return *existing->second;
     }
+    auto& terms_filter = filter->add<irs::by_terms>();
+    *terms_filter.mutable_field() = name;
+    terms_filter.boost(filterCtx.boost);
+    termsOpt.filters.emplace(name, &terms_filter);
+    return terms_filter;
   };
   switch (value.type()) {
     case SCOPED_VALUE_TYPE_NULL: {
       kludge::mangleNull(name);
-      auto terms_filter = makeFilter();
-      terms_filter->mutable_options()->terms.emplace(
+      auto& terms_filter = makeFilter();
+      terms_filter.mutable_options()->terms.emplace(
           irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()));
       return {};
     }
     case SCOPED_VALUE_TYPE_BOOL: {
       kludge::mangleBool(name);
-      auto terms_filter = makeFilter();
-      terms_filter->mutable_options()->terms.emplace(
+      auto& terms_filter = makeFilter();
+      terms_filter.mutable_options()->terms.emplace(
           irs::ViewCast<irs::byte_type>(
               irs::boolean_token_stream::value(value.getBoolean())));
       return {};
@@ -1366,13 +1365,13 @@ Result appendByTermsFilter(irs::boolean_filter* filter,
         return {TRI_ERROR_BAD_PARAMETER, "could not get double value"};
       }
       kludge::mangleNumeric(name);
-      auto terms_filter = makeFilter();
+      auto& terms_filter = makeFilter();
       irs::numeric_token_stream stream;
       irs::term_attribute const* token = irs::get<irs::term_attribute>(stream);
       TRI_ASSERT(token);
       stream.reset(dblValue);
       stream.next();
-      terms_filter->mutable_options()->terms.emplace(token->value);
+      terms_filter.mutable_options()->terms.emplace(token->value);
       return {};
     }
     case SCOPED_VALUE_TYPE_STRING:
@@ -1391,8 +1390,8 @@ Result appendByTermsFilter(irs::boolean_filter* filter,
         }
 
         kludge::mangleField(name, ctx.isOldMangling, analyzer);
-        auto terms_filter = makeFilter();
-        terms_filter->mutable_options()->terms.emplace(
+        auto& terms_filter = makeFilter();
+        terms_filter.mutable_options()->terms.emplace(
             irs::ViewCast<irs::byte_type>(strValue));
       }
       return {};
@@ -1432,9 +1431,8 @@ class ByTermSubFilterFactory {
             }
           }
           return appendByTermsFilter(filter, value, name, filterCtx, termsOpt);
-        } else {
-          termFilter = &append<irs::by_term>(*filter, filterCtx);
         }
+        termFilter = &append<irs::by_term>(*filter, filterCtx);
       }
     }
     return byTerm(termFilter, node, filterCtx);
@@ -1457,9 +1455,8 @@ class ByTermSubFilterFactory {
         if (termsOpt.useByTerms) {
           return appendByTermsFilter(filter, value, fieldName, filterCtx,
                                      termsOpt);
-        } else {
-          termFilter = &append<irs::by_term>(*filter, filterCtx);
         }
+        termFilter = &append<irs::by_term>(*filter, filterCtx);
       }
     }
     return byTerm(termFilter, std::move(fieldName), value, filterCtx);
@@ -1567,10 +1564,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
         return fromExpression(filter, filterCtx, node);
       }
     }
-    Result buildRes;
-    aql::AstNodeType arrayExpansionNodeType;
-    size_t matchCount;
-    std::tie(buildRes, arrayExpansionNodeType, matchCount) =
+    auto [buildRes, arrayExpansionNodeType, matchCount] =
         buildBinaryArrayComparisonPreFilter(filter, node.type, quantifierNode,
                                             n, filterCtx);
     if (!buildRes.ok()) {
@@ -1601,8 +1595,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
     // filters are distributed over several index fields. And
     // for n-matches case we will need to support premutations, but in that case
     // it is cheaper to run min-match disjunction
-    byTermFilters.useByTerms =
-        byTermFilters.useByTerms && (matchCount == 1 || matchCount == n);
+    byTermFilters.useByTerms &= (matchCount == 1 || matchCount == n);
     byTermFilters.allMatch = n == matchCount;
     for (size_t i = 0; i < n; ++i) {
       auto const* member = valueNode->getMemberUnchecked(i);
@@ -1679,10 +1672,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
   switch (value.type()) {
     case SCOPED_VALUE_TYPE_ARRAY: {
       size_t const n = value.size();
-      Result buildRes;
-      size_t matchCount;
-      aql::AstNodeType arrayExpansionNodeType;
-      std::tie(buildRes, arrayExpansionNodeType, matchCount) =
+      auto [buildRes, arrayExpansionNodeType, matchCount] =
           buildBinaryArrayComparisonPreFilter(filter, node.type, quantifierNode,
                                               n, filterCtx);
       if (!buildRes.ok()) {
@@ -1695,8 +1685,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       }
       TRI_ASSERT(!filter || filter->type() == irs::type<irs::And>::id() ||
                  filter->type() == irs::type<irs::Or>::id());
-      byTermFilters.useByTerms =
-          byTermFilters.useByTerms && (matchCount == 1 || matchCount == n);
+      byTermFilters.useByTerms &= (matchCount == 1 || matchCount == n);
       byTermFilters.allMatch = n == matchCount;
       FilterContext const subFilterCtx{
           .query = filterCtx.query,

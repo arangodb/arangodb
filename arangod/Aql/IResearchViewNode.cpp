@@ -1461,13 +1461,13 @@ std::pair<bool, bool> IResearchViewNode::volatility(
 
 aql::Collection const* IResearchViewNode::collection() const {
   auto c = collections();
-  if (c.empty()) {
-    return nullptr;
+  if (c.size() == 1) {
+    return &c.front().first.get();
   }
   // this API should not be used for multicollection views
   // doing so might break satellite join assumptions
-  TRI_ASSERT(c.size() == 1);
-  return &c.front().first.get();
+  TRI_ASSERT(c.empty());
+  return nullptr;
 }
 
 bool IResearchViewNode::isUsedAsSatellite() const { return _isUsedAsSatellite; }
