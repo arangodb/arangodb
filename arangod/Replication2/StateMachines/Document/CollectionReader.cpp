@@ -35,7 +35,9 @@ namespace arangodb::replication2::replicated_state::document {
 
 SnapshotTransaction::SnapshotTransaction(
     std::shared_ptr<transaction::Context> ctx)
-    : transaction::Methods(std::move(ctx), transaction::TrxType::kInternal,
+    : transaction::Methods(std::move(ctx),
+                           transaction::OperationOriginInternal{
+                               "shapshotting collection for replication"},
                            options()) {}
 
 auto SnapshotTransaction::options() -> transaction::Options {

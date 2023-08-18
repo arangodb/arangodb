@@ -49,8 +49,8 @@
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/TrxType.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -639,9 +639,9 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
           size_t planId = coll->planId().id();
           result.add("plan_id", VPackValue(planId));
 
-          // TODO: is the trxType actually correct?
-          SingleCollectionTransaction trx(ctx, collName, AccessMode::Type::READ,
-                                          transaction::TrxType::kInternal);
+          SingleCollectionTransaction trx(
+              ctx, collName, AccessMode::Type::READ,
+              transaction::OperationOriginUnknown{});
 
           Result res = trx.begin();
 

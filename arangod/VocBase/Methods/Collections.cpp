@@ -70,6 +70,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
+#include <string>
+#include <string_view>
 #include <unordered_set>
 
 using namespace arangodb;
@@ -78,6 +80,7 @@ using namespace arangodb::methods;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
+constexpr std::string_view moduleName("collections management");
 
 bool checkIfDefinedAsSatellite(VPackSlice const& properties) {
   if (properties.hasKey(StaticStrings::ReplicationFactor)) {
@@ -160,7 +163,7 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
   // validate computed values
   auto result = ComputedValues::buildInstance(
       vocbase, shardKeys, info.properties.get(StaticStrings::ComputedValues),
-      transaction::TrxType::kInternal);
+      transaction::OperationOriginInternal{ComputedValues::moduleName});
   if (result.fail()) {
     return result.result();
   }
@@ -396,7 +399,7 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
                                                           embeddable);
     // TODO: check if trxType is actually correct here
     auto trx = std::make_unique<SingleCollectionTransaction>(
-        ctx, *_coll, type, transaction::TrxType::kREST);
+        ctx, *_coll, type, transaction::OperationOriginREST{::moduleName});
 
     Result res = trx->begin();
 
@@ -606,7 +609,7 @@ Collections::create(         // create collection
       TRI_ASSERT(col.shardKeys.has_value());
       auto result = ComputedValues::buildInstance(
           vocbase, col.shardKeys.value(), col.computedValues.slice(),
-          transaction::TrxType::kInternal);
+          transaction::OperationOriginInternal{ComputedValues::moduleName});
       if (result.fail()) {
         return result.result();
       }
@@ -1067,9 +1070,9 @@ Result Collections::updateProperties(LogicalCollection& collection,
   } else {
     auto ctx =
         transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
-    SingleCollectionTransaction trx(ctx, collection,
-                                    AccessMode::Type::EXCLUSIVE,
-                                    transaction::TrxType::kInternal);
+    SingleCollectionTransaction trx(
+        ctx, collection, AccessMode::Type::EXCLUSIVE,
+        transaction::OperationOriginREST{"collection properties update"});
     Result res = trx.begin();
 
     if (res.ok()) {
@@ -1096,7 +1099,8 @@ static ErrorCode RenameGraphCollections(TRI_vocbase_t& vocbase,
                                         std::string const& newName) {
   ExecContextSuperuserScope exscope;
 
-  graph::GraphManager gmngr{vocbase, transaction::TrxType::kInternal};
+  graph::GraphManager gmngr{vocbase, transaction::OperationOriginInternal{
+                                         "renaming graph collections"}};
   bool r = gmngr.renameGraphCollection(oldName, newName);
   if (!r) {
     return TRI_ERROR_FAILED;
@@ -1312,11 +1316,11 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
 
-  // TODO: check if trxType is actually correct here
   auto ctx =
       transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
-  SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ,
-                                  transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx, collection, AccessMode::Type::READ,
+      transaction::OperationOriginREST{"checksumming collection"});
   Result res = trx.begin();
 
   if (res.fail()) {

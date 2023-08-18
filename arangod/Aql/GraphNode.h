@@ -28,7 +28,7 @@
 #include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
-#include "Transaction/TrxType.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
@@ -243,7 +243,7 @@ class GraphNode : public ExecutionNode {
   Collection const* getShardingPrototype() const;
 
   void determineEnterpriseFlags(AstNode const* edgeCollectionList,
-                                transaction::TrxType trxTypeHint);
+                                transaction::OperationOrigin operationOrigin);
 
  protected:
   /// @brief the database

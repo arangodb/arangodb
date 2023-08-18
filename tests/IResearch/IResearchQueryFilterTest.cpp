@@ -65,7 +65,7 @@ class QueryFilter : public QueryTest {
       transaction::Methods trx(
           transaction::StandaloneContext::Create(_vocbase), EMPTY,
           {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
-          transaction::Options(), transaction::TrxType::kInternal);
+          transaction::Options(), transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections

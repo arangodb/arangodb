@@ -54,7 +54,7 @@ namespace {
 class CalculationTransactionState final : public arangodb::TransactionState {
  public:
   explicit CalculationTransactionState(TRI_vocbase_t& vocbase,
-                                       transaction::TrxType trxType)
+                                       transaction::OperationOrigin trxType)
       : TransactionState(vocbase, arangodb::TransactionId(0),
                          arangodb::transaction::Options(), trxType) {
     updateStatus(arangodb::transaction::Status::RUNNING);  // always running to
@@ -145,17 +145,17 @@ class CalculationTransactionState final : public arangodb::TransactionState {
 /// @brief Dummy transaction context which just gives dummy state
 struct CalculationTransactionContext final
     : public arangodb::transaction::SmartContext {
-  explicit CalculationTransactionContext(TRI_vocbase_t& vocbase,
-                                         transaction::TrxType trxTypeHint)
+  explicit CalculationTransactionContext(
+      TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin)
       : SmartContext(vocbase,
                      arangodb::transaction::Context::makeTransactionId(),
                      nullptr),
-        _calculationTransactionState(vocbase, trxTypeHint) {}
+        _calculationTransactionState(vocbase, operationOrigin) {}
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<arangodb::TransactionState> acquireState(
       arangodb::transaction::Options const& options, bool& responsibleForCommit,
-      arangodb::transaction::TrxType /*trxTypeHint*/) override {
+      arangodb::transaction::OperationOrigin /*operationOrigin*/) override {
     return {std::shared_ptr<arangodb::TransactionState>(),
             &_calculationTransactionState};
   }
@@ -177,14 +177,14 @@ struct CalculationTransactionContext final
 class CalculationQueryContext final : public arangodb::aql::QueryContext {
  public:
   explicit CalculationQueryContext(TRI_vocbase_t& vocbase,
-                                   transaction::TrxType trxTypeHint)
-      : QueryContext(vocbase, trxTypeHint),
+                                   transaction::OperationOrigin operationOrigin)
+      : QueryContext(vocbase, operationOrigin),
         _resolver(vocbase),
-        _transactionContext(vocbase, trxTypeHint) {
+        _transactionContext(vocbase, operationOrigin) {
     _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
     _trx = AqlTransaction::create(
         newTrxContext(), _collections, _queryOptions.transactionOptions,
-        transaction::TrxType::kInternal, std::unordered_set<std::string>{});
+        operationOrigin, std::unordered_set<std::string>{});
     _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
     _trx->addHint(arangodb::transaction::Hints::Hint::
                       SINGLE_OPERATION);  // to avoid taking db snapshot
@@ -256,18 +256,16 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
 namespace arangodb::aql {
 
 std::unique_ptr<QueryContext> StandaloneCalculation::buildQueryContext(
-    TRI_vocbase_t& vocbase, transaction::TrxType trxTypeHint) {
-  return std::make_unique<::CalculationQueryContext>(vocbase, trxTypeHint);
+    TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin) {
+  return std::make_unique<::CalculationQueryContext>(vocbase, operationOrigin);
 }
 
-Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
-                                            std::string_view queryString,
-                                            std::string_view parameterName,
-                                            std::string_view errorContext,
-                                            transaction::TrxType trxTypeHint,
-                                            bool isComputedValue) {
+Result StandaloneCalculation::validateQuery(
+    TRI_vocbase_t& vocbase, std::string_view queryString,
+    std::string_view parameterName, std::string_view errorContext,
+    transaction::OperationOrigin operationOrigin, bool isComputedValue) {
   try {
-    CalculationQueryContext queryContext(vocbase, trxTypeHint);
+    CalculationQueryContext queryContext(vocbase, operationOrigin);
     auto ast = queryContext.ast();
     TRI_ASSERT(ast);
     auto qs = arangodb::aql::QueryString(queryString);

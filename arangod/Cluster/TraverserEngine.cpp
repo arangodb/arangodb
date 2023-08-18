@@ -137,12 +137,13 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
 #ifdef USE_ENTERPRISE
   if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
     _trx = std::make_unique<transaction::IgnoreNoAccessMethods>(
-        _query.newTrxContext(), _query.queryOptions().transactionOptions);
+        _query.newTrxContext(), _query.queryOptions().transactionOptions,
+        _query.operationOrigin());
   }
 #endif
   if (_trx == nullptr) {
     _trx = std::make_unique<transaction::Methods>(
-        _query.newTrxContext(), transaction::TrxType::kInternal,
+        _query.newTrxContext(), _query.operationOrigin(),
         _query.queryOptions().transactionOptions);
   }
 }

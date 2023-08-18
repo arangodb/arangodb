@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
-#include "Transaction/TrxType.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/voc-types.h"
 
 #include <atomic>
@@ -72,7 +72,8 @@ class QueryContext {
 
  public:
   explicit QueryContext(TRI_vocbase_t& vocbase,
-                        transaction::TrxType trxTypeHint, QueryId id = 0);
+                        transaction::OperationOrigin operationOrigin,
+                        QueryId id = 0);
 
   virtual ~QueryContext();
 
@@ -85,7 +86,7 @@ class QueryContext {
   /// @brief get the vocbase
   TRI_vocbase_t& vocbase() const noexcept;
 
-  transaction::TrxType trxTypeHint() const noexcept;
+  transaction::OperationOrigin operationOrigin() const noexcept;
 
   Collections& collections();
   Collections const& collections() const;
@@ -189,7 +190,7 @@ class QueryContext {
   /// messages)
   std::atomic<QueryExecutionState::ValueType> _execState;
 
-  transaction::TrxType const _trxTypeHint;
+  transaction::OperationOrigin const _operationOrigin;
 
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines

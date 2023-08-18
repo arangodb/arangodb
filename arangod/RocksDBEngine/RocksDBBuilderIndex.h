@@ -28,6 +28,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "Transaction/OperationOrigin.h"
 
 #include <atomic>
 
@@ -39,11 +40,10 @@ struct BuilderTrx : public transaction::Methods {
              LogicalDataSource const& collection, AccessMode::Type type,
              transaction::Options options = transaction::Options())
       : transaction::Methods(transactionContext,
-                             transaction::TrxType::kInternal, options),
+                             transaction::OperationOriginUnknown{}, options),
         _cid(collection.id()) {
     // add the (sole) data-source
     addCollection(collection.id(), collection.name(), type);
-    addHint(transaction::Hints::Hint::NO_DLD);
   }
 
   /// @brief get the underlying transaction collection

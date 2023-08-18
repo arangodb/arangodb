@@ -33,6 +33,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/ReplicatedContext.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -80,12 +81,14 @@ auto DocumentStateHandlersFactory::createTransaction(
   options.allowImplicitCollectionsForWrite = true;
 
   auto state = std::make_shared<SimpleRocksDBTransactionState>(
-      vocbase, tid, options, transaction::TrxType::kInternal);
+      vocbase, tid, options,
+      transaction::OperationOriginInternal{"replication transaction"});
 
   auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
 
   auto methods = std::make_unique<transaction::Methods>(
-      std::move(ctx), shard, accessType, transaction::TrxType::kInternal);
+      std::move(ctx), shard, accessType,
+      transaction::OperationOriginInternal{"replication transaction"});
   methods->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
 
   // TODO Why is GLOBAL_MANAGED necessary?

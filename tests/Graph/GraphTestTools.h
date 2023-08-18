@@ -113,7 +113,8 @@ struct MockGraphDatabase {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), *vertices,
-        arangodb::AccessMode::Type::WRITE, transaction::TrxType::kInternal);
+        arangodb::AccessMode::Type::WRITE,
+        transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
 
     std::vector<velocypack::Builder> insertedDocs;
@@ -167,7 +168,8 @@ struct MockGraphDatabase {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), *edges,
-        arangodb::AccessMode::Type::WRITE, transaction::TrxType::kInternal);
+        arangodb::AccessMode::Type::WRITE,
+        transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
 
     std::vector<velocypack::Builder> insertedDocs;

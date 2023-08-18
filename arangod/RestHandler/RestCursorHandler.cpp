@@ -36,7 +36,7 @@
 #include "Cluster/ServerState.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
-#include "Transaction/TrxType.h"
+#include "Transaction/OperationOrigin.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -154,7 +154,7 @@ void RestCursorHandler::cancel() {
 /// return If true, we need to continue processing,
 ///        If false we are done (error or stream)
 RestStatus RestCursorHandler::registerQueryOrCursor(
-    velocypack::Slice slice, transaction::TrxType trxTypeHint) {
+    velocypack::Slice slice, transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {
@@ -200,9 +200,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(
   // simon: access mode can always be write on the coordinator
   const AccessMode::Type mode = AccessMode::Type::WRITE;
   auto query = aql::Query::create(
-      createTransactionContext(mode, transaction::TrxType::kAQL),
+      createTransactionContext(mode, operationOrigin),
       arangodb::aql::QueryString(querySlice.stringView()),
-      std::move(bindVarsBuilder), trxTypeHint, aql::QueryOptions(opts));
+      std::move(bindVarsBuilder), operationOrigin, aql::QueryOptions(opts));
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -641,7 +641,7 @@ RestStatus RestCursorHandler::createQueryCursor() {
   }
 
   TRI_ASSERT(_query == nullptr);
-  return registerQueryOrCursor(body, transaction::TrxType::kAQL);
+  return registerQueryOrCursor(body, transaction::OperationOriginUnknown{});
 }
 
 /// @brief shows the batch given by <batch-id> if it's the last cached batch

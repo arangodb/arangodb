@@ -83,7 +83,7 @@ struct AQLStandaloneContext final : public SmartContext {
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(
       transaction::Options const& options, bool& responsibleForCommit,
-      TrxType trxTypeHint) override;
+      OperationOrigin operationOrigin) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;

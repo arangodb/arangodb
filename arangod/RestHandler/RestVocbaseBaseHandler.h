@@ -27,8 +27,8 @@
 
 #include "Rest/GeneralResponse.h"
 #include "RestServer/VocbaseContext.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
-#include "Transaction/TrxType.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/RevisionId.h"
@@ -194,12 +194,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    */
   std::unique_ptr<transaction::Methods> createTransaction(
       std::string const& cname, AccessMode::Type mode,
-      OperationOptions const& opOptions, transaction::TrxType trxTypeHint,
+      OperationOptions const& opOptions,
+      transaction::OperationOrigin operationOrigin,
       transaction::Options&& trxOpts = transaction::Options()) const;
 
   /// @brief create proper transaction context, including the proper IDs
   std::shared_ptr<transaction::Context> createTransactionContext(
-      AccessMode::Type mode, transaction::TrxType trxTypeHint) const;
+      AccessMode::Type mode,
+      transaction::OperationOrigin operationOrigin) const;
 
  protected:
   /// @brief request context

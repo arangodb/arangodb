@@ -64,12 +64,12 @@ TransactionId transaction::SmartContext::generateId() const {
 /*virtual*/ std::shared_ptr<TransactionState>
 transaction::AQLStandaloneContext::acquireState(
     transaction::Options const& options, bool& responsibleForCommit,
-    TrxType trxTypeHint) {
+    OperationOrigin operationOrigin) {
   if (_state) {
     responsibleForCommit = false;
   } else {
     responsibleForCommit = true;
-    _state = transaction::Context::createState(options, trxTypeHint);
+    _state = transaction::Context::createState(options, operationOrigin);
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     mgr->registerAQLTrx(_state);

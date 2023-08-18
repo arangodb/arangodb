@@ -33,6 +33,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -40,6 +41,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -251,12 +253,15 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     return RestStatus::DONE;
   }
 
+  auto origin =
+      transaction::OperationOriginREST{"fetching selectivity estimates"};
+
   // transaction protects access onto selectivity estimates
   std::unique_ptr<transaction::Methods> trx;
 
   try {
     trx = createTransaction(cName, AccessMode::Type::READ, OperationOptions(),
-                            transaction::TrxType::kREST);
+                            origin);
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,
@@ -265,7 +270,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
       // collection
       trx = std::make_unique<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(_vocbase), cName,
-          AccessMode::Type::READ, transaction::TrxType::kREST);
+          AccessMode::Type::READ, origin);
     } else {
       throw;
     }
@@ -293,10 +298,9 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     if (idx->inProgress() || idx->isHidden()) {
       continue;
     }
-    std::string name = coll->name();
-    name.push_back(TRI_INDEX_HANDLE_SEPARATOR_CHR);
-    name.append(std::to_string(idx->id().id()));
     if (idx->hasSelectivityEstimate() || idx->unique()) {
+      std::string name = absl::StrCat(
+          coll->name(), TRI_INDEX_HANDLE_SEPARATOR_STR, idx->id().id());
       builder.add(name, VPackValue(idx->selectivityEstimate()));
     }
   }

@@ -88,7 +88,7 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(
   graph.toPersistence(builder);
   builder.close();
 
-  GraphManager gmngr{_vocbase, _trxTypeHint};
+  GraphManager gmngr{_vocbase, _operationOrigin};
   res = gmngr.ensureAllCollections(&_graph, waitForSync);
   if (res.fail()) {
     return OperationResult(res, options);
@@ -123,7 +123,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   builder.close();
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE, _trxTypeHint);
+                                  AccessMode::Type::WRITE, _operationOrigin);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   res = trx.begin();
@@ -137,7 +137,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
 
   if (dropCollection) {
     std::unordered_set<std::string> collectionsToBeRemoved;
-    GraphManager gmngr{_vocbase, _trxTypeHint};
+    GraphManager gmngr{_vocbase, _operationOrigin};
 
     // add the edge collection itself for removal
     gmngr.pushCollectionIfMayBeDropped(edgeDefinitionName, _graph.name(),
@@ -252,7 +252,7 @@ OperationResult GraphOperations::editEdgeDefinition(
     }
   }
 
-  GraphManager gmngr{_vocbase, _trxTypeHint};
+  GraphManager gmngr{_vocbase, _operationOrigin};
   res = gmngr.findOrCreateCollectionsByEdgeDefinition(_graph, edgeDefinition,
                                                       waitForSync);
   if (res.fail()) {
@@ -273,7 +273,7 @@ OperationResult GraphOperations::editEdgeDefinition(
   }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE, _trxTypeHint);
+                                  AccessMode::Type::WRITE, _operationOrigin);
 
   res = trx.begin();
 
@@ -301,7 +301,7 @@ OperationResult GraphOperations::editEdgeDefinition(
 OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
                                                      bool waitForSync,
                                                      bool createCollection) {
-  GraphManager gmngr{_vocbase, _trxTypeHint};
+  GraphManager gmngr{_vocbase, _operationOrigin};
   std::string collectionName = document.get("collection").copyString();
 
   std::shared_ptr<LogicalCollection> def;
@@ -397,7 +397,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
   builder.close();
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE, _trxTypeHint);
+                                  AccessMode::Type::WRITE, _operationOrigin);
 
   res = trx.begin();
 
@@ -469,7 +469,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
   OperationResult result(Result(), options);
   {
     SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                    AccessMode::Type::WRITE, _trxTypeHint);
+                                    AccessMode::Type::WRITE, _operationOrigin);
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
     res = trx.begin();
@@ -487,7 +487,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
 
   if (dropCollection && collectionExists) {
     std::unordered_set<std::string> collectionsToBeRemoved;
-    GraphManager gmngr{_vocbase, _trxTypeHint};
+    GraphManager gmngr{_vocbase, _operationOrigin};
     res = gmngr.pushCollectionIfMayBeDropped(collectionName, "",
                                              collectionsToBeRemoved);
 
@@ -529,7 +529,7 @@ OperationResult GraphOperations::addEdgeDefinition(
   TRI_ASSERT(defRes.get() != nullptr);
 
   // ... in different graph
-  GraphManager gmngr{_vocbase, _trxTypeHint};
+  GraphManager gmngr{_vocbase, _operationOrigin};
 
   Result res =
       gmngr.checkForEdgeDefinitionConflicts(*(defRes.get()), _graph.name());
@@ -585,7 +585,7 @@ OperationResult GraphOperations::getDocument(std::string const& collectionName,
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(ctx(), collectionName, AccessMode::Type::READ,
-                                  _trxTypeHint);
+                                  _operationOrigin);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -753,7 +753,7 @@ GraphOperations::validateEdge(std::string const& definitionName,
 
   auto trx = std::make_unique<transaction::Methods>(
       ctx(), readCollections, writeCollections, exclusiveCollections,
-      trxOptions, _trxTypeHint);
+      trxOptions, _operationOrigin);
 
   Result tRes = trx->begin();
 
@@ -907,7 +907,7 @@ OperationResult GraphOperations::updateVertex(std::string const& collectionName,
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions,
-                           _trxTypeHint);
+                           _operationOrigin);
 
   Result tRes = trx.begin();
 
@@ -929,7 +929,7 @@ OperationResult GraphOperations::replaceVertex(
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions,
-                           _trxTypeHint);
+                           _operationOrigin);
 
   Result tRes = trx.begin();
 
@@ -957,7 +957,7 @@ OperationResult GraphOperations::createVertex(std::string const& collectionName,
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(collectionName);
   transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions,
-                           _trxTypeHint);
+                           _operationOrigin);
 
   Result res = trx.begin();
 
@@ -981,7 +981,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(
   VPackSlice search{searchBuffer->data()};
 
   // check for used edge definitions in ALL graphs
-  GraphManager gmngr{_vocbase, _trxTypeHint};
+  GraphManager gmngr{_vocbase, _operationOrigin};
 
   std::unordered_set<std::string> possibleEdgeCollections;
 
@@ -1019,7 +1019,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx{ctx(), {},         trxCollections,
-                           {},    trxOptions, _trxTypeHint};
+                           {},    trxOptions, _operationOrigin};
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   res = trx.begin();
@@ -1047,7 +1047,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(
       bindVars->close();
 
       auto query = arangodb::aql::Query::create(
-          ctx(), queryString, std::move(bindVars), _trxTypeHint);
+          ctx(), queryString, std::move(bindVars), _operationOrigin);
       auto queryResult = query->executeSync();
 
       if (queryResult.result.fail()) {
@@ -1073,7 +1073,7 @@ OperationResult GraphOperations::removeVertex(std::string const& collectionName,
 }
 
 bool GraphOperations::collectionExists(std::string const& collection) const {
-  GraphManager gmngr{_vocbase, _trxTypeHint};
+  GraphManager gmngr{_vocbase, _operationOrigin};
   return gmngr.collectionExists(collection);
 }
 

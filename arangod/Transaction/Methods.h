@@ -29,9 +29,9 @@
 #include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
 #include "Transaction/MethodsApi.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
-#include "Transaction/TrxType.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
@@ -108,14 +108,14 @@ class Methods {
   /// @brief create the transaction
   explicit Methods(
       std::shared_ptr<transaction::Context> const& ctx,
-      transaction::TrxType trxTypeHint,
+      transaction::OperationOrigin operationOrigin,
       transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, and add a collection to it.
   /// use on followers only!
   Methods(std::shared_ptr<transaction::Context> ctx,
           std::string const& collectionName, AccessMode::Type type,
-          transaction::TrxType trxTypeHint);
+          transaction::OperationOrigin operationOrigin);
 
   /// @brief create the transaction, used to be UserTransaction
   Methods(std::shared_ptr<transaction::Context> const& ctx,
@@ -123,7 +123,7 @@ class Methods {
           std::vector<std::string> const& writeCollections,
           std::vector<std::string> const& exclusiveCollections,
           transaction::Options const& options,
-          transaction::TrxType trxTypeHint);
+          transaction::OperationOrigin operationOrigin);
 
   /// @brief destroy the transaction
   virtual ~Methods();

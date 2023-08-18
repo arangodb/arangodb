@@ -560,7 +560,8 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type,
-    OperationOptions const& opOptions, transaction::TrxType trxTypeHint,
+    OperationOptions const& opOptions,
+    transaction::OperationOrigin operationOrigin,
     transaction::Options&& trxOpts) const {
   bool isFollower = !opOptions.isSynchronousReplicationFrom.empty() &&
                     ServerState::instance()->isDBServer();
@@ -574,7 +575,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     }
     auto tmp = std::make_unique<SingleCollectionTransaction>(
         transaction::StandaloneContext::Create(_vocbase), collectionName, type,
-        trxTypeHint, std::move(trxOpts));
+        operationOrigin, std::move(trxOpts));
     if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
@@ -607,7 +608,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     if (found) {
       auto trxOpts = VPackParser::fromJson(trxDef);
       Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
-                                         trxTypeHint, isFollower);
+                                         operationOrigin, isFollower);
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -642,7 +643,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     // inject at least the required collection name
     trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName,
-                                                 type, trxTypeHint);
+                                                 type, operationOrigin);
   } else {
     if (isSideUser) {
       // this is a call from the DOCUMENT() AQL function into an existing AQL
@@ -652,7 +653,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
                              "invalid access mode for request", ADB_HERE);
       }
     }
-    trx = std::make_unique<transaction::Methods>(std::move(ctx), trxTypeHint);
+    trx =
+        std::make_unique<transaction::Methods>(std::move(ctx), operationOrigin);
   }
   return trx;
 }
@@ -660,7 +662,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
 /// @brief create proper transaction context, including the proper IDs
 std::shared_ptr<transaction::Context>
 RestVocbaseBaseHandler::createTransactionContext(
-    AccessMode::Type mode, transaction::TrxType trxTypeHint) const {
+    AccessMode::Type mode, transaction::OperationOrigin operationOrigin) const {
   bool found = false;
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
@@ -702,7 +704,7 @@ RestVocbaseBaseHandler::createTransactionContext(
       if (found) {
         auto trxOpts = VPackParser::fromJson(trxDef);
         Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
-                                           trxTypeHint, false);
+                                           operationOrigin, false);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
         }

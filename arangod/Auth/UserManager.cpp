@@ -45,6 +45,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -127,8 +128,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   return result;
 }
 
-static std::shared_ptr<VPackBuilder> QueryAllUsers(
-    ArangodServer& server, transaction::TrxType trxTypeHint) {
+static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   TRI_IF_FAILURE("QueryAllUsers") {
     // simulates the case that the _users collection is not yet available
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -150,7 +150,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(*vocbase),
       arangodb::aql::QueryString(queryStr), nullptr,
-      transaction::TrxType::kREST);
+      transaction::OperationOriginInternal{"querying all users from database"});
 
   query->queryOptions().cache = false;
   query->queryOptions().ttl = 30;
@@ -223,8 +223,7 @@ void auth::UserManager::loadFromDB() {
   }
 
   try {
-    std::shared_ptr<VPackBuilder> builder =
-        QueryAllUsers(_server, transaction::TrxType::kREST);
+    std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_server);
     if (builder) {
       VPackSlice usersSlice = builder->slice();
       if (usersSlice.length() != 0) {
@@ -297,9 +296,9 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
-                                  AccessMode::Type::WRITE,
-                                  transaction::TrxType::kInternal);
+  SingleCollectionTransaction trx(
+      ctx, StaticStrings::UsersCollection, AccessMode::Type::WRITE,
+      transaction::OperationOriginInternal{"storing user"});
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -409,8 +408,7 @@ void auth::UserManager::createRootUser() {
 
 VPackBuilder auth::UserManager::allUsers() {
   // will query db directly, no need for _userCacheLock
-  std::shared_ptr<VPackBuilder> users =
-      QueryAllUsers(_server, transaction::TrxType::kREST);
+  std::shared_ptr<VPackBuilder> users = QueryAllUsers(_server);
 
   VPackBuilder result;
   {
@@ -684,9 +682,9 @@ static Result RemoveUserInternal(ArangodServer& server,
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
-                                  AccessMode::Type::WRITE,
-                                  transaction::TrxType::kInternal);
+  SingleCollectionTransaction trx(
+      ctx, StaticStrings::UsersCollection, AccessMode::Type::WRITE,
+      transaction::OperationOriginInternal{"removing user"});
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 

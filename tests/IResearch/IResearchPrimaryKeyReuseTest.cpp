@@ -111,7 +111,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
         arangodb::AccessMode::Type::WRITE,
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -131,7 +131,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
@@ -157,7 +157,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
@@ -241,7 +241,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
         arangodb::AccessMode::Type::WRITE,
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -261,7 +261,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
@@ -286,7 +286,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -304,7 +304,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : extraDocs) {
@@ -324,7 +324,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : insertedDocs) {
@@ -405,7 +405,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
         arangodb::AccessMode::Type::WRITE,
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {

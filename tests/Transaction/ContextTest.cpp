@@ -99,7 +99,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   transaction::Options trxOpts;
   transaction::Methods trx{
       ctx, {},      std::vector<std::string>{cname},
-      {},  trxOpts, arangodb::transaction::TrxType::kInternal};
+      {},  trxOpts, arangodb::transaction::OperationOriginTestCase{}};
 
   Result res = trx.begin();
   ASSERT_TRUE(res.ok());
@@ -126,7 +126,8 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
 
   {
     auto query = arangodb::aql::Query::create(
-        ctx, queryString, bindVars, arangodb::transaction::TrxType::kInternal);
+        ctx, queryString, bindVars,
+        arangodb::transaction::OperationOriginTestCase{});
 
     auto qres = query->executeSync();
     ASSERT_TRUE(qres.ok());
@@ -143,7 +144,8 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
 
   {
     auto query = arangodb::aql::Query::create(
-        ctx, queryString, bindVars, arangodb::transaction::TrxType::kInternal);
+        ctx, queryString, bindVars,
+        arangodb::transaction::OperationOriginTestCase{});
 
     auto qres = query->executeSync();
     ASSERT_TRUE(qres.ok());

@@ -30,9 +30,10 @@ class RocksDBTransactionMethods;
 
 class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
  public:
-  ReplicatedRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                    transaction::Options const& options,
-                                    transaction::TrxType trxTypeHint);
+  ReplicatedRocksDBTransactionState(
+      TRI_vocbase_t& vocbase, TransactionId tid,
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin);
 
   ~ReplicatedRocksDBTransactionState() override;
 

@@ -92,7 +92,8 @@ class QueryResultCursor final : public arangodb::Cursor {
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
   QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize, double ttl,
-                    bool isRetriable, transaction::TrxType trxTypeHint);
+                    bool isRetriable,
+                    transaction::OperationOrigin operationOrigin);
 
   ~QueryStreamCursor();
 

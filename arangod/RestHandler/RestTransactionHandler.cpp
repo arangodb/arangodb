@@ -39,8 +39,8 @@
 #endif
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
-#include "Transaction/TrxType.h"
 #include "Utils/ExecContext.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8Server/V8Context.h"
@@ -173,6 +173,8 @@ void RestTransactionHandler::executeBegin() {
       _request->header(StaticStrings::TransactionId, found);
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
+  auto origin = transaction::OperationOriginREST{"streaming transaction"};
+
   if (found) {
     if (!ServerState::isDBServer(role)) {
       // it is not expected that the user sends a transaction ID to begin
@@ -193,8 +195,7 @@ void RestTransactionHandler::executeBegin() {
     TRI_ASSERT(!tid.isLegacyTransactionId());
     TRI_ASSERT(tid.isSet());
 
-    Result res = mgr->ensureManagedTrx(_vocbase, tid, slice,
-                                       transaction::TrxType::kREST, false);
+    Result res = mgr->ensureManagedTrx(_vocbase, tid, slice, origin, false);
     if (res.fail()) {
       generateError(res);
     } else {
@@ -224,8 +225,8 @@ void RestTransactionHandler::executeBegin() {
     }
 
     // start
-    ResultT<TransactionId> res = mgr->createManagedTrx(
-        _vocbase, slice, transaction::TrxType::kREST, allowDirtyReads);
+    ResultT<TransactionId> res =
+        mgr->createManagedTrx(_vocbase, slice, origin, allowDirtyReads);
     if (res.fail()) {
       generateError(res.result());
     } else {

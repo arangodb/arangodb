@@ -49,7 +49,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/TrxType.h"
+#include "Transaction/OperationOrigin.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -112,7 +112,7 @@ class SortLimitTest
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto query = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::TrxType::kInternal,
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::aql::QueryOptions(options->slice()));
 
     auto result = query->explain();
@@ -142,7 +142,7 @@ class SortLimitTest
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto query = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::TrxType::kInternal,
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::aql::QueryOptions(options->slice()));
     arangodb::aql::QueryResult result;
 
@@ -202,7 +202,7 @@ class SortLimitTest
     arangodb::SingleCollectionTransaction trx(
         arangodb::transaction::StandaloneContext::Create(*vocbase), *collection,
         arangodb::AccessMode::Type::WRITE,
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {

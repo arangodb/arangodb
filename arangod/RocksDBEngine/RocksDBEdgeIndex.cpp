@@ -54,6 +54,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -985,8 +986,9 @@ Result RocksDBEdgeIndex::warmup() {
   }
 
   auto ctx = transaction::StandaloneContext::Create(_collection.vocbase());
-  SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ,
-                                  transaction::TrxType::kInternal);
+  SingleCollectionTransaction trx(
+      ctx, _collection, AccessMode::Type::READ,
+      transaction::OperationOriginREST{"warming up edge index"});
   Result res = trx.begin();
 
   if (res.fail()) {

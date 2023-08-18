@@ -293,8 +293,8 @@ void RestAqlHandler::setupClusterQuery() {
   // creates a StandaloneContext or a leased context
   auto q = ClusterQuery::create(
       clusterQueryId,
-      createTransactionContext(access, transaction::TrxType::kAQL),
-      std::move(options), transaction::TrxType::kAQL);
+      createTransactionContext(access, transaction::OperationOriginUnknown{}),
+      std::move(options), transaction::OperationOriginUnknown{});
   TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
   VPackBufferUInt8 buffer;

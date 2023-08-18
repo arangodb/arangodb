@@ -287,9 +287,9 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 
 Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
   if (!computedValues.isNone()) {
-    auto result =
-        ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues,
-                                      transaction::TrxType::kInternal);
+    auto result = ComputedValues::buildInstance(
+        vocbase(), shardKeys(), computedValues,
+        transaction::OperationOriginInternal{ComputedValues::moduleName});
 
     if (result.fail()) {
       return result.result();

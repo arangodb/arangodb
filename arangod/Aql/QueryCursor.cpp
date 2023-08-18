@@ -140,10 +140,9 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // QueryStreamCursor class
 // .............................................................................
 
-QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
-                                     size_t batchSize, double ttl,
-                                     bool isRetriable,
-                                     transaction::TrxType trxTypeHint)
+QueryStreamCursor::QueryStreamCursor(
+    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
+    bool isRetriable, transaction::OperationOrigin operationOrigin)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false,
              isRetriable),
       _query(std::move(q)),
@@ -165,7 +164,7 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
              _query->killed());
   _ctx = _query->newTrxContext();
 
-  transaction::Methods trx(_ctx, trxTypeHint);
+  transaction::Methods trx(_ctx, operationOrigin);
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterTrxSetup") {
     QueryStreamCursor::debugKillQuery();
   }
@@ -533,7 +532,7 @@ ExecutionState QueryStreamCursor::finalization() {
 
 void QueryStreamCursor::cleanupStateCallback() {
   TRI_ASSERT(_query);
-  transaction::Methods trx(_ctx, transaction::TrxType::kInternal);
+  transaction::Methods trx(_ctx, transaction::OperationOriginWorkaround{});
   if (_stateChangeCb && trx.status() == transaction::Status::RUNNING) {
     trx.removeStatusChangeCallback(&_stateChangeCb);
     _stateChangeCb = nullptr;

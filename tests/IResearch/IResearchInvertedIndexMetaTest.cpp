@@ -118,7 +118,7 @@ class IResearchInvertedIndexMetaTest
     analyzers.emplace(
         result, "testVocbase::empty", "empty",
         VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
-        arangodb::transaction::TrxType::kInternal,
+        arangodb::transaction::OperationOriginTestCase{},
         Features(irs::IndexFeatures::FREQ));  // cache the 'empty' analyzer for
                                               // 'testVocbase'
   }

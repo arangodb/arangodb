@@ -95,7 +95,7 @@ class QueryOptions : public QueryTest {
           arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
           {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
           arangodb::transaction::Options(),
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -154,7 +154,7 @@ class QueryOptions : public QueryTest {
           arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
           {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
           arangodb::transaction::Options(),
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -201,7 +201,7 @@ class QueryOptions : public QueryTest {
           arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
           {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
           arangodb::transaction::Options(),
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -1061,7 +1061,7 @@ class QueryOptions : public QueryTest {
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           arangodb::aql::QueryString(queryString), nullptr,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       auto const res = query->explain();
       ASSERT_TRUE(res.data);
       auto const explanation = res.data->slice();
@@ -1104,7 +1104,7 @@ class QueryOptions : public QueryTest {
       auto query = arangodb::aql::Query::create(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           arangodb::aql::QueryString(queryString), nullptr,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       auto const res = query->explain();
       ASSERT_TRUE(res.data);
       auto const explanation = res.data->slice();

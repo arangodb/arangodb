@@ -58,6 +58,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -305,7 +306,9 @@ static arangodb::Result addShardFollower(
         auto context =
             transaction::StandaloneContext::Create(collection->vocbase());
         SingleCollectionTransaction trx(context, *collection,
-                                        AccessMode::Type::READ, {});
+                                        AccessMode::Type::READ,
+                                        transaction::OperationOriginInternal{
+                                            "fetching revision tree data"});
 
         auto res = trx.begin();
         if (res.ok()) {

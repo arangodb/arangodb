@@ -40,7 +40,7 @@ class ClusterTransactionState final : public TransactionState {
  public:
   ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options,
-                          transaction::TrxType trxTypeHint);
+                          transaction::OperationOrigin operationOrigin);
   ~ClusterTransactionState() override = default;
 
   [[nodiscard]] bool ensureSnapshot() override { return false; }

@@ -26,7 +26,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Transaction/TrxType.h"
+#include "Transaction/OperationOrigin.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/LogicalCollection.h"
@@ -152,7 +152,8 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-  return registerQueryOrCursor(data.slice(), transaction::TrxType::kREST);
+  return registerQueryOrCursor(
+      data.slice(), transaction::OperationOriginREST{"fetching all documents"});
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -219,7 +220,8 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice(), transaction::TrxType::kREST);
+  return registerQueryOrCursor(data.slice(), transaction::OperationOriginREST{
+                                                 "fetching all document keys"});
 }
 
 static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
@@ -316,5 +318,6 @@ RestStatus RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
-  return registerQueryOrCursor(data.slice(), transaction::TrxType::kREST);
+  return registerQueryOrCursor(
+      data.slice(), transaction::OperationOriginREST{"querying by example"});
 }

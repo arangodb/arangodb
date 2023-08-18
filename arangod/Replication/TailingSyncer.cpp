@@ -519,7 +519,8 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(*vocbase), *coll,
-        AccessMode::Type::EXCLUSIVE, transaction::TrxType::kInternal);
+        AccessMode::Type::EXCLUSIVE,
+        transaction::OperationOriginInternal{"applying replication change"});
 
     // we will always check if the target document already exists and then
     // either carry out an insert or a replace. so we will be carrying out
@@ -580,7 +581,8 @@ Result TailingSyncer::removeSingleDocument(LogicalCollection* coll,
                                            std::string const& key) {
   SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(coll->vocbase()), *coll,
-      AccessMode::Type::EXCLUSIVE, transaction::TrxType::kInternal);
+      AccessMode::Type::EXCLUSIVE,
+      transaction::OperationOriginInternal{"applying replication change"});
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -646,7 +648,8 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
 #endif
 
   auto trx = std::make_unique<ReplicationTransaction>(
-      *vocbase, transaction::TrxType::kInternal);
+      *vocbase,
+      transaction::OperationOriginInternal{"replication transaction"});
   Result res = trx->begin();
 
   if (res.ok()) {
@@ -863,7 +866,9 @@ Result TailingSyncer::truncateCollection(
   {
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(*vocbase), *col,
-        AccessMode::Type::EXCLUSIVE, transaction::TrxType::kInternal);
+        AccessMode::Type::EXCLUSIVE,
+        transaction::OperationOriginInternal{
+            "truncating collection for replication"});
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     Result res = trx.begin();
@@ -1131,8 +1136,9 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
           // because single server has no revisions
           // and never reloads cache from db by itself
           // so new analyzers will be not usable on follower
-          analyzersFeature.invalidate(*vocbase,
-                                      transaction::TrxType::kInternal);
+          analyzersFeature.invalidate(
+              *vocbase,
+              transaction::OperationOriginInternal{"invalidating analyzers"});
         }
       }
       _analyzersModified.clear();

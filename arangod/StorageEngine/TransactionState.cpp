@@ -56,12 +56,12 @@ using namespace arangodb;
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options,
-                                   transaction::TrxType trxTypeHint)
+                                   transaction::OperationOrigin operationOrigin)
     : _vocbase(vocbase),
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
       _id(tid),
-      _trxTypeHint(trxTypeHint) {
+      _operationOrigin(operationOrigin) {
   // patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   transaction::Options::adjustIntermediateCommitCount(_options);
@@ -370,9 +370,9 @@ void TransactionState::acceptAnalyzersRevision(
   _analyzersRevision = analyzersRevision;
 }
 
-[[nodiscard]] transaction::TrxType TransactionState::trxTypeHint()
+[[nodiscard]] transaction::OperationOrigin TransactionState::operationOrigin()
     const noexcept {
-  return _trxTypeHint;
+  return _operationOrigin;
 }
 
 Result TransactionState::checkCollectionPermission(

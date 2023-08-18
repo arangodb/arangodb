@@ -142,12 +142,13 @@ class IResearchFilterGeoFunctionsTest
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice(),
-        arangodb::transaction::TrxType::kInternal);  // cache analyzer
+        arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
     {
       auto json = VPackParser::fromJson(R"({})");
       EXPECT_TRUE(analyzers
                       .emplace(result, "testVocbase::mygeojson", "geojson",
-                               json->slice(), {})
+                               json->slice(),
+                               arangodb::transaction::OperationOriginTestCase{})
                       .ok());
     }
   }

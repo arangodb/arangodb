@@ -36,7 +36,7 @@ ReplicatedContext::ReplicatedContext(TransactionId globalId,
 
 std::shared_ptr<TransactionState> ReplicatedContext::acquireState(
     Options const& options, bool& responsibleForCommit,
-    TrxType /*trxTypeHint*/) {
+    OperationOrigin /*operationOrigin*/) {
   TRI_ASSERT(_state);
   responsibleForCommit = true;
   return _state;

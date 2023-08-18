@@ -26,7 +26,7 @@
 #include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Hints.h"
-#include "Transaction/TrxType.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -79,9 +79,9 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
   OperationData opData(_executionNumber.value, data);
 
   auto accessModeType = AccessMode::Type::WRITE;
-  // TODO: is the trxType actually correct here?
-  SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType, transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx(), StaticStrings::PregelCollection, accessModeType,
+      transaction::OperationOriginInternal{"storing Pregel run status"});
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
   options.waitForSync = false;
@@ -195,10 +195,10 @@ auto CollectionStatusWriter::updateResult(velocypack::Slice data)
   }
   OperationData opData(_executionNumber.value, data);
 
-  // TODO: is the TrxType actually correct here?
   auto accessModeType = AccessMode::Type::WRITE;
-  SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType, transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx(), StaticStrings::PregelCollection, accessModeType,
+      transaction::OperationOriginInternal{"updating Pregel run status"});
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
 
@@ -219,9 +219,9 @@ auto CollectionStatusWriter::deleteResult() -> OperationResult {
   OperationData opData(_executionNumber.value);
 
   auto accessModeType = AccessMode::Type::WRITE;
-  // TODO: is the TrxType actually correct here?
-  SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType, transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx(), StaticStrings::PregelCollection, accessModeType,
+      transaction::OperationOriginInternal{"removing Pregel run status"});
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   OperationOptions options(ExecContext::current());
 
@@ -237,9 +237,9 @@ auto CollectionStatusWriter::deleteResult() -> OperationResult {
 
 auto CollectionStatusWriter::deleteAllResults() -> OperationResult {
   auto accessModeType = AccessMode::Type::WRITE;
-  // TODO: is the TrxType actually correct here?
-  SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
-                                  accessModeType, transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx(), StaticStrings::PregelCollection, accessModeType,
+      transaction::OperationOriginInternal{"removing all Pregel run statuses"});
   trx.addHint(transaction::Hints::Hint::NONE);
   OperationOptions options(ExecContext::current());
 
@@ -261,10 +261,9 @@ auto CollectionStatusWriter::executeQuery(
     bindParams = bindParameters.value();
   }
 
-  // TODO: is the TrxType actually correct here?
   auto query = arangodb::aql::Query::create(
       ctx(), arangodb::aql::QueryString(std::move(queryString)), bindParams,
-      transaction::TrxType::kREST);
+      transaction::OperationOriginInternal{"retrieving Pregel run statuses"});
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
   if (queryResult.result.fail()) {

@@ -34,7 +34,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/TrxType.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -76,7 +76,7 @@ arangodb::aql::QueryResult executeQuery(
     std::string const& optionsString = "{}") {
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
-      arangodb::transaction::TrxType::kInternal,
+      arangodb::transaction::OperationOriginTestCase{},
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -110,7 +110,7 @@ TEST_F(IndexNodeTest, objectQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::TrxType::kInternal);
+      arangodb::transaction::OperationOriginTestCase{});
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -191,7 +191,7 @@ TEST_F(IndexNodeTest, expansionQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::TrxType::kInternal);
+      arangodb::transaction::OperationOriginTestCase{});
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -245,7 +245,7 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::TrxType::kInternal);
+      arangodb::transaction::OperationOriginTestCase{});
 
   EXPECT_TRUE(trx.begin().ok());
 
@@ -287,7 +287,7 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
       {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::TrxType::kInternal);
+      arangodb::transaction::OperationOriginTestCase{});
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -522,7 +522,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       arangodb::aql::QueryString(
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
-      nullptr, arangodb::transaction::TrxType::kInternal);
+      nullptr, arangodb::transaction::OperationOriginTestCase{});
   query->prepareQuery();
 
   {
@@ -585,7 +585,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
             std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
         auto queryClone = arangodb::aql::Query::create(
             ctx, arangodb::aql::QueryString(std::string_view("RETURN 1")),
-            nullptr, arangodb::transaction::TrxType::kInternal);
+            nullptr, arangodb::transaction::OperationOriginTestCase{});
         queryClone->prepareQuery();
         indNode.invalidateVarUsage();
         auto indNodeClone =
@@ -628,7 +628,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       arangodb::aql::QueryString(
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
-      nullptr, arangodb::transaction::TrxType::kInternal);
+      nullptr, arangodb::transaction::OperationOriginTestCase{});
   query->prepareQuery();
 
   auto vars = query->plan()->getAst()->variables();

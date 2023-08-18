@@ -53,14 +53,16 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <string>
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          private helper
-// functions
-// -----------------------------------------------------------------------------
+namespace {
+constexpr std::string_view moduleName("Foxx queues management");
+}
 
 static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
@@ -359,9 +361,9 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LOG_TOPIC("aeb56", TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
-                                  AccessMode::Type::EXCLUSIVE,
-                                  transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx, StaticStrings::QueuesCollection, AccessMode::Type::EXCLUSIVE,
+      transaction::OperationOriginREST{::moduleName});
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -411,9 +413,9 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
-                                  AccessMode::Type::WRITE,
-                                  transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx, StaticStrings::QueuesCollection, AccessMode::Type::WRITE,
+      transaction::OperationOriginREST{::moduleName});
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
 

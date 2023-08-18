@@ -53,7 +53,8 @@ class QueryInRange : public QueryTest {
       options.returnNew = true;
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE, arangodb::transaction::TrxType::kInternal);
+          AccessMode::Type::WRITE,
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -83,7 +84,8 @@ class QueryInRange : public QueryTest {
       options.returnNew = true;
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE, arangodb::transaction::TrxType::kInternal);
+          AccessMode::Type::WRITE,
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (velocypack::ArrayIterator it{slice}; it.valid(); ++it) {

@@ -55,6 +55,7 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Random/RandomGenerator.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -125,7 +126,9 @@ arangodb::Result arangodb::maintenance::collectionCount(
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
-      collectionName, AccessMode::Type::READ, transaction::TrxType::kInternal);
+      collectionName, AccessMode::Type::READ,
+      transaction::OperationOriginInternal{
+          "counting documents during maintenance"});
 
   Result res = trx.begin();
   if (res.fail()) {

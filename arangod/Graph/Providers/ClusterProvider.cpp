@@ -97,7 +97,7 @@ ClusterProvider<StepImpl>::ClusterProvider(
     arangodb::aql::QueryContext& queryContext, ClusterBaseProviderOptions opts,
     arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(
-          queryContext.newTrxContext(), transaction::TrxType::kInternal)),
+          queryContext.newTrxContext(), queryContext.operationOrigin())),
       _query(&queryContext),
       _resourceMonitor(&resourceMonitor),
       _opts(std::move(opts)),

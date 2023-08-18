@@ -113,7 +113,7 @@ class GraphProviderTest : public ::testing::Test {
       // We now have collections "v" and "e"
       query = singleServer->getQuery("RETURN 1", {"v", "e"});
       _trx = std::make_unique<arangodb::transaction::Methods>(
-          query->newTrxContext(), transaction::TrxType::kInternal);
+          query->newTrxContext(), transaction::OperationOriginTestCase{});
 
       auto edgeIndexHandle = singleServer->getEdgeIndexHandle("e");
       auto tmpVar = singleServer->generateTempVar(query.get());
@@ -221,8 +221,8 @@ class GraphProviderTest : public ::testing::Test {
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server->getSystemDatabase());
-        query = arangodb::aql::Query::create(ctx, queryString, nullptr,
-                                             transaction::TrxType::kInternal);
+        query = arangodb::aql::Query::create(
+            ctx, queryString, nullptr, transaction::OperationOriginTestCase{});
 
         query->collections().add("v", AccessMode::Type::READ,
                                  arangodb::aql::Collection::Hint::Collection);

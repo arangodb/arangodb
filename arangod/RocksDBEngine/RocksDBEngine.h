@@ -178,7 +178,7 @@ class RocksDBEngine final : public StorageEngine {
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
       transaction::Options const& options,
-      transaction::TrxType trxTypeHint) override;
+      transaction::OperationOrigin operationOrigin) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(

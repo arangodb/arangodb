@@ -31,7 +31,7 @@
 #include "Basics/ResultT.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
-#include "Transaction/TrxType.h"
+#include "Transaction/OperationOrigin.h"
 
 #include <cstdint>
 #include <span>
@@ -132,7 +132,7 @@ class ComputedValues {
    public:
     ComputedValue(TRI_vocbase_t& vocbase, std::string_view name,
                   std::string_view expressionString,
-                  transaction::TrxType trxTypeHint,
+                  transaction::OperationOrigin operationOrigin,
                   ComputeValuesOn mustComputeOn, bool overwrite,
                   bool failOnWarning, bool keepNull);
     ComputedValue(ComputedValue const&) = delete;
@@ -169,10 +169,12 @@ class ComputedValues {
   };
 
  public:
+  static constexpr std::string_view moduleName = "computed values validation";
+
   explicit ComputedValues(TRI_vocbase_t& vocbase,
                           std::span<std::string const> shardKeys,
                           velocypack::Slice params,
-                          transaction::TrxType trxTypeHint);
+                          transaction::OperationOrigin operationOrigin);
   ComputedValues(ComputedValues const&) = delete;
   ComputedValues& operator=(ComputedValues const&) = delete;
   ~ComputedValues();
@@ -191,7 +193,8 @@ class ComputedValues {
 
   static ResultT<std::shared_ptr<ComputedValues>> buildInstance(
       TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
-      velocypack::Slice computedValues, transaction::TrxType trxTypeHint);
+      velocypack::Slice computedValues,
+      transaction::OperationOrigin operationOrigin);
 
  private:
   void mergeComputedAttributes(
@@ -204,7 +207,7 @@ class ComputedValues {
   Result buildDefinitions(TRI_vocbase_t& vocbase,
                           std::span<std::string const> shardKeys,
                           velocypack::Slice params,
-                          transaction::TrxType trxTypeHint);
+                          transaction::OperationOrigin operationOrigin);
 
   // individual instructions for computed values
   std::vector<ComputedValue> _values;

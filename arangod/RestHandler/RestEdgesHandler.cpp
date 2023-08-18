@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -123,7 +124,8 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
   }
   auto query = arangodb::aql::Query::create(
       ctx, aql::QueryString(queryString(dir)), std::move(bindParameters),
-      transaction::TrxType::kREST, std::move(options));
+      transaction::OperationOriginREST{"querying connected edges"},
+      std::move(options));
   return query->executeSync();
 }
 }  // namespace

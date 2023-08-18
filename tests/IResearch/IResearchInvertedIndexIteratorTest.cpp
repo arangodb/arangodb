@@ -149,7 +149,7 @@ class IResearchInvertedIndexIteratorTestBase
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
           collections, EMPTY, arangodb::transaction::Options(),
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       trx.begin();
       for (size_t i = 0; i < _docs.size() / 2; ++i) {
         // MSVC fails to compile if EXPECT_TRUE  is called directly
@@ -170,7 +170,7 @@ class IResearchInvertedIndexIteratorTestBase
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
         collections, EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     trx.begin();
     while (doc != _docs.end()) {
       // MSVC fails to compile if EXPECT_TRUE  is called directly
@@ -209,7 +209,7 @@ class IResearchInvertedIndexIteratorTestBase
     auto query = arangodb::aql::Query::create(
         ctx,
         arangodb::aql::QueryString(queryString.data(), queryString.length()),
-        bindVars, arangodb::transaction::TrxType::kInternal);
+        bindVars, arangodb::transaction::OperationOriginTestCase{});
     ASSERT_NE(query.get(), nullptr);
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -249,7 +249,7 @@ class IResearchInvertedIndexIteratorTestBase
     opts.forLateMaterialization = forLateMaterialization;
     arangodb::SingleCollectionTransaction trx(
         ctx, collection(), arangodb::AccessMode::Type::READ,
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     auto iterator = index().iteratorForCondition(monitor, &collection(), &trx,
                                                  filterNode->getMember(0), ref,
                                                  opts, mutableConditionIdx);

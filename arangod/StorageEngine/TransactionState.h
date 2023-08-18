@@ -33,9 +33,9 @@
 #include "Containers/SmallVector.h"
 #include "Futures/Future.h"
 #include "Transaction/Hints.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
-#include "Transaction/TrxType.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -99,7 +99,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                    transaction::Options const& options,
-                   transaction::TrxType trxTypeHint);
+                   transaction::OperationOrigin operationOrigin);
   virtual ~TransactionState();
 
   /// @return a cookie associated with the specified key, nullptr if none
@@ -326,7 +326,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void acceptAnalyzersRevision(
       QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
-  [[nodiscard]] transaction::TrxType trxTypeHint() const noexcept;
+  [[nodiscard]] transaction::OperationOrigin operationOrigin() const noexcept;
 
   [[nodiscard]] QueryAnalyzerRevisions const& analyzersRevision()
       const noexcept {
@@ -454,7 +454,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   QueryAnalyzerRevisions _analyzersRevision;
 
-  transaction::TrxType const _trxTypeHint;
+  transaction::OperationOrigin const _operationOrigin;
   bool _registeredTransaction = false;
 };
 

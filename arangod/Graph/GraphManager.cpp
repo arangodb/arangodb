@@ -49,8 +49,8 @@
 #include "Logger/LoggerStream.h"
 #include "Sharding/ShardingInfo.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/TrxType.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
@@ -103,7 +103,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
   }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE, _trxTypeHint);
+                                  AccessMode::Type::WRITE, _operationOrigin);
   res = trx.begin();
 
   if (!res.ok()) {
@@ -276,7 +276,7 @@ bool GraphManager::graphExists(std::string const& graphName) const {
   }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::READ, _trxTypeHint);
+                                  AccessMode::Type::READ, _operationOrigin);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -294,7 +294,7 @@ bool GraphManager::graphExists(std::string const& graphName) const {
 ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
     std::string const& name) const {
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::READ, _trxTypeHint);
+                                  AccessMode::Type::READ, _operationOrigin);
 
   Result res = trx.begin();
 
@@ -395,7 +395,7 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
   // If now someone has created a graph with the same name
   // in the meanwhile, sorry bad luck.
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE, _trxTypeHint);
+                                  AccessMode::Type::WRITE, _operationOrigin);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   OperationOptions options(ExecContext::current());
@@ -421,7 +421,7 @@ Result GraphManager::applyOnAllGraphs(
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(_vocbase),
-      arangodb::aql::QueryString{queryStr}, nullptr, _trxTypeHint);
+      arangodb::aql::QueryString{queryStr}, nullptr, _operationOrigin);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
 
@@ -732,7 +732,7 @@ Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
 Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
                                       std::string const& queryStr) const {
   auto query = arangodb::aql::Query::create(
-      ctx(), arangodb::aql::QueryString(queryStr), nullptr, _trxTypeHint);
+      ctx(), arangodb::aql::QueryString(queryStr), nullptr, _operationOrigin);
   query->queryOptions().skipAudit = true;
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
@@ -931,7 +931,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
 
     Result res;
     SingleCollectionTransaction trx{ctx(), StaticStrings::GraphCollection,
-                                    AccessMode::Type::WRITE, _trxTypeHint};
+                                    AccessMode::Type::WRITE, _operationOrigin};
 
     res = trx.begin();
     if (res.fail()) {

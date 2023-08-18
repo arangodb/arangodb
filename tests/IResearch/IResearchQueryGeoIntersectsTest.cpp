@@ -42,8 +42,9 @@ class QueryGeoIntersects : public QueryTest {
 
     auto json = VPackParser::fromJson(
         absl::Substitute(R"({$0 "type": "shape"})", params));
-    auto r = analyzers.emplace(result, _vocbase.name() + "::mygeojson",
-                               analyzer, json->slice(), {});
+    auto r = analyzers.emplace(
+        result, _vocbase.name() + "::mygeojson", analyzer, json->slice(),
+        arangodb::transaction::OperationOriginTestCase{});
     ASSERT_TRUE(r.ok()) << r.errorMessage();
   }
 
@@ -101,7 +102,8 @@ class QueryGeoIntersects : public QueryTest {
       options.returnNew = true;
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE, arangodb::transaction::TrxType::kInternal);
+          AccessMode::Type::WRITE,
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -133,7 +135,8 @@ class QueryGeoIntersects : public QueryTest {
     {
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::READ, arangodb::transaction::TrxType::kInternal);
+          AccessMode::Type::READ,
+          arangodb::transaction::OperationOriginTestCase{});
       ASSERT_TRUE(trx.begin().ok());
       ASSERT_TRUE(trx.state());
       auto* snapshot =

@@ -510,7 +510,7 @@ bool assertRules(
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
-      transaction::TrxType::kInternal,
+      transaction::OperationOriginTestCase{},
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -539,7 +539,7 @@ arangodb::aql::QueryResult explainQuery(
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
-      transaction::TrxType::kInternal,
+      transaction::OperationOriginTestCase{},
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -555,7 +555,7 @@ arangodb::aql::QueryResult executeQuery(
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
-      transaction::TrxType::kInternal,
+      transaction::OperationOriginTestCase{},
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -579,7 +579,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
-      transaction::TrxType::kInternal,
+      transaction::OperationOriginTestCase{},
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
   query->initTrxForTests();
@@ -601,7 +601,7 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
-      transaction::TrxType::kInternal,
+      transaction::OperationOriginTestCase{},
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -708,7 +708,7 @@ void assertFilterOptimized(
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
-      transaction::TrxType::kInternal,
+      transaction::OperationOriginTestCase{},
       arangodb::aql::QueryOptions(options->slice()));
 
   query->prepareQuery();
@@ -730,7 +730,8 @@ void assertFilterOptimized(
   {
     arangodb::transaction ::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options(), transaction::TrxType::kInternal);
+        arangodb::transaction::Options(),
+        transaction::OperationOriginTestCase{});
 
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
@@ -769,9 +770,9 @@ void assertExpressionFilter(
 
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-  auto query =
-      arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString),
-                                   nullptr, transaction::TrxType::kInternal);
+  auto query = arangodb::aql::Query::create(
+      ctx, arangodb::aql::QueryString(queryString), nullptr,
+      transaction::OperationOriginTestCase{});
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -811,7 +812,8 @@ void assertExpressionFilter(
   {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options(), transaction::TrxType::kInternal);
+        arangodb::transaction::Options(),
+        transaction::OperationOriginTestCase{});
     arangodb::iresearch::QueryContext const ctx{
         .trx = &trx, .ref = ref, .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
@@ -827,7 +829,8 @@ void assertExpressionFilter(
   {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options(), transaction::TrxType::kInternal);
+        arangodb::transaction::Options(),
+        transaction::OperationOriginTestCase{});
 
     ExpressionContextMock exprCtx;
     exprCtx.setTrx(&trx);
@@ -908,9 +911,9 @@ void buildActualFilter(
 ) {
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-  auto query =
-      arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString),
-                                   bindVars, transaction::TrxType::kInternal);
+  auto query = arangodb::aql::Query::create(
+      ctx, arangodb::aql::QueryString(queryString), bindVars,
+      transaction::OperationOriginTestCase{});
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -950,7 +953,8 @@ void buildActualFilter(
   {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options(), transaction::TrxType::kInternal);
+        arangodb::transaction::Options(),
+        transaction::OperationOriginTestCase{});
 
     arangodb::iresearch::QueryContext const ctx{
         .trx = &trx, .ref = ref, .isSearchQuery = true};
@@ -967,7 +971,8 @@ void buildActualFilter(
   {
     arangodb::transaction ::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options(), transaction::TrxType::kInternal);
+        arangodb::transaction::Options(),
+        transaction::OperationOriginTestCase{});
 
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
@@ -1007,7 +1012,7 @@ void assertFilter(
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
   auto query = aql::Query::create(ctx, aql::QueryString(queryString), bindVars,
-                                  transaction::TrxType::kInternal);
+                                  transaction::OperationOriginTestCase{});
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -1047,7 +1052,7 @@ void assertFilter(
   {
     transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
                              {}, {}, {}, transaction::Options(),
-                             transaction::TrxType::kInternal);
+                             transaction::OperationOriginTestCase{});
 
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
@@ -1074,7 +1079,7 @@ void assertFilter(
   {
     transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
                              {}, {}, {}, transaction::Options(),
-                             transaction::TrxType::kInternal);
+                             transaction::OperationOriginTestCase{});
 
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
@@ -1150,7 +1155,7 @@ void assertFilterParseFail(
                << queryString << ">");
   auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
   auto query = aql::Query::create(ctx, aql::QueryString(queryString), bindVars,
-                                  transaction::TrxType::kInternal);
+                                  transaction::OperationOriginTestCase{});
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.fail());

@@ -79,7 +79,7 @@ class QueryTraversal : public QueryTest {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -111,7 +111,7 @@ class QueryTraversal : public QueryTest {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -139,7 +139,7 @@ class QueryTraversal : public QueryTest {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{

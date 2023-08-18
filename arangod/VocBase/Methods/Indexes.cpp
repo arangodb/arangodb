@@ -44,8 +44,8 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/TrxType.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
@@ -65,15 +65,13 @@
 #include <string>
 #include <string_view>
 
-#include <absl/strings/str_cat.h>
-
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
 
 namespace {
+constexpr std::string_view moduleName("index administration");
+
 /// @brief checks if argument is an index name
 Result extractIndexName(velocypack::Slice arg, bool extendedNames,
                         std::string& collectionName, std::string& name) {
@@ -267,7 +265,8 @@ arangodb::Result Indexes::getAll(
     } else {
       trx = std::make_shared<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(collection.vocbase()),
-          collection, AccessMode::Type::READ, transaction::TrxType::kInternal);
+          collection, AccessMode::Type::READ,
+          transaction::OperationOriginREST{::moduleName});
 
       Result res = trx->begin();
       if (!res.ok()) {
@@ -764,7 +763,7 @@ Result Indexes::drop(LogicalCollection& collection,
     SingleCollectionTransaction trx(
         transaction::V8Context::CreateWhenRequired(collection.vocbase(), false),
         collection, AccessMode::Type::EXCLUSIVE,
-        transaction::TrxType::kInternal, trxOpts);
+        transaction::OperationOriginREST{::moduleName}, trxOpts);
     Result res = trx.begin();
 
     if (!res.ok()) {

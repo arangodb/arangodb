@@ -47,6 +47,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
@@ -779,9 +780,9 @@ ResultT<std::pair<std::unique_ptr<containers::RevisionTree>,
 RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
   auto ctxt =
       transaction::StandaloneContext::Create(_logicalCollection.vocbase());
-  SingleCollectionTransaction trx(ctxt, _logicalCollection,
-                                  AccessMode::Type::READ,
-                                  transaction::TrxType::kInternal);
+  SingleCollectionTransaction trx(
+      ctxt, _logicalCollection, AccessMode::Type::READ,
+      transaction::OperationOriginInternal{"rebuilding revision tree"});
 
   Result res = trx.begin();
   if (res.fail()) {

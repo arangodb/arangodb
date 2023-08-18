@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Transaction/TrxType.h"
+#include "Transaction/OperationOrigin.h"
 
 #include <memory>
 #include <string_view>
@@ -37,14 +37,12 @@ class QueryContext;
 class StandaloneCalculation {
  public:
   static std::unique_ptr<QueryContext> buildQueryContext(
-      TRI_vocbase_t& vocbase, transaction::TrxType trxTypeHint);
+      TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin);
 
-  static arangodb::Result validateQuery(TRI_vocbase_t& vocbase,
-                                        std::string_view queryString,
-                                        std::string_view parameterName,
-                                        std::string_view errorContext,
-                                        transaction::TrxType trxTypeHint,
-                                        bool isComputedValue);
+  static arangodb::Result validateQuery(
+      TRI_vocbase_t& vocbase, std::string_view queryString,
+      std::string_view parameterName, std::string_view errorContext,
+      transaction::OperationOrigin operationOrigin, bool isComputedValue);
 };
 
 }  // namespace arangodb::aql

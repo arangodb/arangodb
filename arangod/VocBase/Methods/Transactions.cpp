@@ -401,11 +401,11 @@ Result executeTransactionJS(v8::Isolate* isolate,
   ctx.setJStransaction();
 
   // start actual transaction
-  transaction::Methods trx(std::shared_ptr<transaction::Context>(
-                               std::shared_ptr<transaction::Context>(), &ctx),
-                           readCollections, writeCollections,
-                           exclusiveCollections, trxOptions,
-                           transaction::TrxType::kREST);
+  transaction::Methods trx(
+      std::shared_ptr<transaction::Context>(
+          std::shared_ptr<transaction::Context>(), &ctx),
+      readCollections, writeCollections, exclusiveCollections, trxOptions,
+      transaction::OperationOriginREST{"JavaScript transaction"});
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (ServerState::instance()->isCoordinator()) {
     // No one knows our Transaction ID yet, so we an run FAST_LOCK_ROUND and

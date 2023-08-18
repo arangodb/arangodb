@@ -44,10 +44,10 @@ class HistoryEntry {
 
  public:
   HistoryEntry(std::string databaseName, std::vector<std::string> collections,
-               TrxType trxTypeHint)
+               OperationOrigin operationOrigin)
       : _databaseName(std::move(databaseName)),
         _collections(std::move(collections)),
-        _trxTypeHint(trxTypeHint),
+        _operationOrigin(operationOrigin),
         _id(0) {}
 
   void toVelocyPack(velocypack::Builder& result) const {
@@ -63,14 +63,14 @@ class HistoryEntry {
     }
     result.close();
 
-    switch (_trxTypeHint) {
-      case TrxType::kREST:
-        result.add("type", VPackValue("REST"));
-        break;
-      case TrxType::kAQL:
+    switch (_operationOrigin.type) {
+      case OperationOrigin::Type::kAQL:
         result.add("type", VPackValue("AQL"));
         break;
-      case TrxType::kInternal:
+      case OperationOrigin::Type::kREST:
+        result.add("type", VPackValue("REST"));
+        break;
+      case OperationOrigin::Type::kInternal:
         result.add("type", VPackValue("internal"));
         break;
     }
@@ -83,7 +83,7 @@ class HistoryEntry {
 
   std::string const _databaseName;
   std::vector<std::string> const _collections;
-  TrxType const _trxTypeHint;
+  OperationOrigin const _operationOrigin;
   std::uint64_t _id;
 };
 
@@ -98,8 +98,9 @@ void History::insert(Methods const& trx) {
     return true;
   });
 
-  auto entry = std::make_shared<HistoryEntry>(
-      trx.vocbase().name(), std::move(collections), trx.state()->trxTypeHint());
+  auto entry = std::make_shared<HistoryEntry>(trx.vocbase().name(),
+                                              std::move(collections),
+                                              trx.state()->operationOrigin());
 
   std::unique_lock<std::shared_mutex> lock(_mutex);
 

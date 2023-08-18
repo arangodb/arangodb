@@ -34,6 +34,7 @@
 #include "Aql/RestAqlHandler.h"
 #include "Network/NetworkFeature.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
@@ -110,7 +111,7 @@ void MockGraph::storeVertexData(
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       vertexShardName, arangodb::AccessMode::Type::WRITE,
-      transaction::TrxType::kInternal);
+      transaction::OperationOriginTestCase{});
   EXPECT_TRUE((trx.begin().ok()));
 
   size_t added = 0;
@@ -133,7 +134,8 @@ void MockGraph::storeEdgeData(TRI_vocbase_t& vocbase,
   arangodb::OperationOptions options;
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), edgeShardName,
-      arangodb::AccessMode::Type::WRITE, transaction::TrxType::kREST);
+      arangodb::AccessMode::Type::WRITE,
+      transaction::OperationOriginTestCase{});
   EXPECT_TRUE((trx.begin().ok()));
   size_t added = 0;
   velocypack::Builder b;

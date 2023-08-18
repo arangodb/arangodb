@@ -50,7 +50,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
-#include "Transaction/TrxType.h"
+#include "Transaction/OperationOrigin.h"
 
 struct TRI_vocbase_t;
 
@@ -370,7 +370,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @return overall load result
   //////////////////////////////////////////////////////////////////////////////
   Result loadAvailableAnalyzers(std::string_view dbName,
-                                transaction::TrxType trxTypeHint);
+                                transaction::OperationOrigin operationOrigin);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Checks if analyzer db (identified by db name prefix extracted from
@@ -413,7 +413,8 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   using EmplaceResult = std::pair<AnalyzerPool::ptr, bool>;
   Result emplace(EmplaceResult& result, std::string_view name,
                  std::string_view type, VPackSlice const properties,
-                 transaction::TrxType trxTypeHint, Features features = {});
+                 transaction::OperationOrigin operationOrigin,
+                 Features features = {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Emplaces batch of analyzers within single analyzers revision.
@@ -426,7 +427,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @note should not be used while inRecovery()
   //////////////////////////////////////////////////////////////////////////////
   Result bulkEmplace(TRI_vocbase_t& vocbase, VPackSlice const dumpedAnalyzers,
-                     transaction::TrxType trxTypeHint);
+                     transaction::OperationOrigin operationOrigin);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief removes all analyzers from database in single revision
@@ -435,7 +436,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @note should not be used while inRecovery()
   //////////////////////////////////////////////////////////////////////////////
   Result removeAllAnalyzers(TRI_vocbase_t& vocbase,
-                            transaction::TrxType trxTypeHint);
+                            transaction::OperationOrigin operationOrigin);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find analyzer
@@ -445,7 +446,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(std::string_view name,
                         QueryAnalyzerRevisions const& revision,
-                        transaction::TrxType trxTypeHint,
+                        transaction::OperationOrigin operationOrigin,
                         bool onlyCached = false) const noexcept {
     auto splittedName = splitAnalyzerName(name);
     TRI_ASSERT(irs::IsNull(splittedName.first) || !splittedName.first.empty());
@@ -454,7 +455,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
                    ? AnalyzersRevision::MIN  // built-in analyzers always has
                                              // MIN revision
                    : revision.getVocbaseRevision(splittedName.first),
-               trxTypeHint, onlyCached);
+               operationOrigin, onlyCached);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -467,7 +468,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   AnalyzerPool::ptr get(std::string_view name,
                         TRI_vocbase_t const& activeVocbase,
                         QueryAnalyzerRevisions const& revision,
-                        transaction::TrxType trxTypeHint,
+                        transaction::OperationOrigin operationOrigin,
                         bool onlyCached = false) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -475,7 +476,8 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @param name analyzer name (already normalized)
   /// @param force remove even if the analyzer is actively referenced
   //////////////////////////////////////////////////////////////////////////////
-  Result remove(std::string_view name, transaction::TrxType trxTypeHint,
+  Result remove(std::string_view name,
+                transaction::OperationOrigin operationOrigin,
                 bool force = false);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -487,14 +489,14 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
       std::function<bool(AnalyzerPool::ptr const&)> const& visitor) const;
   bool visit(std::function<bool(AnalyzerPool::ptr const&)> const& visitor,
              TRI_vocbase_t const* vocbase,
-             transaction::TrxType trxTypeHint) const;
+             transaction::OperationOrigin operationOrigin) const;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief removes analyzers for specified database from cache
   /// @param vocbase  database to invalidate analyzers
   ///////////////////////////////////////////////////////////////////////////////
   void invalidate(const TRI_vocbase_t& vocbase,
-                  transaction::TrxType trxTypeHint);
+                  transaction::OperationOrigin operationOrigin);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief return current known analyzers revision
@@ -539,13 +541,13 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   static Analyzers const& getStaticAnalyzers();
 
   Result removeFromCollection(std::string_view name, std::string_view vocbase,
-                              transaction::TrxType trxTypeHint);
+                              transaction::OperationOrigin operationOrigin);
   Result cleanupAnalyzersCollection(
       std::string_view const& database,
       AnalyzersRevision::Revision buildingRevision,
-      transaction::TrxType trxTypeHint);
+      transaction::OperationOrigin operationOrigin);
   Result finalizeRemove(std::string_view name, std::string_view vocbase,
-                        transaction::TrxType trxTypeHint);
+                        transaction::OperationOrigin operationOrigin);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate analyzer parameters and emplace into map
@@ -555,12 +557,13 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
       iresearch::IResearchAnalyzerFeature::Analyzers& analyzers,
       std::string_view const name, std::string_view const type,
       VPackSlice const properties, Features const& features,
-      AnalyzersRevision::Revision revision, transaction::TrxType trxTypeHint);
+      AnalyzersRevision::Revision revision,
+      transaction::OperationOrigin operationOrigin);
 
   AnalyzerPool::ptr get(std::string_view normalizedName,
                         AnalyzerName const& name,
                         AnalyzersRevision::Revision const revision,
-                        transaction::TrxType trxTypeHint,
+                        transaction::OperationOrigin operationOrigin,
                         bool onlyCached) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -570,7 +573,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @note on coordinator and db-server reload is also done if the database has
   ///       changed analyzers revision in agency
   //////////////////////////////////////////////////////////////////////////////
-  Result loadAnalyzers(transaction::TrxType trxTypeHint,
+  Result loadAnalyzers(transaction::OperationOrigin operationOrigin,
                        std::string_view database = std::string_view{});
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -584,7 +587,8 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   ///        vocbase
   /// @note on success will modify the '_key' of the pool
   //////////////////////////////////////////////////////////////////////////////
-  Result storeAnalyzer(AnalyzerPool& pool, transaction::TrxType trxTypeHint);
+  Result storeAnalyzer(AnalyzerPool& pool,
+                       transaction::OperationOrigin operationOrigin);
 
   /// @brief dangling analyzer revisions collector
   std::function<void(bool)> _gcfunc;

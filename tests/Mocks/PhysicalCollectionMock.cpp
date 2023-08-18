@@ -36,6 +36,7 @@
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -1020,7 +1021,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       _logicalCollection, arangodb::AccessMode::Type::WRITE,
-      arangodb::transaction::TrxType::kInternal);
+      arangodb::transaction::OperationOriginTestCase{});
   auto res = trx.begin();
   TRI_ASSERT(res.ok());
 

@@ -47,6 +47,7 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -162,10 +163,12 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
+  auto origin =
+      transaction::OperationOriginInternal{"statistics garbage collection"};
+
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(_vocbase),
-      arangodb::aql::QueryString(::garbageCollectionQuery), _bindVars,
-      transaction::TrxType::kInternal);
+      arangodb::aql::QueryString(::garbageCollectionQuery), _bindVars, origin);
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -184,8 +187,7 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   opOptions.silent = true;
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, name, AccessMode::Type::WRITE,
-                                  transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(ctx, name, AccessMode::Type::WRITE, origin);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -296,7 +298,8 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
       transaction::StandaloneContext::Create(_vocbase),
       arangodb::aql::QueryString(_clusterId.empty() ? ::lastEntryQuery
                                                     : ::filteredLastEntryQuery),
-      _bindVars, transaction::TrxType::kInternal);
+      _bindVars,
+      transaction::OperationOriginInternal{"fetching last statistics entry"});
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -328,7 +331,8 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       arangodb::aql::QueryString(_clusterId.empty()
                                      ? ::fifteenMinuteQuery
                                      : ::filteredFifteenMinuteQuery),
-      _bindVars, transaction::TrxType::kInternal);
+      _bindVars,
+      transaction::OperationOriginInternal{"computing statistics 15m average"});
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -1071,8 +1075,9 @@ void StatisticsWorker::saveSlice(VPackSlice slice,
 
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::WRITE,
-                                  transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx, collection, AccessMode::Type::WRITE,
+      transaction::OperationOriginInternal{"storing statistics data"});
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 

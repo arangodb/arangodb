@@ -185,7 +185,7 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
   if (args.size() > 1) {
     auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
     pool = analyzers.get(name, trx.vocbase(), trx.state()->analyzersRevision(),
-                         trx.state()->trxTypeHint());
+                         trx.state()->operationOrigin());
   } else {  // do not look for identity, we already have reference)
     pool = IResearchAnalyzerFeature::identity();
   }
@@ -455,7 +455,7 @@ bool equalAnalyzer(AnalyzerPool const& pool, std::string_view type,
 ////////////////////////////////////////////////////////////////////////////////
 Result visitAnalyzers(TRI_vocbase_t& vocbase,
                       std::function<Result(VPackSlice)> const& visitor,
-                      transaction::TrxType trxTypeHint) {
+                      transaction::OperationOrigin operationOrigin) {
   auto const resultVisitor =
       [](std::function<Result(VPackSlice)> const& visitor,
          TRI_vocbase_t const& vocbase, VPackSlice slice) -> Result {
@@ -549,7 +549,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
             absl::StrCat("FOR d IN ", shards->begin()->first, " RETURN d"));
         auto query = aql::Query::create(
             transaction::StandaloneContext::Create(vocbase),
-            std::move(oneShardQueryString), nullptr, trxTypeHint);
+            std::move(oneShardQueryString), nullptr, operationOrigin);
 
         auto result = query->executeSync();
 
@@ -629,7 +629,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
 
   auto query =
       aql::Query::create(transaction::StandaloneContext::Create(vocbase),
-                         queryString, nullptr, trxTypeHint);
+                         queryString, nullptr, operationOrigin);
 
   auto result = query->executeSync();
 
@@ -1236,7 +1236,8 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     EmplaceAnalyzerResult& result, Analyzers& analyzers,
     std::string_view const name, std::string_view const type,
     VPackSlice const properties, Features const& features,
-    AnalyzersRevision::Revision revision, transaction::TrxType trxTypeHint) {
+    AnalyzersRevision::Revision revision,
+    transaction::OperationOrigin operationOrigin) {
   // check type available
   if (!irs::analysis::analyzers::exists(
           type, irs::type<irs::text_format::vpack>::get(), false)) {
@@ -1355,12 +1356,10 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   return {};
 }
 
-Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
-                                         std::string_view name,
-                                         std::string_view type,
-                                         VPackSlice const properties,
-                                         transaction::TrxType trxTypeHint,
-                                         Features features /* = {} */) {
+Result IResearchAnalyzerFeature::emplace(
+    EmplaceResult& result, std::string_view name, std::string_view type,
+    VPackSlice const properties, transaction::OperationOrigin operationOrigin,
+    Features features /* = {} */) {
   auto const split = splitAnalyzerName(name);
 
   auto transaction =
@@ -1377,13 +1376,13 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
       // do not trigger load for static-analyzer requests
       if (transaction) {
         auto cleanupResult = cleanupAnalyzersCollection(
-            split.first, transaction->buildingRevision(), trxTypeHint);
+            split.first, transaction->buildingRevision(), operationOrigin);
         if (cleanupResult.fail()) {
           return cleanupResult;
         }
       }
 
-      auto res = loadAnalyzers(trxTypeHint, split.first);
+      auto res = loadAnalyzers(operationOrigin, split.first);
 
       if (!res.ok()) {
         return res;
@@ -1397,7 +1396,7 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
     auto res = emplaceAnalyzer(
         emplaceRes, _analyzers, name, type, properties, features,
         transaction ? transaction->buildingRevision() : AnalyzersRevision::MIN,
-        trxTypeHint);
+        operationOrigin);
 
     if (!res.ok()) {
       return res;
@@ -1428,7 +1427,7 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
       if ((!engine.inRecovery())  // do not persist during recovery
           && (ServerState::instance()->isCoordinator()          // coordinator
               || ServerState::instance()->isSingleServer())) {  // single-server
-        res = storeAnalyzer(*pool, trxTypeHint);
+        res = storeAnalyzer(*pool, operationOrigin);
       }
 
       if (res.fail()) {
@@ -1474,7 +1473,7 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
 }
 
 Result IResearchAnalyzerFeature::removeAllAnalyzers(
-    TRI_vocbase_t& vocbase, transaction::TrxType trxTypeHint) {
+    TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin) {
   auto analyzerModificationTrx =
       createAnalyzerModificationTransaction(server(), vocbase.name());
   if (analyzerModificationTrx) {
@@ -1484,7 +1483,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
     }
     auto cleanupResult = cleanupAnalyzersCollection(
         vocbase.name(), analyzerModificationTrx->buildingRevision(),
-        trxTypeHint);
+        operationOrigin);
     if (cleanupResult.fail()) {
       return cleanupResult;
     }
@@ -1496,7 +1495,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
     auto ctx = transaction::StandaloneContext::Create(vocbase);
     SingleCollectionTransaction trx(
         ctx, arangodb::StaticStrings::AnalyzersCollection,
-        AccessMode::Type::EXCLUSIVE, trxTypeHint);
+        AccessMode::Type::EXCLUSIVE, operationOrigin);
 
     auto res = trx.begin();
     if (res.fail()) {
@@ -1508,7 +1507,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
         .get();
     res = trx.commitAsync().get();
     if (res.ok()) {
-      invalidate(vocbase, trxTypeHint);
+      invalidate(vocbase, operationOrigin);
     }
     return res;
   } else {
@@ -1524,15 +1523,15 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
       auto ctx = transaction::StandaloneContext::Create(vocbase);
       SingleCollectionTransaction trx(
           ctx, arangodb::StaticStrings::AnalyzersCollection,
-          AccessMode::Type::EXCLUSIVE, trxTypeHint);
+          AccessMode::Type::EXCLUSIVE, operationOrigin);
       trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
       auto res = trx.begin();
       if (res.fail()) {
         return res;
       }
-      auto query =
-          aql::Query::create(ctx, aql::QueryString(aql), nullptr, trxTypeHint);
+      auto query = aql::Query::create(ctx, aql::QueryString(aql), nullptr,
+                                      operationOrigin);
       aql::QueryResult queryResult = query->executeSync();
       if (queryResult.fail()) {
         return queryResult.result;
@@ -1551,7 +1550,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
       auto ctx = transaction::StandaloneContext::Create(vocbase);
       SingleCollectionTransaction truncateTrx(
           ctx, arangodb::StaticStrings::AnalyzersCollection,
-          AccessMode::Type::EXCLUSIVE, trxTypeHint);
+          AccessMode::Type::EXCLUSIVE, operationOrigin);
 
       auto res = truncateTrx.begin();
 
@@ -1571,14 +1570,14 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
             << " Error:" << res.errorMessage();
       }
     }
-    invalidate(vocbase, trxTypeHint);
+    invalidate(vocbase, operationOrigin);
     return {};
   }
 }
 
-Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
-                                             VPackSlice const dumpedAnalyzers,
-                                             transaction::TrxType trxTypeHint) {
+Result IResearchAnalyzerFeature::bulkEmplace(
+    TRI_vocbase_t& vocbase, VPackSlice const dumpedAnalyzers,
+    transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(dumpedAnalyzers.isArray());
   TRI_ASSERT(!dumpedAnalyzers.isEmptyArray());
   auto transaction =
@@ -1592,12 +1591,12 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
   try {
     if (transaction) {
       auto cleanupResult = cleanupAnalyzersCollection(
-          vocbase.name(), transaction->buildingRevision(), trxTypeHint);
+          vocbase.name(), transaction->buildingRevision(), operationOrigin);
       if (cleanupResult.fail()) {
         return cleanupResult;
       }
     }
-    auto res = loadAnalyzers(trxTypeHint, vocbase.name());
+    auto res = loadAnalyzers(operationOrigin, vocbase.name());
     if (!res.ok()) {
       return res;
     }
@@ -1640,7 +1639,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
                                  properties, features,
                                  transaction ? transaction->buildingRevision()
                                              : AnalyzersRevision::MIN,
-                                 trxTypeHint);
+                                 operationOrigin);
 
       if (!res.ok()) {
         LOG_TOPIC("9b095", ERR, arangodb::iresearch::TOPIC)
@@ -1671,7 +1670,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
         // persist only on coordinator and single-server while not in recovery
         if (ServerState::instance()->isCoordinator()         // coordinator
             || ServerState::instance()->isSingleServer()) {  // single-server
-          res = storeAnalyzer(*pool, trxTypeHint);
+          res = storeAnalyzer(*pool, operationOrigin);
         }
 
         if (res.fail()) {
@@ -1725,7 +1724,8 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
 AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     std::string_view normalizedName, AnalyzerName const& name,
     AnalyzersRevision::Revision const revision,
-    transaction::TrxType trxTypeHint, bool onlyCached) const noexcept {
+    transaction::OperationOrigin operationOrigin,
+    bool onlyCached) const noexcept {
   try {
     if (!irs::IsNull(name.first)) {  // check if analyzer is static
       if (!onlyCached) {
@@ -1735,7 +1735,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
         do {
           auto const res =
               const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(
-                  trxTypeHint, name.first);
+                  operationOrigin, name.first);
           if (!res.ok()) {
             LOG_TOPIC("36062", WARN, iresearch::TOPIC)
                 << "failure to load analyzers for database '" << name.first
@@ -1819,7 +1819,8 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
 AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     std::string_view name, TRI_vocbase_t const& activeVocbase,
-    QueryAnalyzerRevisions const& revision, transaction::TrxType trxTypeHint,
+    QueryAnalyzerRevisions const& revision,
+    transaction::OperationOrigin operationOrigin,
     bool onlyCached /*= false*/) const {
   auto const normalizedName = normalize(name, activeVocbase.name(), true);
 
@@ -1841,7 +1842,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
              irs::IsNull(split.first)
                  ? kBuiltinRevision
                  : revision.getVocbaseRevision(split.first),
-             trxTypeHint, onlyCached);
+             operationOrigin, onlyCached);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1959,7 +1960,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::identity() noexcept {
 Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
     std::string_view const& database,
     AnalyzersRevision::Revision buildingRevision,
-    transaction::TrxType trxTypeHint) {
+    transaction::OperationOrigin operationOrigin) {
   if (ServerState::instance()->isCoordinator()) {
     if (!server().hasFeature<DatabaseFeature>()) {
       return {
@@ -1997,12 +1998,12 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
     auto ctx = transaction::StandaloneContext::Create(*vocbase);
     SingleCollectionTransaction trx(
         ctx, arangodb::StaticStrings::AnalyzersCollection,
-        AccessMode::Type::WRITE, trxTypeHint);
+        AccessMode::Type::WRITE, operationOrigin);
     trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
     trx.begin();
 
-    auto queryDelete =
-        aql::Query::create(ctx, queryDeleteString, bindBuilder, trxTypeHint);
+    auto queryDelete = aql::Query::create(ctx, queryDeleteString, bindBuilder,
+                                          operationOrigin);
 
     auto deleteResult = queryDelete->executeSync();
     if (deleteResult.fail()) {
@@ -2020,8 +2021,8 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
         " >= @rev) ", "UPDATE d WITH UNSET(d, '",
         arangodb::StaticStrings::AnalyzersDeletedRevision, "') IN ",
         arangodb::StaticStrings::AnalyzersCollection));
-    auto queryUpdate =
-        aql::Query::create(ctx, queryUpdateString, bindBuilder, trxTypeHint);
+    auto queryUpdate = aql::Query::create(ctx, queryUpdateString, bindBuilder,
+                                          operationOrigin);
 
     auto updateResult = queryUpdate->executeSync();
     if (updateResult.fail()) {
@@ -2041,7 +2042,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
 }
 
 Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
-    std::string_view dbName, transaction::TrxType trxTypeHint) {
+    std::string_view dbName, transaction::OperationOrigin operationOrigin) {
   if (!ServerState::instance()->isCoordinator()) {
     // Single-servers will load analyzers they need in regular get call.
     // DbServer receives analyzers definitions from coordinators in ddl requests
@@ -2050,7 +2051,7 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
   }
   Result res{};
   if (canUseVocbase(dbName, auth::Level::RO)) {
-    res = loadAnalyzers(trxTypeHint, dbName);
+    res = loadAnalyzers(operationOrigin, dbName);
     if (res.fail()) {
       return res;
     }
@@ -2058,13 +2059,14 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
   if (dbName != arangodb::StaticStrings::SystemDatabase &&
       canUseVocbase(arangodb::StaticStrings::SystemDatabase, auth::Level::RO)) {
     // System is available for all other databases. So reload its analyzers too
-    res = loadAnalyzers(trxTypeHint, arangodb::StaticStrings::SystemDatabase);
+    res =
+        loadAnalyzers(operationOrigin, arangodb::StaticStrings::SystemDatabase);
   }
   return res;
 }
 
 Result IResearchAnalyzerFeature::loadAnalyzers(
-    transaction::TrxType trxTypeHint,
+    transaction::OperationOrigin operationOrigin,
     std::string_view database /*= std::string_view{}*/) {
   if (!server().hasFeature<DatabaseFeature>()) {
     return {TRI_ERROR_INTERNAL,
@@ -2084,9 +2086,9 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       Result res;
       containers::FlatHashSet<irs::hashed_string_view> seen;
       auto visitor = [this, &res, &seen,
-                      &trxTypeHint](TRI_vocbase_t& vocbase) -> void {
+                      &operationOrigin](TRI_vocbase_t& vocbase) -> void {
         auto const name = irs::hashed_string_view{vocbase.name()};
-        auto const result = loadAnalyzers(trxTypeHint, name);
+        auto const result = loadAnalyzers(operationOrigin, name);
         auto const itr = _lastLoad.find(name);
 
         if (itr != _lastLoad.end()) {
@@ -2185,8 +2187,9 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     }
 
     Analyzers analyzers;
-    auto visitor = [this, &analyzers, &vocbase, &loadingRevision,
-                    &trxTypeHint](velocypack::Slice const& slice) -> Result {
+    auto visitor =
+        [this, &analyzers, &vocbase, &loadingRevision,
+         &operationOrigin](velocypack::Slice const& slice) -> Result {
       if (!slice.isObject()) {
         LOG_TOPIC("5c7a5", ERR, iresearch::TOPIC)
             << "failed to find an object value for analyzer definition while "
@@ -2258,8 +2261,9 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
       auto normalizedName = normalizedAnalyzerName(vocbase->name(), name);
       EmplaceAnalyzerResult result;
-      auto res = emplaceAnalyzer(result, analyzers, normalizedName, type,
-                                 properties, features, revision, trxTypeHint);
+      auto res =
+          emplaceAnalyzer(result, analyzers, normalizedName, type, properties,
+                          features, revision, operationOrigin);
 
       if (!res.ok()) {
         LOG_TOPIC("7cc7f", ERR, iresearch::TOPIC)
@@ -2273,7 +2277,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       }
       return {};
     };
-    auto const res = visitAnalyzers(*vocbase, visitor, trxTypeHint);
+    auto const res = visitAnalyzers(*vocbase, visitor, operationOrigin);
     if (!res.ok()) {
       if (res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
         // collection not found, cleanup any analyzers for 'database'
@@ -2492,7 +2496,7 @@ void IResearchAnalyzerFeature::prepare() {
 
 Result IResearchAnalyzerFeature::removeFromCollection(
     std::string_view name, std::string_view vocbase,
-    transaction::TrxType trxTypeHint) {
+    transaction::OperationOrigin operationOrigin) {
   auto& dbFeature = server().getFeature<DatabaseFeature>();
   auto voc = dbFeature.useDatabase(vocbase);
   if (!voc) {
@@ -2504,7 +2508,7 @@ Result IResearchAnalyzerFeature::removeFromCollection(
   }
   SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*voc),
                                   arangodb::StaticStrings::AnalyzersCollection,
-                                  AccessMode::Type::WRITE, trxTypeHint);
+                                  AccessMode::Type::WRITE, operationOrigin);
   auto res = trx.begin();
 
   if (!res.ok()) {
@@ -2532,11 +2536,11 @@ Result IResearchAnalyzerFeature::removeFromCollection(
 
 Result IResearchAnalyzerFeature::finalizeRemove(
     std::string_view name, std::string_view vocbase,
-    transaction::TrxType trxTypeHint) {
+    transaction::OperationOrigin operationOrigin) {
   TRI_IF_FAILURE("FinalizeAnalyzerRemove") { return {TRI_ERROR_DEBUG}; }
 
   try {
-    return removeFromCollection(name, vocbase, trxTypeHint);
+    return removeFromCollection(name, vocbase, operationOrigin);
   } catch (basics::Exception const& e) {
     return {e.code(),
             absl::StrCat("caught exception while finalizing removing "
@@ -2555,9 +2559,9 @@ Result IResearchAnalyzerFeature::finalizeRemove(
   }
 }
 
-Result IResearchAnalyzerFeature::remove(std::string_view name,
-                                        transaction::TrxType trxTypeHint,
-                                        bool force /*= false*/) {
+Result IResearchAnalyzerFeature::remove(
+    std::string_view name, transaction::OperationOrigin operationOrigin,
+    bool force /*= false*/) {
   try {
     auto split = splitAnalyzerName(name);
 
@@ -2631,7 +2635,7 @@ Result IResearchAnalyzerFeature::remove(std::string_view name,
       }
       auto cleanupResult = cleanupAnalyzersCollection(
           split.first, analyzerModificationTrx->buildingRevision(),
-          trxTypeHint);
+          operationOrigin);
       if (cleanupResult.fail()) {
         return cleanupResult;
       }
@@ -2661,7 +2665,7 @@ Result IResearchAnalyzerFeature::remove(std::string_view name,
     if (!analyzerModificationTrx) {
       TRI_ASSERT(ServerState::instance()->isSingleServer());
       auto commitResult =
-          removeFromCollection(pool->_key, split.first, trxTypeHint);
+          removeFromCollection(pool->_key, split.first, operationOrigin);
       if (!commitResult.ok()) {
         return commitResult;
       }
@@ -2681,7 +2685,7 @@ Result IResearchAnalyzerFeature::remove(std::string_view name,
       SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(*vocbase),
           arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE,
-          trxTypeHint);
+          operationOrigin);
       auto res = trx.begin();
 
       if (!res.ok()) {
@@ -2730,7 +2734,7 @@ Result IResearchAnalyzerFeature::remove(std::string_view name,
                              ->buildingRevision();  // as we already "updated
                                                     // cache" to this revision
       }
-      res = removeFromCollection(split.second, split.first, trxTypeHint);
+      res = removeFromCollection(split.second, split.first, operationOrigin);
       if (res.fail()) {
         // just log this error. Analyzer is already "deleted" for the whole
         // cluster so we must report success. Leftovers will be cleaned up on
@@ -2813,7 +2817,7 @@ void IResearchAnalyzerFeature::stop() {
 }
 
 Result IResearchAnalyzerFeature::storeAnalyzer(
-    AnalyzerPool& pool, transaction::TrxType trxTypeHint) {
+    AnalyzerPool& pool, transaction::OperationOrigin operationOrigin) {
   TRI_IF_FAILURE("FailStoreAnalyzer") { return {TRI_ERROR_DEBUG}; }
 
   try {
@@ -2848,7 +2852,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(*vocbase),
         arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE,
-        trxTypeHint);
+        operationOrigin);
     auto res = trx.begin();
 
     if (!res.ok()) {
@@ -2940,7 +2944,8 @@ bool IResearchAnalyzerFeature::visit(
 
 bool IResearchAnalyzerFeature::visit(
     std::function<bool(AnalyzerPool::ptr const&)> const& visitor,
-    TRI_vocbase_t const* vocbase, transaction::TrxType trxTypeHint) const {
+    TRI_vocbase_t const* vocbase,
+    transaction::OperationOrigin operationOrigin) const {
   // static analyzer visitation
   if (!vocbase) {
     for (auto& entry : getStaticAnalyzers()) {
@@ -2953,7 +2958,7 @@ bool IResearchAnalyzerFeature::visit(
   }
 
   auto res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(
-      trxTypeHint, vocbase->name());
+      operationOrigin, vocbase->name());
 
   if (!res.ok()) {
     LOG_TOPIC("73695", WARN, iresearch::TOPIC)
@@ -3001,8 +3006,9 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(std::string_view database) {
   }
 }
 
-void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase,
-                                          transaction::TrxType trxTypeHint) {
+void IResearchAnalyzerFeature::invalidate(
+    const TRI_vocbase_t& vocbase,
+    transaction::OperationOrigin operationOrigin) {
   std::string_view const database{vocbase.name()};
   size_t const databaseHash{_lastLoad.hash_ref()(database)};
 

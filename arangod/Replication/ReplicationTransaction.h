@@ -37,9 +37,9 @@ class ReplicationTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction
   explicit ReplicationTransaction(TRI_vocbase_t& vocbase,
-                                  transaction::TrxType trxTypeHint)
+                                  transaction::OperationOrigin operationOrigin)
       : transaction::Methods(transaction::StandaloneContext::Create(vocbase),
-                             trxTypeHint,
+                             operationOrigin,
                              transaction::Options::replicationDefaults()),
         _guard(vocbase) {
     TRI_ASSERT(state() != nullptr);

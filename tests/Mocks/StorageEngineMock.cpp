@@ -274,9 +274,9 @@ std::shared_ptr<arangodb::TransactionState>
 StorageEngineMock::createTransactionState(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
     arangodb::transaction::Options const& options,
-    arangodb::transaction::TrxType trxTypeHint) {
+    arangodb::transaction::OperationOrigin operationOrigin) {
   return std::make_shared<TransactionStateMock>(vocbase, tid, options,
-                                                trxTypeHint, *this);
+                                                operationOrigin, *this);
 }
 
 arangodb::Result StorageEngineMock::createView(
@@ -621,8 +621,10 @@ std::atomic_size_t TransactionStateMock::commitTransactionCount{0};
 TransactionStateMock::TransactionStateMock(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
     arangodb::transaction::Options const& options,
-    arangodb::transaction::TrxType trxTypeHint, StorageEngineMock& engine)
-    : TransactionState(vocbase, tid, options, trxTypeHint), _engine{engine} {}
+    arangodb::transaction::OperationOrigin operationOrigin,
+    StorageEngineMock& engine)
+    : TransactionState(vocbase, tid, options, operationOrigin),
+      _engine{engine} {}
 
 arangodb::Result TransactionStateMock::abortTransaction(
     arangodb::transaction::Methods* trx) {

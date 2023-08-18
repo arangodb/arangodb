@@ -48,15 +48,15 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
 
   // create memory tracker instance for the transaction, depending on
   // the type of transaction
-  switch (_state->trxTypeHint()) {
-    case transaction::TrxType::kREST:
+  switch (_state->operationOrigin().type) {
+    case transaction::OperationOrigin::Type::kAQL:
+      _memoryTracker = std::make_unique<MemoryTrackerAqlQuery>();
+      break;
+    case transaction::OperationOrigin::Type::kREST:
       _memoryTracker = std::make_unique<MemoryTrackerMetric>(
           &state->statistics()._restTransactionsMemoryUsage);
       break;
-    case transaction::TrxType::kAQL:
-      _memoryTracker = std::make_unique<MemoryTrackerAqlQuery>();
-      break;
-    case transaction::TrxType::kInternal:
+    case transaction::OperationOrigin::Type::kInternal:
       _memoryTracker = std::make_unique<MemoryTrackerMetric>(
           &state->statistics()._internalTransactionsMemoryUsage);
       break;
@@ -385,8 +385,6 @@ void RocksDBTrxBaseMethods::createTransaction() {
     trxOpts.lock_timeout = 1;
   }
 
-  // unclear performance implications do not use for now
-  // trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
   if (_state->isOnlyExclusiveTransaction()) {
     // we are exclusively modifying collection data here, so we can turn off
     // all concurrency control checks to save time

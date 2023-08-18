@@ -38,8 +38,9 @@ namespace arangodb {
 SingleCollectionTransaction::SingleCollectionTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
     LogicalDataSource const& dataSource, AccessMode::Type accessType,
-    transaction::TrxType trxTypeHint, transaction::Options const& options)
-    : transaction::Methods(transactionContext, trxTypeHint, options),
+    transaction::OperationOrigin operationOrigin,
+    transaction::Options const& options)
+    : transaction::Methods(transactionContext, operationOrigin, options),
       _cid(dataSource.id()),
       _trxCollection(nullptr),
       _documentCollection(nullptr),
@@ -49,15 +50,15 @@ SingleCollectionTransaction::SingleCollectionTransaction(
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  addHint(transaction::Hints::Hint::NO_DLD);
 }
 
 /// @brief create the transaction, using a collection name
 SingleCollectionTransaction::SingleCollectionTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
     std::string const& name, AccessMode::Type accessType,
-    transaction::TrxType trxTypeHint, transaction::Options const& options)
-    : transaction::Methods(transactionContext, trxTypeHint, options),
+    transaction::OperationOrigin operationOrigin,
+    transaction::Options const& options)
+    : transaction::Methods(transactionContext, operationOrigin, options),
       _cid(0),
       _trxCollection(nullptr),
       _documentCollection(nullptr),
@@ -68,7 +69,6 @@ SingleCollectionTransaction::SingleCollectionTransaction(
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  addHint(transaction::Hints::Hint::NO_DLD);
 }
 
 /// @brief get the underlying transaction collection

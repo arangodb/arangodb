@@ -35,6 +35,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
@@ -244,9 +245,10 @@ RestStatus RestDocumentHandler::insertDocument() {
                                         // single document operations
 
   // find and load collection given by name or identifier
-  _activeTrx =
-      createTransaction(cname, AccessMode::Type::WRITE, opOptions,
-                        transaction::TrxType::kREST, std::move(trxOpts));
+  _activeTrx = createTransaction(
+      cname, AccessMode::Type::WRITE, opOptions,
+      transaction::OperationOriginREST{"inserting document(s)"},
+      std::move(trxOpts));
 
   addTransactionHints(cname, isMultiple,
                       opOptions.isOverwriteModeUpdateReplace());
@@ -389,8 +391,9 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(collection, AccessMode::Type::READ, options,
-                                 transaction::TrxType::kREST);
+  _activeTrx =
+      createTransaction(collection, AccessMode::Type::READ, options,
+                        transaction::OperationOriginREST{"fetching document"});
 
   _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -610,9 +613,10 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
                                         // single document operations
 
   // find and load collection given by name or identifier
-  _activeTrx =
-      createTransaction(cname, AccessMode::Type::WRITE, opOptions,
-                        transaction::TrxType::kREST, std::move(trxOpts));
+  _activeTrx = createTransaction(
+      cname, AccessMode::Type::WRITE, opOptions,
+      transaction::OperationOriginREST{"updating/replacing document(s)"},
+      std::move(trxOpts));
 
   addTransactionHints(cname, isArrayCase, false);
 
@@ -775,9 +779,10 @@ RestStatus RestDocumentHandler::removeDocument() {
   trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
                                         // single document operations
 
-  _activeTrx =
-      createTransaction(cname, AccessMode::Type::WRITE, opOptions,
-                        transaction::TrxType::kREST, std::move(trxOpts));
+  _activeTrx = createTransaction(
+      cname, AccessMode::Type::WRITE, opOptions,
+      transaction::OperationOriginREST{"removing document(s)"},
+      std::move(trxOpts));
 
   addTransactionHints(cname, isMultiple, false);
 
@@ -868,8 +873,9 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     // there, the flag is ignored.
   }
 
-  _activeTrx = createTransaction(cname, AccessMode::Type::READ, opOptions,
-                                 transaction::TrxType::kREST);
+  _activeTrx =
+      createTransaction(cname, AccessMode::Type::READ, opOptions,
+                        transaction::OperationOriginREST{"fetching documents"});
 
   // ...........................................................................
   // inside read transaction

@@ -624,7 +624,7 @@ void IndexExecutor::CursorReader::reset() {
 }
 
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
-    : _trx(infos.query().newTrxContext(), infos.query().trxTypeHint()),
+    : _trx(infos.query().newTrxContext(), infos.query().operationOrigin()),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _state(ExecutorState::HASMORE),
       _documentProducingFunctionContext(_trx, _input, infos),

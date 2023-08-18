@@ -28,12 +28,18 @@
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Graph/GraphOperations.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/TrxType.h"
 #include "Utils/OperationOptions.h"
 
 #include <velocypack/Collection.h>
+
+#include <string_view>
 #include <utility>
+
+namespace {
+constexpr std::string_view moduleName("graph management");
+}
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -42,7 +48,7 @@ RestGraphHandler::RestGraphHandler(ArangodServer& server,
                                    GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
-      _graphManager(_vocbase, transaction::TrxType::kREST) {}
+      _graphManager(_vocbase, transaction::OperationOriginREST{::moduleName}) {}
 
 RestStatus RestGraphHandler::execute() {
   Result res = executeGharial();
@@ -293,9 +299,10 @@ void RestGraphHandler::vertexActionRead(Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::READ,
-                                      transaction::TrxType::kREST);
-  GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
+  auto origin = transaction::OperationOriginREST{"retrieving vertex"};
+
+  auto ctx = createTransactionContext(AccessMode::Type::READ, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
   OperationResult result = gops.getVertex(collectionName, key, maybeRev);
 
   if (!result.ok()) {
@@ -566,9 +573,10 @@ void RestGraphHandler::edgeActionRead(Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::READ,
-                                      transaction::TrxType::kREST);
-  GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
+  auto origin = transaction::OperationOriginREST{"retrieving edge"};
+
+  auto ctx = createTransactionContext(AccessMode::Type::READ, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
   OperationResult result = gops.getEdge(definitionName, key, maybeRev);
 
   if (result.fail()) {
@@ -614,9 +622,10 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
-                                      transaction::TrxType::kREST);
-  GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
+  auto origin = transaction::OperationOriginREST{"removing edge"};
+
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
 
   OperationResult result =
       gops.removeEdge(definitionName, key, maybeRev, waitForSync, returnOld);
@@ -728,10 +737,11 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph,
   bool dropCollections =
       _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
+  auto origin = transaction::OperationOriginREST{"modifying edge definition"};
+
   // simon: why is this part of el-cheapo ??
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
-                                      transaction::TrxType::kREST);
-  GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
   OperationOptions options(_context);
   OperationResult result(Result(), options);
 
@@ -793,9 +803,10 @@ Result RestGraphHandler::modifyVertexDefinition(
   bool createCollection =
       _request->parsedValue(StaticStrings::GraphCreateCollection, true);
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
-                                      transaction::TrxType::kREST);
-  GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
+  auto origin = transaction::OperationOriginREST{"modifying vertex definition"};
+
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
   OperationOptions options(_context);
   OperationResult result(Result(), options);
 
@@ -855,12 +866,12 @@ Result RestGraphHandler::documentModify(graph::Graph& graph,
   bool keepNull = _request->parsedValue(StaticStrings::KeepNullString, true);
 
   // extract the revision, if single document variant and header given:
-  std::unique_ptr<VPackBuilder> builder;
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
-                                      transaction::TrxType::kREST);
-  GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
+  auto origin = transaction::OperationOriginREST{"modifying vertex/edge"};
+
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
 
   OperationOptions options(_context);
   OperationResult result(Result(), options);
@@ -923,9 +934,10 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph,
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
-                                      transaction::TrxType::kREST);
-  GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
+  auto origin = transaction::OperationOriginREST{"inserting edge/vertex"};
+
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
 
   OperationOptions options(_context);
   OperationResult result(Result(), options);
@@ -968,9 +980,10 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE,
-                                      transaction::TrxType::kREST);
-  GraphOperations gops{graph, _vocbase, transaction::TrxType::kREST, ctx};
+  auto origin = transaction::OperationOriginREST{"removing vertex"};
+
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
 
   OperationResult result =
       gops.removeVertex(collectionName, key, maybeRev, waitForSync, returnOld);

@@ -67,7 +67,7 @@ class RocksDBTransactionState : public TransactionState {
  public:
   RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options,
-                          transaction::TrxType trxTypeHint);
+                          transaction::OperationOrigin operationOrigin);
   ~RocksDBTransactionState() override;
 
   /// @brief begin a transaction

@@ -422,7 +422,7 @@ std::shared_ptr<transaction::Methods> MockAqlServer::createFakeTransaction()
   auto ctx = transaction::StandaloneContext::Create(getSystemDatabase());
   return std::make_shared<transaction::Methods>(
       ctx, noCollections, noCollections, noCollections, opts,
-      transaction::TrxType::kInternal);
+      transaction::OperationOriginTestCase{});
 }
 
 std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
@@ -447,7 +447,8 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
 
   auto query = aql::Query::create(
       transaction::StandaloneContext::Create(getSystemDatabase()),
-      aql::QueryString(queryString), nullptr, transaction::TrxType::kInternal,
+      aql::QueryString(queryString), nullptr,
+      transaction::OperationOriginTestCase{},
       aql::QueryOptions(queryOptions.slice()), scheduler);
   callback(*query);
   query->prepareQuery();
@@ -583,7 +584,8 @@ std::shared_ptr<aql::Query> MockClusterServer::createFakeQuery(
 
   auto query = aql::Query::create(
       transaction::StandaloneContext::Create(getSystemDatabase()),
-      aql::QueryString(queryString), nullptr, transaction::TrxType::kInternal,
+      aql::QueryString(queryString), nullptr,
+      transaction::OperationOriginTestCase{},
       aql::QueryOptions(queryOptions.slice()));
   callback(*query);
   query->prepareQuery();

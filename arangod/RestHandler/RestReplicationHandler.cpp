@@ -68,8 +68,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/TrxType.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -151,10 +151,11 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
           // properly notified analyzers are gone.
           // The single server and DBServer case is handled after restore of
           // data.
-          auto res =
-              vocbase.server()
-                  .getFeature<iresearch::IResearchAnalyzerFeature>()
-                  .removeAllAnalyzers(vocbase, transaction::TrxType::kInternal);
+          auto res = vocbase.server()
+                         .getFeature<iresearch::IResearchAnalyzerFeature>()
+                         .removeAllAnalyzers(
+                             vocbase, transaction::OperationOriginInternal{
+                                          "removing analyzers"});
           if (res.ok()) {
             // Analyzers are only truncated, never dropped, so collection still
             // exists.
@@ -171,9 +172,10 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
             // If we are not allowed to drop the collection.
             // Try to truncate.
             auto ctx = transaction::StandaloneContext::Create(vocbase);
-            SingleCollectionTransaction trx(ctx, *col,
-                                            AccessMode::Type::EXCLUSIVE,
-                                            transaction::TrxType::kInternal);
+            SingleCollectionTransaction trx(
+                ctx, *col, AccessMode::Type::EXCLUSIVE,
+                transaction::OperationOriginInternal{
+                    "dropping collection for restore"});
 
             trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
@@ -1302,8 +1304,9 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE,
-                                  transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx, colName, AccessMode::Type::WRITE,
+      transaction::OperationOriginREST{"restoring data"});
 
   Result res = trx.begin();
 
@@ -1325,7 +1328,8 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
       _vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
     server()
         .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-        .invalidate(_vocbase, transaction::TrxType::kREST);
+        .invalidate(_vocbase,
+                    transaction::OperationOriginREST{"restoring analyzers"});
   }
   return res;
 }
@@ -1485,8 +1489,9 @@ Result RestReplicationHandler::parseBatchForSystemCollection(
   // this "fake" transaction here is only needed to get access to the underlying
   // system collection. we will not write anything into the collection here
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ,
-                                  transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx, collectionName, AccessMode::Type::READ,
+      transaction::OperationOriginREST{"restoring documents"});
 
   Result res = trx.begin();
   if (res.ok()) {
@@ -1508,8 +1513,9 @@ Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(
   if (res.ok() && !documentsToInsert.slice().isEmptyArray()) {
     auto& analyzersFeature =
         _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>();
-    return analyzersFeature.bulkEmplace(_vocbase, documentsToInsert.slice(),
-                                        transaction::TrxType::kREST);
+    return analyzersFeature.bulkEmplace(
+        _vocbase, documentsToInsert.slice(),
+        transaction::OperationOriginREST{"restoring analyzers"});
   }
   return res;
 }
@@ -1547,7 +1553,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   auto query = arangodb::aql::Query::create(
       transaction::StandaloneContext::Create(_vocbase),
       arangodb::aql::QueryString(aql), std::move(bindVars),
-      transaction::TrxType::kREST);
+      transaction::OperationOriginREST{"restoring users"});
   aql::QueryResult queryResult = query->executeSync();
 
   // neither agency nor dbserver should get here
@@ -2315,8 +2321,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
     LOG_TOPIC("aaff2", DEBUG, Logger::REPLICATION)
         << "Try add follower fast-path (no documents)";
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE,
-                                    transaction::TrxType::kREST);
+    SingleCollectionTransaction trx(
+        ctx, *col, AccessMode::Type::EXCLUSIVE,
+        transaction::OperationOriginInternal{"adding follower"});
     auto res = trx.begin();
 
     if (res.ok()) {
@@ -2408,7 +2415,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto trxCtxtLease =
         mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true);
     if (trxCtxtLease) {
-      transaction::Methods trx{trxCtxtLease, transaction::TrxType::kREST};
+      transaction::Methods trx{trxCtxtLease,
+                               transaction::OperationOriginWorkaround{}};
       if (!trx.isLocked(col.get(), AccessMode::Type::EXCLUSIVE)) {
         referenceChecksum =
             ResultT<std::string>::success("ThisCannotBeMatched");
@@ -2444,8 +2452,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
   // leader can advance when there are further writes into the shard.
   if (body.get("treeHash").isString() && body.get("treeCount").isString()) {
     auto context = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(context, *col, AccessMode::Type::READ,
-                                    transaction::TrxType::kREST, {});
+    SingleCollectionTransaction trx(
+        context, *col, AccessMode::Type::READ,
+        transaction::OperationOriginInternal{"validating revision tree"}, {});
 
     auto res = trx.begin();
     if (res.ok()) {
@@ -2454,18 +2463,20 @@ void RestReplicationHandler::handleCommandAddFollower() {
           body.get("treeHash").stringView()) {
         generateError(
             rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-            "revision tree hashes are different. Expected (leader): " +
-                std::to_string(tree->rootValue()) +
-                ". actual (follower): " + body.get("treeHash").copyString());
+            absl::StrCat(
+                "revision tree hashes are different. Expected (leader): ",
+                tree->rootValue(),
+                ". actual (follower): ", body.get("treeHash").stringView()));
         return;
       }
 
       if (std::to_string(tree->count()) != body.get("treeCount").stringView()) {
         generateError(
             rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-            "revision tree counts are different. Expected (leader): " +
-                std::to_string(tree->count()) +
-                ". actual (follower): " + body.get("treeCount").copyString());
+            absl::StrCat(
+                "revision tree counts are different. Expected (leader): ",
+                tree->count(),
+                ". actual (follower): ", body.get("treeCount").stringView()));
         return;
       }
     }
@@ -3399,8 +3410,11 @@ Result RestReplicationHandler::createBlockingTransaction(
 
   transaction::Options opts;
   opts.lockTimeout = ttl;  // not sure if appropriate ?
-  Result res = mgr->ensureManagedTrx(_vocbase, id, read, {}, exc, opts,
-                                     transaction::TrxType::kInternal, ttl);
+  Result res = mgr->ensureManagedTrx(
+      _vocbase, id, read, {}, exc, opts,
+      transaction::OperationOriginInternal{
+          "creating blocking transaction for follower catchup"},
+      ttl);
 
   if (res.fail()) {
     return res;
@@ -3440,7 +3454,9 @@ Result RestReplicationHandler::createBlockingTransaction(
                 "read transaction was cancelled"};
       }
 
-      transaction::Methods trx{ctx, transaction::TrxType::kREST};
+      transaction::Methods trx{
+          ctx, transaction::OperationOriginInternal{
+                   "creating blocking transaction for follower catchup"}};
 
       void* key = this;  // simon: not important to get it again
       trx.state()->cookie(key, std::move(rGuard));
@@ -3520,7 +3536,9 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
                                          "read transaction was cancelled");
     }
 
-    transaction::Methods trx(ctx, transaction::TrxType::kREST);
+    transaction::Methods trx(
+        ctx, transaction::OperationOriginInternal{
+                 "checksumming collection for adding follower"});
     TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 
     uint64_t num = col->getPhysical()->numberDocuments(&trx);

@@ -48,7 +48,7 @@ using namespace arangodb::aql;
 ClusterQuery::ClusterQuery(QueryId id,
                            std::shared_ptr<transaction::Context> ctx,
                            QueryOptions options,
-                           transaction::TrxType trxTypeHint)
+                           transaction::OperationOrigin operationOrigin)
     : Query{id,
             ctx,
             {},
@@ -57,7 +57,7 @@ ClusterQuery::ClusterQuery(QueryId id,
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
                 : std::make_shared<SharedQueryState>(ctx->vocbase().server()),
-            trxTypeHint},
+            operationOrigin},
       _planMemoryUsage(0) {}
 
 ClusterQuery::~ClusterQuery() {
@@ -73,12 +73,14 @@ ClusterQuery::~ClusterQuery() {
 /// ensure that ClusterQuery objects are always created using shared_ptrs.
 std::shared_ptr<ClusterQuery> ClusterQuery::create(
     QueryId id, std::shared_ptr<transaction::Context> ctx, QueryOptions options,
-    transaction::TrxType trxTypeHint) {
+    transaction::OperationOrigin operationOrigin) {
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : ClusterQuery {
     MakeSharedQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
-                    QueryOptions options, transaction::TrxType trxTypeHint)
-        : ClusterQuery{id, std::move(ctx), std::move(options), trxTypeHint} {}
+                    QueryOptions options,
+                    transaction::OperationOrigin operationOrigin)
+        : ClusterQuery{id, std::move(ctx), std::move(options),
+                       operationOrigin} {}
 
     ~MakeSharedQuery() final {
       // Destroy this query, otherwise it's still
@@ -89,7 +91,7 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
   };
   TRI_ASSERT(ctx != nullptr);
   return std::make_shared<MakeSharedQuery>(id, std::move(ctx),
-                                           std::move(options), trxTypeHint);
+                                           std::move(options), operationOrigin);
 }
 
 void ClusterQuery::prepareClusterQuery(
@@ -141,7 +143,7 @@ void ClusterQuery::prepareClusterQuery(
 
   _trx = AqlTransaction::create(
       _transactionContext, _collections, _queryOptions.transactionOptions,
-      this->_trxTypeHint, std::move(inaccessibleCollections));
+      this->_operationOrigin, std::move(inaccessibleCollections));
 
   // create the transaction object, but do not start the transaction yet
   _trx->addHint(

@@ -118,9 +118,9 @@ class IResearchFilterMinHashMatchTest
           "analyzer" : { "type": "delimiter", "properties": { "delimiter": " " } },
           "numHashes": 10
         })");
-    auto res = analyzers.emplace(result, "testVocbase::test_analyzer",
-                                 "minhash", props->slice(),
-                                 arangodb::transaction::TrxType::kInternal);
+    auto res = analyzers.emplace(
+        result, "testVocbase::test_analyzer", "minhash", props->slice(),
+        arangodb::transaction::OperationOriginTestCase{});
 #ifdef USE_ENTERPRISE
     EXPECT_TRUE(res.ok());
 #else

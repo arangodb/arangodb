@@ -64,7 +64,7 @@ class QueryNullTerm : public QueryTest {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -100,7 +100,7 @@ class QueryNullTerm : public QueryTest {
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(_vocbase),
           *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::TrxType::kInternal);
+          arangodb::transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {

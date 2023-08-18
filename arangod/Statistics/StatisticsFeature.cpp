@@ -56,6 +56,7 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "V8Server/V8DealerFeature.h"
@@ -1099,6 +1100,9 @@ Result StatisticsFeature::getClusterSystemStatistics(
     bindVars->close();
   };
 
+  auto origin =
+      transaction::OperationOriginInternal{"retrieving cluster statistics"};
+
   auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDbFeature.use();
 
@@ -1107,8 +1111,7 @@ Result StatisticsFeature::getClusterSystemStatistics(
     buildBindVars(StaticStrings::Statistics15Collection);
     auto query = arangodb::aql::Query::create(
         transaction::StandaloneContext::Create(*sysVocbase),
-        arangodb::aql::QueryString(stats15Query), bindVars,
-        transaction::TrxType::kREST);
+        arangodb::aql::QueryString(stats15Query), bindVars, origin);
 
     query->queryOptions().cache = false;
     query->queryOptions().skipAudit = true;
@@ -1126,8 +1129,7 @@ Result StatisticsFeature::getClusterSystemStatistics(
     buildBindVars(StaticStrings::StatisticsCollection);
     auto query = arangodb::aql::Query::create(
         transaction::StandaloneContext::Create(*sysVocbase),
-        arangodb::aql::QueryString(statsSamplesQuery), bindVars,
-        transaction::TrxType::kInternal);
+        arangodb::aql::QueryString(statsSamplesQuery), bindVars, origin);
 
     query->queryOptions().cache = false;
     query->queryOptions().skipAudit = true;

@@ -113,8 +113,9 @@ struct MockQuery final : arangodb::aql::Query {
   MockQuery(std::shared_ptr<arangodb::transaction::Context> const& ctx,
             arangodb::aql::QueryString const& queryString)
       : arangodb::aql::Query{
-            ctx, queryString, nullptr,
-            {},  nullptr,     arangodb::transaction::TrxType::kInternal} {}
+            ctx,     queryString,
+            nullptr, {},
+            nullptr, arangodb::transaction::OperationOriginTestCase{}} {}
 
   ~MockQuery() final {
     // Destroy this query, otherwise it's still
@@ -3552,7 +3553,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
         {collection0->name()}, EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE(trx.begin().ok());
 
     auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -3616,7 +3617,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     }
 
     arangodb::transaction::Methods trx(
-        ctx, arangodb::transaction::TrxType::kInternal);
+        ctx, arangodb::transaction::OperationOriginTestCase{});
     ASSERT_TRUE(trx.state());
 
     // start transaction (put snapshot into)
@@ -3841,7 +3842,7 @@ class IResearchViewVolatitlityTest
         EMPTY_VECTOR,
         std::vector<std::string>{collection0->name(), collection1->name()},
         EMPTY_VECTOR, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
 
     EXPECT_TRUE(trx->begin().ok());
     // in collection only one alive doc
@@ -4231,7 +4232,7 @@ class IResearchViewBlockTest
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         EMPTY_VECTOR, std::vector<std::string>{collection0->name()},
         EMPTY_VECTOR, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
 
     EXPECT_TRUE(trx->begin().ok());
     // Fill dummy data in index only (to simulate some documents where already

@@ -33,8 +33,8 @@
 #include "Logger/LogMacros.h"
 #include "Metrics/Fwd.h"
 #include "Transaction/ManagedContext.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
-#include "Transaction/TrxType.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
@@ -154,13 +154,14 @@ class Manager final : public IManager {
   /// @brief create managed transaction, also generate a tranactionId
   ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase,
                                           velocypack::Slice trxOpts,
-                                          TrxType trxTypeHint,
+                                          OperationOrigin operationOrigin,
                                           bool allowDirtyReads);
 
   /// @brief ensure managed transaction, either use the one on the given tid
   ///        or create a new one with the given tid
   Result ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                          velocypack::Slice trxOpts, TrxType trxTypeHint,
+                          velocypack::Slice trxOpts,
+                          OperationOrigin operationOrigin,
                           bool isFollowerTransaction);
 
   /// @brief ensure managed transaction, either use the one on the given tid
@@ -169,7 +170,8 @@ class Manager final : public IManager {
                           std::vector<std::string> const& readCollections,
                           std::vector<std::string> const& writeCollections,
                           std::vector<std::string> const& exclusiveCollections,
-                          Options options, TrxType trxTypeHint, double ttl);
+                          Options options, OperationOrigin operationOrigin,
+                          double ttl);
 
   Result beginTransaction(transaction::Hints hints,
                           std::shared_ptr<TransactionState>& state);
@@ -262,7 +264,7 @@ class Manager final : public IManager {
       TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
       std::vector<std::string> const& writeCollections,
       std::vector<std::string> const& exclusiveCollections, Options options,
-      TrxType trxTypeHint);
+      OperationOrigin operationOrigin);
 
   Result prepareOptions(transaction::Options& options);
   bool isFollowerTransactionOnDBServer(

@@ -70,7 +70,7 @@ TEST_F(ComputedValuesTest, createComputedValuesFromEmptyObject) {
   // cannot create ComputedValues from an Object slice
   auto res = ComputedValues::buildInstance(
       vocbase, shardKeys, velocypack::Slice::emptyObjectSlice(),
-      arangodb::transaction::TrxType::kInternal);
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -83,7 +83,7 @@ TEST_F(ComputedValuesTest, createComputedValuesFromNone) {
   // error, but a nullptr back
   auto res = ComputedValues::buildInstance(
       vocbase, shardKeys, velocypack::Slice::noneSlice(),
-      arangodb::transaction::TrxType::kInternal);
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   ASSERT_EQ(nullptr, res.get());
 }
@@ -96,7 +96,7 @@ TEST_F(ComputedValuesTest, createComputedValuesFromEmptyArray) {
   // error, but a nullptr back
   auto res = ComputedValues::buildInstance(
       vocbase, shardKeys, velocypack::Slice::emptyArraySlice(),
-      arangodb::transaction::TrxType::kInternal);
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   ASSERT_EQ(nullptr, res.get());
 }
@@ -113,7 +113,8 @@ TEST_F(ComputedValuesTest, createComputedValuesFromGarbledObject) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -132,7 +133,8 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectInvalidName) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -151,7 +153,8 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectEmptyName) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -169,7 +172,8 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectMissingName) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -187,7 +191,8 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectMissingExpression) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -218,7 +223,7 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectInvalidExpression) {
 
     auto res = ComputedValues::buildInstance(
         vocbase, shardKeys, b.slice(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     ASSERT_FALSE(res.ok());
     ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   }
@@ -245,7 +250,7 @@ TEST_F(ComputedValuesTest,
 
     auto res = ComputedValues::buildInstance(
         vocbase, shardKeys, b.slice(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     ASSERT_FALSE(res.ok());
     ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   }
@@ -264,7 +269,8 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectMissingOverwrite) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -283,7 +289,8 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectSimple) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
@@ -328,7 +335,8 @@ TEST_F(ComputedValuesTest, createComputedValuesInvalidComputeOn) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -351,7 +359,8 @@ TEST_F(ComputedValuesTest, createComputedValuesInvalidComputeOn2) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -374,7 +383,8 @@ TEST_F(ComputedValuesTest, createComputedValuesInvalidComputeOn3) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -394,7 +404,8 @@ TEST_F(ComputedValuesTest, createComputedValuesEmptyComputeOn) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -417,7 +428,8 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnInsert) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
@@ -464,7 +476,8 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnUpdate) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_FALSE(cv->mustComputeValuesOnInsert());
@@ -512,7 +525,8 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnReplace) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_FALSE(cv->mustComputeValuesOnInsert());
@@ -567,7 +581,8 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnMultiple) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
@@ -635,7 +650,8 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnMultiple2) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
@@ -695,7 +711,7 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnSystemAttributes) {
 
     auto res = ComputedValues::buildInstance(
         vocbase, shardKeys, b.slice(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     ASSERT_FALSE(res.ok());
     ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   }
@@ -718,7 +734,7 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnShardKeys) {
 
     auto res = ComputedValues::buildInstance(
         vocbase, shardKeys, b.slice(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     ASSERT_FALSE(res.ok());
     ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   }
@@ -744,7 +760,8 @@ TEST_F(ComputedValuesTest, createComputedValuesDuplicateNames) {
   b.close();
 
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, b.slice(), arangodb::transaction::TrxType::kInternal);
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -783,7 +800,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteTrue) {
   std::vector<std::string> collections{"test"};
   transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
                            EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::TrxType::kInternal);
+                           arangodb::transaction::OperationOriginTestCase{});
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -825,7 +842,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
   std::vector<std::string> collections{"test"};
   transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
                            EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::TrxType::kInternal);
+                           arangodb::transaction::OperationOriginTestCase{});
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -862,7 +879,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
   std::vector<std::string> collections{"test"};
   transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
                            EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::TrxType::kInternal);
+                           arangodb::transaction::OperationOriginTestCase{});
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -902,7 +919,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
   std::vector<std::string> collections{"test"};
   transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
                            EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::TrxType::kInternal);
+                           arangodb::transaction::OperationOriginTestCase{});
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -954,7 +971,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningDynamic) {
   std::vector<std::string> collections{"test"};
   transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
                            EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::TrxType::kInternal);
+                           arangodb::transaction::OperationOriginTestCase{});
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc = velocypack::Parser::fromJson("{\"value\":42}");
@@ -975,7 +992,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInvalidValuesDynamic) {
   std::vector<std::string> collections{"test"};
   transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
                            EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::TrxType::kInternal);
+                           arangodb::transaction::OperationOriginTestCase{});
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc = velocypack::Parser::fromJson(
@@ -1009,7 +1026,7 @@ TEST_F(ComputedValuesTest, insertKeepNullTrue) {
   std::vector<std::string> collections{"test"};
   transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
                            EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::TrxType::kInternal);
+                           arangodb::transaction::OperationOriginTestCase{});
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =

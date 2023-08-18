@@ -7904,7 +7904,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         arangodb::aql::QueryString(std::string_view("RETURN 1")), nullptr,
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     query->prepareQuery();
 
     arangodb::aql::SingletonNode singleton(query->plan(),

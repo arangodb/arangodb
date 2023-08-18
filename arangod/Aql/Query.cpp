@@ -98,8 +98,8 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
              QueryString queryString,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
              std::shared_ptr<SharedQueryState> sharedState,
-             transaction::TrxType trxTypeHint)
-    : QueryContext(ctx->vocbase(), trxTypeHint, id),
+             transaction::OperationOrigin operationOrigin)
+    : QueryContext(ctx->vocbase(), operationOrigin, id),
       _itemBlockManager(_resourceMonitor),
       _queryString(std::move(queryString)),
       _transactionContext(std::move(ctx)),
@@ -180,12 +180,12 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 /// method
 Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
-             Scheduler* scheduler, transaction::TrxType trxTypeHint)
+             Scheduler* scheduler, transaction::OperationOrigin operationOrigin)
     : Query(0, ctx, std::move(queryString), std::move(bindParameters),
             std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server(),
                                                scheduler),
-            trxTypeHint) {}
+            operationOrigin) {}
 
 Query::~Query() {
   if (_planSliceCopy != nullptr) {
@@ -253,7 +253,7 @@ void Query::destroy() {
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters,
-    transaction::TrxType trxTypeHint, QueryOptions options,
+    transaction::OperationOrigin operationOrigin, QueryOptions options,
     Scheduler* scheduler) {
   TRI_ASSERT(ctx != nullptr);
   // workaround to enable make_shared on a class with a protected constructor
@@ -261,14 +261,14 @@ std::shared_ptr<Query> Query::create(
     MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
                     QueryString queryString,
                     std::shared_ptr<velocypack::Builder> bindParameters,
-                    transaction::TrxType trxTypeHint, QueryOptions options,
-                    Scheduler* scheduler)
+                    transaction::OperationOrigin operationOrigin,
+                    QueryOptions options, Scheduler* scheduler)
         : Query{std::move(ctx),
                 std::move(queryString),
                 std::move(bindParameters),
                 std::move(options),
                 scheduler,
-                trxTypeHint} {}
+                operationOrigin} {}
 
     ~MakeSharedQuery() final {
       // Destroy this query, otherwise it's still
@@ -280,7 +280,7 @@ std::shared_ptr<Query> Query::create(
   TRI_ASSERT(ctx != nullptr);
   return std::make_shared<MakeSharedQuery>(
       std::move(ctx), std::move(queryString), std::move(bindParameters),
-      trxTypeHint, std::move(options), scheduler);
+      operationOrigin, std::move(options), scheduler);
 }
 
 /// @brief return the user that started the query
@@ -431,9 +431,9 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   }
 #endif
 
-  _trx = AqlTransaction::create(_transactionContext, _collections,
-                                _queryOptions.transactionOptions, _trxTypeHint,
-                                std::move(inaccessibleCollections));
+  _trx = AqlTransaction::create(
+      _transactionContext, _collections, _queryOptions.transactionOptions,
+      _operationOrigin, std::move(inaccessibleCollections));
 
   // create the transaction object, but do not start it yet
   _trx->addHint(
@@ -1019,9 +1019,9 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
     // create the transaction object, but do not start it yet
-    _trx =
-        AqlTransaction::create(_transactionContext, _collections,
-                               _queryOptions.transactionOptions, _trxTypeHint);
+    _trx = AqlTransaction::create(_transactionContext, _collections,
+                                  _queryOptions.transactionOptions,
+                                  _operationOrigin);
 
     // we have an AST
     Result res = _trx->begin();
@@ -1545,9 +1545,9 @@ void Query::initForTests() {
 }
 
 void Query::initTrxForTests() {
-  _trx = AqlTransaction::create(_transactionContext, _collections,
-                                _queryOptions.transactionOptions, _trxTypeHint,
-                                std::unordered_set<std::string>{});
+  _trx = AqlTransaction::create(
+      _transactionContext, _collections, _queryOptions.transactionOptions,
+      _operationOrigin, std::unordered_set<std::string>{});
   // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel

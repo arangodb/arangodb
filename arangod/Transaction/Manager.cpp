@@ -90,7 +90,7 @@ namespace {
 struct MGMethods final : arangodb::transaction::Methods {
   MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
             arangodb::transaction::Options const& opts)
-      : Methods(ctx, TrxType::kREST, opts) {}
+      : Methods(ctx, OperationOriginWorkaround{}, opts) {}
 };
 }  // namespace
 
@@ -341,10 +341,9 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
   buck._managed.erase(it);  // unlocking not necessary
 }
 
-ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase,
-                                                 velocypack::Slice trxOpts,
-                                                 TrxType trxTypeHint,
-                                                 bool allowDirtyReads) {
+ResultT<TransactionId> Manager::createManagedTrx(
+    TRI_vocbase_t& vocbase, velocypack::Slice trxOpts,
+    OperationOrigin operationOrigin, bool allowDirtyReads) {
   if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
@@ -369,11 +368,12 @@ ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase,
   }
 
   return createManagedTrx(vocbase, reads, writes, exclusives,
-                          std::move(options), trxTypeHint);
+                          std::move(options), operationOrigin);
 }
 
 Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                                 velocypack::Slice trxOpts, TrxType trxTypeHint,
+                                 velocypack::Slice trxOpts,
+                                 OperationOrigin operationOrigin,
                                  bool isFollowerTransaction) {
   TRI_ASSERT(
       (ServerState::instance()->isSingleServer() && !isFollowerTransaction) ||
@@ -387,7 +387,7 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
 
   return ensureManagedTrx(vocbase, tid, reads, writes, exclusives,
-                          std::move(options), trxTypeHint, /*ttl*/ 0.0);
+                          std::move(options), operationOrigin, /*ttl*/ 0.0);
 }
 
 transaction::Hints Manager::ensureHints(transaction::Options& options) const {
@@ -574,7 +574,7 @@ ResultT<TransactionId> Manager::createManagedTrx(
     TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections, Options options,
-    TrxType trxTypeHint) {
+    OperationOrigin operationOrigin) {
   // We cannot run this on FollowerTransactions.
   // They need to get injected the TransactionIds.
   TRI_ASSERT(!isFollowerTransactionOnDBServer(options));
@@ -599,7 +599,8 @@ ResultT<TransactionId> Manager::createManagedTrx(
     StorageEngine& engine =
         vocbase.server().getFeature<EngineSelectorFeature>().engine();
     // now start our own transaction
-    return engine.createTransactionState(vocbase, tid, options, trxTypeHint);
+    return engine.createTransactionState(vocbase, tid, options,
+                                         operationOrigin);
   });
   if (!maybeState.ok()) {
     return std::move(maybeState).result();
@@ -669,7 +670,7 @@ Result Manager::ensureManagedTrx(
     std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections, Options options,
-    TrxType trxTypeHint, double ttl) {
+    OperationOrigin operationOrigin, double ttl) {
   Result res;
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -721,7 +722,8 @@ Result Manager::ensureManagedTrx(
     StorageEngine& engine =
         vocbase.server().getFeature<EngineSelectorFeature>().engine();
     // now start our own transaction
-    return engine.createTransactionState(vocbase, tid, options, trxTypeHint);
+    return engine.createTransactionState(vocbase, tid, options,
+                                         operationOrigin);
   });
   if (!maybeState.ok()) {
     return std::move(maybeState).result();

@@ -35,12 +35,12 @@ StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
 /// @brief get transaction state, determine commit responsibility
 /*virtual*/ std::shared_ptr<TransactionState> StandaloneContext::acquireState(
     transaction::Options const& options, bool& responsibleForCommit,
-    TrxType trxTypeHint) {
+    OperationOrigin operationOrigin) {
   if (_state) {
     responsibleForCommit = false;
   } else {
     responsibleForCommit = true;
-    _state = transaction::Context::createState(options, trxTypeHint);
+    _state = transaction::Context::createState(options, operationOrigin);
   }
   TRI_ASSERT(_state != nullptr);
   return _state;

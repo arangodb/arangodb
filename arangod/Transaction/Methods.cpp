@@ -1698,7 +1698,7 @@ static bool findRefusal(
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
-                              transaction::TrxType trxTypeHint,
+                              transaction::OperationOrigin operationOrigin,
                               transaction::Options const& options)
     : _state(nullptr), _transactionContext(ctx), _mainTransaction(false) {
   TRI_ASSERT(_transactionContext != nullptr);
@@ -1710,16 +1710,16 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
   }
 
   // initialize the transaction. this can update _mainTransaction!
-  _state =
-      _transactionContext->acquireState(options, _mainTransaction, trxTypeHint);
+  _state = _transactionContext->acquireState(options, _mainTransaction,
+                                             operationOrigin);
   TRI_ASSERT(_state != nullptr);
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
                               std::string const& collectionName,
                               AccessMode::Type type,
-                              transaction::TrxType trxTypeHint)
-    : transaction::Methods(std::move(ctx), trxTypeHint,
+                              transaction::OperationOrigin operationOrigin)
+    : transaction::Methods(std::move(ctx), operationOrigin,
                            transaction::Options{}) {
   TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
   Result res = Methods::addCollection(collectionName, type);
@@ -1734,8 +1734,9 @@ transaction::Methods::Methods(
     std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections,
-    transaction::Options const& options, transaction::TrxType trxTypeHint)
-    : transaction::Methods(ctx, trxTypeHint, options) {
+    transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin)
+    : transaction::Methods(ctx, operationOrigin, options) {
   Result res;
   for (auto const& it : exclusiveCollections) {
     res = Methods::addCollection(it, AccessMode::Type::EXCLUSIVE);

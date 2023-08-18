@@ -87,7 +87,7 @@ class QueryJoin : public QueryTest {
       transaction::Methods trx(transaction::StandaloneContext::Create(_vocbase),
                                collections, collections, collections,
                                transaction::Options(),
-                               transaction::TrxType::kInternal);
+                               transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into entities collection
@@ -233,7 +233,8 @@ class QueryJoin : public QueryTest {
           transaction::StandaloneContext::Create(_vocbase), EMPTY,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
-          EMPTY, transaction::Options(), transaction::TrxType::kInternal);
+          EMPTY, transaction::Options(),
+          transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -332,7 +333,8 @@ class QueryJoin : public QueryTest {
           transaction::StandaloneContext::Create(_vocbase), EMPTY,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
-          EMPTY, transaction::Options(), transaction::TrxType::kInternal);
+          EMPTY, transaction::Options(),
+          transaction::OperationOriginTestCase{});
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections

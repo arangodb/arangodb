@@ -29,6 +29,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
@@ -358,8 +359,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE,
-                                  transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx, collectionName, AccessMode::Type::WRITE,
+      transaction::OperationOriginREST{"importing documents"});
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
   bool isEdgeCollection = false;
@@ -563,8 +565,9 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE,
-                                  transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx, collectionName, AccessMode::Type::WRITE,
+      transaction::OperationOriginREST{"importing documents"});
 
   bool isEdgeCollection = false;
   if (auto collection = trx.resolver()->getCollection(collectionName);
@@ -763,8 +766,9 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE,
-                                  transaction::TrxType::kREST);
+  SingleCollectionTransaction trx(
+      ctx, collectionName, AccessMode::Type::WRITE,
+      transaction::OperationOriginREST{"importing documents"});
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   bool isEdgeCollection = false;

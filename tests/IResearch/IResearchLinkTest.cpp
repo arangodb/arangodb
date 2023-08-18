@@ -883,7 +883,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
@@ -949,7 +949,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
@@ -1017,7 +1017,7 @@ TEST_F(IResearchLinkTest, test_write) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1036,7 +1036,7 @@ TEST_F(IResearchLinkTest, test_write) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1052,7 +1052,7 @@ TEST_F(IResearchLinkTest, test_write) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1131,7 +1131,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1150,7 +1150,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1240,7 +1240,7 @@ TEST_F(IResearchLinkTest,
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1259,7 +1259,7 @@ TEST_F(IResearchLinkTest,
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1355,7 +1355,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1374,7 +1374,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1468,7 +1468,7 @@ TEST_F(IResearchLinkTest,
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1487,7 +1487,7 @@ TEST_F(IResearchLinkTest,
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1597,7 +1597,7 @@ TEST_F(
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -1616,7 +1616,7 @@ TEST_F(
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
@@ -2334,7 +2334,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
       EXPECT_TRUE(l->insert(trx, arangodb::LocalDocumentId(begin),
@@ -2357,7 +2357,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
       EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());

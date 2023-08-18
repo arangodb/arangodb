@@ -89,7 +89,7 @@ class QueryNumericTerm : public QueryTest {
         arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
         {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
         arangodb::transaction::Options(),
-        arangodb::transaction::TrxType::kInternal);
+        arangodb::transaction::OperationOriginTestCase{});
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections

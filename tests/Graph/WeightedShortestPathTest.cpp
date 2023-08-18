@@ -80,7 +80,7 @@ class WeightedShortestPathTest
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
 
   arangodb::transaction::Methods _trx{_query->newTrxContext(),
-                                      transaction::TrxType::kInternal};
+                                      transaction::OperationOriginTestCase{}};
   arangodb::aql::FixedVarExpressionContext _expressionContext{
       _trx, *_query.get(), _functionsCache};
   WeightedShortestPathTest() {
