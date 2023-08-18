@@ -71,8 +71,8 @@ struct PregelScheduler {
   auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    auto workItem = scheduler->queueDelayed(
-        "pregel-actors", RequestLane::INTERNAL_LOW, delay, fn);
+    std::ignore = scheduler->queueDelayed("pregel-actors",
+                                          RequestLane::INTERNAL_LOW, delay, fn);
   }
 };
 

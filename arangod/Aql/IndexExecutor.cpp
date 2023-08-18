@@ -546,7 +546,6 @@ bool IndexExecutor::CursorReader::readIndex(
   // The switch above is covering all values and this code
   // cannot be reached
   ADB_UNREACHABLE;
-  return false;
 }
 
 size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {

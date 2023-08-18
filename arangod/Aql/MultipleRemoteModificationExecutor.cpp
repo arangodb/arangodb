@@ -98,6 +98,7 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "optimizer rule not supposed to be used with keyword LIMIT");
+#if 0
   auto stats = Stats{};
 
   if (input.hasDataRow()) {
@@ -109,6 +110,7 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
     }
   }
   return {input.upstreamState(), stats, 0, AqlCall{}};
+#endif
 }
 
 auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
