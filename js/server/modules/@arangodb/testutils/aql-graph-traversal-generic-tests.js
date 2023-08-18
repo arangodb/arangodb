@@ -2692,9 +2692,24 @@ function testSmallCircleTraversalStartInUnknownCollection(testGraph) {
     db._create(collName);
     db._collection(collName).save([{_key: "1"}, {_key: "2"}]);
     const q = `FOR x IN 1 OUTBOUND "${collName}/1" GRAPH "${testGraph.name()}" RETURN x`;
-    const res = db._query(q).toArray();
-    // This query should work without throwing.
-    assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
+    try {
+      const res = db._query(q).toArray();
+      if (isCluster && testGraph.isSmart()) {
+        // In SmartGraph case we cannot distribute the vertex if we do not know the collection
+        assertEqual(true, false, `We executed a query that is requried to throw`);
+      } else {
+        // This query should work without throwing.
+        assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
+      }
+    } catch (err) {
+      if (isCluster && testGraph.isSmart()) {
+        // We expect SmartGraphs to error out
+        assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
+      } else {
+        // All others should not throw errors here
+        throw err; 
+      }
+    }
     try {
       // This query should return the unknown Collections vertex as a result.
       // As this is not part of the Graph, we throw an error here.
