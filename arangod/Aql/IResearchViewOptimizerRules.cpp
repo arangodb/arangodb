@@ -282,7 +282,6 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         break;
       default:
         return false;
-        break;
     }
     if (limitNode && sortNode) {
       // only first SORT + LIMIT makes sense
