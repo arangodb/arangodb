@@ -149,8 +149,11 @@ static constexpr bool IsDirSeparatorChar(char c) {
   // the check for c != TRI_DIR_SEPARATOR_CHAR is required
   // for g++6. otherwise it will warn about equal expressions
   // in the two branches
-  return (c == TRI_DIR_SEPARATOR_CHAR ||
-          (TRI_DIR_SEPARATOR_CHAR != '/' && c == '/'));
+  if constexpr (TRI_DIR_SEPARATOR_CHAR == '/') {
+    return c == TRI_DIR_SEPARATOR_CHAR;
+  } else {
+    return (c == TRI_DIR_SEPARATOR_CHAR || c == '/');
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

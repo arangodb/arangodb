@@ -1480,11 +1480,11 @@ function CreateCollectionsSuite() {
 function IgnoreIllegalTypesSuite() {
   // Lists of illegal type values, for each test to iterate over.
   const testValues = {
-    string: [1, -3.6, true, false, [], {foo: "bar"}],
-    integer: [-3, 5.1, true, false, [2], {foo: "bar"}, "test"],
-    bool: [1, -3.1, [true], {foo: "bar"}, "test"],
-    object: [0, -2.1, true, false, [], "test"],
-    array: [0, -2.1, true, false, {foo: "bar"}, "test"]
+    string: [1, -3.6, true, false, [], {foo: "bar"}, null],
+    integer: [-3, 5.1, true, false, [2], {foo: "bar"}, "test", null],
+    bool: [1, -3.1, [true], {foo: "bar"}, "test", null],
+    object: [0, -2.1, true, false, [], "test", null],
+    array: [0, -2.1, true, false, {foo: "bar"}, "test", null]
   };
   // Definition of value types.
   const propertiesToTest = {
@@ -1538,7 +1538,12 @@ function IgnoreIllegalTypesSuite() {
               break;
             }
             case "computedValues": {
-              isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+              if (ignoredValue === null) {
+                assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(testParam)}`);
+                validateProperties({computedValues: null}, collname, 2);
+              } else {
+                isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+              }
               break;
             }
             case "shardKeys": {
@@ -1555,7 +1560,12 @@ function IgnoreIllegalTypesSuite() {
                     validateProperties({numberOfShards: Math.floor(ignoredValue)}, collname, 2);
                   }
                 } else {
-                  isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+                  if (ignoredValue === null) {
+                    // Allowed default to one shard
+                    isAllowed(res, collname, testParam);
+                  } else {
+                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+                  }
                 }
               } else {
                 if (typeof ignoredValue === "number") {
@@ -1565,13 +1575,23 @@ function IgnoreIllegalTypesSuite() {
                     isAllowed(res, collname, testParam, false);
                   }
                 } else {
-                  isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+                  if (ignoredValue === null) {
+                    // Allowed default to one shard
+                    isAllowed(res, collname, testParam);
+                  } else {
+                    isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+                  }
                 }
               }
               break;
             }
             case "schema": {
-              isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_VALIDATION_BAD_PARAMETER.code, res, testParam);
+              if (ignoredValue === null) {
+                assertTrue(res.result, `Result: ${JSON.stringify(res)} on input ${JSON.stringify(testParam)}`);
+                validateProperties({schema: null}, collname, 2);
+              } else {
+                isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_VALIDATION_BAD_PARAMETER.code, res, testParam);
+              }
               break;
             }
             case "replicationFactor":
@@ -1613,10 +1633,20 @@ function IgnoreIllegalTypesSuite() {
             case "distributeShardsLike": {
               if (isCluster) {
                 // Can only be strings
-                isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+                if (ignoredValue === null) {
+                  // Allowed default to no distributeShardsLike
+                  isAllowed(res, collname, testParam);
+                } else {
+                  isDisallowed(ERROR_HTTP_BAD_PARAMETER.code, ERROR_BAD_PARAMETER.code, res, testParam);
+                }
               } else {
                 isAllowed(res, collname, testParam);
               }
+              break;
+            }
+            case "shardingStrategy": {
+              // Do not expect deprecation messages for null
+              isAllowed(res, collname, testParam, ignoredValue !== null);
               break;
             }
             default: {

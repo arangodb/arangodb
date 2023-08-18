@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed BTS-1556: Potential shutdown race, when the server is shutting down
+  and still AgencyCommunication was going on it could use the scheduler
+  which was already deleted, causing a crash right before a normal shutdown.
+  This should not have any negative effect, as all state preserving operations
+  are done by then, it just wasn't a clean exit.
+
 * Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition
   was executed through an index lookup.
 
