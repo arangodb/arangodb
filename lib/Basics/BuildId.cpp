@@ -25,16 +25,6 @@
 
 #include <elf.h>
 #include <link.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include <iostream>
-#include <optional>
 #include <string>
 
 extern char build_id_start[];
@@ -42,17 +32,18 @@ extern char build_id_end;
 
 namespace arangodb::build_id {
 
-auto getBuildId() -> std::optional<BuildId> {
+constexpr const char* build_id_failed = "";
+
+auto getBuildId() -> std::string_view {
   auto const* noteMemory = reinterpret_cast<const char*>(&build_id_start);
   auto const* noteHeader = reinterpret_cast<ElfW(Nhdr) const*>(noteMemory);
 
   if (noteHeader->n_type == NT_GNU_BUILD_ID) {
     auto const* buildIdMemory = reinterpret_cast<const char*>(
         noteMemory + sizeof(ElfW(Nhdr)) + noteHeader->n_namesz);
-    return BuildId{buildIdMemory, noteHeader->n_descsz};
+    return std::string_view{buildIdMemory, noteHeader->n_descsz};
   }
-
-  return std::nullopt;
+  return std::string_view{build_id_failed};
 }
 
 }  // namespace arangodb::build_id

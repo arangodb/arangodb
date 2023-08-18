@@ -30,12 +30,7 @@
 
 namespace arangodb::build_id {
 
-struct BuildId {
-  explicit BuildId(const char* s, size_t len) : id{s, len} {}
-  std::string id;
+constexpr auto supportsBuildId() -> bool { return USE_BUILD_ID; };
+auto getBuildId() -> std::string_view;
 
-  std::string toHexString() { return basics::StringUtils::encodeHex(id); }
-};
-
-std::optional<BuildId> getBuildId();
 }  // namespace arangodb::build_id

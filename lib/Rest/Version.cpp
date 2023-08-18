@@ -46,9 +46,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/asio_ns.h"
 #include "Basics/build-date.h"
-#ifdef __linux__
 #include "Basics/BuildId.h"
-#endif
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
@@ -315,14 +313,10 @@ void Version::initialize() {
   Values["libunwind"] = "false";
 #endif
 
-#ifdef __linux__
-  auto maybeBuildId = arangodb::build_id::getBuildId();
-  if (maybeBuildId.has_value()) {
-    Values["build-id"] = maybeBuildId->toHexString();
-  } else {
-    Values["build-id"] = "Failed to obtain build-id";
+  if constexpr (arangodb::build_id::supportsBuildId()) {
+    Values["build-id"] =
+        basics::StringUtils::encodeHex(arangodb::build_id::getBuildId());
   }
-#endif
 
   if (replication2::EnableReplication2) {
     Values["replication2-enabled"] = "true";

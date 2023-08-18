@@ -110,10 +110,9 @@ else ()
           )
 endif ()
 
-if (LINUX)
+if (USE_BUILD_ID)
   target_sources(arango_lightweight PRIVATE
-          Basics/BuildId.cpp
-          )
+          Basics/BuildId.cpp)
 endif ()
 
 target_include_directories(arango_lightweight PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
