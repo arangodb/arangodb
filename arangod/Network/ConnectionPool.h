@@ -53,14 +53,17 @@ class ConnectionPool final {
 
  public:
   struct Config {
-    ClusterInfo* clusterInfo;
     metrics::MetricsFeature& metricsFeature;
+    // note: clusterInfo can remain a nullptr in unit tests
+    ClusterInfo* clusterInfo = nullptr;
     uint64_t maxOpenConnections = 1024;     /// max number of connections
     uint64_t idleConnectionMilli = 120000;  /// unused connection lifetime
     unsigned int numIOThreads = 1;          /// number of IO threads
     bool verifyHosts = false;
     fuerte::ProtocolType protocol = fuerte::ProtocolType::Http;
+    // name must remain valid for the lifetime of the Config object.
     char const* name = "";
+
     Config(metrics::MetricsFeature& metricsFeature)
         : metricsFeature(metricsFeature) {}
   };

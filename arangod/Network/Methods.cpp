@@ -360,23 +360,24 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
                 options.timeout)) {
     _tmp_req = prepareRequest(pool, type, std::move(path), std::move(payload),
                               _options, std::move(headers));
+
+    TRI_ASSERT(_pool != nullptr);
+    TRI_ASSERT(_pool->config().clusterInfo != nullptr);
   }
 
   ~RequestsState() = default;
 
   FutureRes future() { return _promise.getFuture(); }
 
-  // scheduler requests that are due
+  // schedule requests that are due
   void startRequest() {
     TRI_ASSERT(_tmp_req != nullptr);
-    if (ADB_UNLIKELY(!_pool)) {
-      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
-          << "connection pool unavailable";
-      _tmp_err = Error::ConnectionCanceled;
-      _tmp_res = nullptr;
-      resolvePromise();
-      return;
-    }
+    // the following assertions hold true because we are already checking
+    // these values in the constructor. furthermore, all users or RequestsState
+    // make sure that _pool and _pool->config().clusterInfo are always
+    // non-nullptrs.
+    TRI_ASSERT(_pool != nullptr);
+    TRI_ASSERT(_pool->config().clusterInfo != nullptr);
 
     auto now = std::chrono::steady_clock::now();
     if (now > _endTime) {
@@ -586,6 +587,9 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
       return;
     }
 
+    TRI_ASSERT(_pool != nullptr);
+    TRI_ASSERT(_pool->config().clusterInfo != nullptr);
+
     auto& server = _pool->config().clusterInfo->server();
     NetworkFeature& nf = server.getFeature<NetworkFeature>();
     nf.retryRequest(shared_from_this(), _options.continuationLane,
@@ -604,7 +608,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
   RequestOptions const _options;
   ConnectionPool* _pool;
 
-  std::shared_ptr<arangodb::Scheduler::DelayedWorkItem> _workItem;
   std::unique_ptr<fuerte::Request> _tmp_req;
   std::unique_ptr<fuerte::Response> _tmp_res;  /// temporary response
 

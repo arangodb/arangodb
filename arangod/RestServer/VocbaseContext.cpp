@@ -60,9 +60,8 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req,
 
   // superusers will have an empty username. This MUST be invalid
   // for users authenticating with name / password
-  const bool isSuperUser =
-      req.authenticated() && req.user().empty() &&
-      req.authenticationMethod() == AuthenticationMethod::JWT;
+  bool isSuperUser = req.authenticated() && req.user().empty() &&
+                     req.authenticationMethod() == AuthenticationMethod::JWT;
   if (isSuperUser) {
     return new VocbaseContext(req, vocbase, ExecContext::Type::Internal,
                               /*sysLevel*/ auth::Level::RW,
@@ -94,7 +93,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req,
   if (req.user().empty()) {
     std::string msg = "only jwt can be used to authenticate as superuser";
     LOG_TOPIC("2d0f6", WARN, Logger::AUTHENTICATION) << msg;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::move(msg));
   }
 
   auth::UserManager* um = auth->userManager();

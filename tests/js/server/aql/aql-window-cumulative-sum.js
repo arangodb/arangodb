@@ -27,6 +27,10 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
 const errors = internal.errors;
+const isCluster = internal.isCluster();
+const isEnterprise = internal.isEnterprise();
+
+const collectionName = "UnitTestWindowCollection";
 
 function WindowCumulativeSumTestSuite () {
   let validateResult = function(result, size, from, to, preceding, following) {
@@ -444,6 +448,166 @@ FOR i IN 1..10
   };
 }
 
-jsunity.run(WindowCumulativeSumTestSuite);
+const generateWindowBoundsSuite = (namePrefix) => {
+  // This test suite expect a collection with 10 documents and keys 0..9 and value v: 0..9 respectively
+  // And timestamps like `"time": "2021-05-25 07:00:00",` increasing by 1 minute each
 
+  return {
+    [`testAggregate${namePrefix}`]: function() {
+      const query = `
+        FOR doc IN ${collectionName}
+        SORT doc._key
+        LET key = doc._key
+        WINDOW {preceding: "unbounded", following: 0} AGGREGATE i = SUM(1)
+        RETURN {key, i}`;
+      const result = db._query(query).toArray();
+      for (let i = 0; i < result.length; ++i) {
+        assertEqual(result[i].key, `${i}`);
+        assertEqual(result[i].i, i + 1);
+      }
+    },
+
+    [`testLength${namePrefix}`]: function() {
+      const query = `
+        FOR doc IN ${collectionName}
+        SORT doc._key
+        LET key = doc._key
+        WINDOW {preceding: "unbounded", following: 0} AGGREGATE i = LENGTH()
+        RETURN {key, i}`;
+      const result = db._query(query).toArray();
+      for (let i = 0; i < result.length; ++i) {
+        assertEqual(result[i].key, `${i}`);
+        assertEqual(result[i].i, i + 1);
+      }
+    },
+
+    [`testRangeWindow${namePrefix}`]: function() {
+      const query = `
+        FOR doc IN ${collectionName}
+        LET key = doc._key
+        WINDOW doc.v WITH {preceding: 100, following: 0} AGGREGATE i = LENGTH()
+        RETURN {key, i}`;
+      const result = db._query(query).toArray();
+      // As Docs _key and v are identical, this should yield
+      // a result sorted by _key.
+      for (let i = 0; i < result.length; ++i) {
+        assertEqual(result[i].key, `${i}`);
+        assertEqual(result[i].i, i + 1);
+      }
+    },
+
+    [`testRangeDuration${namePrefix}`]: function() {
+      const query = `
+        FOR doc IN ${collectionName}
+        LET key = doc._key
+        WINDOW DATE_TIMESTAMP(doc.time) WITH { preceding: "PT03M" }
+        AGGREGATE i = LENGTH()
+        RETURN {key, i}`;
+      const result = db._query(query).toArray();
+      // As Docs _key and v are identical, this should yield
+      // a result sorted by _key.
+      for (let i = 0; i < result.length; ++i) {
+        assertEqual(result[i].key, `${i}`);
+        if (i < 4) {
+          assertEqual(result[i].i, i + 1);
+        } else {
+          // All other will have 3 in range + themself
+          assertEqual(result[i].i, 4);
+        }
+      }
+    },
+  };
+};
+
+function WindowBoundsManyShardSuite() {
+  const suite = generateWindowBoundsSuite("ManyShards");
+  suite.setUpAll = function() {
+    db._create(collectionName, {numberOfShards: 3});
+    let docs = [];
+    for (let i = 0; i < 10; ++i) {
+      docs.push({
+        _key: `${i}`,
+        v: i,
+        time: `2021-05-25 07:${i.toString().padStart(2, '0')}:00`,
+      });
+    }
+    db._collection(collectionName).save(docs);
+  };
+  suite.tearDownAll = function() {
+    db._drop(collectionName);
+  };
+  return suite;
+}
+
+function WindowBoundsNonKeyShardedSuite() {
+  const suite = generateWindowBoundsSuite("NonKeySharded");
+  suite.setUpAll = function() {
+    db._create(collectionName, {numberOfShards: 3, shardKeys: ["value"]});
+    let docs = [];
+    for (let i = 0; i < 10; ++i) {
+      docs.push({_key: `${i}`,
+        value: `v_${i % 3}`,
+        v: i,
+        time: `2021-05-25 07:${i.toString().padStart(2, '0')}:00`,
+      });
+    }
+    db._collection(collectionName).save(docs);
+  };
+  suite.tearDownAll = function() {
+    db._drop(collectionName);
+  };
+  return suite;
+}
+
+function WindowBoundsSuite() {
+  const suite = generateWindowBoundsSuite("SingleShard");
+  suite.setUpAll = function() {
+    db._create(collectionName, {numberOfShards: 1});
+    let docs = [];
+    for (let i = 0; i < 10; ++i) {
+      docs.push({_key: `${i}`,
+        v: i,
+        time: `2021-05-25 07:${i.toString().padStart(2, '0')}:00`
+      });
+    }
+    db._collection(collectionName).save(docs);
+  };
+  suite.tearDownAll = function() {
+    db._drop(collectionName);
+  };
+  return suite;
+}
+
+
+function WindowBoundsOneShardSuite() {
+  const suite = generateWindowBoundsSuite("OneShardDB");
+  suite.setUpAll = function() {
+    db._createDatabase("UnitTestOneShard", {sharding: "single"});
+    db._useDatabase("UnitTestOneShard");
+    db._create(collectionName);
+    let docs = [];
+    for (let i = 0; i < 10; ++i) {
+      docs.push({_key: `${i}`,
+        v: i,
+        time: `2021-05-25 07:${i.toString().padStart(2, '0')}:00`
+      });
+    }
+    db._collection(collectionName).save(docs);
+  };
+  suite.tearDownAll = function() {
+    db._useDatabase("_system");
+    db._dropDatabase("UnitTestOneShard");
+  };
+  return suite;
+}
+
+// jsunity.run(WindowCumulativeSumTestSuite);
+jsunity.run(WindowBoundsSuite);
+if (isCluster) {
+  jsunity.run(WindowBoundsManyShardSuite);
+  jsunity.run(WindowBoundsNonKeyShardedSuite);
+  if (isEnterprise) {
+    jsunity.run(WindowBoundsOneShardSuite);
+  }
+}
 return jsunity.done();
