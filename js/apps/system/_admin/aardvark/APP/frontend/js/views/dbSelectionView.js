@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global templateEngine, window, Backbone, $, arangoHelper */
+/* global templateEngine */
 (function () {
   'use strict';
   window.DBSelectionView = Backbone.View.extend({
