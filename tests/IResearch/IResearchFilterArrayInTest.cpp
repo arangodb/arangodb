@@ -86,7 +86,7 @@ const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 using FilterIterator =
-    decltype(reinterpret_cast<irs::boolean_filter*>(0)->begin());
+    decltype(reinterpret_cast<irs::boolean_filter*>(1)->begin());
 
 void checkTermFilter(FilterIterator begin, bool) {
   {
