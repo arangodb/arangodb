@@ -448,7 +448,7 @@ else ()
    set(USE_BUILD_ID_READER OFF)
 endif ()
 
-if (USE_BUILD_ID)
+if (USE_BUILD_ID_READER)
   add_definitions(-DUSE_BUILD_ID_READER=true)
 else ()
   add_definitions(-DUSE_BUILD_ID_READER=false)
