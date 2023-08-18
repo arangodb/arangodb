@@ -1182,6 +1182,7 @@ std::tuple<Result, aql::AstNodeType, size_t> buildBinaryArrayComparisonPreFilter
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
             if (filter) {
               filter = &append<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
             break;
@@ -1195,24 +1196,28 @@ std::tuple<Result, aql::AstNodeType, size_t> buildBinaryArrayComparisonPreFilter
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
             if (filter) {
               filter = &append<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_GT;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
             if (filter) {
               filter = &append<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_GE;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
             if (filter) {
               filter = &append<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_LT;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
             if (filter) {
               filter = &append<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_LE;
             break;
@@ -1237,6 +1242,7 @@ std::tuple<Result, aql::AstNodeType, size_t> buildBinaryArrayComparisonPreFilter
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
             if (filter) {
               filter = &appendNot<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
             break;
@@ -1593,7 +1599,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
                filter->type() == irs::type<irs::Or>::id());
     // We can handle only 1 or all cases as due to mangling
     // filters are distributed over several index fields. And
-    // for n-matches case we need to support premutations, but in that case
+    // for n-matches case we will need to support premutations, but in that case
     // it is cheaper to run min-match disjunction
     byTermFilters.useByTerms = byTermFilters.useByTerms &&
                                 (matchCount == 1 || matchCount == n);
