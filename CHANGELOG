@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded Swagger-UI to v5.4.1
+
 * Removed --jslint from arangosh and scripts/jslint.sh along with
   the outdated copy of eslint; updated CONTRIBUTING.md to reflect
 	the changes and hint at scripts/eslint.sh which can be used	to lint
