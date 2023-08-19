@@ -50,6 +50,8 @@ class DataAccessingNode {
   virtual bool isUsedAsSatellite() const = 0;
   virtual void useAsSatelliteOf(ExecutionNodeId) = 0;
   virtual aql::Collection const* prototypeCollection() const = 0;
+  virtual void setPrototype(arangodb::aql::Collection const*,
+                            arangodb::aql::Variable const*) = 0;
 };
 
 class CollectionAccessingNode : public DataAccessingNode {
@@ -107,7 +109,7 @@ class CollectionAccessingNode : public DataAccessingNode {
 
   /// @brief set the prototype collection when using distributeShardsLike
   void setPrototype(arangodb::aql::Collection const* prototypeCollection,
-                    arangodb::aql::Variable const* prototypeOutVariable);
+                    arangodb::aql::Variable const* prototypeOutVariable) final;
 
   aql::Collection const* prototypeCollection() const final;
   aql::Variable const* prototypeOutVariable() const;

@@ -1475,6 +1475,15 @@ void IResearchViewNode::useAsSatelliteOf(aql::ExecutionNodeId) {
   _isUsedAsSatellite = true;
 }
 
+aql::Collection const* IResearchViewNode::prototypeCollection() const {
+  return _prototypeCollection;
+}
+
+void IResearchViewNode::setPrototype(aql::Collection const* prototypeCollection,
+                                     aql::Variable const*) {
+  _prototypeCollection = prototypeCollection;
+}
+
 void const* IResearchViewNode::getSnapshotKey() const noexcept {
   // if (ServerState::instance()->isDBServer()) {
   // TODO We want transactional cluster, now it's not
