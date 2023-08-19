@@ -4,8 +4,8 @@
 
 @HINTS
 {% hint 'warning' %}
-This endpoint is deprecated and should no longer be used. It will be removed from version 3.12.0 on.
-Use `/_admin/version` instead.
+This endpoint is deprecated and should no longer be used. It will be removed from version 3.12.0 onward.
+Use `GET /_api/version` instead.
 {% endhint %}
 
 @RESTDESCRIPTION
