@@ -271,7 +271,8 @@ To upgrade to a newer version:
    to a safe location and open them in an editor
 2. Delete all existing files inside `js/server/assets/swagger`
 3. Download the release bundle of swagger-ui you want to upgrade to
-4. Copy all files from the bundle's `dist` folder into `js/server/assets/swagger`
+4. Copy all files from the bundle's `dist` folder into `js/server/assets/swagger`,
+   but delete the unnecessary `*es-bundle*` and non-bundle files (`swagger-ui.*`)
 5. Open the new `js/server/assets/swagger/index.css` file in an editor
 6. Apply the style adjustments from the old copy to the new file, indicated by
    code comments in the following format:
