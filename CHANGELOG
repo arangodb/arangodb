@@ -1,7 +1,11 @@
-v3.10.10 (2023-08-15)
+v3.10.11 (XXXX-XX-XX)
 ---------------------
 
 * BTS-1544: The _system database now properly reports its sharding value.
+
+
+v3.10.10 (2023-08-15)
+---------------------
 
 * Prevent potential buffer overflow in the crash handler.
 
