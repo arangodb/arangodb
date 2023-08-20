@@ -1,12 +1,12 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
-* Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where
-  the inner amount of a limit in the LimitExecutor is set to a wrong
-  value which lead to some data rows not being returned to the client.
+* Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where the inner
+  amount of a limit in the LimitExecutor is set to a wrong value which lead to
+  some data rows not being returned to the client.
 
 
-v3.10.10 (XXXX-XX-XX)
+v3.10.10 (2023-08-15)
 ---------------------
 
 * Prevent potential buffer overflow in the crash handler.
@@ -64,8 +64,6 @@ v3.10.10 (XXXX-XX-XX)
   amount of databases can be created (although effectively the number of
   databases is limited by memory and processing resources).
 
-* Updated ArangoDB Starter to 0.16.0.
-
 * Avoid recursive lock during agency startup.
 
 * FE-20: fix UI placeholder format for locale when creating analyzers.
@@ -81,8 +79,6 @@ v3.10.10 (XXXX-XX-XX)
 * FE-287: fix number validation for replicationFactor and writeConcern.
 
 * FE-162: Fix display of geodesic lines.
-
-* Upgraded OpenSSL to 3.0.9.
 
 * Enforce that server always returns an empty body if the return code is 204.
 
