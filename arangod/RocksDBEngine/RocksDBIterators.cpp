@@ -209,8 +209,8 @@ class RocksDBAllIndexIterator final : public IndexIterator {
             TRI_ASSERT(ro.prefix_same_as_start);
             ro.verify_checksums = false;  // TODO evaluate
             ro.iterate_upper_bound = &_upperBound;
+            ro.adaptive_readahead = true;
             ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
-            // ro.readahead_size = 4 * 1024 * 1024;
           });
     }
 

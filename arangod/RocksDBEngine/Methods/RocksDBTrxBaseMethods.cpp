@@ -92,6 +92,7 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
   TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
+  _readOptions.adaptive_readahead = true;
 
   _memoryTracker = std::make_unique<TrxMemoryTracker>();
 }

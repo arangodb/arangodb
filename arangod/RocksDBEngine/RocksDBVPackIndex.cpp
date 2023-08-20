@@ -1091,6 +1091,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
             } else {
               options.iterate_upper_bound = &_rangeBound;
             }
+            if constexpr (!unique) {
+              options.adaptive_readahead = true;
+            }
             options.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
           });
       TRI_ASSERT(_mustSeek);
