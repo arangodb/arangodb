@@ -43,8 +43,7 @@ static_assert(sizeof(uint32_t) == sizeof(unsigned long),
 #pragma messsage("unsupported os or compiler")
 #endif
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 #ifdef __APPLE__
 #if BYTE_ORDER == LITTLE_ENDIAN
@@ -319,5 +318,4 @@ inline T bigToHost(T in) {
       EndianTraits<T, sizeof(T)>::betoh(cp<std::is_signed<T>::value>::mu(in)));
 }
 
-}  // namespace basics
-}  // namespace arangodb
+}  // namespace arangodb::basics

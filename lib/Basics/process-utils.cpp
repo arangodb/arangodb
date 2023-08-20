@@ -22,22 +22,41 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "process-utils.h"
+
+#include "Basics/NumberUtils.h"
+#include "Basics/PageSize.h"
+#include "Basics/SizeLimitedString.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/memory.h"
+#include "Basics/operating-system.h"
+#include "Basics/signals.h"
+#include "Basics/system-functions.h"
+#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
+#include "Basics/files.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
+#include <algorithm>
+#include <chrono>
+#include <memory>
+#include <thread>
+#include <type_traits>
+
+#include <absl/strings/str_cat.h>
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <algorithm>
-#include <chrono>
-#include <memory>
-#include <thread>
-#include <type_traits>
-#include <absl/strings/str_cat.h>
-
-#include "process-utils.h"
-#include "signals.h"
-#include "Basics/system-functions.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 #include <sys/sysctl.h>
@@ -77,22 +96,9 @@
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-
-#include "Basics/NumberUtils.h"
-#include "Basics/PageSize.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
-#include "Basics/debugging.h"
-#include "Basics/error.h"
-#include "Basics/memory.h"
-#include "Basics/operating-system.h"
-#include "Basics/tri-strings.h"
-#include "Basics/voc-errors.h"
-#include "Basics/files.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#ifdef TRI_HAVE_LINUX_PROC
+#include <dirent.h>
+#endif
 
 using namespace arangodb;
 
@@ -914,6 +920,53 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   return result;
 }
 
+// reads process thread ids from /proc/<pid>/task into pre-allocated
+// outBuffer, without allocating memory
+size_t TRI_ProcessThreads(TRI_pid_t pid, uint64_t* outBuffer,
+                          size_t outBufferSize) noexcept {
+  SizeLimitedString<128> buffer;
+
+  // build filename /proc/<pid>/task
+  buffer.append("/proc/").appendUInt64(uint64_t(pid)).append("/task");
+  // we have to append a NUL-byte because we are handing the string
+  // to a C function that expects NUL-terminated strings.
+  buffer.push_back('\0');
+
+  auto view = buffer.view();
+
+  uint64_t* outBufferNow = outBuffer;
+  uint64_t* outBufferEnd = outBufferNow + outBufferSize;
+
+  DIR* d = opendir(view.data());
+
+  if (d != nullptr) {
+    struct dirent* de = readdir(d);
+
+    while (de != nullptr && outBufferNow != outBufferEnd) {
+      char const* name = de->d_name;
+      char const* p = name;
+      char const* e = p + strlen(name);
+      // check if the filenames are all-numeric
+      while (p < e && *p >= '0' && *p <= '9') {
+        ++p;
+      }
+
+      if (p == e) {
+        // all numeric filename. this is what we want
+        *outBufferNow = NumberUtils::atoi_unchecked<uint64_t>(name, e);
+        ++outBufferNow;
+      }
+
+      // move on
+      de = readdir(d);
+    }
+
+    closedir(d);
+  }
+
+  return static_cast<size_t>(outBufferNow - outBuffer);
+}
+
 #else
 #ifndef _WIN32
 ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
@@ -924,6 +977,13 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   return result;
 }
 #endif
+
+size_t TRI_ProcessThreads(TRI_pid_t /*pid*/, uint64_t* /*outBuffer*/,
+                          size_t /*outBufferSize*/) noexcept {
+  // not implemented
+  return 0;
+}
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
