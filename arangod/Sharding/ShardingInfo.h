@@ -64,10 +64,6 @@ class ShardingInfo {
                     bool includeShardsEntry = true) const;
 
   std::string const& distributeShardsLike() const noexcept;
-  void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
-
-  std::vector<std::string> const& avoidServers() const noexcept;
-  void avoidServers(std::vector<std::string> const&);
 
   size_t replicationFactor() const noexcept;
   void replicationFactor(size_t);

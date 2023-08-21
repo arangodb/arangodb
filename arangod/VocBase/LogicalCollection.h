@@ -225,7 +225,6 @@ class LogicalCollection : public LogicalDataSource {
   size_t writeConcern() const noexcept;
   replication::Version replicationVersion() const noexcept;
   std::string const& distributeShardsLike() const noexcept;
-  std::vector<std::string> const& avoidServers() const noexcept;
   bool isSatellite() const noexcept;
   bool usesDefaultShardKeys() const noexcept;
   std::vector<std::string> const& shardKeys() const noexcept;
