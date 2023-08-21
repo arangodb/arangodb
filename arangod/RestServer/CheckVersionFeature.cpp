@@ -226,7 +226,6 @@ void CheckVersionFeature::checkVersion() {
           << "Database version check failed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_VERSION_CHECK_FAILED);
     }
-    FATAL_ERROR_EXIT_CODE(*_result);
   }
 }
 

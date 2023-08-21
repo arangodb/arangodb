@@ -1,6 +1,7 @@
 import { Button, Flex, Icon, IconButton } from "@chakra-ui/react";
 import React from "react";
 import { MagicWand } from "styled-icons/boxicons-solid";
+import { ExternalLink } from "../../../components/link/ExternalLink";
 import SingleSelect from "../../../components/select/SingleSelect";
 import { useQueryContext } from "../QueryContextProvider";
 import { QuerySpotlight } from "./QuerySpotlight";
@@ -50,7 +51,10 @@ export const QueryEditorTopBar = () => {
           New
         </Button>
       )}
-      <Flex marginLeft="auto" gap="2">
+      <Flex marginLeft="auto" gap="4" alignItems="center">
+        <ExternalLink href="https://www.arangodb.com/docs/stable/http/aql-query.html#create-a-cursor">
+          Docs
+        </ExternalLink>
         <IconButton
           onClick={onOpenSpotlight}
           icon={<Icon as={MagicWand} />}

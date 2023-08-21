@@ -36,8 +36,12 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "CrashHandler/CrashHandler.h"
+#endif
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -778,9 +782,30 @@ Result RocksDBPrimaryIndex::update(
     LocalDocumentId const& /*oldDocumentId*/, velocypack::Slice oldDoc,
     LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
     OperationOptions const& /*options*/, bool /*performChecks*/) {
-  Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
+
+  Result res;
+  if (oldDoc.get(StaticStrings::KeyString).stringView() !=
+      newDoc.get(StaticStrings::KeyString).stringView()) {
+    res.reset(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("invalid primary index update in '",
+                     _collection.vocbase().name(), "/", _collection.name()));
+    res.withError([&oldDoc, &newDoc](result::Error& err) {
+      err.appendErrorMessage("; old key: ");
+      err.appendErrorMessage(oldDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage("; new key: ");
+      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
+    });
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("f3b56", ERR, Logger::ENGINES) << res.errorMessage();
+    CrashHandler::logBacktrace();
+#endif
+    TRI_ASSERT(false) << res.errorMessage();
+    return res;
+  }
+
   RocksDBKeyLeaser key(&trx);
 
   key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
@@ -791,6 +816,27 @@ Result RocksDBPrimaryIndex::update(
   // invalidate new index cache entry to avoid caching without committing first
   invalidateCacheEntry(key->string().data(),
                        static_cast<uint32_t>(key->string().size()));
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), nullptr);
+    if (s.IsNotFound()) {
+      // the key must have existed before in the primary index
+      res.reset(TRI_ERROR_ARANGO_CONFLICT,
+                "inconsistency with non-existing primary key detected");
+      res.withError([&oldDoc, &newDoc](result::Error& err) {
+        err.appendErrorMessage("; old key: ");
+        err.appendErrorMessage(
+            oldDoc.get(StaticStrings::KeyString).copyString());
+        err.appendErrorMessage("; new key: ");
+        err.appendErrorMessage(
+            newDoc.get(StaticStrings::KeyString).copyString());
+      });
+      TRI_ASSERT(false) << "primary index update: " << res.errorMessage();
+      return res;
+    }
+  }
+#endif
 
   rocksdb::Status s =
       mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ false);

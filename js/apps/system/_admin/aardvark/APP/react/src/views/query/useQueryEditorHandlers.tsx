@@ -18,6 +18,10 @@ export const useQueryEditorHandlers = () => {
   const [queryBindParams, setQueryBindParams] = React.useState<{
     [key: string]: string;
   }>(initialQuery?.parameter || {});
+  const [disabledRules, setDisabledRules] = React.useState<string[]>([]);
+  const [queryOptions, setQueryOptions] = React.useState<{
+    [key: string]: any;
+  }>({});
 
   /**
    * Called when the query value is changed by the user
@@ -76,6 +80,10 @@ export const useQueryEditorHandlers = () => {
     currentQueryName,
     queryBindParams,
     setQueryBindParams,
-    setCurrentQueryName
+    setCurrentQueryName,
+    disabledRules,
+    setDisabledRules,
+    queryOptions,
+    setQueryOptions
   };
 };

@@ -50,6 +50,9 @@ static char const* collectionName1 = "collection_1";
 static char const* collectionName2 = "collection_2";
 static char const* viewName = "view";
 
+static std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
+static std::vector<arangodb::iresearch::HeapSortElement> emptyScorersSort;
+
 static constexpr frozen::map<std::string_view,
                              arangodb::iresearch::CountApproximate, 2>
     countApproximationTypeMap = {
@@ -517,7 +520,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase()),
       arangodb::aql::QueryString(queryString), nullptr);
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   ASSERT_TRUE(query->ast());
   auto plan =
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
@@ -547,8 +550,6 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
-  std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
-  std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query,
@@ -570,8 +571,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       fetcher(dummyProxy);
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  arangodb::aql::AqlItemBlockManager itemBlockManager{
-      monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::aql::AqlItemBlockManager itemBlockManager{monitor};
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
@@ -601,7 +601,7 @@ TEST_F(IResearchViewCountApproximateTest,
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase()),
       arangodb::aql::QueryString(queryString), nullptr);
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   ASSERT_TRUE(query->ast());
   auto plan =
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
@@ -630,8 +630,6 @@ TEST_F(IResearchViewCountApproximateTest,
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
-  std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
-  std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query,
@@ -653,8 +651,7 @@ TEST_F(IResearchViewCountApproximateTest,
       fetcher(dummyProxy);
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  arangodb::aql::AqlItemBlockManager itemBlockManager{
-      monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::aql::AqlItemBlockManager itemBlockManager{monitor};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock =
       itemBlockManager.requestBlock(1, 1);
   arangodb::aql::IResearchViewMergeExecutor<arangodb::aql::ExecutionTraits<
@@ -686,7 +683,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(vocbase()),
       arangodb::aql::QueryString(queryString), nullptr);
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
   ASSERT_TRUE(query->ast());
   auto plan =
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
@@ -715,8 +712,6 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
-  std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
-  std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query,
@@ -738,8 +733,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       fetcher(dummyProxy);
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  arangodb::aql::AqlItemBlockManager itemBlockManager{
-      monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
+  arangodb::aql::AqlItemBlockManager itemBlockManager{monitor};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock =
       itemBlockManager.requestBlock(1, 1);
   arangodb::aql::IResearchViewMergeExecutor<arangodb::aql::ExecutionTraits<

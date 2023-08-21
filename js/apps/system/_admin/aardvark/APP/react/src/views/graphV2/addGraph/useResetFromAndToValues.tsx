@@ -2,6 +2,7 @@ import { usePrevious } from "@chakra-ui/react";
 import { useFormikContext } from "formik";
 import _ from "lodash";
 import { useEffect, useMemo, useState } from "react";
+import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { useFetchGraphs } from "../listGraphs/useFetchGraphs";
 import { GeneralGraphCreateValues } from "./CreateGraph.types";
 
@@ -36,6 +37,8 @@ const useCollectionToFromAndToMap = () => {
  * set the from/to values and disable the inputs
  */
 export const useResetFromAndToValues = () => {
+  const { mode } = useGraphsModeContext();
+  const isEditMode = mode === "edit";
   const { values, setValues } = useFormikContext<GeneralGraphCreateValues>();
   const [collectionToDisabledMap, setCollectionToDisabledMap] = useState<{
     [key: number]: boolean;
@@ -63,8 +66,8 @@ export const useResetFromAndToValues = () => {
           });
           return {
             ...edgeDefinition,
-            from,
-            to
+            from: isEditMode ? edgeDefinition.from : from,
+            to: isEditMode ? edgeDefinition.to : to
           };
         }
         setCollectionToDisabledMap(currentIsFromAndToDisabled => {

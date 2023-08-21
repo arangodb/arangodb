@@ -99,7 +99,7 @@ class ExecutionPlan {
                     unsigned flags) const;
 
   /// @brief check if the plan is empty
-  inline bool empty() const { return (_root == nullptr); }
+  bool empty() const { return (_root == nullptr); }
 
   /// @brief note that an optimizer rule was applied
   void addAppliedRule(int level);
@@ -128,16 +128,16 @@ class ExecutionPlan {
       const;
 
   /// @brief check if the node is the root node
-  inline bool isRoot(ExecutionNode const* node) const { return _root == node; }
+  bool isRoot(ExecutionNode const* node) const { return _root == node; }
 
   /// @brief get the root node
-  inline ExecutionNode* root() const {
+  ExecutionNode* root() const {
     TRI_ASSERT(_root != nullptr);
     return _root;
   }
 
   /// @brief set the root node
-  inline void root(ExecutionNode* node, bool force = false) {
+  void root(ExecutionNode* node, bool force = false) {
     if (!force) {
       TRI_ASSERT(_root == nullptr);
     }
@@ -145,7 +145,7 @@ class ExecutionPlan {
   }
 
   /// @brief invalidate all cost estimations in the plan
-  inline void invalidateCost() {
+  void invalidateCost() {
     TRI_ASSERT(_root != nullptr);
     _root->invalidateCost();
   }
@@ -161,7 +161,7 @@ class ExecutionPlan {
 
   /// @brief this can be called by the optimizer to tell that the
   /// plan is temporarily in an invalid state
-  inline void setValidity(bool value) { _planValid = value; }
+  void setValidity(bool value) { _planValid = value; }
 
 /// @brief show an overview over the plan
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -278,7 +278,7 @@ class ExecutionPlan {
   void insertBefore(ExecutionNode* current, ExecutionNode* newNode);
 
   /// @brief get ast
-  inline Ast* getAst() const { return _ast; }
+  Ast* getAst() const { return _ast; }
 
   /// @brief resolves a variable alias, e.g. fn(tmp) -> "a.b" for the following:
   ///  LET tmp = a.b

@@ -326,10 +326,10 @@ std::string ShellConsoleFeature::readPassword(std::string const& message) {
 }
 
 std::string ShellConsoleFeature::readPassword() {
-  TRI_SetStdinVisibility(false);
+  terminal_utils::setStdinVisibility(false);
 
-  auto sg =
-      arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { terminal_utils::setStdinVisibility(true); });
 
   std::string password;
 

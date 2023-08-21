@@ -13,6 +13,7 @@ import React, { useState } from "react";
 import { mutate } from "swr";
 import { ModalFooter } from "../../../components/modal";
 import { getRouteForDB } from "../../../utils/arangoClient";
+import { notifyError, notifySuccess } from "../../../utils/notifications";
 
 const exampleGraphsMap = [
   {
@@ -50,26 +51,38 @@ const exampleGraphsMap = [
 ];
 
 export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
+  const [isAnyLoading, setIsAnyLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState<{ [key: string]: boolean }>(
+    {}
+  );
+
   const createExampleGraph = async ({ graphName }: { graphName: string }) => {
-    setIsLoading(true);
     try {
+      setIsAnyLoading(true);
+      setLoadingState(prev => {
+        return {
+          ...prev,
+          [graphName]: true
+        };
+      });
       await getRouteForDB(window.frontendConfig.db, "_admin").post(
         `/aardvark/graph-examples/create/${graphName}`
       );
-      window.arangoHelper.arangoNotification(
-        "Graph",
-        `Successfully created the graph: ${graphName}`
-      );
+      notifySuccess(`Successfully created the graph: ${graphName}`);
       mutate("/graphs");
       onClose();
     } catch (e: any) {
-      const errorMessage = e.response.body.errorMessage;
-      window.arangoHelper.arangoError("Could not add graph", errorMessage);
+      const errorMessage = e?.response?.body?.errorMessage || "Unknown error";
+      notifyError(`Could not create graph: ${errorMessage}`);
     }
-    setIsLoading(false);
+    setIsAnyLoading(false);
+    setLoadingState(prev => {
+      return {
+        ...prev,
+        [graphName]: false
+      };
+    });
   };
-  const [isLoading, setIsLoading] = useState(false);
-
   return (
     <VStack spacing={4} align="stretch">
       {exampleGraphsMap.map(exampleGraphField => {
@@ -82,7 +95,8 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
               colorScheme="blue"
               size="xs"
               type="submit"
-              isLoading={isLoading}
+              isDisabled={isAnyLoading}
+              isLoading={loadingState[exampleGraphField.name]}
               onClick={async () => {
                 await createExampleGraph({ graphName: exampleGraphField.name });
               }}

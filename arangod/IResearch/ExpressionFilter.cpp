@@ -227,16 +227,13 @@ bool ByExpression::equals(irs::filter const& rhs) const noexcept {
 size_t ByExpression::hash() const noexcept { return _ctx.hash(); }
 
 irs::filter::prepared::ptr ByExpression::prepare(
-    irs::IndexReader const& index, irs::Scorers const& order,
-    irs::score_t filter_boost, irs::attribute_provider const* ctx) const {
+    irs::PrepareContext const& ctx) const {
   if (!bool(*this)) {
     // uninitialized filter
     return irs::filter::prepared::empty();
   }
 
-  auto allQuery =
-      makeAll(_allColumn)
-          ->prepare(index, order, this->boost() * filter_boost, ctx);
+  auto allQuery = makeAll(_allColumn)->prepare(ctx.Boost(boost()));
 
   if (ADB_UNLIKELY(!allQuery)) {
     return irs::filter::prepared::empty();
@@ -248,7 +245,8 @@ irs::filter::prepared::ptr ByExpression::prepare(
         _ctx, std::move(allQuery));
   }
 
-  auto* execCtx = ctx ? irs::get<ExpressionExecutionContext>(*ctx) : nullptr;
+  auto* execCtx =
+      ctx.ctx ? irs::get<ExpressionExecutionContext>(*ctx.ctx) : nullptr;
 
   if (!execCtx || !static_cast<bool>(*execCtx)) {
     // no execution context provided, make deterministic query

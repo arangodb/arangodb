@@ -29,6 +29,7 @@ const lh = require("@arangodb/testutils/replicated-logs-helper");
 const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const lhttp = require("@arangodb/testutils/replicated-logs-http-helper");
 const arangodb = require("@arangodb");
+const internal = require("internal");
 const {db} = arangodb;
 
 const database = 'ReplLogsMaintenanceTest';
@@ -52,15 +53,40 @@ const checkCommitFailReasonReport = function () {
     },
 
     testCheckExcludedServers: function () {
-      const {logId, followers} = lh.createReplicatedLogPlanOnly(database, planConfig, replicationFactor);
+      const {logId, followers, leader} = lh.createReplicatedLogPlanOnly(database, planConfig, replicationFactor);
 
       const [followerA, followerB] = _.sampleSize(followers, 2);
       lh.replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
         [followerA]: {allowedInQuorum: false, forced: false},
         [followerB]: {allowedInQuorum: false, forced: false},
+       });
+
+      let skipTest = false;
+      lh.waitFor(() => {
+        const currentRebootId = lh.getServerRebootId(leader);
+        if (currentRebootId > 1) {
+          const {rebootId} = lh.getReplicatedLogLeaderPlan(database, logId);
+          if (rebootId !== currentRebootId) {
+            skipTest = true;
+            return true;
+          }
+        }
+        return lp.replicatedLogLeaderCommitFail(database, logId, "NonEligibleServerRequiredForQuorum")();
       });
 
-      lh.waitFor(lp.replicatedLogLeaderCommitFail(database, logId, "NonEligibleServerRequiredForQuorum"));
+      /*
+       * If the leader's rebootId changes, the test is doomed to fail. This can happen, for example, due to high
+       * system load and slow heartbeat responses.
+       * Because we don't use a Target config for this test, the supervision does not handle the rebootId change.
+       * When the leader's rebootId changes in Plan, the server no longer assumes leadership. More so, even with
+       * a working supervision, the server would not be able to establish leadership because we intentionally prevent a
+       * quorum from being reached.
+       */
+      if (skipTest) {
+        internal.print("We are intentionally skipping this test because the leader appears to have been rebooted.");
+        return;
+      }
+
       {
         const {current} = lh.readReplicatedLogAgency(database, logId);
         const status = current.leader.commitStatus;

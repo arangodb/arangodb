@@ -53,9 +53,9 @@ class TransactionCollection {
 
   virtual ~TransactionCollection();
 
-  inline DataSourceId id() const { return _cid; }
+  DataSourceId id() const noexcept { return _cid; }
 
-  std::shared_ptr<LogicalCollection> const& collection() const {
+  std::shared_ptr<LogicalCollection> const& collection() const noexcept {
     return _collection;  // vocbase collection pointer
   }
 

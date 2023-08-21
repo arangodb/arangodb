@@ -34,7 +34,6 @@
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"

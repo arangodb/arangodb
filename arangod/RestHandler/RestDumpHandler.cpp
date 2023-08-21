@@ -24,6 +24,7 @@
 #include "RestDumpHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/TokenCache.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -36,6 +37,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
@@ -126,7 +128,7 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
   if (ServerState::instance()->isCoordinator()) {
     ServerID const& DBserver = _request->value("dbserver");
     if (!DBserver.empty()) {
-      // if DBserver property present, remove auth header
+      // if DBserver property present, add user header
       _request->addHeader(StaticStrings::DumpAuthUser, _request->user());
       return std::make_pair(DBserver, true);
     }
@@ -261,19 +263,25 @@ Result RestDumpHandler::validateRequest() {
         return {TRI_ERROR_BAD_PARAMETER};
       }
 
-      // validate permissions for all participating shards
-      RocksDBDumpContextOptions opts;
-      velocypack::deserializeUnsafe(body, opts);
+      if (!ServerState::instance()->isDBServer()) {
+        // make this version of dump compatible with the previous version of
+        // arangodump. the previous version assumed that as long as you are
+        // an admin user, you can dump every collection
+        ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-      ExecContext& exec =
-          *static_cast<ExecContext*>(_request->requestContext());
+        // validate permissions for all participating shards
+        RocksDBDumpContextOptions opts;
+        velocypack::deserializeUnsafe(body, opts);
 
-      for (auto const& it : opts.shards) {
-        // get collection name
-        auto collectionName = _clusterInfo.getCollectionNameForShard(it);
-        if (!exec.canUseCollection(_request->databaseName(), collectionName,
-                                   auth::Level::RO)) {
-          return {TRI_ERROR_FORBIDDEN};
+        for (auto const& it : opts.shards) {
+          // get collection name
+          auto collectionName = _clusterInfo.getCollectionNameForShard(it);
+          if (!ExecContext::current().canUseCollection(
+                  _request->databaseName(), collectionName, auth::Level::RO)) {
+            return {TRI_ERROR_FORBIDDEN,
+                    absl::StrCat("insufficient permissions to access shard ",
+                                 it, " of collection ", collectionName)};
+          }
         }
       }
     }
