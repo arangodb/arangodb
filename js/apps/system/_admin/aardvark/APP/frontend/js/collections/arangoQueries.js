@@ -183,24 +183,41 @@
           };
         }
       } else {
-        window.progressView.show('Fetching documents...');
-        $.ajax({
-          cache: false,
-          type: 'POST',
-          url: 'query/upload/' + encodeURIComponent(this.activeUser),
-          data: file,
-          contentType: 'application/json',
-          processData: false,
-          success: function () {
-            window.progressView.hide();
-            arangoHelper.arangoNotification('Queries successfully imported.');
-            callback();
-          },
-          error: function () {
-            window.progressView.hide();
-            arangoHelper.arangoError('Query error', 'queries could not be imported');
+        var reader = new FileReader();
+        reader.readAsText(file);
+        reader.onload = async () => {
+          var data = reader.result;
+          if (typeof data !== "string") {
+            return;
           }
-        });
+          var queries = JSON.parse(data);
+          var sanitizedQueries = queries.map((query) => {
+            return {
+              name: query.name,
+              value: query.value,
+              parameter: query.parameter
+            };
+          });
+          window.progressView.show('Fetching documents...');
+          $.ajax({
+            cache: false,
+            type: 'POST',
+            url: 'query/upload/' + encodeURIComponent(this.activeUser),
+            data: JSON.stringify(sanitizedQueries),
+            contentType: 'application/json',
+            processData: false,
+            success: function () {
+              window.progressView.hide();
+              arangoHelper.arangoNotification('Queries successfully imported.');
+              callback();
+            },
+            error: function (error) {
+              window.progressView.hide();
+              console.log(error);
+              arangoHelper.arangoError('Query error', 'queries could not be imported');
+            }
+          });
+        };
       }
     }
 
