@@ -16,6 +16,10 @@ devel
   memory limit settings, turn on intermediate commits for the query, or adjust
   the query so that it uses less memory.
 
+* Allow compression content-negotation in metrics API, so that responses from
+  the metrics API at `/_admin/metrics` can be sent compressed if the client
+  supports it.
+
 * Print arangod executable's build-id in startup and crash messages.
 
 * Removed --jslint from arangosh and scripts/jslint.sh along with
