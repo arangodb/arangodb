@@ -217,7 +217,6 @@
             },
             error: function (error) {
               window.progressView.hide();
-              console.log(error);
               arangoHelper.arangoError('Query error', 'queries could not be imported');
             }
           });
