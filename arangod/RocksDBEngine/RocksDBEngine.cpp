@@ -1277,7 +1277,7 @@ void RocksDBEngine::start() {
   _logPersistor = logPersistor;
 
   if (auto* syncer = syncThread(); syncer != nullptr) {
-    syncer->registerSyncListener(logPersistor);
+    syncer->registerSyncListener(std::move(logPersistor));
   } else {
     LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
         << "In replication2 databases, setting waitForSync to false will not "
