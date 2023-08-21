@@ -3,6 +3,7 @@ add_library(arango_tests_build_id OBJECT
 
 target_link_libraries(arango_tests_build_id
   PUBLIC
+    gtest
     arango_build_id)
 
 add_executable(arangodbtests_build_id
