@@ -234,8 +234,12 @@ struct Pack {
   fuerte::Error tmp_err;
   RequestLane continuationLane;
   bool skipScheduler;
-  Pack(DestinationId&& dest, RequestLane lane, bool skip)
-      : dest(std::move(dest)), continuationLane(lane), skipScheduler(skip) {}
+  bool handleContentEncoding;
+  Pack(DestinationId&& dest, RequestLane lane, bool skip, bool handle)
+      : dest(std::move(dest)),
+        continuationLane(lane),
+        skipScheduler(skip),
+        handleContentEncoding(handle) {}
 };
 
 void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
@@ -324,7 +328,8 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
 
     auto p = std::make_shared<Pack>(std::move(dest), options.continuationLane,
-                                    options.skipScheduler);
+                                    options.skipScheduler,
+                                    options.handleContentEncoding);
     FutureRes f = p->promise.getFuture();
     actuallySendRequest(std::move(p), pool, options, spec.endpoint,
                         std::move(req));
