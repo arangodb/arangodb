@@ -641,7 +641,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
           SingleCollectionTransaction trx(
               ctx, collName, AccessMode::Type::READ,
-              transaction::OperationOriginUnknown{});
+              transaction::OperationOriginInternal{"counting document(s)"});
 
           Result res = trx.begin();
 

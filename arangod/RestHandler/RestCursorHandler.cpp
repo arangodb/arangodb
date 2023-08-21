@@ -214,8 +214,8 @@ RestStatus RestCursorHandler::registerQueryOrCursor(
 
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
-    _cursor =
-        cursors->createQueryStream(std::move(query), batchSize, ttl, retriable);
+    _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl,
+                                         retriable, operationOrigin);
     // Throws if soft shutdown is ongoing!
     _cursor->setWakeupHandler(withLogContext(
         [self = shared_from_this()]() { return self->wakeupHandler(); }));
@@ -641,7 +641,8 @@ RestStatus RestCursorHandler::createQueryCursor() {
   }
 
   TRI_ASSERT(_query == nullptr);
-  return registerQueryOrCursor(body, transaction::OperationOriginUnknown{});
+  return registerQueryOrCursor(
+      body, transaction::OperationOriginAQL{"running AQL query"});
 }
 
 /// @brief shows the batch given by <batch-id> if it's the last cached batch

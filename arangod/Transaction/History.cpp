@@ -63,6 +63,8 @@ class HistoryEntry {
     }
     result.close();
 
+    result.add("origin", VPackValue(_operationOrigin.description));
+
     switch (_operationOrigin.type) {
       case OperationOrigin::Type::kAQL:
         result.add("type", VPackValue("AQL"));

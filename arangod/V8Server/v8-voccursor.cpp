@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/ScopeGuard.h"
 #include "Transaction/Context.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Cursor.h"
@@ -335,16 +336,16 @@ struct V8Cursor final {
     TRI_ASSERT(vocbase != nullptr);
     auto* cursors = vocbase->cursorRepository();  // create a cursor
     double ttl = std::numeric_limits<double>::max();
+    auto origin = transaction::OperationOriginAQL{"running AQL query"};
 
     auto q = aql::Query::create(
         transaction::V8Context::CreateWhenRequired(*vocbase, true),
-        aql::QueryString(queryString), std::move(bindVars),
-        transaction::OperationOriginUnknown{},
+        aql::QueryString(queryString), std::move(bindVars), origin,
         aql::QueryOptions(options.slice()));
 
     // specify ID 0 so it uses the external V8 context
-    Cursor* cc =
-        cursors->createQueryStream(std::move(q), batchSize, ttl, isRetriable);
+    Cursor* cc = cursors->createQueryStream(std::move(q), batchSize, ttl,
+                                            isRetriable, origin);
     // a soft shutdown will throw here!
 
     arangodb::ScopeGuard releaseCursorGuard([&]() noexcept { cc->release(); });

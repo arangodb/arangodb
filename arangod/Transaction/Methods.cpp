@@ -1843,7 +1843,10 @@ Result transaction::Methods::begin() {
       res = applyStatusChangeCallbacks(*this, Status::RUNNING);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // track currently ongoing transaction in history
+      // track currently ongoing transaction in history.
+      // we only do this in maintainer mode and not in production.
+      // the reason we insert into the history is only for testing
+      // purposes.
       transaction::Manager* mgr = transaction::ManagerFeature::manager();
       if (mgr != nullptr) {
         // note: transaction manager can be a nullptr during unit tests
@@ -1859,31 +1862,27 @@ Result transaction::Methods::begin() {
 }
 
 auto Methods::commit() noexcept -> Result {
-  return commitInternal(MethodsApi::Synchronous)  //
+  return commitInternal(MethodsApi::Synchronous)
       .then(basics::tryToResult)
       .get();
 }
 
 /// @brief commit / finish the transaction
 auto transaction::Methods::commitAsync() noexcept -> Future<Result> {
-  return commitInternal(MethodsApi::Asynchronous)  //
-      .then(basics::tryToResult);
+  return commitInternal(MethodsApi::Asynchronous).then(basics::tryToResult);
 }
 
 auto Methods::abort() noexcept -> Result {
-  return abortInternal(MethodsApi::Synchronous)  //
-      .then(basics::tryToResult)
-      .get();
+  return abortInternal(MethodsApi::Synchronous).then(basics::tryToResult).get();
 }
 
 /// @brief abort the transaction
 auto transaction::Methods::abortAsync() noexcept -> Future<Result> {
-  return abortInternal(MethodsApi::Asynchronous)  //
-      .then(basics::tryToResult);
+  return abortInternal(MethodsApi::Asynchronous).then(basics::tryToResult);
 }
 
 auto Methods::finish(Result const& res) noexcept -> Result {
-  return finishInternal(res, MethodsApi::Synchronous)  //
+  return finishInternal(res, MethodsApi::Synchronous)
       .then(basics::tryToResult)
       .get();
 }
@@ -1891,7 +1890,7 @@ auto Methods::finish(Result const& res) noexcept -> Result {
 /// @brief finish a transaction (commit or abort), based on the previous state
 auto transaction::Methods::finishAsync(Result const& res) noexcept
     -> Future<Result> {
-  return finishInternal(res, MethodsApi::Asynchronous)  //
+  return finishInternal(res, MethodsApi::Asynchronous)
       .then(basics::tryToResult);
 }
 

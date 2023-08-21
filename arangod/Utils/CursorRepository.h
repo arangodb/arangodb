@@ -43,6 +43,10 @@ class Query;
 struct QueryResult;
 }  // namespace aql
 
+namespace transaction {
+struct OperationOrigin;
+}
+
 class CursorRepository {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -84,7 +88,8 @@ class CursorRepository {
   //////////////////////////////////////////////////////////////////////////////
 
   Cursor* createQueryStream(std::shared_ptr<arangodb::aql::Query> q,
-                            size_t batchSize, double ttl, bool isRetriable);
+                            size_t batchSize, double ttl, bool isRetriable,
+                            transaction::OperationOrigin operationOrigin);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id
