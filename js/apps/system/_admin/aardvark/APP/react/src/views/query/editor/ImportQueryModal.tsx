@@ -9,6 +9,7 @@ import {
 } from "../../../components/modal";
 import { getAardvarkRouteForCurrentDb } from "../../../utils/arangoClient";
 import { useQueryContext } from "../QueryContextProvider";
+import { QueryType } from "./useFetchUserSavedQueries";
 
 export const ImportQueryModal = ({
   isOpen,
@@ -58,11 +59,20 @@ export const ImportQueryModal = ({
       reader.readAsText(file);
       reader.onload = async () => {
         const data = reader.result;
-        if (typeof data !== "string") return;
+        if (typeof data !== "string") {
+          return;
+        }
         const queries = JSON.parse(data);
+        const sanitizedQueries = queries.map((query: QueryType) => {
+          return {
+            name: query.name,
+            value: query.value,
+            parameter: query.parameter
+          };
+        });
         await route.request({
           method: "POST",
-          body: queries
+          body: sanitizedQueries
         });
         await mutate("/savedQueries");
         window.arangoHelper.arangoNotification("Successfully uploaded queries");
