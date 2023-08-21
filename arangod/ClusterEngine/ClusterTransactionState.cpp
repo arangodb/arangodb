@@ -52,7 +52,8 @@ ClusterTransactionState::ClusterTransactionState(
     transaction::Options const& options,
     transaction::OperationOrigin operationOrigin)
     : TransactionState(vocbase, tid, options, operationOrigin),
-      _numIntermediateCommits(0) {
+      _numIntermediateCommits(0),
+      _registered(false) {
   // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
   // we have to read revisions here as validateAndOptimize is executed before
@@ -63,6 +64,16 @@ ClusterTransactionState::ClusterTransactionState(
                               .getFeature<arangodb::ClusterFeature>()
                               .clusterInfo()
                               .getQueryAnalyzersRevision(vocbase.name()));
+}
+
+ClusterTransactionState::~ClusterTransactionState() {
+  if (_registered) {
+    // unregister the transaction from the transaction manager
+    transaction::Manager* mgr = transaction::ManagerFeature::manager();
+    TRI_ASSERT(mgr != nullptr);
+
+    mgr->unregisterTransaction();
+  }
 }
 
 /// @brief start a transaction
@@ -103,7 +114,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   transaction::ManagerFeature::manager()->registerTransaction(
       id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
-  setRegistered();
+
+  _registered = true;
   if (AccessMode::isWriteOrExclusive(this->_type) &&
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // cppcheck-suppress ignoredReturnValue

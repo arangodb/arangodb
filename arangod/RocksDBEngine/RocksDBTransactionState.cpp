@@ -46,6 +46,9 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Transaction/History.h"
+#endif
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -67,11 +70,20 @@ RocksDBTransactionState::RocksDBTransactionState(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _users(0),
 #endif
+      _registered(false),
       _cacheTx(nullptr) {
 }
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
+  if (_registered) {
+    // unregister the transaction from the transaction manager
+    transaction::Manager* mgr = transaction::ManagerFeature::manager();
+    TRI_ASSERT(mgr != nullptr);
+
+    mgr->unregisterTransaction();
+  }
+
   cleanupTransaction();
   _status = transaction::Status::ABORTED;
 }
@@ -117,10 +129,14 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     return res;
   }
 
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+
   // register with manager
-  transaction::ManagerFeature::manager()->registerTransaction(
-      id(), isReadOnlyTransaction(),
-      hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
+  mgr->registerTransaction(id(), isReadOnlyTransaction(),
+                           hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
+  _registered = true;
+
   updateStatus(transaction::Status::RUNNING);
   if (isReadOnlyTransaction()) {
     ++stats._readTransactions;
@@ -128,7 +144,13 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsStarted;
   }
 
-  setRegistered();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // track currently ongoing transactions in history.
+  // we only do this in maintainer mode and not in production.
+  // the reason we insert into the history is only for testing
+  // purposes.
+  mgr->history().insert(*this);
+#endif
 
   TRI_ASSERT(_cacheTx == nullptr);
 

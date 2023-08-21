@@ -72,9 +72,6 @@
 #include "Transaction/BatchOptions.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#include "Transaction/History.h"
-#endif
 #include "Transaction/IndexesSnapshot.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -1784,12 +1781,7 @@ transaction::Methods::~Methods() {
     // free the state associated with the transaction
     TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
 
-    // store result in context
-    _transactionContext->storeTransactionResult(
-        _state->id(), _state->wasRegistered(), _state->isReadOnlyTransaction(),
-        _state->isFollowerTransaction());
-
-    _state = nullptr;
+    _state.reset();
   }
 }
 
@@ -1841,18 +1833,6 @@ Result transaction::Methods::begin() {
     res = _state->beginTransaction(_localHints);
     if (res.ok()) {
       res = applyStatusChangeCallbacks(*this, Status::RUNNING);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // track currently ongoing transactions in history.
-      // we only do this in maintainer mode and not in production.
-      // the reason we insert into the history is only for testing
-      // purposes.
-      transaction::Manager* mgr = transaction::ManagerFeature::manager();
-      if (mgr != nullptr) {
-        // note: transaction manager can be a nullptr during unit tests
-        mgr->history().insert(*this);
-      }
-#endif
     }
   } else {
     TRI_ASSERT(_state->status() == transaction::Status::RUNNING);

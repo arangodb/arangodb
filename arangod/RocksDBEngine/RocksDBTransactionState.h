@@ -157,6 +157,8 @@ class RocksDBTransactionState : public TransactionState {
   std::atomic<uint32_t> _users;
 #endif
 
+  bool _registered = false;
+
   /// @brief cache transaction to unblock banished keys
   cache::Transaction* _cacheTx;
 };

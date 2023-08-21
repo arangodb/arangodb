@@ -41,7 +41,7 @@ class ClusterTransactionState final : public TransactionState {
   ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options,
                           transaction::OperationOrigin operationOrigin);
-  ~ClusterTransactionState() override = default;
+  ~ClusterTransactionState();
 
   [[nodiscard]] bool ensureSnapshot() override { return false; }
 
@@ -85,6 +85,7 @@ class ClusterTransactionState final : public TransactionState {
 
  private:
   uint64_t _numIntermediateCommits;
+  bool _registered;
 };
 
 }  // namespace arangodb

@@ -90,12 +90,6 @@ class Context {
   /// @brief get velocypack options with a custom type handler
   TEST_VIRTUAL velocypack::Options* getVPackOptions();
 
-  /// @brief unregister the transaction
-  /// this will save the transaction's id and status locally
-  void storeTransactionResult(TransactionId id, bool wasRegistered,
-                              bool isReadOnlyTransaction,
-                              bool isFollowerTranaction) noexcept;
-
   /// @brief get a custom type handler
   virtual arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() = 0;
 
@@ -106,32 +100,30 @@ class Context {
 
   /// @brief whether or not is from a streaming transaction (used to know
   /// whether or not can read from query cache)
-  bool isStreaming() const noexcept {
-    return _transaction.isStreamingTransaction;
-  }
+  bool isStreaming() const noexcept { return _meta.isStreamingTransaction; }
 
   /// @brief whether or not transaction is JS (used to know
   /// whether or not can read from query cache)
-  bool isTransactionJS() const noexcept { return _transaction.isJStransaction; }
+  bool isTransactionJS() const noexcept { return _meta.isJStransaction; }
 
   bool isReadOnlyTransaction() const noexcept {
-    return _transaction.isReadOnlyTransaction;
+    return _meta.isReadOnlyTransaction;
   }
 
-  void setReadOnly() noexcept { _transaction.isReadOnlyTransaction = true; }
+  void setReadOnly() noexcept { _meta.isReadOnlyTransaction = true; }
 
   /// @brief sets the transaction to be streaming (used to know whether or not
   /// can read from query cache)
   void setStreaming() noexcept {
-    TRI_ASSERT(_transaction.isJStransaction == false);
-    _transaction.isStreamingTransaction = true;
+    TRI_ASSERT(_meta.isJStransaction == false);
+    _meta.isStreamingTransaction = true;
   }
 
   /// @brief sets the transaction to be JS (used to know whether or not
   /// can read from query cache)
   void setJStransaction() noexcept {
-    TRI_ASSERT(_transaction.isStreamingTransaction == false);
-    _transaction.isJStransaction = true;
+    TRI_ASSERT(_meta.isStreamingTransaction == false);
+    _meta.isJStransaction = true;
   }
 
   /// @brief whether or not the transaction is embeddable
@@ -169,12 +161,11 @@ class Context {
   std::unique_ptr<CollectionNameResolver> _resolver;
 
   struct {
-    TransactionId id;
     bool isReadOnlyTransaction = false;
-    bool isFollowerTransaction;
+    bool isFollowerTransaction = false;
     bool isStreamingTransaction = false;
     bool isJStransaction = false;
-  } _transaction;
+  } _meta;
 };
 
 }  // namespace transaction

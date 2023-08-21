@@ -37,12 +37,13 @@
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 namespace arangodb {
+class TransactionState;
+
 namespace velocypack {
 class Builder;
 }
 
 namespace transaction {
-class Methods;
 
 class HistoryEntry {
   friend class History;
@@ -78,7 +79,7 @@ class History {
   explicit History(std::size_t maxSize);
   ~History();
 
-  void insert(Methods const& trx);
+  void insert(TransactionState& state);
   void toVelocyPack(velocypack::Builder& result) const;
 
   void garbageCollect() noexcept;

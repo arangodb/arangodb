@@ -25,7 +25,6 @@
 
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -93,7 +92,7 @@ void HistoryEntry::adjustMemoryUsage(std::int64_t value) noexcept {
       }
     }
   } else {
-    _memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+    _memoryUsage.fetch_sub(-value, std::memory_order_relaxed);
   }
 }
 
@@ -101,26 +100,25 @@ History::History(std::size_t maxSize) : _maxSize(maxSize), _id(1) {}
 
 History::~History() = default;
 
-void History::insert(Methods const& trx) {
+void History::insert(TransactionState& state) {
   std::vector<std::string> collections;
-  trx.state()->allCollections([&](auto const& c) {
+  state.allCollections([&](auto const& c) {
     collections.emplace_back(c.collectionName());
     return true;
   });
 
-  auto entry = std::make_shared<HistoryEntry>(trx.vocbase().name(),
-                                              std::move(collections),
-                                              trx.state()->operationOrigin());
+  auto entry = std::make_shared<HistoryEntry>(
+      state.vocbase().name(), std::move(collections), state.operationOrigin());
 
   std::unique_lock<std::shared_mutex> lock(_mutex);
 
   entry->_id = ++_id;
 
-  trx.state()->setHistoryEntry(entry);
+  state.setHistoryEntry(entry);
   try {
     _history.push_back(std::move(entry));
   } catch (...) {
-    trx.state()->clearHistoryEntry();
+    state.clearHistoryEntry();
     throw;
   }
 }

@@ -121,10 +121,7 @@ void Manager::registerTransaction(TransactionId transactionId,
 }
 
 // unregisters a transaction
-void Manager::unregisterTransaction(TransactionId transactionId,
-                                    bool isReadOnlyTransaction,
-                                    bool isFollowerTransaction) noexcept {
-  // always perform an unlock when we leave this function
+void Manager::unregisterTransaction() noexcept {
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 }
@@ -655,8 +652,8 @@ ResultT<TransactionId> Manager::createManagedTrx(
   bool stored = storeManagedState(tid, std::move(state), /*ttl*/ 0.0);
   if (!stored) {
     return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                     std::string("transaction id ") + std::to_string(tid.id()) +
-                         " already used (while creating)");
+                     absl::StrCat("transaction id ", tid.id(),
+                                  " already used (while creating)"));
   }
 
   LOG_TOPIC("d6807", DEBUG, Logger::TRANSACTIONS)

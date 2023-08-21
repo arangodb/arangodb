@@ -68,18 +68,10 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 transaction::Context::Context(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase),
       _customTypeHandler(),
-      _options(velocypack::Options::Defaults),
-      _transaction{TransactionId::none(), false, false} {}
+      _options(velocypack::Options::Defaults) {}
 
 /// @brief destroy the context
 transaction::Context::~Context() {
-  // unregister the transaction from the logfile manager
-  if (_transaction.id.isSet()) {
-    transaction::ManagerFeature::manager()->unregisterTransaction(
-        _transaction.id, _transaction.isReadOnlyTransaction,
-        _transaction.isFollowerTransaction);
-  }
-
   // call the actual cleanup routine which frees all
   // hogged resources
   cleanup();
@@ -193,20 +185,6 @@ std::shared_ptr<TransactionState> transaction::Context::createState(
       vocbase().server().getFeature<EngineSelectorFeature>().engine();
   return engine.createTransactionState(_vocbase, generateId(), options,
                                        operationOrigin);
-}
-
-/// @brief unregister the transaction
-/// this will save the transaction's id and status locally
-void transaction::Context::storeTransactionResult(
-    TransactionId id, bool wasRegistered, bool isReadOnlyTransaction,
-    bool isFollowerTransaction) noexcept {
-  TRI_ASSERT(_transaction.id.empty());
-
-  if (wasRegistered) {
-    _transaction.id = id;
-    _transaction.isReadOnlyTransaction = isReadOnlyTransaction;
-    _transaction.isFollowerTransaction = isFollowerTransaction;
-  }
 }
 
 TransactionId transaction::Context::generateId() const {

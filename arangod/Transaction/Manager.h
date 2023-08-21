@@ -134,9 +134,7 @@ class Manager final : public IManager {
                            bool isFollowerTransaction);
 
   // unregister a transaction
-  void unregisterTransaction(TransactionId transactionId,
-                             bool isReadOnlyTransaction,
-                             bool isFollowerTransaction) noexcept;
+  void unregisterTransaction() noexcept;
 
   uint64_t getActiveTransactionCount();
 

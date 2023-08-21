@@ -135,11 +135,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] bool isRunning() const noexcept {
     return _status == transaction::Status::RUNNING;
   }
-  void setRegistered() noexcept { _registeredTransaction = true; }
-  [[nodiscard]] bool wasRegistered() const noexcept {
-    return _registeredTransaction;
-  }
-
   /// @brief returns the name of the actor the transaction runs on:
   /// - leader
   /// - follower

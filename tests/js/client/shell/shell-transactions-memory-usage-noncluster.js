@@ -37,24 +37,38 @@ function MemoryUsageSuite () {
     arango.DELETE("/_api/transaction/history");
   };
   
-  let getTransactions = (database = '_system', collections = [cn]) => {
+  let getTransactions = (database = '_system', collections = [cn], type = '', origin = '') => {
     let trx = arango.GET("/_api/transaction/history");
 
     trx = trx.filter((trx) => {
+      // we currently ignore all internal transactions for testing
       if (trx.type === 'internal') {
         return false;
       }
+      // filter on origin
+      if (origin !== '' && trx.origin !== origin) {
+        return false;
+      }
+      // filter on type
+      if (type !== '' && trx.type !== type) {
+        return false;
+      }
+      // filter on database name
       if (trx.database !== database) {
         return false;
       }
-      return (collections.length === 0 || collections.every((c) => trx.collections.includes(c)));
+      // filter on collection name(s)
+      if (collections.length !== 0 && !collections.every((c) => trx.collections.includes(c))) {
+        return false;
+      }
+
+      return true;
     });
     return trx;
   };
   
   return {
     setUp: function () {
-      clearTransactions();
       db._create(cn);
     },
 
@@ -63,10 +77,316 @@ function MemoryUsageSuite () {
     },
     
     testInsertSingleDocument: function () {
-      db[cn].insert({});
-      //print(getTransactions());
-    },
+      clearTransactions();
 
+      db[cn].insert({});
+
+      let trx = getTransactions('_system', [cn], 'REST', 'inserting document(s)');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('REST', trx[0].type, trx);
+      assertEqual('inserting document(s)', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > 100, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testInsertBatchOfDocuments: function () {
+      clearTransactions();
+
+      const n = 10000;
+      let docs = [];
+      for (let i = 0; i < n; ++i) {
+        docs.push({ value1: "testmann" + i, value2: i });
+      }
+      db[cn].insert(docs);
+
+      let trx = getTransactions('_system', [cn], 'REST', 'inserting document(s)');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('REST', trx[0].type, trx);
+      assertEqual('inserting document(s)', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testInsertSingleAQL: function () {
+      clearTransactions();
+
+      db._query(`INSERT {} INTO ${cn}`);
+
+      let trx = getTransactions('_system', [cn], 'AQL', 'running AQL query');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('AQL', trx[0].type, trx);
+      assertEqual('running AQL query', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > 100, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testInsertBatchOfDocumentsAQL: function () {
+      clearTransactions();
+
+      const n = 10000;
+      db._query(`FOR i IN 0..${n - 1} INSERT {} INTO ${cn}`);
+
+      let trx = getTransactions('_system', [cn], 'AQL', 'running AQL query');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('AQL', trx[0].type, trx);
+      assertEqual('running AQL query', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testRemoveSingleDocument: function () {
+      db[cn].insert({_key: 'test'});
+      clearTransactions();
+      
+      db[cn].remove('test');
+
+      let trx = getTransactions('_system', [cn], 'REST', 'removing document(s)');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('REST', trx[0].type, trx);
+      assertEqual('removing document(s)', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > 100, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testRemoveBatchOfDocuments: function () {
+      const n = 10000;
+      let docs = [];
+      for (let i = 0; i < n; ++i) {
+        docs.push({ value1: "testmann" + i, value2: i });
+      }
+      let keys = db[cn].insert(docs).map((doc) => doc._key);
+      clearTransactions();
+      
+      db[cn].remove(keys);
+
+      let trx = getTransactions('_system', [cn], 'REST', 'removing document(s)');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('REST', trx[0].type, trx);
+      assertEqual('removing document(s)', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testInsertSingleAQL: function () {
+      clearTransactions();
+
+      db._query(`INSERT {} INTO ${cn}`);
+      
+      let trx = getTransactions('_system', [cn], 'AQL', 'running AQL query');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('AQL', trx[0].type, trx);
+      assertEqual('running AQL query', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > 100, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testRemoveSingleAQL: function () {
+      db[cn].insert({ _key: "test" });
+      clearTransactions();
+
+      db._query(`REMOVE 'test' INTO ${cn}`);
+      
+      let trx = getTransactions('_system', [cn], 'AQL', 'running AQL query');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('AQL', trx[0].type, trx);
+      assertEqual('running AQL query', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > 100, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testRemoveBatchOfDocumentsAQL: function () {
+      const n = 10000;
+      db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i)} INTO ${cn}`);
+      clearTransactions();
+
+      db._query(`FOR i IN 0..${n - 1} REMOVE {_key: CONCAT('test', i)} INTO ${cn}`);
+     
+      let trx = getTransactions('_system', [cn], 'AQL', 'running AQL query');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('AQL', trx[0].type, trx);
+      assertEqual('running AQL query', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testInsertSingleDocumentInJavaScriptTransaction: function () {
+      clearTransactions();
+
+      db._executeTransaction({
+        collections: { write: cn },
+        action: () => {
+          let db = require("internal").db;
+          db[params.cn].insert({});
+        },
+        params: {cn},
+      });
+      
+      let trx = getTransactions('_system', [cn], 'REST', 'JavaScript transaction');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('REST', trx[0].type, trx);
+      assertEqual('JavaScript transaction', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > 100, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testInsertMultipleDocumentsInJavaScriptTransaction: function () {
+      clearTransactions();
+
+      const n = 10000;
+      db._executeTransaction({
+        collections: { write: cn },
+        action: () => {
+          let db = require("internal").db;
+          let docs = [];
+          for (let i = 0; i < params.n; ++i) {
+            docs.push({ value1: "testmann" + i, value2: i });
+          }
+          db[params.cn].insert(docs);
+        },
+        params: {cn, n},
+      });
+      
+      let trx = getTransactions('_system', [cn], 'REST', 'JavaScript transaction');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('REST', trx[0].type, trx);
+      assertEqual('JavaScript transaction', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testInsertMultipleDocumentsAQLInJavaScriptTransaction: function () {
+      clearTransactions();
+
+      const n = 10000;
+      db._executeTransaction({
+        collections: { write: cn },
+        action: () => {
+          let db = require("internal").db;
+          let docs = [];
+          for (let i = 0; i < params.n; ++i) {
+            docs.push({ value1: "testmann" + i, value2: i });
+          }
+          db[params.cn].insert(docs);
+        },
+        params: {cn, n},
+      });
+      
+      let trx = getTransactions('_system', [cn], 'REST', 'JavaScript transaction');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('REST', trx[0].type, trx);
+      assertEqual('JavaScript transaction', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testAQLInJavaScriptTransaction: function () {
+      clearTransactions();
+
+      const n = 10000;
+      db._executeTransaction({
+        collections: { write: cn },
+        action: () => {
+          let db = require("internal").db;
+          db._query(`FOR i IN 0..${params.n - 1} INSERT {} INTO ${params.cn}`);
+        },
+        params: {cn, n},
+      });
+      
+      let trx = getTransactions('_system', [cn], 'REST', 'JavaScript transaction');
+      assertEqual(1, trx.length);
+      assertEqual([cn], trx[0].collections, trx);
+      assertEqual('REST', trx[0].type, trx);
+      assertEqual('JavaScript transaction', trx[0].origin, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+    },
+    
+    testInsertSingleDocumentInStreamingTransaction: function () {
+      clearTransactions();
+
+      let t = db._createTransaction({
+        collections: { write: cn },
+      });
+
+      try {
+        t.collection(cn).insert({});
+
+        let trx = getTransactions('_system', [cn], 'REST', 'streaming transaction');
+        assertEqual(1, trx.length);
+        assertEqual([cn], trx[0].collections, trx);
+        assertEqual('REST', trx[0].type, trx);
+        assertEqual('streaming transaction', trx[0].origin, trx);
+        assertTrue(trx[0].peakMemoryUsage > 100, trx);
+        assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+      } finally {
+        t.abort();
+      }
+    },
+    
+    testInsertMultipleDocumentsInStreamingTransaction: function () {
+      clearTransactions();
+
+      const n = 10000;
+      
+      let t = db._createTransaction({
+        collections: { write: cn },
+      });
+      
+      try {
+        let docs = [];
+        for (let i = 0; i < n; ++i) {
+          docs.push({ value1: "testmann" + i, value2: i });
+        }
+        t.collection(cn).insert(docs);
+
+        let trx = getTransactions('_system', [cn], 'REST', 'streaming transaction');
+        assertEqual(1, trx.length);
+        assertEqual([cn], trx[0].collections, trx);
+        assertEqual('REST', trx[0].type, trx);
+        assertEqual('streaming transaction', trx[0].origin, trx);
+        assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+        assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+      } finally {
+        t.abort();
+      }
+    },
+    
+    testAqlQueryInStreamingTransaction: function () {
+      clearTransactions();
+
+      const n = 10000;
+      
+      let t = db._createTransaction({
+        collections: { write: cn },
+      });
+      
+      try {
+        t.query(`FOR i IN 0..${n - 1} INSERT {} INTO ${cn}`);
+
+        let trx = getTransactions('_system', [cn], 'REST', 'streaming transaction');
+        assertEqual(1, trx.length);
+        assertEqual([cn], trx[0].collections, trx);
+        assertEqual('REST', trx[0].type, trx);
+        assertEqual('streaming transaction', trx[0].origin, trx);
+        assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+        assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
+      } finally {
+        t.abort();
+      }
+    },
+    
   };
 }
 if (db._version(true)['details']['maintainer-mode'] === 'true') {
