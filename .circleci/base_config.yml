@@ -382,7 +382,7 @@ workflows:
           build-tests: false
       - run-hotbackup-tests:
           name: run-hotbackup-tests
-          resource_class: medium
+          size: medium
           requires:
             - build-ee-amd64
 
