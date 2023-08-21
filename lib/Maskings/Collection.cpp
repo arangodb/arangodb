@@ -23,6 +23,7 @@
 
 #include "Collection.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -39,11 +40,11 @@ ParseResult<Collection> Collection::parse(Maskings* maskings,
         "expecting an object for collection definition");
   }
 
-  std::string type;
+  std::string_view type;
   std::vector<AttributeMasking> attributes;
 
   for (auto entry : VPackObjectIterator(def, false)) {
-    std::string key = entry.key.copyString();
+    auto key = entry.key.stringView();
 
     if (key == "type") {
       if (!entry.value.isString()) {
@@ -52,7 +53,7 @@ ParseResult<Collection> Collection::parse(Maskings* maskings,
             "expecting a string for collection type");
       }
 
-      type = entry.value.copyString();
+      type = entry.value.stringView();
     } else if (key == "maskings") {
       if (!entry.value.isArray()) {
         return ParseResult<Collection>(
@@ -87,7 +88,7 @@ ParseResult<Collection> Collection::parse(Maskings* maskings,
   } else {
     return ParseResult<Collection>(
         ParseResult<Collection>::UNKNOWN_TYPE,
-        "found unknown collection type '" + type + "'");
+        absl::StrCat("found unknown collection type '", type, "'"));
   }
 
   return ParseResult<Collection>(Collection(selection, attributes));

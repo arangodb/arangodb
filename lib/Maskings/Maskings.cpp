@@ -264,7 +264,7 @@ void Maskings::addMaskedObject(Collection const& collection,
                                std::string& buffer) const {
   for (auto entry : VPackObjectIterator(data, false)) {
     auto key = entry.key.stringView();
-    VPackSlice value = entry.value;
+    velocypack::Slice value = entry.value;
 
     path.push_back(key);
 

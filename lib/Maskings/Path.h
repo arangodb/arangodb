@@ -31,11 +31,10 @@
 #include <string_view>
 #include <vector>
 
-namespace arangodb {
-namespace maskings {
+namespace arangodb::maskings {
 class Path {
  public:
-  static ParseResult<Path> parse(std::string const&);
+  static ParseResult<Path> parse(std::string_view def);
 
  public:
   Path() : _wildcard(false), _any(false) {}
@@ -50,5 +49,4 @@ class Path {
   bool _any;
   std::vector<std::string> _components;
 };
-}  // namespace maskings
-}  // namespace arangodb
+}  // namespace arangodb::maskings

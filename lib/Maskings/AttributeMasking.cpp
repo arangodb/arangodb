@@ -24,9 +24,10 @@
 #include "AttributeMasking.h"
 
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 #include "Maskings/RandomStringMask.h"
 #include "Maskings/RandomMask.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::maskings;
@@ -48,7 +49,7 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
         "expecting an object for collection definition");
   }
 
-  std::string path;
+  std::string_view path;
   std::string type;
 
   for (auto entry : VPackObjectIterator(def, false)) {
@@ -69,7 +70,7 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
             "path must be a string");
       }
 
-      path = entry.value.copyString();
+      path = entry.value.stringView();
     }
   }
 
@@ -91,7 +92,7 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
   if (it == _maskings.end()) {
     return ParseResult<AttributeMasking>(
         ParseResult<AttributeMasking>::UNKNOWN_TYPE,
-        "unknown attribute masking type '" + type + "'");
+        absl::StrCat("unknown attribute masking type '", type, "'"));
   }
 
   return it->second(ap.result, maskings, def);
