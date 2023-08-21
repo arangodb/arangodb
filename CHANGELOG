@@ -4,6 +4,10 @@ v3.10.11 (XXXX-XX-XX)
 * BTS-1549: adjust permission handling in experimental dump to the same behavior
   as in non-experimental dump.
 
+* Allow compression content-negotation in metrics API, so that responses from
+  the metrics API at `/_admin/metrics` can be sent compressed if the client
+  supports it.
+
 * Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where the inner
   amount of a limit in the LimitExecutor is set to a wrong value which lead to
   some data rows not being returned to the client.
