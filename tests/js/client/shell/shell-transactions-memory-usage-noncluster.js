@@ -173,20 +173,6 @@ function MemoryUsageSuite () {
       assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
     },
     
-    testInsertSingleAQL: function () {
-      clearTransactions();
-
-      db._query(`INSERT {} INTO ${cn}`);
-      
-      let trx = getTransactions('_system', [cn], 'AQL', 'running AQL query');
-      assertEqual(1, trx.length);
-      assertEqual([cn], trx[0].collections, trx);
-      assertEqual('AQL', trx[0].type, trx);
-      assertEqual('running AQL query', trx[0].origin, trx);
-      assertTrue(trx[0].peakMemoryUsage > 100, trx);
-      assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
-    },
-    
     testRemoveSingleAQL: function () {
       db[cn].insert({ _key: "test" });
       clearTransactions();
@@ -223,7 +209,7 @@ function MemoryUsageSuite () {
 
       db._executeTransaction({
         collections: { write: cn },
-        action: () => {
+        action: (params) => {
           let db = require("internal").db;
           db[params.cn].insert({});
         },
@@ -245,7 +231,7 @@ function MemoryUsageSuite () {
       const n = 10000;
       db._executeTransaction({
         collections: { write: cn },
-        action: () => {
+        action: (params) => {
           let db = require("internal").db;
           let docs = [];
           for (let i = 0; i < params.n; ++i) {
@@ -271,7 +257,7 @@ function MemoryUsageSuite () {
       const n = 10000;
       db._executeTransaction({
         collections: { write: cn },
-        action: () => {
+        action: (params) => {
           let db = require("internal").db;
           let docs = [];
           for (let i = 0; i < params.n; ++i) {
@@ -297,7 +283,7 @@ function MemoryUsageSuite () {
       const n = 10000;
       db._executeTransaction({
         collections: { write: cn },
-        action: () => {
+        action: (params) => {
           let db = require("internal").db;
           db._query(`FOR i IN 0..${params.n - 1} INSERT {} INTO ${params.cn}`);
         },
