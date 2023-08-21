@@ -301,7 +301,7 @@ jobs:
 
   run-hotbackup-tests:
     docker:
-      - image: cimg/python:3.11.1
+      - image: arangodb/test-ubuntu:22.04
     parameters:
       size:
         type: string
