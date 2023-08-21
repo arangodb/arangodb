@@ -75,12 +75,6 @@ struct OperationOriginWorkaround : OperationOrigin {
       : OperationOrigin("workaround", OperationOrigin::Type::kInternal) {}
 };
 
-// TODO: indicates unclear categorization in the code - should be removed
-struct OperationOriginUnknown : OperationOrigin {
-  constexpr OperationOriginUnknown() noexcept
-      : OperationOrigin("unknown", OperationOrigin::Type::kInternal) {}
-};
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 struct OperationOriginTestCase : OperationOrigin {
   constexpr OperationOriginTestCase() noexcept
