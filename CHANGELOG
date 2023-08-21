@@ -1,6 +1,10 @@
 v3.9.12 (XXXX-X-XX)
 --------------------
 
+* Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where
+  the inner amount of a limit in the LimitExecutor is set to a wrong
+  value which lead to some data rows not being returned to the client.
+
 * Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used in
   the row based variant like (e.g. WINDOW { preceding: 1, following: 1 }) it
   errored with:  mandatory variable "inVariable" not found. This variable is now
