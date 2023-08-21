@@ -316,9 +316,6 @@ jobs:
           name: Install dependencies
           command: |
             pip install -r scripts/toolbox/requirements.txt
-            sudo apt update
-            sudo apt install 7zip
-            sudo apt install gdb
       - run:
           name: Run HotBackup tests
           command: |
