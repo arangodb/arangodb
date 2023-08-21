@@ -3296,7 +3296,6 @@ function testSmallCircleTraversalStartInUnknownCollection(testGraph) {
         assertEqual(res.length, 0, `The start vertex is not connected, we cannot find a result`);
       }
     } catch (err) {
-	    require("internal").print(isCluster, testGraph.isSmart);
       if (isCluster && testGraph.testVariant === 3) {
         // We expect SmartGraphs to error out
         assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
