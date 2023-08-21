@@ -29,17 +29,17 @@
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Transaction/Methods.h"
 #include "Aql/RegisterInfos.h"
-#include "DocumentProducingHelper.h"
+#include "Transaction/Methods.h"
 
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
 class IndexIterator;
+struct ResourceMonitor;
+
 namespace transaction {
 class Methods;
 }
@@ -82,6 +82,7 @@ class EnumerateCollectionExecutorInfos {
   Variable const* getOutVariable() const;
   QueryContext& getQuery() const;
   Expression* getFilter() const noexcept;
+  ResourceMonitor& getResourceMonitor() noexcept;
   arangodb::aql::Projections const& getProjections() const noexcept;
   arangodb::aql::Projections const& getFilterProjections() const noexcept;
   bool getProduceResult() const noexcept;

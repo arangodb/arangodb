@@ -330,6 +330,8 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
     if (batch == nullptr) {
       batch = std::make_unique<Batch>();
       batch->shard = ci.guard.collection()->name();
+      // save at least a few small (re)allocations
+      batch->content.reserve(64 * 1024);
       // make sink point into the string of the current batch
       sink.setBuffer(&batch->content);
     }

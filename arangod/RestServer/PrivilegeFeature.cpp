@@ -42,6 +42,8 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/NumberUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
@@ -128,9 +130,11 @@ void PrivilegeFeature::extractPrivileges() {
   if (_gid.empty()) {
     _numericGid = getgid();
   } else {
-    int gidNumber = TRI_Int32String(_gid.c_str());
+    bool valid = false;
+    int gidNumber = NumberUtils::atoi_positive<int>(
+        _gid.data(), _gid.data() + _gid.size(), valid);
 
-    if (TRI_errno() == TRI_ERROR_NO_ERROR && gidNumber >= 0) {
+    if (valid && gidNumber >= 0) {
 #ifdef ARANGODB_HAVE_GETGRGID
       group* g = getgrgid(gidNumber);
 
@@ -169,9 +173,11 @@ void PrivilegeFeature::extractPrivileges() {
   if (_uid.empty()) {
     _numericUid = getuid();
   } else {
-    int uidNumber = TRI_Int32String(_uid.c_str());
+    bool valid = false;
+    int uidNumber = NumberUtils::atoi_positive<int>(
+        _uid.data(), _uid.data() + _uid.size(), valid);
 
-    if (TRI_errno() == TRI_ERROR_NO_ERROR) {
+    if (!valid) {
 #ifdef ARANGODB_HAVE_GETPWUID
       passwd* p = getpwuid(uidNumber);
 
@@ -183,8 +189,7 @@ void PrivilegeFeature::extractPrivileges() {
 #endif
     } else {
 #ifdef ARANGODB_HAVE_GETPWNAM
-      std::string name = _uid;
-      passwd* p = getpwnam(name.c_str());
+      passwd* p = getpwnam(_uid.c_str());
 
       if (p != nullptr) {
         uidNumber = p->pw_uid;

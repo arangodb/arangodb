@@ -1076,9 +1076,11 @@ void StatisticsWorker::saveSlice(VPackSlice slice,
   Result res = trx.begin();
 
   if (!res.ok()) {
-    LOG_TOPIC("ecdb9", WARN, Logger::STATISTICS)
-        << "could not start transaction on " << collection << ": "
-        << res.errorMessage();
+    if (!res.is(TRI_ERROR_SHUTTING_DOWN)) {
+      LOG_TOPIC("ecdb9", WARN, Logger::STATISTICS)
+          << "could not start transaction on " << collection << ": "
+          << res.errorMessage();
+    }
     return;
   }
 

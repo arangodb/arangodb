@@ -129,7 +129,6 @@ RestStatus RestLogHandler::handlePostRequest(
                 generateError(result);
               }
             }));
-    return RestStatus::DONE;
   } else if (std::string_view logIdStr, newLeaderStr;
              rest::Match(suffixes).against(&logIdStr, "leader",
                                            &newLeaderStr)) {

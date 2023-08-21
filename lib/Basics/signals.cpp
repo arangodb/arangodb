@@ -119,7 +119,6 @@ SignalType signalType(int signal) noexcept {
     default:
       return SignalType::user;
   }
-  return SignalType::term;
 }
 #endif
 
