@@ -178,17 +178,17 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     }
 
     auto abortAll = ReplicatedOperation::buildAbortAllOngoingTrxOperation();
-    auto abortAllResFut =
+    auto abortAllReplicationFut =
         self->replicateOperation(abortAll, ReplicationOptions{});
     // Should finish immediately, because we are not waiting the operation to be
     // committed in the replicated log
-    TRI_ASSERT(abortAllResFut.isReady());
-    auto abortAllRes = abortAllResFut.get();
-    if (abortAllRes.fail()) {
+    TRI_ASSERT(abortAllReplicationFut.isReady());
+    auto abortAllReplicationStatus = abortAllReplicationFut.get();
+    if (abortAllReplicationStatus.fail()) {
       LOG_CTX("b4217", FATAL, self->loggerContext)
           << "failed to replicate AbortAllOngoingTrx operation during "
              "recovery: "
-          << abortAllRes.result();
+          << abortAllReplicationStatus.result();
       FATAL_ERROR_EXIT();
     }
 
@@ -207,16 +207,15 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       }
     }
 
-    auto abortAllResult = data.transactionHandler->applyEntry(abortAll);
-    TRI_ASSERT(abortAllResult.ok()) << abortAllRes.result();
+    auto abortAllTrxStatus = data.transactionHandler->applyEntry(abortAll);
+    TRI_ASSERT(abortAllTrxStatus.ok()) << abortAllTrxStatus;
 
     if (self->_resigning) {
       return {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
     }
 
-    if (abortAllRes.ok()) {
-      self->release(abortAllRes.get());
-    }
+    TRI_ASSERT(abortAllReplicationStatus.ok());
+    self->release(abortAllReplicationStatus.get());
 
     return {TRI_ERROR_NO_ERROR};
   });
