@@ -55,7 +55,7 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 
   tm.registerTransaction(static_cast<TransactionId>(1), false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction(static_cast<TransactionId>(1), false, false);
+  tm.unregisterTransaction();
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 
   EXPECT_TRUE(tm.holdTransactions(500));
@@ -96,6 +96,6 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   reader.join();
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction(trxId, false, false);
+  tm.unregisterTransaction();
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 }
