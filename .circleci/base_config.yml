@@ -391,7 +391,7 @@ workflows:
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: arm.xlarge
+          size: arm.xlarge
           s3-prefix: aarch64
           name: build-ce-aarch64
           preset: community-pr
@@ -409,6 +409,6 @@ workflows:
           enterprise: true
       - run-hotbackup-tests:
           name: run-hotbackup-tests
-          resource_class: arm.medium
+          size: arm.medium
           requires:
             - build-ee-aarch64
