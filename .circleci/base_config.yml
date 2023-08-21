@@ -305,7 +305,7 @@ jobs:
     parameters:
       size:
         type: string
-    resource-class: << parameters.size >>
+    resource_class: << parameters.size >>
     steps:
       - attach_workspace:
           at: .
