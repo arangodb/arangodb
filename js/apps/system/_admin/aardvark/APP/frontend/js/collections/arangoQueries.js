@@ -161,7 +161,11 @@
               var obj = JSON.parse(evt.target.result);
               _.each(obj, function (val, key) {
                 if (val.name && val.value && val.parameter) {
-                  self.add(val);
+                  self.add({
+                    name: val.name,
+                    value: val.value,
+                    parameter: val.parameter,
+                  });
                 }
               });
               self.saveCollectionQueries();
