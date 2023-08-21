@@ -91,7 +91,8 @@ struct HeapSortElement {
   bool ascending{true};
 };
 
-class IResearchViewNode final : public aql::ExecutionNode {
+class IResearchViewNode final : public aql::ExecutionNode,
+                                public aql::DataAccessingNode {
  public:
   // Node options
   struct Options {
@@ -144,6 +145,13 @@ class IResearchViewNode final : public aql::ExecutionNode {
   using Collections =
       std::vector<std::pair<std::reference_wrapper<aql::Collection const>,
                             LogicalView::Indexes>>;
+
+  aql::Collection const* collection() const final;
+  bool isUsedAsSatellite() const final;
+  void useAsSatelliteOf(aql::ExecutionNodeId) final;
+  aql::Collection const* prototypeCollection() const final;
+  void setPrototype(arangodb::aql::Collection const* prototypeCollection,
+                    arangodb::aql::Variable const* prototypeOutVariable) final;
 
   // Returns the list of the linked collections.
   Collections collections() const;
@@ -404,6 +412,11 @@ class IResearchViewNode final : public aql::ExecutionNode {
 
   // Whether "no materialization" rule should be applied
   bool _noMaterialization{false};
+
+  // Optimizing time support.
+  // Intentionally not serialized/copied
+  bool _isUsedAsSatellite{false};
+  arangodb::aql::Collection const* _prototypeCollection{};
 };
 
 }  // namespace iresearch

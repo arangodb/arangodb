@@ -37,9 +37,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Collection.h>
-
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -200,12 +199,10 @@ UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
 
       return UpsertModifier::OperationType::UpdateReturnIfAvailable;
     } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-          std::string("expecting 'Object', got: ") +
-              updateDoc.slice().typeName() +
-              std::string(" while handling: UPSERT"));
-      return UpsertModifier::OperationType::SkipRow;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                                     absl::StrCat("expecting 'Object', got: ",
+                                                  updateDoc.slice().typeName(),
+                                                  " while handling: UPSERT"));
     }
   } else {
     return UpsertModifier::OperationType::CopyRow;

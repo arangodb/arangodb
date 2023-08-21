@@ -824,73 +824,6 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
   return ok;
 }
 
-bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
-  auto isolate = _isolate;
-  v8::Locker locker{_isolate};
-
-  v8::Isolate::Scope isolate_scope(_isolate);
-  v8::HandleScope handle_scope(_isolate);
-
-  v8::Local<v8::Context> context =
-      v8::Local<v8::Context>::New(_isolate, _context);
-
-  v8::Context::Scope context_scope{context};
-
-  setup(context, false, {});
-
-  bool ok = true;
-
-  // set-up jslint files array
-  v8::Handle<v8::Array> sysTestFiles = v8::Array::New(_isolate);
-
-  uint32_t i = 0;
-  for (auto& file : files) {
-    if (!FileUtils::exists(file)) {
-      LOG_TOPIC("4f748", ERR, arangodb::Logger::FIXME)
-          << "error: JavaScript file not found: '" << file << "'";
-      ok = false;
-      continue;
-    }
-
-    sysTestFiles->Set(context, i, TRI_V8_STD_STRING(_isolate, file))
-        .FromMaybe(false);
-    ++i;
-  }
-
-  context->Global()
-      ->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"),
-            sysTestFiles)
-      .FromMaybe(false);
-
-  context->Global()
-      ->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
-            v8::True(_isolate))
-      .FromMaybe(false);
-
-  // run tests
-  auto input = TRI_V8_ASCII_STRING(
-      _isolate, "require(\"jslint\").runCommandLineTests({});");
-
-  auto name = TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME);
-
-  v8::TryCatch tryCatch(isolate);
-  TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
-
-  if (tryCatch.HasCaught()) {
-    LOG_TOPIC("25acc", ERR, arangodb::Logger::FIXME)
-        << TRI_StringifyV8Exception(_isolate, &tryCatch);
-    ok = false;
-  } else {
-    bool res = TRI_ObjectToBoolean(
-        isolate, TRI_GetProperty(context, isolate, context->Global(),
-                                 "SYS_UNIT_TESTS_RESULT"));
-
-    ok = ok && res;
-  }
-
-  return ok;
-}
-
 bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
                                   std::vector<std::string> const& positionals,
                                   std::string const& testFilter) {
@@ -1314,10 +1247,6 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_UNIT_TESTS"),
       v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::UNIT_TESTS));
-
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_JS_LINT"),
-      v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::JSLINT));
 
   TRI_AddGlobalFunctionVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_EXIT"), JS_Exit);

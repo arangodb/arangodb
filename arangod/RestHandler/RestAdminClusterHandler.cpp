@@ -2674,8 +2674,6 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       return RestStatus::DONE;
   }
-
-  return RestStatus::DONE;
 }
 
 RestStatus RestAdminClusterHandler::handleRebalance() {

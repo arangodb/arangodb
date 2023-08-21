@@ -275,6 +275,10 @@ auto handleNumberOfShards(std::string_view key, VPackSlice value,
                           VPackSlice fullBody,
                           DatabaseConfiguration const& config,
                           VPackBuilder& result) {
+  if (value.isNull()) {
+    // We ignore the null.
+    return;
+  }
   if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
     justKeep(key, value, fullBody, config, result);
   } else if (config.maxNumberOfShards > 0 && value.isNumber() &&
@@ -290,6 +294,10 @@ auto handleNumberOfShardsRestore(std::string_view key, VPackSlice value,
                                  VPackSlice fullBody,
                                  DatabaseConfiguration const& config,
                                  VPackBuilder& result) {
+  if (value.isNull()) {
+    // We ignore the null.
+    return;
+  }
   if (!hasDistributeShardsLike(fullBody, config) || isSmart(fullBody)) {
     if (isSingleServer()) {
       justKeep(key, value, fullBody, config, result);
@@ -334,6 +342,10 @@ auto handleDistributeShardsLike(std::string_view key, VPackSlice value,
                                 VPackSlice fullBody,
                                 DatabaseConfiguration const& config,
                                 VPackBuilder& result) {
+  if (value.isNull()) {
+    // We ignore the null.
+    return;
+  }
   if (!config.isOneShardDB) {
     if (isSingleServer() && !isSmart(fullBody)) {
       // Community can not use distributeShardsLike on SingleServer

@@ -69,7 +69,6 @@ class ShellFeature final : public ArangoshFeature {
   void restartTelemetrics();
 
  private:
-  std::vector<std::string> _jslint;
   std::vector<std::string> _executeScripts;
   std::vector<std::string> _executeStrings;
   std::vector<std::string> _checkSyntaxFiles;
@@ -81,8 +80,7 @@ class ShellFeature final : public ArangoshFeature {
     EXECUTE_SCRIPT,
     EXECUTE_STRING,
     CHECK_SYNTAX,
-    UNIT_TESTS,
-    JSLINT
+    UNIT_TESTS
   };
 
  private:
