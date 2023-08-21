@@ -42,6 +42,9 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Transaction/History.h"
+#endif
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Utils/ExecContext.h"
@@ -451,6 +454,24 @@ void TransactionState::clearQueryCache() const {
     arangodb::aql::QueryCache::instance()->invalidate(&_vocbase);
   }
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// only used in maintainer mode for testing
+void TransactionState::setHistoryEntry(
+    std::shared_ptr<transaction::HistoryEntry> const& entry) {
+  TRI_ASSERT(entry != nullptr);
+  TRI_ASSERT(_historyEntry == nullptr);
+  _historyEntry = entry;
+}
+
+void TransactionState::clearHistoryEntry() noexcept { _historyEntry.reset(); }
+
+void TransactionState::adjustMemoryUsage(std::int64_t value) noexcept {
+  if (_historyEntry != nullptr) {
+    _historyEntry->adjustMemoryUsage(value);
+  }
+}
+#endif
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // reset the internal Transaction ID to none.

@@ -30,6 +30,7 @@
 
 namespace arangodb {
 struct ResourceMonitor;
+class RocksDBTransactionState;
 
 struct RocksDBMethodsMemoryTracker {
   virtual ~RocksDBMethodsMemoryTracker() {}
@@ -87,7 +88,7 @@ class MemoryTrackerBase : public RocksDBMethodsMemoryTracker {
 // ResourceMonitor.
 class MemoryTrackerAqlQuery final : public MemoryTrackerBase {
  public:
-  MemoryTrackerAqlQuery();
+  explicit MemoryTrackerAqlQuery(RocksDBTransactionState* state);
   ~MemoryTrackerAqlQuery();
 
   void reset() noexcept override;
@@ -104,6 +105,8 @@ class MemoryTrackerAqlQuery final : public MemoryTrackerBase {
 
  private:
   void publish(bool force);
+
+  RocksDBTransactionState* _state;
 
   ResourceMonitor* _resourceMonitor;
 
@@ -123,7 +126,8 @@ class MemoryTrackerAqlQuery final : public MemoryTrackerBase {
 // (transactions that were not explicitly initiated by users).
 class MemoryTrackerMetric final : public MemoryTrackerBase {
  public:
-  MemoryTrackerMetric(metrics::Gauge<std::uint64_t>* metric);
+  explicit MemoryTrackerMetric(RocksDBTransactionState* state,
+                               metrics::Gauge<std::uint64_t>* metric);
   ~MemoryTrackerMetric();
 
   void reset() noexcept override;
@@ -140,6 +144,8 @@ class MemoryTrackerMetric final : public MemoryTrackerBase {
 
  private:
   void publish(bool force) noexcept;
+
+  RocksDBTransactionState* _state;
 
   metrics::Gauge<std::uint64_t>* _metric;
 

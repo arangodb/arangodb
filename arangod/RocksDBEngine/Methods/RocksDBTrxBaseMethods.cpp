@@ -50,15 +50,15 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
   // the type of transaction
   switch (_state->operationOrigin().type) {
     case transaction::OperationOrigin::Type::kAQL:
-      _memoryTracker = std::make_unique<MemoryTrackerAqlQuery>();
+      _memoryTracker = std::make_unique<MemoryTrackerAqlQuery>(state);
       break;
     case transaction::OperationOrigin::Type::kREST:
       _memoryTracker = std::make_unique<MemoryTrackerMetric>(
-          &state->statistics()._restTransactionsMemoryUsage);
+          state, &state->statistics()._restTransactionsMemoryUsage);
       break;
     case transaction::OperationOrigin::Type::kInternal:
       _memoryTracker = std::make_unique<MemoryTrackerMetric>(
-          &state->statistics()._internalTransactionsMemoryUsage);
+          state, &state->statistics()._internalTransactionsMemoryUsage);
       break;
   }
 

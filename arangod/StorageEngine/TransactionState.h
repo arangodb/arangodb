@@ -70,6 +70,9 @@ class QueryContext;
 }
 
 namespace transaction {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class HistoryEntry;
+#endif
 class Methods;
 struct Options;
 }  // namespace transaction
@@ -233,6 +236,13 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void applyAfterCommitCallbacks() noexcept {
     return applyCallbackImpl(_afterCommitCallbacks);
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // only used in maintainer mode for testing
+  void setHistoryEntry(std::shared_ptr<transaction::HistoryEntry> const& entry);
+  void clearHistoryEntry() noexcept;
+  void adjustMemoryUsage(std::int64_t value) noexcept;
+#endif
 
   /// @brief acquire a database snapshot if we do not yet have one.
   /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
@@ -456,6 +466,10 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   transaction::OperationOrigin const _operationOrigin;
   bool _registeredTransaction = false;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::shared_ptr<transaction::HistoryEntry> _historyEntry;
+#endif
 };
 
 }  // namespace arangodb

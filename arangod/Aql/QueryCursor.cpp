@@ -532,7 +532,8 @@ ExecutionState QueryStreamCursor::finalization() {
 
 void QueryStreamCursor::cleanupStateCallback() {
   TRI_ASSERT(_query);
-  transaction::Methods trx(_ctx, transaction::OperationOriginWorkaround{});
+  transaction::Methods trx(
+      _ctx, transaction::OperationOriginInternal{"cleaning up state"});
   if (_stateChangeCb && trx.status() == transaction::Status::RUNNING) {
     trx.removeStatusChangeCallback(&_stateChangeCb);
     _stateChangeCb = nullptr;

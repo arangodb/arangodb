@@ -24,8 +24,8 @@
 #include "RocksDBMethodsMemoryTracker.h"
 
 #include "Basics/ResourceUsage.h"
-#include "Logger/LogMacros.h"
 #include "Metrics/Gauge.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 
 namespace arangodb {
 
@@ -73,8 +73,11 @@ std::uint64_t MemoryTrackerBase::memoryUsage() const noexcept {
 // memory usage tracker for AQL transactions that tracks memory
 // allocations during an AQL query. reports to the AQL query's
 // ResourceMonitor.
-MemoryTrackerAqlQuery::MemoryTrackerAqlQuery()
-    : MemoryTrackerBase(), _resourceMonitor(nullptr), _lastPublishedValue(0) {}
+MemoryTrackerAqlQuery::MemoryTrackerAqlQuery(RocksDBTransactionState* state)
+    : MemoryTrackerBase(),
+      _state(state),
+      _resourceMonitor(nullptr),
+      _lastPublishedValue(0) {}
 
 MemoryTrackerAqlQuery::~MemoryTrackerAqlQuery() { reset(); }
 
@@ -170,6 +173,11 @@ void MemoryTrackerAqlQuery::publish(bool force) {
       force |= (_lastPublishedValue - _memoryUsage) >= kMemoryReportGranularity;
     }
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto lastPublishedValue = _lastPublishedValue;
+#endif
+
   if (force) {
     if (_lastPublishedValue < _memoryUsage) {
       // current memory usage is higher, so we increase.
@@ -181,15 +189,26 @@ void MemoryTrackerAqlQuery::publish(bool force) {
         _resourceMonitor->decreaseMemoryUsage(_lastPublishedValue -
                                               _memoryUsage);
       } catch (...) {
+        // this should never throw
         TRI_ASSERT(false);
       }
     }
     _lastPublishedValue = _memoryUsage;
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // publish to state for internal test purposes. this won't throw.
+  _state->adjustMemoryUsage(static_cast<std::int64_t>(_memoryUsage) -
+                            static_cast<std::int64_t>(lastPublishedValue));
+#endif
 }
 
-MemoryTrackerMetric::MemoryTrackerMetric(metrics::Gauge<std::uint64_t>* metric)
-    : MemoryTrackerBase(), _metric(metric), _lastPublishedValue(0) {
+MemoryTrackerMetric::MemoryTrackerMetric(RocksDBTransactionState* state,
+                                         metrics::Gauge<std::uint64_t>* metric)
+    : MemoryTrackerBase(),
+      _state(state),
+      _metric(metric),
+      _lastPublishedValue(0) {
   TRI_ASSERT(_metric != nullptr);
 }
 
@@ -246,6 +265,11 @@ void MemoryTrackerMetric::publish(bool force) noexcept {
       force |= (_lastPublishedValue - _memoryUsage) >= kMemoryReportGranularity;
     }
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto lastPublishedValue = _lastPublishedValue;
+#endif
+
   if (force) {
     if (_lastPublishedValue < _memoryUsage) {
       // current memory usage is higher
@@ -256,6 +280,12 @@ void MemoryTrackerMetric::publish(bool force) noexcept {
     }
     _lastPublishedValue = _memoryUsage;
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // publish to state for internal test purposes. this won't throw.
+  _state->adjustMemoryUsage(static_cast<std::int64_t>(_memoryUsage) -
+                            static_cast<std::int64_t>(lastPublishedValue));
+#endif
 }
 
 }  // namespace arangodb

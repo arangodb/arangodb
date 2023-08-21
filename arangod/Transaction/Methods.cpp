@@ -1843,7 +1843,7 @@ Result transaction::Methods::begin() {
       res = applyStatusChangeCallbacks(*this, Status::RUNNING);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // track currently ongoing transaction in history.
+      // track currently ongoing transactions in history.
       // we only do this in maintainer mode and not in production.
       // the reason we insert into the history is only for testing
       // purposes.

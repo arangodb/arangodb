@@ -114,7 +114,7 @@ bool ResignShardLeadership::first() {
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
         *col, AccessMode::Type::EXCLUSIVE,
-        transaction::OperationOriginWorkaround{}};
+        transaction::OperationOriginInternal{"resigning leadership"}};
 
     Result res = trx.begin();
 

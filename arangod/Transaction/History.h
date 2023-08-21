@@ -23,11 +23,18 @@
 
 #pragma once
 
+#include "Transaction/OperationOrigin.h"
+
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <memory>
 #include <shared_mutex>
+#include <string>
+#include <vector>
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 namespace arangodb {
 namespace velocypack {
@@ -35,8 +42,33 @@ class Builder;
 }
 
 namespace transaction {
-class HistoryEntry;
 class Methods;
+
+class HistoryEntry {
+  friend class History;
+
+  HistoryEntry(HistoryEntry const&) = delete;
+  HistoryEntry& operator=(HistoryEntry const&) = delete;
+
+ public:
+  HistoryEntry(std::string databaseName, std::vector<std::string> collections,
+               OperationOrigin operationOrigin);
+
+  void toVelocyPack(velocypack::Builder& result) const;
+
+  void adjustMemoryUsage(std::int64_t value) noexcept;
+
+ private:
+  std::mutex mutable _mutex;
+
+  std::string const _databaseName;
+  std::vector<std::string> const _collections;
+  OperationOrigin const _operationOrigin;
+
+  std::uint64_t _id;
+  std::atomic<std::uint64_t> _memoryUsage;
+  std::atomic<std::uint64_t> _peakMemoryUsage;
+};
 
 class History {
   History(History const&) = delete;
@@ -62,3 +94,4 @@ class History {
 
 }  // namespace transaction
 }  // namespace arangodb
+#endif

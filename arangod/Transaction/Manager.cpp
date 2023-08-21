@@ -88,9 +88,10 @@ namespace transaction {
 
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
-  MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
+  MGMethods(std::shared_ptr<arangodb::transaction::Context> ctx,
             arangodb::transaction::Options const& opts)
-      : Methods(ctx, OperationOriginWorkaround{}, opts) {}
+      : Methods(std::move(ctx), OperationOriginInternal{"accessing query"},
+                opts) {}
 };
 }  // namespace
 

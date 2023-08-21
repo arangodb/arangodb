@@ -34,60 +34,68 @@
 #include <string>
 #include <vector>
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 namespace arangodb::transaction {
 
-class HistoryEntry {
-  friend class History;
+HistoryEntry::HistoryEntry(std::string databaseName,
+                           std::vector<std::string> collections,
+                           OperationOrigin operationOrigin)
+    : _databaseName(std::move(databaseName)),
+      _collections(std::move(collections)),
+      _operationOrigin(operationOrigin),
+      _id(0),
+      _memoryUsage(0),
+      _peakMemoryUsage(0) {}
 
-  HistoryEntry(HistoryEntry const&) = delete;
-  HistoryEntry& operator=(HistoryEntry const&) = delete;
+void HistoryEntry::toVelocyPack(velocypack::Builder& result) const {
+  std::unique_lock<std::mutex> lock(_mutex);
 
- public:
-  HistoryEntry(std::string databaseName, std::vector<std::string> collections,
-               OperationOrigin operationOrigin)
-      : _databaseName(std::move(databaseName)),
-        _collections(std::move(collections)),
-        _operationOrigin(operationOrigin),
-        _id(0) {}
+  result.openObject();
+  result.add("id", VPackValue(_id));
+  result.add("database", VPackValue(_databaseName));
 
-  void toVelocyPack(velocypack::Builder& result) const {
-    std::unique_lock<std::mutex> lock(_mutex);
+  result.add("collections", VPackValue(VPackValueType::Array));
+  for (auto const& it : _collections) {
+    result.add(VPackValue(it));
+  }
+  result.close();
 
-    result.openObject();
-    result.add("id", VPackValue(_id));
-    result.add("database", VPackValue(_databaseName));
+  result.add("origin", VPackValue(_operationOrigin.description));
 
-    result.add("collections", VPackValue(VPackValueType::Array));
-    for (auto const& it : _collections) {
-      result.add(VPackValue(it));
-    }
-    result.close();
-
-    result.add("origin", VPackValue(_operationOrigin.description));
-
-    switch (_operationOrigin.type) {
-      case OperationOrigin::Type::kAQL:
-        result.add("type", VPackValue("AQL"));
-        break;
-      case OperationOrigin::Type::kREST:
-        result.add("type", VPackValue("REST"));
-        break;
-      case OperationOrigin::Type::kInternal:
-        result.add("type", VPackValue("internal"));
-        break;
-    }
-
-    result.close();
+  switch (_operationOrigin.type) {
+    case OperationOrigin::Type::kAQL:
+      result.add("type", VPackValue("AQL"));
+      break;
+    case OperationOrigin::Type::kREST:
+      result.add("type", VPackValue("REST"));
+      break;
+    case OperationOrigin::Type::kInternal:
+      result.add("type", VPackValue("internal"));
+      break;
   }
 
- private:
-  std::mutex mutable _mutex;
+  result.add("memoryUsage",
+             VPackValue(_memoryUsage.load(std::memory_order_relaxed)));
+  result.add("peakMemoryUsage",
+             VPackValue(_peakMemoryUsage.load(std::memory_order_relaxed)));
 
-  std::string const _databaseName;
-  std::vector<std::string> const _collections;
-  OperationOrigin const _operationOrigin;
-  std::uint64_t _id;
-};
+  result.close();
+}
+
+void HistoryEntry::adjustMemoryUsage(std::int64_t value) noexcept {
+  if (value > 0) {
+    auto now = _memoryUsage.fetch_add(value, std::memory_order_relaxed) + value;
+    auto peak = _peakMemoryUsage.load(std::memory_order_relaxed);
+    while (now > peak) {
+      if (_peakMemoryUsage.compare_exchange_strong(peak, now,
+                                                   std::memory_order_relaxed)) {
+        break;
+      }
+    }
+  } else {
+    _memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+  }
+}
 
 History::History(std::size_t maxSize) : _maxSize(maxSize), _id(1) {}
 
@@ -107,7 +115,14 @@ void History::insert(Methods const& trx) {
   std::unique_lock<std::shared_mutex> lock(_mutex);
 
   entry->_id = ++_id;
-  _history.push_back(std::move(entry));
+
+  trx.state()->setHistoryEntry(entry);
+  try {
+    _history.push_back(std::move(entry));
+  } catch (...) {
+    trx.state()->clearHistoryEntry();
+    throw;
+  }
 }
 
 void History::toVelocyPack(velocypack::Builder& result) const {
@@ -134,3 +149,4 @@ void History::clear() noexcept {
 }
 
 }  // namespace arangodb::transaction
+#endif

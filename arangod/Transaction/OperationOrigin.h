@@ -69,12 +69,6 @@ struct OperationOriginInternal : OperationOrigin {
       : OperationOrigin(description, OperationOrigin::Type::kInternal) {}
 };
 
-// TODO: indicates workarounds in the code - should be removed
-struct OperationOriginWorkaround : OperationOrigin {
-  constexpr OperationOriginWorkaround() noexcept
-      : OperationOrigin("workaround", OperationOrigin::Type::kInternal) {}
-};
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 struct OperationOriginTestCase : OperationOrigin {
   constexpr OperationOriginTestCase() noexcept
