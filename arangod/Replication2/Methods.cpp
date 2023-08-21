@@ -220,8 +220,10 @@ struct ReplicatedLogMethodsDBServer final
 
   auto release(LogId id, LogIndex index) const
       -> futures::Future<Result> override {
-    auto log = vocbase.getReplicatedLogById(id);
-    return log->getParticipant()->release(index);
+    // TODO Call via state machine?
+    // auto log = vocbase.getReplicatedLogById(id);
+    // return log->getParticipant()->release(index);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   auto replaceParticipant(LogId id, ParticipantId const& participantToRemove,

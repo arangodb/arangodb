@@ -253,11 +253,6 @@ auto LogFollowerImpl::getInternalLogIterator(
   return guarded.getLockedGuard()->storage->getLogIterator(bounds);
 }
 
-auto LogFollowerImpl::release(LogIndex doneWithIdx) -> Result {
-  guarded.getLockedGuard()->compaction->updateReleaseIndex(doneWithIdx);
-  return {};
-}
-
 auto LogFollowerImpl::compact() -> ResultT<CompactionResult> {
   // TODO clean up CompacionResult vs ICompactionManager::CompactResult
   auto result = guarded.getLockedGuard()->compaction->compact().get();
