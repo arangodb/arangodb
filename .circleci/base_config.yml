@@ -302,7 +302,10 @@ jobs:
   run-hotbackup-tests:
     docker:
       - image: cimg/python:3.11.1
-    resource_class: medium
+    parameters:
+      size:
+        type: string
+    resource_class: << parameters.size >>
     steps:
       - attach_workspace:
           at: .
@@ -379,6 +382,7 @@ workflows:
           build-tests: false
       - run-hotbackup-tests:
           name: run-hotbackup-tests
+          resource_class: medium
           requires:
             - build-ee-amd64
 
@@ -405,5 +409,6 @@ workflows:
           enterprise: true
       - run-hotbackup-tests:
           name: run-hotbackup-tests
+          resource_class: arm.medium
           requires:
             - build-ee-aarch64
