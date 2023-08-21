@@ -28,27 +28,17 @@
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const internal = require("internal");
-const { getMetricSingle, getDBServersClusterMetricsByName } = require('@arangodb/test-helper');
-const isCluster = require("internal").isCluster();
+const { getCompleteMetricsValues } = require('@arangodb/test-helper');
+
   
 const cn = "UnitTestsCollection";
+const n = 10000;
 
 function RevisionTreeTrackingSuite () {
   'use strict';
       
-  let getMetric = () => { 
-    if (isCluster) {
-      let sum = 0;
-      getDBServersClusterMetricsByName("arangodb_revision_tree_buffered_memory_usage").forEach( num => {
-        sum += num;
-      });
-      return sum;
-    } else {
-      return getMetricSingle("arangodb_revision_tree_buffered_memory_usage");
-    }
-  };
 
-  const n = 10000;
+
   
   let insertDocuments = (collName) => {
     let c = db._collection(collName);
@@ -104,13 +94,13 @@ function RevisionTreeTrackingSuite () {
       res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
       assertNull(res);
       
-      let initial = getMetric();
       db._create(cn);
+      let metric0 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
       insertDocuments(cn);
 
       // must have more memory allocated for the documents
-      let metric = getMetric();
-      assertTrue(metric >= initial + n * 8, { metric, initial });
+      let metric1 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
+      assertTrue(metric1 >= metric0 + n * 8, { metric1, metric0 });
     },
     
     testMemoryUsageShouldIncreaseAfterSingleInserts: function () {
@@ -125,20 +115,64 @@ function RevisionTreeTrackingSuite () {
       res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
       assertNull(res);
       
-      let initial = getMetric();
       let c = db._create(cn);
+      let metric0 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
+
       for (let i = 0; i < n; ++i) {
         c.insert({value: i});
       }
-
+      
       // must have more memory allocated for the documents
-      let metric = getMetric();
+      let metric1 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
       // 48 = sizeof(void*) + sizeof(decltype(_revisionInsertBuffers)::mapped_type).
       // must be changed when type of RocksDBMetaCollection::_revisionInsertBuffers
       // changes.
-      assertTrue(metric >= initial + n * 48, { metric, initial });
+      assertTrue(metric1 >= metric0 + n * 48, { metric1, metric0 });
     },
-    
+
+    testMemoryUsageShouldIncreaseAndDecreaseAfterAql: function () {
+      // wait until all pending estimates & revision tree buffers have been applied
+      let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      assertNull(res);
+      
+      // block sync thread from doing anything from now on
+      // internal.debugSetFailAt("RocksDBSettingsManagerSync");
+      
+      // wait until all pending estimates & revision tree buffers have been applied
+      res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      assertNull(res);
+      
+      internal.debugClearFailAt();
+
+      let tries = 0;
+      let metric0;
+      while (++tries < 120) {
+        // internal.debugClearFailAt();
+        metric0 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
+        if (0 === metric0) {
+          break;
+        }
+        require("internal").sleep(0.5);
+        print("0 != ", metric0)
+      }
+
+      assertTrue(metric0 === 0);
+
+      let c = db._create(cn);
+      
+      db._query(`for i in 1..${n} insert {value: i} into ${cn}`)
+
+      let metric1;
+      while (++tries < 120) {
+        metric1 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
+        if (0 === metric1) {
+          break;
+        }
+        require("internal").sleep(0.5);
+        print(0, metric1)
+      }
+      assertTrue(0 === metric1);
+    }
   };
 }
 

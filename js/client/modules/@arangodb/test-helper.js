@@ -49,7 +49,7 @@ const jsunity = require('jsunity');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
-const isServer = require("@arangodb").isServer;
+const isCluster = require("@arangodb").isCluster;
 
 exports.runWithRetry = runWithRetry;
 exports.isEnterprise = isEnterprise;
@@ -263,6 +263,25 @@ exports.getMetricSingle = function (name) {
     throw "error fetching metric";
   }
   return getMetricName(res.body, name);
+};
+
+exports.getCompleteMetricsValues = function (name) {
+  const isCluster = require("internal").isCluster();
+  if (isCluster) {
+    let metrics = exports.getDBServersClusterMetricsByName(name);
+    assertTrue(metrics.length == 3);
+    if (typeof name == "string") {
+      let sum = 0;
+      metrics.forEach( num => {
+        sum += num;
+      });
+      return sum;
+    } else {
+      return metrics.reduce((acc, metrics) => acc.map((sum, i) => sum + metrics[i]), new Array(metrics[0].length).fill(0));
+    }
+  } else {
+    return exports.getMetricSingle(name);
+  }
 };
 
 const debug = function (text) {

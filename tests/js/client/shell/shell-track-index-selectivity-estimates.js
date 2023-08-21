@@ -28,25 +28,12 @@
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const internal = require("internal");
-const { getMetricSingle, getDBServersClusterMetricsByName } = require('@arangodb/test-helper');
-const isCluster = require("internal").isCluster();
+const { getCompleteMetricsValues } = require('@arangodb/test-helper');
   
 const cn = "UnitTestsCollection";
 
 function IndexEstimatesMemorySuite () {
   'use strict';
-      
-  let getMetric = () => { 
-    if (isCluster) {
-      let sum = 0;
-      getDBServersClusterMetricsByName("arangodb_index_estimates_memory_usage").forEach( num => {
-        sum += num;
-      });
-      return sum;
-    } else {
-      return getMetricSingle("arangodb_index_estimates_memory_usage");
-    }
-  };
 
   const n = 10000;
   
@@ -87,7 +74,7 @@ function IndexEstimatesMemorySuite () {
     },
     
     testEstimatesShouldNotChangeWhenCreatingDocumentCollection: function () {
-      const initial = getMetric();
+      const metric0 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
 
       db._create(cn);
       
@@ -95,25 +82,22 @@ function IndexEstimatesMemorySuite () {
       // we allow it to go down here because from a previous testsuite
       // there may still be buffered index estimates updates that are
       // processed in the background while this test is running.
-      let metric = getMetric();
-      assertTrue(metric <= initial, { metric, initial });
+      let metric1 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+      assertTrue(metric1 <= metric0, { metric1, metric0 });
     },
 
     testEstimatesShouldChangeWhenCreatingEdgeCollection: function () {
-      const initial = getMetric();
+      const metric0 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
 
       db._createEdgeCollection(cn);
       
-      // estimates should not have changed.
-      // we allow it to go down here because from a previous testsuite
-      // there may still be buffered index estimates updates that are
-      // processed in the background while this test is running.
-      let metric = getMetric();
-      assertTrue(metric > initial, { metric, initial });
+      // estimates should have changed because of edge index
+      let metric1 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+      assertTrue(metric1 > metric0, { metric1, metric0 });
     },
     
     testEstimatesShouldNotChangeWhenCreatingPersistentIndexWithoutEstimates: function () {
-      const initial = getMetric();
+      const metric0 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
 
       let c = db._create(cn);
       c.ensureIndex({ type: "persistent", fields: ["value"], estimates: false });
@@ -122,25 +106,33 @@ function IndexEstimatesMemorySuite () {
       // we allow it to go down here because from a previous testsuite
       // there may still be buffered index estimates updates that are
       // processed in the background while this test is running.
-      let metric = getMetric();
-      assertTrue(metric <= initial, { metric, initial });
+      let metric1 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+      assertTrue(metric1 <= metric0, { metric1, metric0 });
     },
     
     testEstimatesShouldChangeWhenCreatingPersistentIndexWithEstimates: function () {
-      const initial = getMetric();
+      const metric0 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
 
       let c = db._create(cn);
       c.ensureIndex({ type: "persistent", fields: ["value"], estimates: true });
       
+      // estimates should have changed.
+      let metric1 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+      assertTrue(metric1 > metric0, { metric1, metric0 });
+    },
+
+    testEstimatesShouldNotChangeWhenCreatingUniquePersistentIndex: function () {
+      const metric0 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+
+      let c = db._create(cn);
+      c.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
+      
       // estimates should not have changed.
-      // we allow it to go down here because from a previous testsuite
-      // there may still be buffered index estimates updates that are
-      // processed in the background while this test is running.
-      let metric = getMetric();
-      assertTrue(metric > initial, { metric, initial });
+      let metric1 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+      assertTrue(metric1 <= metric0, { metric1, metric0 });
     },
     
-    testEstimatesShouldIncreaseWithEdgeIndex: function () {
+    testEstimatesShouldIncreaseWhenInsertingIntoPersistentIndex: function () {
       // block sync thread from doing anything from now on
       internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
@@ -148,23 +140,71 @@ function IndexEstimatesMemorySuite () {
       let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
       assertNull(res);
 
+      const metric0 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+
       let c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value"] });
-      
-      const initial = getMetric();
+      c.ensureIndex({ type: "persistent", name: "persistent", fields: ["value"] });
+
+      const metric1 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+
+      assertTrue(metric1 > metric0, { metric1, metric0 });
 
       insertDocuments(cn);
 
-      let metric = getMetric();
+      let metric2 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
       // memory usage tracking. assumption is each index modification takes
       // at least 8 bytes. we do not expect the exact amount here, as it depends
       // on how many batches we will use etc.
-      print(metric, initial);
 
-      assertTrue(metric >= initial + n * 8, { metric, initial });
+      assertTrue(metric2 >= metric1 + n * 8, { metric2, metric1 });
+
+      db._collection(cn).dropIndex("persistent");
+
+      let metric3 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+      let timeout = 30;
+      while (metric3 > metric2) {
+        if (timeout == 0) {
+          throw "arangodb_index_estimates_memory_usage value is not decreased";
+        }
+        timeout -= 1;
+        require("internal").sleep(1);
+        metric3 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+      }
     },
 
-    testEstimatesShouldWhenInsertingIntoPersistentIndex: function () {
+    testEstimatesShouldIncreaseWhenInsertingIntoEdgeIndex: function () {
+      // block sync thread from doing anything from now on
+      internal.debugSetFailAt("RocksDBSettingsManagerSync");
+
+      // wait until all pending estimates & revision tree buffers have been applied
+      let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+      assertNull(res);
+
+      const metric0 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+
+      db._createEdgeCollection(cn);
+      
+      const metric1 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+      // estimates should have changed.
+      assertTrue(metric1 > metric0, { metric1, metric0 });
+
+      insertEdges(cn);
+
+      // estimates should have changed.
+      const metric2 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+      assertTrue(metric1 > metric0, { metric2, metric0 });
+
+      db._drop(cn);
+      let metric3 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+      let timeout = 30;
+      while (metric3 > metric2) {
+        if (timeout == 0) {
+          throw "arangodb_index_estimates_memory_usage value is not decreased";
+        }
+        timeout -= 1;
+        require("internal").sleep(1);
+        metric3 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
+      }
     },
   };
 }

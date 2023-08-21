@@ -27,32 +27,13 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const { getMetricSingle, getDBServersClusterMetricsByName } = require('@arangodb/test-helper');
-const isCluster = require("internal").isCluster();
+const { getCompleteMetricsValues } = require('@arangodb/test-helper');
+
 const isWindows = (require("internal").platform.substr(0, 3) === 'win');
   
 function MemoryMetrics() {
   const collectionName = "test";
   const viewName = "testView";
-
-  let getMetric = (name) => {
-    if (isCluster) {
-      let metrics = getDBServersClusterMetricsByName(name)
-      assertTrue(metrics.length == 3);
-      // print(typeof name)
-      if (typeof name == "string") {
-        let sum = 0;
-        metrics.forEach( num => {
-          sum += num;
-        });
-        return sum;
-      } else {
-        return metrics.reduce((acc, metrics) => acc.map((sum, i) => sum + metrics[i]), new Array(metrics[0].length).fill(0));
-      }
-    } else {
-      return getMetricSingle(name);
-    }
-  };
 
   let generateAndInsert = (collName) => {
     if( typeof generateAndInsert.counter == 'undefined' ) {
@@ -90,9 +71,9 @@ function MemoryMetrics() {
           commitIntervalMsec: 100,
         }}
       });
-      const writers = getMetric("arangodb_search_writers_memory_usage");
+      const writers = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
       assertTrue(writers > 0);
-      const descriptors = getMetric("arangodb_search_file_descriptors");
+      const descriptors = getCompleteMetricsValues("arangodb_search_file_descriptors");
       assertTrue(descriptors > 0);
     },
     
@@ -104,10 +85,10 @@ function MemoryMetrics() {
     testSimple: function () {
 
       for (let i = 0; i < 5; i++) {
-        let writersOldest = getMetric("arangodb_search_writers_memory_usage");
+        let writersOldest = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
         generateAndInsert(collectionName)
         db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
-        let writersOlder = getMetric("arangodb_search_writers_memory_usage");
+        let writersOlder = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
         assertNotEqual(writersOldest, writersOlder);
       }
 
@@ -117,7 +98,7 @@ function MemoryMetrics() {
         generateAndInsert(collectionName)
         db._query(`for d in ${viewName} SEARCH d.numericValue == 100 RETURN d`);
 
-        [readers, consolidations, descriptors, mapped] = getMetric([
+        [readers, consolidations, descriptors, mapped] = getCompleteMetricsValues([
           "arangodb_search_readers_memory_usage", 
           "arangodb_search_consolidations_memory", 
           "arangodb_search_file_descriptors",
@@ -136,14 +117,14 @@ function MemoryMetrics() {
       }
 
       {
-        const oldValue = getMetric("arangodb_search_writers_memory_usage");
+        const oldValue = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
         db._query("FOR d IN " + collectionName + " REMOVE d IN " + collectionName);
-        const newValue = getMetric("arangodb_search_writers_memory_usage");
+        const newValue = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
         assertNotEqual(oldValue, newValue);
       }
 
       db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
-      [readers, consolidations, descriptors, mapped] = getMetric([
+      [readers, consolidations, descriptors, mapped] = getCompleteMetricsValues([
         "arangodb_search_readers_memory_usage", 
         "arangodb_search_consolidations_memory",
         "arangodb_search_file_descriptors",
