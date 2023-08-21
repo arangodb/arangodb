@@ -16,6 +16,8 @@ devel
   memory limit settings, turn on intermediate commits for the query, or adjust
   the query so that it uses less memory.
 
+* Print arangod executable's build-id in startup and crash messages.
+
 * Removed --jslint from arangosh and scripts/jslint.sh along with
   the outdated copy of eslint; updated CONTRIBUTING.md to reflect
 	the changes and hint at scripts/eslint.sh which can be used	to lint
