@@ -361,12 +361,6 @@ std::string const& LogicalCollection::distributeShardsLike() const noexcept {
   return _sharding->distributeShardsLike();
 }
 
-void LogicalCollection::distributeShardsLike(std::string const& cid,
-                                             ShardingInfo const* other) {
-  TRI_ASSERT(_sharding != nullptr);
-  _sharding->distributeShardsLike(cid, other);
-}
-
 std::vector<std::string> const& LogicalCollection::avoidServers()
     const noexcept {
   TRI_ASSERT(_sharding != nullptr);

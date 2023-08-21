@@ -255,7 +255,6 @@ class LogicalCollection : public LogicalDataSource {
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
-  void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
   ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
