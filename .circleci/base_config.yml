@@ -135,8 +135,6 @@ jobs:
     parameters:
       preset:
         type: string
-      edition:
-        type: string
       enterprise:
         type: boolean
       targets:
@@ -149,6 +147,9 @@ jobs:
         default: true
       resource-class:
         type: string
+      s3-prefix:
+        type: string
+        default: ""
     docker:
       - image: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.2
     resource_class: << parameters.resource-class >>
@@ -156,6 +157,7 @@ jobs:
       GIT_SSH_COMMAND: ssh
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
+      SCCACHE_S3_KEY_PREFIX: << parameters.s3-prefix >>
     steps:
       - run:
           name: Checkout ArangoDB
@@ -329,7 +331,6 @@ workflows:
           resource-class: xlarge
           name: build-ce
           preset: community-pr
-          edition: x64-community
           enterprise: false
           targets: "arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest"
 
@@ -339,9 +340,9 @@ workflows:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: arm.xlarge
-          name: build-ce
+          s3-prefix: aarch64
+          name: build-ce-aarch64
           preset: community-pr
-          edition: x64-community
           enterprise: false
           targets: "arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest"
 
@@ -353,7 +354,6 @@ workflows:
           resource-class: xlarge
           name: build-ee
           preset: enterprise-pr
-          edition: x64-enterprise
           enterprise: true
           targets: "arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest"
           enterprise-targets: "arangobackup"
@@ -363,7 +363,6 @@ workflows:
           resource-class: xlarge
           name: build-ee-non-maintainer
           preset: enterprise-pr-non-maintainer
-          edition: x64-enterprise
           enterprise: true
           targets: "arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench"
           enterprise-targets: "arangobackup"
