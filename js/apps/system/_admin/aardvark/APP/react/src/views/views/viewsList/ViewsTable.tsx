@@ -16,7 +16,7 @@ const TABLE_COLUMNS = [
     id: "name",
     cell: info => {
       const cellValue = info.cell.getValue();
-      const href = createEncodedUrl({ path: "views", value: cellValue });
+      const href = createEncodedUrl({ path: "view", value: cellValue });
       return (
         <Link
           href={href}
