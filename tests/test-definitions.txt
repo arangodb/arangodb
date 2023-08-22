@@ -59,7 +59,7 @@ shell_server priority=1000 single buckets=3
 
 # C++ unit tests are executed in single env
 gtest_iresearch priority=1000 parallelity=3 size=medium single
-gtest_arangodb priority=1000 parallelity=3 size=medium single
+gtest_arangodb priority=1000 parallelity=3 size=large single
 
 # Fuerte tests are executed in single env
 fuerte priority=500 single
