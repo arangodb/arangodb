@@ -279,9 +279,11 @@ def add_test_jobs_to_workflow(config, tests, workflow, edition, arch):
 
 
 def get_arch(workflow):
-    if workflow.endswith("aarch64") :
+    if workflow.startswith("aarch64") :
         return "aarch64"
-    return "x64"
+    if workflow.startswith("x64") :
+        return "x64"
+    raise Exception(f"Cannot extract architecture from workflow {workflow}")
 
 
 def generate_output(config, tests, enterprise):
@@ -289,7 +291,7 @@ def generate_output(config, tests, enterprise):
     workflows = config["workflows"]
     edition = "ee" if enterprise else "ce"
     for workflow, jobs in workflows.items():
-        if (enterprise and workflow.startswith("enterprise")) or (not enterprise and workflow.startswith("community")):
+        if (enterprise and "enterprise" in workflow) or (not enterprise and "community" in workflow):
             arch = get_arch(workflow)
             add_test_jobs_to_workflow(config, tests, workflow, edition, arch)
 
