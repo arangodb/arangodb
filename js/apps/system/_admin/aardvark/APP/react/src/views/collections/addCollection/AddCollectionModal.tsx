@@ -27,6 +27,94 @@ const INITIAL_VALUES = {
   smartJoinAttribute: ""
 } satisfies Partial<CreateCollectionOptions> & Record<string, any>;
 
+const minReplicationFactor = window.frontendConfig.minReplicationFactor ?? 1;
+const maxReplicationFactor = window.frontendConfig.maxReplicationFactor ?? 10;
+const maxNumberOfShards = window.frontendConfig.maxNumberOfShards;
+
+const extendedNameSchema = Yup.string()
+  .matches(/^[a-zA-Z]/, "Collection name must always start with a letter.")
+  .matches(/^[a-zA-Z0-9\-_]*$/, 'Only symbols, "_" and "-" are allowed.')
+  .max(256, "Collection name max length is 256 bytes.");
+
+const legacyNameSchema = Yup.string()
+  .matches(
+    /^(?![0-9._])/,
+    "Collection name cannot start with a number, a dot (.), or an underscore (_)."
+  )
+  .matches(
+    window.arangoValidationHelper.getControlCharactersRegex(),
+    "Collection name cannot contain control characters (0-31)."
+  )
+  .matches(
+    /^\S(.*\S)?$/,
+    "Collection name cannot contain leading/trailing spaces."
+  )
+  .matches(/^(?!.*[/])/, "Collection name cannot contain a forward slash (/).")
+  .test(
+    "normalizedByteLength",
+    "Collection name max length is 256 bytes.",
+    getNormalizedByteLengthTest(256, "Collection name max length is 256 bytes.")
+  );
+
+const clusterFieldsSchema = {
+  numberOfShards: Yup.number().when("distributeShardsLike", {
+    is: (distributeShardsLike: any) => !distributeShardsLike,
+    then: () =>
+      Yup.number()
+        .min(1, "Number of shards must be greater than or equal to 1.")
+        .max(
+          maxNumberOfShards,
+          `Number of shards must be less than or equal to ${maxNumberOfShards}.`
+        )
+        .required("Number of shards is required.")
+  }),
+  replicationFactor: Yup.number().when(
+    ["distributeShardsLike", "isSatellite"],
+    {
+      is: (distributeShardsLike: any, isSatellite: any) =>
+        !distributeShardsLike && !isSatellite,
+      then: () =>
+        Yup.number()
+          .min(
+            minReplicationFactor,
+            `Replication Factor must be greater than or equal to ${minReplicationFactor}.`
+          )
+          .max(
+            maxReplicationFactor,
+            `Replication Factor must be less than or equal to ${maxReplicationFactor}.`
+          )
+          .required("Replication Factor is required.")
+    }
+  ),
+  writeConcern: Yup.number().when(["distributeShardsLike", "isSatellite"], {
+    is: (distributeShardsLike: any, isSatellite: any) =>
+      !distributeShardsLike && !isSatellite,
+    then: () =>
+      Yup.number()
+        .min(
+          minReplicationFactor,
+          `Write Concern must be greater than or equal to ${minReplicationFactor}.`
+        )
+        .required("Write Concern is required.")
+        .when("replicationFactor", ([replicationFactor], schema) =>
+          schema.max(
+            replicationFactor ??
+              window.frontendConfig.maxReplicationFactor ??
+              10,
+            "Write Concern must be less than or equal to Replication Factor."
+          )
+        )
+  })
+};
+
+const validationSchema = Yup.object({
+  name: (window.frontendConfig.extendedNames
+    ? extendedNameSchema
+    : legacyNameSchema
+  ).required("Collection name is required."),
+  ...(window.App.isCluster ? clusterFieldsSchema : {})
+});
+
 export const AddCollectionModal = ({
   isOpen,
   onClose
@@ -54,9 +142,9 @@ export const AddCollectionModal = ({
         ? { distributeShardsLike, ...extra }
         : {
             numberOfShards,
-            replicationFactor: (isSatellite
+            replicationFactor: isSatellite
               ? "satellite"
-              : replicationFactor) as any, // TODO workaround for arangojs 7
+              : replicationFactor,
             smartJoinAttribute: smartJoinAttribute || undefined,
             writeConcern,
             ...extra
@@ -83,112 +171,11 @@ export const AddCollectionModal = ({
       }
     }
   };
-  const minReplicationFactor = window.frontendConfig.minReplicationFactor ?? 1;
-  const maxReplicationFactor = window.frontendConfig.maxReplicationFactor ?? 10;
-  const maxNumberOfShards = window.frontendConfig.maxNumberOfShards;
   return (
     <Modal size="6xl" isOpen={isOpen} onClose={onClose}>
       <Formik
         initialValues={INITIAL_VALUES}
-        validationSchema={Yup.object({
-          name: (window.frontendConfig.extendedNames
-            ? Yup.string()
-                .matches(
-                  /^[a-zA-Z]/,
-                  "Collection name must always start with a letter."
-                )
-                .matches(
-                  /^[a-zA-Z0-9\-_]*$/,
-                  'Only symbols, "_" and "-" are allowed.'
-                )
-                .max(256, "Collection name max length is 256 bytes.")
-            : Yup.string()
-                .matches(
-                  /^(?![0-9._])/,
-                  "Collection name cannot start with a number, a dot (.), or an underscore (_)."
-                )
-                .matches(
-                  window.arangoValidationHelper.getControlCharactersRegex(),
-                  "Collection name cannot contain control characters (0-31)."
-                )
-                .matches(
-                  /^\S(.*\S)?$/,
-                  "Collection name cannot contain leading/trailing spaces."
-                )
-                .matches(
-                  /^(?!.*[/])/,
-                  "Collection name cannot contain a forward slash (/)."
-                )
-                .test(
-                  "normalizedByteLength",
-                  "Collection name max length is 256 bytes.",
-                  getNormalizedByteLengthTest(
-                    256,
-                    "Collection name max length is 256 bytes."
-                  )
-                )
-          ).required("Collection name is required."),
-          ...(window.App.isCluster
-            ? {
-                numberOfShards: Yup.number().when("distributeShardsLike", {
-                  is: (distributeShardsLike: any) => !distributeShardsLike,
-                  then: () =>
-                    Yup.number()
-                      .min(
-                        1,
-                        "Number of shards must be greater than or equal to 1."
-                      )
-                      .max(
-                        maxNumberOfShards,
-                        `Number of shards must be less than or equal to ${maxNumberOfShards}.`
-                      )
-                      .required("Number of shards is required.")
-                }),
-                replicationFactor: Yup.number().when(
-                  ["distributeShardsLike", "isSatellite"],
-                  {
-                    is: (distributeShardsLike: any, isSatellite: any) =>
-                      !distributeShardsLike && !isSatellite,
-                    then: () =>
-                      Yup.number()
-                        .min(
-                          minReplicationFactor,
-                          `Replication Factor must be greater than or equal to ${minReplicationFactor}.`
-                        )
-                        .max(
-                          maxReplicationFactor,
-                          `Replication Factor must be less than or equal to ${maxReplicationFactor}.`
-                        )
-                        .required("Replication Factor is required.")
-                  }
-                ),
-                writeConcern: Yup.number().when(
-                  ["distributeShardsLike", "isSatellite"],
-                  {
-                    is: (distributeShardsLike: any, isSatellite: any) =>
-                      !distributeShardsLike && !isSatellite,
-                    then: () =>
-                      Yup.number()
-                        .min(
-                          minReplicationFactor,
-                          `Write Concern must be greater than or equal to ${minReplicationFactor}.`
-                        )
-                        .required("Write Concern is required.")
-                        .when(
-                          "replicationFactor",
-                          ([replicationFactor], schema) =>
-                            schema.max(
-                              replicationFactor ??
-                                window.frontendConfig.maxReplicationFactor ??
-                                10,
-                              "Write Concern must be less than or equal to Replication Factor."
-                            )
-                        )
-                  }
-                )
-              }
-            : {})
-        })}
+        validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
         {({ isSubmitting }) => (

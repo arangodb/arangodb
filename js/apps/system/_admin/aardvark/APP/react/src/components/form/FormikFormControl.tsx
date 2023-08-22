@@ -42,7 +42,7 @@ export const FormikFormControl = ({
           alignItems="center"
         >
           {children}
-          {<InfoTooltip label={tooltip} />}
+          <InfoTooltip label={tooltip} />
         </Grid>
       ) : (
         children
