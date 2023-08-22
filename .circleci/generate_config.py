@@ -281,7 +281,7 @@ def add_test_jobs_to_workflow(config, tests, workflow, edition, arch):
 def get_arch(workflow):
     if workflow.endswith("aarch64") :
         return "aarch64"
-    return "amd64"
+    return "x64"
 
 
 def generate_output(config, tests, enterprise):

@@ -349,41 +349,41 @@ workflows:
           requires:
             - minimal-checkout
 
-  community-pr-amd64:
+  x64-community-pr:
     jobs:
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: xlarge
-          name: build-ce-amd64
+          name: build-ce-x64
           preset: community-pr
           enterprise: false
 
-  enterprise-pr-amd64:
+  x64-enterprise-pr:
     jobs:
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: xlarge
-          name: build-ee-amd64
+          name: build-ee-x64
           preset: enterprise-pr
           enterprise: true
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
           resource-class: xlarge
-          name: build-ee-non-maintainer-amd64
+          name: build-ee-non-maintainer-x64
           preset: enterprise-pr-non-maintainer
           enterprise: true
           publish-artifacts: false
           build-tests: false
       - run-hotbackup-tests:
-          name: run-hotbackup-tests-amd64
+          name: run-hotbackup-tests-x64
           size: medium
           requires:
-            - build-ee-amd64
+            - build-ee-x64
 
-  community-pr-aarch64:
+  aarch64-community-pr:
     jobs:
       - compile-linux:
           context:
@@ -394,7 +394,7 @@ workflows:
           preset: community-pr
           enterprise: false
 
-  enterprise-pr-aarch64:
+  aarch64-enterprise-pr:
     jobs:
       - compile-linux:
           context:
