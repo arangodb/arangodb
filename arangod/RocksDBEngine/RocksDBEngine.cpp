@@ -85,6 +85,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
@@ -132,6 +133,7 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
 #include <iomanip>
@@ -3365,8 +3367,23 @@ DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t,
 DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
 DECLARE_GAUGE(rocksdb_total_sst_files, uint64_t, "rocksdb_total_sst_files");
 
+void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
+  // get generic capabilities
+  VPackBuilder main;
+  StorageEngine::getCapabilities(main);
+
+  VPackBuilder own;
+  own.openObject();
+  own.add("endianness", VPackValue(rocksDBEndiannessString(
+                            rocksutils::getRocksDBKeyFormatEndianness())));
+  own.close();
+
+  VPackCollection::merge(builder, main.slice(), own.slice(), false);
+}
+
 void RocksDBEngine::getStatistics(std::string& result) const {
-  VPackBuilder stats;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder stats(buffer);
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
 
@@ -3377,6 +3394,7 @@ void RocksDBEngine::getStatistics(std::string& result) const {
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
       if (!name.empty() && name.front() != 'r') {
+        // prepend name with "rocksdb_"
         name = absl::StrCat(kEngineName, "_", name);
       }
       result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
@@ -3453,7 +3471,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     builder.close();
   };
 
-  builder.openObject();
+  builder.openObject(/*unindexed*/ true);
   int64_t numSstFilesOnAllLevels = 0;
   for (int i = 0; i < _optionsProvider.getOptions().num_levels; ++i) {
     numSstFilesOnAllLevels += addIntAllCf(

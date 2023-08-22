@@ -82,6 +82,10 @@ void (*uint16ToPersistent)(std::string& p, uint16_t value) = nullptr;
 void (*uint32ToPersistent)(std::string& p, uint32_t value) = nullptr;
 void (*uint64ToPersistent)(std::string& p, uint64_t value) = nullptr;
 
+RocksDBEndianness getRocksDBKeyFormatEndianness() noexcept {
+  return rocksDBEndianness;
+}
+
 void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
   rocksDBEndianness = e;
 
