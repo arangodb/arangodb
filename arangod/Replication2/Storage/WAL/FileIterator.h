@@ -34,9 +34,8 @@ struct FileIterator : PersistedLogIterator {
   auto next() -> std::optional<PersistedLogEntry> override;
 
  private:
-  void moveToFirstEntry();
+  void moveToFirstEntry(IteratorPosition position);
 
-  IteratorPosition _pos;
   LogReader _reader;
 };
 
