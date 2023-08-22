@@ -45,6 +45,7 @@ class CollectionNameResolver;
 class TransactionState;
 
 namespace transaction {
+class CounterGuard;
 struct Options;
 
 class Context {
@@ -53,7 +54,7 @@ class Context {
   Context& operator=(Context const&) = delete;
 
   /// @brief create the context
-  explicit Context(TRI_vocbase_t& vocbase);
+  explicit Context(TRI_vocbase_t& vocbase, OperationOrigin operationOrigin);
 
  public:
   /// @brief destroy the context
@@ -95,8 +96,9 @@ class Context {
 
   /// @brief get transaction state, determine commit responsiblity
   virtual std::shared_ptr<TransactionState> acquireState(
-      transaction::Options const& options, bool& responsibleForCommit,
-      OperationOrigin operationOrigin) = 0;
+      transaction::Options const& options, bool& responsibleForCommit) = 0;
+
+  OperationOrigin operationOrigin() const noexcept { return _operationOrigin; }
 
   /// @brief whether or not is from a streaming transaction (used to know
   /// whether or not can read from query cache)
@@ -142,12 +144,14 @@ class Context {
 
   virtual bool isV8Context() { return false; }
 
+  void setCounterGuard(std::shared_ptr<CounterGuard> guard) noexcept;
+
   /// @brief generates correct ID based on server type
   static TransactionId makeTransactionId();
 
  protected:
   std::shared_ptr<TransactionState> createState(
-      transaction::Options const& options, OperationOrigin operationOrigin);
+      transaction::Options const& options);
 
   TRI_vocbase_t& _vocbase;
   std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
@@ -157,8 +161,12 @@ class Context {
 
   velocypack::Options _options;
 
+  OperationOrigin _operationOrigin;
+
  private:
   std::unique_ptr<CollectionNameResolver> _resolver;
+
+  std::shared_ptr<CounterGuard> _counterGuard;
 
   struct {
     bool isReadOnlyTransaction = false;

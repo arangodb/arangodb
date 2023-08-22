@@ -43,6 +43,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -376,8 +377,8 @@ void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
     }
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-
+  auto origin = transaction::OperationOriginInternal{"writing result"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
   writeResult(builder.slice(), *(ctx->getVPackOptions()));
 }
 
@@ -574,8 +575,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
       trxOpts.allowDirtyReads = true;
     }
     auto tmp = std::make_unique<SingleCollectionTransaction>(
-        transaction::StandaloneContext::Create(_vocbase), collectionName, type,
-        operationOrigin, std::move(trxOpts));
+        transaction::StandaloneContext::create(_vocbase, operationOrigin),
+        collectionName, type, std::move(trxOpts));
     if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
@@ -643,7 +644,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     // inject at least the required collection name
     trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName,
-                                                 type, operationOrigin);
+                                                 type);
   } else {
     if (isSideUser) {
       // this is a call from the DOCUMENT() AQL function into an existing AQL
@@ -653,8 +654,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
                              "invalid access mode for request", ADB_HERE);
       }
     }
-    trx =
-        std::make_unique<transaction::Methods>(std::move(ctx), operationOrigin);
+    trx = std::make_unique<transaction::Methods>(std::move(ctx));
   }
   return trx;
 }
@@ -667,7 +667,8 @@ RestVocbaseBaseHandler::createTransactionContext(
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    return std::make_shared<transaction::StandaloneContext>(_vocbase);
+    return std::make_shared<transaction::StandaloneContext>(_vocbase,
+                                                            operationOrigin);
   }
 
   TransactionId tid = TransactionId::none();
@@ -693,18 +694,24 @@ RestVocbaseBaseHandler::createTransactionContext(
           "illegal to start a managed transaction here");
     }
     if (value.compare(pos, std::string::npos, " aql") == 0) {
-      auto aqlStandaloneContext =
-          std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
-      aqlStandaloneContext->setStreaming();
-      return aqlStandaloneContext;
-    } else if (value.compare(pos, std::string::npos, " begin") == 0) {
+      // standalone AQL query on DB server
+      auto ctx = std::make_shared<transaction::AQLStandaloneContext>(
+          _vocbase, tid, operationOrigin);
+      // TODO: looks wrong
+      // ctx->setStreaming();
+      return ctx;
+    }
+
+    if (value.compare(pos, std::string::npos, " begin") == 0) {
       // this means we lazily start a transaction
       std::string const& trxDef =
           _request->header(StaticStrings::TransactionBody, found);
       if (found) {
         auto trxOpts = VPackParser::fromJson(trxDef);
+        auto origin = transaction::OperationOriginREST{
+            "streaming transaction on DB server"};
         Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
-                                           operationOrigin, false);
+                                           origin, false);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
         }

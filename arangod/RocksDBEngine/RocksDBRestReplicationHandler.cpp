@@ -281,7 +281,9 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     cid = c->id();
   }
 
-  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
+  auto origin = transaction::OperationOriginInternal{
+      "streaming documents in tailing API"};
+  auto trxContext = transaction::StandaloneContext::create(_vocbase, origin);
   VPackBuilder builder(trxContext->getVPackOptions());
 
   builder.openArray();
@@ -635,7 +637,10 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     return;
   }
 
-  auto transactionContext = transaction::StandaloneContext::Create(_vocbase);
+  auto origin =
+      transaction::OperationOriginInternal{"dumping keys in replication"};
+  auto transactionContext =
+      transaction::StandaloneContext::create(_vocbase, origin);
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer, transactionContext->getVPackOptions());
 
@@ -778,7 +783,9 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     VPackBuffer<uint8_t> buffer;
     buffer.reserve(reserve);  // avoid reallocs
 
-    auto trxCtx = transaction::StandaloneContext::Create(_vocbase);
+    auto origin = transaction::OperationOriginInternal{
+        "dumping documents in replication"};
+    auto trxCtx = transaction::StandaloneContext::create(_vocbase, origin);
 
     res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize, useEnvelope,
                          singleArray);

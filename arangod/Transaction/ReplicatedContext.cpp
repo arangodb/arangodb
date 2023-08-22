@@ -31,12 +31,12 @@
 namespace arangodb::transaction {
 
 ReplicatedContext::ReplicatedContext(TransactionId globalId,
-                                     std::shared_ptr<TransactionState> state)
-    : SmartContext(state->vocbase(), globalId, state){};
+                                     std::shared_ptr<TransactionState> state,
+                                     OperationOrigin operationOrigin)
+    : SmartContext(state->vocbase(), globalId, state, operationOrigin) {}
 
 std::shared_ptr<TransactionState> ReplicatedContext::acquireState(
-    Options const& options, bool& responsibleForCommit,
-    OperationOrigin /*operationOrigin*/) {
+    Options const& options, bool& responsibleForCommit) {
   TRI_ASSERT(_state);
   responsibleForCommit = true;
   return _state;

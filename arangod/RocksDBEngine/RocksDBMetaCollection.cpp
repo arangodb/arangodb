@@ -778,11 +778,12 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
 ResultT<std::pair<std::unique_ptr<containers::RevisionTree>,
                   rocksdb::SequenceNumber>>
 RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
-  auto ctxt =
-      transaction::StandaloneContext::Create(_logicalCollection.vocbase());
-  SingleCollectionTransaction trx(
-      ctxt, _logicalCollection, AccessMode::Type::READ,
-      transaction::OperationOriginInternal{"rebuilding revision tree"});
+  auto origin =
+      transaction::OperationOriginInternal{"rebuilding revision tree"};
+  auto ctxt = transaction::StandaloneContext::create(
+      _logicalCollection.vocbase(), origin);
+  SingleCollectionTransaction trx(std::move(ctxt), _logicalCollection,
+                                  AccessMode::Type::READ);
 
   Result res = trx.begin();
   if (res.fail()) {

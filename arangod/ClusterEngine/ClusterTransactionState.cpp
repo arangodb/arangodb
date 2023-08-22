@@ -52,8 +52,7 @@ ClusterTransactionState::ClusterTransactionState(
     transaction::Options const& options,
     transaction::OperationOrigin operationOrigin)
     : TransactionState(vocbase, tid, options, operationOrigin),
-      _numIntermediateCommits(0),
-      _registered(false) {
+      _numIntermediateCommits(0) {
   // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
   // we have to read revisions here as validateAndOptimize is executed before
@@ -66,15 +65,7 @@ ClusterTransactionState::ClusterTransactionState(
                               .getQueryAnalyzersRevision(vocbase.name()));
 }
 
-ClusterTransactionState::~ClusterTransactionState() {
-  if (_registered) {
-    // unregister the transaction from the transaction manager
-    transaction::Manager* mgr = transaction::ManagerFeature::manager();
-    TRI_ASSERT(mgr != nullptr);
-
-    mgr->unregisterTransaction();
-  }
-}
+ClusterTransactionState::~ClusterTransactionState() = default;
 
 /// @brief start a transaction
 Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
@@ -112,11 +103,13 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsStarted;
   }
 
-  transaction::ManagerFeature::manager()->registerTransaction(
-      id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
 
-  _registered = true;
-  if (AccessMode::isWriteOrExclusive(this->_type) &&
+  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
+                                           isFollowerTransaction());
+
+  if (AccessMode::isWriteOrExclusive(_type) &&
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // cppcheck-suppress ignoredReturnValue
     TRI_ASSERT(isCoordinator());

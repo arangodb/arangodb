@@ -36,11 +36,10 @@ namespace arangodb {
 
 /// @brief create the transaction, using a data-source
 SingleCollectionTransaction::SingleCollectionTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
+    std::shared_ptr<transaction::Context> ctx,
     LogicalDataSource const& dataSource, AccessMode::Type accessType,
-    transaction::OperationOrigin operationOrigin,
     transaction::Options const& options)
-    : transaction::Methods(transactionContext, operationOrigin, options),
+    : transaction::Methods(std::move(ctx), options),
       _cid(dataSource.id()),
       _trxCollection(nullptr),
       _documentCollection(nullptr),
@@ -54,11 +53,9 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 
 /// @brief create the transaction, using a collection name
 SingleCollectionTransaction::SingleCollectionTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
-    std::string const& name, AccessMode::Type accessType,
-    transaction::OperationOrigin operationOrigin,
-    transaction::Options const& options)
-    : transaction::Methods(transactionContext, operationOrigin, options),
+    std::shared_ptr<transaction::Context> ctx, std::string const& name,
+    AccessMode::Type accessType, transaction::Options const& options)
+    : transaction::Methods(std::move(ctx), options),
       _cid(0),
       _trxCollection(nullptr),
       _documentCollection(nullptr),

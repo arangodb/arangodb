@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Transaction/Context.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/AccessMode.h"
 
@@ -45,7 +46,8 @@ namespace transaction {
 class SmartContext : public Context {
  public:
   SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
-               std::shared_ptr<TransactionState> state);
+               std::shared_ptr<TransactionState> state,
+               OperationOrigin operationOrigin);
 
   /// @brief destroy the context
   ~SmartContext();
@@ -77,13 +79,13 @@ struct TransactionContextSideUser {};
 /// Used for a standalone AQL query. Always creates the state first.
 /// Registers the TransactionState with the manager
 struct AQLStandaloneContext final : public SmartContext {
-  AQLStandaloneContext(TRI_vocbase_t& vocbase, TransactionId globalId)
-      : SmartContext(vocbase, globalId, nullptr) {}
+  AQLStandaloneContext(TRI_vocbase_t& vocbase, TransactionId globalId,
+                       OperationOrigin operationOrigin)
+      : SmartContext(vocbase, globalId, nullptr, operationOrigin) {}
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(
-      transaction::Options const& options, bool& responsibleForCommit,
-      OperationOrigin operationOrigin) override;
+      transaction::Options const& options, bool& responsibleForCommit) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;

@@ -26,18 +26,16 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryContext.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Transaction/Helpers.h"
-
-#include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-
-#include "Logger/LogMacros.h"
 
 #include <utility>
 #include <vector>
@@ -97,7 +95,7 @@ ClusterProvider<StepImpl>::ClusterProvider(
     arangodb::aql::QueryContext& queryContext, ClusterBaseProviderOptions opts,
     arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(
-          queryContext.newTrxContext(), queryContext.operationOrigin())),
+          queryContext.newTrxContext())),
       _query(&queryContext),
       _resourceMonitor(&resourceMonitor),
       _opts(std::move(opts)),

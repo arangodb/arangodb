@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CalculationExecutor.h"
-#include <Logger/LogMacros.h>
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
@@ -51,8 +50,7 @@ CalculationExecutorInfos::CalculationExecutorInfos(
 template<CalculationType calculationType>
 CalculationExecutor<calculationType>::CalculationExecutor(
     Fetcher& fetcher, CalculationExecutorInfos& infos)
-    : _trx(infos.getQuery().newTrxContext(),
-           infos.getQuery().operationOrigin()),
+    : _trx(infos.getQuery().newTrxContext()),
       _infos(infos),
       _fetcher(fetcher),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),

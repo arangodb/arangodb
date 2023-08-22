@@ -412,7 +412,8 @@ static void ExistsVocbaseVPack(
   bool extendedNames =
       vocbase->server().getFeature<DatabaseFeature>().extendedNames();
 
-  transaction::V8Context transactionContext(*vocbase, true);
+  auto origin = transaction::OperationOriginREST{"checking document existence"};
+  transaction::V8Context transactionContext(*vocbase, origin, true);
   VPackBuilder builder;
   std::shared_ptr<arangodb::LogicalCollection> collection(
       col, [](arangodb::LogicalCollection*) -> void {});
@@ -439,8 +440,7 @@ static void ExistsVocbaseVPack(
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::READ,
-      transaction::OperationOriginREST{"checking document existence"});
+      collectionName, AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   res = trx.begin();
@@ -544,12 +544,12 @@ static void DocumentVocbaseCol(
   }
 
   VPackSlice search = searchBuilder.slice();
-  transaction::V8Context transactionContext(col->vocbase(), true);
+  auto origin = transaction::OperationOriginREST{"reading document(s)"};
+  transaction::V8Context transactionContext(col->vocbase(), origin, true);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::READ,
-      transaction::OperationOriginREST{"reading document(s)"});
+      collectionName, AccessMode::Type::READ);
 
   if (!args[0]->IsArray()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -600,7 +600,8 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool extendedNames =
       vocbase.server().getFeature<DatabaseFeature>().extendedNames();
 
-  transaction::V8Context transactionContext(vocbase, true);
+  auto origin = transaction::OperationOriginREST{"reading document(s)"};
+  transaction::V8Context transactionContext(vocbase, origin, true);
   VPackBuilder builder;
   std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
@@ -628,8 +629,7 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::READ,
-      transaction::OperationOriginREST{"reading document(s)"});
+      collectionName, AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -736,12 +736,12 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                             // single document operations
 
   VPackSlice toRemove = searchBuilder.slice();
-  transaction::V8Context transactionContext(col->vocbase(), true);
+  auto origin = transaction::OperationOriginREST{"removing document(s)"};
+  transaction::V8Context transactionContext(col->vocbase(), origin, true);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::V8Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::WRITE,
-      transaction::OperationOriginREST{"removing document(s)"}, trxOpts);
+      collectionName, AccessMode::Type::WRITE, trxOpts);
 
   ::addTransactionHints(*col, trx, payloadIsArray, false);
 
@@ -808,7 +808,9 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool extendedNames =
       vocbase.server().getFeature<DatabaseFeature>().extendedNames();
 
-  transaction::V8Context transactionContext(vocbase, true);
+  auto origin = transaction::OperationOriginREST{"removing document(s)"};
+  ;
+  transaction::V8Context transactionContext(vocbase, origin, true);
   VPackBuilder builder;
   std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
@@ -836,8 +838,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::WRITE,
-      transaction::OperationOriginREST{"removing document(s)"}, trxOpts);
+      collectionName, AccessMode::Type::WRITE, trxOpts);
   ::addTransactionHints(*collection, trx, false, false);
 
   Result res = trx.begin();
@@ -921,12 +922,12 @@ static void JS_BinaryDocumentVocbaseCol(
   }
 
   VPackSlice search = searchBuilder.slice();
-  transaction::V8Context transactionContext(col->vocbase(), true);
+  auto origin = transaction::OperationOriginREST{"storing binary document"};
+  transaction::V8Context transactionContext(col->vocbase(), origin, true);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::READ,
-      transaction::OperationOriginREST{"storing binary document"});
+      collectionName, AccessMode::Type::READ);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -1083,10 +1084,10 @@ static void JS_FiguresVocbaseCol(
     details = TRI_ObjectToBoolean(isolate, args[0]);
   }
 
+  auto origin = transaction::OperationOriginREST{"extracing figures"};
   SingleCollectionTransaction trx(
-      transaction::V8Context::Create(collection->vocbase(), true), *collection,
-      AccessMode::Type::READ,
-      transaction::OperationOriginREST{"extracing figures"});
+      transaction::V8Context::create(collection->vocbase(), origin, true),
+      *collection, AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -1537,8 +1538,10 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     }
   }
 
-  VPackSlice const update = updateBuilder.slice();
-  transaction::V8Context transactionContext(col->vocbase(), true);
+  VPackSlice update = updateBuilder.slice();
+  auto origin =
+      transaction::OperationOriginREST{"updating/replacing document(s)"};
+  transaction::V8Context transactionContext(col->vocbase(), origin, true);
 
   bool payloadIsArray = args[0]->IsArray();
   transaction::Options trxOpts;
@@ -1549,9 +1552,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::WRITE,
-      transaction::OperationOriginREST{"updating/replacing document(s)"},
-      trxOpts);
+      collectionName, AccessMode::Type::WRITE, trxOpts);
 
   addTransactionHints(*col, trx, payloadIsArray, false);
 
@@ -1649,7 +1650,9 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   auto& vocbase = GetContextVocBase(isolate);
   bool extendedNames =
       vocbase.server().getFeature<DatabaseFeature>().extendedNames();
-  transaction::V8Context transactionContext(vocbase, true);
+  auto origin =
+      transaction::OperationOriginREST{"updating/replacing document(s)"};
+  transaction::V8Context transactionContext(vocbase, origin, true);
   VPackBuilder updateBuilder;
 
   {
@@ -1675,9 +1678,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::WRITE,
-      transaction::OperationOriginREST{"updating/replacing document(s)"},
-      trxOpts);
+      collectionName, AccessMode::Type::WRITE, trxOpts);
   addTransactionHints(*collection, trx, false, false);
 
   Result res = trx.begin();
@@ -1685,7 +1686,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  VPackSlice const update = updateBuilder.slice();
+  VPackSlice update = updateBuilder.slice();
 
   OperationResult opResult = (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE)
                                  ? trx.replace(collectionName, update, options)
@@ -1979,12 +1980,13 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   trxOpts.delaySnapshot = !payloadIsArray;  // for now we only enable this for
                                             // single document operations
 
-  transaction::V8Context transactionContext(collection->vocbase(), true);
+  auto origin = transaction::OperationOriginREST{"inserting document(s)"};
+  transaction::V8Context transactionContext(collection->vocbase(), origin,
+                                            true);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      *collection, AccessMode::Type::WRITE,
-      transaction::OperationOriginREST{"inserting document(s)"}, trxOpts);
+      *collection, AccessMode::Type::WRITE, trxOpts);
 
   addTransactionHints(*collection, trx, payloadIsArray,
                       options.isOverwriteModeUpdateReplace());
@@ -2134,10 +2136,11 @@ static void JS_TruncateVocbaseCol(
   }
 
   {
-    auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
-    SingleCollectionTransaction trx(
-        ctx, *collection, AccessMode::Type::EXCLUSIVE,
-        transaction::OperationOriginREST{"truncating collection"});
+    auto origin = transaction::OperationOriginREST{"truncating collection"};
+    auto ctx =
+        transaction::V8Context::create(collection->vocbase(), origin, true);
+    SingleCollectionTransaction trx(ctx, *collection,
+                                    AccessMode::Type::EXCLUSIVE);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     Result res = trx.begin();
@@ -2514,10 +2517,10 @@ static void JS_CountVocbaseCol(
   }
 
   auto& collectionName = col->name();
+  auto origin = transaction::OperationOriginREST{"counting documents"};
   SingleCollectionTransaction trx(
-      transaction::V8Context::Create(col->vocbase(), true), collectionName,
-      AccessMode::Type::READ,
-      transaction::OperationOriginREST{"counting documents"});
+      transaction::V8Context::create(col->vocbase(), origin, true),
+      collectionName, AccessMode::Type::READ);
 
   Result res = trx.begin();
 

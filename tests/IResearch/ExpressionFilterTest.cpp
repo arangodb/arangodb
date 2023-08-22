@@ -445,9 +445,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -491,11 +491,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::OperationOriginTestCase{});
-
-    ;
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -523,9 +521,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -569,9 +567,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -601,9 +599,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -647,9 +645,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -699,9 +697,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -745,9 +743,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -797,9 +795,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -843,9 +841,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -896,9 +894,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -942,9 +940,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -975,9 +973,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1021,9 +1019,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1054,9 +1052,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1095,9 +1093,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1198,9 +1196,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), nullptr,
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1239,9 +1237,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1332,9 +1330,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        arangodb::aql::QueryString(queryString), bindVars,
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        arangodb::aql::QueryString(queryString), bindVars);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1373,9 +1371,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options(),
-        arangodb::transaction::OperationOriginTestCase{});
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);

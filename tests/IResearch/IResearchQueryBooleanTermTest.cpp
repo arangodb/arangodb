@@ -54,9 +54,9 @@ class QueryBooleanTerm : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE,
-          arangodb::transaction::OperationOriginTestCase{});
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -86,9 +86,9 @@ class QueryBooleanTerm : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE,
-          arangodb::transaction::OperationOriginTestCase{});
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {

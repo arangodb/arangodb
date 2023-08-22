@@ -133,19 +133,19 @@ void MemoryTrackerAqlQuery::rollbackToSavePoint() {
 }
 
 void MemoryTrackerAqlQuery::beginQuery(ResourceMonitor* resourceMonitor) {
-  // note: resourceMonitor cannot be a nullptr when we are called
+  // note: resourceMonitor cannot be a nullptr when we are called here
   TRI_ASSERT(resourceMonitor != nullptr);
   TRI_ASSERT(_resourceMonitor == nullptr);
   TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
+
   _resourceMonitor = resourceMonitor;
-  if (_resourceMonitor != nullptr) {
-    _memoryUsageAtBeginQuery = _memoryUsage;
-  }
+  _memoryUsageAtBeginQuery = _memoryUsage;
 }
 
 void MemoryTrackerAqlQuery::endQuery() noexcept {
   TRI_ASSERT(_resourceMonitor != nullptr);
   TRI_ASSERT(_memoryUsage >= _lastPublishedValue);
+
   _memoryUsage = _memoryUsageAtBeginQuery;
   _memoryUsageAtBeginQuery = 0;
   try {

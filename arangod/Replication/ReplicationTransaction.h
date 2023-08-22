@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/AccessMode.h"
@@ -38,9 +39,9 @@ class ReplicationTransaction : public transaction::Methods {
   /// @brief create the transaction
   explicit ReplicationTransaction(TRI_vocbase_t& vocbase,
                                   transaction::OperationOrigin operationOrigin)
-      : transaction::Methods(transaction::StandaloneContext::Create(vocbase),
-                             operationOrigin,
-                             transaction::Options::replicationDefaults()),
+      : transaction::Methods(
+            transaction::StandaloneContext::create(vocbase, operationOrigin),
+            transaction::Options::replicationDefaults()),
         _guard(vocbase) {
     TRI_ASSERT(state() != nullptr);
     state()->setExclusiveAccessType();

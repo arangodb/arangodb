@@ -1224,11 +1224,12 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
       }
     }
 
+    auto operationOrigin = transaction::OperationOriginInternal{
+        "applying initial changes in replication"};
+
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(vocbase()), *coll,
-        AccessMode::Type::EXCLUSIVE,
-        transaction::OperationOriginInternal{
-            "applying initial changes in replication"});
+        transaction::StandaloneContext::create(vocbase(), operationOrigin),
+        *coll, AccessMode::Type::EXCLUSIVE);
 
     // do not index the operations in our own transaction
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
@@ -1560,11 +1561,11 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
 
   if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
+    auto operationOrigin = transaction::OperationOriginInternal{
+        "truncating collection in replication"};
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(vocbase()), *coll,
-        AccessMode::Type::EXCLUSIVE,
-        transaction::OperationOriginInternal{
-            "truncating collection in replication"});
+        transaction::StandaloneContext::create(vocbase(), operationOrigin),
+        *coll, AccessMode::Type::EXCLUSIVE);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     Result res = trx.begin();
@@ -1766,11 +1767,11 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
     if (treeLeader->count() == 0) {
       // remote collection has no documents. now truncate our local collection
+      auto operationOrigin = transaction::OperationOriginInternal{
+          "truncating collection in replication"};
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(vocbase()), *coll,
-          AccessMode::Type::EXCLUSIVE,
-          transaction::OperationOriginInternal{
-              "truncating collection in replication"});
+          transaction::StandaloneContext::create(vocbase(), operationOrigin),
+          *coll, AccessMode::Type::EXCLUSIVE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
       Result res = trx.begin();
@@ -1805,7 +1806,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
   PhysicalCollection* physical = coll->getPhysical();
   TRI_ASSERT(physical);
-  auto context = transaction::StandaloneContext::Create(coll->vocbase());
+
+  auto operationOrigin = transaction::OperationOriginInternal{
+      "applying initial changes in replication"};
+
+  auto context =
+      transaction::StandaloneContext::create(coll->vocbase(), operationOrigin);
   TransactionId blockerId = context->generateId();
   physical->placeRevisionTreeBlocker(blockerId);
 
@@ -1827,10 +1833,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   }
   try {
     trx = std::make_unique<SingleCollectionTransaction>(
-        context, *coll, AccessMode::Type::EXCLUSIVE,
-        transaction::OperationOriginInternal{
-            "applying initial changes in replication"},
-        options);
+        std::move(context), *coll, AccessMode::Type::EXCLUSIVE, options);
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       if (coll->deleted()) {
@@ -2395,11 +2398,13 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
             // system collection
             _config.progress.set("truncating " + collectionMsg);
 
+            auto operationOrigin = transaction::OperationOriginInternal{
+                "truncating collection for replication"};
+
             SingleCollectionTransaction trx(
-                transaction::StandaloneContext::Create(vocbase()), *col,
-                AccessMode::Type::EXCLUSIVE,
-                transaction::OperationOriginInternal{
-                    "truncating collection for replication"});
+                transaction::StandaloneContext::create(vocbase(),
+                                                       operationOrigin),
+                *col, AccessMode::Type::EXCLUSIVE);
             trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
             Result res = trx.begin();

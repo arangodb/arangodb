@@ -269,8 +269,8 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
       // this case, we create an ad-hoc transaction on the underlying
       // collection
       trx = std::make_unique<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(_vocbase), cName,
-          AccessMode::Type::READ, origin);
+          transaction::StandaloneContext::create(_vocbase, origin), cName,
+          AccessMode::Type::READ);
     } else {
       throw;
     }

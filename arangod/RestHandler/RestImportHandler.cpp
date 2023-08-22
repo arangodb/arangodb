@@ -358,10 +358,10 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(
-      ctx, collectionName, AccessMode::Type::WRITE,
-      transaction::OperationOriginREST{"importing documents"});
+  auto origin = transaction::OperationOriginREST{"importing documents"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collectionName,
+                                  AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
   bool isEdgeCollection = false;
@@ -564,10 +564,10 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(
-      ctx, collectionName, AccessMode::Type::WRITE,
-      transaction::OperationOriginREST{"importing documents"});
+  auto origin = transaction::OperationOriginREST{"importing documents"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collectionName,
+                                  AccessMode::Type::WRITE);
 
   bool isEdgeCollection = false;
   if (auto collection = trx.resolver()->getCollection(collectionName);
@@ -765,10 +765,10 @@ bool RestImportHandler::createFromKeyValueList() {
   current = next + 1;
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(
-      ctx, collectionName, AccessMode::Type::WRITE,
-      transaction::OperationOriginREST{"importing documents"});
+  auto origin = transaction::OperationOriginREST{"importing documents"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collectionName,
+                                  AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   bool isEdgeCollection = false;

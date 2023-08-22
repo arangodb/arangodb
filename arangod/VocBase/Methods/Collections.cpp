@@ -395,11 +395,12 @@ Collections::Context::~Context() {
 transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
                                                 bool embeddable) {
   if (_responsibleForTrx && _trx == nullptr) {
-    auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(),
-                                                          embeddable);
-    // TODO: check if trxType is actually correct here
-    auto trx = std::make_unique<SingleCollectionTransaction>(
-        ctx, *_coll, type, transaction::OperationOriginREST{::moduleName});
+    auto origin = transaction::OperationOriginREST{::moduleName};
+
+    auto ctx = transaction::V8Context::createWhenRequired(_coll->vocbase(),
+                                                          origin, embeddable);
+    auto trx = std::make_unique<SingleCollectionTransaction>(std::move(ctx),
+                                                             *_coll, type);
 
     Result res = trx->begin();
 
@@ -1068,11 +1069,12 @@ Result Collections::updateProperties(LogicalCollection& collection,
     return rv;
 
   } else {
-    auto ctx =
-        transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
-    SingleCollectionTransaction trx(
-        ctx, collection, AccessMode::Type::EXCLUSIVE,
-        transaction::OperationOriginREST{"collection properties update"});
+    auto origin =
+        transaction::OperationOriginREST{"collection properties update"};
+    auto ctx = transaction::V8Context::createWhenRequired(collection.vocbase(),
+                                                          origin, false);
+    SingleCollectionTransaction trx(std::move(ctx), collection,
+                                    AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
 
     if (res.ok()) {
@@ -1316,11 +1318,11 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
 
-  auto ctx =
-      transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
-  SingleCollectionTransaction trx(
-      ctx, collection, AccessMode::Type::READ,
-      transaction::OperationOriginREST{"checksumming collection"});
+  auto origin = transaction::OperationOriginREST{"checksumming collection"};
+  auto ctx = transaction::V8Context::createWhenRequired(collection.vocbase(),
+                                                        origin, true);
+  SingleCollectionTransaction trx(std::move(ctx), collection,
+                                  AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (res.fail()) {

@@ -97,8 +97,7 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
 MockGraphProvider::MockGraphProvider(arangodb::aql::QueryContext& queryContext,
                                      MockGraphProviderOptions opts,
                                      arangodb::ResourceMonitor&)
-    : _trx(queryContext.newTrxContext(),
-           transaction::OperationOriginTestCase{}),
+    : _trx(queryContext.newTrxContext()),
       _reverse(opts.reverse()),
       _looseEnds(opts.looseEnds()),
       _stats{} {

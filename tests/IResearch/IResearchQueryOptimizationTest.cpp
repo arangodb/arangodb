@@ -235,9 +235,9 @@ bool findEmptyNodes(
       "{ }");
 
   auto query = arangodb::aql::Query::create(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), bindVars,
-      arangodb::transaction::OperationOriginTestCase{},
       arangodb::aql::QueryOptions(options->slice()));
 
   query->prepareQuery();
@@ -333,9 +333,10 @@ class QueryOptimization : public QueryTestMulti {
       arangodb::OperationOptions opt;
       static std::vector<std::string> const EMPTY;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          {logicalCollection1->name()}, EMPTY, arangodb::transaction::Options(),
-          arangodb::transaction::OperationOriginTestCase{});
+          arangodb::transaction::StandaloneContext::create(
+              vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, {logicalCollection1->name()}, EMPTY,
+          arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection

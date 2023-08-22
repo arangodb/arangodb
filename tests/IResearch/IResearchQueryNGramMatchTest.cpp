@@ -112,9 +112,9 @@ class QueryNGramMatch : public QueryTest {
         arangodb::OperationOptions options;
         options.returnNew = true;
         arangodb::SingleCollectionTransaction trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase),
-            *collection, arangodb::AccessMode::Type::WRITE,
-            arangodb::transaction::OperationOriginTestCase{});
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            *collection, arangodb::AccessMode::Type::WRITE);
         EXPECT_TRUE(trx.begin().ok());
 
         for (auto& entry : docs) {
@@ -200,9 +200,9 @@ class QueryNGramMatch : public QueryTest {
         arangodb::OperationOptions options;
         options.returnNew = true;
         arangodb::SingleCollectionTransaction trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase),
-            *collection, arangodb::AccessMode::Type::WRITE,
-            arangodb::transaction::OperationOriginTestCase{});
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            *collection, arangodb::AccessMode::Type::WRITE);
         EXPECT_TRUE(trx.begin().ok());
 
         for (auto& entry : docs) {

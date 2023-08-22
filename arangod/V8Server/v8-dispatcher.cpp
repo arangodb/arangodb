@@ -360,10 +360,10 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   LOG_TOPIC("aeb56", TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextSuperuserScope exscope;
-  auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(
-      ctx, StaticStrings::QueuesCollection, AccessMode::Type::EXCLUSIVE,
-      transaction::OperationOriginREST{::moduleName});
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(*vocbase, origin, true);
+  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
+                                  AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -412,10 +412,10 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextSuperuserScope exscope;
-  auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(
-      ctx, StaticStrings::QueuesCollection, AccessMode::Type::WRITE,
-      transaction::OperationOriginREST{::moduleName});
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(*vocbase, origin, true);
+  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
+                                  AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
 

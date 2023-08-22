@@ -78,16 +78,14 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
         QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
-        QueryOptions options, std::shared_ptr<SharedQueryState> sharedState,
-        transaction::OperationOrigin operationOrigin);
+        QueryOptions options, std::shared_ptr<SharedQueryState> sharedState);
 
   /// Used to construct a full query. the constructor is protected to ensure
   /// that call sites only create Query objects using the `create` factory
   /// method
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
-        QueryOptions options, Scheduler* scheduler,
-        transaction::OperationOrigin operationOrigin);
+        QueryOptions options, Scheduler* scheduler);
 
   ~Query() override;
 
@@ -102,7 +100,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   static std::shared_ptr<Query> create(
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
-      transaction::OperationOrigin operationOrigin, QueryOptions options = {},
+      QueryOptions options = {},
       Scheduler* scheduler = SchedulerFeature::SCHEDULER);
 
   constexpr static uint64_t DontCache = 0;

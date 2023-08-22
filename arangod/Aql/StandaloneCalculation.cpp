@@ -149,13 +149,13 @@ struct CalculationTransactionContext final
       TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin)
       : SmartContext(vocbase,
                      arangodb::transaction::Context::makeTransactionId(),
-                     nullptr),
+                     nullptr, operationOrigin),
         _calculationTransactionState(vocbase, operationOrigin) {}
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<arangodb::TransactionState> acquireState(
-      arangodb::transaction::Options const& options, bool& responsibleForCommit,
-      arangodb::transaction::OperationOrigin /*operationOrigin*/) override {
+      arangodb::transaction::Options const& options,
+      bool& responsibleForCommit) override {
     return {std::shared_ptr<arangodb::TransactionState>(),
             &_calculationTransactionState};
   }
@@ -182,9 +182,9 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
         _resolver(vocbase),
         _transactionContext(vocbase, operationOrigin) {
     _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
-    _trx = AqlTransaction::create(
-        newTrxContext(), _collections, _queryOptions.transactionOptions,
-        operationOrigin, std::unordered_set<std::string>{});
+    _trx = AqlTransaction::create(newTrxContext(), _collections,
+                                  _queryOptions.transactionOptions,
+                                  std::unordered_set<std::string>{});
     _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
     _trx->addHint(arangodb::transaction::Hints::Hint::
                       SINGLE_OPERATION);  // to avoid taking db snapshot

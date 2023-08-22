@@ -164,7 +164,7 @@ QueryStreamCursor::QueryStreamCursor(
              _query->killed());
   _ctx = _query->newTrxContext();
 
-  transaction::Methods trx(_ctx, operationOrigin);
+  transaction::Methods trx(_ctx);
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterTrxSetup") {
     QueryStreamCursor::debugKillQuery();
   }
@@ -532,8 +532,7 @@ ExecutionState QueryStreamCursor::finalization() {
 
 void QueryStreamCursor::cleanupStateCallback() {
   TRI_ASSERT(_query);
-  transaction::Methods trx(
-      _ctx, transaction::OperationOriginInternal{"cleaning up state"});
+  transaction::Methods trx(_ctx);
   if (_stateChangeCb && trx.status() == transaction::Status::RUNNING) {
     trx.removeStatusChangeCallback(&_stateChangeCb);
     _stateChangeCb = nullptr;

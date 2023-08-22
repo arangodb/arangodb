@@ -76,7 +76,6 @@ arangodb::aql::QueryResult executeQuery(
     std::string const& optionsString = "{}") {
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), bindVars,
-      arangodb::transaction::OperationOriginTestCase{},
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -108,9 +107,9 @@ TEST_F(IndexNodeTest, objectQuery) {
 
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-      {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::OperationOriginTestCase{});
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, {collection->name()}, EMPTY, arangodb::transaction::Options());
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -125,8 +124,8 @@ TEST_F(IndexNodeTest, objectQuery) {
     auto queryString =
         "FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT "
         "10 RETURN d";
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase, arangodb::transaction::OperationOriginTestCase{});
     auto queryResult = ::executeQuery(ctx, queryString);
     EXPECT_TRUE(queryResult.result.ok());  // commit
     auto result = queryResult.data->slice();
@@ -142,8 +141,8 @@ TEST_F(IndexNodeTest, objectQuery) {
     auto queryString =
         "FOR d IN testCollection FILTER d.obj.a == {sub_a: \"a_val\"}.sub_a "
         "SORT d.obj.c LIMIT 10 RETURN d";
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase, arangodb::transaction::OperationOriginTestCase{});
     auto queryResult = ::executeQuery(ctx, queryString);
     EXPECT_TRUE(queryResult.result.ok());  // commit
     auto result = queryResult.data->slice();
@@ -159,8 +158,8 @@ TEST_F(IndexNodeTest, objectQuery) {
     auto queryString =
         "FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT "
         "2 SORT d.obj.b DESC LIMIT 1 RETURN d";
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase, arangodb::transaction::OperationOriginTestCase{});
     auto queryResult = ::executeQuery(ctx, queryString);
     EXPECT_TRUE(queryResult.result.ok());  // commit
     auto result = queryResult.data->slice();
@@ -189,9 +188,9 @@ TEST_F(IndexNodeTest, expansionQuery) {
 
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-      {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::OperationOriginTestCase{});
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, {collection->name()}, EMPTY, arangodb::transaction::Options());
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -212,8 +211,8 @@ TEST_F(IndexNodeTest, expansionQuery) {
   auto queryString =
       "FOR d IN testCollection FILTER 'foo_val' IN d.tags.hop[*].foo.fo SORT "
       "d.tags.hop[*].baz.bz LIMIT 2 RETURN d";
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, arangodb::transaction::OperationOriginTestCase{});
   auto queryResult = ::executeQuery(ctx, queryString);
   EXPECT_TRUE(queryResult.result.ok());  // commit
   auto result = queryResult.data->slice();
@@ -243,9 +242,9 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
 
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-      {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::OperationOriginTestCase{});
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, {collection->name()}, EMPTY, arangodb::transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
 
@@ -259,8 +258,8 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   auto queryString =
       "FOR d IN testCollection FILTER 'foo_val' IN d.tags.hop[*].foo.fo SORT "
       "d.tags.hop[*].baz.bz LIMIT 10 RETURN d";
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, arangodb::transaction::OperationOriginTestCase{});
   auto queryResult = ::executeQuery(ctx, queryString);
   EXPECT_TRUE(queryResult.result.ok());  // commit
   auto result = queryResult.data->slice();
@@ -285,9 +284,9 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
 
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-      {collection->name()}, EMPTY, arangodb::transaction::Options(),
-      arangodb::transaction::OperationOriginTestCase{});
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, {collection->name()}, EMPTY, arangodb::transaction::Options());
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -301,8 +300,8 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
     auto queryString =
         "FOR d IN testCollection FILTER 'foo_val' IN d.tags[*] SORT d.tags "
         "LIMIT 10 RETURN d";
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase, arangodb::transaction::OperationOriginTestCase{});
     auto queryResult = ::executeQuery(ctx, queryString);
     EXPECT_TRUE(queryResult.result.ok());  // commit
     auto result = queryResult.data->slice();
@@ -316,8 +315,8 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
     auto queryString =
         "FOR d IN testCollection FILTER 'foo_val' IN d.tags SORT d.tags LIMIT "
         "10 RETURN d";
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase, arangodb::transaction::OperationOriginTestCase{});
     auto queryResult = ::executeQuery(ctx, queryString);
     EXPECT_TRUE(queryResult.result.ok());  // commit
     auto result = queryResult.data->slice();
@@ -515,14 +514,14 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       "  \"regsToKeepStack\" : [[ ]]"
       "}");
 
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, arangodb::transaction::OperationOriginTestCase{});
   auto query = arangodb::aql::Query::create(
       ctx,
       arangodb::aql::QueryString(
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
-      nullptr, arangodb::transaction::OperationOriginTestCase{});
+      nullptr);
   query->prepareQuery();
 
   {
@@ -581,11 +580,11 @@ TEST_F(IndexNodeTest, constructIndexNode) {
 
       // with properties
       {
-        auto ctx =
-            std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+        auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+            vocbase, arangodb::transaction::OperationOriginTestCase{});
         auto queryClone = arangodb::aql::Query::create(
             ctx, arangodb::aql::QueryString(std::string_view("RETURN 1")),
-            nullptr, arangodb::transaction::OperationOriginTestCase{});
+            nullptr);
         queryClone->prepareQuery();
         indNode.invalidateVarUsage();
         auto indNodeClone =
@@ -621,14 +620,14 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   auto collection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!collection);
 
-  auto ctx =
-      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      vocbase, arangodb::transaction::OperationOriginTestCase{});
   auto query = arangodb::aql::Query::create(
       ctx,
       arangodb::aql::QueryString(
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
-      nullptr, arangodb::transaction::OperationOriginTestCase{});
+      nullptr);
   query->prepareQuery();
 
   auto vars = query->plan()->getAst()->variables();

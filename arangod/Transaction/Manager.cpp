@@ -82,16 +82,13 @@ std::string currentUser() { return arangodb::ExecContext::current().user(); }
 
 }  // namespace
 
-namespace arangodb {
-
-namespace transaction {
+namespace arangodb::transaction {
 
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
   MGMethods(std::shared_ptr<arangodb::transaction::Context> ctx,
             arangodb::transaction::Options const& opts)
-      : Methods(std::move(ctx), OperationOriginInternal{"accessing query"},
-                opts) {}
+      : Methods(std::move(ctx)) {}
 };
 }  // namespace
 
@@ -109,21 +106,16 @@ Manager::Manager(ManagerFeature& feature)
 
 Manager::~Manager() = default;
 
-void Manager::registerTransaction(TransactionId transactionId,
-                                  bool isReadOnlyTransaction,
-                                  bool isFollowerTransaction) {
+std::shared_ptr<CounterGuard> Manager::registerTransaction(
+    TransactionId transactionId, bool isReadOnlyTransaction,
+    bool isFollowerTransaction) {
   // If isFollowerTransaction is set then either the transactionId should be
   // an isFollowerTransactionId or it should be a legacy transactionId:
   TRI_ASSERT(!isFollowerTransaction ||
              transactionId.isFollowerTransactionId() ||
              transactionId.isLegacyTransactionId());
-  _nrRunning.fetch_add(1, std::memory_order_relaxed);
-}
 
-// unregisters a transaction
-void Manager::unregisterTransaction() noexcept {
-  uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
-  TRI_ASSERT(r > 0);
+  return std::make_shared<CounterGuard>(*this);
 }
 
 uint64_t Manager::getActiveTransactionCount() {
@@ -404,11 +396,14 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
 
 Result Manager::beginTransaction(transaction::Hints hints,
                                  std::shared_ptr<TransactionState>& state) {
+  TRI_ASSERT(state != nullptr);
   Result res;
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {
     res.reset(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    res.reset(TRI_ERROR_INTERNAL, ex.what());
   }
 
   TRI_ASSERT(res.ok() || !state->isRunning());
@@ -1181,11 +1176,10 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
   bool isCoordinator = state->isCoordinator();
   bool intermediateCommits = state->numCommits() > 0;
 
-  transaction::Options trxOpts;
   MGMethods trx(std::make_shared<ManagedContext>(tid, std::move(state),
                                                  /*responsibleForCommit*/ true,
                                                  /*cloned*/ false),
-                trxOpts);
+                transaction::Options{});
   TRI_ASSERT(trx.state()->isRunning());
   TRI_ASSERT(trx.isMainTransaction());
   if (clearServers && !isCoordinator) {
@@ -1594,5 +1588,14 @@ Manager::TransactionCommitGuard Manager::getTransactionCommitGuard() {
   return guard;
 }
 
-}  // namespace transaction
-}  // namespace arangodb
+CounterGuard::CounterGuard(Manager& manager) : _manager(manager) {
+  _manager._nrRunning.fetch_add(1, std::memory_order_relaxed);
+}
+
+CounterGuard::~CounterGuard() {
+  [[maybe_unused]] uint64_t r =
+      _manager._nrRunning.fetch_sub(1, std::memory_order_relaxed);
+  TRI_ASSERT(r > 0);
+}
+
+}  // namespace arangodb::transaction

@@ -123,10 +123,11 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
     }
 
     TRI_ASSERT(_vocbase != nullptr);
-    auto ctx = transaction::StandaloneContext::Create(*_vocbase);
-    SingleCollectionTransaction trx(
-        ctx, "election", AccessMode::Type::WRITE,
-        transaction::OperationOriginInternal{"storing agency election result"});
+    auto origin =
+        transaction::OperationOriginInternal{"storing agency election result"};
+    auto ctx = transaction::StandaloneContext::create(*_vocbase, origin);
+    SingleCollectionTransaction trx(std::move(ctx), "election",
+                                    AccessMode::Type::WRITE);
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -599,11 +600,11 @@ void Constituent::run() {
   {
     std::string const aql(
         "FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
+    auto origin = transaction::OperationOriginInternal{
+        "querying most recent agency election vote"};
     auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(*_vocbase),
-        arangodb::aql::QueryString(aql), nullptr,
-        transaction::OperationOriginInternal{
-            "querying most recent agency election vote"});
+        transaction::StandaloneContext::create(*_vocbase, origin),
+        arangodb::aql::QueryString(aql), nullptr);
 
     aql::QueryResult queryResult = query->executeSync();
 

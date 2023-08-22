@@ -394,18 +394,18 @@ Result executeTransactionJS(v8::Isolate* isolate,
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  transaction::V8Context ctx(vocbase, embed);
+  auto origin = transaction::OperationOriginREST{"JavaScript transaction"};
+  transaction::V8Context ctx(vocbase, origin, embed);
   if (writeCollections.empty() && exclusiveCollections.empty()) {
     ctx.setReadOnly();
   }
   ctx.setJStransaction();
 
   // start actual transaction
-  transaction::Methods trx(
-      std::shared_ptr<transaction::Context>(
-          std::shared_ptr<transaction::Context>(), &ctx),
-      readCollections, writeCollections, exclusiveCollections, trxOptions,
-      transaction::OperationOriginREST{"JavaScript transaction"});
+  transaction::Methods trx(std::shared_ptr<transaction::Context>(
+                               std::shared_ptr<transaction::Context>(), &ctx),
+                           readCollections, writeCollections,
+                           exclusiveCollections, trxOptions);
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (ServerState::instance()->isCoordinator()) {
     // No one knows our Transaction ID yet, so we an run FAST_LOCK_ROUND and

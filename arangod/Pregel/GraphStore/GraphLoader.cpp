@@ -171,10 +171,9 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
   transaction::Options trxOpts;
   trxOpts.waitForSync = false;
   trxOpts.allowImplicitCollectionsForRead = true;
-  auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
-  transaction::Methods trx(
-      ctx, {}, {}, {}, trxOpts,
-      transaction::OperationOriginREST{"loading Pregel vertices"});
+  auto origin = transaction::OperationOriginREST{"loading Pregel vertices"};
+  auto ctx = transaction::StandaloneContext::create(*config->vocbase(), origin);
+  transaction::Methods trx(ctx, {}, {}, {}, trxOpts);
   Result res = trx.begin();
 
   if (!res.ok()) {

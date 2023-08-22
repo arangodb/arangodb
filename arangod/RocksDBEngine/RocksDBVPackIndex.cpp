@@ -1302,10 +1302,11 @@ Result RocksDBVPackIndex::warmup() {
     return {};
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_collection.vocbase());
-  SingleCollectionTransaction trx(
-      ctx, _collection, AccessMode::Type::READ,
-      transaction::OperationOriginInternal{"warming up persistent index"});
+  auto origin =
+      transaction::OperationOriginInternal{"warming up persistent index"};
+  auto ctx =
+      transaction::StandaloneContext::create(_collection.vocbase(), origin);
+  SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (res.fail()) {

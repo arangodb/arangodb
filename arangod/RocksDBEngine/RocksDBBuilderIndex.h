@@ -39,9 +39,7 @@ struct BuilderTrx : public transaction::Methods {
   BuilderTrx(std::shared_ptr<transaction::Context> const& transactionContext,
              LogicalDataSource const& collection, AccessMode::Type type,
              transaction::Options options = transaction::Options())
-      : transaction::Methods(
-            transactionContext,
-            transaction::OperationOriginInternal{"building index"}, options),
+      : transaction::Methods(transactionContext, options),
         _cid(collection.id()) {
     // add the (sole) data-source
     addCollection(collection.id(), collection.name(), type);

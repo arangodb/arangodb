@@ -48,8 +48,7 @@ static arangodb::aql::QueryResult executeQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<transaction::Context> ctx) {
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), nullptr,
-      arangodb::transaction::OperationOriginTestCase{});
+      ctx, arangodb::aql::QueryString(queryString), nullptr);
 
   arangodb::aql::QueryResult result;
   while (true) {
@@ -171,9 +170,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(
-        ctx, "testCollection", AccessMode::Type::WRITE,
-        arangodb::transaction::OperationOriginTestCase{});
+    SingleCollectionTransaction trx(ctx, "testCollection",
+                                    AccessMode::Type::WRITE);
     ASSERT_TRUE(!trx.isMainTransaction());
 
     OperationOptions opts;
@@ -189,9 +187,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(
-        ctx, "testCollection", AccessMode::Type::READ,
-        arangodb::transaction::OperationOriginTestCase{});
+    SingleCollectionTransaction trx(ctx, "testCollection",
+                                    AccessMode::Type::READ);
     ASSERT_TRUE(!trx.isMainTransaction());
 
     OperationOptions opts;
@@ -232,9 +229,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(
-        ctx, "testCollection", AccessMode::Type::WRITE,
-        arangodb::transaction::OperationOriginTestCase{});
+    SingleCollectionTransaction trx(ctx, "testCollection",
+                                    AccessMode::Type::WRITE);
     ASSERT_TRUE(!trx.isMainTransaction());
     ASSERT_FALSE(
         trx.state()->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
@@ -286,9 +282,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(
-        ctx, "testCollection", AccessMode::Type::WRITE,
-        arangodb::transaction::OperationOriginTestCase{});
+    SingleCollectionTransaction trx(ctx, "testCollection",
+                                    AccessMode::Type::WRITE);
     ASSERT_TRUE(!trx.isMainTransaction());
     ASSERT_TRUE(
         trx.state()->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
@@ -333,9 +328,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(
-        ctx, "testCollection", AccessMode::Type::WRITE,
-        arangodb::transaction::OperationOriginTestCase{});
+    SingleCollectionTransaction trx(ctx, "testCollection",
+                                    AccessMode::Type::WRITE);
     ASSERT_TRUE(!trx.isMainTransaction());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
@@ -382,22 +376,19 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
 
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false);
     ASSERT_NE(ctx.get(), nullptr);
-    auto state1 = ctx->acquireState(opts, responsible,
-                                    transaction::OperationOriginTestCase{});
+    auto state1 = ctx->acquireState(opts, responsible);
     ASSERT_NE(state1.get(), nullptr);
     ASSERT_TRUE(!responsible);
 
     auto ctx2 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false);
     ASSERT_NE(ctx2.get(), nullptr);
-    auto state2 = ctx2->acquireState(opts, responsible,
-                                     transaction::OperationOriginTestCase{});
+    auto state2 = ctx2->acquireState(opts, responsible);
     EXPECT_EQ(state1.get(), state2.get());
     ASSERT_TRUE(!responsible);
 
     auto ctx3 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false);
     ASSERT_NE(ctx3.get(), nullptr);
-    auto state3 = ctx3->acquireState(opts, responsible,
-                                     transaction::OperationOriginTestCase{});
+    auto state3 = ctx3->acquireState(opts, responsible);
     EXPECT_EQ(state3.get(), state2.get());
     ASSERT_TRUE(!responsible);
   }
@@ -427,8 +418,7 @@ TEST_F(TransactionManagerTest, lock_conflict) {
 
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
-    auto state1 = ctx->acquireState(opts, responsible,
-                                    transaction::OperationOriginTestCase{});
+    auto state1 = ctx->acquireState(opts, responsible);
     ASSERT_NE(state1.get(), nullptr);
     ASSERT_TRUE(!responsible);
     ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false));
@@ -459,16 +449,14 @@ TEST_F(TransactionManagerTest, lock_conflict_side_user) {
 
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
-    auto state1 = ctx->acquireState(opts, responsible,
-                                    transaction::OperationOriginTestCase{});
+    auto state1 = ctx->acquireState(opts, responsible);
     ASSERT_NE(state1.get(), nullptr);
     ASSERT_TRUE(!responsible);
     ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false));
 
     auto ctxSide = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, true);
     ASSERT_NE(ctxSide.get(), nullptr);
-    auto state2 = ctxSide->acquireState(opts, responsible,
-                                        transaction::OperationOriginTestCase{});
+    auto state2 = ctxSide->acquireState(opts, responsible);
     ASSERT_NE(state2.get(), nullptr);
     ASSERT_TRUE(!responsible);
   }
@@ -498,8 +486,7 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
 
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
-    auto state1 = ctx->acquireState(opts, responsible,
-                                    transaction::OperationOriginTestCase{});
+    auto state1 = ctx->acquireState(opts, responsible);
     ASSERT_NE(state1.get(), nullptr);
     ASSERT_TRUE(!responsible);
   }
@@ -520,10 +507,10 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
   ASSERT_NE(coll, nullptr);
 
   {
-    auto ctx = transaction::StandaloneContext::Create(vocbase);
-    SingleCollectionTransaction trx(
-        ctx, "testCollection", AccessMode::Type::WRITE,
-        arangodb::transaction::OperationOriginTestCase{});
+    auto ctx = transaction::StandaloneContext::create(
+        vocbase, arangodb::transaction::OperationOriginTestCase{});
+    SingleCollectionTransaction trx(ctx, "testCollection",
+                                    AccessMode::Type::WRITE);
     ASSERT_TRUE(trx.begin().ok());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
@@ -533,7 +520,8 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
 
-  auto ctx = std::make_shared<transaction::AQLStandaloneContext>(vocbase, tid);
+  auto ctx = std::make_shared<transaction::AQLStandaloneContext>(
+      vocbase, tid, arangodb::transaction::OperationOriginTestCase{});
   auto qq = "FOR doc IN testCollection RETURN doc";
   arangodb::aql::QueryResult qres = executeQuery(vocbase, qq, ctx);
   ASSERT_TRUE(qres.ok());
@@ -565,9 +553,8 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(
-        ctx, "testCollection", AccessMode::Type::WRITE,
-        arangodb::transaction::OperationOriginTestCase{});
+    SingleCollectionTransaction trx(ctx, "testCollection",
+                                    AccessMode::Type::WRITE);
     ASSERT_TRUE(!trx.isMainTransaction());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");

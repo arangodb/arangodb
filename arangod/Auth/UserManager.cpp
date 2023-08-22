@@ -147,10 +147,11 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
+  auto origin =
+      transaction::OperationOriginInternal{"querying all users from database"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*vocbase),
-      arangodb::aql::QueryString(queryStr), nullptr,
-      transaction::OperationOriginInternal{"querying all users from database"});
+      transaction::StandaloneContext::create(*vocbase, origin),
+      arangodb::aql::QueryString(queryStr), nullptr);
 
   query->queryOptions().cache = false;
   query->queryOptions().ttl = 30;
@@ -295,10 +296,10 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
-  auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(
-      ctx, StaticStrings::UsersCollection, AccessMode::Type::WRITE,
-      transaction::OperationOriginInternal{"storing user"});
+  auto origin = transaction::OperationOriginInternal{"storing user"};
+  auto ctx = transaction::StandaloneContext::create(*vocbase, origin);
+  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
+                                  AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -681,10 +682,10 @@ static Result RemoveUserInternal(ArangodServer& server,
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
-  auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(
-      ctx, StaticStrings::UsersCollection, AccessMode::Type::WRITE,
-      transaction::OperationOriginInternal{"removing user"});
+  auto origin = transaction::OperationOriginInternal{"removing user"};
+  auto ctx = transaction::StandaloneContext::create(*vocbase, origin);
+  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
+                                  AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 

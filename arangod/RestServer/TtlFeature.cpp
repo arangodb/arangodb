@@ -338,10 +338,11 @@ class TtlThread final : public ServerThread<ArangodServer> {
               VPackValue(std::min(properties.maxCollectionRemoves, limitLeft)));
           bindVars->close();
 
+          auto origin =
+              transaction::OperationOriginInternal{"ttl index cleanup"};
           auto query = aql::Query::create(
-              transaction::StandaloneContext::Create(*vocbase),
-              aql::QueryString(::removeQuery), std::move(bindVars),
-              transaction::OperationOriginInternal{"ttl index cleanup"});
+              transaction::StandaloneContext::create(*vocbase, origin),
+              aql::QueryString(::removeQuery), std::move(bindVars));
           query->collections().add(collection->name(), AccessMode::Type::WRITE,
                                    aql::Collection::Hint::Shard);
           aql::QueryResult queryResult = query->executeSync();

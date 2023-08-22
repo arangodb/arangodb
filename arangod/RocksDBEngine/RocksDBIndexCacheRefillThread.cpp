@@ -144,10 +144,10 @@ void RocksDBIndexCacheRefillThread::waitForCatchup() {
 void RocksDBIndexCacheRefillThread::refill(TRI_vocbase_t& vocbase,
                                            DataSourceId cid,
                                            IndexValues const& data) {
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
-  SingleCollectionTransaction trx(
-      ctx, std::to_string(cid.id()), AccessMode::Type::READ,
-      transaction::OperationOriginInternal{"refilling index caches"});
+  auto origin = transaction::OperationOriginInternal{"refilling index caches"};
+  auto ctx = transaction::StandaloneContext::create(vocbase, origin);
+  SingleCollectionTransaction trx(ctx, std::to_string(cid.id()),
+                                  AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (!res.ok()) {

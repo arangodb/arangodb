@@ -137,6 +137,10 @@ TransactionState::Cookie::ptr TransactionState::cookie(
   return std::move(cookie);
 }
 
+std::shared_ptr<transaction::CounterGuard> TransactionState::counterGuard() {
+  return _counterGuard;
+}
+
 /// @brief add a collection to a transaction
 Result TransactionState::addCollection(DataSourceId cid, std::string_view cname,
                                        AccessMode::Type accessType,
@@ -477,8 +481,6 @@ void TransactionState::adjustMemoryUsage(std::int64_t value) noexcept {
 // reset the internal Transaction ID to none.
 // Only used in the Transaction Mock for internal reasons.
 void TransactionState::resetTransactionId() {
-  // avoid use of
-  // TransactionManagerFeature::manager()->unregisterTransaction(...)
   _id = arangodb::TransactionId::none();
 }
 #endif

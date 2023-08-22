@@ -56,6 +56,7 @@ using namespace arangodb;
 
 namespace {
 constexpr std::string_view moduleName = "AQL user functions administration";
+constexpr transaction::OperationOriginREST operationOrigin{moduleName};
 
 // Must not start with `_`, may contain alphanumerical characters, should have
 // at least one set of double colons followed by more alphanumerical characters.
@@ -102,10 +103,11 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase,
       builder.add(StaticStrings::KeyString, VPackValue(UCFN));
     }
 
-    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-    SingleCollectionTransaction trx(
-        ctx, StaticStrings::AqlFunctionsCollection, AccessMode::Type::WRITE,
-        transaction::OperationOriginREST{::moduleName});
+    auto ctx = transaction::V8Context::createWhenRequired(
+        vocbase, ::operationOrigin, true);
+    SingleCollectionTransaction trx(std::move(ctx),
+                                    StaticStrings::AqlFunctionsCollection,
+                                    AccessMode::Type::WRITE);
 
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -165,9 +167,9 @@ Result arangodb::unregisterUserFunctionsGroup(
 
   {
     auto query = arangodb::aql::Query::create(
-        transaction::V8Context::CreateWhenRequired(vocbase, true),
-        arangodb::aql::QueryString(aql), std::move(binds),
-        transaction::OperationOriginREST{::moduleName});
+        transaction::V8Context::createWhenRequired(vocbase, ::operationOrigin,
+                                                   true),
+        arangodb::aql::QueryString(aql), std::move(binds));
     aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
@@ -314,10 +316,11 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
     opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
 
     // find and load collection given by name or identifier
-    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-    SingleCollectionTransaction trx(
-        ctx, StaticStrings::AqlFunctionsCollection, AccessMode::Type::WRITE,
-        transaction::OperationOriginREST{::moduleName});
+    auto ctx = transaction::V8Context::createWhenRequired(
+        vocbase, ::operationOrigin, true);
+    SingleCollectionTransaction trx(std::move(ctx),
+                                    StaticStrings::AqlFunctionsCollection,
+                                    AccessMode::Type::WRITE);
 
     res = trx.begin();
     if (res.fail()) {
@@ -376,9 +379,9 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
   binds->close();
 
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::CreateWhenRequired(vocbase, true),
-      arangodb::aql::QueryString(aql), std::move(binds),
-      transaction::OperationOriginREST{::moduleName});
+      transaction::V8Context::createWhenRequired(vocbase, ::operationOrigin,
+                                                 true),
+      arangodb::aql::QueryString(aql), std::move(binds));
   aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {

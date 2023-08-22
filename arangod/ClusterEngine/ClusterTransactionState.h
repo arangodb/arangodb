@@ -85,7 +85,6 @@ class ClusterTransactionState final : public TransactionState {
 
  private:
   uint64_t _numIntermediateCommits;
-  bool _registered;
 };
 
 }  // namespace arangodb

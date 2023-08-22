@@ -106,10 +106,11 @@ void RestExplainHandler::explainQuery() {
 
   auto bindBuilder = std::make_shared<VPackBuilder>(bindSlice);
 
+  auto origin = transaction::OperationOriginAQL{"explaining query"};
+
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
+      transaction::StandaloneContext::create(_vocbase, origin),
       aql::QueryString(queryString), std::move(bindBuilder),
-      transaction::OperationOriginAQL{"explaining query"},
       aql::QueryOptions(optionsSlice));
   auto queryResult = query->explain();
 

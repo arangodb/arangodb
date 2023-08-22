@@ -40,6 +40,7 @@
 #include "VocBase/voc-types.h"
 
 #include <absl/hash/hash.h>
+
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -56,6 +57,7 @@ class Slice;
 
 namespace transaction {
 class Context;
+class CounterGuard;
 class ManagerFeature;
 class Hints;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -71,6 +73,8 @@ struct IManager {
 
 /// @brief Tracks TransactionState instances
 class Manager final : public IManager {
+  friend class CounterGuard;
+
   static constexpr size_t numBuckets = 16;
   static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
   static constexpr size_t maxTransactionSize = 128 * 1024 * 1024;  // 128 MiB
@@ -129,12 +133,9 @@ class Manager final : public IManager {
   static constexpr double idleTTLDBServer = 5 * 60.0;  //  5 minutes
 
   // register a transaction
-  void registerTransaction(TransactionId transactionId,
-                           bool isReadOnlyTransaction,
-                           bool isFollowerTransaction);
-
-  // unregister a transaction
-  void unregisterTransaction() noexcept;
+  std::shared_ptr<CounterGuard> registerTransaction(TransactionId transactionId,
+                                                    bool isReadOnlyTransaction,
+                                                    bool isFollowerTransaction);
 
   uint64_t getActiveTransactionCount();
 
@@ -335,6 +336,21 @@ class Manager final : public IManager {
   /// IN PRODUCTION!
   std::unique_ptr<History> _history;
 #endif
+};
+
+// this RAII object is responsible for increasing and decreasing the
+// number of running transactions in the manager safely, so that it can't
+// be forgotten.
+class CounterGuard {
+  CounterGuard(CounterGuard const&) = delete;
+  CounterGuard& operator=(CounterGuard const&) = delete;
+
+ public:
+  explicit CounterGuard(Manager& manager);
+  ~CounterGuard();
+
+ private:
+  Manager& _manager;
 };
 
 }  // namespace transaction

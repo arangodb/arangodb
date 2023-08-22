@@ -42,6 +42,7 @@
 #include "VocBase/voc-types.h"
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -70,6 +71,7 @@ class QueryContext;
 }
 
 namespace transaction {
+class CounterGuard;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class HistoryEntry;
 #endif
@@ -350,6 +352,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// Only allowed on coordinators.
   void coordinatorRerollTransactionId();
 
+  std::shared_ptr<transaction::CounterGuard> counterGuard();
+
  protected:
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) = 0;
@@ -426,6 +430,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   std::vector<BeforeCommitCallback const*> _beforeCommitCallbacks;
   std::vector<AfterCommitCallback const*> _afterCommitCallbacks;
 
+  std::shared_ptr<transaction::CounterGuard> _counterGuard;
+
  private:
   TransactionId _id;  /// @brief local trx id
 
@@ -460,7 +466,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   QueryAnalyzerRevisions _analyzersRevision;
 
   transaction::OperationOrigin const _operationOrigin;
-  bool _registeredTransaction = false;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::shared_ptr<transaction::HistoryEntry> _historyEntry;

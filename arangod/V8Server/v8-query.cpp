@@ -64,8 +64,8 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate,
   TRI_ASSERT(col != nullptr);
 
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(col->vocbase(), true),
-      arangodb::aql::QueryString(aql), bindVars, operationOrigin);
+      transaction::V8Context::create(col->vocbase(), operationOrigin, true),
+      arangodb::aql::QueryString(aql), bindVars);
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
   if (queryResult.result.fail()) {
@@ -214,11 +214,12 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
 
-  auto transactionContext =
-      transaction::V8Context::Create(collection->vocbase(), true);
-  SingleCollectionTransaction trx(
-      transactionContext, *collection, AccessMode::Type::READ,
-      transaction::OperationOriginREST{"enumerating collection documents"});
+  auto operationOrigin =
+      transaction::OperationOriginREST{"enumerating collection documents"};
+  auto transactionContext = transaction::V8Context::create(
+      collection->vocbase(), operationOrigin, true);
+  SingleCollectionTransaction trx(transactionContext, *collection,
+                                  AccessMode::Type::READ);
 
   Result res = trx.begin();
 
@@ -302,11 +303,12 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const collectionName(col->name());
 
+  auto operationOrigin =
+      transaction::OperationOriginREST{"fetching random document"};
   auto transactionContext =
-      transaction::V8Context::Create(col->vocbase(), true);
-  SingleCollectionTransaction trx(
-      transactionContext, *col, AccessMode::Type::READ,
-      transaction::OperationOriginREST{"fetching random document"});
+      transaction::V8Context::create(col->vocbase(), operationOrigin, true);
+  SingleCollectionTransaction trx(transactionContext, *col,
+                                  AccessMode::Type::READ);
 
   Result res = trx.begin();
 

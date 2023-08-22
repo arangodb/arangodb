@@ -56,7 +56,8 @@ using namespace arangodb::graph;
 
 std::shared_ptr<transaction::Context> GraphOperations::ctx() {
   if (!_ctx) {
-    _ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+    _ctx = std::make_shared<transaction::StandaloneContext>(_vocbase,
+                                                            _operationOrigin);
   }
   return _ctx;
 }
@@ -123,7 +124,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   builder.close();
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE, _operationOrigin);
+                                  AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   res = trx.begin();
@@ -273,7 +274,7 @@ OperationResult GraphOperations::editEdgeDefinition(
   }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE, _operationOrigin);
+                                  AccessMode::Type::WRITE);
 
   res = trx.begin();
 
@@ -397,7 +398,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
   builder.close();
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE, _operationOrigin);
+                                  AccessMode::Type::WRITE);
 
   res = trx.begin();
 
@@ -469,7 +470,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
   OperationResult result(Result(), options);
   {
     SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                    AccessMode::Type::WRITE, _operationOrigin);
+                                    AccessMode::Type::WRITE);
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
     res = trx.begin();
@@ -584,8 +585,8 @@ OperationResult GraphOperations::getDocument(std::string const& collectionName,
   VPackSlice search{searchBuffer->data()};
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(ctx(), collectionName, AccessMode::Type::READ,
-                                  _operationOrigin);
+  SingleCollectionTransaction trx(ctx(), collectionName,
+                                  AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -753,7 +754,7 @@ GraphOperations::validateEdge(std::string const& definitionName,
 
   auto trx = std::make_unique<transaction::Methods>(
       ctx(), readCollections, writeCollections, exclusiveCollections,
-      trxOptions, _operationOrigin);
+      trxOptions);
 
   Result tRes = trx->begin();
 
@@ -906,8 +907,7 @@ OperationResult GraphOperations::updateVertex(std::string const& collectionName,
 
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions,
-                           _operationOrigin);
+  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
 
   Result tRes = trx.begin();
 
@@ -928,8 +928,7 @@ OperationResult GraphOperations::replaceVertex(
 
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions,
-                           _operationOrigin);
+  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
 
   Result tRes = trx.begin();
 
@@ -956,8 +955,7 @@ OperationResult GraphOperations::createVertex(std::string const& collectionName,
 
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(collectionName);
-  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions,
-                           _operationOrigin);
+  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
 
   Result res = trx.begin();
 
@@ -1018,8 +1016,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(
 
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  transaction::Methods trx{ctx(), {},         trxCollections,
-                           {},    trxOptions, _operationOrigin};
+  transaction::Methods trx{ctx(), {}, trxCollections, {}, trxOptions};
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   res = trx.begin();
@@ -1046,8 +1043,8 @@ OperationResult GraphOperations::removeEdgeOrVertex(
       bindVars->add("toDeleteId", VPackValue(toDeleteId));
       bindVars->close();
 
-      auto query = arangodb::aql::Query::create(
-          ctx(), queryString, std::move(bindVars), _operationOrigin);
+      auto query =
+          arangodb::aql::Query::create(ctx(), queryString, std::move(bindVars));
       auto queryResult = query->executeSync();
 
       if (queryResult.result.fail()) {

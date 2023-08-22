@@ -55,11 +55,10 @@ class AqlQueryLimitsTest
       TRI_vocbase_t& vocbase, std::string const& queryString,
       std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
       std::string const& optionsString = "{}") {
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase, arangodb::transaction::OperationOriginTestCase{});
     auto query = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(queryString), bindVars,
-        arangodb::transaction::OperationOriginTestCase{},
         arangodb::aql::QueryOptions(
             arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 

@@ -303,12 +303,12 @@ static arangodb::Result addShardFollower(
         // yet applied to the tree. additionally, writes may go on
         // on the leader so there is no good way to determine which
         // revision tree state to use and compare on the leader.
-        auto context =
-            transaction::StandaloneContext::Create(collection->vocbase());
+        auto origin =
+            transaction::OperationOriginInternal{"fetching revision tree data"};
+        auto context = transaction::StandaloneContext::create(
+            collection->vocbase(), origin);
         SingleCollectionTransaction trx(context, *collection,
-                                        AccessMode::Type::READ,
-                                        transaction::OperationOriginInternal{
-                                            "fetching revision tree data"});
+                                        AccessMode::Type::READ);
 
         auto res = trx.begin();
         if (res.ok()) {

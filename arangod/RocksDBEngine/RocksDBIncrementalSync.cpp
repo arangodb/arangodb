@@ -64,10 +64,10 @@ Result removeKeysOutsideRange(
     return Result();
   }
 
+  auto origin = transaction::OperationOriginInternal{"replication"};
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(coll->vocbase()), *coll,
-      AccessMode::Type::EXCLUSIVE,
-      transaction::OperationOriginInternal{"replication"});
+      transaction::StandaloneContext::create(coll->vocbase(), origin), *coll,
+      AccessMode::Type::EXCLUSIVE);
 
   trx.addHint(transaction::Hints::Hint::NO_INDEXING);
   // turn on intermediate commits as the number of keys to delete can be huge
@@ -788,10 +788,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     std::unique_ptr<SingleCollectionTransaction> trx;
 
     auto startTrx = [&]() -> Result {
+      auto origin = transaction::OperationOriginInternal{"replication"};
       trx = std::make_unique<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(syncer.vocbase()), *col,
-          AccessMode::Type::EXCLUSIVE,
-          transaction::OperationOriginInternal{"replication"});
+          transaction::StandaloneContext::create(syncer.vocbase(), origin),
+          *col, AccessMode::Type::EXCLUSIVE);
       trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       return trx->begin();
     };

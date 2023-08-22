@@ -55,7 +55,8 @@ class TransactionContextTest : public ::testing::Test {
 };
 
 TEST_F(TransactionContextTest, StandaloneContext) {
-  transaction::StandaloneContext ctx(vocbase);
+  transaction::StandaloneContext ctx(vocbase,
+                                     transaction::OperationOriginTestCase{});
   EXPECT_TRUE(ctx.isEmbeddable());
   EXPECT_FALSE(ctx.isStateSet());
 
@@ -95,11 +96,11 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
       "{ \"name\": \"testCollection\" }");
   vocbase.createCollection(params->slice());
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(
+      vocbase, transaction::OperationOriginTestCase{});
   transaction::Options trxOpts;
   transaction::Methods trx{
-      ctx, {},      std::vector<std::string>{cname},
-      {},  trxOpts, arangodb::transaction::OperationOriginTestCase{}};
+      ctx, {}, std::vector<std::string>{cname}, {}, trxOpts};
 
   Result res = trx.begin();
   ASSERT_TRUE(res.ok());
@@ -125,9 +126,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   bindVars->close();
 
   {
-    auto query = arangodb::aql::Query::create(
-        ctx, queryString, bindVars,
-        arangodb::transaction::OperationOriginTestCase{});
+    auto query = arangodb::aql::Query::create(ctx, queryString, bindVars);
 
     auto qres = query->executeSync();
     ASSERT_TRUE(qres.ok());
@@ -143,9 +142,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   ASSERT_TRUE(result2.ok());
 
   {
-    auto query = arangodb::aql::Query::create(
-        ctx, queryString, bindVars,
-        arangodb::transaction::OperationOriginTestCase{});
+    auto query = arangodb::aql::Query::create(ctx, queryString, bindVars);
 
     auto qres = query->executeSync();
     ASSERT_TRUE(qres.ok());

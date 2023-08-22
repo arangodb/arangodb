@@ -101,10 +101,9 @@ RestStatus RestCursorHandler::continueExecute() {
       if (_request->suffixes().size() == 0) {
         // POST /_api/cursor
         return generateCursorResult(rest::ResponseCode::CREATED);
-      } else {
-        // POST /_api/cursor/cursor-id
-        return generateCursorResult(ResponseCode::OK);
       }
+      // POST /_api/cursor/cursor-id
+      return generateCursorResult(ResponseCode::OK);
     } else if (type == rest::RequestType::PUT) {
       if (_request->requestPath() == SIMPLE_QUERY_ALL_PATH) {
         // RestSimpleQueryHandler::allDocuments uses PUT for cursor creation
@@ -161,13 +160,13 @@ RestStatus RestCursorHandler::registerQueryOrCursor(
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return RestStatus::DONE;
   }
-  VPackSlice const querySlice = slice.get("query");
+  VPackSlice querySlice = slice.get("query");
   if (!querySlice.isString() || querySlice.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return RestStatus::DONE;
   }
 
-  VPackSlice const bindVars = slice.get("bindVars");
+  VPackSlice bindVars = slice.get("bindVars");
   if (!bindVars.isNone()) {
     if (!bindVars.isObject() && !bindVars.isNull()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
@@ -198,11 +197,12 @@ RestStatus RestCursorHandler::registerQueryOrCursor(
   bool retriable = VelocyPackHelper::getBooleanValue(opts, "allowRetry", false);
 
   // simon: access mode can always be write on the coordinator
-  const AccessMode::Type mode = AccessMode::Type::WRITE;
-  auto query = aql::Query::create(
-      createTransactionContext(mode, operationOrigin),
-      arangodb::aql::QueryString(querySlice.stringView()),
-      std::move(bindVarsBuilder), operationOrigin, aql::QueryOptions(opts));
+  AccessMode::Type mode = AccessMode::Type::WRITE;
+
+  auto query =
+      aql::Query::create(createTransactionContext(mode, operationOrigin),
+                         aql::QueryString(querySlice.stringView()),
+                         std::move(bindVarsBuilder), aql::QueryOptions(opts));
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -298,7 +298,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
   bool retriable = VelocyPackHelper::getBooleanValue(opts, "allowRetry", false);
 
   _response->setContentType(rest::ContentType::JSON);
-  size_t const n = static_cast<size_t>(qResult.length());
+  size_t n = static_cast<size_t>(qResult.length());
   if (n <= batchSize) {
     // result is smaller than batchSize and will be returned directly. no need
     // to create a cursor
@@ -383,7 +383,7 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
     return base;
   }
 
-  rest::RequestType const type = _request->requestType();
+  rest::RequestType type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT &&
       type != rest::RequestType::DELETE_REQ) {
     // request forwarding only exists for

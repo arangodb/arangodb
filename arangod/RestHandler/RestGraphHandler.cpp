@@ -1002,7 +1002,8 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
 }
 
 Result RestGraphHandler::graphActionReadGraphConfig(graph::Graph const& graph) {
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginREST{"reading graph"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
   VPackBuilder builder;
   builder.openObject();
   graph.graphForClient(builder);
@@ -1026,7 +1027,8 @@ Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
     return result.result;
   }
 
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginREST{"removing graph"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
   generateGraphRemoved(true, result.options.waitForSync,
                        *ctx.getVPackOptions());
 
@@ -1058,7 +1060,8 @@ Result RestGraphHandler::graphActionCreateGraph() {
   // Write the response for the client (in case of success)
   std::string graphName = body.get(StaticStrings::DataSourceName).copyString();
 
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginREST{"creating graph"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
   std::unique_ptr<Graph const> graph = getGraph(graphName);
 
   VPackBuilder builder;
@@ -1073,7 +1076,8 @@ Result RestGraphHandler::graphActionCreateGraph() {
 }
 
 Result RestGraphHandler::graphActionReadGraphs() {
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginREST{"retrieving graphs"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
 
   VPackBuilder builder;
   _graphManager.readGraphs(builder);
@@ -1096,7 +1100,8 @@ Result RestGraphHandler::graphActionReadConfig(graph::Graph const& graph,
     TRI_ASSERT(false);
   }
 
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginREST{"reading graph info"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
 
   generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 

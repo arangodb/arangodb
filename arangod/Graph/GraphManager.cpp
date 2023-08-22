@@ -81,7 +81,8 @@ static bool arrayContainsCollection(VPackSlice array,
 
 std::shared_ptr<transaction::Context> GraphManager::ctx() const {
   // we must use v8
-  return transaction::V8Context::CreateWhenRequired(_vocbase, true);
+  return transaction::V8Context::createWhenRequired(_vocbase, _operationOrigin,
+                                                    true);
 }
 
 bool GraphManager::renameGraphCollection(std::string const& oldName,
@@ -103,7 +104,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
   }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE, _operationOrigin);
+                                  AccessMode::Type::WRITE);
   res = trx.begin();
 
   if (!res.ok()) {
@@ -276,7 +277,7 @@ bool GraphManager::graphExists(std::string const& graphName) const {
   }
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::READ, _operationOrigin);
+                                  AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -294,7 +295,7 @@ bool GraphManager::graphExists(std::string const& graphName) const {
 ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
     std::string const& name) const {
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::READ, _operationOrigin);
+                                  AccessMode::Type::READ);
 
   Result res = trx.begin();
 
@@ -395,7 +396,7 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
   // If now someone has created a graph with the same name
   // in the meanwhile, sorry bad luck.
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
-                                  AccessMode::Type::WRITE, _operationOrigin);
+                                  AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   OperationOptions options(ExecContext::current());
@@ -420,8 +421,8 @@ Result GraphManager::applyOnAllGraphs(
     std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
-      arangodb::aql::QueryString{queryStr}, nullptr, _operationOrigin);
+      transaction::StandaloneContext::create(_vocbase, _operationOrigin),
+      arangodb::aql::QueryString{queryStr}, nullptr);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
 
@@ -732,7 +733,7 @@ Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
 Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
                                       std::string const& queryStr) const {
   auto query = arangodb::aql::Query::create(
-      ctx(), arangodb::aql::QueryString(queryStr), nullptr, _operationOrigin);
+      ctx(), arangodb::aql::QueryString(queryStr), nullptr);
   query->queryOptions().skipAudit = true;
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
@@ -929,11 +930,10 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     OperationOptions options(ExecContext::current());
     options.waitForSync = waitForSync;
 
-    Result res;
     SingleCollectionTransaction trx{ctx(), StaticStrings::GraphCollection,
-                                    AccessMode::Type::WRITE, _operationOrigin};
+                                    AccessMode::Type::WRITE};
 
-    res = trx.begin();
+    Result res = trx.begin();
     if (res.fail()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, options);
     }

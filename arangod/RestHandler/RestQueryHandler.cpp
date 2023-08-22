@@ -321,10 +321,10 @@ void RestQueryHandler::parseQuery() {
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
+  auto origin = transaction::OperationOriginAQL{"parsing AQL query"};
   auto query =
-      Query::create(transaction::StandaloneContext::Create(_vocbase),
-                    QueryString(queryString), nullptr,
-                    transaction::OperationOriginAQL{"parsing AQL query"});
+      Query::create(transaction::StandaloneContext::create(_vocbase, origin),
+                    QueryString(queryString), nullptr);
   auto parseResult = query->parse();
 
   if (parseResult.result.fail()) {

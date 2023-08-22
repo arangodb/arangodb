@@ -23,8 +23,8 @@
 
 #include "Context.h"
 
-#include "Cluster/ClusterInfo.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -65,10 +65,12 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 }  // namespace
 
 /// @brief create the context
-transaction::Context::Context(TRI_vocbase_t& vocbase)
+transaction::Context::Context(TRI_vocbase_t& vocbase,
+                              OperationOrigin operationOrigin)
     : _vocbase(vocbase),
       _customTypeHandler(),
-      _options(velocypack::Options::Defaults) {}
+      _options(velocypack::Options::Defaults),
+      _operationOrigin(operationOrigin) {}
 
 /// @brief destroy the context
 transaction::Context::~Context() {
@@ -178,13 +180,13 @@ CollectionNameResolver const& transaction::Context::resolver() {
 }
 
 std::shared_ptr<TransactionState> transaction::Context::createState(
-    transaction::Options const& options, OperationOrigin operationOrigin) {
+    transaction::Options const& options) {
   // now start our own transaction
   TRI_ASSERT(vocbase().server().hasFeature<EngineSelectorFeature>());
   StorageEngine& engine =
       vocbase().server().getFeature<EngineSelectorFeature>().engine();
   return engine.createTransactionState(_vocbase, generateId(), options,
-                                       operationOrigin);
+                                       _operationOrigin);
 }
 
 TransactionId transaction::Context::generateId() const {
@@ -196,6 +198,11 @@ std::shared_ptr<transaction::Context> transaction::Context::clone() const {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "transaction::Context::clone() is not implemented");
+}
+
+void transaction::Context::setCounterGuard(
+    std::shared_ptr<transaction::CounterGuard> guard) noexcept {
+  _counterGuard = std::move(guard);
 }
 
 /*static*/ TransactionId transaction::Context::makeTransactionId() {

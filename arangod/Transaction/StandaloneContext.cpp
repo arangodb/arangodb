@@ -29,18 +29,19 @@ struct TRI_vocbase_t;
 
 namespace arangodb::transaction {
 
-StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
-    : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
+StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase,
+                                     OperationOrigin operationOrigin)
+    : SmartContext(vocbase, Context::makeTransactionId(), nullptr,
+                   operationOrigin) {}
 
 /// @brief get transaction state, determine commit responsibility
 /*virtual*/ std::shared_ptr<TransactionState> StandaloneContext::acquireState(
-    transaction::Options const& options, bool& responsibleForCommit,
-    OperationOrigin operationOrigin) {
+    transaction::Options const& options, bool& responsibleForCommit) {
   if (_state) {
     responsibleForCommit = false;
   } else {
     responsibleForCommit = true;
-    _state = transaction::Context::createState(options, operationOrigin);
+    _state = transaction::Context::createState(options);
   }
   TRI_ASSERT(_state != nullptr);
   return _state;
@@ -53,15 +54,18 @@ void StandaloneContext::unregisterTransaction() noexcept {
 }
 
 std::shared_ptr<Context> StandaloneContext::clone() const {
-  auto clone = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  auto clone = std::make_shared<transaction::StandaloneContext>(
+      _vocbase, _operationOrigin);
   clone->setState(_state);
   return clone;
 }
 
 /// @brief create a context, returned in a shared ptr
 /*static*/ std::shared_ptr<transaction::Context>
-transaction::StandaloneContext::Create(TRI_vocbase_t& vocbase) {
-  return std::make_shared<transaction::StandaloneContext>(vocbase);
+transaction::StandaloneContext::create(TRI_vocbase_t& vocbase,
+                                       OperationOrigin operationOrigin) {
+  return std::make_shared<transaction::StandaloneContext>(vocbase,
+                                                          operationOrigin);
 }
 
 }  // namespace arangodb::transaction

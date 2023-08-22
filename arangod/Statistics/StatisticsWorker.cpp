@@ -167,8 +167,8 @@ void StatisticsWorker::collectGarbage(std::string const& name,
       transaction::OperationOriginInternal{"statistics garbage collection"};
 
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
-      arangodb::aql::QueryString(::garbageCollectionQuery), _bindVars, origin);
+      transaction::StandaloneContext::create(_vocbase, origin),
+      arangodb::aql::QueryString(::garbageCollectionQuery), _bindVars);
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -186,8 +186,10 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   opOptions.waitForSync = false;
   opOptions.silent = true;
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, name, AccessMode::Type::WRITE, origin);
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), name,
+                                  AccessMode::Type::WRITE);
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -294,12 +296,14 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 
   bindVars->close();
 
+  auto origin =
+      transaction::OperationOriginInternal{"fetching last statistics entry"};
+
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
+      transaction::StandaloneContext::create(_vocbase, origin),
       arangodb::aql::QueryString(_clusterId.empty() ? ::lastEntryQuery
                                                     : ::filteredLastEntryQuery),
-      _bindVars,
-      transaction::OperationOriginInternal{"fetching last statistics entry"});
+      _bindVars);
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -326,13 +330,15 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   bindVars->close();
 
+  auto origin =
+      transaction::OperationOriginInternal{"computing statistics 15m average"};
+
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
+      transaction::StandaloneContext::create(_vocbase, origin),
       arangodb::aql::QueryString(_clusterId.empty()
                                      ? ::fifteenMinuteQuery
                                      : ::filteredFifteenMinuteQuery),
-      _bindVars,
-      transaction::OperationOriginInternal{"computing statistics 15m average"});
+      _bindVars);
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -1074,10 +1080,11 @@ void StatisticsWorker::saveSlice(VPackSlice slice,
   opOptions.silent = true;
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(
-      ctx, collection, AccessMode::Type::WRITE,
-      transaction::OperationOriginInternal{"storing statistics data"});
+  auto origin = transaction::OperationOriginInternal{"storing statistics data"};
+
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collection,
+                                  AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 

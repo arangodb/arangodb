@@ -140,11 +140,9 @@ class IResearchInvertedIndexConditionTest
 
     auto indexFields =
         arangodb::iresearch::IResearchInvertedIndex::fields(index->meta());
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
-    auto query =
-        Query::create(ctx, QueryString(queryString), bindVars,
-                      arangodb::transaction::OperationOriginTestCase{});
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase(), arangodb::transaction::OperationOriginTestCase{});
+    auto query = Query::create(ctx, QueryString(queryString), bindVars);
 
     ASSERT_NE(query.get(), nullptr);
     auto const parseResult = query->parse();
@@ -186,8 +184,7 @@ class IResearchInvertedIndexConditionTest
       // We use this noop transaction because query transaction is empty
       // TODO(MBkkt) Needs ability to create empty transaction
       //  with failed begin but correct in other
-      arangodb::transaction::Methods trx{
-          ctx, arangodb::transaction::OperationOriginTestCase{}};
+      arangodb::transaction::Methods trx{ctx};
       auto costs = index->supportsFilterCondition(trx, id, indexFields, {},
                                                   filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
@@ -221,11 +218,9 @@ class IResearchInvertedIndexConditionTest
     ASSERT_TRUE(index);
     irs::Finally scope = [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); };
 
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
-    auto query =
-        Query::create(ctx, QueryString(queryString), bindVars,
-                      arangodb::transaction::OperationOriginTestCase{});
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase(), arangodb::transaction::OperationOriginTestCase{});
+    auto query = Query::create(ctx, QueryString(queryString), bindVars);
 
     ASSERT_NE(query.get(), nullptr);
     query->prepareQuery();

@@ -34,8 +34,11 @@ struct TRI_vocbase_t;
 namespace arangodb::transaction {
 
 SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
-                           std::shared_ptr<TransactionState> state)
-    : Context(vocbase), _globalId(globalId), _state(std::move(state)) {
+                           std::shared_ptr<TransactionState> state,
+                           OperationOrigin operationOrigin)
+    : Context(vocbase, operationOrigin),
+      _globalId(globalId),
+      _state(std::move(state)) {
   TRI_ASSERT(_globalId.isSet());
 }
 
@@ -63,13 +66,12 @@ TransactionId transaction::SmartContext::generateId() const {
 /// @brief get transaction state, determine commit responsiblity
 /*virtual*/ std::shared_ptr<TransactionState>
 transaction::AQLStandaloneContext::acquireState(
-    transaction::Options const& options, bool& responsibleForCommit,
-    OperationOrigin operationOrigin) {
+    transaction::Options const& options, bool& responsibleForCommit) {
   if (_state) {
     responsibleForCommit = false;
   } else {
     responsibleForCommit = true;
-    _state = transaction::Context::createState(options, operationOrigin);
+    _state = transaction::Context::createState(options);
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     mgr->registerAQLTrx(_state);
@@ -88,8 +90,8 @@ void AQLStandaloneContext::unregisterTransaction() noexcept {
 }
 
 std::shared_ptr<transaction::Context> AQLStandaloneContext::clone() const {
-  auto clone =
-      std::make_shared<transaction::AQLStandaloneContext>(_vocbase, _globalId);
+  auto clone = std::make_shared<transaction::AQLStandaloneContext>(
+      _vocbase, _globalId, _operationOrigin);
   clone->_state = _state;
   return clone;
 }

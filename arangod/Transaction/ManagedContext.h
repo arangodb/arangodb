@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/SmartContext.h"
 
 namespace arangodb::transaction {
@@ -41,8 +42,7 @@ struct ManagedContext final : public SmartContext {
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(
-      transaction::Options const& options, bool& responsibleForCommit,
-      transaction::OperationOrigin operationOrigin) override;
+      transaction::Options const& options, bool& responsibleForCommit) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;

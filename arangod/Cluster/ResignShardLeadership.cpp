@@ -108,13 +108,13 @@ bool ResignShardLeadership::first() {
       return false;
     }
 
-    // Get write transaction on collection
-    transaction::StandaloneContext ctx(*vocbase);
+    // Get exclusive lock on collection
+    auto origin = transaction::OperationOriginInternal{"resigning leadership"};
+    transaction::StandaloneContext ctx(*vocbase, origin);
     SingleCollectionTransaction trx{
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
-        *col, AccessMode::Type::EXCLUSIVE,
-        transaction::OperationOriginInternal{"resigning leadership"}};
+        *col, AccessMode::Type::EXCLUSIVE};
 
     Result res = trx.begin();
 

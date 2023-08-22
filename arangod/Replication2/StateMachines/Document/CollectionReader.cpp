@@ -35,10 +35,7 @@ namespace arangodb::replication2::replicated_state::document {
 
 SnapshotTransaction::SnapshotTransaction(
     std::shared_ptr<transaction::Context> ctx)
-    : transaction::Methods(std::move(ctx),
-                           transaction::OperationOriginInternal{
-                               "shapshotting collection for replication"},
-                           options()) {}
+    : transaction::Methods(std::move(ctx), options()) {}
 
 auto SnapshotTransaction::options() -> transaction::Options {
   transaction::Options options;
@@ -54,7 +51,10 @@ void SnapshotTransaction::addCollection(LogicalCollection const& collection) {
 
 DatabaseSnapshot::DatabaseSnapshot(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase),
-      _ctx(transaction::StandaloneContext::Create(vocbase)),
+      _ctx(transaction::StandaloneContext::create(
+          vocbase,
+          transaction::OperationOriginInternal{
+              "snapshotting collection for replication"})),
       _trx(std::make_unique<SnapshotTransaction>(_ctx)) {
   // We call begin here so that rocksMethods are initialized
   if (auto res = _trx->begin(); res.fail()) {
@@ -77,7 +77,9 @@ auto DatabaseSnapshot::createCollectionReader(std::string_view collectionName)
 
 auto DatabaseSnapshot::resetTransaction() -> Result {
   _trx.reset();
-  _ctx = transaction::StandaloneContext::Create(_vocbase);
+  _ctx = transaction::StandaloneContext::create(
+      _vocbase, transaction::OperationOriginInternal{
+                    "snapshotting collection for replication"});
   _trx = std::make_unique<SnapshotTransaction>(_ctx);
   return _trx->begin();
 }

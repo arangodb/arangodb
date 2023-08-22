@@ -39,7 +39,7 @@ namespace arangodb::aql {
 MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
     Fetcher& fetcher, Infos& info)
     : _ctx(std::make_shared<transaction::StandaloneContext>(
-          info._query.vocbase())),
+          info._query.vocbase(), info._query.operationOrigin())),
       _trx(createTransaction(_ctx, info)),
       _info(info),
       _upstreamState(ExecutionState::HASMORE) {
@@ -56,14 +56,11 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
     return {std::move(ctx),
             /*read*/ {},
             /*write*/ {},
-            /*exclusive*/ {info._aqlCollection->name()},
-            opts,
-            info._query.operationOrigin()};
+            /*exclusive*/ {info._aqlCollection->name()}, opts};
   }
   // write transaction
-  return {
-      std::move(ctx),   /*read*/ {}, /*write*/ {info._aqlCollection->name()},
-      /*exclusive*/ {}, opts,        info._query.operationOrigin()};
+  return {std::move(ctx), /*read*/ {}, /*write*/ {info._aqlCollection->name()},
+          /*exclusive*/ {}, opts};
 }
 
 [[nodiscard]] auto MultipleRemoteModificationExecutor::produceRows(

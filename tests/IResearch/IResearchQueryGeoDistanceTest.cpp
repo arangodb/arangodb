@@ -119,9 +119,9 @@ class QueryGeoDistance : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE,
-          arangodb::transaction::OperationOriginTestCase{});
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -210,9 +210,9 @@ class QueryGeoDistance : public QueryTest {
         return impl.getLinks(nullptr);
       };
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::READ,
-          arangodb::transaction::OperationOriginTestCase{});
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::READ);
       ASSERT_TRUE(trx.begin().ok());
       ASSERT_TRUE(trx.state());
       auto* snapshot =

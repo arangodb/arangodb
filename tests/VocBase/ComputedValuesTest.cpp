@@ -798,9 +798,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteTrue) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::OperationOriginTestCase{});
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -840,9 +841,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::OperationOriginTestCase{});
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -877,9 +879,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::OperationOriginTestCase{});
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -917,9 +920,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::OperationOriginTestCase{});
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -969,9 +973,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningDynamic) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::OperationOriginTestCase{});
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc = velocypack::Parser::fromJson("{\"value\":42}");
@@ -990,9 +995,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInvalidValuesDynamic) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::OperationOriginTestCase{});
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc = velocypack::Parser::fromJson(
@@ -1024,9 +1030,10 @@ TEST_F(ComputedValuesTest, insertKeepNullTrue) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options(),
-                           arangodb::transaction::OperationOriginTestCase{});
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =

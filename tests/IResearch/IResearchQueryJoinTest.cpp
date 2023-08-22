@@ -84,10 +84,10 @@ class QueryJoin : public QueryTest {
     {
       OperationOptions opt;
 
-      transaction::Methods trx(transaction::StandaloneContext::Create(_vocbase),
-                               collections, collections, collections,
-                               transaction::Options(),
-                               transaction::OperationOriginTestCase{});
+      transaction::Methods trx(
+          transaction::StandaloneContext::create(
+              _vocbase, transaction::OperationOriginTestCase{}),
+          collections, collections, collections, transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into entities collection
@@ -230,11 +230,12 @@ class QueryJoin : public QueryTest {
       OperationOptions opt;
 
       transaction::Methods trx(
-          transaction::StandaloneContext::Create(_vocbase), EMPTY,
+          transaction::StandaloneContext::create(
+              _vocbase, transaction::OperationOriginTestCase{}),
+          EMPTY,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
-          EMPTY, transaction::Options(),
-          transaction::OperationOriginTestCase{});
+          EMPTY, transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -330,11 +331,12 @@ class QueryJoin : public QueryTest {
       OperationOptions opt;
 
       transaction::Methods trx(
-          transaction::StandaloneContext::Create(_vocbase), EMPTY,
+          transaction::StandaloneContext::create(
+              _vocbase, transaction::OperationOriginTestCase{}),
+          EMPTY,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
-          EMPTY, transaction::Options(),
-          transaction::OperationOriginTestCase{});
+          EMPTY, transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections

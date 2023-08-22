@@ -30,12 +30,12 @@ namespace arangodb::transaction {
 
 struct ReplicatedContext final : public SmartContext {
   ReplicatedContext(TransactionId globalId,
-                    std::shared_ptr<TransactionState> state);
+                    std::shared_ptr<TransactionState> state,
+                    OperationOrigin operationOrigin);
 
   /// @brief get transaction state, determine commit responsibility
   std::shared_ptr<TransactionState> acquireState(
-      Options const& options, bool& responsibleForCommit,
-      OperationOrigin operationOrigin) override;
+      Options const& options, bool& responsibleForCommit) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;

@@ -40,15 +40,14 @@ class SingleCollectionTransaction final : public transaction::Methods {
  public:
   /// @brief create the transaction, using a data-source
   SingleCollectionTransaction(
-      std::shared_ptr<transaction::Context> const& transactionContext,
+      std::shared_ptr<transaction::Context> ctx,
       LogicalDataSource const& collection, AccessMode::Type accessType,
-      transaction::OperationOrigin operationOrigin,
       transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, using a collection name
   SingleCollectionTransaction(
-      std::shared_ptr<transaction::Context> const&, std::string const&,
-      AccessMode::Type, transaction::OperationOrigin operationOrigin,
+      std::shared_ptr<transaction::Context> ctx, std::string const& name,
+      AccessMode::Type,
       transaction::Options const& options = transaction::Options());
 
   /// @brief end the transaction

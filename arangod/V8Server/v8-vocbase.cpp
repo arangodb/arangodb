@@ -513,10 +513,10 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const queryString(TRI_ObjectToString(isolate, args[0]));
   // If we execute an AQL query from V8 we need to unset the nolock headers
+  auto origin = transaction::OperationOriginAQL{"parsing query"};
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(vocbase, true),
-      aql::QueryString(queryString), nullptr,
-      transaction::OperationOriginAQL{"parsing query"});
+      transaction::V8Context::create(vocbase, origin, true),
+      aql::QueryString(queryString), nullptr);
   auto parseResult = query->parse();
 
   if (parseResult.result.fail()) {
@@ -660,10 +660,10 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // bind parameters will be freed by the query later
+  auto origin = transaction::OperationOriginAQL{"explaining query"};
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(vocbase, true),
+      transaction::V8Context::create(vocbase, origin, true),
       aql::QueryString(std::move(queryString)), std::move(bindVars),
-      transaction::OperationOriginAQL{"explaining query"},
       aql::QueryOptions(options.slice()));
   auto queryResult = query->explain();
 
@@ -771,10 +771,10 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     queryId = TRI_NewServerSpecificTick();
   }
 
+  auto origin = transaction::OperationOriginREST{"executing query from JSON"};
   auto query = arangodb::aql::ClusterQuery::create(
-      queryId, transaction::V8Context::Create(vocbase, true),
-      aql::QueryOptions(options.slice()),
-      transaction::OperationOriginREST{"executing query from JSON"});
+      queryId, transaction::V8Context::create(vocbase, origin, true),
+      aql::QueryOptions(options.slice()));
 
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
@@ -900,7 +900,8 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  auto v8Context = transaction::V8Context::Create(vocbase, true);
+  auto origin = transaction::OperationOriginAQL{"executing query"};
+  auto v8Context = transaction::V8Context::create(vocbase, origin, true);
   if (v8g->_transactionContext != nullptr) {
     if (v8g->_transactionContext->isTransactionJS()) {
       v8Context->setJStransaction();
@@ -911,8 +912,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   auto query = arangodb::aql::Query::create(
       std::move(v8Context), aql::QueryString(std::move(queryString)),
-      std::move(bindVars), transaction::OperationOriginAQL{"executing query"},
-      aql::QueryOptions(options.slice()));
+      std::move(bindVars), aql::QueryOptions(options.slice()));
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
 

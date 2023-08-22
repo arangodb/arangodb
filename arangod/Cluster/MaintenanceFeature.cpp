@@ -122,13 +122,13 @@ bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
 arangodb::Result arangodb::maintenance::collectionCount(
     arangodb::LogicalCollection const& collection, uint64_t& c) {
   std::string collectionName(collection.name());
-  transaction::StandaloneContext ctx(collection.vocbase());
+  auto origin = transaction::OperationOriginInternal{
+      "counting documents during maintenance"};
+  transaction::StandaloneContext ctx(collection.vocbase(), origin);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
-      collectionName, AccessMode::Type::READ,
-      transaction::OperationOriginInternal{
-          "counting documents during maintenance"});
+      collectionName, AccessMode::Type::READ);
 
   Result res = trx.begin();
   if (res.fail()) {

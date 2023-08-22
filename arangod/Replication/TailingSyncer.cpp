@@ -516,11 +516,13 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       conflictDocumentKey.clear();
     }
 
+    auto operationOrigin =
+        transaction::OperationOriginInternal{"applying replication change"};
+
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(*vocbase), *coll,
-        AccessMode::Type::EXCLUSIVE,
-        transaction::OperationOriginInternal{"applying replication change"});
+        transaction::StandaloneContext::create(*vocbase, operationOrigin),
+        *coll, AccessMode::Type::EXCLUSIVE);
 
     // we will always check if the target document already exists and then
     // either carry out an insert or a replace. so we will be carrying out
@@ -579,10 +581,12 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
 Result TailingSyncer::removeSingleDocument(LogicalCollection* coll,
                                            std::string const& key) {
+  auto operationOrigin =
+      transaction::OperationOriginInternal{"applying replication change"};
+
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(coll->vocbase()), *coll,
-      AccessMode::Type::EXCLUSIVE,
-      transaction::OperationOriginInternal{"applying replication change"});
+      transaction::StandaloneContext::create(coll->vocbase(), operationOrigin),
+      *coll, AccessMode::Type::EXCLUSIVE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -864,11 +868,11 @@ Result TailingSyncer::truncateCollection(
   uint64_t count = 0;
   Result res;
   {
+    auto operationOrigin = transaction::OperationOriginInternal{
+        "truncating collection for replication"};
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(*vocbase), *col,
-        AccessMode::Type::EXCLUSIVE,
-        transaction::OperationOriginInternal{
-            "truncating collection for replication"});
+        transaction::StandaloneContext::create(*vocbase, operationOrigin), *col,
+        AccessMode::Type::EXCLUSIVE);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     Result res = trx.begin();

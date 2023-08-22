@@ -95,8 +95,7 @@ class PathValidatorTest : public ::testing::Test {
   StringHeap _heap{_resourceMonitor, 4096};
 
   // Expression Parts
-  arangodb::transaction::Methods _trx{_query->newTrxContext(),
-                                      transaction::OperationOriginTestCase{}};
+  arangodb::transaction::Methods _trx{_query->newTrxContext()};
   aql::Ast* _ast{_query->ast()};
   aql::Variable _tmpVar{"tmp", 0, false, _resourceMonitor};
   aql::AstNode* _varNode{::InitializeReference(*_ast, _tmpVar)};

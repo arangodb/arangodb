@@ -93,15 +93,17 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
     isRetriable = TRI_ObjectToBoolean(isolate, args[3]);
   }
 
-  auto* cursors = vocbase.cursorRepository();  // create a cursor
-  arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
+  auto origin = transaction::OperationOriginAQL{"running AQL query"};
 
+  arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
   result.data = builder;
   result.cached = false;
-  result.context = transaction::V8Context::CreateWhenRequired(vocbase, false);
+  result.context =
+      transaction::V8Context::createWhenRequired(vocbase, origin, false);
 
   TRI_ASSERT(builder.get() != nullptr);
 
+  auto* cursors = vocbase.cursorRepository();  // create a cursor
   arangodb::Cursor* cursor = cursors->createFromQueryResult(
       std::move(result), static_cast<size_t>(batchSize), ttl, true,
       isRetriable);
@@ -339,8 +341,8 @@ struct V8Cursor final {
     auto origin = transaction::OperationOriginAQL{"running AQL query"};
 
     auto q = aql::Query::create(
-        transaction::V8Context::CreateWhenRequired(*vocbase, true),
-        aql::QueryString(queryString), std::move(bindVars), origin,
+        transaction::V8Context::createWhenRequired(*vocbase, origin, true),
+        aql::QueryString(queryString), std::move(bindVars),
         aql::QueryOptions(options.slice()));
 
     // specify ID 0 so it uses the external V8 context

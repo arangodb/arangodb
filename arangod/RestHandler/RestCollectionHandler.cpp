@@ -828,10 +828,10 @@ void RestCollectionHandler::initializeTransaction(LogicalCollection& coll) {
       // but the transaction hasn't yet started on the DB server. in
       // this case, we create an ad-hoc transaction on the underlying
       // collection
+      auto origin = transaction::OperationOriginREST{::moduleName};
       _activeTrx = std::make_unique<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(_vocbase), coll.name(),
-          AccessMode::Type::READ,
-          transaction::OperationOriginREST{::moduleName});
+          transaction::StandaloneContext::create(_vocbase, origin), coll.name(),
+          AccessMode::Type::READ);
     } else {
       throw;
     }

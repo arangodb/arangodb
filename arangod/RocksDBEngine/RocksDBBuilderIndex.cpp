@@ -293,8 +293,10 @@ static Result fillIndex(
   LogicalCollection& coll = ridx.collection();
   transaction::Options trxOpts;
   trxOpts.requiresReplication = false;
-  trx::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()),
-                      coll, mode, trxOpts);
+  auto origin = transaction::OperationOriginREST{"building index"};
+  trx::BuilderTrx trx(
+      transaction::StandaloneContext::create(coll.vocbase(), origin), coll,
+      mode, trxOpts);
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
@@ -599,8 +601,10 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
   lowerBoundTracker.tick(startingFrom);
 
   LogicalCollection& coll = ridx.collection();
-  trx::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()),
-                      coll, mode);
+  auto origin = transaction::OperationOriginREST{"building index"};
+  trx::BuilderTrx trx(
+      transaction::StandaloneContext::create(coll.vocbase(), origin), coll,
+      mode);
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }

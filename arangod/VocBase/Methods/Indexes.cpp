@@ -263,10 +263,10 @@ arangodb::Result Indexes::getAll(
       trx = std::shared_ptr<transaction::Methods>(inputTrx,
                                                   [](transaction::Methods*) {});
     } else {
+      auto origin = transaction::OperationOriginREST{::moduleName};
       trx = std::make_shared<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(collection.vocbase()),
-          collection, AccessMode::Type::READ,
-          transaction::OperationOriginREST{::moduleName});
+          transaction::StandaloneContext::create(collection.vocbase(), origin),
+          collection, AccessMode::Type::READ);
 
       Result res = trx->begin();
       if (!res.ok()) {
@@ -756,14 +756,15 @@ Result Indexes::drop(LogicalCollection& collection,
 #endif
     return res;
   } else {
+    auto origin = transaction::OperationOriginREST{::moduleName};
     READ_LOCKER(readLocker, collection.vocbase()._inventoryLock);
 
     transaction::Options trxOpts;
     trxOpts.requiresReplication = false;
-    SingleCollectionTransaction trx(
-        transaction::V8Context::CreateWhenRequired(collection.vocbase(), false),
-        collection, AccessMode::Type::EXCLUSIVE,
-        transaction::OperationOriginREST{::moduleName}, trxOpts);
+    SingleCollectionTransaction trx(transaction::V8Context::createWhenRequired(
+                                        collection.vocbase(), origin, false),
+                                    collection, AccessMode::Type::EXCLUSIVE,
+                                    trxOpts);
     Result res = trx.begin();
 
     if (!res.ok()) {

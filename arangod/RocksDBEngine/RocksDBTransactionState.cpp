@@ -70,20 +70,11 @@ RocksDBTransactionState::RocksDBTransactionState(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _users(0),
 #endif
-      _registered(false),
       _cacheTx(nullptr) {
 }
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
-  if (_registered) {
-    // unregister the transaction from the transaction manager
-    transaction::Manager* mgr = transaction::ManagerFeature::manager();
-    TRI_ASSERT(mgr != nullptr);
-
-    mgr->unregisterTransaction();
-  }
-
   cleanupTransaction();
   _status = transaction::Status::ABORTED;
 }
@@ -129,20 +120,15 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     return res;
   }
 
-  transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  TRI_ASSERT(mgr != nullptr);
-
-  // register with manager
-  mgr->registerTransaction(id(), isReadOnlyTransaction(),
-                           hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
-  _registered = true;
-
   updateStatus(transaction::Status::RUNNING);
   if (isReadOnlyTransaction()) {
     ++stats._readTransactions;
   } else {
     ++stats._transactionsStarted;
   }
+
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // track currently ongoing transactions in history.
@@ -151,6 +137,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   // purposes.
   mgr->history().insert(*this);
 #endif
+
+  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
+                                           isFollowerTransaction());
 
   TRI_ASSERT(_cacheTx == nullptr);
 

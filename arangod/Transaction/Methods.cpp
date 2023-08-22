@@ -21,13 +21,6 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <absl/strings/str_cat.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Options.h>
-#include <velocypack/Slice.h>
-
 #include "Methods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -86,6 +79,13 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+
+#include <absl/strings/str_cat.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::transaction;
@@ -1694,10 +1694,9 @@ static bool findRefusal(
   return false;
 }
 
-transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
-                              transaction::OperationOrigin operationOrigin,
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
                               transaction::Options const& options)
-    : _state(nullptr), _transactionContext(ctx), _mainTransaction(false) {
+    : _transactionContext(std::move(ctx)), _mainTransaction(false) {
   TRI_ASSERT(_transactionContext != nullptr);
   if (ADB_UNLIKELY(_transactionContext == nullptr)) {
     // in production, we must not go on with undefined behavior, so we bail out
@@ -1707,17 +1706,14 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
   }
 
   // initialize the transaction. this can update _mainTransaction!
-  _state = _transactionContext->acquireState(options, _mainTransaction,
-                                             operationOrigin);
+  _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
                               std::string const& collectionName,
-                              AccessMode::Type type,
-                              transaction::OperationOrigin operationOrigin)
-    : transaction::Methods(std::move(ctx), operationOrigin,
-                           transaction::Options{}) {
+                              AccessMode::Type type)
+    : transaction::Methods(std::move(ctx), transaction::Options{}) {
   TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
   Result res = Methods::addCollection(collectionName, type);
   if (res.fail()) {
@@ -1727,13 +1723,12 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
 
 /// @brief create the transaction, used to be UserTransaction
 transaction::Methods::Methods(
-    std::shared_ptr<transaction::Context> const& ctx,
+    std::shared_ptr<transaction::Context> ctx,
     std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections,
-    transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin)
-    : transaction::Methods(ctx, operationOrigin, options) {
+    transaction::Options const& options)
+    : transaction::Methods(std::move(ctx), options) {
   Result res;
   for (auto const& it : exclusiveCollections) {
     res = Methods::addCollection(it, AccessMode::Type::EXCLUSIVE);
@@ -1832,6 +1827,8 @@ Result transaction::Methods::begin() {
 
     res = _state->beginTransaction(_localHints);
     if (res.ok()) {
+      _transactionContext->setCounterGuard(_state->counterGuard());
+
       res = applyStatusChangeCallbacks(*this, Status::RUNNING);
     }
   } else {

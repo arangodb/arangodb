@@ -195,9 +195,9 @@ void QueryTest::createCollections() {
     OperationOptions options;
     options.returnNew = true;
     SingleCollectionTransaction trx{
-        transaction::StandaloneContext::Create(_vocbase), *collection,
-        AccessMode::Type::WRITE,
-        arangodb::transaction::OperationOriginTestCase{}};
+        transaction::StandaloneContext::create(
+            _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *collection, AccessMode::Type::WRITE};
     {
       auto r = trx.begin();
       EXPECT_TRUE(r.ok()) << r.errorMessage();
@@ -229,9 +229,9 @@ void QueryTest::createCollections() {
     OperationOptions options;
     options.returnNew = true;
     SingleCollectionTransaction trx{
-        transaction::StandaloneContext::Create(_vocbase), *collection,
-        AccessMode::Type::WRITE,
-        arangodb::transaction::OperationOriginTestCase{}};
+        transaction::StandaloneContext::create(
+            _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *collection, AccessMode::Type::WRITE};
     {
       auto r = trx.begin();
       EXPECT_TRUE(r.ok()) << r.errorMessage();

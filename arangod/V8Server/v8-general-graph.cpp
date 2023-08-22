@@ -31,6 +31,7 @@
 #include "Graph/GraphManager.h"
 #include "Graph/GraphOperations.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/V8Context.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
@@ -76,9 +77,10 @@ static void JS_DropGraph(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto ctx = transaction::V8Context::Create(vocbase, false);
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(vocbase, origin, false);
 
-  GraphManager gmngr{vocbase, transaction::OperationOriginREST{::moduleName}};
+  GraphManager gmngr{vocbase, origin};
   auto graph = gmngr.lookupGraphByName(graphName);
   if (graph.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
@@ -168,7 +170,8 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (!result.isEmpty()) {
-    transaction::StandaloneContext ctx(vocbase);
+    auto origin = transaction::OperationOriginREST{"retrieving graphs"};
+    transaction::StandaloneContext ctx(vocbase, origin);
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs"),
                                 ctx.getVPackOptions()));
   }
@@ -299,9 +302,9 @@ static void JS_AddEdgeDefinitions(
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  auto ctx = transaction::V8Context::Create(vocbase, true);
-  GraphOperations gops{*graph.get(), vocbase,
-                       transaction::OperationOriginREST{::moduleName}, ctx};
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(vocbase, origin, true);
+  GraphOperations gops{*graph.get(), vocbase, origin, ctx};
   OperationResult r =
       gops.addEdgeDefinition(edgeDefinition.slice(), options.slice(), false);
 
@@ -365,9 +368,9 @@ static void JS_EditEdgeDefinitions(
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  auto ctx = transaction::V8Context::Create(vocbase, true);
-  GraphOperations gops{*graph.get(), vocbase,
-                       transaction::OperationOriginREST{::moduleName}, ctx};
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(vocbase, origin, true);
+  GraphOperations gops{*graph.get(), vocbase, origin, ctx};
   OperationResult r = gops.editEdgeDefinition(
       edgeDefinition.slice(), options.slice(), false,
       edgeDefinition.slice().get("collection").copyString());
@@ -434,9 +437,9 @@ static void JS_RemoveVertexCollection(
   builder.add("collection", VPackValue(vertexName));
   builder.close();
 
-  auto ctx = transaction::V8Context::Create(vocbase, true);
-  GraphOperations gops{*graph.get(), vocbase,
-                       transaction::OperationOriginREST{::moduleName}, ctx};
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(vocbase, origin, true);
+  GraphOperations gops{*graph.get(), vocbase, origin, ctx};
   OperationResult r =
       gops.eraseOrphanCollection(false, vertexName, dropCollection);
 
@@ -490,9 +493,9 @@ static void JS_AddVertexCollection(
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  auto ctx = transaction::V8Context::Create(vocbase, true);
-
-  GraphManager gmngr{vocbase, transaction::OperationOriginREST{::moduleName}};
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(vocbase, origin, true);
+  GraphManager gmngr{vocbase, origin};
   auto graph = gmngr.lookupGraphByName(graphName);
   if (graph.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(graph.errorNumber(), graph.errorMessage());
@@ -577,9 +580,9 @@ static void JS_DropEdgeDefinition(
   }
   TRI_ASSERT(graph.get() != nullptr);
 
-  auto ctx = transaction::V8Context::Create(vocbase, true);
-  GraphOperations gops{*graph.get(), vocbase,
-                       transaction::OperationOriginREST{::moduleName}, ctx};
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(vocbase, origin, true);
+  GraphOperations gops{*graph.get(), vocbase, origin, ctx};
   OperationResult r =
       gops.eraseEdgeDefinition(false, edgeDefinitionName, dropCollections);
 

@@ -1710,9 +1710,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(queryString), nullptr,
-          arangodb::transaction::OperationOriginTestCase{});
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          arangodb::aql::QueryString(queryString), nullptr);
 
       auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -1751,9 +1751,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       // iteratorForCondition
       {
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options(),
-            arangodb::transaction::OperationOriginTestCase{});
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            {}, {}, {}, arangodb::transaction::Options());
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -1813,9 +1813,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(queryString), nullptr,
-          arangodb::transaction::OperationOriginTestCase{});
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          arangodb::aql::QueryString(queryString), nullptr);
 
       auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -1867,9 +1867,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       // iteratorForCondition
       {
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options(),
-            arangodb::transaction::OperationOriginTestCase{});
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            {}, {}, {}, arangodb::transaction::Options());
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -1932,9 +1932,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(queryString), nullptr,
-          arangodb::transaction::OperationOriginTestCase{});
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          arangodb::aql::QueryString(queryString), nullptr);
 
       auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -1986,9 +1986,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       // iteratorForCondition
       {
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options(),
-            arangodb::transaction::OperationOriginTestCase{});
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            {}, {}, {}, arangodb::transaction::Options());
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -2047,9 +2047,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(queryString), nullptr,
-          arangodb::transaction::OperationOriginTestCase{});
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          arangodb::aql::QueryString(queryString), nullptr);
 
       auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -2101,9 +2101,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
       // iteratorForCondition
       {
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options(),
-            arangodb::transaction::OperationOriginTestCase{});
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            {}, {}, {}, arangodb::transaction::Options());
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -3575,9 +3575,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(queryString), nullptr,
-          arangodb::transaction::OperationOriginTestCase{});
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          arangodb::aql::QueryString(queryString), nullptr);
 
       auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -3629,9 +3629,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       // iteratorForCondition
       {
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options(),
-            arangodb::transaction::OperationOriginTestCase{});
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            {}, {}, {}, arangodb::transaction::Options());
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -3720,9 +3720,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(queryString), nullptr,
-          arangodb::transaction::OperationOriginTestCase{});
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          arangodb::aql::QueryString(queryString), nullptr);
 
       auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -3774,9 +3774,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       // iteratorForCondition
       {
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options(),
-            arangodb::transaction::OperationOriginTestCase{});
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            {}, {}, {}, arangodb::transaction::Options());
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);
@@ -3865,9 +3865,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(queryString), nullptr,
-          arangodb::transaction::OperationOriginTestCase{});
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          arangodb::aql::QueryString(queryString), nullptr);
 
       auto const parseResult = query->parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -3919,9 +3919,9 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       // iteratorForCondition
       {
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase), {}, {},
-            {}, arangodb::transaction::Options(),
-            arangodb::transaction::OperationOriginTestCase{});
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            {}, {}, {}, arangodb::transaction::Options());
 
         ExpressionContextMock exprCtx;
         exprCtx.setTrx(&trx);

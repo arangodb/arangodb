@@ -548,8 +548,8 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
         auto oneShardQueryString = aql::QueryString(
             absl::StrCat("FOR d IN ", shards->begin()->first, " RETURN d"));
         auto query = aql::Query::create(
-            transaction::StandaloneContext::Create(vocbase),
-            std::move(oneShardQueryString), nullptr, operationOrigin);
+            transaction::StandaloneContext::create(vocbase, operationOrigin),
+            std::move(oneShardQueryString), nullptr);
 
         auto result = query->executeSync();
 
@@ -627,9 +627,9 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
     return res;
   }
 
-  auto query =
-      aql::Query::create(transaction::StandaloneContext::Create(vocbase),
-                         queryString, nullptr, operationOrigin);
+  auto query = aql::Query::create(
+      transaction::StandaloneContext::create(vocbase, operationOrigin),
+      queryString, nullptr);
 
   auto result = query->executeSync();
 
@@ -1492,10 +1492,10 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
   TRI_ASSERT(!engine.inRecovery());
   if (!analyzerModificationTrx) {
     // no modification transaction. Just truncate
-    auto ctx = transaction::StandaloneContext::Create(vocbase);
+    auto ctx = transaction::StandaloneContext::create(vocbase, operationOrigin);
     SingleCollectionTransaction trx(
         ctx, arangodb::StaticStrings::AnalyzersCollection,
-        AccessMode::Type::EXCLUSIVE, operationOrigin);
+        AccessMode::Type::EXCLUSIVE);
 
     auto res = trx.begin();
     if (res.fail()) {
@@ -1520,18 +1520,18 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
         arangodb::StaticStrings::AnalyzersCollection);
 
     {  // SingleCollectionTransaction scope
-      auto ctx = transaction::StandaloneContext::Create(vocbase);
+      auto ctx =
+          transaction::StandaloneContext::create(vocbase, operationOrigin);
       SingleCollectionTransaction trx(
           ctx, arangodb::StaticStrings::AnalyzersCollection,
-          AccessMode::Type::EXCLUSIVE, operationOrigin);
+          AccessMode::Type::EXCLUSIVE);
       trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
       auto res = trx.begin();
       if (res.fail()) {
         return res;
       }
-      auto query = aql::Query::create(ctx, aql::QueryString(aql), nullptr,
-                                      operationOrigin);
+      auto query = aql::Query::create(ctx, aql::QueryString(aql), nullptr);
       aql::QueryResult queryResult = query->executeSync();
       if (queryResult.fail()) {
         return queryResult.result;
@@ -1547,10 +1547,11 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
     }
     {  // SingleCollectionTransaction scope
       // now let`s do cleanup
-      auto ctx = transaction::StandaloneContext::Create(vocbase);
+      auto ctx =
+          transaction::StandaloneContext::create(vocbase, operationOrigin);
       SingleCollectionTransaction truncateTrx(
           ctx, arangodb::StaticStrings::AnalyzersCollection,
-          AccessMode::Type::EXCLUSIVE, operationOrigin);
+          AccessMode::Type::EXCLUSIVE);
 
       auto res = truncateTrx.begin();
 
@@ -1995,15 +1996,15 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
     bindBuilder->add("rev", VPackValue(buildingRevision));
     bindBuilder->close();
 
-    auto ctx = transaction::StandaloneContext::Create(*vocbase);
+    auto ctx =
+        transaction::StandaloneContext::create(*vocbase, operationOrigin);
     SingleCollectionTransaction trx(
         ctx, arangodb::StaticStrings::AnalyzersCollection,
-        AccessMode::Type::WRITE, operationOrigin);
+        AccessMode::Type::WRITE);
     trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
     trx.begin();
 
-    auto queryDelete = aql::Query::create(ctx, queryDeleteString, bindBuilder,
-                                          operationOrigin);
+    auto queryDelete = aql::Query::create(ctx, queryDeleteString, bindBuilder);
 
     auto deleteResult = queryDelete->executeSync();
     if (deleteResult.fail()) {
@@ -2021,8 +2022,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
         " >= @rev) ", "UPDATE d WITH UNSET(d, '",
         arangodb::StaticStrings::AnalyzersDeletedRevision, "') IN ",
         arangodb::StaticStrings::AnalyzersCollection));
-    auto queryUpdate = aql::Query::create(ctx, queryUpdateString, bindBuilder,
-                                          operationOrigin);
+    auto queryUpdate = aql::Query::create(ctx, queryUpdateString, bindBuilder);
 
     auto updateResult = queryUpdate->executeSync();
     if (updateResult.fail()) {
@@ -2506,9 +2506,9 @@ Result IResearchAnalyzerFeature::removeFromCollection(
             "failure to find vocbase while removing arangosearch analyzer '",
             name, "'")};
   }
-  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*voc),
-                                  arangodb::StaticStrings::AnalyzersCollection,
-                                  AccessMode::Type::WRITE, operationOrigin);
+  SingleCollectionTransaction trx(
+      transaction::StandaloneContext::create(*voc, operationOrigin),
+      arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE);
   auto res = trx.begin();
 
   if (!res.ok()) {
@@ -2683,9 +2683,9 @@ Result IResearchAnalyzerFeature::remove(
       }
 
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(*vocbase),
-          arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE,
-          operationOrigin);
+          transaction::StandaloneContext::create(*vocbase, operationOrigin),
+          arangodb::StaticStrings::AnalyzersCollection,
+          AccessMode::Type::WRITE);
       auto res = trx.begin();
 
       if (!res.ok()) {
@@ -2850,9 +2850,8 @@ Result IResearchAnalyzerFeature::storeAnalyzer(
     }
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(*vocbase),
-        arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE,
-        operationOrigin);
+        transaction::StandaloneContext::create(*vocbase, operationOrigin),
+        arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE);
     auto res = trx.begin();
 
     if (!res.ok()) {

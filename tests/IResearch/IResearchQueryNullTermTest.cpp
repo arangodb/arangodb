@@ -62,9 +62,9 @@ class QueryNullTerm : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
-          *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::OperationOriginTestCase{});
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -98,9 +98,9 @@ class QueryNullTerm : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
-          *collection, arangodb::AccessMode::Type::WRITE,
-          arangodb::transaction::OperationOriginTestCase{});
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
