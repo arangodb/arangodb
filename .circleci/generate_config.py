@@ -221,8 +221,20 @@ def filter_tests(args, tests, enterprise):
         tests = filter(one_filter, tests)
     return list(tests)
 
+def get_size(size, arch):
+    aarch64_sizes = {
+        "small": "arm.medium",
+        "medium": "arm.medium",
+        "medium+": "arm.large",
+        "large": "arm.large",
+        "xlarge": "arm.xlarge"
+    }
+    if arch == "aarch64":
+        return aarch64_sizes[size]
+    return size
 
-def create_test_job(test, cluster, edition):
+
+def create_test_job(test, cluster, edition, arch):
     """creates the test job definition to be put into the config yaml"""
     params = test["params"]
     suite_name = test["name"]
@@ -234,12 +246,12 @@ def create_test_job(test, cluster, edition):
         raise Exception("Invalid resource class size " + test["size"])
 
     result = {
-        "name": f"test-{edition}-{'cluster' if cluster else 'single'}-{suite_name}",
+        "name": f"test-{edition}-{'cluster' if cluster else 'single'}-{suite_name}-{arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "size": test["size"],
+        "size": get_size(test["size"], arch),
         "cluster": cluster,
-        "requires": [f"build-{edition}"],
+        "requires": [f"build-{edition}-{arch}"],
     }
 
     extra_args = test["args"]
@@ -253,20 +265,35 @@ def create_test_job(test, cluster, edition):
     return result
 
 
-def generate_output(config, tests, enterprise):
-    """generate output"""
-    workflow = "enterprise-pr" if enterprise else "community-pr"
-    edition = "ee" if enterprise else "ce"
+def add_test_jobs_to_workflow(config, tests, workflow, edition, arch):
     jobs = config["workflows"][workflow]["jobs"]
     for test in tests:
         print(f"test: {test}")
         if "cluster" in test["flags"]:
-            jobs.append({"run-tests": create_test_job(test, True, edition)})
+            jobs.append({"run-tests": create_test_job(test, True, edition, arch)})
         elif "single" in test["flags"]:
-            jobs.append({"run-tests": create_test_job(test, False, edition)})
+            jobs.append({"run-tests": create_test_job(test, False, edition, arch)})
         else:
-            jobs.append({"run-tests": create_test_job(test, True, edition)})
-            jobs.append({"run-tests": create_test_job(test, False, edition)})
+            jobs.append({"run-tests": create_test_job(test, True, edition, arch)})
+            jobs.append({"run-tests": create_test_job(test, False, edition, arch)})
+
+
+def get_arch(workflow):
+    if workflow.startswith("aarch64") :
+        return "aarch64"
+    if workflow.startswith("x64") :
+        return "x64"
+    raise Exception(f"Cannot extract architecture from workflow {workflow}")
+
+
+def generate_output(config, tests, enterprise):
+    """generate output"""
+    workflows = config["workflows"]
+    edition = "ee" if enterprise else "ce"
+    for workflow, jobs in workflows.items():
+        if (enterprise and "enterprise" in workflow) or (not enterprise and "community" in workflow):
+            arch = get_arch(workflow)
+            add_test_jobs_to_workflow(config, tests, workflow, edition, arch)
 
 
 def generate_jobs(config, args, tests, enterprise):
