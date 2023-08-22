@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-1566: remove redundant responsibility for creating local databases on
+  coordinators.
+
 * Allow compression content-negotation in metrics API, so that responses from
   the metrics API at `/_admin/metrics` can be sent compressed if the client
   supports it.
