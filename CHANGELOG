@@ -1,6 +1,13 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* Updated JavaScript dependencies:
+
+  qs: 6.11.0 -> 6.11.2
+  semver: 7.3.8 -> 7.5.4
+
+  This addresses CVE-2022-25883 in the semver module.
+
 * Allow compression content-negotation in metrics API, so that responses from
   the metrics API at `/_admin/metrics` can be sent compressed if the client
   supports it.
