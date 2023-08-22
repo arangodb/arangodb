@@ -474,10 +474,6 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
   uint64_t requestId = _manager.nextRequestId();
 
   network::Headers headers;
-  if (urlIn.starts_with(AGENCY_URL_POLL)) {
-    headers.emplace(StaticStrings::AcceptEncoding, StaticStrings::EncodingGzip);
-  }
-
   fuerte::StringMap params;
   std::string url = fuerte::extractPathParameters(urlIn, params);
   return agencyAsyncSend(
