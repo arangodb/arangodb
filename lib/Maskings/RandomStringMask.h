@@ -27,21 +27,15 @@
 #include "Maskings/MaskingFunction.h"
 #include "Maskings/ParseResult.h"
 
-namespace arangodb {
-namespace maskings {
+namespace arangodb::maskings {
 class RandomStringMask : public MaskingFunction {
  public:
   static ParseResult<AttributeMasking> create(Path, Maskings*,
-                                              VPackSlice const& def);
+                                              velocypack::Slice def);
 
- public:
-  VPackValue mask(bool, std::string& buffer) const override;
-  VPackValue mask(std::string const& data, std::string& buffer) const override;
-  VPackValue mask(int64_t, std::string& buffer) const override;
-  VPackValue mask(double, std::string& buffer) const override;
-
- protected:
   explicit RandomStringMask(Maskings* maskings) : MaskingFunction(maskings) {}
+
+  void mask(std::string_view data, velocypack::Builder& out,
+            std::string& buffer) const override;
 };
-}  // namespace maskings
-}  // namespace arangodb
+}  // namespace arangodb::maskings
