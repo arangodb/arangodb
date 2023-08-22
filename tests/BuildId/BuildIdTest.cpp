@@ -18,24 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
+#include <gtest/gtest.h>
 
-#pragma once
+#include "BuildId/BuildId.h"
 
-#include "Maskings/AttributeMasking.h"
-#include "Maskings/MaskingFunction.h"
-#include "Maskings/ParseResult.h"
+using namespace arangodb::build_id;
 
-namespace arangodb::maskings {
-class RandomStringMask : public MaskingFunction {
- public:
-  static ParseResult<AttributeMasking> create(Path, Maskings*,
-                                              velocypack::Slice def);
-
-  explicit RandomStringMask(Maskings* maskings) : MaskingFunction(maskings) {}
-
-  void mask(std::string_view data, velocypack::Builder& out,
-            std::string& buffer) const override;
-};
-}  // namespace arangodb::maskings
+TEST(BuildIdTest, successfully_obtains_build_id) {
+  if constexpr (arangodb::build_id::supportsBuildIdReader()) {
+    auto buildId = getBuildId();
+    ASSERT_TRUE(buildId.size() > 0);
+  }
+}

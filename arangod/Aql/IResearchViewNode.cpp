@@ -1459,6 +1459,31 @@ std::pair<bool, bool> IResearchViewNode::volatility(
                         irs::check_bit<1>(_volatilityMask));  // sort
 }
 
+aql::Collection const* IResearchViewNode::collection() const {
+  auto c = collections();
+  if (c.size() == 1) {
+    return &c.front().first.get();
+  }
+  // this API should not be used for multicollection views
+  // doing so might break satellite join assumptions
+  TRI_ASSERT(c.empty());
+  return nullptr;
+}
+
+bool IResearchViewNode::isUsedAsSatellite() const { return _isUsedAsSatellite; }
+void IResearchViewNode::useAsSatelliteOf(aql::ExecutionNodeId) {
+  _isUsedAsSatellite = true;
+}
+
+aql::Collection const* IResearchViewNode::prototypeCollection() const {
+  return _prototypeCollection;
+}
+
+void IResearchViewNode::setPrototype(aql::Collection const* prototypeCollection,
+                                     aql::Variable const*) {
+  _prototypeCollection = prototypeCollection;
+}
+
 void const* IResearchViewNode::getSnapshotKey() const noexcept {
   // if (ServerState::instance()->isDBServer()) {
   // TODO We want transactional cluster, now it's not

@@ -47,6 +47,7 @@
 #include <boost/core/demangle.hpp>
 
 #include "CrashHandler.h"
+#include "BuildId/BuildId.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/SizeLimitedString.h"
 #include "Basics/StringUtils.h"
@@ -165,19 +166,32 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
                      siginfo_t const* info, void* ucontext) {
   // build a crash message
   buffer.append("💥 ArangoDB ").append(ARANGODB_VERSION_FULL);
+
+  if constexpr (arangodb::build_id::supportsBuildIdReader()) {
+    // get build-id by reference, so we can avoid a copy here
+    std::string const& buildId = arangodb::rest::Version::getBuildId();
+    if (!buildId.empty()) {
+      buffer.append(", build-id ").append(buildId);
+    }
+  }
+
+  // append thread id
   buffer.append(", thread ")
       .appendUInt64(uint64_t(arangodb::Thread::currentThreadNumber()));
 
 #ifdef __linux__
+  // append thread name
   arangodb::ThreadNameFetcher nameFetcher;
   buffer.append(" [").append(nameFetcher.get()).append("]");
 #endif
 
+  // append signal number and name
   bool printed = false;
   buffer.append(" caught unexpected signal ").appendUInt64(uint64_t(signal));
   buffer.append(" (").append(arangodb::signals::name(signal));
 #ifndef _WIN32
   if (info != nullptr) {
+    // pid that sent the signal
     buffer.append(") from pid ").appendUInt64(uint64_t(info->si_pid));
     printed = true;
   }
@@ -187,6 +201,7 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
   }
 
   if (char const* ss = ::stateString.load(); ss != nullptr) {
+    // append application server state
     buffer.append(" in state \"").append(ss).append("\"");
   }
 
