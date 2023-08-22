@@ -378,7 +378,7 @@ workflows:
           publish-artifacts: false
           build-tests: false
       - run-hotbackup-tests:
-          name: run-hotbackup-tests
+          name: run-hotbackup-tests-amd64
           size: medium
           requires:
             - build-ee-amd64
@@ -405,7 +405,7 @@ workflows:
           preset: enterprise-pr
           enterprise: true
       - run-hotbackup-tests:
-          name: run-hotbackup-tests
+          name: run-hotbackup-tests-aarch64
           size: arm.medium
           requires:
             - build-ee-aarch64
