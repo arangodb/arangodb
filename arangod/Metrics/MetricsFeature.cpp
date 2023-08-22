@@ -134,7 +134,7 @@ void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 
 void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
   // minimize reallocs
-  result.reserve(32768);
+  result.reserve(64 * 1024);
 
   // QueryRegistryFeature
   auto& q = server().getFeature<QueryRegistryFeature>();

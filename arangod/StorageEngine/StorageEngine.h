@@ -353,7 +353,7 @@ class StorageEngine : public ArangodFeature {
                             uint64_t tickEnd, velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
-  void getCapabilities(velocypack::Builder& builder) const;
+  virtual void getCapabilities(velocypack::Builder& builder) const;
 
   virtual void getStatistics(velocypack::Builder& builder) const;
 
