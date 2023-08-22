@@ -305,12 +305,25 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
           std::move(dest), Error::ConnectionCanceled, std::move(req), nullptr});
     }
 
+    // resolve destination.
+    // it is at least temporarily possible for the destination to be an empty
+    // string. this can happen if a server is in shutdown and has unregistered
+    // itself from the cluster. if this happens, the dest value can be empty,
+    // and trying to resolve it via resolveDestination() will produce error
+    // message 77a84. we are trying to suppress this error message here, and
+    // simply return "backend unavailable" (as we did before) and do not log the
+    // error.
     arangodb::network::EndpointSpec spec;
-    auto res =
-        options.overrideDestination.empty()
-            ? resolveDestination(*pool->config().clusterInfo, dest, spec)
-            : resolveDestination(*pool->config().clusterInfo,
-                                 "server:" + options.overrideDestination, spec);
+    ErrorCode res = TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    if (options.overrideDestination.empty()) {
+      if (!dest.empty()) {
+        res = resolveDestination(*pool->config().clusterInfo, dest, spec);
+      }
+    } else {
+      res = resolveDestination(*pool->config().clusterInfo,
+                               "server:" + options.overrideDestination, spec);
+    }
+
     if (res != TRI_ERROR_NO_ERROR) {
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
