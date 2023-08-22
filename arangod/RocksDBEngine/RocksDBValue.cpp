@@ -40,13 +40,15 @@ using namespace arangodb::rocksutils;
 namespace {
 uint64_t doubleToInt(double d) {
   uint64_t i;
+  static_assert(sizeof(i) == sizeof(d));
   std::memcpy(&i, &d, sizeof(i));
   return i;
 }
 
 double intToDouble(uint64_t i) {
   double d;
-  std::memcpy(&d, &i, sizeof(i));
+  static_assert(sizeof(i) == sizeof(d));
+  std::memcpy(&d, &i, sizeof(d));
   return d;
 }
 }  // namespace
