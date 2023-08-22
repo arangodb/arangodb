@@ -533,10 +533,9 @@ template<class F> class DeterminizerStar {
         for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
           const Arc &arc = aiter.Value();
           if (arc.ilabel != 0) {  // Non-epsilon transition -- ignore epsilons here.
-            Element element{
-              .state = arc.nextstate,
-              .weight = Times(elem.weight, arc.weight),
-            };
+            Element element;
+            element.state = arc.nextstate;
+            element.weight = Times(elem.weight, arc.weight);
             if (arc.olabel == 0) {
               // output epsilon -- this is simple case so handle separately for efficiency
               element.string = elem.string;
