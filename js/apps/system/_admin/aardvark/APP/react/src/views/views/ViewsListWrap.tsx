@@ -18,7 +18,7 @@ export const ViewsListWrap = () => {
             <Route path="/views" exact>
               <ViewsList />
             </Route>
-            <Route path="/views/:viewName">
+            <Route path="/view/:viewName">
               <SingleViewView />
             </Route>
           </Switch>
