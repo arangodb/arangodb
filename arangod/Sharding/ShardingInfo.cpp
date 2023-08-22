@@ -288,10 +288,6 @@ Result ShardingInfo::extractShardKeys(velocypack::Slice info,
   return {};
 }
 
-bool ShardingInfo::usesSameShardingStrategy(ShardingInfo const* other) const {
-  return _shardingStrategy->isCompatible(other->_shardingStrategy.get());
-}
-
 std::string ShardingInfo::shardingStrategyName() const {
   return _shardingStrategy->name();
 }

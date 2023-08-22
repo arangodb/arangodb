@@ -56,7 +56,6 @@ class ShardingInfo {
   ShardingInfo& operator=(ShardingInfo const& other) = delete;
   ~ShardingInfo();
 
-  bool usesSameShardingStrategy(ShardingInfo const* other) const;
   std::string shardingStrategyName() const;
 
   LogicalCollection* collection() const noexcept;
