@@ -1,9 +1,6 @@
 devel
 -----
 
-* BTS-1566: remove redundant responsibility for creating local databases on
-  coordinators.
-
 * Remove attribute `dfdb` from response of storage engine API (GET 
   `/_api/engine`). 
 

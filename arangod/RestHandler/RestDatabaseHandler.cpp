@@ -89,11 +89,8 @@ RestStatus RestDatabaseHandler::getDatabases() {
       }
     }
 
-    // return database names in sorted order
-    std::sort(names.begin(), names.end());
-
     builder.openArray();
-    for (auto const& name : names) {
+    for (std::string const& name : names) {
       builder.add(VPackValue(name));
     }
     builder.close();
