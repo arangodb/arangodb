@@ -56,11 +56,11 @@ void AcceptorTcp<T>::open() {
   } else {  // we need to resolve the string containing the ip
     std::unique_ptr<asio_ns::ip::tcp::resolver::query> query;
     if (_endpoint->domain() == AF_INET6) {
-      query.reset(new asio_ns::ip::tcp::resolver::query(
-          asio_ns::ip::tcp::v6(), hostname, std::to_string(portNumber)));
+      query = std::make_unique<asio_ns::ip::tcp::resolver::query>(
+          asio_ns::ip::tcp::v6(), hostname, std::to_string(portNumber));
     } else if (_endpoint->domain() == AF_INET) {
-      query.reset(new asio_ns::ip::tcp::resolver::query(
-          asio_ns::ip::tcp::v4(), hostname, std::to_string(portNumber)));
+      query = std::make_unique<asio_ns::ip::tcp::resolver::query>(
+          asio_ns::ip::tcp::v4(), hostname, std::to_string(portNumber));
     } else {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
     }

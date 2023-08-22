@@ -46,43 +46,39 @@ class Parser {
 
  public:
   /// @brief return the ast during parsing
-  inline Ast* ast() { return &_ast; }
+  Ast* ast() { return &_ast; }
 
   /// @brief return the query during parsing
-  inline QueryContext& query() { return _query; }
+  QueryContext& query() { return _query; }
 
   /// @brief return the scanner
-  inline void* scanner() const { return _scanner; }
+  void* scanner() const { return _scanner; }
 
   /// @brief a pointer to the start of the query string
   char const* queryStringStart() const { return _queryStringStart; }
 
   /// @brief return the remaining length of the query string to process
-  inline size_t remainingLength() const { return _remainingLength; }
+  size_t remainingLength() const { return _remainingLength; }
 
   /// @brief return the current marker position
-  inline char const* marker() const { return _marker; }
+  char const* marker() const { return _marker; }
 
   /// @brief set the current marker position
-  inline void marker(char const* marker) { _marker = marker; }
+  void marker(char const* marker) { _marker = marker; }
 
   /// @brief return the current parse position
-  inline size_t offset() const { return _offset; }
+  size_t offset() const { return _offset; }
 
   /// @brief adjust the current parse position
-  inline void increaseOffset(int offset) {
-    _offset += static_cast<size_t>(offset);
-  }
+  void increaseOffset(int offset) { _offset += static_cast<size_t>(offset); }
 
   /// @brief adjust the current parse position
-  inline void increaseOffset(size_t offset) { _offset += offset; }
+  void increaseOffset(size_t offset) { _offset += offset; }
 
-  inline void decreaseOffset(int offset) {
-    _offset -= static_cast<size_t>(offset);
-  }
+  void decreaseOffset(int offset) { _offset -= static_cast<size_t>(offset); }
 
   /// @brief adjust the current parse position
-  inline void decreaseOffset(size_t offset) { _offset -= offset; }
+  void decreaseOffset(size_t offset) { _offset -= offset; }
 
   /// @brief fill the output buffer with a fragment of the query
   void fillBuffer(char* result, size_t length) {

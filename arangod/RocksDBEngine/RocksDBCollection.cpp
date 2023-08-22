@@ -40,6 +40,9 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "CrashHandler/CrashHandler.h"
+#endif
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
@@ -82,6 +85,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
+#include <absl/strings/str_cat.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
@@ -1645,8 +1649,27 @@ Result RocksDBCollection::modifyDocument(
     velocypack::Slice oldDoc, LocalDocumentId newDocumentId,
     velocypack::Slice newDoc, RevisionId oldRevisionId,
     RevisionId newRevisionId, OperationOptions const& options) const {
-  TRI_ASSERT(oldDoc.get(StaticStrings::KeyString).stringView() ==
-             newDoc.get(StaticStrings::KeyString).stringView());
+  Result res;
+
+  if (oldDoc.get(StaticStrings::KeyString).stringView() !=
+      newDoc.get(StaticStrings::KeyString).stringView()) {
+    res.reset(TRI_ERROR_INTERNAL,
+              absl::StrCat("invalid document update in '",
+                           _logicalCollection.vocbase().name(), "/",
+                           _logicalCollection.name()));
+    res.withError([&oldDoc, &newDoc](result::Error& err) {
+      err.appendErrorMessage("; old key: ");
+      err.appendErrorMessage(oldDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage("; new key: ");
+      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
+    });
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("b28a9", ERR, Logger::ENGINES) << res.errorMessage();
+    CrashHandler::logBacktrace();
+#endif
+    TRI_ASSERT(false) << res.errorMessage();
+    return res;
+  }
 
   savepoint.prepareOperation(newRevisionId);
 
@@ -1654,7 +1677,6 @@ Result RocksDBCollection::modifyDocument(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(objectId() != 0);
-  Result res;
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods(_logicalCollection.id());

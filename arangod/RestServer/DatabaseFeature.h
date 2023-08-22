@@ -190,9 +190,6 @@ class DatabaseFeature final : public ArangodFeature {
   /// @brief close all dropped databases
   void closeDroppedDatabases();
 
-  /// @brief activates deadlock detection in all existing databases
-  void enableDeadlockDetection();
-
   bool _defaultWaitForSync{false};
   bool _ignoreDatafileErrors{false};
   bool _isInitiallyEmpty{false};

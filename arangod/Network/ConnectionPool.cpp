@@ -76,10 +76,6 @@ struct ConnectionPool::Context {
 
 struct ConnectionPool::Bucket {
   mutable std::mutex mutex;
-  // TODO statistics ?
-  //    uint64_t bytesSend;
-  //    uint64_t bytesReceived;
-  //    uint64_t numRequests;
   containers::SmallVector<std::shared_ptr<Context>, 4> list;
 };
 

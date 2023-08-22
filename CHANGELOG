@@ -3,6 +3,67 @@ devel
 
 * FE-248: Improve collections list UI.
 
+* Remove attribute `dfdb` from response of storage engine API (GET 
+  `/_api/engine`). 
+
+* The storage engine API (GET `/_api/engine`) now returns an `endianness`
+  attribute for the RocksDB storage engine on single servers and database
+  servers.
+
+* Allow compression content-negotation in metrics API, so that responses from
+  the metrics API at `/_admin/metrics` can be sent compressed if the client
+  supports it.
+
+* Print arangod executable's build-id in startup and crash messages.
+
+* Removed --jslint from arangosh and scripts/jslint.sh along with
+  the outdated copy of eslint; updated CONTRIBUTING.md to reflect
+	the changes and hint at scripts/eslint.sh which can be used	to lint
+	javascript code with a locally installed version of eslint
+
+* Fixed BTS-1556: Potential shutdown race, when the server is shutting down
+  and still AgencyCommunication was going on it could use the scheduler
+  which was already deleted, causing a crash right before a normal shutdown.
+  This should not have any negative effect, as all state preserving operations
+  are done by then, it just wasn't a clean exit.
+
+* Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition
+  was executed through an index lookup.
+
+* Fix Pregel running on OneShard deployments
+
+* BTS-1544: The _system database now properly reports its sharding value.
+
+* Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used
+  in the row based variant like (e.g. WINDOW { preceding: 1, following: 1 })
+  it errored with:  mandatory variable "inVariable" not found. This variable
+  is now correctly treated as optional.
+
+* Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used
+  on a OneShardDatabase, or on data from a collection that only has one shard,
+  the preceding and following clauses were flipped.
+
+* Updated arangosync to v2.19.3.
+
+* FE-94: Support for query options and optimizer rules on web UI.
+
+* FE-308: Support for graph editing on web UI.
+
+* FE-313: Add support for minHash analyzers & offset field on web UI.
+
+* Prevent potential buffer overflow in the crash handler.
+
+* Improve crash handler by adding the state of the application server (e.g.
+  startup, running, shutting dow) into the crash message.
+
+* Updated OpenSSL to 3.1.2 and OpenLDAP to 2.6.6.
+
+* Updated arangosync to v2.19.2.
+
+* Updated ArangoDB Starter to 0.17.0.
+
+* Updated arangosync to v2.19.1.
+
 * Updated arangosync to v2.19.0.
 
 * Remove long-deprecated graph compatibility functions, which were implemented

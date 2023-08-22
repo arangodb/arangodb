@@ -1067,7 +1067,7 @@ void ClusterInfo::loadPlan() {
     return;
   }
 
-  std::set<std::string> buildingDatabases;
+  containers::FlatHashSet<std::string> buildingDatabases;
   decltype(_plannedDatabases) newDatabases{_resourceMonitor};
   decltype(_shards) newShards{_resourceMonitor};
   decltype(_shardsToPlanServers) newShardsToPlanServers{_resourceMonitor};
@@ -1539,14 +1539,13 @@ void ClusterInfo::loadPlan() {
               collectionId);  // delete from maps with shardID as key
           newShardToName.erase(collectionId);
         }
-        auto copy_it = it++;
-        _newPlannedCollections.erase(copy_it);
+        _newPlannedCollections.erase(it);
       }
       continue;
     }
 
     // Skip databases that are still building.
-    if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
+    if (buildingDatabases.contains(databaseName)) {
       continue;
     }
 
@@ -1824,6 +1823,23 @@ void ClusterInfo::loadPlan() {
             // _graphs collection has no distributeShardsLike, so it is
             // the prototype!
             systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+          }
+        }
+
+        // The systemDB does initially set the sharding attribute. Therefore,
+        // we need to set it here.
+        if (newPlan.contains(StaticStrings::SystemDatabase)) {
+          auto planSlice = newPlan[StaticStrings::SystemDatabase]->slice();
+          if (planSlice.isArray() && planSlice.length() == 1) {
+            if (planSlice.at(0).isObject()) {
+              auto entrySlice = planSlice.at(0);
+              auto path = std::vector<std::string>{
+                  "arango", "Plan", "Databases", StaticStrings::SystemDatabase,
+                  StaticStrings::Sharding};
+              if (entrySlice.hasKey(path) && entrySlice.get(path).isString()) {
+                systemDB->setSharding(entrySlice.get(path).copyString());
+              }
+            }
           }
         }
       }

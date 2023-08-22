@@ -35,3 +35,9 @@ export type SmartGraphCreateValues = GraphCreateValues &
     | "smartGraphAttribute"
     | "satellites"
   >;
+
+export type AllGraphCreateValues =
+  | GeneralGraphCreateValues
+  | SatelliteGraphCreateValues
+  | EnterpriseGraphCreateValues
+  | SmartGraphCreateValues;

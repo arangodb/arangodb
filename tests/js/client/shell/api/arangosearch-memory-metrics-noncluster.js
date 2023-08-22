@@ -50,7 +50,7 @@ function MemoryMetrics() {
           commitIntervalMsec: 100,
         }}
       });
-      const writers = getMetric("arangodb_search_writers_memory");
+      const writers = getMetric("arangodb_search_writers_memory_usage");
       assertTrue(writers > 0);
       const descriptors = getMetric("arangodb_search_file_descriptors");
       assertTrue(descriptors > 0);
@@ -64,9 +64,9 @@ function MemoryMetrics() {
     testSimple: function () {
       let c = db._collection(collection);
       for (let i = 0; i < 3; i++) {
-        const oldValue = getMetric("arangodb_search_writers_memory");
+        const oldValue = getMetric("arangodb_search_writers_memory_usage");
         c.insert(x);
-        const newValue = getMetric("arangodb_search_writers_memory");
+        const newValue = getMetric("arangodb_search_writers_memory_usage");
         assertNotEqual(oldValue, newValue);
       }
       let readers = 0;
@@ -74,10 +74,10 @@ function MemoryMetrics() {
       let mapped = 0;
       for (let i = 0; i < 100; ++i) {
         if (readers === 0) {
-          readers = getMetric("arangodb_search_readers_memory");
+          readers = getMetric("arangodb_search_readers_memory_usage");
         }
         if (consolidations === 0) {
-          consolidations = getMetric("arangodb_search_consolidations_memory");
+          consolidations = getMetric("arangodb_search_consolidations_memory_usage");
         }
         // TODO(MBkkt) linux only check?
         mapped = getMetric("arangodb_search_mapped_memory");
@@ -89,9 +89,9 @@ function MemoryMetrics() {
       assertTrue(readers > 0);
       assertTrue(consolidations > 0);
       {
-        const oldValue = getMetric("arangodb_search_writers_memory");
+        const oldValue = getMetric("arangodb_search_writers_memory_usage");
         db._query("FOR d IN " + collection + " REMOVE d IN " + collection);
-        const newValue = getMetric("arangodb_search_writers_memory");
+        const newValue = getMetric("arangodb_search_writers_memory_usage");
         assertNotEqual(oldValue, newValue);
       }
     },

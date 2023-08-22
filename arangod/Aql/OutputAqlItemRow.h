@@ -30,8 +30,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
-
-#include <Containers/HashSet.h>
+#include "Containers/HashSet.h"
 
 #include <memory>
 
@@ -234,7 +233,7 @@ class OutputAqlItemRow {
   }
 
   [[nodiscard]] bool isOutputRegister(RegisterId registerId) const noexcept {
-    return outputRegisters().find(registerId) != outputRegisters().end();
+    return outputRegisters().contains(registerId);
   }
 
   [[nodiscard]] size_t nextUnwrittenIndex() const noexcept {

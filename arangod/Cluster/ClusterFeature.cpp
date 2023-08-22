@@ -949,6 +949,10 @@ void ClusterFeature::stop() {
 
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
   shutdownAgencyCache();
+
+  // We try to actively cancel all open requests that may still be in the Agency
+  // We cannot react to them anymore.
+  _asyncAgencyCommPool->shutdownConnections();
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {

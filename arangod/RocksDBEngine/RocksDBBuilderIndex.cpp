@@ -67,11 +67,6 @@ using namespace arangodb::rocksutils;
 
 namespace {
 
-struct BuilderCookie : public arangodb::TransactionState::Cookie {
-  // do not track removed documents twice
-  ::arangodb::containers::HashSet<LocalDocumentId::BaseType> tracked;
-};
-
 constexpr size_t getBatchSize(size_t numDocsHint) noexcept {
   if (numDocsHint >= 8192) {
     return 32 * 1024 * 1024;
@@ -261,24 +256,9 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx,
                                    velocypack::Slice slice,
                                    OperationOptions const& /*options*/,
                                    bool /*performChecks*/) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
-#else
-  auto* ctx = static_cast<::BuilderCookie*>(trx.state()->cookie(this));
-#endif
-  if (!ctx) {
-    auto ptr = std::make_unique<::BuilderCookie>();
-    ctx = ptr.get();
-    trx.state()->cookie(this, std::move(ptr));
-  }
-
-  // do not track document more than once
-  if (ctx->tracked.find(documentId.id()) == ctx->tracked.end()) {
-    ctx->tracked.insert(documentId.id());
-    RocksDBLogValue val =
-        RocksDBLogValue::TrackedDocumentInsert(documentId, slice);
-    mthd->PutLogData(val.slice());
-  }
+  RocksDBLogValue val =
+      RocksDBLogValue::TrackedDocumentInsert(documentId, slice);
+  mthd->PutLogData(val.slice());
   return Result();  // do nothing
 }
 
@@ -288,24 +268,9 @@ Result RocksDBBuilderIndex::remove(transaction::Methods& trx,
                                    LocalDocumentId const& documentId,
                                    velocypack::Slice slice,
                                    OperationOptions const& /*options*/) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
-#else
-  auto* ctx = static_cast<::BuilderCookie*>(trx.state()->cookie(this));
-#endif
-  if (!ctx) {
-    auto ptr = std::make_unique<::BuilderCookie>();
-    ctx = ptr.get();
-    trx.state()->cookie(this, std::move(ptr));
-  }
-
-  // do not track document more than once
-  if (ctx->tracked.find(documentId.id()) == ctx->tracked.end()) {
-    ctx->tracked.insert(documentId.id());
-    RocksDBLogValue val =
-        RocksDBLogValue::TrackedDocumentRemove(documentId, slice);
-    mthd->PutLogData(val.slice());
-  }
+  RocksDBLogValue val =
+      RocksDBLogValue::TrackedDocumentRemove(documentId, slice);
+  mthd->PutLogData(val.slice());
   return Result();  // do nothing
 }
 

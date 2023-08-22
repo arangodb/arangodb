@@ -275,11 +275,11 @@ void ConditionFinder::handleSortCondition(
     std::unique_ptr<SortCondition>& sortCondition) {
   if (!en->isInInnerLoop()) {
     // we cannot optimize away a sort if we're in an inner loop ourselves
-    sortCondition.reset(new SortCondition(
+    sortCondition = std::make_unique<SortCondition>(
         _plan, _sorts, condition->getConstAttributes(outVar, false),
-        condition->getNonNullAttributes(outVar), _variableDefinitions));
+        condition->getNonNullAttributes(outVar), _variableDefinitions);
   } else {
-    sortCondition.reset(new SortCondition());
+    sortCondition = std::make_unique<SortCondition>();
   }
 }
 

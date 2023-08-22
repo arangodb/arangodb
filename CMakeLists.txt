@@ -442,6 +442,18 @@ else ()
   SET(USE_LIBUNWIND OFF)
 endif ()
 
+if (LINUX)
+   option(USE_BUILD_ID_READER "Add code to read arangod's build-id from within arangod" ON)
+else ()
+   set(USE_BUILD_ID_READER OFF)
+endif ()
+
+if (USE_BUILD_ID_READER)
+  add_definitions(-DUSE_BUILD_ID_READER=true)
+else ()
+  add_definitions(-DUSE_BUILD_ID_READER=false)
+endif ()
+
 if (CROSS_COMPILING)
 # currently off, need additional params to configure like --host=triple <params>
   SET(USE_JEMALLOC OFF)
@@ -867,6 +879,8 @@ function(add_compile_warnings_flags)
       if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         # This option has too many false positives
         add_compile_options(-Wno-error=maybe-uninitialized)
+        # This prevents useful partial initializations
+        add_compile_options(-Wno-missing-field-initializers)
       endif()
     endif ()
   endif ()
