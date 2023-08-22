@@ -35,12 +35,13 @@
 #include "Logger/LogMacros.h"
 #include "Replication2/Storage/IteratorPosition.h"
 #include "Replication2/Storage/WAL/Buffer.h"
+#include "Replication2/Storage/WAL/FileHeader.h"
 #include "Replication2/Storage/WAL/FileIterator.h"
 #include "Replication2/Storage/WAL/IFileManager.h"
 #include "Replication2/Storage/WAL/IFileReader.h"
 #include "Replication2/Storage/WAL/IFileWriter.h"
+#include "Replication2/Storage/WAL/LogReader.h"
 #include "Replication2/Storage/WAL/Record.h"
-#include "Replication2/Storage/WAL/ReadHelpers.h"
 #include "velocypack/Builder.h"
 
 namespace arangodb::replication2::storage::wal {
@@ -143,10 +144,16 @@ LogPersistor::LogPersistor(LogId logId,
   auto filename = std::to_string(logId.id()) + ".log";
   _fileSet.emplace(LogFile{.filename = filename});
   _activeFile = _fileManager->createWriter(filename);
+  if (_activeFile->getReader()->size() == 0) {
+    FileHeader header = {.magic = wMagicFileType, .version = wCurrentVersion};
+    auto res = _activeFile->append(header);
+    if (res.fail())
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  }
 
-  auto reader = _activeFile->getReader();
-  if (reader->size() > 0) {
-    auto res = getLastRecordHeader(*reader);
+  LogReader reader(_activeFile->getReader());
+  if (reader.size() > sizeof(FileHeader)) {
+    auto res = reader.getLastRecordHeader();
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
@@ -212,25 +219,25 @@ auto LogPersistor::removeFront(LogIndex stop, WriteOptions const&)
 
 auto LogPersistor::removeBack(LogIndex start, WriteOptions const&)
     -> futures::Future<ResultT<SequenceNumber>> {
-  auto reader = _activeFile->getReader();
-  reader->seek(reader->size());
+  LogReader reader(_activeFile->getReader());
+  reader.seek(reader.size());
 
-  auto res = seekLogIndexBackward(*reader, start);
+  auto res = reader.seekLogIndexBackward(start);
   if (res.fail()) {
     return res.result();
   }
 
   TRI_ASSERT(res.get().index == start.value);
 
-  auto pos = reader->position();
+  auto pos = reader.position();
   // TODO - refactor and check that we actually have one more entry to read!
   Record::Footer footer;
-  reader->seek(pos - sizeof(Record::Footer));
-  reader->read(footer);
-  reader->seek(pos - footer.size);
+  reader.seek(pos - sizeof(Record::Footer));
+  ADB_PROD_ASSERT(reader.file().read(footer));
+  reader.seek(pos - footer.size);
 
   Record::CompressedHeader header;
-  reader->read(header);
+  ADB_PROD_ASSERT(reader.file().read(header));
 
   _lastWrittenEntry =
       TermIndexPair(LogTerm{header.term()}, LogIndex{header.index});

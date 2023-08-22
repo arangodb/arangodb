@@ -26,7 +26,6 @@
 #include <fcntl.h>
 
 #include "Basics/Exceptions.h"
-#include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
 #include "Replication2/Storage/WAL/FileReaderImpl.h"

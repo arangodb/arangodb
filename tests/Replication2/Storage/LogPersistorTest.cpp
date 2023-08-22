@@ -30,6 +30,7 @@
 #include "Replication2/ReplicatedLog/LogEntry.h"
 #include "Replication2/ReplicatedLog/LogMetaPayload.h"
 #include "Replication2/ReplicatedLog/PersistedLogEntry.h"
+#include "Replication2/Storage/WAL/FileHeader.h"
 #include "Replication2/Storage/WAL/LogPersistor.h"
 #include "Replication2/Storage/WAL/Record.h"
 
@@ -96,6 +97,12 @@ struct LogPersistorTest : ::testing::Test {
             .get();
     ASSERT_TRUE(res.ok());
     EXPECT_EQ(res.get(), 5);
+  }
+
+  void checkFileHeader(StreamReader& reader) {
+    auto header = reader.read<FileHeader>();
+    EXPECT_EQ(wMagicFileType, header.magic);
+    EXPECT_EQ(wCurrentVersion, header.version);
   }
 
   void checkLogEntry(StreamReader& reader, LogIndex idx, LogTerm term,
@@ -218,6 +225,7 @@ TEST_F(LogPersistorTest, insert_normal_payload) {
   EXPECT_EQ(res.get(), 100);
 
   StreamReader reader{buffer.data(), buffer.size()};
+  checkFileHeader(reader);
   checkLogEntry(reader, LogIndex{100}, LogTerm{1}, RecordType::wNormal,
                 payload);
 }
@@ -235,6 +243,7 @@ TEST_F(LogPersistorTest, insert_meta_payload) {
   EXPECT_EQ(res.get(), 100);
 
   StreamReader reader{buffer.data(), buffer.size()};
+  checkFileHeader(reader);
   checkLogEntry(reader, LogIndex{100}, LogTerm{1}, RecordType::wMeta, payload);
 }
 
@@ -329,6 +338,9 @@ TEST_F(LogPersistorTest, removeBack_fails_no_matching_entry_found) {
 TEST_F(LogPersistorTest, removeBack_fails_if_log_file_corrupt) {
   // we simulate a corrupt log file by writing some garbage in the memory buffer
   buffer = "xxxxyyyyzzzz";
+  FileHeader header = {.magic = wMagicFileType, .version = wCurrentVersion};
+  TRI_ASSERT(buffer.size() > sizeof(header));
+  std::memcpy(buffer.data(), &header, sizeof(header));
 
   auto res = persistor->removeBack(LogIndex{2}, {}).get();
   ASSERT_TRUE(res.fail());

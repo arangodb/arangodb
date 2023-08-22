@@ -4,6 +4,6 @@ target_sources(arango_replication2_pure PRIVATE
   FileReaderImpl.cpp
   FileWriterImpl.cpp
   LogPersistor.cpp
-  ReadHelpers.cpp
+  LogReader.cpp
   WalManager.cpp
 )

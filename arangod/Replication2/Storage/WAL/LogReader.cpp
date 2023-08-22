@@ -21,124 +21,164 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReadHelpers.h"
+#include "LogReader.h"
 
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
 #include "Replication2/Storage/WAL/IFileReader.h"
+#include "Replication2/Storage/WAL/FileHeader.h"
 #include "Replication2/Storage/WAL/Record.h"
 
 namespace arangodb::replication2::storage::wal {
 
-auto seekLogIndexForward(IFileReader& reader, LogIndex index)
+namespace {
+constexpr auto minFileSize =
+    sizeof(FileHeader) + sizeof(Record::Header) + sizeof(Record::Footer);
+}
+
+LogReader::LogReader(std::unique_ptr<IFileReader> reader)
+    : _reader(std::move(reader)) {
+  FileHeader header;
+  if (!_reader->read(header)) {
+    throw std::runtime_error("failed to read header");
+  }
+  if (header.magic != wMagicFileType) {
+    throw std::runtime_error("invalid file type");
+  }
+  if (header.version != wCurrentVersion) {
+    throw std::runtime_error("invalid file version");
+  }
+  _firstEntry = _reader->position();
+  // TODO read header
+}
+
+void LogReader::seek(std::uint64_t pos) {
+  pos = std::max(pos, _firstEntry);
+  _reader->seek(pos);
+}
+
+auto LogReader::position() const -> std::uint64_t {
+  return _reader->position();
+}
+
+auto LogReader::size() const -> std::uint64_t { return _reader->size(); }
+
+auto LogReader::seekLogIndexForward(LogIndex index)
     -> ResultT<Record::CompressedHeader> {
-  auto pos = reader.position();
+  auto pos = _reader->position();
 
   Record::CompressedHeader header;
-  while (reader.read(header)) {
+  while (_reader->read(header)) {
     if (header.index >= index.value) {
-      reader.seek(pos);  // reset to start of entry
+      _reader->seek(pos);  // reset to start of entry
       return ResultT<Record::CompressedHeader>::success(header);
     }
     pos += sizeof(Record::CompressedHeader) +
            Record::paddedPayloadSize(header.payloadSize) +
            sizeof(Record::Footer);
-    reader.seek(pos);
+    _reader->seek(pos);
   }
   // TODO - use proper error code
   return ResultT<Record::CompressedHeader>::error(TRI_ERROR_INTERNAL,
                                                   "log index not found");
 }
 
-auto seekLogIndexBackward(IFileReader& reader, LogIndex index)
+auto LogReader::seekLogIndexBackward(LogIndex index)
     -> ResultT<Record::CompressedHeader> {
   using RT = ResultT<Record::CompressedHeader>;
 
-  if (reader.size() <= sizeof(Record::Footer)) {
+  if (_reader->size() <= minFileSize) {
     return RT::error(TRI_ERROR_INTERNAL, "log is empty");
   }
 
   Record::Footer footer;
   Record::CompressedHeader compressedHeader;
-  auto pos = reader.position();
+  auto pos = _reader->position();
+  ADB_PROD_ASSERT(pos % 8 == 0);
   if (pos < sizeof(Record::Footer)) {
     // TODO - file is corrupt - write log message
     return RT::error(TRI_ERROR_INTERNAL, "log is corrupt");
   }
-  reader.seek(pos - sizeof(Record::Footer));
+  _reader->seek(pos - sizeof(Record::Footer));
 
-  while (reader.read(footer)) {
-    if (footer.size % 8 != 0) {
+  while (_reader->read(footer)) {
+    // calculate the max entry size based on our current position
+    auto maxEntrySize = pos - sizeof(FileHeader) - sizeof(Record::Header);
+    if (footer.size % 8 != 0 || footer.size > maxEntrySize) {
       // TODO - file is corrupt - write log message
       return RT::error(TRI_ERROR_INTERNAL, "log is corrupt");
     }
     pos -= footer.size;
-    reader.seek(pos);
-    reader.read(compressedHeader);
+    // seek to beginning of entry
+    _reader->seek(pos);
+    auto res = _reader->read(compressedHeader);
+    TRI_ASSERT(res);
+
     auto idx = compressedHeader.index;
     if (idx == index.value) {
+      ADB_PROD_ASSERT(Record::paddedPayloadSize(compressedHeader.payloadSize) +
+                          sizeof(compressedHeader) + sizeof(Record::Footer) ==
+                      footer.size);
       // reset reader to start of entry
-      reader.seek(pos);
+      _reader->seek(pos);
       return RT::success(compressedHeader);
     } else if (idx < index.value) {
       return RT::error(
           TRI_ERROR_INTERNAL,
           "found index lower than start index while searching backwards");
-    } else if (pos <= sizeof(Record::Footer)) {
+    } else if (pos <= minFileSize) {
       // TODO - file is corrupt - write log message
       return RT::error(TRI_ERROR_INTERNAL, "log is corrupt");
     }
-    reader.seek(pos - sizeof(Record::Footer));
+    _reader->seek(pos - sizeof(Record::Footer));
   }
   return RT::error(TRI_ERROR_INTERNAL, "log index not found");
 }
 
-auto getFirstRecordHeader(IFileReader& reader)
-    -> ResultT<Record::CompressedHeader> {
-  reader.seek(0);
+auto LogReader::getFirstRecordHeader() -> ResultT<Record::CompressedHeader> {
+  _reader->seek(_firstEntry);
   Record::CompressedHeader header;
-  if (!reader.read(header)) {
+  if (!_reader->read(header)) {
     return ResultT<Record::CompressedHeader>::error(TRI_ERROR_INTERNAL,
                                                     "failed to read header");
   }
   return ResultT<Record::CompressedHeader>::success(header);
 }
 
-auto getLastRecordHeader(IFileReader& reader)
-    -> ResultT<Record::CompressedHeader> {
-  auto fileSize = reader.size();
-  if (fileSize <= sizeof(Record::Footer)) {
+auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
+  auto fileSize = _reader->size();
+  if (fileSize <= minFileSize) {
     return ResultT<Record::CompressedHeader>::error(TRI_ERROR_INTERNAL,
                                                     "log is too small");
   }
-  reader.seek(fileSize - sizeof(Record::Footer));
+  _reader->seek(fileSize - sizeof(Record::Footer));
   Record::Footer footer;
-  if (!reader.read(footer)) {
+  if (!_reader->read(footer)) {
     return ResultT<Record::CompressedHeader>::error(TRI_ERROR_INTERNAL,
                                                     "failed to read footer");
   }
-  if (fileSize < footer.size) {
+  if (footer.size % 8 != 0 || footer.size > fileSize - minFileSize) {
     return ResultT<Record::CompressedHeader>::error(TRI_ERROR_INTERNAL,
                                                     "log is corrupt");
   }
-  reader.seek(fileSize - footer.size);
+  _reader->seek(fileSize - footer.size);
   Record::CompressedHeader header;
-  if (!reader.read(header)) {
+  if (!_reader->read(header)) {
     return ResultT<Record::CompressedHeader>::error(TRI_ERROR_INTERNAL,
                                                     "failed to read header");
   }
   return ResultT<Record::CompressedHeader>::success(header);
 }
 
-auto readLogEntry(IFileReader& reader) -> ResultT<PersistedLogEntry> {
+auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
   using RT = ResultT<PersistedLogEntry>;
 
   // TODO - use proper error codes
 
-  auto startPos = reader.position();
+  auto startPos = _reader->position();
 
   Record::CompressedHeader compressedHeader;
-  if (!reader.read(compressedHeader)) {
+  if (!_reader->read(compressedHeader)) {
     return RT::error(TRI_ERROR_INTERNAL, "failed to read header");
   }
 
@@ -146,7 +186,7 @@ auto readLogEntry(IFileReader& reader) -> ResultT<PersistedLogEntry> {
 
   auto paddedSize = Record::paddedPayloadSize(header.payloadSize);
   velocypack::UInt8Buffer buffer(paddedSize);
-  if (reader.read(buffer.data(), paddedSize) != paddedSize) {
+  if (_reader->read(buffer.data(), paddedSize) != paddedSize) {
     return RT::error(TRI_ERROR_INTERNAL, "failed to read payload");
   }
   buffer.resetTo(header.payloadSize);
@@ -165,11 +205,11 @@ auto readLogEntry(IFileReader& reader) -> ResultT<PersistedLogEntry> {
   }();
 
   Record::Footer footer;
-  if (!reader.read(footer)) {
+  if (!_reader->read(footer)) {
     return RT::error(TRI_ERROR_INTERNAL, "failed to read footer");
   }
-  TRI_ASSERT(footer.size % 8 == 0);
-  TRI_ASSERT(footer.size == reader.position() - startPos);
+  ADB_PROD_ASSERT(footer.size % 8 == 0);
+  ADB_PROD_ASSERT(footer.size == _reader->position() - startPos);
 
   auto pos = IteratorPosition::withFileOffset(entry.logIndex(), startPos);
 

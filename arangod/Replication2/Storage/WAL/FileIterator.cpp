@@ -26,7 +26,6 @@
 #include "Basics/Exceptions.h"
 #include "Replication2/Storage/WAL/IFileReader.h"
 #include "Replication2/Storage/WAL/Record.h"
-#include "Replication2/Storage/WAL/ReadHelpers.h"
 
 #include "velocypack/Buffer.h"
 
@@ -35,24 +34,24 @@ namespace arangodb::replication2::storage::wal {
 FileIterator::FileIterator(IteratorPosition position,
                            std::unique_ptr<IFileReader> reader)
     : _pos(position), _reader(std::move(reader)) {
-  _reader->seek(_pos.fileOffset());
+  _reader.seek(_pos.fileOffset());
   if (_pos.index().value != 0) {
     moveToFirstEntry();
   }
 }
 
 void FileIterator::moveToFirstEntry() {
-  auto res = seekLogIndexForward(*_reader, _pos.index());
+  auto res = _reader.seekLogIndexForward(_pos.index());
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
 
   TRI_ASSERT(res.get().index >= _pos.index().value);
-  _pos = IteratorPosition::withFileOffset(_pos.index(), _reader->position());
+  _pos = IteratorPosition::withFileOffset(_pos.index(), _reader.position());
 }
 
 auto FileIterator::next() -> std::optional<PersistedLogEntry> {
-  auto res = readLogEntry(*_reader);
+  auto res = _reader.readNextLogEntry();
   if (res.fail()) {
     return std::nullopt;
   }

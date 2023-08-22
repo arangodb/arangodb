@@ -32,7 +32,7 @@ struct IFileReader {
   virtual ~IFileReader() = default;
 
   template<typename T>
-  auto read(T& result) -> bool {
+  [[nodiscard]] auto read(T& result) -> bool {
     static_assert(std::is_trivially_copyable_v<T>);
     return read(&result, sizeof(T)) == sizeof(T);
   }

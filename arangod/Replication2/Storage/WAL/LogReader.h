@@ -23,21 +23,44 @@
 
 #pragma once
 
+#include <memory>
+
 #include "Replication2/ReplicatedLog/PersistedLogEntry.h"
-#include "Replication2/Storage/WAL/LogReader.h"
+#include "Replication2/Storage/WAL/Record.h"
 
 namespace arangodb::replication2::storage::wal {
 
-struct FileIterator : PersistedLogIterator {
-  FileIterator(IteratorPosition position, std::unique_ptr<IFileReader> reader);
+struct IFileReader;
 
-  auto next() -> std::optional<PersistedLogEntry> override;
+struct LogReader {
+  explicit LogReader(std::unique_ptr<IFileReader> reader);
+
+  void seek(std::uint64_t pos);
+
+  [[nodiscard]] auto position() const -> std::uint64_t;
+
+  [[nodiscard]] auto size() const -> std::uint64_t;
+
+  // Seek to the entry with the specified index in the file, starting from the
+  // current position of the reader, either forward or backward
+  // In case of success, the reader is positioned at the start of the matching
+  // entry.
+  auto seekLogIndexForward(LogIndex index) -> ResultT<Record::CompressedHeader>;
+  auto seekLogIndexBackward(LogIndex index)
+      -> ResultT<Record::CompressedHeader>;
+
+  auto getFirstRecordHeader() -> ResultT<Record::CompressedHeader>;
+  auto getLastRecordHeader() -> ResultT<Record::CompressedHeader>;
+
+  // read the next entry, starting from the current position of the reader
+  auto readNextLogEntry() -> ResultT<PersistedLogEntry>;
+
+  // TODO - remove this
+  auto file() -> IFileReader& { return *_reader; }
 
  private:
-  void moveToFirstEntry();
-
-  IteratorPosition _pos;
-  LogReader _reader;
+  std::unique_ptr<IFileReader> _reader;
+  std::uint64_t _firstEntry;
 };
 
 }  // namespace arangodb::replication2::storage::wal
