@@ -28,6 +28,7 @@
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Aql/QueryContext.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Transaction/Methods.h"
 
 #include <utility>

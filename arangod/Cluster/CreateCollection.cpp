@@ -39,6 +39,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/vocbase.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
@@ -50,9 +51,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
-
-constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
-constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 
 CreateCollection::CreateCollection(MaintenanceFeature& feature,
                                    ActionDescription const& desc)
@@ -131,16 +129,6 @@ bool CreateCollection::first() {
       return createReplication2Shard(collection, shard, props, vocbase);
     }
 
-    auto& cluster = _feature.server().getFeature<ClusterFeature>();
-
-    bool waitForRepl = (props.get(WAIT_FOR_SYNC_REPL).isBool())
-                           ? props.get(WAIT_FOR_SYNC_REPL).getBool()
-                           : cluster.createWaitsForSyncReplication();
-
-    bool enforceReplFact = (props.get(ENF_REPL_FACT).isBool())
-                               ? props.get(ENF_REPL_FACT).getBool()
-                               : true;
-
     TRI_col_type_e type = static_cast<TRI_col_type_e>(
         props.get(StaticStrings::DataSourceType).getNumber<uint32_t>());
 
@@ -179,9 +167,8 @@ bool CreateCollection::first() {
     }
     std::shared_ptr<LogicalCollection> col;
     OperationOptions options(ExecContext::current());
-    res.reset(Collections::create(vocbase, options, shard, type, docket.slice(),
-                                  waitForRepl, enforceReplFact,
-                                  /*isNewDatabase*/ false, col));
+    res.reset(Collections::createShard(vocbase, options, shard, type,
+                                       docket.slice(), col));
     result(res);
     if (col) {
       LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)

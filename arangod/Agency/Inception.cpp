@@ -37,6 +37,7 @@
 #include <thread>
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 namespace {
 void handleGossipResponse(arangodb::network::Response const& r,

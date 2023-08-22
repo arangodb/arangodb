@@ -25,26 +25,46 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/SpinLocker.h"
+#include "Basics/debugging.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
 #include "Cache/Metadata.h"
+#include "Random/RandomGenerator.h"
 
 namespace arangodb::cache {
 
 FreeMemoryTask::FreeMemoryTask(Manager::TaskEnvironment environment,
-                               Manager& manager, std::shared_ptr<Cache> cache)
-    : _environment(environment), _manager(manager), _cache(std::move(cache)) {}
+                               Manager& manager, std::shared_ptr<Cache> cache,
+                               bool triggerShrinking)
+    : _environment(environment),
+      _manager(manager),
+      _cache(std::move(cache)),
+      _triggerShrinking(triggerShrinking) {}
 
 FreeMemoryTask::~FreeMemoryTask() = default;
 
 bool FreeMemoryTask::dispatch() {
+  // task is dispatched under the manager's lock
+  TRI_ASSERT(_manager._lock.isLockedWrite());
+
   // prepareTask counts a counter up
   _manager.prepareTask(_environment);
 
   // make sure we count the counter down in case we
   // did not successfully dispatch the task
-  auto unprepareGuard =
-      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
+  auto unprepareGuard = scopeGuard([this]() noexcept {
+    // we need to set internal=true here, because unprepareTask()
+    // can acquire the manager's lock in write mode, which we currently
+    // are already holding. internal=true prevents us from deadlocking
+    // when calling unprepareTask() from here.
+    _manager.unprepareTask(_environment, /*internal*/ true);
+  });
+
+  TRI_IF_FAILURE("CacheManagerTasks::dispatchFailures") {
+    if (RandomGenerator::interval(uint32_t(100)) >= 70) {
+      return false;
+    }
+  }
 
   if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
     // intentionally don't unprepare task
@@ -57,8 +77,11 @@ bool FreeMemoryTask::dispatch() {
 void FreeMemoryTask::run() {
   using basics::SpinLocker;
 
-  auto unprepareGuard =
-      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
+  auto unprepareGuard = scopeGuard([this]() noexcept {
+    // here we need to set internal=false as we are not holding
+    // the manager's lock right now.
+    _manager.unprepareTask(_environment, /*internal*/ false);
+  });
 
   TRI_ASSERT(_cache->isResizingFlagSet());
 
@@ -77,27 +100,22 @@ void FreeMemoryTask::run() {
   TRI_ASSERT(_cache->isResizingFlagSet());
 
   if (ran) {
-    std::uint64_t reclaimed = 0;
     SpinLocker guard(SpinLocker::Mode::Write, _manager._lock);
     Metadata& metadata = _cache->metadata();
     {
       SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
       TRI_ASSERT(metadata.isResizing());
-      reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
-      bool ok = metadata.adjustLimits(metadata.softUsageLimit,
-                                      metadata.softUsageLimit);
+      // note: adjustLimits may or may not work
+      metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
       metadata.toggleResizing();
       TRI_ASSERT(!metadata.isResizing());
-
-      if (ok) {
-        TRI_ASSERT(_manager._globalAllocation >=
-                   reclaimed + _manager._fixedAllocation);
-        _manager._globalAllocation -= reclaimed;
-        TRI_ASSERT(_manager._globalAllocation >= _manager._fixedAllocation);
-      }
     }
     // do not toggle the resizing flag twice
     toggleResizingGuard.cancel();
+  }
+
+  if (_triggerShrinking) {
+    _cache->requestMigrate(_cache->table()->idealSize());
   }
 }
 
@@ -112,13 +130,27 @@ MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager& manager,
 MigrateTask::~MigrateTask() = default;
 
 bool MigrateTask::dispatch() {
+  // task is dispatched under the manager's lock
+  TRI_ASSERT(_manager._lock.isLockedWrite());
+
   // prepareTask counts a counter up
   _manager.prepareTask(_environment);
 
   // make sure we count the counter down in case we
   // did not successfully dispatch the task
-  auto unprepareGuard =
-      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
+  auto unprepareGuard = scopeGuard([this]() noexcept {
+    // we need to set internal=true here, because unprepareTask()
+    // can acquire the manager's lock in write mode, which we currently
+    // are already holding. internal=true prevents us from deadlocking
+    // when calling unprepareTask() from here.
+    _manager.unprepareTask(_environment, /*internal*/ true);
+  });
+
+  TRI_IF_FAILURE("CacheManagerTasks::dispatchFailures") {
+    if (RandomGenerator::interval(uint32_t(100)) >= 70) {
+      return false;
+    }
+  }
 
   if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
     // intentionally don't unprepare task
@@ -129,8 +161,11 @@ bool MigrateTask::dispatch() {
 }
 
 void MigrateTask::run() {
-  auto unprepareGuard =
-      scopeGuard([this]() noexcept { _manager.unprepareTask(_environment); });
+  auto unprepareGuard = scopeGuard([this]() noexcept {
+    // here we need to set internal=false as we are not holding
+    // the manager's lock right now.
+    _manager.unprepareTask(_environment, /*internal*/ false);
+  });
 
   // we must be migrating when we get here
   TRI_ASSERT(_cache->isMigratingFlagSet());

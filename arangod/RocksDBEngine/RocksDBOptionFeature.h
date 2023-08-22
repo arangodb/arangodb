@@ -132,6 +132,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
   uint64_t _periodicCompactionTtl;
+  size_t _recycleLogFileNum;
   std::string _compressionType;
   std::string _blobCompressionType;
   std::string _blockCacheType;
@@ -147,7 +148,6 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _reserveTableBuilderMemory;
   bool _reserveTableReaderMemory;
   bool _reserveFileMetadataMemory;
-  bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;
   bool _cacheIndexAndFilterBlocksWithHighPriority;
@@ -168,6 +168,10 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _enableBlobGarbageCollection;
   bool _exclusiveWrites;
   bool _minWriteBufferNumberToMergeTouched;
+  bool _partitionFilesForDocumentsCf;
+  bool _partitionFilesForPrimaryIndexCf;
+  bool _partitionFilesForEdgeIndexCf;
+  bool _partitionFilesForVPackIndexCf;
 
   /// per column family write buffer limits
   std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies>

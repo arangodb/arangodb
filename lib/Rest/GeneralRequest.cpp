@@ -292,6 +292,7 @@ void GeneralRequest::setValue(std::string key, std::string value) {
   auto it = _values.try_emplace(std::move(key), std::move(value));
   if (!it.second) {
     auto old = it.first->first.size() + it.first->second.size();
+    // cppcheck-suppress accessMoved
     _values[std::move(key)] = std::move(value);
     _memoryUsage -= old;
   }

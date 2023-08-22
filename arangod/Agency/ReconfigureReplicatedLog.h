@@ -59,7 +59,7 @@ struct ReconfigureReplicatedLog : Job {
   void run(bool&) final;
   bool start(bool&) final;
   Result abort(std::string const& reason) final;
-  void addUndoSetLeader(Builder& trx);
+  void addUndoSetLeader(velocypack::Builder& trx);
 
   DatabaseID _database;
   replication2::LogId _logId;

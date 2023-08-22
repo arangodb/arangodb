@@ -90,15 +90,12 @@ class NearUtils {
   explicit NearUtils(geo::QueryParams&& params) noexcept;
   ~NearUtils();
 
- public:
   /// @brief get cell covering target coordinate (at max level)
-  inline S2Point origin() const { return _origin; }
+  S2Point origin() const { return _origin; }
 
-  inline geo::FilterType filterType() const { return _params.filterType; }
+  geo::FilterType filterType() const { return _params.filterType; }
 
-  inline geo::ShapeContainer const& filterShape() const {
-    return _params.filterShape;
-  }
+  geo::ShapeContainer const& filterShape() const { return _params.filterShape; }
 
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const {
@@ -111,7 +108,7 @@ class NearUtils {
   }
 
   /// @brief has buffered results
-  inline bool hasNearest() const {
+  bool hasNearest() const {
     if (_allIntervalsCovered) {  // special case when almost done
       return !_buffer.empty();
     }
@@ -174,15 +171,15 @@ class NearUtils {
     _outerAngle = _maxAngle;
   }
 
-  inline bool isFilterNone() const noexcept {
+  bool isFilterNone() const noexcept {
     return _params.filterType == geo::FilterType::NONE;
   }
 
-  inline bool isFilterContains() const noexcept {
+  bool isFilterContains() const noexcept {
     return _params.filterType == geo::FilterType::CONTAINS;
   }
 
-  inline bool isFilterIntersects() const noexcept {
+  bool isFilterIntersects() const noexcept {
     return _params.filterType == geo::FilterType::INTERSECTS;
   }
 

@@ -1,7 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, $, window, arangoHelper, moment, nv, d3, prettyBytes */
-/* global document, frontendConfig, Dygraph, _,templateEngine */
+/* global nv, frontendConfig, templateEngine */
 
 (function () {
   'use strict';

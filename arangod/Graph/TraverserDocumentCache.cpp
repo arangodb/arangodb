@@ -57,7 +57,8 @@ TraverserDocumentCache::~TraverserDocumentCache() {
       _query.vocbase().server().getFeature<CacheManagerFeature>().manager();
   if (cacheManager != nullptr) {
     try {
-      cacheManager->destroyCache(_cache);
+      cacheManager->destroyCache(std::move(_cache));
+      _cache.reset();
     } catch (...) {
       // no exceptions allowed here
     }

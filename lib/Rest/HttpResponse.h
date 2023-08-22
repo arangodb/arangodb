@@ -40,8 +40,6 @@ class HttpResponse : public GeneralResponse {
   friend class RestBatchHandler;  // TODO must be removed
 
  public:
-  static bool HIDE_PRODUCT_HEADER;
-
   HttpResponse(ResponseCode code, uint64_t mid,
                std::unique_ptr<basics::StringBuffer> = nullptr);
   ~HttpResponse() = default;

@@ -330,6 +330,11 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const noexcept {
   });
 }
 
+std::string RocksDBTransactionState::debugInfo() const {
+  // can be overriden by derived classes
+  return "n/a";
+}
+
 bool RocksDBTransactionState::hasFailedOperations() const noexcept {
   return (_status == transaction::Status::ABORTED) && hasOperations();
 }

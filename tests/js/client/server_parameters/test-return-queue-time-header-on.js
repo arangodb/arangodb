@@ -59,7 +59,8 @@ function testSuite() {
     while (tries++ < 120) {
       pending = arango.GET_RAW("/_api/job/pending?count=999999");
       let jobs = pending.parsedBody;
-      // must have processed at least 50 jobs and must have at least 1 left
+      // must have processed at least (n - max) jobs and 
+      // must have at least (n - min) jobs left
       if (jobs.length - pendingAtStart.length >= min && 
           jobs.length - pendingAtStart.length <= max) {
         return pending;
@@ -124,7 +125,7 @@ function testSuite() {
       // so we send lots of requests to the server asynchronously,
       // to have most of them queued for a while.
       for (let i = 0; i < n; ++i) {
-        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(0.5);', { "x-arango-async": "store" });
+        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(1.0);', { "x-arango-async": "store" });
         assertTrue(result.headers.hasOwnProperty('x-arango-async-id'));
         jobs.push(result.headers['x-arango-async-id']);
         assertTrue(result.headers.hasOwnProperty(header));
@@ -150,7 +151,7 @@ function testSuite() {
       const n = 250;
 
       for (let i = 0; i < n; ++i) {
-        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(0.5);', { "x-arango-async": "store" });
+        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(1.0);', { "x-arango-async": "store" });
         jobs.push(result.headers['x-arango-async-id']);
         assertTrue(result.headers.hasOwnProperty(header));
         let value = result.headers[header];
@@ -159,9 +160,19 @@ function testSuite() {
       
       // now wait until some of the requests have been processed,
       // and (hopefully) the dequeue time was updated at least once.
-      waitForPending(pendingAtStart, 1, n - 30);
+      let tries = 0;
+      let result = {};
+      while (++tries <= 100) {
+        waitForPending(pendingAtStart, 1, n - 30);
 
-      let result = arango.GET("/_api/version", { "x-arango-queue-time-seconds": "0.00001" });
+        result = arango.GET("/_api/version", { "x-arango-queue-time-seconds": "0.00000001" });
+        if (result.code === 412) {
+          break;
+        }
+
+        internal.sleep(0.25);
+      }
+        
       assertEqual(412, result.code, JSON.stringify(result));
       assertEqual(errors.ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED.code, result.errorNum);
       

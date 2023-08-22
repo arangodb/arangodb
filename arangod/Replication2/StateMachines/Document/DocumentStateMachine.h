@@ -52,6 +52,7 @@ struct IDocumentStateShardHandler;
 
 struct ReplicationOptions {
   bool waitForCommit{false};
+  bool waitForSync{false};
 };
 
 struct DocumentCleanupHandler {

@@ -1,6 +1,3 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global window, _, arangoHelper, $ */
 (function () {
   'use strict';
 

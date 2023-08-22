@@ -47,6 +47,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#include <absl/strings/str_cat.h>
 #include <any>
 
 using namespace arangodb;
@@ -131,13 +132,12 @@ TransactionState::Cookie::ptr TransactionState::cookie(
 }
 
 /// @brief add a collection to a transaction
-Result TransactionState::addCollection(DataSourceId cid,
-                                       std::string const& cname,
+Result TransactionState::addCollection(DataSourceId cid, std::string_view cname,
                                        AccessMode::Type accessType,
                                        bool lockUsage) {
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && \
     defined(ARANGODB_ENABLE_FAILURE_TESTS)
-  TRI_IF_FAILURE("WaitOnLock::" + cname) {
+  TRI_IF_FAILURE("WaitOnLock::" + std::string{cname}) {
     auto& raceController = basics::DebugRaceController::sharedInstance();
     if (auto data = raceController.waitForOthers(2, _id, vocbase().server());
         data) {
@@ -185,11 +185,10 @@ Result TransactionState::addCollection(DataSourceId cid,
         _type = std::max(_type, accessType);
       } else {
         // everything else is not safe and must be rejected
-        res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                  std::string(TRI_errno_string(
-                      TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-                      ": " + cname + " [" + AccessMode::typeString(accessType) +
-                      "]");
+        auto message = absl::StrCat(
+            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION),
+            ": ", cname, " [", AccessMode::typeString(accessType), "]");
+        res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, message);
       }
     }
   }
@@ -198,7 +197,7 @@ Result TransactionState::addCollection(DataSourceId cid,
 }
 
 Result TransactionState::addCollectionInternal(DataSourceId cid,
-                                               std::string const& cname,
+                                               std::string_view cname,
                                                AccessMode::Type accessType,
                                                bool lockUsage) {
   Result res;
@@ -235,20 +234,20 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
       !_options.allowImplicitCollectionsForWrite) {
     // trying to write access a collection that was not declared at start.
     // this is only supported internally for replication transactions.
-    return res.reset(
-        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string(
-            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-            ": " + cname + " [" + AccessMode::typeString(accessType) + "]");
+    return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+                     std::string(TRI_errno_string(
+                         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+                         ": " + std::string{cname} + " [" +
+                         AccessMode::typeString(accessType) + "]");
   }
 
   if (!AccessMode::isWriteOrExclusive(accessType) &&
       (isRunning() && !_options.allowImplicitCollectionsForRead)) {
-    return res.reset(
-        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string(
-            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-            ": " + cname + " [" + AccessMode::typeString(accessType) + "]");
+    return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+                     std::string(TRI_errno_string(
+                         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+                         ": " + std::string{cname} + " [" +
+                         AccessMode::typeString(accessType) + "]");
   }
 
   // now check the permissions
@@ -369,7 +368,7 @@ void TransactionState::acceptAnalyzersRevision(
 }
 
 Result TransactionState::checkCollectionPermission(
-    DataSourceId cid, std::string const& cname, AccessMode::Type accessType) {
+    DataSourceId cid, std::string_view cname, AccessMode::Type accessType) {
   TRI_ASSERT(!cname.empty());
   ExecContext const& exec = ExecContext::current();
 
@@ -388,14 +387,15 @@ Result TransactionState::checkCollectionPermission(
 #ifdef USE_ENTERPRISE
     if (accessType == AccessMode::Type::READ &&
         _options.skipInaccessibleCollections) {
-      addInaccessibleCollection(cid, cname);
+      addInaccessibleCollection(cid, std::string{cname});
       return Result();
     }
 #endif
 
     return Result(TRI_ERROR_FORBIDDEN,
                   std::string(TRI_errno_string(TRI_ERROR_FORBIDDEN)) + ": " +
-                      cname + " [" + AccessMode::typeString(accessType) + "]");
+                      std::string{cname} + " [" +
+                      AccessMode::typeString(accessType) + "]");
   } else {
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
 
@@ -406,7 +406,7 @@ Result TransactionState::checkCollectionPermission(
 
       return Result(TRI_ERROR_ARANGO_READ_ONLY,
                     std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) +
-                        ": " + cname + " [" +
+                        ": " + std::string{cname} + " [" +
                         AccessMode::typeString(accessType) + "]");
     }
   }

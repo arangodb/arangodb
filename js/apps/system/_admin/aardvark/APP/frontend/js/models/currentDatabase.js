@@ -1,4 +1,4 @@
-/* global Backbone, window, arangoHelper, frontendConfig */
+/* global frontendConfig */
 
 (function () {
   'use strict';

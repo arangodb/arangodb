@@ -75,8 +75,10 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <Containers/HashSet.h>
 #include <velocypack/Builder.h>
@@ -94,25 +96,8 @@ using Helper = arangodb::basics::VelocyPackHelper;
 namespace {
 std::string const dataString("data");
 std::string const typeString("type");
-}  // namespace
 
-uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
-uint64_t const RestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
-std::chrono::hours const RestReplicationHandler::_tombstoneTimeout =
-    std::chrono::hours(24);
-
-basics::ReadWriteLock RestReplicationHandler::_tombLock;
-std::unordered_map<std::string,
-                   std::chrono::time_point<std::chrono::steady_clock>>
-    RestReplicationHandler::_tombstones = {};
-
-static TransactionId ExtractReadlockId(VPackSlice slice) {
-  TRI_ASSERT(slice.isString());
-  return TransactionId{StringUtils::uint64(slice.copyString())};
-}
-
-static bool ignoreHiddenEnterpriseCollection(std::string const& name,
-                                             bool force) {
+bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force) {
 #ifdef USE_ENTERPRISE
   if (!force && name[0] == '_') {
     if (name.starts_with(StaticStrings::FullLocalPrefix) ||
@@ -129,6 +114,138 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name,
   }
 #endif
   return false;
+}
+
+/**
+ * Handle existing collections for restore.
+ *
+ * @param vocbase Database we work in
+ * @param name  Name of the collection
+ * @param dropExisting Flag if we are allowed to drop or truncate the collection
+ * @return An error if the original lookup failed or we attempted do truncate or
+ * drop the collection and the operation failed, otherwise it returns true if
+ * the collection exists after this call, and false if it does not.
+ */
+auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
+                                  std::string const& name, bool dropExisting)
+    -> ResultT<bool> {
+  ExecContextSuperuserScope escope(
+      ExecContext::current().isSuperuser() ||
+      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
+
+  std::shared_ptr<LogicalCollection> col;
+  auto lookupResult = methods::Collections::lookup(vocbase, name, col);
+
+  if (lookupResult.ok()) {
+    TRI_ASSERT(col);
+    if (dropExisting) {
+      try {
+        if (ServerState::instance()->isCoordinator() &&
+            name == StaticStrings::AnalyzersCollection &&
+            vocbase.server()
+                .hasFeature<iresearch::IResearchAnalyzerFeature>()) {
+          // We have ArangoSearch here. So process analyzers accordingly.
+          // We can`t just recreate/truncate collection. Agency should be
+          // properly notified analyzers are gone.
+          // The single server and DBServer case is handled after restore of
+          // data.
+          auto res = vocbase.server()
+                         .getFeature<iresearch::IResearchAnalyzerFeature>()
+                         .removeAllAnalyzers(vocbase);
+          if (res.ok()) {
+            // Analyzers are only truncated, never dropped, so collection still
+            // exists.
+            return {true};
+          }
+          return res;
+        }
+
+        auto dropResult = methods::Collections::drop(*col, true, true);
+        if (dropResult.fail()) {
+          if (dropResult.is(TRI_ERROR_FORBIDDEN) ||
+              dropResult.is(
+                  TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
+            // If we are not allowed to drop the collection.
+            // Try to truncate.
+            auto ctx = transaction::StandaloneContext::Create(vocbase);
+            SingleCollectionTransaction trx(ctx, *col,
+                                            AccessMode::Type::EXCLUSIVE);
+
+            trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+            trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+            auto trxRes = trx.begin();
+
+            if (!trxRes.ok()) {
+              return trxRes;
+            }
+
+            OperationOptions options;
+            OperationResult opRes = trx.truncate(name, options);
+
+            auto res = trx.finish(opRes.result);
+            if (!res.ok()) {
+              return res;
+            }
+            // After a truncate the collection still exists.
+            return {true};
+          }
+
+          return Result(dropResult.errorNumber(),
+                        arangodb::basics::StringUtils::concatT(
+                            "unable to drop collection '", name,
+                            "': ", dropResult.errorMessage()));
+        }
+
+        // we just removed the collection, so we cannot rely on it being present
+        // now
+        col.reset();
+      } catch (basics::Exception const& ex) {
+        LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
+            << "processRestoreCollection "
+            << "could not drop collection: " << ex.what();
+        // We return false (collection does not exist) here
+        // in order to trigger a creation step later, which should produce
+        // a duplicate name error. (Unless someone raced and dropped the
+        // collection)
+        // Returning true would yield a success of this method.
+        return {false};
+      } catch (...) {
+        // We return false (collection does not exist) here
+        // in order to trigger a creation step later, which should produce
+        // a duplicate name error. (Unless someone raced and dropped the
+        // collection)
+        // Returning true would yield a success of this method.
+        LOG_TOPIC("41580", DEBUG, Logger::REPLICATION)
+            << "processRestoreCollection "
+            << "could not drop collection: unknown error";
+        return {false};
+      }
+    } else {
+      // Found a collection, and we are not allowed to drop it, so it exists.
+      return {true};
+    }
+  } else if (lookupResult.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    return lookupResult;
+  }
+  // If we end up here the collection does not exist.
+  return {false};
+}
+
+}  // namespace
+
+uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
+uint64_t const RestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
+std::chrono::hours const RestReplicationHandler::_tombstoneTimeout =
+    std::chrono::hours(24);
+
+basics::ReadWriteLock RestReplicationHandler::_tombLock;
+std::unordered_map<std::string,
+                   std::chrono::time_point<std::chrono::steady_clock>>
+    RestReplicationHandler::_tombstones = {};
+
+static TransactionId ExtractReadlockId(VPackSlice slice) {
+  TRI_ASSERT(slice.isString());
+  return TransactionId{StringUtils::uint64(slice.copyString())};
 }
 
 static Result checkPlanLeaderDirect(
@@ -1074,28 +1191,29 @@ Result RestReplicationHandler::processRestoreCollection(
 
   VPackSlice const parameters = collection.get("parameters");
 
-  if (!parameters.isObject()) {
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "collection parameters declaration is invalid");
+  {
+    // NOTE: This code is only to check if attribute is there
+    // TODO: Reorganize, processRestore should be called with
+    // Parameters only, and restore Indexes with indexes
+    // only, test of existence should be outside.
+    VPackSlice const indexes = collection.get("indexes");
+
+    if (!indexes.isArray()) {
+      return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "collection indexes declaration is invalid");
+    }
   }
 
-  // only local
-  VPackSlice const indexes = collection.get("indexes");
+  auto config = _vocbase.getDatabaseConfiguration();
 
-  if (!indexes.isArray()) {
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "collection indexes declaration is invalid");
+  // Original
+  auto input = CreateCollectionBody::fromRestoreAPIBody(parameters, config);
+  if (input.fail()) {
+    return input.result();
   }
-  // end only local
+  OperationOptions options(_context);
 
-  std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
-      parameters, "name", "");
-
-  if (name.empty()) {
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection name is missing");
-  }
-
-  if (ignoreHiddenEnterpriseCollection(name, force)) {
+  if (ignoreHiddenEnterpriseCollection(input->name, force)) {
     return {TRI_ERROR_NO_ERROR};
   }
 
@@ -1105,363 +1223,46 @@ Result RestReplicationHandler::processRestoreCollection(
     return Result();
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    Result res = ShardingInfo::validateShardsAndReplicationFactor(
-        parameters, server(), true);
-    if (res.fail()) {
-      return res;
+  {
+    auto result =
+        handlingOfExistingCollection(_vocbase, input->name, dropExisting);
+    if (result.fail()) {
+      return result.result();
+    }
+    if (result.get()) {
+      // Collection still exists.
+      // No point in trying to recreate it, it will fail with duplicate name.
+      if (dropExisting) {
+        // Overwrite mode, we have successfully truncated the collection
+        // Consider this process successful.
+        return {TRI_ERROR_NO_ERROR};
+      } else {
+        return Result(
+            TRI_ERROR_ARANGO_DUPLICATE_NAME,
+            std::string("duplicate collection name '") + input->name + "'");
+      }
     }
   }
 
-  // only local
-  ExecContextSuperuserScope escope(
-      ExecContext::current().isSuperuser() ||
-      (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
-  // end only local
+  // We always wait for Collections to be synced on shards
+  bool waitForSyncReplication = true;
+  bool isNewDatabase = false;
+  bool isRestore = true;
 
-  std::shared_ptr<LogicalCollection> col;
-  auto lookupResult = methods::Collections::lookup(_vocbase, name, col);
+  bool allowEnterpriseCollectionsOnSingleServer = false;
+  bool enforceReplicationFactor = true;
 
-  if (lookupResult.ok()) {
-    TRI_ASSERT(col);
-    if (dropExisting) {
-      try {
-        if (ServerState::instance()->isCoordinator() &&
-            name == StaticStrings::AnalyzersCollection &&
-            server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
-          // We have ArangoSearch here. So process analyzers accordingly.
-          // We can`t just recreate/truncate collection. Agency should be
-          // properly notified analyzers are gone.
-          // The single server and DBServer case is handled after restore of
-          // data.
-          return server()
-              .getFeature<iresearch::IResearchAnalyzerFeature>()
-              .removeAllAnalyzers(_vocbase);
-        }
-
-        auto dropResult = methods::Collections::drop(*col, true, true);
-        if (dropResult.fail()) {
-          if (dropResult.is(TRI_ERROR_FORBIDDEN) ||
-              dropResult.is(
-                  TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
-            // If we are not allowed to drop the collection.
-            // Try to truncate.
-            auto ctx = transaction::StandaloneContext::Create(_vocbase);
-            SingleCollectionTransaction trx(ctx, *col,
-                                            AccessMode::Type::EXCLUSIVE);
-
-            trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-            trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-            auto trxRes = trx.begin();
-
-            if (!trxRes.ok()) {
-              return trxRes;
-            }
-
-            OperationOptions options;
-            OperationResult opRes = trx.truncate(name, options);
-
-            return trx.finish(opRes.result);
-          }
-
-          return Result(dropResult.errorNumber(),
-                        arangodb::basics::StringUtils::concatT(
-                            "unable to drop collection '", name,
-                            "': ", dropResult.errorMessage()));
-        }
-
-        // we just removed the collection, so we cannot rely on it being present
-        // now
-        col.reset();
-      } catch (basics::Exception const& ex) {
-        LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
-            << "processRestoreCollection "
-            << "could not drop collection: " << ex.what();
-      } catch (...) {
-      }
-    }
-  } else if (lookupResult.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-    return lookupResult;
+  if (input->isSmart || input->isSatellite()) {
+    allowEnterpriseCollectionsOnSingleServer = true;
   }
 
-  // Now we have done our best to remove the Collection.
-  // It shall not be there anymore. Try to recreate it.
+  std::vector<CreateCollectionBody> collections{std::move(input.get())};
+  auto result = methods::Collections::create(
+      _vocbase, options, collections, waitForSyncReplication,
+      enforceReplicationFactor, isNewDatabase,
+      allowEnterpriseCollectionsOnSingleServer, isRestore);
 
-  // TODO the following shall be unified as well.
-  if (ServerState::instance()->isCoordinator()) {
-    // Build up new information that we need to merge with the given one
-    VPackBuilder toMerge;
-    toMerge.openObject();
-
-    ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    // We always need a new id
-    TRI_voc_tick_t newIdTick = ci.uniqid(1);
-    std::string newId = StringUtils::itoa(newIdTick);
-    toMerge.add("id", VPackValue(newId));
-
-    if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-        _vocbase.isOneShard()) {
-      auto const isSatellite =
-          VelocyPackHelper::getStringView(
-              parameters, StaticStrings::ReplicationFactor,
-              std::string_view()) == StaticStrings::Satellite;
-
-      // force one shard, and force distributeShardsLike to be "_graphs"
-      toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
-      if (!NameValidator::isSystemName(name) && !isSatellite) {
-        // system-collections will be sharded normally. only user collections
-        // will get the forced sharding. SatelliteCollections must not be
-        // sharded like a non-satellite collection.
-        toMerge.add(StaticStrings::DistributeShardsLike,
-                    VPackValue(_vocbase.shardingPrototypeName()));
-      }
-    } else {
-      // Number of shards. Will be overwritten if not existent
-      VPackSlice const numberOfShardsSlice =
-          parameters.get(StaticStrings::NumberOfShards);
-      if (!numberOfShardsSlice.isInteger()) {
-        // The information does not contain numberOfShards. Overwrite it.
-        size_t numberOfShards = 1;
-        VPackSlice const shards = parameters.get("shards");
-        if (shards.isObject()) {
-          numberOfShards = static_cast<uint64_t>(shards.length());
-        }
-        TRI_ASSERT(numberOfShards > 0);
-        toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
-      }
-    }
-
-    if (parameters.get(StaticStrings::DataSourceGuid).isString()) {
-      std::string const uuid =
-          parameters.get(StaticStrings::DataSourceGuid).copyString();
-      bool valid = false;
-      NumberUtils::atoi_positive<uint64_t>(uuid.data(),
-                                           uuid.data() + uuid.size(), valid);
-      if (valid) {
-        // globallyUniqueId is only numeric. This causes ambiguities later
-        // and can only happen for collections created with v3.3.0 (the GUID
-        // generation process was changed in v3.3.1 already to fix this issue).
-        // remove the globallyUniqueId so a new one will be generated
-        // server.side
-        toMerge.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
-      }
-    }
-
-    // Replication Factor. Will be overwritten if not existent
-    VPackSlice const replicationFactorSlice =
-        parameters.get(StaticStrings::ReplicationFactor);
-    // not an error: for historical reasons the write concern is read from the
-    // variable "minReplicationFactor"
-    VPackSlice writeConcernSlice = parameters.get(StaticStrings::WriteConcern);
-    if (writeConcernSlice
-            .isNone()) {  // minReplicationFactor is deprecated in 3.6
-      writeConcernSlice = parameters.get(StaticStrings::MinReplicationFactor);
-    }
-
-    bool isValidReplicationFactorSlice =
-        replicationFactorSlice.isInteger() ||
-        (replicationFactorSlice.isString() &&
-         replicationFactorSlice.isEqualString(StaticStrings::Satellite));
-
-    bool isValidWriteConcernSlice =
-        replicationFactorSlice.isInteger() && writeConcernSlice.isInteger() &&
-        (writeConcernSlice.getInt() <= replicationFactorSlice.getInt()) &&
-        writeConcernSlice.getInt() > 0;
-
-    if (!isValidReplicationFactorSlice) {
-      size_t replicationFactor = _vocbase.server()
-                                     .getFeature<ClusterFeature>()
-                                     .defaultReplicationFactor();
-      if (replicationFactor == 0) {
-        replicationFactor = 1;
-      }
-      TRI_ASSERT(replicationFactor > 0);
-      toMerge.add(StaticStrings::ReplicationFactor,
-                  VPackValue(replicationFactor));
-    }
-
-    if (!isValidWriteConcernSlice) {
-      size_t writeConcern = 1;
-      if (replicationFactorSlice.isString() &&
-          replicationFactorSlice.isEqualString(StaticStrings::Satellite)) {
-        writeConcern = 0;
-      }
-      // not an error: for historical reasons the write concern is stored in the
-      // variable "minReplicationFactor"
-      toMerge.add(StaticStrings::MinReplicationFactor,
-                  VPackValue(writeConcern));
-      toMerge.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
-    }
-
-    // always use current version number when restoring a collection,
-    // because the collection is effectively NEW
-    toMerge.add(StaticStrings::Version, VPackSlice::nullSlice());
-    if (!name.empty() && name[0] == '_' &&
-        !parameters.hasKey(StaticStrings::DataSourceSystem)) {
-      // system collection?
-      toMerge.add(StaticStrings::DataSourceSystem, VPackValue(true));
-    }
-
-#ifndef USE_ENTERPRISE
-    std::vector<std::string> changes;
-
-    // when in the Community Edition, we need to turn off specific attributes
-    // because they are only supported in Enterprise Edition
-
-    // watch out for "isSmart" -> we need to set this to false in the Community
-    // Edition
-    VPackSlice s = parameters.get(StaticStrings::GraphIsSmart);
-    if (s.isBoolean() && s.getBoolean()) {
-      // isSmart needs to be turned off in the Community Edition
-      toMerge.add(StaticStrings::GraphIsSmart, VPackValue(false));
-      changes.push_back("changed 'isSmart' attribute value to false");
-    }
-
-    // "smartGraphAttribute" needs to be set to be removed too
-    s = parameters.get(StaticStrings::GraphSmartGraphAttribute);
-    if (s.isString() && !s.copyString().empty()) {
-      // smartGraphAttribute needs to be removed
-      toMerge.add(StaticStrings::GraphSmartGraphAttribute,
-                  VPackSlice::nullSlice());
-      changes.push_back("removed 'smartGraphAttribute' attribute value");
-    }
-
-    // same for "smartJoinAttribute"
-    s = parameters.get(StaticStrings::SmartJoinAttribute);
-    if (s.isString() && !s.copyString().empty()) {
-      // smartJoinAttribute needs to be removed
-      toMerge.add(StaticStrings::SmartJoinAttribute, VPackSlice::nullSlice());
-      changes.push_back("removed 'smartJoinAttribute' attribute value");
-    }
-
-    // finally rewrite all Enterprise Edition sharding strategies to a simple
-    // hash-based strategy
-    s = parameters.get(StaticStrings::ShardingStrategy);
-    if (s.isString() &&
-        s.copyString().find("enterprise") != std::string::npos) {
-      // downgrade sharding strategy to just hash
-      toMerge.add(StaticStrings::ShardingStrategy, VPackValue("hash"));
-      changes.push_back("changed 'shardingStrategy' attribute value to 'hash'");
-    }
-
-    s = parameters.get(StaticStrings::ReplicationFactor);
-    if (s.isString() && s.copyString() == StaticStrings::Satellite) {
-      // set "satellite" replicationFactor to the default replication factor
-      ClusterFeature& cl = _vocbase.server().getFeature<ClusterFeature>();
-
-      uint32_t replicationFactor = cl.systemReplicationFactor();
-      toMerge.add(StaticStrings::ReplicationFactor,
-                  VPackValue(replicationFactor));
-      changes.push_back(
-          std::string("changed 'replicationFactor' attribute value to ") +
-          std::to_string(replicationFactor));
-    }
-
-    if (!changes.empty()) {
-      LOG_TOPIC("fc359", INFO, Logger::CLUSTER)
-          << "rewrote info for collection '" << name
-          << "' on restore for usage with the Community Edition. the following "
-             "changes were applied: "
-          << basics::StringUtils::join(changes, ". ");
-    }
-#endif
-
-    if (parameters.get(StaticStrings::UsesRevisionsAsDocumentIds).isNone() &&
-        (parameters.get(StaticStrings::SyncByRevision).isNone() ||
-         parameters.get(StaticStrings::SyncByRevision).isTrue())) {
-      // for restored collections that do not have "syncByRevision" nor
-      // "usesRevisionsAsDocumentIds" set, set "usesRevisionsAsDocumentIds"
-      // to true. This allows the usage of revision trees for the collection.
-      toMerge.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
-    }
-
-    // Always ignore `shadowCollections` they were accidentially dumped in
-    // arangodb versions earlier than 3.3.6
-#ifdef USE_ENTERPRISE
-    LogicalCollection::addEnterpriseShardingStrategy(toMerge, parameters);
-#endif
-
-    // Remove ShadowCollections entry
-    toMerge.add(StaticStrings::ShadowCollections,
-                arangodb::velocypack::Slice::nullSlice());
-
-    VPackSlice const type = parameters.get("type");
-    if (!type.isNumber()) {
-      // Just ignore non numbers
-      toMerge.add(StaticStrings::DataSourceType,
-                  VPackValue(TRI_COL_TYPE_DOCUMENT));
-    } else if (type.getNumericValue<TRI_col_type_e>() !=
-                   TRI_COL_TYPE_DOCUMENT &&
-               type.getNumericValue<TRI_col_type_e>() != TRI_COL_TYPE_EDGE) {
-      return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID};
-    }
-    toMerge.close();  // TopLevel
-
-    VPackSlice const sliceToMerge = toMerge.slice();
-    VPackBuilder mergedBuilder = VPackCollection::merge(
-        parameters, sliceToMerge, false, /*nullMeansRemove*/ true);
-    VPackBuilder arrayWrapper;
-    arrayWrapper.openArray();
-    arrayWrapper.add(mergedBuilder.slice());
-    arrayWrapper.close();
-    VPackSlice const merged = arrayWrapper.slice();
-
-    try {
-      bool createWaitsForSyncReplication = _vocbase.server()
-                                               .getFeature<ClusterFeature>()
-                                               .createWaitsForSyncReplication();
-      // in the replication case enforcing the replication factor is absolutely
-      // not desired, so it is hardcoded to false
-      auto cols = ClusterMethods::createCollectionsOnCoordinator(
-          _vocbase, merged, ignoreDistributeShardsLikeErrors,
-          createWaitsForSyncReplication, false, false, nullptr);
-      ExecContext const& exec = ExecContext::current();
-      TRI_ASSERT(cols.size() == 1);
-      if (name[0] != '_' && !exec.isSuperuser()) {
-        auth::UserManager* um =
-            AuthenticationFeature::instance()->userManager();
-        TRI_ASSERT(um != nullptr);  // should not get here
-        if (um != nullptr) {
-          um->updateUser(exec.user(), [&](auth::User& entry) {
-            for (auto const& col : cols) {
-              TRI_ASSERT(col != nullptr);
-              entry.grantCollection(_vocbase.name(), col->name(),
-                                    auth::Level::RW);
-            }
-            return TRI_ERROR_NO_ERROR;
-          });
-        }
-      }
-    } catch (basics::Exception const& ex) {
-      // Error, report it.
-      return Result(ex.code(), ex.what());
-    } catch (std::exception const& ex) {
-      return Result(TRI_ERROR_INTERNAL, ex.what());
-    }
-    // All other errors are thrown to the outside.
-    return Result();
-  } else {
-    auto res = createCollection(parameters);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res, StringUtils::concatT("unable to create collection: ",
-                                              TRI_errno_string(res)));
-    }
-    // might be also called on dbservers
-    if (name[0] != '_' && !ExecContext::current().isSuperuser() &&
-        ServerState::instance()->isSingleServer()) {
-      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-      TRI_ASSERT(um != nullptr);  // should not get here
-      if (um != nullptr) {
-        um->updateUser(ExecContext::current().user(), [&](auth::User& entry) {
-          entry.grantCollection(_vocbase.name(), name, auth::Level::RW);
-          return TRI_ERROR_NO_ERROR;
-        });
-      }
-    }
-
-    return Result();
-  }
+  return result.result();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3503,143 +3304,6 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection, based on the VelocyPack provided
-////////////////////////////////////////////////////////////////////////////////
-
-ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
-  if (!slice.isObject()) {
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
-  }
-
-  std::string const name =
-      arangodb::basics::VelocyPackHelper::getStringValue(slice, "name", "");
-
-  if (name.empty()) {
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
-  }
-
-  std::string const uuid = arangodb::basics::VelocyPackHelper::getStringValue(
-      slice, StaticStrings::DataSourceGuid, "");
-
-  TRI_col_type_e const type = static_cast<TRI_col_type_e>(
-      arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          slice, "type", int(TRI_COL_TYPE_DOCUMENT)));
-  std::shared_ptr<arangodb::LogicalCollection> col;
-
-  if (!uuid.empty()) {
-    col = _vocbase.lookupCollectionByUuid(uuid);
-  }
-
-  if (col != nullptr) {
-    col = _vocbase.lookupCollection(name);
-  }
-
-  if (col != nullptr && col->type() == type) {
-    // TODO
-    // collection already exists. TODO: compare attributes
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // always use current version number when restoring a collection,
-  // because the collection is effectively NEW
-  VPackBuilder patch;
-  patch.openObject();
-  patch.add(StaticStrings::Version, VPackSlice::nullSlice());
-  patch.add(StaticStrings::DataSourceSystem,
-            VPackValue(NameValidator::isSystemName(name)));
-  if (!uuid.empty()) {
-    bool valid = false;
-    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(),
-                                         valid);
-    if (valid) {
-      // globallyUniqueId is only numeric. This causes ambiguities later
-      // and can only happen for collections created with v3.3.0 (the GUID
-      // generation process was changed in v3.3.1 already to fix this issue).
-      // remove the globallyUniqueId so a new one will be generated server.side
-      patch.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
-    }
-  }
-  patch.add(StaticStrings::ObjectId, VPackSlice::nullSlice());
-  patch.add(StaticStrings::DataSourceCid, VPackSlice::nullSlice());
-  patch.add(StaticStrings::DataSourceId, VPackSlice::nullSlice());
-  if (ServerState::instance()->isSingleServer()) {
-    // needed in case we restore cluster related data into single server
-    // instance
-    patch.add(StaticStrings::DataSourcePlanId, VPackSlice::nullSlice());
-    if (slice.get(StaticStrings::UsesRevisionsAsDocumentIds).isNone() &&
-        (slice.get(StaticStrings::SyncByRevision).isNone() ||
-         slice.get(StaticStrings::SyncByRevision).isTrue())) {
-      // for restored collections that do not have the attribute
-      // "usesRevisionsAsDocumentIds" set, set "usesRevisionsAsDocumentIds"
-      // to true. This allows the usage of revision trees for the collection.
-      patch.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
-    }
-  }
-  patch.close();
-
-  VPackBuilder builder =
-      VPackCollection::merge(slice, patch.slice(),
-                             /*mergeValues*/ true, /*nullMeansRemove*/ true);
-  slice = builder.slice();
-
-  // Initializing creation options
-  TRI_col_type_e collectionType = Helper::getNumericValue<TRI_col_type_e, int>(
-      slice, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT);
-  std::vector<CollectionCreationInfo> infos{{name, collectionType, slice}};
-  bool isNewDatabase = false;
-  bool allowSystem = true;
-  bool allowEnterpriseCollectionsOnSingleServer = false;
-  bool enforceReplicationFactor = false;
-
-#ifdef USE_ENTERPRISE
-  if (slice.get(StaticStrings::IsSmart).isTrue() ||
-      slice.get(StaticStrings::GraphIsSatellite).isTrue()) {
-    allowEnterpriseCollectionsOnSingleServer = true;
-    enforceReplicationFactor = true;
-  }
-#endif
-
-  OperationOptions options(_context);
-  std::vector<std::shared_ptr<LogicalCollection>> collections;
-  Result res = methods::Collections::create(
-      _vocbase, options, infos, /*createWaitsForSyncReplication*/ true,
-      enforceReplicationFactor, isNewDatabase, nullptr, collections,
-      allowSystem, allowEnterpriseCollectionsOnSingleServer,
-      /*isRestore*/ true);
-  if (res.fail()) {
-    return res.errorNumber();
-  }
-
-  // TODO: This can be improved as soon as we restore all collections here in
-  // one go.
-  if (collections.size() == 0 || collections.front() == nullptr) {
-    return TRI_ERROR_INTERNAL;
-  }
-  col = collections.front();
-
-  /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(col->system() == (name[0] == '_'));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  DataSourceId planId = DataSourceId::none();
-  VPackSlice const planIdSlice = slice.get("planId");
-  if (planIdSlice.isNumber()) {
-    planId =
-        DataSourceId{planIdSlice.getNumericValue<DataSourceId::BaseType>()};
-  } else if (planIdSlice.isString()) {
-    std::string tmp = planIdSlice.copyString();
-    planId = DataSourceId{StringUtils::uint64(tmp)};
-  } else if (planIdSlice.isNone()) {
-    // There is no plan ID it has to be equal to collection id
-    planId = col->id();
-  }
-
-  TRI_ASSERT(col->planId() == planId);
-#endif
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the chunk size
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3786,9 +3450,7 @@ Result RestReplicationHandler::createBlockingTransaction(
     return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
   }
 
-  TRI_ASSERT(isLockHeld(id).ok());
-
-  return Result();
+  return isLockHeld(id);
 }
 
 Result RestReplicationHandler::isLockHeld(TransactionId id) const {
@@ -3796,7 +3458,7 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
   // there it should return false.
   // In all other cases it is released quickly.
   if (_vocbase.isDropped()) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -3804,9 +3466,8 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
 
   transaction::Status stats = mgr->getManagedTrxStatus(id, _vocbase.name());
   if (stats == transaction::Status::UNDEFINED) {
-    return Result(
-        TRI_ERROR_HTTP_NOT_FOUND,
-        "no hold read lock job found for id " + std::to_string(id.id()));
+    return {TRI_ERROR_HTTP_NOT_FOUND,
+            "no hold read lock job found for id " + std::to_string(id.id())};
   }
 
   return {};

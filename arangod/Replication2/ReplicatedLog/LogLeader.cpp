@@ -736,8 +736,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
         -> std::unique_ptr<LogViewRangeIterator> override {
       return _log.getLogConsumerIterator(range);
     }
-    auto insert(LogPayload payload) -> LogIndex override {
-      return _log.insert(std::move(payload));
+    auto insert(LogPayload payload, bool waitForSync) -> LogIndex override {
+      return _log.insert(std::move(payload), waitForSync);
     }
     auto waitFor(LogIndex index) -> WaitForFuture override {
       return _log.waitFor(index);
@@ -1199,7 +1199,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
   LOG_CTX_IF("fbc23", TRACE, _self._logContext,
              newCommitIndex == currentCommitIndex)
       << "commit fail reason = " << to_string(commitFailReason)
-      << " follower-states = " << indexes;
+      << "; follower-states = " << indexes;
   if (newCommitIndex > currentCommitIndex) {
     auto const quorum_data = std::make_shared<QuorumData>(
         newCommitIndex, _self._currentTerm, std::move(quorum));

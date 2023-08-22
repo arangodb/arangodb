@@ -145,12 +145,14 @@ class Projections {
 
   /// @brief build projections from velocypack, looking for the attribute
   /// name "projections"
-  static Projections fromVelocyPack(velocypack::Slice slice);
+  static Projections fromVelocyPack(velocypack::Slice slice,
+                                    arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief build projections from velocypack, looking for a custom
   /// attribute name
   static Projections fromVelocyPack(velocypack::Slice slice,
-                                    std::string_view attributeName);
+                                    std::string_view attributeName,
+                                    arangodb::ResourceMonitor& resourceMonitor);
 
  private:
   /// @brief shared init function

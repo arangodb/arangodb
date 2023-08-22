@@ -249,16 +249,15 @@ class Methods {
 
   /// @brief add a collection to the transaction for read, at runtime
   DataSourceId addCollectionAtRuntime(DataSourceId cid,
-                                      std::string const& collectionName,
+                                      std::string_view collectionName,
                                       AccessMode::Type type);
 
   /// @brief add a collection to the transaction for read, at runtime
-  virtual DataSourceId addCollectionAtRuntime(std::string const& collectionName,
+  virtual DataSourceId addCollectionAtRuntime(std::string_view collectionName,
                                               AccessMode::Type type);
 
   /// @brief return the type of a collection
-  bool isEdgeCollection(std::string const& collectionName) const;
-  TRI_col_type_e getCollectionType(std::string const& collectionName) const;
+  TRI_col_type_e getCollectionType(std::string_view collectionName) const;
 
   /// @brief return one  document from a collection, fast path
   ///        If everything went well the result will contain the found document
@@ -279,7 +278,7 @@ class Methods {
   ///        not care for revision handling! Must only be called on a local
   ///        server, not in cluster case!
   ENTERPRISE_VIRT Result
-  documentFastPathLocal(std::string const& collectionName, std::string_view key,
+  documentFastPathLocal(std::string_view collectionName, std::string_view key,
                         IndexIterator::DocumentCallback const& cb);
 
   /// @brief return one or multiple documents from a collection
@@ -549,10 +548,10 @@ class Methods {
                              OperationOptions const& options);
 
   /// @brief add a collection by id, with the name supplied
-  Result addCollection(DataSourceId, std::string const&, AccessMode::Type);
+  Result addCollection(DataSourceId, std::string_view, AccessMode::Type);
 
   /// @brief add a collection by name
-  Result addCollection(std::string const&, AccessMode::Type);
+  Result addCollection(std::string_view, AccessMode::Type);
 
  private:
   template<CallbacksTag tag, typename Callback>

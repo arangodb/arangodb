@@ -32,7 +32,6 @@
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Finding.h"
-#include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
@@ -54,15 +53,15 @@ Finding TransactionalCache<Hasher>::find(void const* key,
   Table::BucketLocker guard;
   std::tie(status, guard) = getBucket(hash, Cache::triesFast, false);
   if (status != TRI_ERROR_NO_ERROR) {
-    recordStat(Stat::findMiss);
+    recordMiss();
     result.reportError(status);
   } else {
     TransactionalBucket& bucket = guard.bucket<TransactionalBucket>();
     result.set(bucket.find<Hasher>(hash.value, key, keySize));
     if (result.found()) {
-      recordStat(Stat::findHit);
+      recordHit();
     } else {
-      recordStat(Stat::findMiss);
+      recordMiss();
       result.reportError(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     }
   }
@@ -126,6 +125,7 @@ template<typename Hasher>
             maybeMigrate = source->slotFilled();
           }
           maybeMigrate |= reportInsert(eviction);
+          adjustGlobalAllocation(change, false);
         } else {
           requestGrow();  // let function do the hard work
           status = TRI_ERROR_RESOURCE_LIMIT;
@@ -175,6 +175,7 @@ template<typename Hasher>
       }
 
       freeValue(candidate);
+      adjustGlobalAllocation(change, false);
       TRI_ASSERT(source != nullptr);
       maybeMigrate = source->slotEmptied();
     }
@@ -220,8 +221,11 @@ template<typename Hasher>
       }
 
       freeValue(candidate);
+      adjustGlobalAllocation(change, false);
       TRI_ASSERT(source != nullptr);
       maybeMigrate = source->slotEmptied();
+    } else {
+      status = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
     }
   }
 
@@ -464,17 +468,25 @@ TransactionalCache<Hasher>::getBucket(Table::HashOrId bucket,
 
 template<typename Hasher>
 Table::BucketClearer TransactionalCache<Hasher>::bucketClearer(
-    Metadata* metadata) {
-  return [metadata](void* ptr) -> void {
+    Cache* cache, Metadata* metadata) {
+  return [cache, metadata](void* ptr) -> void {
     auto bucket = static_cast<TransactionalBucket*>(ptr);
+    std::uint64_t totalSize = 0;
     bucket->lock(Cache::triesGuarantee);
     for (std::size_t j = 0; j < TransactionalBucket::kSlotsData; j++) {
       if (bucket->_cachedData[j] != nullptr) {
         std::uint64_t size = bucket->_cachedData[j]->size();
         freeValue(bucket->_cachedData[j]);
-        SpinLocker metaGuard(SpinLocker::Mode::Read, metadata->lock());
-        metadata->adjustUsageIfAllowed(-static_cast<int64_t>(size));
+        totalSize += size;
       }
+    }
+    if (totalSize > 0) {
+      {
+        SpinLocker metaGuard(SpinLocker::Mode::Read, metadata->lock());
+        metadata->adjustUsageIfAllowed(-static_cast<std::int64_t>(totalSize));
+      }
+      cache->adjustGlobalAllocation(-static_cast<std::int64_t>(totalSize),
+                                    /*force*/ false);
     }
     bucket->clear();
   };

@@ -198,11 +198,13 @@ TEST_F(DocumentStateLeaderTest,
   leaderState->setStream(stream);
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
-  EXPECT_CALL(*stream, insert).WillOnce([&](auto const& entry) {
-    EXPECT_EQ(entry.operation,
-              ReplicatedOperation::buildAbortAllOngoingTrxOperation());
-    return LogIndex{entries.size() + 1};
-  });
+  EXPECT_CALL(*stream, insert)
+      .WillOnce([&](auto const& entry, bool waitForSync) {
+        EXPECT_EQ(entry.operation,
+                  ReplicatedOperation::buildAbortAllOngoingTrxOperation());
+        EXPECT_FALSE(waitForSync);
+        return LogIndex{entries.size() + 1};
+      });
   EXPECT_CALL(transactionManagerMock,
               abortManagedTrx(TransactionId{14}.asLeaderTransactionId(),
                               globalId.database))
@@ -373,10 +375,11 @@ TEST_F(DocumentStateLeaderTest, leader_create_and_drop_shard) {
 
   EXPECT_CALL(*stream, insert)
       .Times(1)
-      .WillOnce([&](DocumentLogEntry const& entry) {
+      .WillOnce([&](DocumentLogEntry const& entry, bool waitForSync) {
         EXPECT_EQ(entry.operation,
                   ReplicatedOperation::buildCreateShardOperation(
                       shardId, collectionId, builder));
+        EXPECT_TRUE(waitForSync);
         return LogIndex{12};
       });
 
@@ -398,9 +401,10 @@ TEST_F(DocumentStateLeaderTest, leader_create_and_drop_shard) {
 
   EXPECT_CALL(*stream, insert)
       .Times(1)
-      .WillOnce([&](DocumentLogEntry const& entry) {
+      .WillOnce([&](DocumentLogEntry const& entry, bool waitForSync) {
         EXPECT_EQ(entry.operation, ReplicatedOperation::buildDropShardOperation(
                                        shardId, collectionId));
+        EXPECT_TRUE(waitForSync);
         return LogIndex{12};
       });
 

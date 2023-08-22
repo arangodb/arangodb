@@ -27,6 +27,7 @@
 #include "Aql/AqlValueFwd.h"
 #include "Aql/types.h"
 #include "Basics/Endian.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "IResearch/Misc.h"
 
 #include <velocypack/Slice.h>
@@ -419,7 +420,7 @@ struct AqlValue final {
   AqlValue get(CollectionNameResolver const& resolver, std::string_view name,
                bool& mustDestroy, bool copy) const;
   AqlValue get(CollectionNameResolver const& resolver,
-               std::vector<std::string> const& names, bool& mustDestroy,
+               MonitoredStringVector const& names, bool& mustDestroy,
                bool copy) const;
   bool hasKey(std::string_view name) const;
 
@@ -481,9 +482,6 @@ struct AqlValue final {
   }
 
  private:
-  /// @brief initializes value from a slice
-  void initFromSlice(arangodb::velocypack::Slice slice);
-
   /// @brief initializes value from a slice, when the length is already known
   void initFromSlice(arangodb::velocypack::Slice slice,
                      arangodb::velocypack::ValueLength length);

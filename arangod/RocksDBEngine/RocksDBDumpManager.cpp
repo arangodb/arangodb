@@ -39,7 +39,7 @@ using namespace arangodb;
 RocksDBDumpManager::RocksDBDumpManager(RocksDBEngine& engine)
     : _engine(engine) {}
 
-RocksDBDumpManager::~RocksDBDumpManager() { _contexts.clear(); }
+RocksDBDumpManager::~RocksDBDumpManager() = default;
 
 std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
     RocksDBDumpContextOptions opts, std::string const& user,

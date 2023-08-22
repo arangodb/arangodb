@@ -10,8 +10,7 @@ complexity: high
 exposedBy:
   - coordinator
   - dbserver
-  - single
 description: |
   Amount of memory spent in ClusterInfo. ClusterInfo keeps all relevant 
   information about servers and shard distribution. It grows with the size
-  of servers, databases and shards in the cluster.
+  of servers, databases, collections/shards and indexes in the cluster.

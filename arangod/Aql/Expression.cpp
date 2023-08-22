@@ -39,6 +39,7 @@
 #include "Aql/Variable.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashSet.h"
@@ -67,7 +68,11 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the expression
 Expression::Expression(Ast* ast, AstNode* node)
-    : _ast(ast), _node(node), _data(nullptr), _type(UNPROCESSED) {
+    : _ast(ast),
+      _node(node),
+      _data(nullptr),
+      _type(UNPROCESSED),
+      _resourceMonitor(ast->query().resourceMonitor()) {
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
 
@@ -168,8 +173,10 @@ void Expression::replaceAttributeAccess(
 void Expression::freeInternals() noexcept {
   switch (_type) {
     case JSON:
+      _resourceMonitor.decreaseMemoryUsage(_usedBytesByData);
       velocypack_free(_data);
       _data = nullptr;
+      _usedBytesByData = 0;
       break;
 
     case ATTRIBUTE_ACCESS: {
@@ -318,6 +325,7 @@ void Expression::determineType() {
   if (_node->isConstant()) {
     // expression is a constant value
     _data = nullptr;
+    _usedBytesByData = 0;
     _type = JSON;
     return;
   }
@@ -346,10 +354,13 @@ void Expression::initAccessor() {
 
   TRI_ASSERT(_node->numMembers() == 1);
   auto member = _node->getMemberUnchecked(0);
-  std::vector<std::string> parts{_node->getString()};
+  ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor> alloc = {
+      _resourceMonitor};
+  MonitoredStringVector parts{alloc};
+  parts.emplace_back(_node->getString());
 
   while (member->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    parts.insert(parts.begin(), member->getString());
+    parts.insert(parts.begin(), MonitoredString{member->getString(), alloc});
     member = member->getMemberUnchecked(0);
   }
 
@@ -363,7 +374,8 @@ void Expression::initAccessor() {
     auto v = static_cast<Variable const*>(member->getData());
 
     // specialize the simple expression into an attribute accessor
-    _accessor = AttributeAccessor::create(std::move(parts), v);
+    _accessor =
+        AttributeAccessor::create(AttributeNamePath(std::move(parts)), v);
     TRI_ASSERT(_accessor != nullptr);
   }
 }
@@ -379,22 +391,32 @@ void Expression::prepareForExecution() {
     velocypack::Builder builder(buffer);
     _node->toVelocyPackValue(builder);
 
-    if (buffer.usesLocalMemory()) {
-      // Buffer has data in its local memory. because we
-      // don't want to keep the whole Buffer object, we allocate
-      // the required space ourselves and copy things over.
-      _data = static_cast<uint8_t*>(
-          velocypack_malloc(static_cast<size_t>(buffer.size())));
-      if (_data == nullptr) {
-        // malloc returned a nullptr
-        throw std::bad_alloc();
+    auto bufferSize = buffer.size();
+    {
+      arangodb::ResourceUsageScope guard(_resourceMonitor, bufferSize);
+
+      if (buffer.usesLocalMemory()) {
+        // Buffer has data in its local memory. because we
+        // don't want to keep the whole Buffer object, we allocate
+        // the required space ourselves and copy things over.
+        _data = static_cast<uint8_t*>(
+            velocypack_malloc(static_cast<size_t>(bufferSize)));
+        if (_data == nullptr) {
+          // malloc returned a nullptr
+          _usedBytesByData = 0;
+          throw std::bad_alloc();
+        }
+        memcpy(_data, buffer.data(), static_cast<size_t>(bufferSize));
+      } else {
+        // we can simply steal the data from the Buffer. we
+        // own the data now.
+        _data = buffer.steal();
       }
-      memcpy(_data, buffer.data(), static_cast<size_t>(buffer.size()));
-    } else {
-      // we can simply steal the data from the Buffer. we
-      // own the data now.
-      _data = buffer.steal();
+
+      _usedBytesByData = bufferSize;
+      guard.steal();
     }
+
   } else if (_type == ATTRIBUTE_ACCESS && _accessor == nullptr) {
     initAccessor();
   }

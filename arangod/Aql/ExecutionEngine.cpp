@@ -49,6 +49,7 @@
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Queries.h"
 
 using namespace arangodb;
@@ -236,7 +237,6 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 /// @brief create the engine
 ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
                                  AqlItemBlockManager& itemBlockMgr,
-                                 SerializationFormat format,
                                  std::shared_ptr<SharedQueryState> sqs)
     : _engineId(eId),
       _query(query),
@@ -563,18 +563,21 @@ struct DistributedQueryInstanciator final
       ClusterInfo& ci =
           _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
       engine->rebootTrackers().reserve(srvrQryId.size());
+      DatabaseFeature& df =
+          _query.vocbase().server().getFeature<DatabaseFeature>();
+
       for (auto const& [server, queryId, rebootId] : srvrQryId) {
         TRI_ASSERT(!server.starts_with("server:"));
         std::string comment = std::string("AQL query from coordinator ") +
                               ServerState::instance()->getId();
 
         std::function<void(void)> f = [srvr = server, id = _query.id(),
-                                       &vocbase = _query.vocbase()]() {
+                                       vn = _query.vocbase().name(), &df]() {
           LOG_TOPIC("d2554", INFO, Logger::QUERIES)
               << "killing query " << id << " because participating DB server "
               << srvr << " is unavailable";
           try {
-            methods::Queries::kill(vocbase, id, false);
+            methods::Queries::kill(df, vn, id);
           } catch (...) {
             // it does not really matter if this fails.
             // if the coordinator contacts the failed DB server next time, it
@@ -720,8 +723,7 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
 
 // @brief create an execution engine from a plan
 void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
-                                          bool planRegisters,
-                                          SerializationFormat format) {
+                                          bool planRegisters) {
   auto const role = arangodb::ServerState::instance()->getRole();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -778,8 +780,8 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     // instantiate the engine on a local server
     EngineId eId =
         arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;
-    auto retEngine = std::make_unique<ExecutionEngine>(eId, query, mgr, format,
-                                                       query.sharedState());
+    auto retEngine =
+        std::make_unique<ExecutionEngine>(eId, query, mgr, query.sharedState());
 
 #ifdef USE_ENTERPRISE
     for (auto const& pair : aliases) {

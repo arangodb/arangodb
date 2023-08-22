@@ -272,14 +272,13 @@ class CoveringVector final : public IndexIteratorCoveringData {
 
 class IResearchInvertedIndexIteratorBase : public IndexIterator {
  public:
-  IResearchInvertedIndexIteratorBase(LogicalCollection* collection,
-                                     ViewSnapshot& state,
-                                     transaction::Methods* trx,
-                                     aql::AstNode const* condition,
-                                     IResearchInvertedIndexMeta const* meta,
-                                     aql::Variable const* variable,
-                                     int mutableConditionIdx)
+  IResearchInvertedIndexIteratorBase(
+      ResourceMonitor& monitor, LogicalCollection* collection,
+      ViewSnapshot& state, transaction::Methods* trx,
+      aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
+      aql::Variable const* variable, int mutableConditionIdx)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
+        _memory(monitor),
         _snapshot(state),
         _immutablePartCache(state.immutablePartCache()),
         _indexMeta(meta),
@@ -391,12 +390,12 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
           irs::boolean_filter* immutableRoot;
           irs::proxy_filter::cache_ptr newCache;
           if (condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND) {
-            auto res = proxy_filter.set_filter<irs::And>();
+            auto res = proxy_filter.set_filter<irs::And>(_memory);
             immutableRoot = &res.first;
             _immutablePartCache[condition] = std::move(res.second);
           } else {
             TRI_ASSERT((condition->type == aql::NODE_TYPE_OPERATOR_NARY_OR));
-            auto res = proxy_filter.set_filter<irs::Or>();
+            auto res = proxy_filter.set_filter<irs::Or>(_memory);
             immutableRoot = &res.first;
             _immutablePartCache[condition] = std::move(res.second);
           }
@@ -428,8 +427,12 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       // sorting case
       append<irs::all>(root, filterCtx);
     }
-    _filter = root.prepare(_snapshot, irs::Scorers::kUnordered, irs::kNoBoost,
-                           &kEmptyAttributeProvider);
+    _filter = root.prepare({
+        .index = _snapshot,
+        .memory = _memory,
+        // Is it necessary? It can be null
+        .ctx = &kEmptyAttributeProvider,
+    });
     TRI_ASSERT(_filter);
     if (ADB_UNLIKELY(!_filter)) {
       if (condition) {
@@ -444,6 +447,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
     }
   }
 
+  MonitorManager _memory;
   irs::filter::prepared::ptr _filter;
   ViewSnapshot const& _snapshot;
   ViewSnapshot::ImmutablePartCache& _immutablePartCache;
@@ -464,8 +468,9 @@ class IResearchInvertedIndexIterator final
                                  IResearchInvertedIndexMeta const* meta,
                                  aql::Variable const* variable,
                                  int mutableConditionIdx)
-      : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
-                                           meta, variable, mutableConditionIdx),
+      : IResearchInvertedIndexIteratorBase(monitor, collection, state, trx,
+                                           condition, meta, variable,
+                                           mutableConditionIdx),
         _projections(*meta) {}
 
   std::string_view typeName() const noexcept override {
@@ -613,9 +618,10 @@ class IResearchInvertedIndexMergeIterator final
       ViewSnapshot& state, transaction::Methods* trx,
       aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
       aql::Variable const* variable, int mutableConditionIdx)
-      : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
-                                           meta, variable, mutableConditionIdx),
-        _heap_it({meta->_sort, meta->_sort.size(), _segments}),
+      : IResearchInvertedIndexIteratorBase(monitor, collection, state, trx,
+                                           condition, meta, variable,
+                                           mutableConditionIdx),
+        _heap_it{meta->_sort, meta->_sort.size()},
         _projectionsPrototype(*meta) {}
 
   std::string_view typeName() const noexcept final {
@@ -629,12 +635,12 @@ class IResearchInvertedIndexMergeIterator final
     _segments.reserve(size);
     for (size_t i = 0; i < size; ++i) {
       auto& segment = _snapshot[i];
-      irs::doc_iterator::ptr it = segment.mask(_filter->execute(segment));
-      TRI_ASSERT(!_projectionsPrototype
-                      .empty());  // at least sort column should be here
+      auto it = segment.mask(_filter->execute({.segment = segment}));
+      // at least sort column should be here
+      TRI_ASSERT(!_projectionsPrototype.empty());
       _segments.emplace_back(std::move(it), segment, _projectionsPrototype);
     }
-    _heap_it.reset(_segments.size());
+    _heap_it.Reset(_segments);
   }
 
   bool nextImpl(LocalDocumentIdCallback const& callback,
@@ -664,9 +670,8 @@ class IResearchInvertedIndexMergeIterator final
     if (_segments.empty() && _snapshot.size()) {
       reset();
     }
-    while (limit && _heap_it.next()) {
-      auto const currentIdx = _heap_it.value();
-      auto& segment = _segments[currentIdx];
+    while (limit && _heap_it.Next()) {
+      auto& segment = _heap_it.Lead();
       if constexpr (produce) {
         // For !withCovering that means actual doc reading
         // if combined with "produce".
@@ -683,6 +688,7 @@ class IResearchInvertedIndexMergeIterator final
           if (readSuccess) {
             if constexpr (withCovering) {
               segment.projections.seek(segment.doc->value);
+              size_t const currentIdx = &segment - _segments.data();
               SearchDoc doc(_snapshot.segment(currentIdx), segment.doc->value);
               TRI_ASSERT(documentId.isSet() == emitLocalDocumentId);
               bool emitRes = [&]() {
@@ -745,14 +751,14 @@ class IResearchInvertedIndexMergeIterator final
 
   class MinHeapContext {
    public:
-    MinHeapContext(IResearchInvertedIndexSort const& sort, size_t sortBuckets,
-                   std::vector<Segment>& segments) noexcept
-        : _less(sort, sortBuckets), _segments(&segments) {}
+    using Value = Segment;
+
+    MinHeapContext(IResearchInvertedIndexSort const& sort,
+                   size_t sortBuckets) noexcept
+        : _less{sort, sortBuckets} {}
 
     // advance
-    bool operator()(size_t i) const {
-      assert(i < _segments->size());
-      auto& segment = (*_segments)[i];
+    bool operator()(Value& segment) const {
       while (segment.doc && segment.itr->next()) {
         auto const doc = segment.doc->value;
         segment.projections.seek(doc);
@@ -765,19 +771,17 @@ class IResearchInvertedIndexMergeIterator final
     }
 
     // compare
-    bool operator()(size_t lhs, size_t rhs) const {
-      assert(lhs < _segments->size());
-      assert(rhs < _segments->size());
-      return _less.Compare(refFromSlice((*_segments)[rhs].sortValue),
-                           refFromSlice((*_segments)[lhs].sortValue)) < 0;
+    bool operator()(Value const& lhs, Value const& rhs) const {
+      return _less.Compare(refFromSlice(lhs.sortValue),
+                           refFromSlice(rhs.sortValue)) < 0;
     }
 
+   private:
     VPackComparer<IResearchInvertedIndexSort> _less;
-    std::vector<Segment>* _segments;
   };
 
   std::vector<Segment> _segments;
-  irs::ExternalHeapIterator<MinHeapContext> _heap_it;
+  irs::ExternalMergeIterator<MinHeapContext> _heap_it;
   CoveringVector const _projectionsPrototype;
 };
 
@@ -930,8 +934,8 @@ bool IResearchInvertedIndex::covers(aql::Projections& projections) const {
     aql::latematerialized::AttributeAndField<
         aql::latematerialized::IndexFieldData>
         af;
-    af.attr.reserve(projections[i].path.path.size());
-    for (auto const& a : projections[i].path.path) {
+    af.attr.reserve(projections[i].path._path.size());
+    for (auto const& a : projections[i].path._path) {
       af.attr.emplace_back(a, false);  // TODO: false?
     }
     attrs.emplace_back(af);

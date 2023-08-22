@@ -98,26 +98,30 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
  * returned.
  * @return The _key attribute
  */
-std::string_view transaction::helpers::extractKeyPart(VPackSlice slice) {
+std::string_view transaction::helpers::extractKeyPart(velocypack::Slice slice,
+                                                      bool& keyPresent) {
   slice = slice.resolveExternal();
+  keyPresent = false;
 
   // extract _key
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
+    keyPresent = !k.isNone();
     if (!k.isString()) {
       return std::string_view();  // fail
     }
     return k.stringView();
   }
   if (slice.isString()) {
-    std::string_view key = slice.stringView();
-    size_t pos = key.find('/');
-    if (pos == std::string::npos) {
-      return key;
-    }
-    return key.substr(pos + 1);
+    keyPresent = true;
+    return extractKeyPart(slice.stringView());
   }
   return std::string_view();
+}
+
+std::string_view transaction::helpers::extractKeyPart(velocypack::Slice slice) {
+  [[maybe_unused]] bool unused;
+  return extractKeyPart(slice, unused);
 }
 
 /** @brief Given a string, returns the substring after the first '/' or

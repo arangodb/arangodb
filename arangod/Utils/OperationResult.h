@@ -85,13 +85,13 @@ struct OperationResult final {
   bool isNot(ErrorCode errorNumber) const noexcept { return !is(errorNumber); }
   std::string_view errorMessage() const { return result.errorMessage(); }
 
-  inline bool hasSlice() const { return buffer != nullptr; }
-  inline VPackSlice slice() const {
+  bool hasSlice() const noexcept { return buffer != nullptr; }
+  velocypack::Slice slice() const noexcept {
     TRI_ASSERT(buffer != nullptr);
     return VPackSlice(buffer->data());
   }
 
-  void reset() {
+  void reset() noexcept {
     result.reset();
     buffer.reset();
     options = OperationOptions();
@@ -99,7 +99,7 @@ struct OperationResult final {
   }
 
   Result result;
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer;
+  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer;
   OperationOptions options;
 
   // Executive summary for baby operations: reports all errors that did occur

@@ -2611,11 +2611,12 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
     // first execution
     {
-      auto prepared = static_cast<irs::filter&>(filters).prepare(*reader);
+      auto prepared =
+          static_cast<irs::filter&>(filters).prepare({.index = *reader});
       ASSERT_TRUE(prepared);
 
       for (auto& segment : *reader) {
-        auto docs = prepared->execute(segment);
+        auto docs = prepared->execute({.segment = segment});
         ASSERT_TRUE(docs);
         EXPECT_TRUE(docs->next());
         auto const id = docs->value();
@@ -2782,11 +2783,12 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       filters.emplace(arangodb::LocalDocumentId(rid));
       EXPECT_FALSE(filters.empty());
 
-      auto prepared = static_cast<irs::filter&>(filters).prepare(*store.reader);
+      auto prepared =
+          static_cast<irs::filter&>(filters).prepare({.index = *store.reader});
       ASSERT_TRUE(prepared);
 
       for (auto& segment : *store.reader) {
-        auto docs = prepared->execute(segment);
+        auto docs = prepared->execute({.segment = segment});
         ASSERT_TRUE(docs);
         EXPECT_TRUE(docs->next());
         auto const id = docs->value();

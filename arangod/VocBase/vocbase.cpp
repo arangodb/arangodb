@@ -25,7 +25,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cinttypes>
 #include <exception>
 #include <memory>
 #include <type_traits>
@@ -34,7 +33,6 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
-#include <velocypack/Utf8Helper.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 
@@ -42,51 +40,36 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Auth/Common.h"
-#include "Basics/application-exit.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Exceptions.tpp"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/Locking.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/DownCast.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
-#include "Basics/Result.tpp"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
-#include "Basics/error.h"
-#include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Containers/Helpers.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
-#include "Indexes/Index.h"
-#include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
-#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "Replication2/IScheduler.h"
 #include "Replication2/Version.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
@@ -828,9 +811,6 @@ ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
 TRI_vocbase_t::createCollections(
     std::vector<arangodb::CreateCollectionBody> const& collections,
     bool allowEnterpriseCollectionsOnSingleServer) {
-  // TODO: Need to get rid of this collection. Distribute Shards like
-  // is now denoted inside the CreateCollectionBody
-  std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
   /// Code from here is copy pasted from original create and
   /// has not been refacored yet.
   VPackBuilder builder =
@@ -1394,7 +1374,7 @@ Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
 }
 
 TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info)
-    : _server(info.server()), _info(std::move(info)), _deadlockDetector(false) {
+    : _server(info.server()), _info(std::move(info)) {
   TRI_ASSERT(_info.valid());
 
   if (_info.server().hasFeature<QueryRegistryFeature>()) {
@@ -1427,8 +1407,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_t::MockConstruct,
                              CreateDatabaseInfo&& info)
     : _server(info.server()),
       _info(std::move(info)),
-      _logManager(std::make_shared<VocBaseLogManager>(*this, name())),
-      _deadlockDetector(false) {}
+      _logManager(std::make_shared<VocBaseLogManager>(*this, name())) {}
 #endif
 
 TRI_vocbase_t::~TRI_vocbase_t() {
@@ -1490,6 +1469,10 @@ void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
 
 void TRI_vocbase_t::setShardingPrototype(ShardingPrototype type) {
   _info.shardingPrototype(type);
+}
+
+void TRI_vocbase_t::setSharding(std::string_view sharding) {
+  _info.setSharding(sharding);
 }
 
 ShardingPrototype TRI_vocbase_t::shardingPrototype() const {
@@ -1727,6 +1710,8 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   } else {
     config.defaultDistributeShardsLike = "";
   }
+
+  config.replicationVersion = replicationVersion();
 
   return config;
 }

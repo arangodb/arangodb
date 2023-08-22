@@ -31,7 +31,6 @@
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -46,6 +45,8 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -90,6 +91,8 @@
 class IResearchViewCoordinatorTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockCoordinator server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   IResearchViewCoordinatorTest() : server("CRDN_0001") {
     arangodb::tests::init();
@@ -7901,12 +7904,13 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     auto query = arangodb::aql::Query::create(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         arangodb::aql::QueryString(std::string_view("RETURN 1")), nullptr);
-    query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+    query->prepareQuery();
 
     arangodb::aql::SingletonNode singleton(query->plan(),
                                            arangodb::aql::ExecutionNodeId{0});
 
-    arangodb::aql::Variable const outVariable("variable", 0, false);
+    arangodb::aql::Variable const outVariable("variable", 0, false,
+                                              resourceMonitor);
 
     arangodb::iresearch::IResearchViewNode node(
         *query->plan(), arangodb::aql::ExecutionNodeId{42},

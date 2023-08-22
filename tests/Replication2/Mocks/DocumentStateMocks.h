@@ -368,13 +368,14 @@ struct MockProducerStream
   MOCK_METHOD(void, release, (LogIndex), (override));
   // ProducerStream<T>
   MOCK_METHOD(LogIndex, insert,
-              (replicated_state::document::DocumentLogEntry const&),
+              (replicated_state::document::DocumentLogEntry const&, bool),
               (override));
 
   MockProducerStream() {
     ON_CALL(*this, insert)
         .WillByDefault(
-            [this](replicated_state::document::DocumentLogEntry const& doc) {
+            [this](replicated_state::document::DocumentLogEntry const& doc,
+                   [[maybe_unused]] bool waitForSync) {
               auto idx = current;
               current += 1;
               entries[idx] = doc;

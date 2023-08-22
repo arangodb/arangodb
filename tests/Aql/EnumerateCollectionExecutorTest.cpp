@@ -77,6 +77,8 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
   TRI_vocbase_t& vocbase;
   std::shared_ptr<VPackBuilder> json;
   std::shared_ptr<LogicalCollection> collection;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   Variable outVariable;
   bool varUsedLater;
@@ -94,13 +96,13 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
 
   EnumerateCollectionExecutorTest()
       : AqlExecutorTestCase(),
-        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+        itemBlockManager(monitor),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.lookupCollection("UnitTestCollection")
                        ? vocbase.lookupCollection("UnitTestCollection")
                        : vocbase.createCollection(json->slice())),
-        outVariable("name", 1, false),
+        outVariable("name", 1, false, resourceMonitor),
         varUsedLater(false),
         engine(fakedQuery->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase,
@@ -281,13 +283,13 @@ class EnumerateCollectionExecutorTestProduce
   EnumerateCollectionExecutorInfos executorInfos;
 
   EnumerateCollectionExecutorTestProduce()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.lookupCollection("UnitTestCollection")
                        ? vocbase.lookupCollection("UnitTestCollection")
                        : vocbase.createCollection(json->slice())),
-        outVariable("name", 1, false),
+        outVariable("name", 1, false, monitor),
         varUsedLater(true),
         engine(fakedQuery.get()->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase,

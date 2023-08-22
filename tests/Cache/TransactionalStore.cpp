@@ -98,7 +98,7 @@ TransactionalStore::~TransactionalStore() {
   delete _db;
   TRI_ASSERT(_directory.length() > 20);
   TRI_RemoveDirectory(_directory.c_str());
-  _manager->destroyCache(_cache);
+  _manager->destroyCache(std::move(_cache));
 }
 
 Cache* TransactionalStore::cache() { return _cache.get(); }

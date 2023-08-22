@@ -32,7 +32,6 @@
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Finding.h"
-#include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
 #include "Cache/PlainBucket.h"
 #include "Cache/Table.h"
@@ -53,15 +52,15 @@ Finding PlainCache<Hasher>::find(void const* key, std::uint32_t keySize) {
   Table::BucketLocker guard;
   std::tie(status, guard) = getBucket(hash, Cache::triesFast);
   if (status != TRI_ERROR_NO_ERROR) {
-    recordStat(Stat::findMiss);
+    recordMiss();
     result.reportError(status);
   } else {
     PlainBucket& bucket = guard.bucket<PlainBucket>();
     result.set(bucket.find<Hasher>(hash.value, key, keySize));
     if (result.found()) {
-      recordStat(Stat::findHit);
+      recordHit();
     } else {
-      recordStat(Stat::findMiss);
+      recordMiss();
       result.reportError(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     }
   }
@@ -124,6 +123,7 @@ template<typename Hasher>
           maybeMigrate = source->slotFilled();
         }
         maybeMigrate |= reportInsert(eviction);
+        adjustGlobalAllocation(change, false);
       } else {
         requestGrow();  // let function do the hard work
         status = TRI_ERROR_RESOURCE_LIMIT;
@@ -169,6 +169,7 @@ template<typename Hasher>
       }
 
       freeValue(candidate);
+      adjustGlobalAllocation(change, false);
       maybeMigrate = source->slotEmptied();
     }
   }
@@ -359,18 +360,27 @@ std::pair<::ErrorCode, Table::BucketLocker> PlainCache<Hasher>::getBucket(
 }
 
 template<typename Hasher>
-Table::BucketClearer PlainCache<Hasher>::bucketClearer(Metadata* metadata) {
-  return [metadata](void* ptr) -> void {
+Table::BucketClearer PlainCache<Hasher>::bucketClearer(Cache* cache,
+                                                       Metadata* metadata) {
+  return [cache, metadata](void* ptr) -> void {
     auto bucket = static_cast<PlainBucket*>(ptr);
+    std::uint64_t totalSize = 0;
     bucket->lock(Cache::triesGuarantee);
     for (std::size_t j = 0; j < PlainBucket::kSlotsData; j++) {
       if (bucket->_cachedData[j] != nullptr) {
         std::uint64_t size = bucket->_cachedData[j]->size();
         freeValue(bucket->_cachedData[j]);
+        totalSize += size;
+      }
+    }
+    if (totalSize > 0) {
+      {
         SpinLocker metaGuard(SpinLocker::Mode::Read,
                              metadata->lock());  // special case
-        metadata->adjustUsageIfAllowed(-static_cast<int64_t>(size));
+        metadata->adjustUsageIfAllowed(-static_cast<std::int64_t>(totalSize));
       }
+      cache->adjustGlobalAllocation(-static_cast<std::int64_t>(totalSize),
+                                    /*force*/ false);
     }
     bucket->clear();
   };

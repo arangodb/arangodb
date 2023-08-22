@@ -47,6 +47,8 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AqlHelper.h"
@@ -87,6 +89,8 @@ class IResearchFilterArrayIntervalTest
                                             arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
  private:
   TRI_vocbase_t* _vocbase;
@@ -528,7 +532,8 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       SCOPED_TRACE(testing::Message("Query:") << queryString);
 
       arangodb::aql::Variable var("c", 0,
-                                  /*isFullDocumentFromCollection*/ false);
+                                  /*isFullDocumentFromCollection*/ false,
+                                  resourceMonitor);
       arangodb::aql::AqlValue value(arangodb::aql::AqlValue("2"));
       arangodb::aql::AqlValueGuard guard(value, true);
       ExpressionContextMock ctx;

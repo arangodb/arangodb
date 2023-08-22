@@ -36,7 +36,7 @@ function IndexEstimatesMemorySuite () {
   'use strict';
       
   let getMetric = () => { 
-    return getMetricSingle("arangodb_internal_index_estimates_memory");
+    return getMetricSingle("arangodb_index_estimates_memory_usage");
   };
   
   return {

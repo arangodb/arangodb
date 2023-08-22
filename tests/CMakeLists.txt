@@ -18,6 +18,7 @@ add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
 add_subdirectory(Futures)
+add_subdirectory(BuildId)
 
 # ----------------------------------------
 # Link directories
@@ -32,6 +33,7 @@ if (WINDOWS)
 endif ()
 
 add_library(arango_tests_basics OBJECT
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/ClusterInfoMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.h
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
@@ -195,7 +197,6 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
-  HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
@@ -227,7 +228,6 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/ChecksumHelperTest.cpp
   RocksDBEngine/EndianTest.cpp
   RocksDBEngine/KeyTest.cpp
-  RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
@@ -251,7 +251,6 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalViewTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
-  VPackDeserializer/BasicTests.cpp
   Cluster/ShardAutoRebalancerTest.cpp)
 
 if (LINUX)

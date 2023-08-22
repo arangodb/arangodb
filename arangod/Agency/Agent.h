@@ -32,11 +32,12 @@
 #include "Agency/Inception.h"
 #include "Agency/State.h"
 #include "Agency/Store.h"
-#include "Futures/Promise.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
-#include "RestServer/arangod.h"
+#include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
+#include "RestServer/arangod.h"
 
 #include <atomic>
 #include <chrono>
@@ -99,12 +100,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief My endpoint
   std::string endpoint() const;
 
-  /// @brief Verbose print of myself
-  void print(arangodb::LoggerStream&) const;
-
-  /// @brief Are we fit to run?
-  bool fitness() const;
-
   /// @brief Leader ID
   index_t lastCommitted() const;
 
@@ -147,10 +142,10 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   trans_ret_t transact(velocypack::Slice qs) override;
 
   /// @brief Put trxs into list of ongoing ones.
-  void addTrxsOngoing(Slice trxs);
+  void addTrxsOngoing(velocypack::Slice trxs);
 
   /// @brief Remove trxs from list of ongoing ones.
-  void removeTrxsOngoing(Slice trxs) noexcept;
+  void removeTrxsOngoing(velocypack::Slice trxs) noexcept;
 
   /// @brief Check whether a trx is ongoing.
   bool isTrxOngoing(std::string const& id) const noexcept;
@@ -165,9 +160,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief Resign leadership
   void resign(term_t otherTerm = 0);
 
-  /// @brief collect store callbacks for removal
-  void trashStoreCallback(std::string const& url, velocypack::Slice body);
-
  private:
   void logsForTrigger();
 
@@ -181,9 +173,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief trigger all expire polls
   void clearExpiredPolls();
 
-  /// @brief empty callback trash bin
-  void emptyCbTrashBin();
-
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
   void sendAppendEntriesRPC();
@@ -192,17 +181,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// can advance _commitIndex and apply things to readDB.
   void advanceCommitIndex();
 
-  /// In a single server agency advanceCommitIndex can be called from any
-  /// thread which does `transact` or `write`. However, it is not thread-safe,
-  /// since it is usually only called in the main agent thread. Therefore,
-  /// in these cases we protect it with this mutex.
-  std::mutex _protectAdvanceCommitIndexInSingleServerAgency;
-
  public:
-  /// @brief Get last confirmed index of an agent. Default my own.
-  ///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
-  index_t confirmed(std::string const& serverId = std::string()) const;
-
   /// @brief Invoked by leader to replicate log entries ($5.3);w
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
@@ -213,17 +192,8 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   ///        2. Report success of write processes.
   void run() override final;
 
-  /// @brief Are we still booting?
-  bool booting();
-
   /// @brief Gossip in
   query_t gossip(velocypack::Slice, bool callback = false, size_t version = 0);
-
-  /// @brief Persisted agents
-  bool persistedAgents();
-
-  /// @brief Gossip in
-  bool activeAgency();
 
   /// @brief Get the index at which the leader is
   index_t index();
@@ -236,7 +206,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Report a failed append entry call from AgentCallback
-  void reportFailed(std::string const& slaveId, size_t toLog,
+  void reportFailed(std::string const& followerId, size_t toLog,
                     bool sent = false);
 
   /// @brief Wait for slaves to confirm appended entries
@@ -279,9 +249,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   void executeTransientLocked(std::function<void()> const& cb);
 
   /// @brief Get read store and compaction index
-  index_t readDB(Node&) const;
-
-  /// @brief Get read store and compaction index
   index_t readDB(velocypack::Builder&) const;
 
   /// @brief Get read store
@@ -300,9 +267,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// WARNING: this assumes caller holds _transientLock
   Store const& transient() const;
 
-  /// @brief Serve active agent interface
-  bool serveActiveAgent();
-
   /// @brief Get notification as inactive pool member
   void notify(velocypack::Slice message);
 
@@ -312,7 +276,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
       index_t end = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Last contact with followers
-  void lastAckedAgo(Builder&) const;
+  void lastAckedAgo(velocypack::Builder&) const;
 
   /// @brief Are we ready for RAFT?
   bool ready() const;
@@ -439,45 +403,35 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   arangodb::basics::ConditionVariable _appendCV;
   bool _agentNeedsWakeup;
 
-  /// The following two members are strictly only used in the
-  /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
-  /// necessary for these:
+  struct FollowerData {
+    /// @brief _lastSent stores for each follower the time stamp of the time
+    /// when the main Agent thread has last sent a non-empty
+    /// appendEntriesRPC to that follower.
+    SteadyTimePoint _lastSent;
 
-  /// @brief _lastSent stores for each follower the time stamp of the time
-  /// when the main Agent thread has last sent a non-empty
-  /// appendEntriesRPC to that follower.
-  std::unordered_map<std::string, SteadyTimePoint> _lastSent;
+    /// @brief stores for each follower the highest index log it has reported as
+    /// locally logged, and the timestamp we last recevied an answer to
+    /// sendAppendEntries
+    SteadyTimePoint _lastAckedTime;
+    index_t _lastAckedIndex{0};
 
-  /// The following three members are protected by _tiLock:
+    /// @brief The earliest timepoint at which we will send new
+    /// sendAppendEntries to a particular follower. This is a measure to avoid
+    /// bombarding a follower, that has trouble keeping up.
+    SteadyTimePoint _earliestPackage;
 
-  /// @brief stores for each follower the highest index log it has reported as
-  /// locally logged, and the timestamp we last recevied an answer to
-  /// sendAppendEntries
-  std::unordered_map<std::string, std::pair<SteadyTimePoint, index_t>>
-      _lastAckedIndex;
+    SteadyTimePoint _lastEmptyAcked;
+  };
 
-  /// @brief The earliest timepoint at which we will send new sendAppendEntries
-  /// to a particular follower. This is a measure to avoid bombarding a
-  /// follower, that has trouble keeping up.
-  std::unordered_map<std::string, SteadyTimePoint> _earliestPackage;
+  Guarded<std::unordered_map<std::string, FollowerData>> _followerData;
 
-  // @brief Lock for the above time data about other agents. This
-  // protects _confirmed, _lastAcked and _earliestPackage:
-  mutable std::mutex _tiLock;
-
-  /// @brief Facilitate quick note of followership on leaders
-  mutable std::mutex _emptyAppendLock;
-  std::unordered_map<std::string, SteadyTimePoint> _lastEmptyAcked;
+  MutexGuard<FollowerData, std::unique_lock<std::mutex>> getFollower(
+      std::string const& followerId);
 
   /// @brief RAFT consistency lock:
   ///   _spearhead
   ///
   mutable std::mutex _ioLock;
-
-  /// @brief Callback trash bin lock
-  ///   _callbackTrashBin
-  ///
-  mutable std::mutex _cbtLock;
 
   /// @brief RAFT consistency lock:
   ///   _readDB and _commitIndex
@@ -539,11 +493,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
 
   /// @brief load() has completed
   std::atomic<bool> _loaded;
-
-  /// @brief Container for callbacks for removal
-  std::unordered_map<std::string, std::unordered_set<std::string>>
-      _callbackTrashBin;
-  std::chrono::time_point<std::chrono::steady_clock> _callbackLastPurged;
 
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;

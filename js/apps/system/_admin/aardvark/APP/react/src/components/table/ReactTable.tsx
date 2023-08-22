@@ -157,6 +157,7 @@ const SelectableTr = <Data extends object>({
             }
           : {}
       }
+      backgroundColor={row.getIsSelected() ? "gray.100" : undefined}
     >
       {row.getVisibleCells().map(cell => {
         return (

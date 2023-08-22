@@ -234,7 +234,7 @@ class Supervision : public arangodb::Thread {
   void cleanupReplicatedLogs();
 
   struct ResourceCreatorLostEvent {
-    std::shared_ptr<Node> const& resource;
+    std::shared_ptr<Node const> const& resource;
     std::string const& coordinatorId;
     uint64_t coordinatorRebootId;
     bool coordinatorFound;
@@ -243,12 +243,12 @@ class Supervision : public arangodb::Thread {
   // @brief Checks if a resource (database or collection). Action is called if
   // resource should be deleted
   void ifResourceCreatorLost(
-      std::shared_ptr<Node> const& resource,
+      std::shared_ptr<Node const> const& resource,
       std::function<void(ResourceCreatorLostEvent const&)> const& action);
 
   // @brief Action is called if resource should be deleted
   void resourceCreatorLost(
-      std::shared_ptr<Node> const& resource,
+      std::shared_ptr<Node const> const& resource,
       std::function<void(ResourceCreatorLostEvent const&)> const& action);
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
@@ -304,9 +304,8 @@ class Supervision : public arangodb::Thread {
 
   std::mutex _lock;  // guards snapshot, _jobId, jobIdMax, _selfShutdown
   Agent* _agent;     /**< @brief My agent */
-  Store _spearhead;
-  mutable Node const* _snapshot;
-  Node _transient;
+  mutable std::shared_ptr<Node const> _snapshot;
+  std::shared_ptr<Node const> _transient;
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
                                               should run */

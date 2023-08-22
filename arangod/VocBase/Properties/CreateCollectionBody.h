@@ -53,11 +53,16 @@ struct CreateCollectionBody : public UserInputCollectionProperties,
   bool operator==(CreateCollectionBody const& other) const = default;
 
   static ResultT<CreateCollectionBody> fromCreateAPIBody(
-      arangodb::velocypack::Slice input, DatabaseConfiguration const& config);
+      arangodb::velocypack::Slice input, DatabaseConfiguration const& config,
+      bool activateBackwardsCompatibility = true);
 
   static ResultT<CreateCollectionBody> fromCreateAPIV8(
       arangodb::velocypack::Slice properties, std::string const& name,
       TRI_col_type_e type, DatabaseConfiguration const& config);
+
+  static ResultT<CreateCollectionBody> fromRestoreAPIBody(
+      arangodb::velocypack::Slice properties,
+      DatabaseConfiguration const& config);
 
   static arangodb::velocypack::Builder toCreateCollectionProperties(
       std::vector<CreateCollectionBody> const& collections);

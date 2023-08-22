@@ -178,7 +178,7 @@ DECLARE_GAUGE(arangodb_scheduler_num_working_threads, uint64_t,
               "Number of working threads");
 DECLARE_GAUGE(arangodb_scheduler_num_worker_threads, uint64_t,
               "Number of worker threads");
-DECLARE_GAUGE(arangodb_scheduler_stack_memory, uint64_t,
+DECLARE_GAUGE(arangodb_scheduler_stack_memory_usage, uint64_t,
               "Approximate stack memory usage of worker threads");
 DECLARE_GAUGE(
     arangodb_scheduler_ongoing_low_prio, uint64_t,
@@ -196,7 +196,7 @@ DECLARE_COUNTER(arangodb_scheduler_threads_started_total,
                 "Number of scheduler threads started");
 DECLARE_COUNTER(arangodb_scheduler_threads_stopped_total,
                 "Number of scheduler threads stopped");
-DECLARE_GAUGE(arangodb_scheduler_queue_memory, std::int64_t,
+DECLARE_GAUGE(arangodb_scheduler_queue_memory_usage, std::int64_t,
               "Number of bytes allocated for tasks in the scheduler queue");
 
 SupervisedScheduler::SupervisedScheduler(
@@ -239,9 +239,9 @@ SupervisedScheduler::SupervisedScheduler(
           arangodb_scheduler_num_worker_threads{})),
       _metricsStackMemoryWorkerThreads(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_stack_memory{})),
+              arangodb_scheduler_stack_memory_usage{})),
       _schedulerQueueMemory(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_queue_memory{})),
+          arangodb_scheduler_queue_memory_usage{})),
       _metricsHandlerTasksCreated(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_scheduler_handler_tasks_created_total{})),

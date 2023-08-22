@@ -59,14 +59,14 @@ class SingleCollectionTransaction final : public transaction::Methods {
   LogicalCollection* documentCollection();
 
   /// @brief get the underlying collection's id
-  inline DataSourceId cid() const { return _cid; }
+  DataSourceId cid() const noexcept { return _cid; }
 
 #ifdef USE_ENTERPRISE
   using transaction::Methods::addCollectionAtRuntime;
 #endif
   /// @brief add a collection to the transaction for read, at runtime
   /// note that this can only be ourselves
-  DataSourceId addCollectionAtRuntime(std::string const& name,
+  DataSourceId addCollectionAtRuntime(std::string_view name,
                                       AccessMode::Type type) override final;
 
   /// @brief get the underlying collection's name

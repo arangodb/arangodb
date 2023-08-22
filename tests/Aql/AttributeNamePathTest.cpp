@@ -22,57 +22,75 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "gtest/gtest.h"
 
 #include "Aql/AttributeNamePath.h"
 
 using namespace arangodb::aql;
 
+namespace {
+auto createAttributeNamePath = [](std::vector<std::string>&& vec,
+                                  arangodb::ResourceMonitor& resMonitor) {
+  arangodb::MonitoredStringVector myVector{resMonitor};
+  for (auto& s : vec) {
+    myVector.emplace_back(s);
+  }
+  return AttributeNamePath(std::move(myVector));
+};
+}
+
 TEST(AttributeNamePathTest, empty) {
-  AttributeNamePath p;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AttributeNamePath p{monitor};
   ASSERT_TRUE(p.empty());
   ASSERT_EQ(0, p.size());
 
-  p.path.emplace_back("test");
+  p._path.emplace_back("test");
   ASSERT_FALSE(p.empty());
   ASSERT_EQ(1, p.size());
 }
 
 TEST(AttributeNamePathTest, size) {
-  AttributeNamePath p;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AttributeNamePath p{monitor};
   ASSERT_EQ(0, p.size());
 
   for (size_t i = 0; i < 10; ++i) {
-    p.path.emplace_back("test");
+    p._path.emplace_back("test");
     ASSERT_EQ(i + 1, p.size());
   }
 }
 
 TEST(AttributeNamePathTest, type) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   ASSERT_EQ(AttributeNamePath::Type::IdAttribute,
-            AttributeNamePath("_id").type());
+            AttributeNamePath("_id", resMonitor).type());
   ASSERT_EQ(AttributeNamePath::Type::KeyAttribute,
-            AttributeNamePath("_key").type());
+            AttributeNamePath("_key", resMonitor).type());
   ASSERT_EQ(AttributeNamePath::Type::FromAttribute,
-            AttributeNamePath("_from").type());
+            AttributeNamePath("_from", resMonitor).type());
   ASSERT_EQ(AttributeNamePath::Type::ToAttribute,
-            AttributeNamePath("_to").type());
+            AttributeNamePath("_to", resMonitor).type());
   ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
-            AttributeNamePath("_rev").type());
+            AttributeNamePath("_rev", resMonitor).type());
   ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
-            AttributeNamePath("peter").type());
+            AttributeNamePath("peter", resMonitor).type());
   ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
-            AttributeNamePath("").type());
+            AttributeNamePath("", resMonitor).type());
   ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
-            AttributeNamePath("key").type());
+            AttributeNamePath("key", resMonitor).type());
   ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
-            AttributeNamePath("id").type());
+            AttributeNamePath("id", resMonitor).type());
   ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
-            AttributeNamePath("1").type());
-  ASSERT_EQ(AttributeNamePath::Type::MultiAttribute,
-            AttributeNamePath(std::vector<std::string>{"a", "b"}).type());
+            AttributeNamePath("1", resMonitor).type());
+
+  auto anp = createAttributeNamePath({"a", "b"}, resMonitor);
+  ASSERT_EQ(AttributeNamePath::Type::MultiAttribute, anp.type());
 }
 
 /*
@@ -80,216 +98,271 @@ TEST(AttributeNamePathTest, type) {
  * across platforms or compiler versions. it is not safe to enable them
  */
 TEST(AttributeNamePathTest, hash) {
-  EXPECT_EQ(15615448896660710867U, AttributeNamePath("_id").hash());
-  EXPECT_EQ(10824270243171927571U, AttributeNamePath("_key").hash());
-  EXPECT_EQ(14053392154382459499U, AttributeNamePath("_from").hash());
-  EXPECT_EQ(13320164962300719886U, AttributeNamePath("_to").hash());
-  EXPECT_EQ(17306043388796241266U, AttributeNamePath("_rev").hash());
-  EXPECT_EQ(6428928981455593224U, AttributeNamePath("peter").hash());
-  EXPECT_EQ(3023579531467661406U, AttributeNamePath("").hash());
-  EXPECT_EQ(14833537490909846811U, AttributeNamePath("key").hash());
-  EXPECT_EQ(9633197497402266361U, AttributeNamePath("id").hash());
-  EXPECT_EQ(17812082371732153461U, AttributeNamePath("1").hash());
-  EXPECT_EQ(14488091495141700494U,
-            AttributeNamePath(std::vector<std::string>{"a", "b"}).hash());
-  EXPECT_EQ(8328517039192094391U,
-            AttributeNamePath(std::vector<std::string>{"b", "a"}).hash());
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+
+  EXPECT_EQ(15615448896660710867U, AttributeNamePath("_id", resMonitor).hash());
+  EXPECT_EQ(10824270243171927571U,
+            AttributeNamePath("_key", resMonitor).hash());
+  EXPECT_EQ(14053392154382459499U,
+            AttributeNamePath("_from", resMonitor).hash());
+  EXPECT_EQ(13320164962300719886U, AttributeNamePath("_to", resMonitor).hash());
+  EXPECT_EQ(17306043388796241266U,
+            AttributeNamePath("_rev", resMonitor).hash());
+  EXPECT_EQ(6428928981455593224U,
+            AttributeNamePath("peter", resMonitor).hash());
+  EXPECT_EQ(3023579531467661406U, AttributeNamePath("", resMonitor).hash());
+  EXPECT_EQ(14833537490909846811U, AttributeNamePath("key", resMonitor).hash());
+  EXPECT_EQ(9633197497402266361U, AttributeNamePath("id", resMonitor).hash());
+  EXPECT_EQ(17812082371732153461U, AttributeNamePath("1", resMonitor).hash());
+
+  auto anpAB = createAttributeNamePath({"a", "b"}, resMonitor);
+  auto anpBA = createAttributeNamePath({"b", "a"}, resMonitor);
+  EXPECT_EQ(14488091495141700494U, anpAB.hash());
+  EXPECT_EQ(8328517039192094391U, anpBA.hash());
 }
 
 TEST(AttributeNamePathTest, atLong) {
-  AttributeNamePath p;
-  p.path.emplace_back("foo");
-  p.path.emplace_back("bar");
-  p.path.emplace_back("baz");
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AttributeNamePath p{monitor};
+  p._path.emplace_back("foo");
+  p._path.emplace_back("bar");
+  p._path.emplace_back("baz");
 
   ASSERT_EQ("foo", p[0]);
   ASSERT_EQ("bar", p[1]);
   ASSERT_EQ("baz", p[2]);
 }
 TEST(AttributeNamePathTest, atShort) {
-  AttributeNamePath p{"foobar"};
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+  AttributeNamePath p{"foobar", resMonitor};
 
   ASSERT_EQ("foobar", p[0]);
 }
 
 TEST(AttributeNamePathTest, equalsLong) {
-  AttributeNamePath p1;
-  p1.path.emplace_back("foo");
-  p1.path.emplace_back("bar");
-  p1.path.emplace_back("baz");
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AttributeNamePath p1{monitor};
+  p1._path.emplace_back("foo");
+  p1._path.emplace_back("bar");
+  p1._path.emplace_back("baz");
 
-  AttributeNamePath p2;
-  p2.path.emplace_back("foo");
-  p2.path.emplace_back("bar");
-  p2.path.emplace_back("baz");
+  AttributeNamePath p2{monitor};
+  p2._path.emplace_back("foo");
+  p2._path.emplace_back("bar");
+  p2._path.emplace_back("baz");
 
   ASSERT_TRUE(p1 == p2);
   ASSERT_FALSE(p1 != p2);
 
-  p1.path.pop_back();
+  p1._path.pop_back();
   ASSERT_FALSE(p1 == p2);
   ASSERT_TRUE(p1 != p2);
 
-  p2.path.pop_back();
+  p2._path.pop_back();
   ASSERT_TRUE(p1 == p2);
   ASSERT_FALSE(p1 != p2);
 }
 
 TEST(AttributeNamePathTest, equalsShort) {
-  ASSERT_TRUE(AttributeNamePath("_id") == AttributeNamePath("_id"));
-  ASSERT_FALSE(AttributeNamePath("_id") != AttributeNamePath("_id"));
-  ASSERT_FALSE(AttributeNamePath("_id") == AttributeNamePath("_key"));
-  ASSERT_TRUE(AttributeNamePath("_id") != AttributeNamePath("_key"));
-  ASSERT_FALSE(AttributeNamePath("_from") == AttributeNamePath("_key"));
-  ASSERT_TRUE(AttributeNamePath("_from") != AttributeNamePath("_key"));
-  ASSERT_FALSE(AttributeNamePath("_key") == AttributeNamePath("_from"));
-  ASSERT_TRUE(AttributeNamePath("_key") != AttributeNamePath("_from"));
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+  ASSERT_TRUE(AttributeNamePath("_id", resMonitor) ==
+              AttributeNamePath("_id", resMonitor));
+  ASSERT_FALSE(AttributeNamePath("_id", resMonitor) !=
+               AttributeNamePath("_id", resMonitor));
+  ASSERT_FALSE(AttributeNamePath("_id", resMonitor) ==
+               AttributeNamePath("_key", resMonitor));
+  ASSERT_TRUE(AttributeNamePath("_id", resMonitor) !=
+              AttributeNamePath("_key", resMonitor));
+  ASSERT_FALSE(AttributeNamePath("_from", resMonitor) ==
+               AttributeNamePath("_key", resMonitor));
+  ASSERT_TRUE(AttributeNamePath("_from", resMonitor) !=
+              AttributeNamePath("_key", resMonitor));
+  ASSERT_FALSE(AttributeNamePath("_key", resMonitor) ==
+               AttributeNamePath("_from", resMonitor));
+  ASSERT_TRUE(AttributeNamePath("_key", resMonitor) !=
+              AttributeNamePath("_from", resMonitor));
 
-  ASSERT_TRUE(AttributeNamePath("_key") == AttributeNamePath("_key"));
-  ASSERT_FALSE(AttributeNamePath("_key") != AttributeNamePath("_key"));
-  ASSERT_TRUE(AttributeNamePath("_key") != AttributeNamePath("_id"));
-  ASSERT_FALSE(AttributeNamePath("_key") == AttributeNamePath("_id"));
-  ASSERT_FALSE(AttributeNamePath("_id") == AttributeNamePath("_key"));
-  ASSERT_TRUE(AttributeNamePath("_id") != AttributeNamePath("_key"));
+  ASSERT_TRUE(AttributeNamePath("_key", resMonitor) ==
+              AttributeNamePath("_key", resMonitor));
+  ASSERT_FALSE(AttributeNamePath("_key", resMonitor) !=
+               AttributeNamePath("_key", resMonitor));
+  ASSERT_TRUE(AttributeNamePath("_key", resMonitor) !=
+              AttributeNamePath("_id", resMonitor));
+  ASSERT_FALSE(AttributeNamePath("_key", resMonitor) ==
+               AttributeNamePath("_id", resMonitor));
+  ASSERT_FALSE(AttributeNamePath("_id", resMonitor) ==
+               AttributeNamePath("_key", resMonitor));
+  ASSERT_TRUE(AttributeNamePath("_id", resMonitor) !=
+              AttributeNamePath("_key", resMonitor));
 
-  ASSERT_TRUE(AttributeNamePath(std::vector<std::string>{"a", "b"}) ==
-              AttributeNamePath(std::vector<std::string>{"a", "b"}));
+  auto anpAB = createAttributeNamePath({"a", "b"}, resMonitor);
+  ASSERT_TRUE(anpAB == anpAB);
 
-  ASSERT_FALSE(AttributeNamePath(std::vector<std::string>{"b", "a"}) ==
-               AttributeNamePath(std::vector<std::string>{"a", "b"}));
+  auto anpBA = createAttributeNamePath({"b", "a"}, resMonitor);
+  ASSERT_FALSE(anpAB == anpBA);
 
-  ASSERT_FALSE(AttributeNamePath(std::vector<std::string>{"b"}) ==
-               AttributeNamePath(std::vector<std::string>{"a", "b"}));
+  auto anpB = createAttributeNamePath({"b"}, resMonitor);
+  ASSERT_FALSE(anpB == anpAB);
 
-  ASSERT_FALSE(AttributeNamePath(std::vector<std::string>{"a"}) ==
-               AttributeNamePath(std::vector<std::string>{"a", "b"}));
+  auto anpA = createAttributeNamePath({"a"}, resMonitor);
+  ASSERT_FALSE(anpA == anpAB);
 }
 
 TEST(AttributeNamePathTest, less) {
-  ASSERT_FALSE(AttributeNamePath("_id") < AttributeNamePath("_id"));
-  ASSERT_TRUE(AttributeNamePath("_id") < AttributeNamePath("_key"));
-  ASSERT_TRUE(AttributeNamePath("_from") < AttributeNamePath("_key"));
-  ASSERT_FALSE(AttributeNamePath("_key") < AttributeNamePath("_from"));
-  ASSERT_FALSE(AttributeNamePath("_key") < AttributeNamePath("_key"));
-  ASSERT_FALSE(AttributeNamePath("_key") < AttributeNamePath("_id"));
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+  ASSERT_FALSE(AttributeNamePath("_id", resMonitor) <
+               AttributeNamePath("_id", resMonitor));
+  ASSERT_TRUE(AttributeNamePath("_id", resMonitor) <
+              AttributeNamePath("_key", resMonitor));
+  ASSERT_TRUE(AttributeNamePath("_from", resMonitor) <
+              AttributeNamePath("_key", resMonitor));
+  ASSERT_FALSE(AttributeNamePath("_key", resMonitor) <
+               AttributeNamePath("_from", resMonitor));
+  ASSERT_FALSE(AttributeNamePath("_key", resMonitor) <
+               AttributeNamePath("_key", resMonitor));
+  ASSERT_FALSE(AttributeNamePath("_key", resMonitor) <
+               AttributeNamePath("_id", resMonitor));
 
-  ASSERT_FALSE(AttributeNamePath("a") < AttributeNamePath("a"));
-  ASSERT_TRUE(AttributeNamePath("a") < AttributeNamePath("b"));
-  ASSERT_TRUE(AttributeNamePath("A") < AttributeNamePath("a"));
-  ASSERT_FALSE(AttributeNamePath("A") < AttributeNamePath("A"));
+  ASSERT_FALSE(AttributeNamePath("a", resMonitor) <
+               AttributeNamePath("a", resMonitor));
+  ASSERT_TRUE(AttributeNamePath("a", resMonitor) <
+              AttributeNamePath("b", resMonitor));
+  ASSERT_TRUE(AttributeNamePath("A", resMonitor) <
+              AttributeNamePath("a", resMonitor));
+  ASSERT_FALSE(AttributeNamePath("A", resMonitor) <
+               AttributeNamePath("A", resMonitor));
 
-  ASSERT_FALSE(AttributeNamePath(std::vector<std::string>{"a", "b"}) <
-               AttributeNamePath(std::vector<std::string>{"a", "b"}));
+  ASSERT_FALSE(createAttributeNamePath({"a", "b"}, resMonitor) <
+               createAttributeNamePath({"a", "b"}, resMonitor));
 
-  ASSERT_FALSE(AttributeNamePath(std::vector<std::string>{"b", "a"}) <
-               AttributeNamePath(std::vector<std::string>{"a", "b"}));
+  ASSERT_FALSE(createAttributeNamePath({"b", "a"}, resMonitor) <
+               createAttributeNamePath({"a", "b"}, resMonitor));
 
-  ASSERT_TRUE(AttributeNamePath(std::vector<std::string>{"a", "b"}) <
-              AttributeNamePath(std::vector<std::string>{"b", "a"}));
+  ASSERT_TRUE(createAttributeNamePath({"a", "b"}, resMonitor) <
+              createAttributeNamePath({"b", "a"}, resMonitor));
 
-  ASSERT_FALSE(AttributeNamePath(std::vector<std::string>{"b"}) <
-               AttributeNamePath(std::vector<std::string>{"a", "b"}));
+  ASSERT_FALSE(createAttributeNamePath({"b"}, resMonitor) <
+               createAttributeNamePath({"a", "b"}, resMonitor));
 
-  ASSERT_TRUE(AttributeNamePath(std::vector<std::string>{"a", "b"}) <
-              AttributeNamePath(std::vector<std::string>{"b"}));
+  ASSERT_TRUE(createAttributeNamePath({"a", "b"}, resMonitor) <
+              createAttributeNamePath({"b"}, resMonitor));
 
-  ASSERT_TRUE(AttributeNamePath(std::vector<std::string>{"a"}) <
-              AttributeNamePath(std::vector<std::string>{"a", "b"}));
+  ASSERT_TRUE(createAttributeNamePath({"a"}, resMonitor) <
+              createAttributeNamePath({"a", "b"}, resMonitor));
 
-  ASSERT_FALSE(AttributeNamePath(std::vector<std::string>{"a", "b"}) <
-               AttributeNamePath(std::vector<std::string>{"a"}));
+  ASSERT_FALSE(createAttributeNamePath({"a", "b"}, resMonitor) <
+               createAttributeNamePath({"a"}, resMonitor));
 }
 
 TEST(AttributeNamePathTest, reverse) {
-  ASSERT_EQ(AttributeNamePath("abc"), AttributeNamePath("abc").reverse());
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+  ASSERT_EQ(AttributeNamePath("abc", resMonitor),
+            AttributeNamePath("abc", resMonitor).reverse());
 
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"b", "a"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b"}).reverse());
+  ASSERT_EQ(createAttributeNamePath({"b", "a"}, resMonitor),
+            createAttributeNamePath({"a", "b"}, resMonitor).reverse());
 
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "a"}),
-            AttributeNamePath(std::vector<std::string>{"a", "a"}).reverse());
+  ASSERT_EQ(createAttributeNamePath({"a", "a"}, resMonitor),
+            createAttributeNamePath({"a", "a"}, resMonitor).reverse());
 
-  ASSERT_EQ(
-      AttributeNamePath(std::vector<std::string>{"ab", "cde", "fgh", "ihj"}),
-      AttributeNamePath(std::vector<std::string>{"ihj", "fgh", "cde", "ab"})
-          .reverse());
+  ASSERT_EQ(createAttributeNamePath({"ab", "cde", "fgh", "ihj"}, resMonitor),
+            createAttributeNamePath({"ihj", "fgh", "cde", "ab"}, resMonitor)
+                .reverse());
 }
 
 TEST(AttributeNamePathTest, shortenTo) {
-  ASSERT_EQ(AttributeNamePath("abc"), AttributeNamePath("abc").shortenTo(10));
-  ASSERT_EQ(AttributeNamePath("abc"), AttributeNamePath("abc").shortenTo(2));
-  ASSERT_EQ(AttributeNamePath("abc"), AttributeNamePath("abc").shortenTo(1));
-  ASSERT_EQ(AttributeNamePath(), AttributeNamePath("abc").shortenTo(0));
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+  ASSERT_EQ(AttributeNamePath("abc", resMonitor),
+            AttributeNamePath("abc", resMonitor).shortenTo(10));
+  ASSERT_EQ(AttributeNamePath("abc", resMonitor),
+            AttributeNamePath("abc", resMonitor).shortenTo(2));
+  ASSERT_EQ(AttributeNamePath("abc", resMonitor),
+            AttributeNamePath("abc", resMonitor).shortenTo(1));
+  ASSERT_EQ(AttributeNamePath(resMonitor),
+            AttributeNamePath("abc", resMonitor).shortenTo(0));
 
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
-                .shortenTo(0));
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
-                .shortenTo(1));
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
-                .shortenTo(2));
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
-                .shortenTo(3));
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
-                .shortenTo(4));
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
-                .shortenTo(5));
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
+  ASSERT_EQ(
+      createAttributeNamePath({}, resMonitor),
+      createAttributeNamePath({"a", "b", "c", "d"}, resMonitor).shortenTo(0));
+  ASSERT_EQ(
+      createAttributeNamePath({"a"}, resMonitor),
+      createAttributeNamePath({"a", "b", "c", "d"}, resMonitor).shortenTo(1));
+  ASSERT_EQ(
+      createAttributeNamePath({"a", "b"}, resMonitor),
+      createAttributeNamePath({"a", "b", "c", "d"}, resMonitor).shortenTo(2));
+  ASSERT_EQ(
+      createAttributeNamePath({"a", "b", "c"}, resMonitor),
+      createAttributeNamePath({"a", "b", "c", "d"}, resMonitor).shortenTo(3));
+  ASSERT_EQ(
+      createAttributeNamePath({"a", "b", "c", "d"}, resMonitor),
+      createAttributeNamePath({"a", "b", "c", "d"}, resMonitor).shortenTo(4));
+  ASSERT_EQ(
+      createAttributeNamePath({"a", "b", "c", "d"}, resMonitor),
+      createAttributeNamePath({"a", "b", "c", "d"}, resMonitor).shortenTo(5));
+  ASSERT_EQ(createAttributeNamePath({"a", "b", "c", "d"}, resMonitor),
+            createAttributeNamePath({"a", "b", "c", "d"}, resMonitor)
                 .shortenTo(1000));
 }
 
 TEST(AttributeNamePathTest, commonPrefixLength) {
-  ASSERT_EQ(1, AttributeNamePath::commonPrefixLength(AttributeNamePath("abc"),
-                                                     AttributeNamePath("abc")));
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+  ASSERT_EQ(1, AttributeNamePath::commonPrefixLength(
+                   AttributeNamePath("abc", resMonitor),
+                   AttributeNamePath("abc", resMonitor)));
   ASSERT_EQ(0, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath("abc"), AttributeNamePath("piff")));
-  ASSERT_EQ(0, AttributeNamePath::commonPrefixLength(AttributeNamePath("a"),
-                                                     AttributeNamePath("b")));
+                   AttributeNamePath("abc", resMonitor),
+                   AttributeNamePath("piff", resMonitor)));
+  ASSERT_EQ(0, AttributeNamePath::commonPrefixLength(
+                   AttributeNamePath("a", resMonitor),
+                   AttributeNamePath("b", resMonitor)));
 
   ASSERT_EQ(1, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"a"}),
-                   AttributeNamePath(std::vector<std::string>{"a", "b"})));
+                   createAttributeNamePath({"a"}, resMonitor),
+                   createAttributeNamePath({"a", "b"}, resMonitor)));
   ASSERT_EQ(1, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"a"}),
-                   AttributeNamePath(std::vector<std::string>{"a", "b", "c"})));
+                   createAttributeNamePath({"a"}, resMonitor),
+                   createAttributeNamePath({"a", "b", "c"}, resMonitor)));
   ASSERT_EQ(2, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"a", "b"}),
-                   AttributeNamePath(std::vector<std::string>{"a", "b"})));
+                   createAttributeNamePath({"a", "b"}, resMonitor),
+                   createAttributeNamePath({"a", "b"}, resMonitor)));
   ASSERT_EQ(2, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"a", "b"}),
-                   AttributeNamePath(std::vector<std::string>{"a", "b", "c"})));
+                   createAttributeNamePath({"a", "b"}, resMonitor),
+                   createAttributeNamePath({"a", "b", "c"}, resMonitor)));
   ASSERT_EQ(1, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"a", "b"}),
-                   AttributeNamePath(std::vector<std::string>{"a", "c", "b"})));
+                   createAttributeNamePath({"a", "b"}, resMonitor),
+                   createAttributeNamePath({"a", "c", "b"}, resMonitor)));
   ASSERT_EQ(0, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"a", "b"}),
-                   AttributeNamePath(std::vector<std::string>{"z", "a", "b"})));
+                   createAttributeNamePath({"a", "b"}, resMonitor),
+                   createAttributeNamePath({"z", "a", "b"}, resMonitor)));
   ASSERT_EQ(0, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"a"}),
-                   AttributeNamePath(std::vector<std::string>{"b", "a"})));
+                   createAttributeNamePath({"a"}, resMonitor),
+                   createAttributeNamePath({"b", "a"}, resMonitor)));
 
   ASSERT_EQ(1, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"a", "b"}),
-                   AttributeNamePath(std::vector<std::string>{"a"})));
+                   createAttributeNamePath({"a", "b"}, resMonitor),
+                   createAttributeNamePath({"a"}, resMonitor)));
   ASSERT_EQ(1, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"a", "b", "c"}),
-                   AttributeNamePath(std::vector<std::string>{"a"})));
+                   createAttributeNamePath({"a", "b", "c"}, resMonitor),
+                   createAttributeNamePath({"a"}, resMonitor)));
   ASSERT_EQ(2, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"a", "b", "c"}),
-                   AttributeNamePath(std::vector<std::string>{"a", "b"})));
+                   createAttributeNamePath({"a", "b", "c"}, resMonitor),
+                   createAttributeNamePath({"a", "b"}, resMonitor)));
   ASSERT_EQ(1, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"a", "c", "b"}),
-                   AttributeNamePath(std::vector<std::string>{"a", "b"})));
+                   createAttributeNamePath({"a", "c", "b"}, resMonitor),
+                   createAttributeNamePath({"a", "b"}, resMonitor)));
   ASSERT_EQ(0, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"z", "a", "b"}),
-                   AttributeNamePath(std::vector<std::string>{"a", "b"})));
+                   createAttributeNamePath({"z", "a", "b"}, resMonitor),
+                   createAttributeNamePath({"a", "b"}, resMonitor)));
   ASSERT_EQ(0, AttributeNamePath::commonPrefixLength(
-                   AttributeNamePath(std::vector<std::string>{"b", "a"}),
-                   AttributeNamePath(std::vector<std::string>{"a"})));
+                   createAttributeNamePath({"b", "a"}, resMonitor),
+                   createAttributeNamePath({"a"}, resMonitor)));
 }

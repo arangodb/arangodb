@@ -945,16 +945,30 @@ bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
         !traversal->isUsedAsSatellite()) {
       // On cluster community variant we will also need the ID value on the
       // coordinator to uniquely identify edges
-      attributes.emplace(arangodb::StaticStrings::IdString);
+      arangodb::aql::AttributeNamePath idElement = {
+          arangodb::StaticStrings::IdString,
+          traversal->plan()->getAst()->query().resourceMonitor()};
+      attributes.emplace(std::move(idElement));
       // Also the community variant needs to transport weight, as the
       // coordinator will do the searching.
       if (traversal->options()->mode ==
           arangodb::traverser::TraverserOptions::Order::WEIGHTED) {
-        attributes.emplace(traversal->options()->weightAttribute);
+        arangodb::aql::AttributeNamePath weightElement = {
+            traversal->options()->weightAttribute,
+            traversal->plan()->getAst()->query().resourceMonitor()};
+        attributes.emplace(std::move(weightElement));
       }
     }
-    attributes.emplace(arangodb::StaticStrings::FromString);
-    attributes.emplace(arangodb::StaticStrings::ToString);
+
+    arangodb::aql::AttributeNamePath fromElement = {
+        arangodb::StaticStrings::FromString,
+        traversal->plan()->getAst()->query().resourceMonitor()};
+    attributes.emplace(std::move(fromElement));
+
+    arangodb::aql::AttributeNamePath toElement = {
+        arangodb::StaticStrings::ToString,
+        traversal->plan()->getAst()->query().resourceMonitor()};
+    attributes.emplace(std::move(toElement));
 
     if (attributes.size() <= maxProjections) {
       traversal->setEdgeProjections(
@@ -1023,7 +1037,8 @@ bool optimizeTraversalPathVariable(
               ExecutionNode::castTo<CalculationNode*>(current)->expression();
           AstNode const* node = exp->node();
           if (!Ast::getReferencedAttributesRecursive(
-                  node, variable, /*expectedAttribute*/ "", attributes)) {
+                  node, variable, /*expectedAttribute*/ "", attributes,
+                  current->plan()->getAst()->query().resourceMonitor())) {
             // full path variable is used, or accessed in a way that we don't
             // understand, e.g. "p" or "p[0]" or "p[*]..."
             return false;
@@ -1051,16 +1066,18 @@ bool optimizeTraversalPathVariable(
   bool producePathsWeights = false;
 
   for (auto const& it : attributes) {
-    TRI_ASSERT(!it.path.empty());
+    TRI_ASSERT(!it._path.empty());
     if (!producePathsVertices &&
-        it.path[0] == StaticStrings::GraphQueryVertices) {
+        it._path[0] == std::string_view{StaticStrings::GraphQueryVertices}) {
       producePathsVertices = true;
     } else if (!producePathsEdges &&
-               it.path[0] == StaticStrings::GraphQueryEdges) {
+               it._path[0] ==
+                   std::string_view{StaticStrings::GraphQueryEdges}) {
       producePathsEdges = true;
     } else if (!producePathsWeights &&
                options->mode == traverser::TraverserOptions::Order::WEIGHTED &&
-               it.path[0] == StaticStrings::GraphQueryWeights) {
+               it._path[0] ==
+                   std::string_view{StaticStrings::GraphQueryWeights}) {
       producePathsWeights = true;
     }
   }
@@ -2182,7 +2199,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
           // add the post-SORT
           SortElementVector sortElements;
           for (auto const& v : collectNode->groupVariables()) {
-            sortElements.emplace_back(v.outVar, true);
+            sortElements.emplace_back(SortElement{
+                v.outVar, true, plan->getAst()->query().resourceMonitor()});
           }
 
           auto sortNode =
@@ -2220,7 +2238,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // add the post-SORT
         SortElementVector sortElements;
         for (auto const& v : newCollectNode->groupVariables()) {
-          sortElements.emplace_back(v.outVar, true);
+          sortElements.emplace_back(SortElement{
+              v.outVar, true, plan->getAst()->query().resourceMonitor()});
         }
 
         auto sortNode =
@@ -2268,7 +2287,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     if (!groupVariables.empty()) {
       SortElementVector sortElements;
       for (auto const& v : groupVariables) {
-        sortElements.emplace_back(v.inVar, true);
+        sortElements.emplace_back(SortElement{
+            v.inVar, true, plan->getAst()->query().resourceMonitor()});
       }
 
       auto sortNode =
@@ -3810,12 +3830,11 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
   } else if (at->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
     // Really? Yes, the & below is correct.
     return &ExecutionNode::castTo<IResearchViewNode const*>(at)->vocbase();
-  } else {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "Cannot determine vocbase for execution node.");
-    return nullptr;
   }
+
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "Cannot determine vocbase for execution node.");
 }
 
 // Sets up a Gather node for scatterInClusterRule.
@@ -3864,8 +3883,11 @@ auto insertGatherNode(
       // also check if we actually need to bother about the sortedness of the
       // result, or if we use the index for filtering only
       if (first->isSorted() && idxNode->needsGatherNodeSort()) {
-        for (auto const& path : first->fieldNames()) {
-          elements.emplace_back(sortVariable, isSortAscending, path);
+        for (auto const& path : first->trackedFieldNames(
+                 plan.getAst()->query().resourceMonitor())) {
+          elements.emplace_back(
+              SortElement{sortVariable, isSortAscending, path,
+                          plan.getAst()->query().resourceMonitor()});
         }
         for (auto const& it : allIndexes) {
           if (first != it) {
@@ -3885,7 +3907,7 @@ auto insertGatherNode(
         gatherNode->elements(elements);
       }
       return gatherNode;
-    } break;
+    }
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE:
@@ -3909,12 +3931,14 @@ auto insertGatherNode(
 
       gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode,
                                                parallelism);
-    } break;
+      break;
+    }
     default: {
       gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(),
                                                GatherNode::SortMode::Default);
 
-    } break;
+      break;
+    }
   }
 
   auto it = subqueries.find(node);
@@ -4189,7 +4213,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
           "Cannot distribute " + node->getTypeString() + ".");
-    } break;
+    }
   }
 
   TRI_ASSERT(collection != nullptr);
@@ -6377,6 +6401,9 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
     bool canOptimize = true;
 
     ExecutionNode* current = ksp->getFirstParent();
+    arangodb::ResourceMonitor& resMonitor =
+        plan->getAst()->query().resourceMonitor();
+
     while (current != nullptr && canOptimize) {
       switch (current->getType()) {
         case EN::CALCULATION: {
@@ -6388,7 +6415,8 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
                 ExecutionNode::castTo<CalculationNode*>(current)->expression();
             AstNode const* node = exp->node();
             if (!Ast::getReferencedAttributesRecursive(
-                    node, variable, /*expectedAttributes*/ "", attributes)) {
+                    node, variable, /*expectedAttributes*/ "", attributes,
+                    resMonitor)) {
               // full path variable is used, or accessed in a way that we don't
               // understand, e.g. "p" or "p[0]" or "p[*]..."
               canOptimize = false;
@@ -6412,7 +6440,7 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
 
     if (canOptimize) {
       bool produceVertices =
-          attributes.contains(StaticStrings::GraphQueryVertices);
+          attributes.contains({StaticStrings::GraphQueryVertices, resMonitor});
 
       if (!produceVertices) {
         auto* options = ksp->options();
@@ -7172,23 +7200,19 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node,
         return true;
       }
       return false;
-      break;
     // only DISTANCE is allowed with <=, <, >=, >
     case NODE_TYPE_OPERATOR_BINARY_LE:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(0), node->getMember(1), true);
-      break;
     case NODE_TYPE_OPERATOR_BINARY_LT:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(0), node->getMember(1), false);
-      break;
     case NODE_TYPE_OPERATOR_BINARY_GE:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(1), node->getMember(0), true);
     case NODE_TYPE_OPERATOR_BINARY_GT:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(1), node->getMember(0), false);
-      break;
     default:
       return false;
   }
@@ -8884,13 +8908,14 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         setDistributeVariable = [shortestPathNode](Variable* var) {
           shortestPathNode->setDistributeVariable(var);
         };
-      } break;
+        break;
+      }
       default: {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL,
             "Cannot distribute " + targetNode->getTypeString() + ".");
-      } break;
+      }
     }
     TRI_ASSERT(inputVariable != nullptr);
     TRI_ASSERT(collection != nullptr);

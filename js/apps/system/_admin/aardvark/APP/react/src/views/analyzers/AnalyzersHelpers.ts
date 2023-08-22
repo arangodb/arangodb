@@ -18,7 +18,8 @@ export const TYPE_TO_LABEL_MAP: {
   pipeline: "Pipeline",
   geojson: "GeoJSON",
   geopoint: "GeoPoint",
-  geo_s2: "Geo S2"
+  geo_s2: "Geo S2",
+  minhash: "Min Hash"
 };
 
 export const TYPE_TO_INITIAL_VALUES_MAP: {
@@ -152,5 +153,23 @@ export const TYPE_TO_INITIAL_VALUES_MAP: {
       type: "shape",
       format: "latLngDouble"
     }
+  },
+  minhash: {
+    type: "minhash",
+    properties: {
+      analyzer: {
+        type: "identity"
+      },
+      numHashes: undefined
+    }
   }
 };
+
+export const ANALYZER_TYPE_OPTIONS = Object.keys(TYPE_TO_LABEL_MAP).map(
+  type => {
+    return {
+      value: type,
+      label: TYPE_TO_LABEL_MAP[type as AnalyzerTypes]
+    };
+  }
+);

@@ -80,7 +80,7 @@ RestStatus RestAuthHandler::execute() {
         // this case!
       }
 
-      generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
+      generateResult(rest::ResponseCode::OK, resultBuilder.slice());
     }
     return RestStatus::DONE;
   }
@@ -102,8 +102,8 @@ RestStatus RestAuthHandler::execute() {
     return badRequest();
   }
 
-  std::string const username = usernameSlice.copyString();
-  std::string const password = passwordSlice.copyString();
+  std::string username = usernameSlice.copyString();
+  std::string password = passwordSlice.copyString();
 
   bool isValid = false;
 
@@ -127,7 +127,7 @@ RestStatus RestAuthHandler::execute() {
     }
 
     isValid = true;
-    generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
+    generateResult(rest::ResponseCode::OK, resultBuilder.slice());
   } else {
     // mop: rfc 2616 10.4.2 (if credentials wrong 401)
     generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED,

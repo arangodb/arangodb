@@ -53,12 +53,18 @@
     {
       "hidden": true,
       "name": "pr",
-      "inherits": [ "pr-base", "x86_64" ]
+      "inherits": [
+        "pr-base",
+        "x86_64"
+      ]
     },
     {
       "hidden": true,
       "name": "pr-arm",
-      "inherits": [ "pr-base", "arm" ]
+      "inherits": [
+        "pr-base",
+        "arm"
+      ]
     },
     {
       "hidden": true,
@@ -100,8 +106,7 @@
       "inherits": "release-base",
       "displayName": "Build ArangoDB Community Edition (Release Build)",
       "binaryDir": "${sourceDir}/build-presets/${presetName}",
-      "cacheVariables": {
-      }
+      "cacheVariables": {}
     },
     {
       "name": "enterprise",
@@ -113,7 +118,10 @@
     },
     {
       "name": "community-developer",
-      "inherits": [ "maintainer", "community" ],
+      "inherits": [
+        "maintainer",
+        "community"
+      ],
       "displayName": "Build ArangoDB Community Edition (Developer Build)",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -124,22 +132,36 @@
       }
     },
     {
-      "name": "community-pr",
+      "name": "community-pr-non-maintainer",
       "inherits": [
         "pr",
-        "maintainer",
         "community"
       ],
       "displayName": "PR Build ArangoDB Community Edition"
     },
     {
-      "name": "enterprise-pr",
+      "name": "community-pr",
+      "inherits": [
+        "maintainer",
+        "community-pr-non-maintainer"
+      ],
+      "displayName": "PR Build ArangoDB Community Edition Maintainer Mode"
+    },
+    {
+      "name": "enterprise-pr-non-maintainer",
       "inherits": [
         "pr",
-        "maintainer",
         "enterprise"
       ],
       "displayName": "PR Build ArangoDB Enterprise Edition"
+    },
+    {
+      "name": "enterprise-pr",
+      "inherits": [
+        "maintainer",
+        "enterprise-pr-non-maintainer"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode"
     },
     {
       "name": "community-pr-arm",
@@ -152,7 +174,10 @@
     },
     {
       "name": "enterprise-developer",
-      "inherits": [ "maintainer", "enterprise"],
+      "inherits": [
+        "maintainer",
+        "enterprise"
+      ],
       "displayName": "Build ArangoDB Enterprise Edition (Developer Build)",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -163,32 +188,50 @@
     },
     {
       "name": "community-developer-tsan",
-      "inherits": [ "tsan", "community-developer" ],
+      "inherits": [
+        "tsan",
+        "community-developer"
+      ],
       "displayName": "Build ArangoDB Community Edition (TSAN Build)"
     },
     {
       "name": "enterprise-developer-tsan",
-      "inherits": [ "tsan", "enterprise-developer" ],
+      "inherits": [
+        "tsan",
+        "enterprise-developer"
+      ],
       "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)"
     },
     {
       "name": "community-developer-asan-ubsan",
-      "inherits": [ "asan-ubsan", "community-developer" ],
+      "inherits": [
+        "asan-ubsan",
+        "community-developer"
+      ],
       "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)"
     },
     {
       "name": "enterprise-developer-asan-ubsan",
-      "inherits": [ "asan-ubsan", "enterprise-developer" ],
+      "inherits": [
+        "asan-ubsan",
+        "enterprise-developer"
+      ],
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
     },
     {
       "name": "community-developer-coverage",
-      "inherits": [ "gcov", "community-developer" ],
+      "inherits": [
+        "gcov",
+        "community-developer"
+      ],
       "displayName": "Build ArangoDB Community Edition (Coverage Build)"
     },
     {
       "name": "enterprise-developer-coverage",
-      "inherits": [ "gcov", "enterprise-developer" ],
+      "inherits": [
+        "gcov",
+        "enterprise-developer"
+      ],
       "displayName": "Build ArangoDB Enterprise Edition (Coverage Build)"
     }
   ],
@@ -214,8 +257,16 @@
       "configurePreset": "community-pr"
     },
     {
+      "name": "community-pr-non-maintainer",
+      "configurePreset": "community-pr-non-maintainer"
+    },
+    {
       "name": "enterprise-pr",
       "configurePreset": "enterprise-pr"
+    },
+    {
+      "name": "enterprise-pr-non-maintainer",
+      "configurePreset": "enterprise-pr-non-maintainer"
     },
     {
       "name": "community-pr-arm",
@@ -263,6 +314,5 @@
       "name": "enterprise-pr",
       "configurePreset": "enterprise-pr"
     }
-
   ]
 }

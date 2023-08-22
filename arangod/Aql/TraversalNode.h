@@ -286,10 +286,14 @@ class TraversalNode : public virtual GraphNode {
   std::vector<AstNode const*> _globalVertexConditions;
 
   /// @brief List of all depth specific conditions for edges
+  /// Note about memory: No need to track memory here separately. Inner
+  /// AstNodes and ExecutionNodes are already been kept into account.
   std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>>
       _edgeConditions;
 
   /// @brief List of all depth specific conditions for vertices
+  /// Note about memory: No need to track memory here separately.
+  /// AstNodes are already been kept into account.
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
 
   /// @brief the hashSet for variables used in pruning

@@ -1,7 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global document, frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, JSONEditor */
-/* global numeral */
+/* global frontendConfig, templateEngine */
 
 (function () {
   'use strict';

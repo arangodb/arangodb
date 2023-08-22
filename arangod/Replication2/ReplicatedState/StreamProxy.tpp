@@ -136,17 +136,18 @@ ProducerStreamProxy<S>::ProducerStreamProxy(
 }
 
 template<typename S>
-auto ProducerStreamProxy<S>::insert(const EntryType& v) -> LogIndex {
+auto ProducerStreamProxy<S>::insert(EntryType const& v, bool waitForSync)
+    -> LogIndex {
   auto guard = this->_logMethods.getLockedGuard();
   if (auto& methods = guard.get(); methods != nullptr) [[likely]] {
-    return methods->insert(serialize(v));
+    return methods->insert(serialize(v), waitForSync);
   } else {
     this->throwResignedException();
   }
 }
 
 template<typename S>
-auto ProducerStreamProxy<S>::serialize(const EntryType& v) -> LogPayload {
+auto ProducerStreamProxy<S>::serialize(EntryType const& v) -> LogPayload {
   auto builder = velocypack::Builder();
   std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
   return LogPayload{*builder.steal()};

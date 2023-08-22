@@ -84,6 +84,22 @@ function getInstanceInfo() {
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
+exports.clearAllFailurePoints = function () {
+  const old = db._name();
+  try {
+    for (const server of exports.getDBServers()) {
+      exports.debugClearFailAt(exports.getEndpointById(server.id));
+    }
+    for (const server of exports.getCoordinators()) {
+      exports.debugClearFailAt(exports.getEndpointById(server.id));
+    }
+  } finally {
+    // need to restore original database, as debugFailAt() can 
+    // change into a different database...
+    db._useDatabase(old);
+  }
+};
+
 /// @brief set failure point
 exports.debugCanUseFailAt = function (endpoint) {
   const primaryEndpoint = arango.getEndpoint();
@@ -263,7 +279,7 @@ const runShell = function(args, prefix) {
   return result.pid;
 };
 
-const buildCode = function(key, command, cn, duration) {
+const buildCode = function(dbname, key, command, cn, duration) {
   let file = fs.getTempFile() + "-" + key;
   fs.write(file, `
 (function() {
@@ -272,8 +288,12 @@ require('internal').SetGlobalExecutionDeadlineTo((${duration} + 180) * 1000);
 let tries = 0;
 while (true) {
   if (++tries % 3 === 0) {
-    if (db['${cn}'].exists('stop')) {
-      break;
+    try {
+      if (db['${cn}'].exists('stop')) {
+        break;
+      }
+    } catch (err) {
+      // the operation may actually fail because of failure points
     }
   }
   ${command}
@@ -292,6 +312,7 @@ while (++saveTries < 100) {
   `);
 
   let args = {'javascript.execute': file};
+  args["--server.database"] = dbname;
   let pid = runShell(args, file);
   debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
   return { key, file, pid };
@@ -310,7 +331,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
     tests.forEach(function (test) {
       let key = test[0];
       let code = test[1];
-      let client = buildCode(key, code, cn, duration);
+      let client = buildCode(db._name(), key, code, cn, duration);
       client.done = false;
       client.failed = true; // assume the worst
       clients.push(client);
@@ -343,8 +364,11 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
       }
     }
 
+    // clear failure points
+    debug("clearing failure points");
+    exports.clearAllFailurePoints();
+  
     debug("stopping all test clients");
-
     // broad cast stop signal
     assertFalse(db[cn].exists("stop"));
     let saveTries = 0;
@@ -611,4 +635,27 @@ exports.agency = {
 
 exports.uniqid = function  () {
   return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
+};
+
+exports.AQL_EXPLAIN = function(query, bindVars, options) {
+  let stmt = db._createStatement(query);
+  if (typeof bindVars === "object") {
+    stmt.bind(bindVars);
+  }
+  if (typeof options === "object") {
+    stmt.setOptions(options);
+  }
+  return stmt.explain();
+};
+
+exports.AQL_EXECUTE = function(query, bindVars, options) {
+  let cursor = db._query(query, bindVars, options);
+  let extra = cursor.getExtra();
+  return {
+    json: cursor.toArray(),
+    stats: extra.stats,
+    warnings: extra.warnings,
+    profile: extra.profile,
+    plan: extra.plan,
+    cached: cursor.cached};
 };

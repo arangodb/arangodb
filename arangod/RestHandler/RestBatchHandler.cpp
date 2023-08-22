@@ -186,9 +186,8 @@ bool RestBatchHandler::executeNextHandler() {
   LOG_TOPIC("910e9", TRACE, arangodb::Logger::REPLICATION)
       << "part header is: " << std::string(headerStart, headerLength);
 
-  auto request =
-      std::make_unique<HttpRequest>(_request->connectionInfo(), /*messageId*/ 1,
-                                    /*allowMethodOverride*/ false);
+  auto request = std::make_unique<HttpRequest>(_request->connectionInfo(),
+                                               /*messageId*/ 1);
   if (0 < headerLength) {
     auto buff = std::make_unique<char[]>(headerLength + 1);
     memcpy(buff.get(), headerStart, headerLength);

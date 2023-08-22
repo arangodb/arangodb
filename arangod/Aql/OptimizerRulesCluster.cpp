@@ -34,8 +34,10 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/MultipleRemoteModificationNode.h"
 #include "Aql/Optimizer.h"
+#include "Aql/QueryContext.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/TransactionState.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -446,6 +448,11 @@ bool substituteClusterMultipleDocumentInsertOperations(
     Optimizer* opt, ExecutionPlan* plan, OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, {EN::INSERT}, false);
+
+  if (plan->getAst()->query().trxForOptimization().state()->hasHint(
+          transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    return false;
+  }
 
   if (nodes.size() != 1) {
     return false;

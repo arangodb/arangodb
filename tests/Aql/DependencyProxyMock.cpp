@@ -49,7 +49,7 @@ DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(
       _itemsToReturn(),
       _numFetchBlockCalls(0),
       _monitor(monitor),
-      _itemBlockManager(_monitor, SerializationFormat::SHADOWROWS) {}
+      _itemBlockManager(_monitor) {}
 
 /* * * * * * * * * * * * *
  * Test helper functions
@@ -145,7 +145,7 @@ MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
     arangodb::ResourceMonitor& monitor, RegIdSet const& inputRegisters,
     ::arangodb::aql::RegisterCount nrRegisters, size_t nrDeps)
     : DependencyProxy<passBlocksThrough>({}, nrRegisters),
-      _itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {
+      _itemBlockManager(monitor) {
   _dependencyMocks.reserve(nrDeps);
   for (size_t i = 0; i < nrDeps; ++i) {
     _dependencyMocks.emplace_back(

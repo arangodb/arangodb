@@ -93,8 +93,8 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->_lastHeaderValue.clear();
   me->_origin.clear();
   me->_url.clear();
-  me->_request = std::make_unique<HttpRequest>(
-      me->_connectionInfo, /*messageId*/ 1, me->_allowMethodOverride);
+  me->_request =
+      std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ 1);
   me->_response.reset();
   me->_lastHeaderWasValue = false;
   me->_shouldKeepAlive = false;
@@ -263,8 +263,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
-      _messageDone(false),
-      _allowMethodOverride(this->_generalServerFeature.allowMethodOverride()) {
+      _messageDone(false) {
   this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
@@ -694,7 +693,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   // add "Server" response header
-  if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
+  if (!seenServerHeader) {
     _header.append(std::string_view("Server: ArangoDB\r\n"));
   }
 

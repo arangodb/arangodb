@@ -103,7 +103,7 @@ shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5
 shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true
 shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
 
-rta_makedata cluster
+rta_makedata sniff cluster 
 
 # Common Tests
 

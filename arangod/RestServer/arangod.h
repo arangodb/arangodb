@@ -58,6 +58,7 @@ class ActionFeature;
 class AuthenticationFeature;
 class BootstrapFeature;
 class CacheManagerFeature;
+class CacheOptionsFeature;
 class CheckVersionFeature;
 class ClusterFeature;
 class ClusterUpgradeFeature;
@@ -197,6 +198,7 @@ using ArangodFeaturesList = TypeList<
     AqlFeature,
     AuthenticationFeature,
     BootstrapFeature,
+    CacheOptionsFeature,
     CacheManagerFeature,
     CheckVersionFeature,
     ClusterFeature,

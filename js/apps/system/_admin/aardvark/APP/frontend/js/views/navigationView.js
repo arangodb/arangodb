@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, templateEngine, $, window, document, sessionStorage, Storage, arangoHelper, frontendConfig, Noty, _ */
+/* global templateEngine, frontendConfig */
 (function () {
   'use strict';
   window.NavigationView = Backbone.View.extend({
@@ -375,29 +373,6 @@
           name: '',
           view: undefined,
           active: false
-        }
-      ],
-      queries: [
-        {
-          name: 'Editor',
-          route: 'query',
-          active: true
-        },
-        {
-          name: 'Running Queries',
-          route: 'queryManagement',
-          params: {
-            active: true
-          },
-          active: undefined
-        },
-        {
-          name: 'Slow Query History',
-          route: 'queryManagement',
-          params: {
-            active: false
-          },
-          active: undefined
         }
       ]
     },

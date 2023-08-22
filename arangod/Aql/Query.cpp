@@ -59,6 +59,8 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
@@ -97,7 +99,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
              std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase(), id),
-      _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
+      _itemBlockManager(_resourceMonitor),
       _queryString(std::move(queryString)),
       _transactionContext(std::move(ctx)),
       _sharedState(std::move(sharedState)),
@@ -314,7 +316,7 @@ void Query::ensureExecutionTime() noexcept {
   }
 }
 
-void Query::prepareQuery(SerializationFormat format) {
+void Query::prepareQuery() {
   try {
     init(/*createProfile*/ true);
 
@@ -354,7 +356,7 @@ void Query::prepareQuery(SerializationFormat format) {
 
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
 
     _plans.push_back(std::move(plan));
 
@@ -513,7 +515,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
         // will throw if it fails
         if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-          prepareQuery(SerializationFormat::SHADOWROWS);
+          prepareQuery();
         }
 
         logAtStart();
@@ -739,7 +741,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
 
     // will throw if it fails
-    prepareQuery(SerializationFormat::SHADOWROWS);
+    prepareQuery();
 
     logAtStart();
 
@@ -1566,8 +1568,13 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   auto const& serverQueryIds = query.serverQueryIds();
   TRI_ASSERT(!serverQueryIds.empty());
 
-  NetworkFeature const& nf =
-      query.vocbase().server().getFeature<NetworkFeature>();
+  auto& server = query.vocbase().server();
+
+  auto* manager = server.getFeature<transaction::ManagerFeature>().manager();
+  // used by hotbackup to prevent commits
+  auto commitGuard = manager->getTransactionCommitGuard();
+
+  NetworkFeature const& nf = server.getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     return futures::makeFuture(Result{TRI_ERROR_SHUTTING_DOWN});
@@ -1654,7 +1661,8 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   }
 
   return futures::collectAll(std::move(futures))
-      .thenValue([](std::vector<futures::Try<Result>>&& results) -> Result {
+      .thenValue([commitGuard = std::move(commitGuard)](
+                     std::vector<futures::Try<Result>>&& results) -> Result {
         for (futures::Try<Result>& tryRes : results) {
           if (tryRes.get().fail()) {
             return std::move(tryRes).get();
