@@ -1,6 +1,13 @@
 devel
 -----
 
+* Updated JavaScript dependencies:
+
+  qs: 6.11.0 -> 6.11.2
+  semver: 7.3.8 -> 7.5.4
+
+  This addresses CVE-2022-25883 in the semver module.
+
 * Remove attribute `dfdb` from response of storage engine API (GET 
   `/_api/engine`). 
 
