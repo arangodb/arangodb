@@ -201,6 +201,8 @@ RestStatus RestMetricsHandler::execute() {
     return makeRedirection(serverId, false);
   }
 
+  _response->setAllowCompression(true);
+
   if (type == metrics::kCDJson) {
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::VPACK);

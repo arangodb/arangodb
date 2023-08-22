@@ -154,6 +154,11 @@ class Version {
   static std::string getEnterpriseBuildRepository();
   static std::string getOskarBuildRepository();
 
+  // get build-id, if set.
+  // intentionally returned by reference, so we can avoid a
+  // copy
+  static std::string const& getBuildId();
+
   // return a server version string
   static std::string getVerboseVersionString();
 
@@ -161,7 +166,7 @@ class Version {
   static std::string getDetailed();
 
   // VelocyPack all data
-  static void getVPack(arangodb::velocypack::Builder&);
+  static void getVPack(velocypack::Builder&);
 
  public:
   static std::map<std::string, std::string> Values;

@@ -18,24 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "BuildId/BuildId.h"
 
-#include "Maskings/AttributeMasking.h"
-#include "Maskings/MaskingFunction.h"
-#include "Maskings/ParseResult.h"
+#include <elf.h>
+#include <link.h>
+#include <string>
 
-namespace arangodb::maskings {
-class RandomStringMask : public MaskingFunction {
- public:
-  static ParseResult<AttributeMasking> create(Path, Maskings*,
-                                              velocypack::Slice def);
+extern char build_id_start[];
+extern char build_id_end;
 
-  explicit RandomStringMask(Maskings* maskings) : MaskingFunction(maskings) {}
+namespace arangodb::build_id {
 
-  void mask(std::string_view data, velocypack::Builder& out,
-            std::string& buffer) const override;
-};
-}  // namespace arangodb::maskings
+constexpr const char* build_id_failed = "";
+
+auto getBuildId() -> std::string_view {
+  auto const* noteMemory = reinterpret_cast<const char*>(&build_id_start);
+  auto const* noteHeader = reinterpret_cast<ElfW(Nhdr) const*>(noteMemory);
+
+  if (noteHeader->n_type == NT_GNU_BUILD_ID) {
+    auto const* buildIdMemory = reinterpret_cast<const char*>(
+        noteMemory + sizeof(ElfW(Nhdr)) + noteHeader->n_namesz);
+    return std::string_view{buildIdMemory, noteHeader->n_descsz};
+  }
+  return std::string_view{build_id_failed};
+}
+
+}  // namespace arangodb::build_id

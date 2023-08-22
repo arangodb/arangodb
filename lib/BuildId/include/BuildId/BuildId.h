@@ -18,24 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+///
+/// The BuildId code itself is generic and activated from the build system
+/// by setting USE_BUILD_ID_READER=On
+///
+/// At the moment build Ids are only supported under elf-linux if the build id
+/// is provided via a note in a ProgramHeader in the ELF information on the
+/// executable.
+///
+/// On linux a little implicit linker script (BuildId.ld) is used to set two
+/// variables build_id_start[] and char build_id_end to the address of the
+/// build-id note in the executable. The variable build_id_end is not
+/// currently used but could be used to guard against out-of-bound reads on
+/// the build-id.
+///
 #pragma once
 
-#include "Maskings/AttributeMasking.h"
-#include "Maskings/MaskingFunction.h"
-#include "Maskings/ParseResult.h"
+#include <string>
 
-namespace arangodb::maskings {
-class RandomStringMask : public MaskingFunction {
- public:
-  static ParseResult<AttributeMasking> create(Path, Maskings*,
-                                              velocypack::Slice def);
+namespace arangodb::build_id {
 
-  explicit RandomStringMask(Maskings* maskings) : MaskingFunction(maskings) {}
+constexpr auto supportsBuildIdReader() -> bool { return USE_BUILD_ID_READER; };
+auto getBuildId() -> std::string_view;
 
-  void mask(std::string_view data, velocypack::Builder& out,
-            std::string& buffer) const override;
-};
-}  // namespace arangodb::maskings
+}  // namespace arangodb::build_id
