@@ -1,9 +1,8 @@
 devel
 -----
 
-* Allow compression content-negotation in agency poll API, so that responses 
-  from the `/_api/agency/poll` API can be sent compressed if the client 
-  supports it.
+* Prepare internal NetwortkFeature to transparently handle gzip-encoded
+  responses.
 
 * Allow compression content-negotation in metrics API, so that responses from
   the metrics API at `/_admin/metrics` can be sent compressed if the client

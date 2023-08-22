@@ -225,8 +225,6 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
                   generateResult(rest::ResponseCode::OK,
                                  std::move(*rb->steal()));
                 }
-                // allow result compression in order to save traffic
-                _response->setAllowCompression(true);
               } else {
                 generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                               TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
