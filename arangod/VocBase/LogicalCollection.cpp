@@ -357,8 +357,20 @@ replication::Version LogicalCollection::replicationVersion() const noexcept {
 }
 
 std::string const& LogicalCollection::distributeShardsLike() const noexcept {
-  TRI_ASSERT(_sharding != nullptr);
-  return _sharding->distributeShardsLike();
+  if (ServerState::instance()->isCoordinator() &&
+      replicationVersion() == replication::Version::TWO) {
+    auto& cf = vocbase().server().getFeature<ClusterFeature>();
+
+    auto myGroup = cf.clusterInfo().getCollectionGroupById(groupID());
+    TRI_ASSERT(!myGroup->collections.empty())
+        << "Collection part of a Group that does not contain collections. Not "
+           "even ourself";
+    LOG_DEVEL << myGroup->collections.begin()->first;
+    return myGroup->collections.begin()->first;
+  } else {
+    TRI_ASSERT(_sharding != nullptr);
+    return _sharding->distributeShardsLike();
+  }
 }
 
 bool LogicalCollection::isSatellite() const noexcept {
