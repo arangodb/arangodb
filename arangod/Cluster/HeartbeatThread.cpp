@@ -1387,6 +1387,50 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     events::DropDatabase(dbName, res, ExecContext::current());
   }
 
+  // loop over all database names we got and create a local database
+  // instance if not yet present:
+  for (auto options : VPackObjectIterator(databases)) {
+    if (!options.value.isObject()) {
+      continue;
+    }
+
+    TRI_ASSERT(options.value.get("name").isString());
+    CreateDatabaseInfo info(server(), ExecContext::current());
+    // set strict validation for database options to false.
+    // we don't want the heartbeat thread to fail here in case some
+    // invalid settings are present
+    info.strictValidation(false);
+    // when loading we allow system database names
+    auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());
+    if (infoResult.fail()) {
+      LOG_TOPIC("3fa12", ERR, Logger::HEARTBEAT)
+          << "in agency database plan for database " << options.value.toJson()
+          << ": " << infoResult.errorMessage();
+      TRI_ASSERT(false);
+    }
+
+    auto const dbName = info.getName();
+
+    if (auto vocbase = databaseFeature.useDatabase(dbName);
+        vocbase == nullptr) {
+      // database does not yet exist, create it now
+
+      // create a local database object...
+      [[maybe_unused]] TRI_vocbase_t* unused{};
+      Result res = databaseFeature.createDatabase(std::move(info), unused);
+      events::CreateDatabase(dbName, res, ExecContext::current());
+
+      // note: it is possible that we race with the PlanSyncer thread here,
+      // which can also create local databases upon changes in the agency
+      // Plan. if so, we don't log an error message.
+      if (res.fail() && res.isNot(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
+        LOG_TOPIC("ca877", ERR, arangodb::Logger::HEARTBEAT)
+            << "creating local database '" << dbName
+            << "' failed: " << res.errorMessage();
+      }
+    }
+  }
+
   _hasRunOnce.store(true, std::memory_order_release);
 
   return true;
