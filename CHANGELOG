@@ -16,6 +16,11 @@ devel
   memory limit settings, turn on intermediate commits for the query, or adjust
   the query so that it uses less memory.
 
+* Prepare internal NetwortkFeature to transparently handle gzip-encoded
+  responses.
+
+* FE-309: Store created_at timestamp for queries in web UI.
+
 * Remove attribute `dfdb` from response of storage engine API (GET 
   `/_api/engine`). 
 

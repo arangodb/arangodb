@@ -1073,8 +1073,15 @@ Result Collections::updateProperties(LogicalCollection& collection,
         transaction::OperationOriginREST{"collection properties update"};
     auto ctx = transaction::V8Context::createWhenRequired(collection.vocbase(),
                                                           origin, false);
+
+    // We must not replicate this transaction for replication2, because
+    // the following code is executed on both leader and followers.
+    transaction::Options replication2Options;
+    replication2Options.requiresReplication = false;
+
     SingleCollectionTransaction trx(std::move(ctx), collection,
-                                    AccessMode::Type::EXCLUSIVE);
+                                    AccessMode::Type::EXCLUSIVE,
+                                    replication2Options);
     Result res = trx.begin();
 
     if (res.ok()) {
