@@ -1063,8 +1063,15 @@ Result Collections::updateProperties(LogicalCollection& collection,
   } else {
     auto ctx =
         transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
-    SingleCollectionTransaction trx(ctx, collection,
-                                    AccessMode::Type::EXCLUSIVE);
+
+    // We must not replicate this transaction for replication2, because
+    // the following code is executed on both leader and followers.
+    transaction::Options replication2Options;
+    replication2Options.requiresReplication = false;
+
+    SingleCollectionTransaction trx(
+        ctx, collection, AccessMode::Type::EXCLUSIVE, replication2Options);
+
     Result res = trx.begin();
 
     if (res.ok()) {

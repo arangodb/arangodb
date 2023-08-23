@@ -64,6 +64,15 @@ auto inspect(Inspector& f, ReplicatedOperation::CreateShard& x) {
 }
 
 template<class Inspector>
+auto inspect(Inspector& f, ReplicatedOperation::ModifyShard& x) {
+  return f.object(x).fields(
+      f.field("shard", x.shard), f.field("collection", x.collection),
+      f.field("properties", x.properties),
+      f.field("followersToDrop", x.followersToDrop),
+      f.field("ignoreFollowersToDrop", x.ignoreFollowersToDrop));
+}
+
+template<class Inspector>
 auto inspect(Inspector& f, ReplicatedOperation::DropShard& x) {
   return f.object(x).fields(f.field("shard", x.shard),
                             f.field("collection", x.collection));
@@ -106,6 +115,7 @@ auto inspect(Inspector& f, ReplicatedOperation& x) {
           inspection::type<ReplicatedOperation::Abort>("Abort"),
           inspection::type<ReplicatedOperation::Truncate>("Truncate"),
           inspection::type<ReplicatedOperation::CreateShard>("CreateShard"),
+          inspection::type<ReplicatedOperation::ModifyShard>("ModifyShard"),
           inspection::type<ReplicatedOperation::DropShard>("DropShard"),
           inspection::type<ReplicatedOperation::Insert>("Insert"),
           inspection::type<ReplicatedOperation::Update>("Update"),

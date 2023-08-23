@@ -804,6 +804,10 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
 
     TRI_vocbase_t* vocbase = it->second;
 
+    // Signal replicated logs to stop here, while they still have access to the
+    // database.
+    vocbase->shutdownReplicatedLogs();
+
     auto next = _databases.make(prev);
     next->erase(name);
 
@@ -831,7 +835,6 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
       server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(
           *vocbase);
     }
-    vocbase->shutdownReplicatedLogs();
     auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry != nullptr) {
       queryRegistry->destroy(vocbase->name());

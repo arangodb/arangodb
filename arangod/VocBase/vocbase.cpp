@@ -502,7 +502,7 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
 
 void TRI_vocbase_t::stop() {
   try {
-    _logManager->resignAll();
+    shutdownReplicatedLogs();
 
     // stop replication
     if (_replicationApplier != nullptr) {
