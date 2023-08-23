@@ -1,6 +1,10 @@
 v3.11.3 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where the inner
+  amount of a limit in the LimitExecutor is set to a wrong value which lead to
+  some data rows not being returned to the client.
+
 * BTS-1544: The _system database now properly reports its sharding value.
 
 * Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition
