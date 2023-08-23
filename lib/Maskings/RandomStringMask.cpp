@@ -50,8 +50,8 @@ void RandomStringMask::mask(std::string_view data, velocypack::Builder& out,
 
   hash = fasthash64(data.data(), data.size(), _maskings->randomSeed());
 
-  std::string hash64 = absl::Base64Escape(
-      std::string_view{(char const*)&hash, sizeof(decltype(hash))});
+  std::string hash64 =
+      absl::Base64Escape(std::string_view{(char const*)&hash, sizeof(hash)});
 
   buffer.clear();
   buffer.reserve(len);
