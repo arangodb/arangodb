@@ -1,6 +1,30 @@
 devel
 -----
 
+* Remove attribute `dfdb` from response of storage engine API (GET 
+  `/_api/engine`). 
+
+* The storage engine API (GET `/_api/engine`) now returns an `endianness`
+  attribute for the RocksDB storage engine on single servers and database
+  servers.
+
+* Allow compression content-negotation in metrics API, so that responses from
+  the metrics API at `/_admin/metrics` can be sent compressed if the client
+  supports it.
+
+* Print arangod executable's build-id in startup and crash messages.
+
+* Removed --jslint from arangosh and scripts/jslint.sh along with
+  the outdated copy of eslint; updated CONTRIBUTING.md to reflect
+	the changes and hint at scripts/eslint.sh which can be used	to lint
+	javascript code with a locally installed version of eslint
+
+* Fixed BTS-1556: Potential shutdown race, when the server is shutting down
+  and still AgencyCommunication was going on it could use the scheduler
+  which was already deleted, causing a crash right before a normal shutdown.
+  This should not have any negative effect, as all state preserving operations
+  are done by then, it just wasn't a clean exit.
+
 * Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition
   was executed through an index lookup.
 

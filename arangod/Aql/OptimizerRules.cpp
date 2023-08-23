@@ -3830,12 +3830,11 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
   } else if (at->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
     // Really? Yes, the & below is correct.
     return &ExecutionNode::castTo<IResearchViewNode const*>(at)->vocbase();
-  } else {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "Cannot determine vocbase for execution node.");
-    return nullptr;
   }
+
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "Cannot determine vocbase for execution node.");
 }
 
 // Sets up a Gather node for scatterInClusterRule.
@@ -3908,7 +3907,7 @@ auto insertGatherNode(
         gatherNode->elements(elements);
       }
       return gatherNode;
-    } break;
+    }
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE:
@@ -3932,12 +3931,14 @@ auto insertGatherNode(
 
       gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode,
                                                parallelism);
-    } break;
+      break;
+    }
     default: {
       gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(),
                                                GatherNode::SortMode::Default);
 
-    } break;
+      break;
+    }
   }
 
   auto it = subqueries.find(node);
@@ -4212,7 +4213,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
           "Cannot distribute " + node->getTypeString() + ".");
-    } break;
+    }
   }
 
   TRI_ASSERT(collection != nullptr);
@@ -7199,23 +7200,19 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node,
         return true;
       }
       return false;
-      break;
     // only DISTANCE is allowed with <=, <, >=, >
     case NODE_TYPE_OPERATOR_BINARY_LE:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(0), node->getMember(1), true);
-      break;
     case NODE_TYPE_OPERATOR_BINARY_LT:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(0), node->getMember(1), false);
-      break;
     case NODE_TYPE_OPERATOR_BINARY_GE:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(1), node->getMember(0), true);
     case NODE_TYPE_OPERATOR_BINARY_GT:
       TRI_ASSERT(node->numMembers() == 2);
       return eval(node->getMember(1), node->getMember(0), false);
-      break;
     default:
       return false;
   }
@@ -8911,13 +8908,14 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         setDistributeVariable = [shortestPathNode](Variable* var) {
           shortestPathNode->setDistributeVariable(var);
         };
-      } break;
+        break;
+      }
       default: {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL,
             "Cannot distribute " + targetNode->getTypeString() + ".");
-      } break;
+      }
     }
     TRI_ASSERT(inputVariable != nullptr);
     TRI_ASSERT(collection != nullptr);

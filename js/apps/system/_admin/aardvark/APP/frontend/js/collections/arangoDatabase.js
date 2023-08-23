@@ -1,6 +1,3 @@
-/* jshint browser: true */
-/* global window, arangoHelper, Backbone, $, window, _ */
-
 (function () {
   'use strict';
   window.ArangoDatabase = Backbone.Collection.extend({

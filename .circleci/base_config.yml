@@ -7,14 +7,50 @@ parameters:
   default-enterprise-branch:
     type: string
     default: "devel"
+  build-targets:
+    type: string
+    default: "arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench"
+  test-build-targets:
+    type: string
+    default: "arangodbtests fuertetest"
+  enterprise-build-targets:
+    type: string
+    default: "arangobackup"
 
 commands:
+  checkout-arangodb:
+    parameters:
+      destination:
+        type: string
+      with-submodules:
+        type: boolean
+    steps:
+      - run:
+          name: Checkout ArangoDB
+          command: |
+            mkdir -p << parameters.destination >>
+            cd << parameters.destination >>
+            echo << pipeline.git.revision >>
+            git init
+            git remote add origin https://github.com/arangodb/arangodb.git
+            echo "Fetching stuff"
+            git fetch --depth 1 origin << pipeline.git.revision >>
+            git checkout << pipeline.git.revision >>
+      - when:
+          condition: << parameters.with-submodules >>
+          steps:
+            - run:
+                name: "Checkout submodules"
+                command: |
+                  cd << parameters.destination >>
+                  git submodule init
+                  git submodule update --recursive --depth 1 --jobs 8
+
   checkout-enterprise:
     description: "Checkout enterprise code"
     parameters:
       destination:
         type: string
-        default: ""
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -46,13 +82,9 @@ jobs:
     environment:
       GIT_SSH_COMMAND: ssh -v
     steps:
-      - run:
-          name: Checkout
-          command: |
-            git init
-            git remote add origin https://github.com/arangodb/arangodb.git
-            git fetch --depth 1 origin $CIRCLE_SHA1
-            git checkout $CIRCLE_SHA1
+      - checkout-arangodb:
+          with-submodules: false
+          destination: "/home/circleci/project"
       - checkout-enterprise:
           destination: "/home/circleci/project/enterprise"
       - persist_to_workspace:
@@ -125,7 +157,7 @@ jobs:
           name: Install eslint
           command: |
             apk add --no-cache npm
-            npm -g install eslint@5.16.0
+            npm -g install eslint@8.46.0
       - run:
           name: Run eslint
           command: |
@@ -135,36 +167,31 @@ jobs:
     parameters:
       preset:
         type: string
-      edition:
-        type: string
       enterprise:
         type: boolean
-      targets:
-        type: string
-      enterprise-targets:
-        type: string
-        default: ""
+      build-tests:
+        type: boolean
+        default: true
       publish-artifacts:
         type: boolean
         default: true
+      resource-class:
+        type: string
+      s3-prefix:
+        type: string
+        default: ""
     docker:
-      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.1.2
-    resource_class: xlarge
+      - image: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.2
+    resource_class: << parameters.resource-class >>
     environment:
       GIT_SSH_COMMAND: ssh
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
+      SCCACHE_S3_KEY_PREFIX: << parameters.s3-prefix >>
     steps:
-      - run:
-          name: Checkout ArangoDB
-          command: |
-            mkdir /root/project && cd /root/project
-            git init
-            git remote add origin https://github.com/arangodb/arangodb.git
-            git fetch --depth 1 origin $CIRCLE_SHA1
-            git checkout $CIRCLE_SHA1
-            git submodule init
-            git submodule update --recursive --depth 1 --jobs 8
+      - checkout-arangodb:
+          with-submodules: true
+          destination: "/root/project"
       - when:
           condition: << parameters.enterprise >>
           steps:
@@ -180,9 +207,12 @@ jobs:
       - run:
           name: Build
           command: |
-            TARGETS="<< parameters.targets >>"
+            TARGETS="<< pipeline.parameters.build-targets >>"
             if [ << parameters.enterprise >> = true ]; then
-              TARGETS="$TARGETS << parameters.enterprise-targets >>"
+              TARGETS="$TARGETS << pipeline.parameters.enterprise-build-targets >>"
+            fi
+            if [ << parameters.build-tests >> = true ]; then
+              TARGETS="$TARGETS << pipeline.parameters.test-build-targets >>"
             fi
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 8 --target $TARGETS
@@ -223,7 +253,7 @@ jobs:
 
   run-tests:
     docker:
-      - image: arangodb/test-ubuntu-x86-64:22.04
+      - image: arangodb/test-ubuntu:22.04
     parameters:
       suiteName:
         type: string
@@ -271,8 +301,11 @@ jobs:
 
   run-hotbackup-tests:
     docker:
-      - image: cimg/python:3.11.1
-    resource_class: medium
+      - image: arangodb/test-ubuntu:22.04
+    parameters:
+      size:
+        type: string
+    resource_class: << parameters.size >>
     steps:
       - attach_workspace:
           at: .
@@ -283,9 +316,6 @@ jobs:
           name: Install dependencies
           command: |
             pip install -r scripts/toolbox/requirements.txt
-            sudo apt update
-            sudo apt install 7zip
-            sudo apt install gdb
       - run:
           name: Run HotBackup tests
           command: |
@@ -318,47 +348,64 @@ workflows:
           name: eslint
           requires:
             - minimal-checkout
-  community-pr:
+
+  x64-community-pr:
     jobs:
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-ce
+          resource-class: xlarge
+          name: build-ce-x64
           preset: community-pr
-          edition: x64-community
           enterprise: false
-          targets: "arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest"
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-ce-non-maintainer
-          preset: community-pr-non-maintainer
-          edition: x64-community
-          enterprise: false
-          targets: "arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench"
-          publish-artifacts: false
-  enterprise-pr:
+
+  x64-enterprise-pr:
     jobs:
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-ee
+          resource-class: xlarge
+          name: build-ee-x64
           preset: enterprise-pr
-          edition: x64-enterprise
           enterprise: true
-          targets: "arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest"
-          enterprise-targets: "arangobackup"
       - compile-linux:
           context:
             - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-ee-non-maintainer
+          resource-class: xlarge
+          name: build-ee-non-maintainer-x64
           preset: enterprise-pr-non-maintainer
-          edition: x64-enterprise
           enterprise: true
-          targets: "arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench"
-          enterprise-targets: "arangobackup"
           publish-artifacts: false
+          build-tests: false
       - run-hotbackup-tests:
-          name: run-hotbackup-tests
+          name: run-hotbackup-tests-x64
+          size: medium
           requires:
-            - build-ee
+            - build-ee-x64
+
+  aarch64-community-pr:
+    jobs:
+      - compile-linux:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          resource-class: arm.xlarge
+          s3-prefix: aarch64
+          name: build-ce-aarch64
+          preset: community-pr
+          enterprise: false
+
+  aarch64-enterprise-pr:
+    jobs:
+      - compile-linux:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          resource-class: arm.xlarge
+          s3-prefix: aarch64
+          name: build-ee-aarch64
+          preset: enterprise-pr
+          enterprise: true
+      - run-hotbackup-tests:
+          name: run-hotbackup-tests-aarch64
+          size: arm.medium
+          requires:
+            - build-ee-aarch64

@@ -31,6 +31,7 @@
 #include <rocksdb/types.h>
 
 #include <chrono>
+#include <shared_mutex>
 
 namespace rocksdb {
 class DB;
@@ -92,8 +93,8 @@ class RocksDBSyncThread final : public Thread {
   arangodb::basics::ConditionVariable _condition;
 
   /// @brief listeners to be notified when _lastSequenceNumber is updated after
-  /// a sync. We don't need to protect this vector because it is only
-  /// modified once after the syncer thread is started.
+  /// a sync.
+  std::shared_mutex _syncListenersMutex;
   std::vector<std::shared_ptr<ISyncListener>> _syncListeners;
 
   /// @brief notify listeners about the sequence number update
