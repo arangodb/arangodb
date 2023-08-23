@@ -78,6 +78,8 @@ auto replication2::operator<<(std::ostream& os, LogTerm term) -> std::ostream& {
   return os << term.value;
 }
 
+auto LogTerm::succ() const noexcept -> LogTerm { return LogTerm(value + 1); }
+
 auto LogId::fromString(std::string_view name) noexcept -> std::optional<LogId> {
   if (std::all_of(name.begin(), name.end(),
                   [](char c) { return isdigit(c); })) {
