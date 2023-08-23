@@ -125,6 +125,7 @@
 #endif
 
 #include <absl/crc/crc32c.h>
+#include <absl/strings/escaping.h>
 
 using namespace arangodb;
 using namespace basics;
@@ -1545,10 +1546,9 @@ AqlValue functions::ToBase64(ExpressionContext* expr, AstNode const&,
 
   ::appendAsString(trx.vpackOptions(), adapter, value);
 
-  std::string encoded =
-      basics::StringUtils::encodeBase64(buffer->data(), buffer->length());
+  std::string encoded = absl::Base64Escape({buffer->data(), buffer->length()});
 
-  return AqlValue(encoded);
+  return AqlValue(std::move(encoded));
 }
 
 /// @brief function TO_HEX

@@ -227,3 +227,79 @@ TEST(ShardHandlerTest, dropAllShards_test) {
   shardMap = shardHandler->getShardMap();
   ASSERT_EQ(shardMap.size(), 0);
 }
+
+TEST(ShardHandlerTest, modifyShard_all_cases) {
+  using namespace testing;
+
+  auto gid = GlobalLogIdentifier{"db", LogId{1}};
+  auto maintenance =
+      std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
+  auto shardHandler =
+      std::make_shared<replicated_state::document::DocumentStateShardHandler>(
+          gid, maintenance);
+
+  auto shardId = ShardID{"s1000"};
+  auto collectionId = CollectionID{"c1000"};
+  auto properties = std::make_shared<VPackBuilder>();
+  std::string followersToDrop = "hund,katze";
+
+  {
+    // Create the shard
+    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
+    ASSERT_TRUE(res.ok());
+    ASSERT_TRUE(res.get());
+  }
+
+  {
+    // Modify shard properties
+    VPackBuilder b;
+    std::unordered_map<std::string, std::string> newProperties{
+        {"hund", "katze"}};
+    velocypack::serialize(b, newProperties);
+    properties = std::make_shared<VPackBuilder>(std::move(b));
+
+    EXPECT_CALL(*maintenance,
+                executeModifyCollectionAction(shardId, collectionId, properties,
+                                              followersToDrop))
+        .Times(1);
+    EXPECT_CALL(*maintenance, addDirty()).Times(1);
+
+    auto res = shardHandler->modifyShard(shardId, collectionId, properties,
+                                         followersToDrop);
+    ASSERT_TRUE(res.ok());
+    ASSERT_TRUE(res.get());
+    Mock::VerifyAndClearExpectations(maintenance.get());
+    auto shardMap = shardHandler->getShardMap();
+    ASSERT_EQ(shardMap.size(), 1);
+  }
+
+  {
+    // Failure to modify shard is propagated
+    ON_CALL(*maintenance, executeModifyCollectionAction(_, _, _, _))
+        .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
+    auto res = shardHandler->modifyShard(shardId, collectionId, properties,
+                                         followersToDrop);
+    ASSERT_TRUE(res.fail());
+    Mock::VerifyAndClearExpectations(maintenance.get());
+    auto shardMap = shardHandler->getShardMap();
+    ASSERT_EQ(shardMap.size(), 1);
+  }
+
+  {
+    // Failure to modify non-existing shard
+    shardId = ShardID{"s1001"};
+    EXPECT_CALL(*maintenance,
+                executeModifyCollectionAction(shardId, collectionId, properties,
+                                              followersToDrop))
+        .Times(0);
+    EXPECT_CALL(*maintenance, addDirty()).Times(0);
+
+    auto res = shardHandler->modifyShard(shardId, collectionId, properties,
+                                         followersToDrop);
+    ASSERT_TRUE(res.ok());
+    ASSERT_FALSE(res.get());
+    Mock::VerifyAndClearExpectations(maintenance.get());
+    auto shardMap = shardHandler->getShardMap();
+    ASSERT_EQ(shardMap.size(), 1);
+  }
+}

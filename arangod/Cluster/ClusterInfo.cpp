@@ -5075,11 +5075,6 @@ ServersKnown ClusterInfo::rebootIds() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  if (serverID == "debug-follower") {
-    return "tcp://127.0.0.1:3000";
-  }
-#endif
   int tries = 0;
 
   if (!_serversProt.isValid) {
@@ -5100,7 +5095,7 @@ std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
         serverID_ = (*ita).second;
       }
 
-      // _servers is a map-type <ServerId, std::string>
+      // _servers is a map-type <ServerId, pmr::ManagedString>
       auto it = _servers.find(serverID_);
 
       if (it != _servers.end()) {
@@ -6477,8 +6472,9 @@ ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 bool ClusterInfo::SyncerThread::notify() {
   std::lock_guard<std::mutex> lck(_m);
   _news = true;
+  // TODO: can we move the notify_one() call outside of the mutex?
   _cv.notify_one();
-  return _news;
+  return true;
 }
 
 void ClusterInfo::SyncerThread::beginShutdown() {
@@ -6496,10 +6492,11 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 bool ClusterInfo::SyncerThread::start() {
   ThreadNameFetcher nameFetcher;
   std::string_view name = nameFetcher.get();
+  if (name.empty()) {
+    name = "unknown syncer thread";
+  }
 
-  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER)
-      << "Starting "
-      << (name.empty() ? std::string_view("by unknown thread") : name);
+  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER) << "Starting " << name;
   return Thread::start();
 }
 

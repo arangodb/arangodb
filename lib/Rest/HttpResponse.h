@@ -84,7 +84,17 @@ class HttpResponse : public GeneralResponse {
                   bool resolve_externals = true) override final;
   void addRawPayload(std::string_view payload) override final;
 
-  bool isResponseEmpty() const override final { return _body->empty(); }
+  void setAllowCompression(bool allowed) noexcept override final {
+    _allowCompression = allowed;
+  }
+
+  bool isCompressionAllowed() const noexcept override final {
+    return _allowCompression;
+  }
+
+  bool isResponseEmpty() const noexcept override final {
+    return _body->empty();
+  }
 
   ErrorCode reservePayload(std::size_t size) override final {
     return _body->reserve(size);
@@ -114,5 +124,6 @@ class HttpResponse : public GeneralResponse {
   std::vector<std::string> _cookies;
   std::unique_ptr<basics::StringBuffer> _body;
   size_t _bodySize;
+  bool _allowCompression;
 };
 }  // namespace arangodb

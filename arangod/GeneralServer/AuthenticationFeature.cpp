@@ -296,7 +296,7 @@ void AuthenticationFeature::prepare() {
     }
   }
 
-#if USE_ENTERPRISE
+#ifdef USE_ENTERPRISE
   _authCache->setJwtSecrets(_jwtSecretProgramOption, _jwtPassiveSecrets);
 #else
   _authCache->setJwtSecret(_jwtSecretProgramOption);
