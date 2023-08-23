@@ -41,6 +41,8 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 
+#include <absl/strings/escaping.h>
+
 #include <cstring>
 
 #include <llhttp.h>
