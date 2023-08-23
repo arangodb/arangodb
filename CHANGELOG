@@ -16,6 +16,9 @@ devel
   memory limit settings, turn on intermediate commits for the query, or adjust
   the query so that it uses less memory.
 
+* BTS-1566: remove redundant responsibility for creating local databases on
+  coordinators.
+
 * Prepare internal NetwortkFeature to transparently handle gzip-encoded
   responses.
 
