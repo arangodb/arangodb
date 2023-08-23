@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-1566: remove redundant responsibility for creating local databases on
+  coordinators.
+
 * Prepare internal NetwortkFeature to transparently handle gzip-encoded
   responses.
 
