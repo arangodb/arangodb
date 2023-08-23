@@ -109,8 +109,7 @@ class PatternTestWrapper {
   RegIdSet inputRegisters;
   DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable>
       _dependencyProxyMock{_monitor, inputRegisters, 1};
-  AqlItemBlockManager _itemBlockManager{&_monitor,
-                                        SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager _itemBlockManager{&_monitor};
 
  protected:
   Fetcher _fetcher{_dependencyProxyMock};

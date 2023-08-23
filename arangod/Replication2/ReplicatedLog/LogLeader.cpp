@@ -1190,7 +1190,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
   LOG_CTX_IF("fbc23", TRACE, _self._logContext,
              newCommitIndex == currentCommitIndex)
       << "commit fail reason = " << to_string(commitFailReason)
-      << " follower-states = " << indexes;
+      << "; follower-states = " << indexes;
   if (newCommitIndex > currentCommitIndex) {
     auto const quorum_data = std::make_shared<QuorumData>(
         newCommitIndex, _self._currentTerm, std::move(quorum));

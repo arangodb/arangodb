@@ -278,6 +278,10 @@ arangodb::aql::Projections const& IndexExecutorInfos::getFilterProjections()
   return _filterProjections;
 }
 
+ResourceMonitor& IndexExecutorInfos::getResourceMonitor() noexcept {
+  return _query.resourceMonitor();
+}
+
 QueryContext& IndexExecutorInfos::query() noexcept { return _query; }
 
 Expression* IndexExecutorInfos::getFilter() const noexcept { return _filter; }
@@ -542,7 +546,6 @@ bool IndexExecutor::CursorReader::readIndex(
   // The switch above is covering all values and this code
   // cannot be reached
   ADB_UNREACHABLE;
-  return false;
 }
 
 size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {

@@ -170,11 +170,10 @@ class MultiDependencySingleRowFetcher {
   bool isDone(DependencyInfo const& info) const;
 
   AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack,
-                                         const size_t dependency);
+                                         size_t dependency);
 
   void reportSkipForDependency(AqlCallStack const& originalStack,
-                               SkipResult const& skipped,
-                               const size_t dependency);
+                               SkipResult const& skipped, size_t dependency);
 
   void initializeReports(size_t subqueryDepth);
 };

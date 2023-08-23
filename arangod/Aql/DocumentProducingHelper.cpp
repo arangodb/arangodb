@@ -191,6 +191,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _filter(infos.getFilter()),
       _projections(infos.getProjections()),
       _filterProjections(infos.getFilterProjections()),
+      _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
       _outputVariable(infos.getOutVariable()),
@@ -232,6 +233,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _filter(infos.getFilter()),
       _projections(infos.getProjections()),
       _filterProjections(infos.getFilterProjections()),
+      _resourceMonitor(infos.getResourceMonitor()),
       _numScanned(0),
       _numFiltered(0),
       _outputVariable(infos.getOutVariable()),
@@ -272,7 +274,10 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
   }
 }
 
-DocumentProducingFunctionContext::~DocumentProducingFunctionContext() = default;
+DocumentProducingFunctionContext::~DocumentProducingFunctionContext() {
+  // must be called to count down memory usage
+  reset();
+}
 
 void DocumentProducingFunctionContext::setOutputRow(
     OutputAqlItemRow* outputRow) {
@@ -361,6 +366,14 @@ bool DocumentProducingFunctionContext::checkUniqueness(
       // Document already in list. Skip this
       return false;
     }
+    // increase memory usage for unique values in set.
+    // note: we assume that there is some overhead here for
+    // managing the set. right now there is no way to track
+    // this overhead accurately, so we don't even try.
+    // this is ok as long as recorded memory usage grows
+    // with each item in the set
+    _resourceMonitor.increaseMemoryUsage(
+        sizeof(decltype(_alreadyReturned)::value_type));
   } else {
     // only check for duplicates
     if (_alreadyReturned.contains(token)) {
@@ -414,6 +427,10 @@ bool DocumentProducingFunctionContext::checkFilter(
 
 void DocumentProducingFunctionContext::reset() {
   if (_checkUniqueness) {
+    // count down memory usage
+    _resourceMonitor.decreaseMemoryUsage(
+        _alreadyReturned.size() *
+        sizeof(decltype(_alreadyReturned)::value_type));
     _alreadyReturned.clear();
     _isLastIndex = false;
   }

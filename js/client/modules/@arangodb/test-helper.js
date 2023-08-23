@@ -636,3 +636,26 @@ exports.agency = {
 exports.uniqid = function  () {
   return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
 };
+
+exports.AQL_EXPLAIN = function(query, bindVars, options) {
+  let stmt = db._createStatement(query);
+  if (typeof bindVars === "object") {
+    stmt.bind(bindVars);
+  }
+  if (typeof options === "object") {
+    stmt.setOptions(options);
+  }
+  return stmt.explain();
+};
+
+exports.AQL_EXECUTE = function(query, bindVars, options) {
+  let cursor = db._query(query, bindVars, options);
+  let extra = cursor.getExtra();
+  return {
+    json: cursor.toArray(),
+    stats: extra.stats,
+    warnings: extra.warnings,
+    profile: extra.profile,
+    plan: extra.plan,
+    cached: cursor.cached};
+};

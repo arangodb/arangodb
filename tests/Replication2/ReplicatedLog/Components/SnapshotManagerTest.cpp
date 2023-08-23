@@ -37,11 +37,6 @@
 #include "Replication2/Mocks/StateHandleManagerMock.h"
 #include "Replication2/Mocks/StorageManagerMock.h"
 
-#if defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-#endif
-
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::test;

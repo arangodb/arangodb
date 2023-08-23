@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, print */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -23,84 +23,66 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const internal = require("internal");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
+const dbName = "testOptimizeTopK";
 const isEnterprise = require("internal").isEnterprise();
 
-function testOptimizeTopK() {
-  const names = ["v_alias_tfidf", "v_alias_bm25", "v_search_tfidf", "v_search_bm25"];
-
+function testOptimizeTopK () {
   return {
     setUpAll: function () {
-      let docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({f: "a"});
-      }
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+    },
+    tearDownAll: function () {
+      db._useDatabase('_system');
+      try { db._dropDatabase(dbName); } catch (err) { }
+    },
 
+    test: function () {
       db._create("c");
 
-      for (let i = 0; i < 50; ++i) {
-        db.c.insert(docs);
-      }
-
-      db._createView("v_search_tfidf", "arangosearch", {
-        links: {"c": {fields: {"f": {}}}},
-        optimizeTopK: ["TFIDF(@doc) DESC"]
+      // check correct definition
+      db._createView("view1", "arangosearch", {
+        links: { "c": { fields: { "f": {}, "a": {}, "x": {} } } },
+        optimizeTopK: ["TFIDF(@doc) DESC", "BM25(@doc) DESC"]
       });
+      let view_props1 = db._view("view1").properties();
+      assertFalse(view_props1.hasOwnProperty("optimizeTopK"));
 
-      db.c.ensureIndex({name: "i_bm25", type: "inverted", fields: ["f"], optimizeTopK: ["BM25(@doc) DESC"]});
-      db._createView("v_alias_bm25", "search-alias", {indexes: [{collection: "c", index: "i_bm25"}]});
-
-      db.c.ensureIndex({name: "i_tfidf", type: "inverted", fields: ["f"], optimizeTopK: ["TFIDF(@doc) DESC"]});
-      db._createView("v_alias_tfidf", "search-alias", {indexes: [{collection: "c", index: "i_tfidf"}]});
-
-      db._createView("v_search_bm25", "arangosearch", {
-        links: {"c": {fields: {"f": {}}}},
-        optimizeTopK: ["BM25(@doc) DESC"]
+      // check incorrect definition
+      db._createView("view2", "arangosearch", {
+        links: { "c": { fields: { "f": {}, "a": {}, "x": {} } } },
+        optimizeTopK: ["wrong scorer"]
       });
+      let view_props2 = db._view("view2").properties();
+      assertFalse(view_props2.hasOwnProperty("optimizeTopK"));
 
-      for (let i = 0; i < 50; ++i) {
-        db.c.insert(docs);
-      }
+      // check correct definition
+      db.c.ensureIndex({ 
+        name: "i1", 
+        type: "inverted", 
+        fields: ["f", "a", "x"], 
+        optimizeTopK: ["TFIDF(@doc) DESC", "BM25(@doc) DESC"] 
+      });
+      let index_props1 = db.c.index("i1");
+      assertFalse(index_props1.hasOwnProperty("optimizeTopK"));
 
-      // testWithoutScore
-      for (const v of names) {
-        const query = "FOR d IN " + v + " SEARCH d.f == 'a' OPTIONS {waitForSync:true} LIMIT 10 RETURN d";
-        print(query);
-        let res = db._query(query).toArray();
-        assertEqual(res.length, 10);
-      }
-    },
-
-    tearDownAll: function () {
-      for (const v of names) {
-        db._dropView(v);
-      }
-      db._drop("c");
-    },
-
-    testWithTFIDF: function () {
-      for (const v of names) {
-        const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT TFIDF(d) LIMIT 10 RETURN d";
-        print(query);
-        let res = db._query(query).toArray();
-        assertEqual(res.length, 10);
-      }
-    },
-
-    testWithBM25: function () {
-      for (const v of names) {
-        const query = "FOR d IN " + v + " SEARCH d.f == 'a' SORT BM25(d) LIMIT 10 RETURN d";
-        print(query);
-        let res = db._query(query).toArray();
-        assertEqual(res.length, 10);
-      }
-    },
+      // check incorrect definition
+      db.c.ensureIndex({ 
+        name: "i2", 
+        type: "inverted", 
+        fields: ["f", "a", "x", "w"], 
+        optimizeTopK: ["wrong scorer"] 
+      });
+      let index_props2 = db.c.index("i2");
+      assertFalse(index_props2.hasOwnProperty("optimizeTopK"));
+    }
   };
 }
 
-if (isEnterprise) {
+if (!isEnterprise) {
   jsunity.run(testOptimizeTopK);
 }
-
 return jsunity.done();

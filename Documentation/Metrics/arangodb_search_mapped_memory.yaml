@@ -1,8 +1,8 @@
 name: arangodb_search_mapped_memory
 introducedIn: "3.12.0"
 help: |
-  Count of memory in bytes that is mapped.
-unit: number
+  Amount of memory in bytes that is mapped.
+unit: bytes
 type: gauge
 category: ArangoSearch
 complexity: advanced
@@ -10,5 +10,5 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Count of memory in bytes that is mapped.
-  It's very approximate and could be outdated in any moment.
+  Amount of memory in bytes that is mapped using memory-mapped files.
+  The metric value is very approximate and could be outdated in any moment.

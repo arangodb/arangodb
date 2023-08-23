@@ -93,7 +93,8 @@
                 text: { analyzers: [ "text_en" ] }
               }
             }
-          }
+          },
+          optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
         };
         v.properties(meta);
 
@@ -102,13 +103,15 @@
           { links : {
             UnitTestsCollection: { includeAllFields: true },
             UnitTestsCollection2 : { includeAllFields: true }
-          }}
+          },
+          optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]}
         );
 
         db._drop("UnitTestsGraphCollection");
         cg = db._create("UnitTestsGraphCollection", args);
 
-        vg = db._createView("UnitTestsGraphView", "arangosearch", {});
+        vg = db._createView("UnitTestsGraphView", "arangosearch", {
+          optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});
         meta = {
           links: { 
             "UnitTestsGraphCollection": { 
@@ -158,7 +161,8 @@
 
         db._dropView("UnitTestsViewArrayView");
 
-        let arrayV = db._createView("UnitTestsWithArrayView", "arangosearch", {});
+        let arrayV = db._createView("UnitTestsWithArrayView", "arangosearch", {
+          optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});
         meta = {
           links: { 
             UnitTestsWithArrayCollection: { 
@@ -206,7 +210,8 @@
                                                 {field: "field2", direction: "asc"},
                                                 {field: "field3", direction: "asc"},
                                                 {field: "field4", direction: "asc"},
-                                                {field: "_key", direction: "asc"}]});
+                                                {field: "_key", direction: "asc"}],
+                                                optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});
                                       
         wps.properties({links:{TestsCollectionWithManyFields: {
                                 storeValues: "id",
@@ -220,7 +225,8 @@
                                   field6: {},
                                   _key: {}}}}});
         let wsv = db._createView("WithStoredValues", "arangosearch", 
-                               {storedValues: [["field1"], ["field2"], ["field3"]]});
+                               {storedValues: [["field1"], ["field2"], ["field3"]],
+                               optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});
         wsv.properties({links:{TestsCollectionWithLongFields: {
                               storeValues: "id",
                               analyzers: ["customAnalyzer"],
@@ -230,7 +236,8 @@
                                 field3: {}}}}});
         let wpsl = db._createView("WithLongPrimarySort", "arangosearch", 
                                {primarySort: [{field: "field1", direction: "asc"}],
-                                storedValues: ["field2", "field3"]});
+                                storedValues: ["field2", "field3"],
+                                optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]});
         wpsl.properties({links:{TestsCollectionWithLongFields: {
                               storeValues: "id",
                               analyzers: ["customAnalyzer"],
@@ -1191,7 +1198,8 @@
               }
             },
             "type": "arangosearch",
-            "writebufferIdle": 64
+            "writebufferIdle": 64,
+            "optimizeTopK": ["BM25(@doc) DESC"]
           });
 
           var linksView = db._createView("links_view", "arangosearch", {
@@ -1215,7 +1223,8 @@
               }
             },
             "type": "arangosearch",
-            "writebufferIdle": 64
+            "writebufferIdle": 64,
+            "optimizeTopK": ["BM25(@doc) DESC"]
           });
 
           var expectedResult = [
@@ -1438,7 +1447,8 @@
                       "type": {}
                     },
                   }
-                }
+                },
+                optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
               }
             );
 
@@ -1964,7 +1974,8 @@
           
           let coll = db._create(queryOptColl);
           let view = db._createView(queryOptView, 'arangosearch',
-                                   { links: { "QueryOptOptionsCol": { includeAllFields: true } } });
+                                   { links: { "QueryOptOptionsCol": { includeAllFields: true } },
+                                   optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"] });
           coll.save({ value1: "1", value2: "A",
             valueArray: ["A", "B", "C"]
           }); 
@@ -2027,7 +2038,8 @@
                                               NgramMatchCol : { analyzers: [ queryAnalyzer],
                                                                 includeAllFields: true, 
                                                                 trackListPositions: true} 
-                                              }
+                                              },
+                                      optimizeTopK: ["BM25(@doc) DESC", "TFIDF(@doc) DESC"]
                                     });
           coll.save({ value1: "1", value2: "Jack Daniels"}); 
           coll.save({ value1: "2", value2: "Jack Sparrow"}); 

@@ -23,14 +23,11 @@
 
 #include "EngineInfoContainerCoordinator.h"
 
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
-#include "Basics/ScopeGuard.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "VocBase/ticks.h"
@@ -68,19 +65,17 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     sqs = query.sharedState();
   }
 
-  engine =
-      std::make_unique<ExecutionEngine>(_id, query, query.itemBlockManager(),
-                                        SerializationFormat::SHADOWROWS, sqs);
+  engine = std::make_unique<ExecutionEngine>(_id, query,
+                                             query.itemBlockManager(), sqs);
 
   auto res = engine->createBlocks(_nodes, dbServerQueryIds);
   if (!res.ok()) {
     engine.reset();
-    return res;
+  } else {
+    TRI_ASSERT(engine->root() != nullptr);
   }
 
-  TRI_ASSERT(engine->root() != nullptr);
-
-  return {TRI_ERROR_NO_ERROR};
+  return res;
 }
 
 EngineId EngineInfoContainerCoordinator::EngineInfo::engineId() const {
@@ -145,15 +140,12 @@ Result EngineInfoContainerCoordinator::buildEngines(
       coordSnippets.emplace_back(std::move(engine));
     }
   } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.message());
+    return {ex.code(), ex.message()};
   } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
+    return {TRI_ERROR_INTERNAL, ex.what()};
   } catch (...) {
-    return Result(TRI_ERROR_INTERNAL);
+    return {TRI_ERROR_INTERNAL};
   }
 
-  // This deactivates the defered cleanup.
-  // From here on we rely on the AQL shutdown mechanism.
-  //  guard.cancel();
-  return Result();
+  return {};
 }

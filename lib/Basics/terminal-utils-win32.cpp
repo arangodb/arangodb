@@ -25,22 +25,27 @@
 
 #include <windows.h>
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the columns width
-////////////////////////////////////////////////////////////////////////////////
+namespace arangodb::terminal_utils {
 
-TRI_TerminalSize TRI_DefaultTerminalSize() {
-  CONSOLE_SCREEN_BUFFER_INFO SBInfo;
+/// @brief returns the terminal size
+TerminalSize defaultTerminalSize() {
+  TerminalSize result;
 
   HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
   if (hOut == INVALID_HANDLE_VALUE) {
-    return TRI_DEFAULT_TERMINAL_SIZE;
+    return result;
   }
 
+  CONSOLE_SCREEN_BUFFER_INFO SBInfo;
   if (GetConsoleScreenBufferInfo(hOut, &SBInfo) == 0) {
-    return TRI_DEFAULT_TERMINAL_SIZE;
+    return result;
   }
 
-  return TRI_TerminalSize{SBInfo.dwSize.Y, SBInfo.dwSize.X};
+  result.rows = SBInfo.dwSize.Y;
+  result.columns = SBInfo.dwSize.X;
+
+  return result;
 }
+
+}  // namespace arangodb::terminal_utils

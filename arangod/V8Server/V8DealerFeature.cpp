@@ -1967,12 +1967,10 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file,
         LOG_TOPIC("0f13b", FATAL, arangodb::Logger::V8)
             << "cannot load JavaScript file '" << file << "'";
         FATAL_ERROR_EXIT();
-        break;
       case JSLoader::eFailExecute:
         LOG_TOPIC("69ac3", FATAL, arangodb::Logger::V8)
             << "error during execution of JavaScript file '" << file << "'";
         FATAL_ERROR_EXIT();
-        break;
     }
   }
 

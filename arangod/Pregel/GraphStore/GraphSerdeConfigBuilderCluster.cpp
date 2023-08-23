@@ -72,8 +72,11 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
       if (!coll->isSmart()) {
         std::vector<std::string> eKeys = coll->shardKeys();
 
-        if (eKeys.size() != 1 ||
-            eKeys[0] != graphByCollections.shardKeyAttribute) {
+        // In a OneShard database sharding is acceptable
+        // for pregel by default.
+        if (!vocbase.isOneShard() &&
+            (eKeys.size() != 1 ||
+             eKeys[0] != graphByCollections.shardKeyAttribute)) {
           return Result{
               TRI_ERROR_BAD_PARAMETER,
               "Edge collection needs to be sharded "

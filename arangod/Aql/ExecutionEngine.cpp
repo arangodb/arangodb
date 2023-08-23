@@ -237,7 +237,6 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 /// @brief create the engine
 ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
                                  AqlItemBlockManager& itemBlockMgr,
-                                 SerializationFormat format,
                                  std::shared_ptr<SharedQueryState> sqs)
     : _engineId(eId),
       _query(query),
@@ -724,8 +723,7 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
 
 // @brief create an execution engine from a plan
 void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
-                                          bool planRegisters,
-                                          SerializationFormat format) {
+                                          bool planRegisters) {
   auto const role = arangodb::ServerState::instance()->getRole();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -782,8 +780,8 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     // instantiate the engine on a local server
     EngineId eId =
         arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;
-    auto retEngine = std::make_unique<ExecutionEngine>(eId, query, mgr, format,
-                                                       query.sharedState());
+    auto retEngine =
+        std::make_unique<ExecutionEngine>(eId, query, mgr, query.sharedState());
 
 #ifdef USE_ENTERPRISE
     for (auto const& pair : aliases) {
