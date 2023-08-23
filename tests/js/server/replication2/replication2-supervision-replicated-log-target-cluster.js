@@ -900,23 +900,25 @@ const replicatedLogSuite = function () {
       );
 
       const actions = helper.getSupervisionActionTypes(database, logId);
-      const expected = [
-        // - create log
-        'AddLogToPlanAction',
-        // - add new participant
-        'AddParticipantToPlanAction',
-        // - force new participant
-        'UpdateParticipantFlagsAction',
-        // - switch leader to new participant
-        'SwitchLeaderAction',
-        // - remove force flag of leader (new participant)
-        'UpdateParticipantFlagsAction',
-        // - disallow old leader from quorum
-        'UpdateParticipantFlagsAction',
-        // - remove old leader
-        'RemoveParticipantFromPlanAction',
-      ];
-      assertEqual(actions, expected);
+      // - create log
+      assertEqual('AddLogToPlanAction', actions.shift());
+      // - add new participant
+      assertEqual('AddParticipantToPlanAction', actions.shift());
+      // - force new participant
+      assertEqual('UpdateParticipantFlagsAction', actions.shift());
+      // - switch leader to new participant
+      assertEqual('SwitchLeaderAction', actions.shift());
+      // There are three actions left:
+      // - 'UpdateParticipantFlagsAction'     to remove force flag of leader (new participant)
+      // - 'UpdateParticipantFlagsAction'     to disallow old leader from quorum
+      // - 'RemoveParticipantFromPlanAction'  to remove old leader
+      // The first of those can happen at any point, the other two must be in order.
+      // So finding and removing the last UpdateParticipantFlagsAction leaves those two:
+      const idx = _.findLastIndex(actions, (x) => x === 'UpdateParticipantFlagsAction');
+      assertTrue(idx >= 0, "Did not find UpdateParticipantFlagsAction: " + JSON.stringify(actions));
+      actions.splice(idx, 1);
+      assertEqual('UpdateParticipantFlagsAction', actions.shift());
+      assertEqual('RemoveParticipantFromPlanAction', actions.shift());
     },
 
     // This tests requests a non-server as leader and expects the

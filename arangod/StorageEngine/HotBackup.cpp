@@ -114,10 +114,10 @@ arangodb::Result HotBackup::executeCoordinator(std::string const& command,
     return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED,
                             command + " is not implemented on coordinators");
   }
-#endif
-
+#else
   // We'll never get here
   return arangodb::Result();
+#endif
 }
 
 }  // namespace arangodb

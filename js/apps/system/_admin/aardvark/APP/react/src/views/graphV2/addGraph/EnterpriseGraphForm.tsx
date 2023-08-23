@@ -8,7 +8,8 @@ import {
   CLUSTER_GRAPH_FIELDS_MAP,
   createGraph,
   GENERAL_GRAPH_FIELDS_MAP,
-  GRAPH_VALIDATION_SCHEMA
+  GRAPH_VALIDATION_SCHEMA,
+  updateGraph
 } from "../listGraphs/graphListHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
@@ -37,6 +38,8 @@ const INITIAL_VALUES: EnterpriseGraphCreateValues = {
 
 export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
+  const isEditMode = mode === "edit";
+
   const handleSubmit = async (values: EnterpriseGraphCreateValues) => {
     const sanitizedValues = {
       name: values.name,
@@ -50,6 +53,17 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
         satellites: values.satellites
       }
     };
+    if (isEditMode) {
+      const info = await updateGraph({
+        values: sanitizedValues,
+        initialGraph,
+        onSuccess: () => {
+          mutate("/graphs");
+          onClose();
+        }
+      });
+      return info;
+    }
     const info = await createGraph({
       values: sanitizedValues,
       onSuccess: () => {
@@ -72,7 +86,7 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
             <FormField
               field={{
                 ...enterpriseGraphFieldsMap.name,
-                isDisabled: mode === "edit"
+                isDisabled: isEditMode
               }}
             />
             <ClusterFields isShardsRequired />
@@ -80,7 +94,9 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
               <FormField
                 field={{
                   ...CLUSTER_GRAPH_FIELDS_MAP.satellites,
-                  isDisabled: mode === "edit",
+                  label: isEditMode
+                    ? "New satellite collections"
+                    : CLUSTER_GRAPH_FIELDS_MAP.satellites.label,
                   noOptionsMessage: () =>
                     "Please enter a new and valid collection name"
                 }}
@@ -92,12 +108,7 @@ export const EnterpriseGraphForm = ({ onClose }: { onClose: () => void }) => {
               }
               allowExistingCollections={false}
             />
-            <FormField
-              field={{
-                ...enterpriseGraphFieldsMap.orphanCollections,
-                isDisabled: mode === "edit"
-              }}
-            />
+            <FormField field={enterpriseGraphFieldsMap.orphanCollections} />
           </FieldsGrid>
           <GraphModalFooter onClose={onClose} />
         </VStack>

@@ -263,7 +263,7 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
 
   EnumeratePathsExecutorTest(KShortestPathsTestParameters parameters__)
       : parameters(std::move(parameters__)),
-        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+        itemBlockManager(monitor),
         fakedQuery(server.createFakeQuery()),
         options(*fakedQuery.get()),
         registerInfos(parameters._inputRegisters, parameters._outputRegisters,

@@ -27,6 +27,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -66,7 +67,6 @@ class Maskings {
  public:
   static MaskingsResult fromFile(std::string const&);
 
- public:
   bool shouldDumpStructure(std::string const& name);
   bool shouldDumpData(std::string const& name);
   void mask(std::string const& name, basics::StringBuffer const& data,
@@ -75,20 +75,22 @@ class Maskings {
   uint64_t randomSeed() const noexcept { return _randomSeed; }
 
  private:
-  ParseResult<Maskings> parse(VPackSlice const&);
-  VPackValue maskedItem(Collection const& collection,
-                        std::vector<std::string>& path, std::string& buffer,
-                        VPackSlice const& data) const;
-  void addMaskedArray(Collection const& collection, VPackBuilder& builder,
-                      std::vector<std::string>& path,
-                      VPackSlice const& data) const;
-  void addMaskedObject(Collection const& collection, VPackBuilder& builder,
-                       std::vector<std::string>& path,
-                       VPackSlice const& data) const;
-  void addMasked(Collection const& collection, VPackBuilder& builder,
-                 VPackSlice data) const;
+  ParseResult<Maskings> parse(velocypack::Slice def);
+  void maskedItem(Collection const& collection,
+                  std::vector<std::string_view>& path, velocypack::Slice data,
+                  velocypack::Builder& out, std::string& buffer) const;
+  void addMaskedArray(Collection const& collection,
+                      std::vector<std::string_view>& path,
+                      velocypack::Slice data, velocypack::Builder& builder,
+                      std::string& buffer) const;
+  void addMaskedObject(Collection const& collection,
+                       std::vector<std::string_view>& path,
+                       velocypack::Slice data, velocypack::Builder& builder,
+                       std::string& buffer) const;
+  void addMasked(Collection const& collection, VPackBuilder& out,
+                 velocypack::Slice data) const;
   void addMasked(Collection const& collection, basics::StringBuffer& data,
-                 VPackSlice slice) const;
+                 velocypack::Slice slice) const;
 
  private:
   std::map<std::string, Collection> _collections;

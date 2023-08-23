@@ -1220,7 +1220,7 @@ void TraversalNode::prepareOptions() {
     for (auto const& it : _globalVertexConditions) {
       cond->addMember(it);
     }
-    opts->_baseVertexExpression.reset(new Expression(ast, cond));
+    opts->_baseVertexExpression = std::make_unique<Expression>(ast, cond);
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.
