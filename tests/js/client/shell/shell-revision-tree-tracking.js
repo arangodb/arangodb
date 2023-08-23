@@ -36,10 +36,7 @@ const n = 10000;
 
 function RevisionTreeTrackingSuite () {
   'use strict';
-      
-
-
-  
+       
   let insertDocuments = (collName) => {
     let c = db._collection(collName);
     let docs = [];
@@ -101,6 +98,21 @@ function RevisionTreeTrackingSuite () {
       // must have more memory allocated for the documents
       let metric1 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
       assertTrue(metric1 >= metric0 + n * 8, { metric1, metric0 });
+
+      // Now check that metric value will go down
+      internal.debugClearFailAt();
+
+      let tries = 0;
+      let metric2;
+      while (++tries < 120) {
+        metric2 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
+        if (0 === metric2) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+
+      assertTrue(metric2 === 0);
     },
     
     testMemoryUsageShouldIncreaseAfterSingleInserts: function () {
@@ -128,39 +140,52 @@ function RevisionTreeTrackingSuite () {
       // must be changed when type of RocksDBMetaCollection::_revisionInsertBuffers
       // changes.
       assertTrue(metric1 >= metric0 + n * 48, { metric1, metric0 });
+
+      // Now check that metric value will go down
+      internal.debugClearFailAt();
+
+      let tries = 0;
+      let metric2;
+      while (++tries < 120) {
+        // internal.debugClearFailAt();
+        metric2 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
+        if (0 === metric2) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+
+      assertTrue(metric2 === 0);
     },
 
     testMemoryUsageShouldIncreaseAndDecreaseAfterAql: function () {
       // wait until all pending estimates & revision tree buffers have been applied
       let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
       assertNull(res);
-      
-      // block sync thread from doing anything from now on
-      // internal.debugSetFailAt("RocksDBSettingsManagerSync");
-      
+          
       // wait until all pending estimates & revision tree buffers have been applied
       res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
       assertNull(res);
       
+      // Check that metric value is 0 before inserting documents
+
       internal.debugClearFailAt();
 
       let tries = 0;
       let metric0;
       while (++tries < 120) {
-        // internal.debugClearFailAt();
         metric0 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
         if (0 === metric0) {
           break;
         }
         require("internal").sleep(0.5);
-        print("0 != ", metric0)
       }
 
       assertTrue(metric0 === 0);
 
+      // Create collection and insert documents 
       let c = db._create(cn);
-      
-      db._query(`for i in 1..${n} insert {value: i} into ${cn}`)
+      db._query(`for i in 1..${n} insert {value: i} into ${cn}`);
 
       let metric1;
       while (++tries < 120) {
@@ -169,7 +194,6 @@ function RevisionTreeTrackingSuite () {
           break;
         }
         require("internal").sleep(0.5);
-        print(0, metric1)
       }
       assertTrue(0 === metric1);
     }
