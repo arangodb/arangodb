@@ -442,6 +442,36 @@ else ()
   SET(USE_LIBUNWIND OFF)
 endif ()
 
+if (LINUX)
+   option(USE_BUILD_ID_READER "Add code to read arangod's build-id from within arangod" ON)
+else ()
+   set(USE_BUILD_ID_READER OFF)
+endif ()
+
+if (USE_BUILD_ID_READER)
+  add_definitions(-DUSE_BUILD_ID_READER=true)
+else ()
+  add_definitions(-DUSE_BUILD_ID_READER=false)
+endif ()
+
+# Guess whether we're using mold
+execute_process(
+  COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_EXE_LINKER_FLAGS} -Wl,--version
+  OUTPUT_VARIABLE LINKER_VERSION_OUT)
+if (LINKER_VERSION_OUT MATCHES ^mold)
+  SET(LINKER_IS_MOLD TRUE)
+else ()
+  SET(LINKER_IS_MOLD FALSE)
+endif ()
+
+# mold doesn't support the linker scripts currently used for the build id reader, and will result in the error
+#   mold: fatal: /home/tobias/Documents/ArangoDB/arangodb/arangodb/lib/BuildId/BuildId.ld:1: build_id_start = ADDR(.note.gnu.build-id);
+#                                                                                    ^ unknown linker script token
+# . Let's warn about this early, and how to work around it:
+if (LINKER_IS_MOLD AND USE_BUILD_ID_READER)
+  message(SEND_ERROR "It looks like you're using mold as a linker. That doesn't work together with USE_BUILD_ID_READER. Either disable USE_BUILD_ID_READER, or use another linker.")
+endif ()
+
 if (CROSS_COMPILING)
 # currently off, need additional params to configure like --host=triple <params>
   SET(USE_JEMALLOC OFF)

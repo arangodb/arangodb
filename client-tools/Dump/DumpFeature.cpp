@@ -24,13 +24,8 @@
 
 #include "DumpFeature.h"
 
-#include <chrono>
-
-#include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
-#include <thread>
-
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/BoundedChannel.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
@@ -54,7 +49,13 @@
 #include "Ssl/SslInterface.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/ManagedDirectory.h"
-#include "Basics/BoundedChannel.h"
+
+#include <chrono>
+#include <thread>
+
+#include <absl/strings/str_cat.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
 
 namespace {
 
@@ -71,7 +72,7 @@ constexpr uint64_t MinChunkSize = 1024 * 128;
 constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 
 /// @brief generic error for if server returns bad/unexpected json
-const arangodb::Result ErrorMalformedJsonResponse = {
+arangodb::Result const ErrorMalformedJsonResponse = {
     TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
 
 /// @brief checks that a file pointer is valid and file status is ok
@@ -244,14 +245,14 @@ std::pair<arangodb::Result, uint64_t> startBatch(
 /// @brief prolongs a batch to ensure we can complete our dump
 void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
                  std::string const& DBserver, uint64_t batchId) {
-  using arangodb::basics::StringUtils::itoa;
   TRI_ASSERT(batchId > 0);
 
-  std::string url = "/_api/replication/batch/" + itoa(batchId) +
-                    "?serverId=" + clientId + "&syncerId=" + syncerId;
+  std::string url =
+      absl::StrCat("/_api/replication/batch/", batchId, "?serverId=", clientId,
+                   "&syncerId=", syncerId);
   std::string const body = "{\"ttl\":600}";
   if (!DBserver.empty()) {
-    url += "&DBserver=" + DBserver;
+    url += absl::StrCat("&DBserver=", DBserver);
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
@@ -263,13 +264,12 @@ void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
 /// @brief mark our batch finished so resources can be freed on server
 void endBatch(arangodb::httpclient::SimpleHttpClient& client,
               std::string DBserver, uint64_t& batchId) {
-  using arangodb::basics::StringUtils::itoa;
   TRI_ASSERT(batchId > 0);
 
   std::string url =
-      "/_api/replication/batch/" + itoa(batchId) + "?serverId=" + clientId;
+      absl::StrCat("/_api/replication/batch/", batchId, "?serverId=", clientId);
   if (!DBserver.empty()) {
-    url += "&DBserver=" + DBserver;
+    url += absl::StrCat("&DBserver=", DBserver);
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
@@ -283,22 +283,18 @@ void endBatch(arangodb::httpclient::SimpleHttpClient& client,
 bool isIgnoredHiddenEnterpriseCollection(
     arangodb::DumpFeature::Options const& options, std::string const& name) {
 #ifdef USE_ENTERPRISE
-  if (!options.force && name[0] == '_') {
-    if (strncmp(name.c_str(), arangodb::StaticStrings::FullLocalPrefix.c_str(),
-                arangodb::StaticStrings::FullLocalPrefix.size()) == 0 ||
-        strncmp(name.c_str(), arangodb::StaticStrings::FullFromPrefix.c_str(),
-                arangodb::StaticStrings::FullFromPrefix.size()) == 0 ||
-        strncmp(name.c_str(), arangodb::StaticStrings::FullToPrefix.c_str(),
-                arangodb::StaticStrings::FullToPrefix.size()) == 0) {
-      LOG_TOPIC("d921a", INFO, arangodb::Logger::DUMP)
-          << "Dump is ignoring collection '" << name
-          << "'. Will be created via SmartGraphs of a full dump. If you want "
-             "to "
-             "dump this collection anyway use 'arangodump --force'. "
-             "However this is not recommended and you should instead dump "
-             "the EdgeCollection of the SmartGraph instead.";
-      return true;
-    }
+  if (!options.force &&
+      (name.starts_with(arangodb::StaticStrings::FullLocalPrefix) ||
+       name.starts_with(arangodb::StaticStrings::FullFromPrefix) ||
+       name.starts_with(arangodb::StaticStrings::FullToPrefix))) {
+    LOG_TOPIC("d921a", INFO, arangodb::Logger::DUMP)
+        << "Dump is ignoring collection '" << name
+        << "'. Will be created via SmartGraphs of a full dump. If you want "
+           "to "
+           "dump this collection anyway use 'arangodump --force'. "
+           "However this is not recommended and you should instead dump "
+           "the EdgeCollection of the SmartGraph instead.";
+    return true;
   }
 #endif
   return false;
@@ -340,23 +336,19 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
                                 std::string const& server, uint64_t batchId,
                                 uint64_t minTick, uint64_t maxTick) {
   using arangodb::basics::StringUtils::boolean;
-  using arangodb::basics::StringUtils::itoa;
   using arangodb::basics::StringUtils::uint64;
   using arangodb::basics::StringUtils::urlEncode;
 
   uint64_t fromTick = minTick;
   uint64_t chunkSize =
       job.options.initialChunkSize;  // will grow adaptively up to max
-  std::string baseUrl =
-      "/_api/replication/dump?collection=" + urlEncode(name) +
-      "&batchId=" + itoa(batchId) + "&ticks=false" +
-      "&useEnvelope=" + (job.options.useEnvelope ? "true" : "false");
+  std::string baseUrl = absl::StrCat(
+      "/_api/replication/dump?collection=", urlEncode(name),
+      "&batchId=", batchId,
+      "&useEnvelope=", (job.options.useEnvelope ? "true" : "false"));
   if (job.options.clusterMode) {
     // we are in cluster mode, must specify dbserver
-    baseUrl += "&DBserver=" + server;
-  } else {
-    // we are in single-server mode, we already flushed the wal
-    baseUrl += "&flush=false";
+    baseUrl += absl::StrCat("&DBserver=", server);
   }
 
   std::unordered_map<std::string, std::string> headers;
@@ -365,9 +357,10 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
 
   while (true) {
     std::string url =
-        baseUrl + "&from=" + itoa(fromTick) + "&chunkSize=" + itoa(chunkSize);
+        absl::StrCat(baseUrl, "&from=", fromTick, "&chunkSize=", chunkSize);
+
     if (maxTick > 0) {  // limit to a certain timeframe
-      url += "&to=" + itoa(maxTick);
+      url += absl::StrCat("&to=", maxTick);
     }
 
     ++job.stats.totalBatches;  // count how many chunks we are fetching
@@ -559,8 +552,9 @@ Result DumpFeature::DumpCollectionJob::run(
   if (dumpStructure) {
     // save meta data
     auto file = directory.writableFile(
-        escapedName + (options.clusterMode ? "" : ("_" + hexString)) +
-            ".structure.json",
+        absl::StrCat(escapedName,
+                     (options.clusterMode ? "" : ("_" + hexString)),
+                     ".structure.json"),
         true /*overwrite*/, 0, false /*gzipOk*/);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
@@ -591,9 +585,9 @@ Result DumpFeature::DumpCollectionJob::run(
 
   if (res.ok() && !options.useExperimentalDump) {
     // always create the file so that arangorestore does not complain
-    auto file =
-        directory.writableFile(escapedName + "_" + hexString + ".data.json",
-                               true /*overwrite*/, 0, true /*gzipOk*/);
+    auto file = directory.writableFile(
+        absl::StrCat(escapedName, "_", hexString, ".data.json"),
+        true /*overwrite*/, 0, true /*gzipOk*/);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
     }
@@ -911,7 +905,11 @@ void DumpFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  // TODO add validation more for experimental stuff
+  if (_options.useEnvelope) {
+    LOG_TOPIC("73b60", WARN, arangodb::Logger::DUMP)
+        << "using the --envelope option can cause necessary overhead and is "
+           "not required with newer versions of ArangoDB";
+  }
 }
 
 // dump data from cluster via a coordinator
@@ -945,11 +943,11 @@ Result DumpFeature::runSingleDump(httpclient::SimpleHttpClient& client,
 
   // get the cluster inventory
   std::string const url =
-      "/_api/replication/inventory?includeSystem=" +
-      std::string(_options.includeSystemCollections ? "true" : "false") +
-      "&includeFoxxQueues=" +
-      std::string(_options.includeSystemCollections ? "true" : "false") +
-      "&batchId=" + basics::StringUtils::itoa(batchId);
+      absl::StrCat("/_api/replication/inventory?includeSystem=",
+                   (_options.includeSystemCollections ? "true" : "false"),
+                   "&includeFoxxQueues=",
+                   (_options.includeSystemCollections ? "true" : "false"),
+                   "&batchId=", batchId);
 
   return runDump(client, url, dbName, batchId);
 }
@@ -975,7 +973,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   } catch (...) {
     return ::ErrorMalformedJsonResponse;
   }
-  VPackSlice const body = parsedBody->slice();
+  VPackSlice body = parsedBody->slice();
   if (!body.isObject()) {
     return ::ErrorMalformedJsonResponse;
   }
@@ -1013,7 +1011,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   }
 
   // parse collections array
-  VPackSlice const collections = body.get("collections");
+  VPackSlice collections = body.get("collections");
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
@@ -1041,12 +1039,6 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   // create a lookup table for collections
   std::map<std::string, arangodb::velocypack::Slice> restrictList;
   for (auto const& name : _options.collections) {
-    if (name.starts_with('_')) {
-      // if the user explictly asked for dumping certain collections, toggle the
-      // system collection flag automatically
-      _options.includeSystemCollections = true;
-    }
-
     restrictList.emplace(name, arangodb::velocypack::Slice::noneSlice());
   }
   // restrictList now contains all collections the user has requested (can be
@@ -1058,7 +1050,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     if (!collection.isObject()) {
       return ::ErrorMalformedJsonResponse;
     }
-    VPackSlice const parameters = collection.get("parameters");
+    VPackSlice parameters = collection.get("parameters");
 
     if (!parameters.isObject()) {
       return ::ErrorMalformedJsonResponse;
@@ -1079,12 +1071,12 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       continue;
     }
     if (name.starts_with('_') && !_options.includeSystemCollections) {
+      // exclude system collections
       continue;
     }
 
     // filter by specified names
-    if (!_options.collections.empty() &&
-        restrictList.find(name) == restrictList.end()) {
+    if (!_options.collections.empty() && !restrictList.contains(name)) {
       // collection name not in list
       continue;
     }
@@ -1422,6 +1414,12 @@ void DumpFeature::start() {
       }
 
       try {
+        // if any of the specified collections is a system collection, we
+        // auto-enable --include-system-collections for the user
+        _options.includeSystemCollections |= std::any_of(
+            _options.collections.begin(), _options.collections.end(),
+            [&](auto const& name) { return name.starts_with('_'); });
+
         if (_options.clusterMode) {
           res = runClusterDump(*httpClient, db);
         } else {
@@ -1821,6 +1819,10 @@ DumpFeature::DumpFileProvider::DumpFileProvider(
     // to create a file for each collection, even if it is empty. Otherwise,
     // arangorestore complains.
     for (auto const& [name, info] : collectionInfo) {
+      if (info.isNone()) {
+        // collection name present in dump
+        continue;
+      }
       std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
       std::string escapedName =
           escapedCollectionName(name, info.get("parameters"));

@@ -42,6 +42,7 @@
 
 namespace arangodb {
 class IndexIterator;
+struct ResourceMonitor;
 
 namespace aql {
 
@@ -87,6 +88,7 @@ class IndexExecutorInfos {
   arangodb::aql::Projections const& getFilterProjections() const noexcept;
   aql::QueryContext& query() noexcept;
   Expression* getFilter() const noexcept;
+  ResourceMonitor& getResourceMonitor() noexcept;
   bool getProduceResult() const noexcept;
   std::vector<transaction::Methods::IndexHandle> const& getIndexes()
       const noexcept;

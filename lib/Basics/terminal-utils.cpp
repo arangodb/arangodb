@@ -22,46 +22,46 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "terminal-utils.h"
+
+#include "Basics/NumberUtils.h"
+
+#include <cstring>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the columns width
-////////////////////////////////////////////////////////////////////////////////
+using namespace arangodb;
 
+namespace arangodb::terminal_utils {
+
+/// @brief returns the terminal size
 #if !defined(TRI_HAVE_SYS_IOCTL_H) && !defined(TRI_WIN32_CONSOLE)
-TRI_TerminalSize TRI_DefaultTerminalSize() {
-  char* e = getenv("COLUMNS");
+TerminalSize defaultTerminalSize() {
+  auto getFromEnvironment = [](char const* name, int defaultValue) {
+    char* e = getenv(name);
 
-  if (e != 0) {
-    int columns = (int)TRI_Int32String(e);
-
-    if (columns == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
-      return TRI_DEFAULT_TERMINAL_SIZE;
-    }
-
-    e = getenv("LINES");
     if (e != 0) {
-      int rows = (int)TRI_Int32String(e);
+      bool valid = false;
+      int value = static_cast<int>(NumberUtils::atoi_positive(e, e + strlen(e), valid);
 
-      if (rows == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
-        return TRI_DEFAULT_TERMINAL_SIZE;
+      if (valid && columns != 0) {
+        return value;
       }
-      return TRI_TerminalSize{rows, columns};
     }
-  }
+    return defaultValue;
+  };
 
-  return TRI_DEFAULT_TERMINAL_SIZE;
+  TerminalSize result;
+  result.columns = getFromEnvironment("COLUMNS", result.columns);
+  result.rows = getFromEnvironment("LINES", result.rows);
+
+  return result;
 }
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set the visibility of stdin inputs (turn off for password entry etc.)
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetStdinVisibility(bool visible) noexcept {
+void setStdinVisibility(bool visible) noexcept {
 #ifdef TRI_HAVE_TERMIOS_H
   struct termios tty;
 
@@ -87,3 +87,5 @@ void TRI_SetStdinVisibility(bool visible) noexcept {
 #endif
 #endif
 }
+
+}  // namespace arangodb::terminal_utils
