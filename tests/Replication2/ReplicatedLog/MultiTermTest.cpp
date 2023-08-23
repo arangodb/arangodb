@@ -33,26 +33,25 @@ using namespace arangodb::replication2::test;
 struct MultiTermTest : ReplicatedLogTest {};
 
 TEST_F(MultiTermTest, add_follower_test) {
-  // TODO Add expectations for internalStatus calls
-  auto leaderLogContainer = makeLogWithFakes({});
-  auto leaderLog = leaderLogContainer.log;
-  auto config = makeConfig(leaderLogContainer, {}, {.term = 1_T});
+  auto leaderLogContainer = createParticipant({});
+  auto leaderLog = leaderLogContainer->log;
+  auto config = makeConfig(*leaderLogContainer, {}, {.term = 1_T});
 
-  config.installConfig(true);
+  config->installConfig(true);
   {
-    auto idx = leaderLogContainer.stateHandleMock->logLeaderMethods->insert(
+    auto idx = leaderLogContainer->stateHandleMock->logLeaderMethods->insert(
         LogPayload::createFromString("first entry"), false);
     auto f = leaderLog->getParticipant()->waitFor(idx);
     // Note that the leader inserts a first log entry to establish leadership
     ASSERT_EQ(idx, LogIndex{2});
     EXPECT_FALSE(f.isReady());
-    leaderLogContainer.runAll();
+    leaderLogContainer->runAll();
     {
       ASSERT_TRUE(f.isReady());
       auto const& result = f.get();
       EXPECT_THAT(
           result.quorum->quorum,
-          testing::ElementsAre(leaderLogContainer.serverInstance.serverId));
+          testing::ElementsAre(leaderLogContainer->serverInstance.serverId));
     }
     {
       auto stats = leaderLog->getQuickStatus().local.value();
@@ -61,17 +60,17 @@ TEST_F(MultiTermTest, add_follower_test) {
     }
   }
 
-  auto followerLogContainer = makeLogWithFakes({});
-  auto followerLog = followerLogContainer.log;
-  EXPECT_CALL(*followerLogContainer.stateHandleMock, updateCommitIndex)
+  auto followerLogContainer = createParticipant({});
+  auto followerLog = followerLogContainer->log;
+  EXPECT_CALL(*followerLogContainer->stateHandleMock, updateCommitIndex)
       .Times(testing::AtLeast(1));
 
   // TODO Move the config manipulation into a function on LogConfig.
   //      Maybe move the makeConfig code into a LogConfig constructor.
   config =
-      makeConfig(leaderLogContainer, {followerLogContainer}, {.term = 2_T});
+      makeConfig(*leaderLogContainer, {*followerLogContainer}, {.term = 2_T});
 
-  config.installConfig(false);
+  config->installConfig(false);
   {
     {
       auto stats = leaderLog->getQuickStatus().local.value();
@@ -96,32 +95,32 @@ TEST_F(MultiTermTest, add_follower_test) {
         {.term = 2_T, .index = 3_Lx, .payload = PartialLogEntry::IsMeta{}},
     };
     auto expectedEntries = testing::Pointwise(MatchesMapLogEntry(), entries);
-    EXPECT_THAT(leaderLogContainer.storageContext->log, expectedEntries);
-    EXPECT_THAT(followerLogContainer.storageContext->log, expectedEntries);
+    EXPECT_THAT(leaderLogContainer->storageContext->log, expectedEntries);
+    EXPECT_THAT(followerLogContainer->storageContext->log, expectedEntries);
   }
 }
 
 TEST_F(MultiTermTest, resign_leader_wait_for) {
-  auto leaderLogContainer = makeLogWithFakes({});
-  auto leaderLog = leaderLogContainer.log;
-  auto followerLogContainer = makeLogWithFakes({});
-  auto followerLog = followerLogContainer.log;
-  auto config = makeConfig(leaderLogContainer, {followerLogContainer},
+  auto leaderLogContainer = createParticipant({});
+  auto leaderLog = leaderLogContainer->log;
+  auto followerLogContainer = createParticipant({});
+  auto followerLog = followerLogContainer->log;
+  auto config = makeConfig(*leaderLogContainer, {*followerLogContainer},
                            {.term = 1_T, .writeConcern = 2});
 
-  config.installConfig(true);
+  config->installConfig(true);
   {
-    auto idx = leaderLogContainer.stateHandleMock->logLeaderMethods->insert(
+    auto idx = leaderLogContainer->stateHandleMock->logLeaderMethods->insert(
         LogPayload::createFromString("first entry"), false);
     auto f = leaderLog->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f.isReady());
-    leaderLogContainer.runAll();
+    leaderLogContainer->runAll();
     // note we don't run the follower, so the leader can't commit the entry
     auto oldLeader = leaderLog->getParticipant();
     // TODO Move config manipulation into LogConfig methods
-    config = makeConfig(leaderLogContainer, {followerLogContainer},
+    config = makeConfig(*leaderLogContainer, {*followerLogContainer},
                         {.term = 2_T, .writeConcern = 2});
-    config.installConfig(false);
+    config->installConfig(false);
     ASSERT_TRUE(f.isReady());
     EXPECT_ANY_THROW({ std::ignore = f.get(); });
     EXPECT_ANY_THROW({ std::ignore = oldLeader->getStatus(); });
@@ -130,25 +129,25 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
   }
   // TODO Implement dropWork on IHasScheduler, use it here and drop the
   //      EXPECT_CALL.
-  EXPECT_CALL(*followerLogContainer.stateHandleMock, updateCommitIndex)
+  EXPECT_CALL(*followerLogContainer->stateHandleMock, updateCommitIndex)
       .Times(testing::AtLeast(1));
   IHasScheduler::runAll(leaderLogContainer, followerLogContainer);
 }
 
 TEST_F(MultiTermTest, resign_follower_wait_for) {
-  auto leaderLogContainer = makeLogWithFakes({});
-  auto followerLogContainer = makeLogWithFakes({});
-  auto leaderLog = leaderLogContainer.log;
-  auto followerLog = followerLogContainer.log;
-  auto config = makeConfig(leaderLogContainer, {followerLogContainer},
+  auto leaderLogContainer = createParticipant({});
+  auto followerLogContainer = createParticipant({});
+  auto leaderLog = leaderLogContainer->log;
+  auto followerLog = followerLogContainer->log;
+  auto config = makeConfig(*leaderLogContainer, {*followerLogContainer},
                            {.term = 1_T, .writeConcern = 2});
-  config.installConfig(true);
+  config->installConfig(true);
   {
-    auto idx = leaderLogContainer.stateHandleMock->logLeaderMethods->insert(
+    auto idx = leaderLogContainer->stateHandleMock->logLeaderMethods->insert(
         LogPayload::createFromString("first entry"), false);
     auto f = leaderLog->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f.isReady());
-    leaderLogContainer.runAll();
+    leaderLogContainer->runAll();
 
     {
       auto stats = leaderLog->getQuickStatus().local.value();
@@ -158,28 +157,28 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     }
 
     EXPECT_TRUE(
-        followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
-    auto [oldFollower, oldScheduler] = followerLogContainer.stealFollower();
+        followerLogContainer->delayedLogFollower->hasPendingAppendEntries());
+    auto [oldFollower, oldScheduler] = followerLogContainer->stealFollower();
     //  TODO Move config manipulation into LogConfig methods
-    config = makeConfig(leaderLogContainer, {followerLogContainer},
+    config = makeConfig(*leaderLogContainer, {*followerLogContainer},
                         {.term = 2_T, .writeConcern = 2});
-    std::ignore = followerLogContainer.updateConfig(config);
+    std::ignore = followerLogContainer->updateConfig(config);
 
     // now run the old followers append entry requests
     oldFollower->runAllAsyncAppendEntries();
     oldScheduler->runAll();
-    leaderLogContainer.runAll();
+    leaderLogContainer->runAll();
     EXPECT_TRUE(oldFollower->hasPendingAppendEntries());
 
     // now update the leader's config as well
-    std::ignore = leaderLogContainer.updateConfig(config);
-    leaderLogContainer.runAll();
+    std::ignore = leaderLogContainer->updateConfig(config);
+    leaderLogContainer->runAll();
     EXPECT_TRUE(
-        followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
+        followerLogContainer->delayedLogFollower->hasPendingAppendEntries());
 
     // run the old followers append entries
     oldFollower->runAsyncAppendEntries();
-    leaderLogContainer.runAll();
+    leaderLogContainer->runAll();
     // we expect no new append entries
     EXPECT_FALSE(oldFollower->hasPendingAppendEntries());
 
@@ -223,19 +222,19 @@ struct FollowerProxy : AbstractFollower {
 };
 
 TEST_F(MultiTermTest, resign_leader_append_entries) {
-  auto leaderLogContainer = makeLogWithFakes({});
-  auto followerLogContainer = makeLogWithFakes({});
-  auto leaderLog = leaderLogContainer.log;
-  auto followerLog = followerLogContainer.log;
-  auto config = makeConfig(leaderLogContainer, {followerLogContainer},
+  auto leaderLogContainer = createParticipant({});
+  auto followerLogContainer = createParticipant({});
+  auto leaderLog = leaderLogContainer->log;
+  auto followerLog = followerLogContainer->log;
+  auto config = makeConfig(*leaderLogContainer, {*followerLogContainer},
                            {.term = 1_T, .writeConcern = 2});
-  config.installConfig(true);
+  config->installConfig(true);
   {
-    auto idx = leaderLogContainer.stateHandleMock->logLeaderMethods->insert(
+    auto idx = leaderLogContainer->stateHandleMock->logLeaderMethods->insert(
         LogPayload::createFromString("first entry"), false);
     auto f = leaderLog->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f.isReady());
-    leaderLogContainer.runAll();
+    leaderLogContainer->runAll();
     EXPECT_FALSE(f.isReady());
 
     {
@@ -246,33 +245,33 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     }
 
     // now create a new leader and delete the old one
-    config = makeConfig(leaderLogContainer, {followerLogContainer},
+    config = makeConfig(*leaderLogContainer, {*followerLogContainer},
                         {.term = 2_T, .writeConcern = 2});
-    std::ignore = leaderLogContainer.updateConfig(config);
-    leaderLogContainer.runAll();
+    std::ignore = leaderLogContainer->updateConfig(config);
+    leaderLogContainer->runAll();
 
     // the old future should have failed
     ASSERT_TRUE(f.isReady());
     EXPECT_TRUE(f.hasException());
 
-    auto f2 = leaderLogContainer.log->getParticipant()->waitFor(idx);
+    auto f2 = leaderLogContainer->log->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f2.isReady());
 
     // run the old followers append entries
-    followerLogContainer.runAll();
-    leaderLogContainer.runAll();
+    followerLogContainer->runAll();
+    leaderLogContainer->runAll();
     // we expect a retry request
     EXPECT_TRUE(
-        followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
+        followerLogContainer->delayedLogFollower->hasPendingAppendEntries());
     // TODO this swapping here should be replaced by something in the test
-    //      framework (i.e. LogWithFakes, LogConfig etc.)
+    //      framework (i.e. LogContainer, LogConfig etc.)
     auto oldFollower = DelayedLogFollower(nullptr);
     auto oldScheduler = DelayedScheduler();
-    followerLogContainer.delayedLogFollower->swapFollowerAndQueueWith(
+    followerLogContainer->delayedLogFollower->swapFollowerAndQueueWith(
         oldFollower);
-    std::swap(oldScheduler, *followerLogContainer.logScheduler);
+    std::swap(oldScheduler, *followerLogContainer->logScheduler);
     // simulate the database server has updated its follower
-    std::ignore = followerLogContainer.updateConfig(config);
+    std::ignore = followerLogContainer->updateConfig(config);
 
     EXPECT_TRUE(oldFollower.hasPendingAppendEntries());
     oldFollower.runAsyncAppendEntries();
@@ -281,12 +280,12 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
 
     ASSERT_FALSE(f2.isReady());
     IHasScheduler::runAll(leaderLogContainer, followerLogContainer);
-    followerLogContainer.runAll();
+    followerLogContainer->runAll();
     EXPECT_FALSE(oldFollower.scheduler.hasWork());
     EXPECT_FALSE(oldScheduler.hasWork());
 
     {
-      auto stats = followerLogContainer.log->getQuickStatus().local.value();
+      auto stats = followerLogContainer->log->getQuickStatus().local.value();
       // Note that the leader inserts an empty log entry in becomeLeader, which
       // happened twice already.
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));

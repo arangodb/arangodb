@@ -37,22 +37,22 @@ struct RewriteLogTest : ReplicatedLogTest {};
 TEST_F(RewriteLogTest, rewrite_old_leader) {
   // create one log that has three entries:
   // (1:1), (2:2), (3:2)
-  auto followerLogContainer =
-      makeLogWithFakes({.initialLogRange = LogRange{LogIndex{1}, LogIndex{2}}});
-  followerLogContainer.storageContext->emplaceLogRange(
+  auto followerLogContainer = createParticipant(
+      {.initialLogRange = LogRange{LogIndex{1}, LogIndex{2}}});
+  followerLogContainer->storageContext->emplaceLogRange(
       LogRange{LogIndex{2}, LogIndex{4}}, LogTerm{2});
 
   // create different log that has only one entry
   // (1:1)
-  auto leaderLogContainer =
-      makeLogWithFakes({.initialLogRange = LogRange{LogIndex{1}, LogIndex{2}}});
+  auto leaderLogContainer = createParticipant(
+      {.initialLogRange = LogRange{LogIndex{1}, LogIndex{2}}});
 
-  auto config = makeConfig(leaderLogContainer, {followerLogContainer},
+  auto config = makeConfig(*leaderLogContainer, {*followerLogContainer},
                            {.term = LogTerm{3}, .writeConcern = 2});
-  config.installConfig(false);
+  config->installConfig(false);
 
-  auto leader = leaderLogContainer.log;
-  auto follower = followerLogContainer.log;
+  auto leader = leaderLogContainer->log;
+  auto follower = followerLogContainer->log;
 
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
@@ -67,7 +67,7 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(2), LogIndex(3)));
   }
 
-  EXPECT_CALL(*followerLogContainer.stateHandleMock,
+  EXPECT_CALL(*followerLogContainer->stateHandleMock,
               updateCommitIndex(testing::Eq(LogIndex{2})));
 
   // have the leader send the append entries request;
@@ -97,8 +97,8 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     };
     auto expectedEntries = testing::Pointwise(MatchesMapLogEntry(), entries);
     // check the follower's log: this must have been rewritten
-    EXPECT_THAT(followerLogContainer.storageContext->log, expectedEntries);
+    EXPECT_THAT(followerLogContainer->storageContext->log, expectedEntries);
     // just for completeness' sake, check the leader's log as well
-    EXPECT_THAT(leaderLogContainer.storageContext->log, expectedEntries);
+    EXPECT_THAT(leaderLogContainer->storageContext->log, expectedEntries);
   }
 }

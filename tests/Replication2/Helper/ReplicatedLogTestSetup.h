@@ -51,7 +51,7 @@ auto inline operator"" _T(unsigned long long x) -> LogTerm {
 struct LogArguments {
   std::variant<LogRange, std::vector<LogPayload>> initialLogRange = {};
   // set persistedMetadata to std::nullopt to simulate a read failure.
-  // `.stateId` will be set by makeLogWithFakes(), but is of no consequence
+  // `.stateId` will be set by createParticipant(), but is of no consequence
   // anyway.
   std::optional<storage::PersistedStateInfo> persistedMetadata =
       storage::PersistedStateInfo{
@@ -65,18 +65,26 @@ struct ConfigArguments {
   std::size_t writeConcern = 1;
   bool waitForSync = false;
 };
-struct LogWithFakes;
+struct LogContainer;
 struct LogConfig {
-  std::reference_wrapper<LogWithFakes> leader;
-  std::vector<std::reference_wrapper<LogWithFakes>> followers;
+  // TODO maybe move to shared_ptrs from reference_wrapper
+  std::optional<std::reference_wrapper<LogContainer>> leader;
+  std::vector<std::reference_wrapper<LogContainer>> followers;
   agency::LogPlanTermSpecification termSpec;
   agency::ParticipantsConfig participantsConfig;
 
   void installConfig(bool establishLeadership = false);
+
+  static auto makeConfig(
+      std::optional<std::reference_wrapper<LogContainer>> leader,
+      std::vector<std::reference_wrapper<LogContainer>> follower,
+      ConfigArguments configArguments) -> LogConfig;
 };
 
-struct LogWithFakes : IHasScheduler {
-  LogWithFakes(LogId logId, agency::ServerInstanceReference serverId,
+// Holds one replicated log participant, together will all the necessary mocks
+// and fakes.
+struct LogContainer : IHasScheduler {
+  LogContainer(LogId logId, agency::ServerInstanceReference serverId,
                LoggerContext loggerContext,
                std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetrics,
                LogArguments fakeArguments)
@@ -90,11 +98,11 @@ struct LogWithFakes : IHasScheduler {
                 std::move(fakeArguments.persistedMetadata))),
         options(std::move(fakeArguments.options)) {}
 
-  [[nodiscard]] auto updateConfig(LogConfig conf) {
-    bool const isLeader = &conf.leader.get() == this;
+  [[nodiscard]] auto updateConfig(LogConfig const* conf) {
+    bool const isLeader = conf->leader && conf->leader->get() == *this;
     if (isLeader) {
       stateHandleMock->expectLeader();
-      for (auto const it : conf.followers) {
+      for (auto const it : conf->followers) {
         auto& followerContainer = it.get();
         fakeFollowerFactory->followerThunks.try_emplace(
             followerContainer.serverInstance.serverId, [&followerContainer]() {
@@ -120,8 +128,8 @@ struct LogWithFakes : IHasScheduler {
       }
     }
     auto fut =
-        log->updateConfig(std::move(conf.termSpec),
-                          std::move(conf.participantsConfig), serverInstance);
+        log->updateConfig(std::move(conf->termSpec),
+                          std::move(conf->participantsConfig), serverInstance);
     if (!isLeader) {
       return std::move(fut).thenValue([&](futures::Unit&&) {
         delayedLogFollower->scheduler.dropWork();
@@ -170,6 +178,12 @@ struct LogWithFakes : IHasScheduler {
     return std::pair(std::move(follower), std::move(scheduler));
   }
 
+  auto operator==(LogContainer const& other) const noexcept -> bool {
+    // suffices for now, we could conceivably also compare logId +
+    // serverInstance instead
+    return this == &other;
+  }
+
   LoggerContext loggerContext;
   LogId const logId;
   agency::ServerInstanceReference const serverInstance;
@@ -213,71 +227,138 @@ struct LogWithFakes : IHasScheduler {
   std::shared_ptr<DelayedLogFollower> delayedLogFollower = nullptr;
 };
 
-struct ReplicatedLogTest : ::testing::Test {
-  testing::TestInfo const* const testInfo =
-      testing::UnitTest::GetInstance()->current_test_info();
-  constexpr static char gtestStr[] = "gtest";
-  LoggerContext loggerContext =
-      LoggerContext(Logger::REPLICATION2)
-          .with<gtestStr>(fmt::format("{}.{}", testInfo->test_suite_name(),
-                                      testInfo->test_case_name()));
+// One replicated log instance, including all participants, possibly going over
+// multiple terms.
+struct WholeLog {
+  LogId const logId;
+  // Relying on stable pointers and references to logs for now. Move to
+  // shared_ptr<LogContainer> if necessary.
+  std::map<ParticipantId, LogContainer> logs;
+  // TODO We'll probably need multiple configs in the same term.
+  std::map<LogTerm, LogConfig> terms;
 
-  std::shared_ptr<test::ReplicatedLogMetricsMock> logMetricsMock =
-      std::make_shared<test::ReplicatedLogMetricsMock>();
-  // std::shared_ptr<replication2::tests::ReplicatedStateMetricsMock>
-  //     stateMetricsMock =
-  //         std::make_shared<replication2::tests::ReplicatedStateMetricsMock>(
-  //             "foo");
+  explicit WholeLog(LoggerContext loggerContext, LogId logId)
+      : logId(logId), loggerContext(loggerContext) {}
 
-  std::uint64_t nextId = 1;
-
-  auto makeLogWithFakes(LogArguments fakeArguments) {
-    auto const id = nextId++;
-    auto logId = LogId{id};
+  auto createParticipant(LogArguments fakeArguments) -> LogContainer* {
+    auto const id = _nextParticipantId++;
     auto serverId = agency::ServerInstanceReference{fmt::format("dbs{:02}", id),
                                                     RebootId{1}};
     if (fakeArguments.persistedMetadata.has_value()) {
       fakeArguments.persistedMetadata->stateId = logId;
     }
-    return LogWithFakes(logId, serverId, loggerContext, logMetricsMock,
-                        std::move(fakeArguments));
+    auto it = logs.try_emplace(logs.end(), serverId.serverId, logId, serverId,
+                               loggerContext, logMetricsMock,
+                               std::move(fakeArguments));
+    return &it->second;
   }
 
-  auto makeConfig(LogWithFakes& leader,
-                  std::vector<std::reference_wrapper<LogWithFakes>> follower,
-                  ConfigArguments configArguments) {
-    auto logConfig = agency::LogPlanConfig{configArguments.writeConcern,
-                                           configArguments.waitForSync};
-    auto participants = agency::ParticipantsFlagsMap{};
-    auto const logToParticipant = [&](LogWithFakes& f) {
-      return std::pair(f.serverInstance.serverId, ParticipantFlags{});
-    };
-    participants.emplace(logToParticipant(leader));
-    std::transform(follower.begin(), follower.end(),
-                   std::inserter(participants, participants.end()),
-                   logToParticipant);
-    auto participantsConfig = agency::ParticipantsConfig{
-        .participants = participants, .config = logConfig};
-    auto logSpec = agency::LogPlanTermSpecification{configArguments.term,
-                                                    leader.serverInstance};
-    return LogConfig{.leader = leader,
-                     .followers = std::move(follower),
-                     .termSpec = std::move(logSpec),
-                     .participantsConfig = std::move(participantsConfig)};
+  auto addNewTerm(std::optional<std::reference_wrapper<LogContainer>> leader,
+                  std::vector<std::reference_wrapper<LogContainer>> follower,
+                  ConfigArguments configArguments) -> LogConfig* {
+    auto const term = [&]() {
+      auto it = terms.rbegin();
+      if (it == terms.rend()) {
+        return LogTerm{1};
+      } else {
+        return it->first.succ();
+      }
+    }();
+
+    auto it =
+        terms.try_emplace(terms.end(), term,
+                          LogConfig::makeConfig(leader, std::move(follower),
+                                                std::move(configArguments)));
+    return &it->second;
+  }
+
+  struct ConfigUpdates {
+    std::optional<std::reference_wrapper<LogContainer>> setLeader;
+    std::vector<std::reference_wrapper<LogContainer>> addParticipants;
+    std::vector<std::reference_wrapper<LogContainer>> removeParticipants;
+    std::optional<std::uint64_t> setWriteConcern;
+    std::optional<bool> setWaitForSync;
+
+    auto updateConfig(LogConfig config) const -> LogConfig {
+      for (auto const& toRemove : removeParticipants) {
+        auto const shouldBeRemoved = [&](auto other) {
+          return toRemove.get() == other.get();
+        };
+        std::remove_if(config.followers.begin(), config.followers.end(),
+                       shouldBeRemoved);
+        if (config.leader && shouldBeRemoved(*config.leader)) {
+          config.leader = std::nullopt;
+        }
+      }
+      std::copy(addParticipants.begin(), addParticipants.end(),
+                std::back_inserter(config.followers));
+      if (setLeader) {
+        config.leader = *setLeader;
+      }
+      if (setWriteConcern) {
+        config.participantsConfig.config.effectiveWriteConcern =
+            *setWriteConcern;
+      }
+      if (setWaitForSync) {
+        config.participantsConfig.config.waitForSync = *setWaitForSync;
+      }
+      return config;
+    }
+  };
+
+  auto addUpdatedTerm(ConfigUpdates updates) {
+    auto it = terms.rbegin();
+    TRI_ASSERT(it != terms.rend());
+    auto const [prevTerm, prevConf] = *it;
+    auto const term = prevTerm.succ();
+
+    auto config = updates.updateConfig(prevConf);
+
+    terms.try_emplace(terms.end(), term, std::move(config));
+  }
+
+ public:
+  std::shared_ptr<test::ReplicatedLogMetricsMock> logMetricsMock =
+      std::make_shared<test::ReplicatedLogMetricsMock>();
+
+ protected:
+  LoggerContext const loggerContext;
+  std::size_t _nextParticipantId = 1;
+};
+
+struct ReplicatedLogTest : ::testing::Test {
+  testing::TestInfo const* const testInfo =
+      testing::UnitTest::GetInstance()->current_test_info();
+  constexpr static char gtestStr[] = "gtest";
+  LoggerContext const loggerContext =
+      LoggerContext(Logger::REPLICATION2)
+          .with<gtestStr>(fmt::format("{}.{}", testInfo->test_suite_name(),
+                                      testInfo->test_case_name()));
+
+  WholeLog wholeLog = WholeLog(loggerContext, LogId{1});
+
+  auto createParticipant(LogArguments fakeArguments) -> LogContainer* {
+    return wholeLog.createParticipant(fakeArguments);
+  }
+
+  auto makeConfig(std::optional<std::reference_wrapper<LogContainer>> leader,
+                  std::vector<std::reference_wrapper<LogContainer>> follower,
+                  ConfigArguments configArguments) -> LogConfig* {
+    return wholeLog.addNewTerm(leader, std::move(follower), configArguments);
   }
 
   template<std::size_t replicationFactor>
   requires requires { replicationFactor >= 1; }
   auto createLogs(LogConfig config)
-      -> std::pair<LogWithFakes,
-                   std::array<LogWithFakes, replicationFactor - 1>> {
-    auto leader = makeLogWithFakes({});
-    auto logs = std::array<LogWithFakes, replicationFactor>{};
+      -> std::pair<LogContainer,
+                   std::array<LogContainer, replicationFactor - 1>> {
+    auto leader = createParticipant({});
+    auto logs = std::array<LogContainer, replicationFactor>{};
     for (auto&& [i, log] : enumerate(logs)) {
       auto& follower = config.followers[i];
-      log = makeLogWithFakes({});
+      log = createParticipant({});
     }
-    return logs;
+    return std::pair(leader, logs);
   }
 };
 

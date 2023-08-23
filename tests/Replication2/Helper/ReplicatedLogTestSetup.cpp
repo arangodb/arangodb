@@ -29,22 +29,50 @@
 
 namespace arangodb::replication2::test {
 
+auto LogConfig::makeConfig(
+    std::optional<std::reference_wrapper<LogContainer>> leader,
+    std::vector<std::reference_wrapper<LogContainer>> follower,
+    ConfigArguments configArguments) -> LogConfig {
+  auto logConfig = agency::LogPlanConfig{configArguments.writeConcern,
+                                         configArguments.waitForSync};
+  auto participants = agency::ParticipantsFlagsMap{};
+  auto const logToParticipant = [&](LogContainer& f) {
+    return std::pair(f.serverInstance.serverId, ParticipantFlags{});
+  };
+  if (leader) {
+    participants.emplace(logToParticipant(*leader));
+  }
+  std::transform(follower.begin(), follower.end(),
+                 std::inserter(participants, participants.end()),
+                 logToParticipant);
+  auto participantsConfig = agency::ParticipantsConfig{
+      .participants = participants, .config = logConfig};
+  auto logSpec = agency::LogPlanTermSpecification{
+      configArguments.term,
+      leader ? std::optional{leader->get().serverInstance} : std::nullopt};
+  return LogConfig{.leader = leader,
+                   .followers = std::move(follower),
+                   .termSpec = std::move(logSpec),
+                   .participantsConfig = std::move(participantsConfig)};
+}
+
 void LogConfig::installConfig(bool establishLeadership) {
+  TRI_ASSERT(leader);
   auto futures = std::vector<futures::Future<futures::Unit>>{};
   for (auto& follower : followers) {
-    futures.emplace_back(follower.get().updateConfig(*this));
+    futures.emplace_back(follower.get().updateConfig(this));
   }
-  futures.emplace_back(leader.get().updateConfig(*this));
+  futures.emplace_back(leader->get().updateConfig(this));
 
   if (establishLeadership) {
     auto future = futures::collectAll(std::move(futures));
-    while (leader.get().hasWork() || IHasScheduler::hasWork(followers)) {
-      leader.get().runAll();
+    while (leader->get().hasWork() || IHasScheduler::hasWork(followers)) {
+      leader->get().runAll();
       IHasScheduler::runAll(followers);
     }
 
     EXPECT_TRUE(future.hasValue());
-    auto leaderStatus = leader.get().log->getQuickStatus();
+    auto leaderStatus = leader->get().log->getQuickStatus();
     EXPECT_EQ(leaderStatus.role, replicated_log::ParticipantRole::kLeader);
     EXPECT_TRUE(leaderStatus.leadershipEstablished);
     for (auto& follower : followers) {

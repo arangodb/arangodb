@@ -57,7 +57,7 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
   expectedNumRequests++;
 
   auto leaderLogContainer =
-      makeLogWithFakes({.initialLogRange = _payloads, .options = _settings});
+      createParticipant({.initialLogRange = _payloads, .options = _settings});
 
   {
     /*
@@ -68,7 +68,8 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
      */
     auto numRequests = size_t{0};
     auto currentSize = size_t{0};
-    for (auto const& [idx, logEntry] : leaderLogContainer.storageContext->log) {
+    for (auto const& [idx, logEntry] :
+         leaderLogContainer->storageContext->log) {
       currentSize += logEntry.approxByteSize();
       if (currentSize >= _settings->_thresholdNetworkBatchSize) {
         numRequests += 1;
@@ -93,16 +94,16 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
     expectedNumRequests += numRequests;
   }
 
-  auto followerLogContainer = makeLogWithFakes({});
+  auto followerLogContainer = createParticipant({});
 
-  auto config = makeConfig(leaderLogContainer, {followerLogContainer},
+  auto config = makeConfig(*leaderLogContainer, {*followerLogContainer},
                            {.term = 5_T, .writeConcern = 2});
-  config.installConfig(false);
-  EXPECT_CALL(*followerLogContainer.stateHandleMock, updateCommitIndex)
+  config->installConfig(false);
+  EXPECT_CALL(*followerLogContainer->stateHandleMock, updateCommitIndex)
       .Times(testing::AtLeast(1));
 
-  auto leader = leaderLogContainer.log;
-  auto follower = followerLogContainer.log;
+  auto leader = leaderLogContainer->log;
+  auto follower = followerLogContainer->log;
 
   {
     if (_payloads.size() > 0) {
@@ -111,7 +112,7 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
                 TermIndexPair(LogTerm{5}, LogIndex{_payloads.size() + 1}));
       EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
 
-      EXPECT_EQ(stats.follower.at(followerLogContainer.serverInstance.serverId)
+      EXPECT_EQ(stats.follower.at(followerLogContainer->serverInstance.serverId)
                     .nextPrevLogIndex,
                 LogIndex{_payloads.size()});
     } else {
@@ -120,7 +121,7 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
                 TermIndexPair(LogTerm{5}, LogIndex{_payloads.size() + 1}));
       EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
 
-      EXPECT_EQ(stats.follower.at(followerLogContainer.serverInstance.serverId)
+      EXPECT_EQ(stats.follower.at(followerLogContainer->serverInstance.serverId)
                     .nextPrevLogIndex,
                 LogIndex{_payloads.size()});
     }
@@ -131,24 +132,25 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
     EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
   }
 
-  leaderLogContainer.runAll();
+  leaderLogContainer->runAll();
   ASSERT_TRUE(
-      followerLogContainer.delayedLogFollower->hasPendingAppendEntries());
+      followerLogContainer->delayedLogFollower->hasPendingAppendEntries());
 
   {
     // TODO Instead of this loop, maybe have the DelayedLogFollower track/count
     //      all requests, and just "runAll" on leader+follower.
     std::size_t num_requests = 0;
-    while (followerLogContainer.delayedLogFollower->hasPendingAppendEntries()) {
-      followerLogContainer.runAll();
+    while (
+        followerLogContainer->delayedLogFollower->hasPendingAppendEntries()) {
+      followerLogContainer->runAll();
       num_requests += 1;
-      leaderLogContainer.runAll();
+      leaderLogContainer->runAll();
     }
 
     EXPECT_EQ(num_requests, expectedNumRequests);
   }
 
-  ASSERT_NE(leaderLogContainer.stateHandleMock->logLeaderMethods, nullptr);
+  ASSERT_NE(leaderLogContainer->stateHandleMock->logLeaderMethods, nullptr);
 
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant());
