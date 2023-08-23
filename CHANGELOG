@@ -1,4 +1,4 @@
-v3.11.3 (XXXX-XX-XX)
+v3.11.3 (2023-08-17)
 --------------------
 
 * Allow compression content-negotation in metrics API, so that responses from
