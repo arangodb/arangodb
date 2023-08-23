@@ -125,6 +125,7 @@
 #endif
 
 #include <absl/crc/crc32c.h>
+#include <absl/strings/escaping.h>
 
 using namespace arangodb;
 using namespace basics;
