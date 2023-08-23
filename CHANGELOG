@@ -1,6 +1,9 @@
 devel
 -----
 
+* Prepare internal NetwortkFeature to transparently handle gzip-encoded
+  responses.
+
 * FE-309: Store created_at timestamp for queries in web UI.
 
 * Remove attribute `dfdb` from response of storage engine API (GET 

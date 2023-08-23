@@ -26,6 +26,7 @@
 #include <fuerte/connection.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/EncodingUtils.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
@@ -390,10 +391,11 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   }
   conn->sendRequest(
       std::move(req),
-      [this, &pool, isFromPool, cb = std::move(cb),
-       endpoint = std::move(endpoint)](fuerte::Error err,
-                                       std::unique_ptr<fuerte::Request> req,
-                                       std::unique_ptr<fuerte::Response> res) {
+      [this, &pool, isFromPool,
+       handleContentEncoding = options.handleContentEncoding,
+       cb = std::move(cb), endpoint = std::move(endpoint)](
+          fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+          std::unique_ptr<fuerte::Response> res) {
         if (req->timeQueued().time_since_epoch().count() != 0 &&
             req->timeAsyncWrite().time_since_epoch().count() != 0) {
           // In the 0 cases fuerte did not even accept or start to send
@@ -448,6 +450,30 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
         }
         TRI_ASSERT(req != nullptr);
         finishRequest(pool, err, req, res);
+        if (res != nullptr && handleContentEncoding) {
+          // transparently handle decompression
+          auto const& encoding =
+              res->header.metaByKey(StaticStrings::ContentEncoding);
+          if (encoding == StaticStrings::EncodingGzip) {
+            velocypack::Buffer<uint8_t> uncompressed;
+            auto r = encoding::gzipUncompress(
+                reinterpret_cast<uint8_t const*>(res->payload().data()),
+                res->payload().size(), uncompressed);
+            if (r != TRI_ERROR_NO_ERROR) {
+              THROW_ARANGO_EXCEPTION(r);
+            }
+            res->setPayload(std::move(uncompressed), 0);
+          } else if (encoding == StaticStrings::EncodingDeflate) {
+            velocypack::Buffer<uint8_t> uncompressed;
+            auto r = encoding::gzipInflate(
+                reinterpret_cast<uint8_t const*>(res->payload().data()),
+                res->payload().size(), uncompressed);
+            if (r != TRI_ERROR_NO_ERROR) {
+              THROW_ARANGO_EXCEPTION(r);
+            }
+            res->setPayload(std::move(uncompressed), 0);
+          }
+        }
         cb(err, std::move(req), std::move(res), isFromPool);
       });
 }
