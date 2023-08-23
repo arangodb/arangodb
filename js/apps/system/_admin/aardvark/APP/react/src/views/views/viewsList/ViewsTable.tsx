@@ -71,7 +71,7 @@ export const ViewsTable = () => {
         table={tableInstance}
         emptyStateMessage="No views found"
         onRowSelect={row => {
-          history.push(`/views/${row.original.name}`);
+          history.push(`/view/${row.original.name}`);
         }}
       />
     </Stack>
