@@ -1,6 +1,13 @@
 devel
 -----
 
+* Remove attribute `dfdb` from response of storage engine API (GET 
+  `/_api/engine`). 
+
+* The storage engine API (GET `/_api/engine`) now returns an `endianness`
+  attribute for the RocksDB storage engine on single servers and database
+  servers.
+
 * Allow compression content-negotation in metrics API, so that responses from
   the metrics API at `/_admin/metrics` can be sent compressed if the client
   supports it.
