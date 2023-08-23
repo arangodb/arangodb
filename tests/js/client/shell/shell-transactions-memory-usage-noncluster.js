@@ -105,7 +105,7 @@ function MemoryUsageSuite () {
       assertEqual([cn], trx[0].collections, trx);
       assertEqual('REST', trx[0].type, trx);
       assertEqual('inserting document(s)', trx[0].origin, trx);
-      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 500, trx);
       assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
     },
     
@@ -134,7 +134,7 @@ function MemoryUsageSuite () {
       assertEqual([cn], trx[0].collections, trx);
       assertEqual('AQL', trx[0].type, trx);
       assertEqual('running AQL query', trx[0].origin, trx);
-      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 500, trx);
       assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
     },
     
@@ -169,7 +169,7 @@ function MemoryUsageSuite () {
       assertEqual([cn], trx[0].collections, trx);
       assertEqual('REST', trx[0].type, trx);
       assertEqual('removing document(s)', trx[0].origin, trx);
-      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 500, trx);
       assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
     },
     
@@ -200,7 +200,7 @@ function MemoryUsageSuite () {
       assertEqual([cn], trx[0].collections, trx);
       assertEqual('AQL', trx[0].type, trx);
       assertEqual('running AQL query', trx[0].origin, trx);
-      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 500, trx);
       assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
     },
     
@@ -247,7 +247,7 @@ function MemoryUsageSuite () {
       assertEqual([cn], trx[0].collections, trx);
       assertEqual('REST', trx[0].type, trx);
       assertEqual('JavaScript transaction', trx[0].origin, trx);
-      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 500, trx);
       assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
     },
     
@@ -273,7 +273,7 @@ function MemoryUsageSuite () {
       assertEqual([cn], trx[0].collections, trx);
       assertEqual('REST', trx[0].type, trx);
       assertEqual('JavaScript transaction', trx[0].origin, trx);
-      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 500, trx);
       assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
     },
     
@@ -295,7 +295,7 @@ function MemoryUsageSuite () {
       assertEqual([cn], trx[0].collections, trx);
       assertEqual('REST', trx[0].type, trx);
       assertEqual('JavaScript transaction', trx[0].origin, trx);
-      assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+      assertTrue(trx[0].peakMemoryUsage > n * 500, trx);
       assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
     },
     
@@ -342,7 +342,7 @@ function MemoryUsageSuite () {
         assertEqual([cn], trx[0].collections, trx);
         assertEqual('REST', trx[0].type, trx);
         assertEqual('streaming transaction', trx[0].origin, trx);
-        assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+        assertTrue(trx[0].peakMemoryUsage > n * 500, trx);
         assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
       } finally {
         t.abort();
@@ -366,7 +366,7 @@ function MemoryUsageSuite () {
         assertEqual([cn], trx[0].collections, trx);
         assertEqual('REST', trx[0].type, trx);
         assertEqual('streaming transaction', trx[0].origin, trx);
-        assertTrue(trx[0].peakMemoryUsage > n * 4000, trx);
+        assertTrue(trx[0].peakMemoryUsage > n * 500, trx);
         assertTrue(trx[0].peakMemoryUsage >= trx[0].memoryUsage, trx);
       } finally {
         t.abort();

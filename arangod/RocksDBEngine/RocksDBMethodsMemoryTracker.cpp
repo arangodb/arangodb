@@ -26,69 +26,62 @@
 #include "Basics/ResourceUsage.h"
 #include "Metrics/Gauge.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Statistics/ServerStatistics.h"
+#include "Transaction/OperationOrigin.h"
+
+#include "Logger/LogMacros.h"
 
 namespace arangodb {
 
-MemoryTrackerBase::MemoryTrackerBase()
-    : _memoryUsage(0), _memoryUsageAtBeginQuery(0) {}
+RocksDBMethodsMemoryTracker::RocksDBMethodsMemoryTracker(
+    RocksDBTransactionState* state)
+    : _memoryUsage(0),
+      _memoryUsageAtBeginQuery(0),
+      _lastPublishedValueMetric(0),
+      _lastPublishedValueResourceMonitor(0),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _lastPublishedValue(0),
+      _state(state),
+#endif
+      _metric(nullptr),
+      _resourceMonitor(nullptr) {
+  TRI_ASSERT(state != nullptr);
 
-MemoryTrackerBase::~MemoryTrackerBase() {
+  switch (state->operationOrigin().type) {
+    case transaction::OperationOrigin::Type::kAQL:
+      // LOG_DEVEL << "AQL";
+      _metric = nullptr;
+      break;
+    case transaction::OperationOrigin::Type::kREST:
+      // LOG_DEVEL << "REST";
+      _metric = &state->statistics()._restTransactionsMemoryUsage;
+      break;
+    case transaction::OperationOrigin::Type::kInternal:
+      _metric = &state->statistics()._internalTransactionsMemoryUsage;
+      break;
+  }
+}
+
+RocksDBMethodsMemoryTracker::~RocksDBMethodsMemoryTracker() {
+  reset();
+
   TRI_ASSERT(_memoryUsage == 0);
   TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
 }
 
-void MemoryTrackerBase::reset() noexcept {
+void RocksDBMethodsMemoryTracker::reset() noexcept {
+  // LOG_DEVEL << "RESET";
   _memoryUsage = 0;
   _memoryUsageAtBeginQuery = 0;
   _savePoints.clear();
-}
 
-void MemoryTrackerBase::increaseMemoryUsage(std::uint64_t value) {
-  _memoryUsage += value;
-}
-
-void MemoryTrackerBase::decreaseMemoryUsage(std::uint64_t value) noexcept {
-  TRI_ASSERT(_memoryUsage >= value);
-  _memoryUsage -= value;
-}
-
-void MemoryTrackerBase::setSavePoint() { _savePoints.push_back(_memoryUsage); }
-
-void MemoryTrackerBase::rollbackToSavePoint() {
-  // note: this is effectively noexcept
-  TRI_ASSERT(!_savePoints.empty());
-  _memoryUsage = _savePoints.back();
-  _savePoints.pop_back();
-}
-
-void MemoryTrackerBase::popSavePoint() noexcept {
-  TRI_ASSERT(!_savePoints.empty());
-  _savePoints.pop_back();
-}
-
-std::uint64_t MemoryTrackerBase::memoryUsage() const noexcept {
-  return _memoryUsage;
-}
-
-// memory usage tracker for AQL transactions that tracks memory
-// allocations during an AQL query. reports to the AQL query's
-// ResourceMonitor.
-MemoryTrackerAqlQuery::MemoryTrackerAqlQuery(RocksDBTransactionState* state)
-    : MemoryTrackerBase(),
-      _state(state),
-      _resourceMonitor(nullptr),
-      _lastPublishedValue(0) {}
-
-MemoryTrackerAqlQuery::~MemoryTrackerAqlQuery() { reset(); }
-
-void MemoryTrackerAqlQuery::reset() noexcept {
-  // reset everything
-  MemoryTrackerBase::reset();
   try {
     // this should effectively not throw, because in the destructor
     // we should only _decrease_ the memory usage, which will call the
     // noexcept decreaseMemoryUsage() function on the ResourceMonitor.
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_memoryUsage <= _lastPublishedValue);
+#endif
     publish(true);
   } catch (...) {
     // we should never get here.
@@ -96,23 +89,28 @@ void MemoryTrackerAqlQuery::reset() noexcept {
   }
 }
 
-void MemoryTrackerAqlQuery::increaseMemoryUsage(std::uint64_t value) {
+void RocksDBMethodsMemoryTracker::increaseMemoryUsage(std::uint64_t value) {
   if (value != 0) {
-    MemoryTrackerBase::increaseMemoryUsage(value);
+    // LOG_DEVEL << "INCR " << value;
+    _memoryUsage += value;
     try {
       // note: publishing may throw when increasing the memory usage
       publish(false);
     } catch (...) {
       // if we caught an exception, roll back the increase to _memoryUsage
-      MemoryTrackerBase::decreaseMemoryUsage(value);
+      TRI_ASSERT(_memoryUsage >= value);
+      _memoryUsage -= value;
       throw;
     }
   }
 }
 
-void MemoryTrackerAqlQuery::decreaseMemoryUsage(std::uint64_t value) noexcept {
+void RocksDBMethodsMemoryTracker::decreaseMemoryUsage(
+    std::uint64_t value) noexcept {
   if (value != 0) {
-    MemoryTrackerBase::decreaseMemoryUsage(value);
+    // LOG_DEVEL << "DECR " << value;
+    TRI_ASSERT(_memoryUsage >= value);
+    _memoryUsage -= value;
     // note: publish does not throw for a decrease
     try {
       // this should effectively not throw, because we should only _decrease_
@@ -126,15 +124,28 @@ void MemoryTrackerAqlQuery::decreaseMemoryUsage(std::uint64_t value) noexcept {
   }
 }
 
-void MemoryTrackerAqlQuery::rollbackToSavePoint() {
-  // this will reset _memoryUsage
-  MemoryTrackerBase::rollbackToSavePoint();
+void RocksDBMethodsMemoryTracker::setSavePoint() {
+  _savePoints.push_back(_memoryUsage);
+}
+
+void RocksDBMethodsMemoryTracker::rollbackToSavePoint() {
+  // note: this is effectively noexcept
+  TRI_ASSERT(!_savePoints.empty());
+  _memoryUsage = _savePoints.back();
+  // LOG_DEVEL << "ROLLING BACK TO SAVEPOINT " << _memoryUsage;
+  _savePoints.pop_back();
   publish(true);
 }
 
-void MemoryTrackerAqlQuery::beginQuery(ResourceMonitor* resourceMonitor) {
-  // note: resourceMonitor cannot be a nullptr when we are called here
-  TRI_ASSERT(resourceMonitor != nullptr);
+void RocksDBMethodsMemoryTracker::popSavePoint() noexcept {
+  TRI_ASSERT(!_savePoints.empty());
+  _savePoints.pop_back();
+}
+
+void RocksDBMethodsMemoryTracker::beginQuery(ResourceMonitor* resourceMonitor) {
+  // note: resourceMonitor can be a nullptr if we are called from truncate
+  // LOG_DEVEL << "BEGINQUERY. RESOURCEM: " << resourceMonitor
+  //          << ", MEMORYUSAGE AT BEGIN: " << _memoryUsage;
   TRI_ASSERT(_resourceMonitor == nullptr);
   TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
 
@@ -142,12 +153,15 @@ void MemoryTrackerAqlQuery::beginQuery(ResourceMonitor* resourceMonitor) {
   _memoryUsageAtBeginQuery = _memoryUsage;
 }
 
-void MemoryTrackerAqlQuery::endQuery() noexcept {
-  TRI_ASSERT(_resourceMonitor != nullptr);
+void RocksDBMethodsMemoryTracker::endQuery() noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_memoryUsage >= _lastPublishedValue);
+#endif
+  // LOG_DEVEL << "ENDQUERY. RESOURCEM: " << _resourceMonitor
+  //          << ", MEMORYUSAGE: " << _memoryUsage << ", RESETTING TO "
+  //          << _memoryUsageAtBeginQuery;
 
   _memoryUsage = _memoryUsageAtBeginQuery;
-  _memoryUsageAtBeginQuery = 0;
   try {
     // this should effectively not throw, because in the endQuery()
     // call we should only _decrease_ the memory usage, which will call
@@ -157,134 +171,63 @@ void MemoryTrackerAqlQuery::endQuery() noexcept {
     // we should never get here.
     TRI_ASSERT(false);
   }
+  _memoryUsageAtBeginQuery = 0;
   _resourceMonitor = nullptr;
 }
 
-void MemoryTrackerAqlQuery::publish(bool force) {
-  if (_resourceMonitor == nullptr) {
-    return;
-  }
-  if (!force) {
-    if (_lastPublishedValue < _memoryUsage) {
+std::uint64_t RocksDBMethodsMemoryTracker::memoryUsage() const noexcept {
+  return _memoryUsage;
+}
+
+void RocksDBMethodsMemoryTracker::publish(bool force) {
+  force = true;
+  auto mustForce = [](std::uint64_t lastPublished,
+                      std::uint64_t memoryUsage) noexcept {
+    if (lastPublished < memoryUsage) {
       // current memory usage is higher
-      force |= (_memoryUsage - _lastPublishedValue) >= kMemoryReportGranularity;
-    } else if (_lastPublishedValue > _memoryUsage) {
+      return (memoryUsage - lastPublished) >= kMemoryReportGranularity;
+    } else if (lastPublished > memoryUsage) {
       // current memory usage is lower
-      force |= (_lastPublishedValue - _memoryUsage) >= kMemoryReportGranularity;
+      return (lastPublished - memoryUsage) >= kMemoryReportGranularity;
     }
-  }
+    return false;
+  };
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto lastPublishedValue = _lastPublishedValue;
-#endif
-
-  if (force) {
-    if (_lastPublishedValue < _memoryUsage) {
-      // current memory usage is higher, so we increase.
-      // note: this can throw!
-      _resourceMonitor->increaseMemoryUsage(_memoryUsage - _lastPublishedValue);
-    } else if (_lastPublishedValue > _memoryUsage) {
-      // current memory usage is lower. note: this will not throw!
-      try {
-        _resourceMonitor->decreaseMemoryUsage(_lastPublishedValue -
-                                              _memoryUsage);
-      } catch (...) {
-        // this should never throw
-        TRI_ASSERT(false);
+  if (_resourceMonitor != nullptr) {
+    TRI_ASSERT(_memoryUsage >= _memoryUsageAtBeginQuery);
+    auto memoryUsage = _memoryUsage - _memoryUsageAtBeginQuery;
+    if (force || mustForce(_lastPublishedValueResourceMonitor, memoryUsage)) {
+      if (_lastPublishedValueResourceMonitor < memoryUsage) {
+        // current memory usage is higher, so we increase.
+        // note: this can throw!
+        _resourceMonitor->increaseMemoryUsage(
+            memoryUsage - _lastPublishedValueResourceMonitor);
+      } else if (_lastPublishedValueResourceMonitor > memoryUsage) {
+        // current memory usage is lower. note: this will not throw!
+        _resourceMonitor->decreaseMemoryUsage(
+            _lastPublishedValueResourceMonitor - memoryUsage);
       }
+      // LOG_DEVEL << "PUBLISHED VALUE: " << memoryUsage;
+      _lastPublishedValueResourceMonitor = memoryUsage;
     }
-    _lastPublishedValue = _memoryUsage;
+  }
+
+  if (_metric != nullptr &&
+      (force || mustForce(_lastPublishedValueMetric, _memoryUsage))) {
+    if (_lastPublishedValueMetric < _memoryUsage) {
+      _metric->fetch_add(_memoryUsage - _lastPublishedValueMetric);
+    } else if (_lastPublishedValueMetric > _memoryUsage) {
+      _metric->fetch_sub(_lastPublishedValueMetric - _memoryUsage);
+    }
+    _lastPublishedValueMetric = _memoryUsage;
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_state != nullptr);
   // publish to state for internal test purposes. this won't throw.
   _state->adjustMemoryUsage(static_cast<std::int64_t>(_memoryUsage) -
-                            static_cast<std::int64_t>(lastPublishedValue));
-#endif
-}
-
-MemoryTrackerMetric::MemoryTrackerMetric(RocksDBTransactionState* state,
-                                         metrics::Gauge<std::uint64_t>* metric)
-    : MemoryTrackerBase(),
-      _state(state),
-      _metric(metric),
-      _lastPublishedValue(0) {
-  TRI_ASSERT(_metric != nullptr);
-}
-
-MemoryTrackerMetric::~MemoryTrackerMetric() { reset(); }
-
-void MemoryTrackerMetric::reset() noexcept {
-  // reset everything
-  MemoryTrackerBase::reset();
-  publish(true);
-}
-
-void MemoryTrackerMetric::increaseMemoryUsage(std::uint64_t value) {
-  if (value != 0) {
-    // both of these will not throw, so we can execute them
-    // in any order
-    MemoryTrackerBase::increaseMemoryUsage(value);
-    publish(false);
-  }
-}
-
-void MemoryTrackerMetric::decreaseMemoryUsage(std::uint64_t value) noexcept {
-  if (value != 0) {
-    MemoryTrackerBase::decreaseMemoryUsage(value);
-    publish(false);
-  }
-}
-
-void MemoryTrackerMetric::rollbackToSavePoint() {
-  // this will reset _memoryUsage
-  MemoryTrackerBase::rollbackToSavePoint();
-  publish(true);
-}
-
-void MemoryTrackerMetric::beginQuery(ResourceMonitor* /*resourceMonitor*/) {
-  // note: resourceMonitor can be a nullptr when we are called
-  // from RocksDBCollection::truncateWithRemovals()
-  TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
-  _memoryUsageAtBeginQuery = _memoryUsage;
-}
-
-void MemoryTrackerMetric::endQuery() noexcept {
-  _memoryUsage = _memoryUsageAtBeginQuery;
-  _memoryUsageAtBeginQuery = 0;
-  publish(true);
-}
-
-void MemoryTrackerMetric::publish(bool force) noexcept {
-  if (!force) {
-    if (_lastPublishedValue < _memoryUsage) {
-      // current memory usage is higher
-      force |= (_memoryUsage - _lastPublishedValue) >= kMemoryReportGranularity;
-    } else if (_lastPublishedValue > _memoryUsage) {
-      // current memory usage is lower
-      force |= (_lastPublishedValue - _memoryUsage) >= kMemoryReportGranularity;
-    }
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto lastPublishedValue = _lastPublishedValue;
-#endif
-
-  if (force) {
-    if (_lastPublishedValue < _memoryUsage) {
-      // current memory usage is higher
-      _metric->fetch_add(_memoryUsage - _lastPublishedValue);
-    } else if (_lastPublishedValue > _memoryUsage) {
-      // current memory usage is lower
-      _metric->fetch_sub(_lastPublishedValue - _memoryUsage);
-    }
-    _lastPublishedValue = _memoryUsage;
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // publish to state for internal test purposes. this won't throw.
-  _state->adjustMemoryUsage(static_cast<std::int64_t>(_memoryUsage) -
-                            static_cast<std::int64_t>(lastPublishedValue));
+                            static_cast<std::int64_t>(_lastPublishedValue));
+  _lastPublishedValue = _memoryUsage;
 #endif
 }
 

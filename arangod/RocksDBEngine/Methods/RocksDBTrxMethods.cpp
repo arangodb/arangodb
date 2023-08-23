@@ -104,7 +104,7 @@ void RocksDBTrxMethods::rollbackOperation(
 
 bool RocksDBTrxMethods::isIntermediateCommitNeeded() {
   return hasIntermediateCommitsEnabled() &&
-         checkIntermediateCommit(_memoryTracker->memoryUsage());
+         checkIntermediateCommit(_memoryTracker.memoryUsage());
 }
 
 rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -456,7 +456,7 @@ void RocksDBTrxMethods::initializeReadWriteBatch() {
   auto value =
       _readWriteBatch->GetWriteBatch()->GetDataSize() + cloner.memoryUsage;
   // may throw
-  _memoryTracker->increaseMemoryUsage(value);
+  _memoryTracker.increaseMemoryUsage(value);
   _memoryUsedByReadWriteBatch = value;
 }
 
@@ -468,6 +468,6 @@ void RocksDBTrxMethods::releaseReadWriteBatch() noexcept {
 
     // count down memory again
     auto value = std::exchange(_memoryUsedByReadWriteBatch, 0);
-    _memoryTracker->decreaseMemoryUsage(value);
+    _memoryTracker.decreaseMemoryUsage(value);
   }
 }

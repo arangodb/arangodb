@@ -598,20 +598,27 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  if (pos > 0 && pos < value.size() &&
-      value.compare(pos, std::string::npos, " begin") == 0) {
-    if (!ServerState::instance()->isDBServer()) {
+  if (pos > 0 && pos < value.size()) {
+    if (value.compare(pos, std::string::npos, " aql") == 0) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                                     "cannot start a managed transaction here");
+                                     "cannot start an AQL transaction here");
     }
-    std::string const& trxDef =
-        _request->header(StaticStrings::TransactionBody, found);
-    if (found) {
-      auto trxOpts = VPackParser::fromJson(trxDef);
-      Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
-                                         operationOrigin, isFollower);
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
+
+    if (value.compare(pos, std::string::npos, " begin") == 0) {
+      if (!ServerState::instance()->isDBServer()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+            "cannot start a managed transaction here");
+      }
+      std::string const& trxDef =
+          _request->header(StaticStrings::TransactionBody, found);
+      if (found) {
+        auto trxOpts = VPackParser::fromJson(trxDef);
+        Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
+                                           operationOrigin, isFollower);
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
       }
     }
   }
@@ -697,8 +704,6 @@ RestVocbaseBaseHandler::createTransactionContext(
       // standalone AQL query on DB server
       auto ctx = std::make_shared<transaction::AQLStandaloneContext>(
           _vocbase, tid, operationOrigin);
-      // TODO: looks wrong
-      // ctx->setStreaming();
       return ctx;
     }
 
@@ -708,6 +713,9 @@ RestVocbaseBaseHandler::createTransactionContext(
           _request->header(StaticStrings::TransactionBody, found);
       if (found) {
         auto trxOpts = VPackParser::fromJson(trxDef);
+        // this is the first time we see this transaction on this
+        // DB server. override origin, because we are inside a streaming
+        // transaction when we get here.
         auto origin = transaction::OperationOriginREST{
             "streaming transaction on DB server"};
         Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),

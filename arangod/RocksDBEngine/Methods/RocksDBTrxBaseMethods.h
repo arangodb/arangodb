@@ -25,14 +25,13 @@
 
 #include "Aql/QueryContext.h"
 #include "Containers/SmallVector.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 
 #include <cstdint>
-#include <memory>
 
 namespace arangodb {
 struct ResourceMonitor;
-struct RocksDBMethodsMemoryTracker;
 
 struct IRocksDBTransactionCallback {
   virtual ~IRocksDBTransactionCallback() = default;
@@ -190,7 +189,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   TRI_voc_tick_t _lastWrittenOperationTick{0};
 
   /// @brief object used for tracking memory usage
-  std::unique_ptr<RocksDBMethodsMemoryTracker> _memoryTracker;
+  RocksDBMethodsMemoryTracker _memoryTracker;
 
   bool _indexingDisabled{false};
 };

@@ -32,48 +32,59 @@ namespace arangodb {
 struct ResourceMonitor;
 class RocksDBTransactionState;
 
-struct RocksDBMethodsMemoryTracker {
-  virtual ~RocksDBMethodsMemoryTracker() {}
-  virtual void reset() noexcept = 0;
-  virtual void increaseMemoryUsage(std::uint64_t value) = 0;
-  virtual void decreaseMemoryUsage(std::uint64_t value) noexcept = 0;
-
-  virtual void setSavePoint() = 0;
-  virtual void rollbackToSavePoint() = 0;
-  virtual void popSavePoint() noexcept = 0;
-
-  virtual size_t memoryUsage() const noexcept = 0;
-  virtual void beginQuery(ResourceMonitor* resourceMonitor) = 0;
-  virtual void endQuery() noexcept = 0;
-};
-
-// abstract base class with common functionality for other memory usage
-// trackers
-class MemoryTrackerBase : public RocksDBMethodsMemoryTracker {
+class RocksDBMethodsMemoryTracker {
  public:
-  MemoryTrackerBase(MemoryTrackerBase const&) = delete;
-  MemoryTrackerBase& operator=(MemoryTrackerBase const&) = delete;
+  RocksDBMethodsMemoryTracker(RocksDBMethodsMemoryTracker const&) = delete;
+  RocksDBMethodsMemoryTracker& operator=(RocksDBMethodsMemoryTracker const&) =
+      delete;
 
-  MemoryTrackerBase();
-  ~MemoryTrackerBase();
+  explicit RocksDBMethodsMemoryTracker(RocksDBTransactionState* state);
 
-  void reset() noexcept override;
+  ~RocksDBMethodsMemoryTracker();
 
-  void increaseMemoryUsage(std::uint64_t value) override;
+  void reset() noexcept;
 
-  void decreaseMemoryUsage(std::uint64_t value) noexcept override;
+  void increaseMemoryUsage(std::uint64_t value);
 
-  void setSavePoint() override;
+  void decreaseMemoryUsage(std::uint64_t value) noexcept;
 
-  void rollbackToSavePoint() override;
+  void setSavePoint();
 
-  void popSavePoint() noexcept override;
+  void rollbackToSavePoint();
 
-  std::uint64_t memoryUsage() const noexcept override;
+  void popSavePoint() noexcept;
 
- protected:
+  void beginQuery(ResourceMonitor* resourceMonitor);
+
+  void endQuery() noexcept;
+
+  std::uint64_t memoryUsage() const noexcept;
+
+ private:
+  void publish(bool force);
+
   std::uint64_t _memoryUsage;
   std::uint64_t _memoryUsageAtBeginQuery;
+
+  // last value we published to the metric ourselves. we keep track
+  // of this so we only need to update the metric if our current
+  // memory usage differs by more than kMemoryReportGranularity from
+  // what we already posted to the metric. we do this to save lots
+  // of metrics updates with very small increments/decrements, which
+  // would provide little value and would only lead to contention on
+  // the metric's underlying atomic value.
+  std::uint64_t _lastPublishedValueMetric;
+  std::uint64_t _lastPublishedValueResourceMonitor;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::uint64_t _lastPublishedValue;
+  RocksDBTransactionState* _state;
+#endif
+
+  metrics::Gauge<std::uint64_t>* _metric;
+
+  ResourceMonitor* _resourceMonitor;
+
   containers::SmallVector<std::uint64_t, 4> _savePoints;
 
   // publish only memory usage differences if memory usage changed
@@ -81,82 +92,6 @@ class MemoryTrackerBase : public RocksDBMethodsMemoryTracker {
   // this is to avoid too frequent metrics updates and potential
   // contention on ths metric's underlying atomic value.
   static constexpr std::int64_t kMemoryReportGranularity = 4096;
-};
-
-// memory usage tracker for AQL transactions that tracks memory
-// allocations during an AQL query. reports to the AQL query's
-// ResourceMonitor.
-class MemoryTrackerAqlQuery final : public MemoryTrackerBase {
- public:
-  explicit MemoryTrackerAqlQuery(RocksDBTransactionState* state);
-  ~MemoryTrackerAqlQuery();
-
-  void reset() noexcept override;
-
-  void increaseMemoryUsage(std::uint64_t value) override;
-
-  void decreaseMemoryUsage(std::uint64_t value) noexcept override;
-
-  void rollbackToSavePoint() override;
-
-  void beginQuery(ResourceMonitor* resourceMonitor) override;
-
-  void endQuery() noexcept override;
-
- private:
-  void publish(bool force);
-
-  RocksDBTransactionState* _state;
-
-  ResourceMonitor* _resourceMonitor;
-
-  // last value we published to the metric ourselves. we keep track
-  // of this so we only need to update the metric if our current
-  // memory usage differs by more than kMemoryReportGranularity from
-  // what we already posted to the metric. we do this to save lots
-  // of metrics updates with very small increments/decrements, which
-  // would provide little value and would only lead to contention on
-  // the metric's underlying atomic value.
-  std::uint64_t _lastPublishedValue;
-};
-
-// memory usage tracker for transactions that update a particular
-// memory usage metric. currently used for all transactions that
-// are not top-level AQL queries, and for internal transactions
-// (transactions that were not explicitly initiated by users).
-class MemoryTrackerMetric final : public MemoryTrackerBase {
- public:
-  explicit MemoryTrackerMetric(RocksDBTransactionState* state,
-                               metrics::Gauge<std::uint64_t>* metric);
-  ~MemoryTrackerMetric();
-
-  void reset() noexcept override;
-
-  void increaseMemoryUsage(std::uint64_t value) override;
-
-  void decreaseMemoryUsage(std::uint64_t value) noexcept override;
-
-  void rollbackToSavePoint() override;
-
-  void beginQuery(ResourceMonitor* /*resourceMonitor*/) override;
-
-  void endQuery() noexcept override;
-
- private:
-  void publish(bool force) noexcept;
-
-  RocksDBTransactionState* _state;
-
-  metrics::Gauge<std::uint64_t>* _metric;
-
-  // last value we published to the metric ourselves. we keep track
-  // of this so we only need to update the metric if our current
-  // memory usage differs by more than kMemoryReportGranularity from
-  // what we already posted to the metric. we do this to save lots
-  // of metrics updates with very small increments/decrements, which
-  // would provide little value and would only lead to contention on
-  // the metric's underlying atomic value.
-  std::uint64_t _lastPublishedValue;
 };
 
 }  // namespace arangodb
