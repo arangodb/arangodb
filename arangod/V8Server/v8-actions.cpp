@@ -921,7 +921,9 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             // we do not decode in the vst case
             // check available transformations
             if (name == "base64decode") {
-              out = StringUtils::decodeBase64(out);
+              std::string dst;
+              absl::Base64Unescape(out, &dst);
+              out = std::move(dst);
             } else if (name == StaticStrings::EncodingGzip) {
               response->setAllowCompression(true);
             } else if (name == StaticStrings::EncodingDeflate) {
