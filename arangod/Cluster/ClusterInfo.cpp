@@ -6449,8 +6449,9 @@ ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 bool ClusterInfo::SyncerThread::notify() {
   std::lock_guard<std::mutex> lck(_m);
   _news = true;
+  // TODO: can we move the notify_one() call outside of the mutex?
   _cv.notify_one();
-  return _news;
+  return true;
 }
 
 void ClusterInfo::SyncerThread::beginShutdown() {
@@ -6468,10 +6469,11 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 bool ClusterInfo::SyncerThread::start() {
   ThreadNameFetcher nameFetcher;
   std::string_view name = nameFetcher.get();
+  if (name.empty()) {
+    name = "unknown syncer thread";
+  }
 
-  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER)
-      << "Starting "
-      << (name.empty() ? std::string_view("by unknown thread") : name);
+  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER) << "Starting " << name;
   return Thread::start();
 }
 
