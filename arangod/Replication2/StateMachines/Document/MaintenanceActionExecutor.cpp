@@ -24,8 +24,9 @@
 #include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/CreateCollection.h"
-#include "Cluster/Maintenance.h"
 #include "Cluster/DropCollection.h"
+#include "Cluster/Maintenance.h"
+#include "Cluster/UpdateCollection.h"
 
 namespace arangodb::replication2::replicated_state::document {
 MaintenanceActionExecutor::MaintenanceActionExecutor(
@@ -52,11 +53,8 @@ auto MaintenanceActionExecutor::executeCreateCollectionAction(
       maintenance::HIGHER_PRIORITY, false, std::move(properties));
   maintenance::CreateCollection createCollectionAction(_maintenanceFeature,
                                                        actionDescription);
-  bool work = createCollectionAction.first();
-  if (work) {
-    return {TRI_ERROR_INTERNAL};
-  }
-  return {};
+  createCollectionAction.first();
+  return createCollectionAction.result();
 }
 
 auto MaintenanceActionExecutor::executeDropCollectionAction(
@@ -75,11 +73,30 @@ auto MaintenanceActionExecutor::executeDropCollectionAction(
       maintenance::HIGHER_PRIORITY, false);
   maintenance::DropCollection dropCollectionAction(_maintenanceFeature,
                                                    actionDescription);
-  bool work = dropCollectionAction.first();
-  if (work) {
-    return {TRI_ERROR_INTERNAL};
-  }
-  return {};
+  dropCollectionAction.first();
+  return dropCollectionAction.result();
+}
+
+auto MaintenanceActionExecutor::executeModifyCollectionAction(
+    ShardID shard, CollectionID collection,
+    std::shared_ptr<VPackBuilder> properties, std::string followersToDrop)
+    -> Result {
+  namespace maintenance = arangodb::maintenance;
+
+  maintenance::ActionDescription actionDescription(
+      std::map<std::string, std::string>{
+          {maintenance::NAME, maintenance::UPDATE_COLLECTION},
+          {maintenance::DATABASE, _gid.database},
+          {maintenance::COLLECTION, collection},
+          {maintenance::SHARD, shard},
+          {maintenance::SERVER_ID, _server},
+          {maintenance::FOLLOWERS_TO_DROP, followersToDrop}},
+      maintenance::HIGHER_PRIORITY, true, std::move(properties));
+
+  maintenance::UpdateCollection updateCollectionAction(_maintenanceFeature,
+                                                       actionDescription);
+  updateCollectionAction.first();
+  return updateCollectionAction.result();
 }
 
 void MaintenanceActionExecutor::addDirty() {

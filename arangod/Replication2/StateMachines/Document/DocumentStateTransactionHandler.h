@@ -89,6 +89,7 @@ class DocumentStateTransactionHandler
   auto applyOp(ModifiesUserTransaction auto const&) -> Result;
   auto applyOp(ReplicatedOperation::AbortAllOngoingTrx const&) -> Result;
   auto applyOp(ReplicatedOperation::CreateShard const&) -> Result;
+  auto applyOp(ReplicatedOperation::ModifyShard const&) -> Result;
   auto applyOp(ReplicatedOperation::DropShard const&) -> Result;
 
  private:

@@ -5052,11 +5052,6 @@ ServersKnown ClusterInfo::rebootIds() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  if (serverID == "debug-follower") {
-    return "tcp://127.0.0.1:3000";
-  }
-#endif
   int tries = 0;
 
   if (!_serversProt.isValid) {
@@ -5077,7 +5072,7 @@ std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
         serverID_ = (*ita).second;
       }
 
-      // _servers is a map-type <ServerId, std::string>
+      // _servers is a map-type <ServerId, pmr::ManagedString>
       auto it = _servers.find(serverID_);
 
       if (it != _servers.end()) {

@@ -237,6 +237,11 @@ struct MockMaintenanceActionExecutor
   MOCK_METHOD(Result, executeCreateCollectionAction,
               (ShardID, CollectionID, std::shared_ptr<VPackBuilder>),
               (override));
+  MOCK_METHOD(Result, executeModifyCollectionAction,
+              (ShardID shard, CollectionID collection,
+               std::shared_ptr<VPackBuilder> properties,
+               std::string followersToDrop),
+              (override));
   MOCK_METHOD(Result, executeDropCollectionAction, (ShardID, CollectionID),
               (override));
   MOCK_METHOD(void, addDirty, (), (override));
@@ -246,6 +251,11 @@ struct MockDocumentStateShardHandler
     : replicated_state::document::IDocumentStateShardHandler {
   MOCK_METHOD(ResultT<bool>, ensureShard,
               (ShardID, CollectionID, std::shared_ptr<VPackBuilder>),
+              (override));
+  MOCK_METHOD(ResultT<bool>, modifyShard,
+              (ShardID shard, CollectionID collection,
+               std::shared_ptr<VPackBuilder> properties,
+               std::string followersToDrop),
               (override));
   MOCK_METHOD(ResultT<bool>, dropShard, (ShardID const&), (override));
   MOCK_METHOD(Result, dropAllShards, (), (override));
