@@ -2173,8 +2173,8 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
     if (!analyzer) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("'", funcName,
-                           "' AQL function: Unable to lookup analyzer '",
-                           analyzerId)};
+                           "' AQL function: Unable to look up analyzer '",
+                           analyzerId, "'")};
     }
     analyzer._shortName =
         IResearchAnalyzerFeature::normalize(analyzerId, vocbase.name(), false);
