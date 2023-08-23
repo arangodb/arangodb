@@ -443,7 +443,7 @@ else ()
 endif ()
 
 if (LINUX)
-   option(USE_BUILD_ID_READER "Add code to read arangod's build-id from within arangod" ON)
+   option(USE_BUILD_ID_READER "Add code to read arangod's build-id from within arangod" OFF)
 else ()
    set(USE_BUILD_ID_READER OFF)
 endif ()
