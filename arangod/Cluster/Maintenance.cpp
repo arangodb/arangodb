@@ -63,6 +63,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <absl/strings/escaping.h>
+
 #include <algorithm>
 #include <array>
 
