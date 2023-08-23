@@ -1397,7 +1397,7 @@ void ClusterInfo::loadPlan() {
                 ClusterInfo::NewStuffByDatabase,
                 ClusterInfoResourceAllocator<ClusterInfo::NewStuffByDatabase>>);
 
-  auto allocate = [&]<typename T, typename... Args>(Args && ... args) {
+  auto allocate = [&]<typename T, typename... Args>(Args&&... args) {
     return std::allocate_shared<T>(
         ClusterInfoResourceAllocator<T>(_resourceMonitor),
         std::forward<Args>(args)...);
@@ -1743,8 +1743,28 @@ void ClusterInfo::loadPlan() {
         // the name as key:
         continue;
       }
-      auto const& groupLeader =
-          colPair.second.collection->distributeShardsLike();
+      auto const& groupLeader = std::invoke([&]() -> std::string const& {
+        if (colPair.second.collection->replicationVersion() ==
+            replication::Version::TWO) {
+          // For Replication2 we cannot call distributeShardsLike() because it
+          // will look into the objects we are just building here.
+          if (auto it = newCollectionGroups.find(
+                  colPair.second.collection->groupID());
+              it != newCollectionGroups.end()) {
+            auto const& leader = it->second->groupLeader;
+            if (leader == colPair.second.collection->name()) {
+              return StaticStrings::Empty;
+              ;
+            }
+            return leader;
+          }
+          TRI_ASSERT(false) << "newCollectionGroups is required to contain the "
+                               "collection we investigate.";
+          return StaticStrings::Empty;
+        } else {
+          return colPair.second.collection->distributeShardsLike();
+        }
+      });
       if (!groupLeader.empty()) {
         auto groupLeaderCol = newShards.find(groupLeader);
         if (groupLeaderCol != newShards.end()) {
@@ -1811,18 +1831,21 @@ void ClusterInfo::loadPlan() {
       // system database does not have a shardingPrototype set...
       // sharding prototype of _system database defaults to _users nowadays
       systemDB->setShardingPrototype(ShardingPrototype::Users);
-      // but for "old" databases it may still be "_graphs". we need to find out!
-      // find _system database in Plan
       auto it = _newPlannedCollections.find(StaticStrings::SystemDatabase);
       if (it != _newPlannedCollections.end()) {
-        // find _graphs collection in Plan
-        auto it2 = (*it).second->find(StaticStrings::GraphCollection);
-        if (it2 != (*it).second->end()) {
-          // found!
-          if ((*it2).second.collection->distributeShardsLike().empty()) {
-            // _graphs collection has no distributeShardsLike, so it is
-            // the prototype!
-            systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+        // but for "old" databases it may still be "_graphs". we need to find
+        // out! find _system database in Plan. Replication TWO databases cannot
+        // be old.
+        if (systemDB->replicationVersion() == replication::Version::ONE) {
+          // find _graphs collection in Plan
+          auto it2 = (*it).second->find(StaticStrings::GraphCollection);
+          if (it2 != (*it).second->end()) {
+            // found!
+            if ((*it2).second.collection->distributeShardsLike().empty()) {
+              // _graphs collection has no distributeShardsLike, so it is
+              // the prototype!
+              systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+            }
           }
         }
 

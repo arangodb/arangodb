@@ -185,6 +185,7 @@ auto createCollectionGroupTarget(
   ag::CollectionGroupPlanSpecification spec;
   spec.attributes = group.target.attributes;
   spec.id = group.target.id;
+  spec.groupLeader = group.target.groupLeader;
 
   std::transform(
       replicatedLogs.begin(), replicatedLogs.end(),

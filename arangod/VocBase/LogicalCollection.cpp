@@ -360,13 +360,12 @@ std::string const& LogicalCollection::distributeShardsLike() const noexcept {
   if (ServerState::instance()->isCoordinator() &&
       replicationVersion() == replication::Version::TWO) {
     auto& cf = vocbase().server().getFeature<ClusterFeature>();
+    auto& ci = cf.clusterInfo();
 
-    auto myGroup = cf.clusterInfo().getCollectionGroupById(groupID());
-    TRI_ASSERT(!myGroup->collections.empty())
-        << "Collection part of a Group that does not contain collections. Not "
-           "even ourself";
-    LOG_DEVEL << myGroup->collections.begin()->first;
-    return myGroup->collections.begin()->first;
+    auto myGroup = ci.getCollectionGroupById(groupID());
+    TRI_ASSERT(myGroup != nullptr)
+        << "Collection part of a Group that does not exist";
+    return myGroup->groupLeader;
   } else {
     TRI_ASSERT(_sharding != nullptr);
     return _sharding->distributeShardsLike();
@@ -1318,13 +1317,15 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
 
-  static constexpr auto throwUnavailable = []<typename... Args>(
-      basics::SourceLocation location, fmt::format_string<Args...> formatString,
-      Args && ... args) {
-    throw basics::Exception(
-        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
-  };
+  static constexpr auto throwUnavailable =
+      []<typename... Args>(basics::SourceLocation location,
+                           fmt::format_string<Args...> formatString,
+                           Args&&... args) {
+        throw basics::Exception(
+            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            fmt::vformat(formatString, fmt::make_format_args(args...)),
+            location);
+      };
 
   auto leader = stateMachine->getLeader();
   if (leader == nullptr) {
