@@ -61,6 +61,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/escaping.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -840,13 +841,17 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             // check available transformations
             if (name == "base64encode") {
               // base64-encode the result
-              out = StringUtils::encodeBase64(out);
+              std::string dest;
+              absl::Base64Unescape(out, &dest);
+              out = std::move(dest);
               // set the correct content-encoding header
               response->setHeaderNC(StaticStrings::ContentEncoding,
                                     StaticStrings::Base64);
             } else if (name == "base64decode") {
               // base64-decode the result
-              out = StringUtils::decodeBase64(out);
+              std::string dest;
+              absl::Base64Unescape(out, &dest);
+              out = std::move(dest);
               // set the correct content-encoding header
               response->setHeaderNC(StaticStrings::ContentEncoding,
                                     StaticStrings::Binary);

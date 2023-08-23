@@ -606,8 +606,8 @@ void arangodb::maintenance::diffReplicatedLogs(
             velocypack::serialize(builder, *spec);
             slice = builder.slice();
           }
-          return StringUtils::encodeBase64(slice.startAs<char>(),
-                                           slice.byteSize());
+          return absl::Base64Escape(
+              std::string_view{slice.startAs<char>(), slice.byteSize()});
         });
         auto description = std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{

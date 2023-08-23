@@ -551,7 +551,7 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId,
   } else if (encryption == "plain") {
     user = header.at(3).copyString();
     std::string pass = header.at(4).copyString();
-    authString = basics::StringUtils::encodeBase64(user + ":" + pass);
+    authString = absl::Base64Escape(user + ":" + pass);
     _authMethod = AuthenticationMethod::BASIC;
   } else {
     LOG_TOPIC("01f44", WARN, Logger::REQUESTS) << "Unknown VST encryption type";

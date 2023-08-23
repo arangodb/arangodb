@@ -313,7 +313,7 @@ RestStatus RestStatusHandler::executeOverview() {
     result.add("hash", VPackValue(buffer.c_str()));
   } else {
     std::string deflated(buffer.c_str(), buffer.size());
-    auto encoded = StringUtils::encodeBase64(deflated);
+    auto encoded = absl::Base64Escape(deflated);
     result.add("hash", VPackValue(encoded));
   }
 
