@@ -43,17 +43,7 @@ extern void (*uint64ToPersistent)(std::string& p, uint64_t value);
 /// Enable litte endian or big-endian key formats
 void setRocksDBKeyFormatEndianess(RocksDBEndianness);
 
-inline uint64_t doubleToInt(double d) {
-  uint64_t i;
-  std::memcpy(&i, &d, sizeof(i));
-  return i;
-}
-
-inline double intToDouble(uint64_t i) {
-  double d;
-  std::memcpy(&d, &i, sizeof(i));
-  return d;
-}
+RocksDBEndianness getRocksDBKeyFormatEndianness() noexcept;
 
 template<typename T>
 inline T uintFromPersistentLittleEndian(char const* p) {

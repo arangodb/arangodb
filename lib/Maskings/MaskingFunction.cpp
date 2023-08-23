@@ -21,41 +21,36 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
-
-#include "Basics/Common.h"
-
-#include "Basics/Utf8Helper.h"
+#include "Maskings/MaskingFunction.h"
 
 #include <velocypack/Builder.h>
 
-#include <cstdint>
-#include <string>
-#include <string_view>
-
 namespace arangodb::maskings {
-class Maskings;
 
-class MaskingFunction {
- public:
-  static bool isNameChar(UChar32 ch) {
-    return u_isalpha(ch) || u_isdigit(ch) || ch == U'_' || ch == U'-';
-  }
+// default implementations for masking functions.
+// these will only add the original value.
+// the benefit of having default implementation is that
+// derived classes only need to specialize the functions
+// they need.
 
-  explicit MaskingFunction(Maskings* maskings) : _maskings(maskings) {}
-  virtual ~MaskingFunction() = default;
+void MaskingFunction::mask(bool value, velocypack::Builder& out,
+                           std::string& /*buffer*/) const {
+  out.add(VPackValue(value));
+}
 
-  // derived classes can specialize these functions
-  // the default implementation is to add the original value!
-  virtual void mask(bool, velocypack::Builder& out, std::string& buffer) const;
-  virtual void mask(std::string_view, velocypack::Builder& out,
-                    std::string& buffer) const;
-  virtual void mask(int64_t, velocypack::Builder& out,
-                    std::string& buffer) const;
-  virtual void mask(double, velocypack::Builder& out,
-                    std::string& buffer) const;
+void MaskingFunction::mask(std::string_view value, velocypack::Builder& out,
+                           std::string& /*buffer*/) const {
+  out.add(VPackValue(value));
+}
 
- protected:
-  Maskings* _maskings;
-};
+void MaskingFunction::mask(int64_t value, velocypack::Builder& out,
+                           std::string& /*buffer*/) const {
+  out.add(VPackValue(value));
+}
+
+void MaskingFunction::mask(double value, velocypack::Builder& out,
+                           std::string& /*buffer*/) const {
+  out.add(VPackValue(value));
+}
+
 }  // namespace arangodb::maskings
