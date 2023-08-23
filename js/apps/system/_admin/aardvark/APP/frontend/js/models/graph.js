@@ -1,4 +1,3 @@
-/* global window, Backbone, $, arangoHelper */
 (function () {
   'use strict';
 

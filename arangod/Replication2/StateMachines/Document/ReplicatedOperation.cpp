@@ -77,6 +77,16 @@ auto ReplicatedOperation::buildCreateShardOperation(
                                  std::move(properties)}};
 }
 
+auto ReplicatedOperation::buildModifyShardOperation(
+    ShardID shard, CollectionID collection,
+    std::shared_ptr<VPackBuilder> properties,
+    std::string followersToDrop) noexcept -> ReplicatedOperation {
+  return ReplicatedOperation{
+      std::in_place,
+      ModifyShard{std::move(shard), std::move(collection),
+                  std::move(properties), std::move(followersToDrop), true}};
+}
+
 auto ReplicatedOperation::buildDropShardOperation(
     ShardID shard, CollectionID collection) noexcept -> ReplicatedOperation {
   return ReplicatedOperation{

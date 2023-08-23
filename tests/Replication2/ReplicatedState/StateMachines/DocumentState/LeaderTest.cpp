@@ -360,7 +360,7 @@ TEST_F(DocumentStateLeaderTest,
   Mock::VerifyAndClearExpectations(stream.get());
 }
 
-TEST_F(DocumentStateLeaderTest, leader_create_and_drop_shard) {
+TEST_F(DocumentStateLeaderTest, leader_create_modify_and_drop_shard) {
   using namespace testing;
 
   DocumentFactory factory =
@@ -373,6 +373,7 @@ TEST_F(DocumentStateLeaderTest, leader_create_and_drop_shard) {
 
   auto builder = std::make_shared<VPackBuilder>();
 
+  // CreateShard
   EXPECT_CALL(*stream, insert)
       .Times(1)
       .WillOnce([&](DocumentLogEntry const& entry, bool waitForSync) {
@@ -399,6 +400,38 @@ TEST_F(DocumentStateLeaderTest, leader_create_and_drop_shard) {
   Mock::VerifyAndClearExpectations(stream.get());
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 
+  // ModifyShard
+  std::string followersToDrop{"hund,katze"};
+  EXPECT_CALL(*stream, insert)
+      .Times(1)
+      .WillOnce([&](DocumentLogEntry const& entry, bool waitForSync) {
+        EXPECT_EQ(entry.operation,
+                  ReplicatedOperation::buildModifyShardOperation(
+                      shardId, collectionId, builder, followersToDrop));
+        EXPECT_TRUE(waitForSync);
+        return LogIndex{12};
+      });
+
+  EXPECT_CALL(*stream, waitFor(LogIndex{12})).Times(1).WillOnce([](auto) {
+    return futures::Future<MockProducerStream::WaitForResult>{
+        MockProducerStream::WaitForResult{}};
+  });
+
+  EXPECT_CALL(*stream, release(LogIndex{12})).Times(1);
+
+  EXPECT_CALL(*shardHandlerMock,
+              modifyShard(shardId, collectionId, _, followersToDrop))
+      .Times(1);
+
+  res =
+      leaderState->modifyShard(shardId, collectionId, builder, followersToDrop)
+          .get();
+  EXPECT_TRUE(res.ok()) << res;
+
+  Mock::VerifyAndClearExpectations(stream.get());
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+
+  // DropShard
   EXPECT_CALL(*stream, insert)
       .Times(1)
       .WillOnce([&](DocumentLogEntry const& entry, bool waitForSync) {

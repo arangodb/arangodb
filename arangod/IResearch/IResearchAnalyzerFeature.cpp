@@ -95,15 +95,13 @@
 #endif
 
 #include <absl/strings/str_cat.h>
+#include <absl/strings/escaping.h>
 
 namespace {
 
 using namespace std::literals::string_literals;
 using namespace arangodb;
 using namespace arangodb::iresearch;
-// TODO(MBkkt) replace encodeBase64 via abseil alternative,
-//  they already used in iresearch
-namespace StringUtils = arangodb::basics::StringUtils;
 
 char constexpr ANALYZER_PREFIX_DELIM = ':';  // name prefix delimiter (2 chars)
 size_t constexpr ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024;  // arbitrary value
@@ -252,9 +250,8 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
       // return same tokens as will be in index for this specific number
       numeric_analyzer->reset(value.getNumber<double>());
       while (numeric_analyzer->next()) {
-        builder.add(
-            arangodb::iresearch::toValuePair(basics::StringUtils::encodeBase64(
-                irs::ViewCast<char>(numeric_token->value))));
+        builder.add(arangodb::iresearch::toValuePair(
+            absl::Base64Escape(irs::ViewCast<char>(numeric_token->value))));
       }
     } else {
       auto const message = "unexpected parameter type '"s + value.typeName() +
@@ -265,9 +262,8 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
   };
 
   auto processBool = [&builder](VPackSlice value) {
-    builder.add(
-        arangodb::iresearch::toValuePair(basics::StringUtils::encodeBase64(
-            irs::boolean_token_stream::value(value.getBoolean()))));
+    builder.add(arangodb::iresearch::toValuePair(absl::Base64Escape(
+        irs::boolean_token_stream::value(value.getBoolean()))));
   };
 
   auto current = args[0].slice();
@@ -345,9 +341,8 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
         processBool(current);
         break;
       case VPackValueType::Null:
-        builder.add(
-            arangodb::iresearch::toValuePair(basics::StringUtils::encodeBase64(
-                irs::null_token_stream::value_null())));
+        builder.add(arangodb::iresearch::toValuePair(
+            absl::Base64Escape(irs::null_token_stream::value_null())));
         break;
       case VPackValueType::Array:  // we get there only when empty array
                                    // encountered

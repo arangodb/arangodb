@@ -64,6 +64,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <absl/strings/escaping.h>
+
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -952,18 +954,17 @@ static void JS_BinaryDocumentVocbaseCol(
       std::string key = it.key.copyString();
 
       if (key == StaticStrings::AttachmentString) {
-        char const* att;
-        velocypack::ValueLength length;
+        std::string_view value;
 
         try {
-          att = it.value.getString(length);
+          value = it.value.stringView();
         } catch (...) {
           TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
                                          "'_attachment' must be a string");
         }
 
-        std::string attachment =
-            StringUtils::decodeBase64(std::string(att, length));
+        std::string attachment;
+        absl::Base64Unescape(value, &attachment);
 
         try {
           FileUtils::spit(filename, attachment);
@@ -2033,7 +2034,7 @@ static void JS_BinaryInsertVocbaseCol(
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
   }
 
-  attachment = StringUtils::encodeBase64(attachment);
+  attachment = absl::Base64Escape(attachment);
 
   InsertVocbaseCol(isolate, args, &attachment);
   TRI_V8_TRY_CATCH_END

@@ -120,6 +120,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Validator.h>
 
+#include <absl/strings/escaping.h>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -379,7 +381,8 @@ static void JS_Base64Decode(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     std::string const value = TRI_ObjectToString(isolate, args[0]);
-    std::string const base64 = StringUtils::decodeBase64(value);
+    std::string base64;
+    absl::Base64Unescape(value, &base64);
 
     TRI_V8_RETURN_STD_STRING(base64);
   } catch (...) {
@@ -407,8 +410,8 @@ static void JS_Base64Encode(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    std::string const&& value = TRI_ObjectToString(isolate, args[0]);
-    std::string const&& base64 = StringUtils::encodeBase64(value);
+    auto value = TRI_ObjectToString(isolate, args[0]);
+    auto base64 = absl::Base64Escape(value);
 
     TRI_V8_RETURN_STD_STRING(base64);
   } catch (...) {
@@ -2500,7 +2503,8 @@ static void JS_MarkNonce(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting 16-Byte base64url-encoded nonce");
   }
 
-  std::string raw = StringUtils::decodeBase64U(*base64u);
+  std::string raw;
+  absl::Base64Unescape(*base64u, &raw);
 
   if (raw.size() != 12) {
     TRI_V8_THROW_TYPE_ERROR("expecting 12-Byte nonce");
@@ -3409,7 +3413,7 @@ static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     std::string content = FileUtils::slurp(*name);
-    base64 = StringUtils::encodeBase64(content);
+    base64 = absl::Base64Escape(content);
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
   }
@@ -4079,7 +4083,7 @@ static void JS_RsaPrivSign(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto res = SslInterface::rsaPrivSign(key, message, sign, error);
 
   if (res == 0) {
-    sign = StringUtils::encodeBase64(sign);
+    sign = absl::Base64Escape(sign);
   } else {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, error);
   }

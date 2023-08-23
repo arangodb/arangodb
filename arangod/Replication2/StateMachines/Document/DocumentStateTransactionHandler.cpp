@@ -218,6 +218,21 @@ auto DocumentStateTransactionHandler::applyOp(
 }
 
 auto DocumentStateTransactionHandler::applyOp(
+    ReplicatedOperation::ModifyShard const& op) -> Result {
+  auto shardRes = _shardHandler->modifyShard(
+      op.shard, op.collection, op.properties,
+      op.ignoreFollowersToDrop ? "" : op.followersToDrop);
+  if (shardRes.fail()) {
+    return shardRes.result();
+  }
+  if (!shardRes.get()) {
+    LOG_CTX("c8812", INFO, _logContext)
+        << "Shard " << op.shard << " does not exist";
+  }
+  return Result{};
+}
+
+auto DocumentStateTransactionHandler::applyOp(
     ReplicatedOperation::DropShard const& op) -> Result {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto transactions = getTransactionsForShard(op.shard);
