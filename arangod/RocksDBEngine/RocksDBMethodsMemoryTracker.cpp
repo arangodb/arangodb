@@ -29,8 +29,6 @@
 #include "Statistics/ServerStatistics.h"
 #include "Transaction/OperationOrigin.h"
 
-#include "Logger/LogMacros.h"
-
 namespace arangodb {
 
 RocksDBMethodsMemoryTracker::RocksDBMethodsMemoryTracker(
@@ -49,11 +47,9 @@ RocksDBMethodsMemoryTracker::RocksDBMethodsMemoryTracker(
 
   switch (state->operationOrigin().type) {
     case transaction::OperationOrigin::Type::kAQL:
-      // LOG_DEVEL << "AQL";
       _metric = nullptr;
       break;
     case transaction::OperationOrigin::Type::kREST:
-      // LOG_DEVEL << "REST";
       _metric = &state->statistics()._restTransactionsMemoryUsage;
       break;
     case transaction::OperationOrigin::Type::kInternal:
@@ -70,7 +66,6 @@ RocksDBMethodsMemoryTracker::~RocksDBMethodsMemoryTracker() {
 }
 
 void RocksDBMethodsMemoryTracker::reset() noexcept {
-  // LOG_DEVEL << "RESET";
   _memoryUsage = 0;
   _memoryUsageAtBeginQuery = 0;
   _savePoints.clear();
@@ -91,7 +86,6 @@ void RocksDBMethodsMemoryTracker::reset() noexcept {
 
 void RocksDBMethodsMemoryTracker::increaseMemoryUsage(std::uint64_t value) {
   if (value != 0) {
-    // LOG_DEVEL << "INCR " << value;
     _memoryUsage += value;
     try {
       // note: publishing may throw when increasing the memory usage
@@ -108,7 +102,6 @@ void RocksDBMethodsMemoryTracker::increaseMemoryUsage(std::uint64_t value) {
 void RocksDBMethodsMemoryTracker::decreaseMemoryUsage(
     std::uint64_t value) noexcept {
   if (value != 0) {
-    // LOG_DEVEL << "DECR " << value;
     TRI_ASSERT(_memoryUsage >= value);
     _memoryUsage -= value;
     // note: publish does not throw for a decrease
@@ -132,7 +125,6 @@ void RocksDBMethodsMemoryTracker::rollbackToSavePoint() {
   // note: this is effectively noexcept
   TRI_ASSERT(!_savePoints.empty());
   _memoryUsage = _savePoints.back();
-  // LOG_DEVEL << "ROLLING BACK TO SAVEPOINT " << _memoryUsage;
   _savePoints.pop_back();
   publish(true);
 }
@@ -144,8 +136,6 @@ void RocksDBMethodsMemoryTracker::popSavePoint() noexcept {
 
 void RocksDBMethodsMemoryTracker::beginQuery(ResourceMonitor* resourceMonitor) {
   // note: resourceMonitor can be a nullptr if we are called from truncate
-  // LOG_DEVEL << "BEGINQUERY. RESOURCEM: " << resourceMonitor
-  //          << ", MEMORYUSAGE AT BEGIN: " << _memoryUsage;
   TRI_ASSERT(_resourceMonitor == nullptr);
   TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
 
@@ -157,9 +147,6 @@ void RocksDBMethodsMemoryTracker::endQuery() noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_memoryUsage >= _lastPublishedValue);
 #endif
-  // LOG_DEVEL << "ENDQUERY. RESOURCEM: " << _resourceMonitor
-  //          << ", MEMORYUSAGE: " << _memoryUsage << ", RESETTING TO "
-  //          << _memoryUsageAtBeginQuery;
 
   _memoryUsage = _memoryUsageAtBeginQuery;
   try {
@@ -207,7 +194,6 @@ void RocksDBMethodsMemoryTracker::publish(bool force) {
         _resourceMonitor->decreaseMemoryUsage(
             _lastPublishedValueResourceMonitor - memoryUsage);
       }
-      // LOG_DEVEL << "PUBLISHED VALUE: " << memoryUsage;
       _lastPublishedValueResourceMonitor = memoryUsage;
     }
   }
