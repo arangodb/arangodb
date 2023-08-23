@@ -841,9 +841,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             // check available transformations
             if (name == "base64encode") {
               // base64-encode the result
-              std::string dest;
-              absl::Base64Unescape(out, &dest);
-              out = std::move(dest);
+              out = absl::Base64Escape(out);
               // set the correct content-encoding header
               response->setHeaderNC(StaticStrings::ContentEncoding,
                                     StaticStrings::Base64);
