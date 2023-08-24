@@ -365,6 +365,11 @@ std::string const& LogicalCollection::distributeShardsLike() const noexcept {
     auto myGroup = ci.getCollectionGroupById(groupID());
     TRI_ASSERT(myGroup != nullptr)
         << "Collection part of a Group that does not exist";
+    auto const& leader = myGroup->groupLeader;
+    if (leader == std::to_string(id().id())) {
+      // If i am the leader, return the empty string
+      return StaticStrings::Empty;
+    }
     return myGroup->groupLeader;
   } else {
     TRI_ASSERT(_sharding != nullptr);
