@@ -214,7 +214,6 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
           new StringParameter(&_jwtSecretFolderProgramOption),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30700)
       .setLongDescription(R"(Files are sorted alphabetically, the first secret
 is used for signing + verifying JWT tokens (_active_ secret), and all other
 secrets are only used to validate incoming JWT tokens (_passive_ secrets).
