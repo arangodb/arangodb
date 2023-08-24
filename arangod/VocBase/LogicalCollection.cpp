@@ -363,6 +363,13 @@ std::string const& LogicalCollection::distributeShardsLike() const noexcept {
     auto& ci = cf.clusterInfo();
 
     auto myGroup = ci.getCollectionGroupById(groupID());
+    if (myGroup == nullptr) {
+      // Protect against the race: Collection is in use and dropped
+      // at the same time. We have no option to get the real
+      // distributeShardsLike back, but the collection is
+      // to be erased anyhow, so nothing too bad can happen
+      return StaticStrings::Empty;
+    }
     TRI_ASSERT(myGroup != nullptr)
         << "Collection part of a Group that does not exist";
     auto const& leader = myGroup->groupLeader;
