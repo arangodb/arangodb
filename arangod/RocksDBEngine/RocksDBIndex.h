@@ -34,6 +34,7 @@
 #include <rocksdb/status.h>
 #include <rocksdb/slice.h>
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 
@@ -102,10 +103,7 @@ class RocksDBIndex : public Index {
   /// compact the index, should reduce read amplification
   void compact();
 
-  void setCacheEnabled(bool enable) {
-    // allow disabling and enabling of caches for the primary index
-    _cacheEnabled = enable;
-  }
+  void setCacheEnabled(bool enable) noexcept;
 
   void setupCache();
   void destroyCache() noexcept;
@@ -184,9 +182,7 @@ class RocksDBIndex : public Index {
                rocksdb::ColumnFamilyHandle* cf, bool useCache,
                cache::Manager* cacheManager, RocksDBEngine& engine);
 
-  bool hasCache() const noexcept {
-    return _cacheEnabled && (_cache != nullptr);
-  }
+  bool hasCache() const noexcept;
 
   bool canWarmup() const noexcept override;
 
@@ -210,7 +206,7 @@ class RocksDBIndex : public Index {
 
   // user-side request for caching. will effectively be followed only if
   // _cacheManager != nullptr.
-  bool _cacheEnabled;
+  std::atomic_bool _cacheEnabled;
 
   // the actual cache object. can be a nullptr, and can only be set if
   // _cacheManager != nullptr.

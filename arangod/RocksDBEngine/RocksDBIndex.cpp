@@ -141,7 +141,7 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 void RocksDBIndex::load() {
-  if (_cacheEnabled) {
+  if (_cacheEnabled.load(std::memory_order_relaxed)) {
     TRI_ASSERT(_cacheManager != nullptr);
     setupCache();
   }
@@ -169,8 +169,14 @@ void RocksDBIndex::toVelocyPack(
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 }
 
+void RocksDBIndex::setCacheEnabled(bool enable) noexcept {
+  // allow disabling and enabling of caches for the primary index
+  _cacheEnabled.store(enable);
+}
+
 void RocksDBIndex::setupCache() {
-  if (_cacheManager == nullptr || !_cacheEnabled) {
+  if (_cacheManager == nullptr ||
+      !_cacheEnabled.load(std::memory_order_relaxed)) {
     // if we cannot have a cache, return immediately
     return;
   }
@@ -245,7 +251,7 @@ void RocksDBIndex::truncateCommit(TruncateGuard&& guard,
                                   TRI_voc_tick_t /*tick*/,
                                   transaction::Methods* /*trx*/) {
   // simply drop the cache and re-create it
-  if (_cacheEnabled) {
+  if (_cacheEnabled.load(std::memory_order_relaxed)) {
     destroyCache();
     setupCache();
     TRI_ASSERT(_cache != nullptr);
@@ -326,6 +332,10 @@ void RocksDBIndex::compact() {
                  RocksDBColumnFamilyManager::Family::Invalid)) {
     _engine.compactRange(getBounds());
   }
+}
+
+bool RocksDBIndex::hasCache() const noexcept {
+  return _cacheEnabled.load(std::memory_order_relaxed) && (_cache != nullptr);
 }
 
 bool RocksDBIndex::canWarmup() const noexcept { return hasCache(); }

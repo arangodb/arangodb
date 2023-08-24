@@ -232,7 +232,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void destroyCache() const;
 
   /// is this collection using a cache
-  inline bool useCache() const noexcept { return (_cacheEnabled && _cache); }
+  bool useCache() const noexcept;
 
   /// @brief track key in file
   void invalidateCacheEntry(RocksDBKey const& key) const;
