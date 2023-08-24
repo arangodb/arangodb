@@ -1754,7 +1754,6 @@ void ClusterInfo::loadPlan() {
             auto const& leader = it->second->groupLeader;
             if (leader == colPair.second.collection->name()) {
               return StaticStrings::Empty;
-              ;
             }
             return leader;
           }
