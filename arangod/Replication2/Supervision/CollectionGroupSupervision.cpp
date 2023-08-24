@@ -196,29 +196,34 @@ auto createCollectionGroupTarget(
   std::unordered_map<CollectionID, ag::CollectionPlanSpecification> collections;
   for (auto const& [cid, collection] : group.target.collections) {
     std::vector<ShardID> shardList;
-    std::generate_n(std::back_inserter(shardList),
-                    attributes.immutableAttributes.numberOfShards, [&] {
-                      return basics::StringUtils::concatT("s", uniqid.next());
-                    });
-
-    ADB_PROD_ASSERT(group.targetCollections.contains(cid))
-        << "collection " << cid << " is listed in collection group "
-        << group.target.id << " but not in Target/Collections";
     PlanShardToServerMapping mapping{};
-    for (size_t k = 0; k < shardList.size(); ++k) {
-      ResponsibleServerList serverids{};
-      auto const& log = replicatedLogs[spec.shardSheaves[k].replicatedLog];
-      serverids.servers.emplace_back(log.leader.value());
-      for (auto const& p : log.participants) {
-        if (p.first != log.leader) {
-          serverids.servers.emplace_back(p.first);
+    auto const& targetCollection = group.targetCollections.at(cid);
+
+    // If we have shadow collections we do not have any shards
+    if (!targetCollection.immutableProperties.shadowCollections.has_value()) {
+      std::generate_n(std::back_inserter(shardList),
+                      attributes.immutableAttributes.numberOfShards, [&] {
+                        return basics::StringUtils::concatT("s", uniqid.next());
+                      });
+
+      ADB_PROD_ASSERT(group.targetCollections.contains(cid))
+          << "collection " << cid << " is listed in collection group "
+          << group.target.id << " but not in Target/Collections";
+      for (size_t k = 0; k < shardList.size(); ++k) {
+        ResponsibleServerList serverids{};
+        auto const& log = replicatedLogs[spec.shardSheaves[k].replicatedLog];
+        serverids.servers.emplace_back(log.leader.value());
+        for (auto const& p : log.participants) {
+          if (p.first != log.leader) {
+            serverids.servers.emplace_back(p.first);
+          }
         }
+        ADB_PROD_ASSERT(serverids.getLeader() == log.leader);
+        mapping.shards[shardList[k]] = std::move(serverids);
       }
-      ADB_PROD_ASSERT(serverids.getLeader() == log.leader);
-      mapping.shards[shardList[k]] = std::move(serverids);
     }
     collections[cid] = ag::CollectionPlanSpecification{
-        group.targetCollections.at(cid), std::move(shardList),
+        targetCollection, std::move(shardList),
         std::move(mapping)};
     spec.collections[cid];
   }
