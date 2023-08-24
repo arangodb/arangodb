@@ -264,7 +264,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   cache::Manager* _cacheManager;
 
   /// @brief document cache (optional)
-  mutable std::atomic<std::shared_ptr<cache::Cache>> _cache;
+  // only use with std::atomic_load|store_explicit()!
+  mutable std::shared_ptr<cache::Cache> _cache;
 
   std::atomic_bool _cacheEnabled;
 

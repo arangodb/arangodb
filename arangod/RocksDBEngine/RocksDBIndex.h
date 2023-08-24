@@ -218,6 +218,6 @@ class RocksDBIndex : public Index {
   // the actual cache object. can be a nullptr, and can only be set if
   // _cacheManager != nullptr.
   // only use with std::atomic_load|store_explicit()!
-  mutable std::atomic<std::shared_ptr<cache::Cache>> _cache;
+  mutable std::shared_ptr<cache::Cache> _cache;
 };
 }  // namespace arangodb
