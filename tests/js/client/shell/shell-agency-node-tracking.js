@@ -43,7 +43,7 @@ function AgencyNodeTracking () {
     let c = db._collection(collName);
     let docs = [];
     for (let i = 0; i < n; ++i) {
-      docs.push({value: i});
+      docs.push({value: i, value1: i, value2: i});
       if (docs.length === 5000) {
         c.insert(docs);
         docs = [];
@@ -59,8 +59,14 @@ function AgencyNodeTracking () {
     setUp: function () {},
 
     tearDown: function () {
-      for(let i = 0; i < 10; i++) {
+      for(let i = 0; i < 5; i++) {
         db._drop(`c${i}`);
+        db._dropView(`view0${i}`);
+        db._dropView(`view1${i}`);
+        db._dropView(`view2${i}`);
+        db._dropView(`viewSa0${i}`);
+        db._dropView(`viewSa1${i}`);
+        db._dropView(`viewSa2${i}`);
       }
     },
     
@@ -71,7 +77,7 @@ function AgencyNodeTracking () {
 
         let metric_before = initial_metric;
         let metric_after;
-        for(let i = 0; i < 10; i++) {
+        for(let i = 0; i < 2; i++) {
           // create collection
           let cn = `c${i}`;
           db._create(cn);
@@ -86,54 +92,55 @@ function AgencyNodeTracking () {
           metric_before = metric_after;
           insertDocuments(cn);
 
-          // create inverted index
+          // create few indexes
           let coll = db._collection(cn);
           
           coll.ensureIndex({type: "inverted", name: "inverted", fields: ["value"]});
-          coll.ensureIndex({ type: "persistent", fields: ["value"], estimates: true });
-          print(coll.getIndexes());
-          metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
+          coll.ensureIndex({type: "inverted", name: "inverted1", fields: ["value1"]});
+          coll.ensureIndex({type: "inverted", name: "inverted2", fields: ["value2"]});
 
+          coll.ensureIndex({ type: "persistent", fields: ["value"], estimates: true });
+          coll.ensureIndex({ type: "persistent", fields: ["value1"], estimates: true });
+          coll.ensureIndex({ type: "persistent", fields: ["value2"], estimates: true });
+
+          metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
           if(isCluster) {
             assertTrue(metric_after > metric_before);
           } else {
             assertEqual(metric_before, initial_metric);
             assertEqual(metric_after, initial_metric);
           }
+          metric_before = metric_after;
 
+          // create few arangosearch views
+          db._createView(`view0${i}`, 'arangosearch', { links: { [cn]: {value: {}} } });
+          db._createView(`view1${i}`, 'arangosearch', { links: { [cn]: {value1: {}} } });
+          db._createView(`view2${i}`, 'arangosearch', { links: { [cn]: {value2: {}} } });
+
+          metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
+          if(isCluster) {
+            assertTrue(metric_after > metric_before);
+          } else {
+            assertEqual(metric_before, initial_metric);
+            assertEqual(metric_after, initial_metric);
+          }
+          metric_before = metric_after;
+
+          // create few search-alias views
+          db._createView(`viewSa0${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted"}]} );
+          db._createView(`viewSa1${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted1"}]});
+          db._createView(`viewSa2${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted2"}]});
+
+          metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
+          if(isCluster) {
+            assertTrue(metric_after > metric_before);
+          } else {
+            assertEqual(metric_before, initial_metric);
+            assertEqual(metric_after, initial_metric);
+          }
           metric_before = metric_after;
         }
       }
-
-    // testDraft: function () {
-    //   print(getCompleteMetricsValues("arangodb_agency_node_memory_usage"));
-
-    //   for(let i = 0; i < 10; i++) {
-    //     // let metric_before = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
-    //     db._drop(`c${i}`);
-    //     // let metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
-    //     // if(isCluster) {
-    //     //   assertTrue(metric_after >= metric_before);
-    //     // } else {
-    //     //   assertEqual(metric_before, initial_metric);
-    //     //   assertEqual(metric_after, initial_metric);
-    //     // }
-    //   }
-
-    //   for(let i = 10; i < 20; i++) {
-    //     // metric_before = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
-    //     db._create(`c${i}`);
-    //     // metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
-    //     // if(isCluster) {
-    //     //   assertTrue(metric_after > metric_before);
-    //     // } else {
-    //     //   assertEqual(metric_before, initial_metric);
-    //     //   assertEqual(metric_after, initial_metric);
-    //     // }
-
-    //     // metric_before = metric_after;
-    //   }
-    // }
   };
 }
 

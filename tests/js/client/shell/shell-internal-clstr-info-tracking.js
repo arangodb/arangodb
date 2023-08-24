@@ -39,46 +39,35 @@ const n = 10000;
 function ClusterInfoTrackingSuite () {
   'use strict';
        
-//   let insertDocuments = (collName) => {
-//     let c = db._collection(collName);
-//     let docs = [];
-//     for (let i = 0; i < n; ++i) {
-//       docs.push({value: i});
-//       if (docs.length === 5000) {
-//         c.insert(docs);
-//         docs = [];
-//       }
-//     }
-//     if (docs.length > 0) {
-//       c.insert(docs);
-//       docs = [];
-//     }
-//   };
+  let insertDocuments = (collName) => {
+    let c = db._collection(collName);
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({value: i, value1: i, value2: i});
+      if (docs.length === 5000) {
+        c.insert(docs);
+        docs = [];
+      }
+    }
+    if (docs.length > 0) {
+      c.insert(docs);
+      docs = [];
+    }
+  };
 
-//   let insertEdges = (collName) => {
-//     let c = db._collection(collName);
-//     let docs = [];
-//     for (let i = 0; i < n; ++i) {
-//       docs.push({_from: i, _to: i+1});
-//       if (docs.length === 5000) {
-//         c.insert(docs);
-//         docs = [];
-//       }
-//     }
-//     if (docs.length > 0) {
-//       c.insert(docs);
-//       docs = [];
-//     }
-//   };
-  
   return {
-    setUp: function () {
-    //   internal.debugClearFailAt();
-    },
+    setUp: function () {},
 
     tearDown: function () {
-    //   internal.debugClearFailAt();
-      db._drop(cn);
+      for(let i = 0; i < 2; i++) {
+        db._drop(`c${i}`);
+        db._dropView(`view0${i}`);
+        db._dropView(`view1${i}`);
+        db._dropView(`view2${i}`);
+        db._dropView(`viewSa0${i}`);
+        db._dropView(`viewSa1${i}`);
+        db._dropView(`viewSa2${i}`);
+      }
     },
     
     testMemoryUsageShouldIncrease: function () {
@@ -90,30 +79,82 @@ function ClusterInfoTrackingSuite () {
           assertEqual(initial_metric, 0);
         }
 
-        // print(internal.env.INSTANCEINFO)
+        let metric_before = initial_metric;
+        let metric_after;
+        for(let i = 0; i < 2; i++) {
+          let cn = `c${i}`;
+          db._create(cn);
+          metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          if(isCluster) {
+            assertTrue(metric_after > metric_before);
+          } else {
+            assertEqual(metric_before, 0);
+            assertEqual(metric_after, 0);
+          }
+      
+          metric_before = metric_after;
+          insertDocuments(cn);
 
-        for(let i = 0; i < 5; i++) {
-            let metric_before = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
-            db._create(`c${i}`);
-            let metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
-            if(isCluster) {
-              assertTrue(metric_after > metric_before);
-            } else {
-              assertEqual(metric_before, 0);
-              assertEqual(metric_after, 0);
-            }
+          // create few indexes
+          let coll = db._collection(cn);
+          
+          coll.ensureIndex({type: "inverted", name: "inverted", fields: ["value"]});
+          coll.ensureIndex({type: "inverted", name: "inverted1", fields: ["value1"]});
+          coll.ensureIndex({type: "inverted", name: "inverted2", fields: ["value2"]});
+
+          coll.ensureIndex({ type: "persistent", fields: ["value"], estimates: true });
+          coll.ensureIndex({ type: "persistent", fields: ["value1"], estimates: true });
+          coll.ensureIndex({ type: "persistent", fields: ["value2"], estimates: true });
+
+          metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          if(isCluster) {
+            assertTrue(metric_after > metric_before);
+          } else {
+            assertEqual(metric_before, initial_metric);
+            assertEqual(metric_after, initial_metric);
+          }
+          metric_before = metric_after;
+
+          // create few arangosearch views
+          db._createView(`view0${i}`, 'arangosearch', { links: { [cn]: {value: {}} } });
+          db._createView(`view1${i}`, 'arangosearch', { links: { [cn]: {value1: {}} } });
+          db._createView(`view2${i}`, 'arangosearch', { links: { [cn]: {value2: {}} } });
+
+          metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          if(isCluster) {
+            assertTrue(metric_after > metric_before);
+          } else {
+            assertEqual(metric_before, initial_metric);
+            assertEqual(metric_after, initial_metric);
+          }
+          metric_before = metric_after;
+
+          // create few search-alias views
+          db._createView(`viewSa0${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted"}]} );
+          db._createView(`viewSa1${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted1"}]});
+          db._createView(`viewSa2${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted2"}]});
+
+          // print(db._views());
+          metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          if(isCluster) {
+            assertTrue(metric_after > metric_before);
+          } else {
+            assertEqual(metric_before, initial_metric);
+            assertEqual(metric_after, initial_metric);
+          }
+          metric_before = metric_after;
         }
 
-        for(let i = 0; i < 5; i++) {
-            let metric_before = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
-            db._drop(`c${i}`);
-            let metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
-            if(isCluster) {
-              assertTrue(metric_after < metric_before);
-            } else {
-              assertEqual(metric_before, 0);
-              assertEqual(metric_after, 0);
-            }
+        for(let i = 0; i < 2; i++) {
+          let metric_before = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          db._drop(`c${i}`);
+          let metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          if(isCluster) {
+            assertTrue(metric_after < metric_before);
+          } else {
+            assertEqual(metric_before, 0);
+            assertEqual(metric_after, 0);
+          }
         }
 
         let final_metric = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
