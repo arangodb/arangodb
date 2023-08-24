@@ -100,6 +100,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
         _index(index),
         _key(std::move(key)),
         _isId(lookupByIdAttribute),
+        _withCache(_index->useCache() != nullptr),
         _done(false) {
     TRI_ASSERT(_key.slice().isString());
 
@@ -152,7 +153,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     if (documentId.isSet()) {
       cb(documentId);
     }
-    if (_index->hasCache()) {
+    if (_withCache) {
       incrCacheStats(foundInCache);
     }
     return false;
@@ -176,7 +177,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
       auto data = SliceCoveringData(_key.slice());
       cb(documentId, data);
     }
-    if (_index->hasCache()) {
+    if (_withCache) {
       incrCacheStats(foundInCache);
     }
     return false;
@@ -188,6 +189,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
   RocksDBPrimaryIndex* _index;
   VPackBuilder _key;
   bool const _isId;
+  bool const _withCache;
   bool _done;
 };
 
@@ -206,7 +208,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
         _keys(std::move(keys)),
         _iterator(_keys.slice()),
         _memoryUsage(0),
-        _isId(lookupByIdAttribute) {
+        _isId(lookupByIdAttribute),
+        _withCache(_index->useCache() != nullptr) {
     TRI_ASSERT(_keys.slice().isArray());
 
     ResourceUsageScope scope(_resourceMonitor, _keys.size());
@@ -271,7 +274,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
         cb(documentId);
         --limit;
       }
-      if (_index->hasCache()) {
+      if (_withCache) {
         incrCacheStats(foundInCache);
       }
 
@@ -302,7 +305,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
         cb(documentId, data);
         --limit;
       }
-      if (_index->hasCache()) {
+      if (_withCache) {
         incrCacheStats(foundInCache);
       }
 
@@ -323,6 +326,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
   velocypack::ArrayIterator _iterator;
   size_t _memoryUsage;
   bool const _isId;
+  bool const _withCache;
 };
 
 template<bool reverse, bool mustCheckBounds>
@@ -613,14 +617,14 @@ RocksDBPrimaryIndex::coveredFields() const {
 
 void RocksDBPrimaryIndex::load() {
   RocksDBIndex::load();
-  if (hasCache()) {
+  if (std::shared_ptr<cache::Cache> cache = useCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb =
         static_cast<RocksDBCollection*>(_collection.getPhysical());
     uint64_t numDocs = rdb->meta().numberDocuments();
 
     if (numDocs > 0) {
-      _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
+      cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
     }
   }
 }
@@ -642,11 +646,11 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   foundInCache = false;
   bool lockTimeout = false;
-  if (hasCache()) {
-    TRI_ASSERT(_cache != nullptr);
+  std::shared_ptr<cache::Cache> cache = useCache();
+  if (cache != nullptr) {
     // check cache first for fast path
-    auto f = _cache->find(key->string().data(),
-                          static_cast<uint32_t>(key->string().size()));
+    auto f = cache->find(key->string().data(),
+                         static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
       foundInCache = true;
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
@@ -667,11 +671,10 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     return LocalDocumentId();
   }
 
-  if (hasCache() && !lockTimeout) {
-    TRI_ASSERT(_cache != nullptr);
+  if (cache != nullptr && !lockTimeout) {
     // write entry back to cache
     cache::Cache::SimpleInserter<PrimaryIndexCacheType>{
-        static_cast<PrimaryIndexCacheType&>(*_cache), key->string().data(),
+        static_cast<PrimaryIndexCacheType&>(*cache), key->string().data(),
         static_cast<uint32_t>(key->string().size()), val.data(),
         static_cast<uint64_t>(val.size())};
   }

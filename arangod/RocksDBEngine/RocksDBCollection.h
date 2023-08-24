@@ -29,6 +29,9 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/vocbase.h"
 
+#include <atomic>
+#include <memory>
+
 namespace rocksdb {
 class PinnableSlice;
 class Transaction;
@@ -147,15 +150,15 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 velocypack::Slice previousDocument,
                 OperationOptions const& options) override;
 
-  bool cacheEnabled() const noexcept { return _cacheEnabled; }
+  bool cacheEnabled() const noexcept;
 
   bool hasDocuments() override;
 
   /// @brief lookup document in cache and / or rocksdb
-  /// @param readCache attempt to read from cache
+  /// @param withCache attempt to read from cache
   /// @param fillCache fill cache with found document
   Result lookupDocument(transaction::Methods& trx, LocalDocumentId documentId,
-                        velocypack::Builder& builder, bool readCache,
+                        velocypack::Builder& builder, bool withCache,
                         bool fillCache,
                         ReadOwnWrites readOwnWrites) const override;
 
@@ -213,11 +216,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                         OperationOptions const& options) const;
 
   /// @brief lookup document in cache and / or rocksdb
-  /// @param readCache attempt to read from cache
+  /// @param withCache attempt to read from cache
   /// @param fillCache fill cache with found document
   Result lookupDocumentVPack(transaction::Methods* trx,
                              LocalDocumentId const& documentId,
-                             rocksdb::PinnableSlice& ps, bool readCache,
+                             rocksdb::PinnableSlice& ps, bool withCache,
                              bool fillCache, ReadOwnWrites readOwnWrites) const;
 
   Result lookupDocumentVPack(
@@ -232,7 +235,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void destroyCache() const;
 
   /// is this collection using a cache
-  bool useCache() const noexcept;
+  std::shared_ptr<cache::Cache> useCache() const noexcept;
 
   /// @brief track key in file
   void invalidateCacheEntry(RocksDBKey const& key) const;
@@ -261,9 +264,9 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   cache::Manager* _cacheManager;
 
   /// @brief document cache (optional)
-  mutable std::shared_ptr<cache::Cache> _cache;
+  mutable std::atomic<std::shared_ptr<cache::Cache>> _cache;
 
-  std::atomic<bool> _cacheEnabled;
+  std::atomic_bool _cacheEnabled;
 
   TransactionStatistics& _statistics;
 };
