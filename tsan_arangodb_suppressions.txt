@@ -53,6 +53,3 @@ deadlock:consensus::Agent::setPersistedState
 
 # TODO Fix data race in arangodbtests
 race:DummyConnection::sendRequest
-
-# TODO BTS-1502: should be fixed 
-race:setCacheEnabled

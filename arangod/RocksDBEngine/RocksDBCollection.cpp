@@ -2043,6 +2043,11 @@ void RocksDBCollection::setupCache() const {
   }
 }
 
+/// is this collection using a cache
+bool RocksDBCollection::useCache() const noexcept {
+  return (_cacheEnabled && _cache);
+}
+
 void RocksDBCollection::destroyCache() const {
   if (_cache != nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
