@@ -594,8 +594,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(LogicalCollection& collection,
               .getFeature<EngineSelectorFeature>()
               .engine<RocksDBEngine>()),
       _coveredFields({{AttributeName(StaticStrings::KeyString, false)},
-                      {AttributeName(StaticStrings::IdString, false)}}),
-      _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
+                      {AttributeName(StaticStrings::IdString, false)}}) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
                         RocksDBColumnFamilyManager::Family::PrimaryIndex));
   TRI_ASSERT(objectId() != 0);
@@ -971,9 +970,11 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       Result res = trx->resolveId(value.data(), value.length(), collection, key,
                                   outLength);
 
+      bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
+
       if (!res.ok()) {
         // using the name of an unknown collection
-        if (_isRunningInCluster) {
+        if (isRunningInCluster) {
           // translate from our own shard name to "real" collection name
           return value.compare(
               trx->resolver()->getCollectionName(_collection.id()));
@@ -984,10 +985,10 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       TRI_ASSERT(key);
       TRI_ASSERT(collection);
 
-      if (!_isRunningInCluster && collection->id() != _collection.id()) {
+      if (!isRunningInCluster && collection->id() != _collection.id()) {
         // using the name of a different collection...
         return value.compare(_collection.name());
-      } else if (_isRunningInCluster &&
+      } else if (isRunningInCluster &&
                  collection->planId() != _collection.planId()) {
         // using a different collection
         // translate from our own shard name to "real" collection name
@@ -1261,13 +1262,15 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(key != nullptr);
 
-    if (!_isRunningInCluster && collection->id() != _collection.id()) {
+    bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
+
+    if (!isRunningInCluster && collection->id() != _collection.id()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
     }
 
-    if (_isRunningInCluster) {
+    if (isRunningInCluster) {
 #ifdef USE_ENTERPRISE
       if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) {
         auto c = dynamic_cast<VirtualClusterSmartEdgeCollection const*>(
