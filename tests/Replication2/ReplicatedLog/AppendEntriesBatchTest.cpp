@@ -96,7 +96,7 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
 
   auto followerLogContainer = createParticipant({});
 
-  auto config = makeConfig(*leaderLogContainer, {*followerLogContainer},
+  auto config = addNewTerm(*leaderLogContainer, {*followerLogContainer},
                            {.term = 5_T, .writeConcern = 2});
   config->installConfig(false);
   EXPECT_CALL(*followerLogContainer->stateHandleMock, updateCommitIndex)

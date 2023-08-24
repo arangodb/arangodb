@@ -35,7 +35,7 @@ struct MultiTermTest : ReplicatedLogTest {};
 TEST_F(MultiTermTest, add_follower_test) {
   auto leaderLogContainer = createParticipant({});
   auto leaderLog = leaderLogContainer->log;
-  auto config = makeConfig(*leaderLogContainer, {}, {.term = 1_T});
+  auto config = addNewTerm(*leaderLogContainer, {}, {.term = 1_T});
 
   config->installConfig(true);
   {
@@ -65,11 +65,7 @@ TEST_F(MultiTermTest, add_follower_test) {
   EXPECT_CALL(*followerLogContainer->stateHandleMock, updateCommitIndex)
       .Times(testing::AtLeast(1));
 
-  // TODO Move the config manipulation into a function on LogConfig.
-  //      Maybe move the makeConfig code into a LogConfig constructor.
-  config =
-      makeConfig(*leaderLogContainer, {*followerLogContainer}, {.term = 2_T});
-
+  config = addUpdatedTerm({.addParticipants = {*followerLogContainer}});
   config->installConfig(false);
   {
     {
@@ -105,7 +101,7 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
   auto leaderLog = leaderLogContainer->log;
   auto followerLogContainer = createParticipant({});
   auto followerLog = followerLogContainer->log;
-  auto config = makeConfig(*leaderLogContainer, {*followerLogContainer},
+  auto config = addNewTerm(*leaderLogContainer, {*followerLogContainer},
                            {.term = 1_T, .writeConcern = 2});
 
   config->installConfig(true);
@@ -117,9 +113,7 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
     leaderLogContainer->runAll();
     // note we don't run the follower, so the leader can't commit the entry
     auto oldLeader = leaderLog->getParticipant();
-    // TODO Move config manipulation into LogConfig methods
-    config = makeConfig(*leaderLogContainer, {*followerLogContainer},
-                        {.term = 2_T, .writeConcern = 2});
+    config = addUpdatedTerm({});
     config->installConfig(false);
     ASSERT_TRUE(f.isReady());
     EXPECT_ANY_THROW({ std::ignore = f.get(); });
@@ -139,7 +133,7 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
   auto followerLogContainer = createParticipant({});
   auto leaderLog = leaderLogContainer->log;
   auto followerLog = followerLogContainer->log;
-  auto config = makeConfig(*leaderLogContainer, {*followerLogContainer},
+  auto config = addNewTerm(*leaderLogContainer, {*followerLogContainer},
                            {.term = 1_T, .writeConcern = 2});
   config->installConfig(true);
   {
@@ -159,9 +153,12 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     EXPECT_TRUE(
         followerLogContainer->delayedLogFollower->hasPendingAppendEntries());
     auto [oldFollower, oldScheduler] = followerLogContainer->stealFollower();
-    //  TODO Move config manipulation into LogConfig methods
-    config = makeConfig(*leaderLogContainer, {*followerLogContainer},
-                        {.term = 2_T, .writeConcern = 2});
+    config = addUpdatedTerm({});
+    // TODO We should somehow make `config->installConfig()` and
+    //      `logContainer->updateConfig(config)` more consistent.
+    //      Possibly have both on the config object (e.g. something like
+    //        config->installConfig(followerLogContainer)
+    //      ).
     std::ignore = followerLogContainer->updateConfig(config);
 
     // now run the old followers append entry requests
@@ -226,7 +223,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
   auto followerLogContainer = createParticipant({});
   auto leaderLog = leaderLogContainer->log;
   auto followerLog = followerLogContainer->log;
-  auto config = makeConfig(*leaderLogContainer, {*followerLogContainer},
+  auto config = addNewTerm(*leaderLogContainer, {*followerLogContainer},
                            {.term = 1_T, .writeConcern = 2});
   config->installConfig(true);
   {
@@ -244,9 +241,8 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
       EXPECT_EQ(stats.commitIndex, LogIndex{1});
     }
 
-    // now create a new leader and delete the old one
-    config = makeConfig(*leaderLogContainer, {*followerLogContainer},
-                        {.term = 2_T, .writeConcern = 2});
+    // update the leader first
+    config = addUpdatedTerm({});
     std::ignore = leaderLogContainer->updateConfig(config);
     leaderLogContainer->runAll();
 

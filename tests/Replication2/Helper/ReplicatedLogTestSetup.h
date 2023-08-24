@@ -68,6 +68,11 @@ struct ConfigArguments {
 struct LogContainer;
 struct LogConfig {
   // TODO maybe move to shared_ptrs from reference_wrapper
+  // TODO Maybe remove leader and followers entirely; the information is
+  //      available in termSpec.leader and
+  //      participantsConfig.participantsFlagsMap.
+  //      We'd need to move the "installConfig" function somewhere else though
+  //      (to WholeLog, probably).
   std::optional<std::reference_wrapper<LogContainer>> leader;
   std::vector<std::reference_wrapper<LogContainer>> followers;
   agency::LogPlanTermSpecification termSpec;
@@ -253,17 +258,13 @@ struct WholeLog {
     return &it->second;
   }
 
+  // Create a new term, using the LogTerm from configArguments. It must not yet
+  // exist.
   auto addNewTerm(std::optional<std::reference_wrapper<LogContainer>> leader,
                   std::vector<std::reference_wrapper<LogContainer>> follower,
                   ConfigArguments configArguments) -> LogConfig* {
-    auto const term = [&]() {
-      auto it = terms.rbegin();
-      if (it == terms.rend()) {
-        return LogTerm{1};
-      } else {
-        return it->first.succ();
-      }
-    }();
+    auto const term = configArguments.term;
+    TRI_ASSERT(!terms.contains(term));
 
     auto it =
         terms.try_emplace(terms.end(), term,
@@ -286,12 +287,23 @@ struct WholeLog {
         };
         std::remove_if(config.followers.begin(), config.followers.end(),
                        shouldBeRemoved);
+        config.participantsConfig.participants.erase(
+            toRemove.get().serverInstance.serverId);
         if (config.leader && shouldBeRemoved(*config.leader)) {
           config.leader = std::nullopt;
+          config.termSpec.leader = std::nullopt;
         }
       }
       std::copy(addParticipants.begin(), addParticipants.end(),
                 std::back_inserter(config.followers));
+      std::transform(
+          addParticipants.begin(), addParticipants.end(),
+          std::inserter(config.participantsConfig.participants,
+                        config.participantsConfig.participants.end()),
+          [](auto const& it) {
+            return std::pair(it.get().serverInstance.serverId,
+                             ParticipantFlags{});
+          });
       if (setLeader) {
         config.leader = *setLeader;
       }
@@ -306,15 +318,19 @@ struct WholeLog {
     }
   };
 
-  auto addUpdatedTerm(ConfigUpdates updates) {
-    auto it = terms.rbegin();
-    TRI_ASSERT(it != terms.rend());
-    auto const [prevTerm, prevConf] = *it;
+  // TODO Regarding both addNewTerm/addUpdatedTerm: Should we require the term
+  //      to be passed, or generate a new one and return it?
+  auto addUpdatedTerm(ConfigUpdates updates) -> LogConfig* {
+    auto lit = terms.rbegin();
+    TRI_ASSERT(lit != terms.rend());
+    auto const [prevTerm, prevConf] = *lit;
     auto const term = prevTerm.succ();
 
     auto config = updates.updateConfig(prevConf);
+    config.termSpec.term = term;
 
-    terms.try_emplace(terms.end(), term, std::move(config));
+    auto it = terms.try_emplace(terms.end(), term, std::move(config));
+    return &it->second;
   }
 
  public:
@@ -341,10 +357,14 @@ struct ReplicatedLogTest : ::testing::Test {
     return wholeLog.createParticipant(fakeArguments);
   }
 
-  auto makeConfig(std::optional<std::reference_wrapper<LogContainer>> leader,
+  auto addNewTerm(std::optional<std::reference_wrapper<LogContainer>> leader,
                   std::vector<std::reference_wrapper<LogContainer>> follower,
-                  ConfigArguments configArguments) -> LogConfig* {
+                  ConfigArguments configArguments) {
     return wholeLog.addNewTerm(leader, std::move(follower), configArguments);
+  }
+
+  auto addUpdatedTerm(WholeLog::ConfigUpdates updates) {
+    return wholeLog.addUpdatedTerm(std::move(updates));
   }
 
   template<std::size_t replicationFactor>
