@@ -28,6 +28,8 @@
 
 namespace arangodb::transaction {
 
+// simple helper struct that indicates the origin of an operation.
+// we use this to categorize operations for testing memory usage tracking.
 struct OperationOrigin {
   // type of transaction
   enum class Type : std::uint8_t {
@@ -44,6 +46,7 @@ struct OperationOrigin {
   OperationOrigin& operator=(OperationOrigin const&) = delete;
   OperationOrigin& operator=(OperationOrigin&&) = delete;
 
+  // must remain valid during the entire lifetime of the OperationOrigin
   std::string_view const description;
   Type const type;
 
@@ -54,22 +57,32 @@ struct OperationOrigin {
       : description(description), type(type) {}
 };
 
+// an operation that is an AQL query.
+// note: the caller is responsible for ensuring that description
+// stays valid for the entire lifetime of the object
 struct OperationOriginAQL : OperationOrigin {
   constexpr OperationOriginAQL(std::string_view description) noexcept
       : OperationOrigin(description, OperationOrigin::Type::kAQL) {}
 };
 
+// an operation that is an end user-initiated operation, but not AQL.
+// note: the caller is responsible for ensuring that description
+// stays valid for the entire lifetime of the object
 struct OperationOriginREST : OperationOrigin {
   constexpr OperationOriginREST(std::string_view description) noexcept
       : OperationOrigin(description, OperationOrigin::Type::kREST) {}
 };
 
+// an internal operation, not directly initiated by end users.
+// note: the caller is responsible for ensuring that description
+// stays valid for the entire lifetime of the object
 struct OperationOriginInternal : OperationOrigin {
   constexpr OperationOriginInternal(std::string_view description) noexcept
       : OperationOrigin(description, OperationOrigin::Type::kInternal) {}
 };
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
+// an operation from inside a test case. we count them as internal, too.
 struct OperationOriginTestCase : OperationOrigin {
   constexpr OperationOriginTestCase() noexcept
       : OperationOrigin("unit test", OperationOrigin::Type::kInternal) {}

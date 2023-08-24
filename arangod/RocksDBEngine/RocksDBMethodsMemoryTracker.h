@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Basics/Common.h"
 #include "Containers/SmallVector.h"
 #include "Metrics/Gauge.h"
 
@@ -32,15 +33,22 @@ namespace arangodb {
 struct ResourceMonitor;
 class RocksDBTransactionState;
 
+// memory usage tracker for RocksDB methods.
+// accumulates memory usage changes locally, and only publishes them to a
+// ResourceMonitor and/or metric in case the diff since the last publishing
+// is bigger than a certain threshold.
+// this is done to save a lot of updates on the ResourceMonitor's/metric's
+// underlying atomic variables.
 class RocksDBMethodsMemoryTracker {
  public:
   RocksDBMethodsMemoryTracker(RocksDBMethodsMemoryTracker const&) = delete;
   RocksDBMethodsMemoryTracker& operator=(RocksDBMethodsMemoryTracker const&) =
       delete;
 
-  explicit RocksDBMethodsMemoryTracker(RocksDBTransactionState* state);
+  explicit RocksDBMethodsMemoryTracker(RocksDBTransactionState* state,
+                                       std::uint64_t reportGranularity);
 
-  ~RocksDBMethodsMemoryTracker();
+  TEST_VIRTUAL ~RocksDBMethodsMemoryTracker();
 
   void reset() noexcept;
 
@@ -60,7 +68,7 @@ class RocksDBMethodsMemoryTracker {
 
   std::uint64_t memoryUsage() const noexcept;
 
- private:
+ protected:
   void publish(bool force);
 
   std::uint64_t _memoryUsage;
@@ -68,7 +76,7 @@ class RocksDBMethodsMemoryTracker {
 
   // last value we published to the metric ourselves. we keep track
   // of this so we only need to update the metric if our current
-  // memory usage differs by more than kMemoryReportGranularity from
+  // memory usage differs by more than the threshold from
   // what we already posted to the metric. we do this to save lots
   // of metrics updates with very small increments/decrements, which
   // would provide little value and would only lead to contention on
@@ -77,21 +85,26 @@ class RocksDBMethodsMemoryTracker {
   std::uint64_t _lastPublishedValueResourceMonitor;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // we need these two members only to track the memory usage
+  // accurately, without any delays caused by publishing. we need
+  // this for testing only.
   std::uint64_t _lastPublishedValue;
   RocksDBTransactionState* _state;
 #endif
-
-  metrics::Gauge<std::uint64_t>* _metric;
-
-  ResourceMonitor* _resourceMonitor;
-
-  containers::SmallVector<std::uint64_t, 4> _savePoints;
 
   // publish only memory usage differences if memory usage changed
   // by this many bytes since our last update to the metric.
   // this is to avoid too frequent metrics updates and potential
   // contention on ths metric's underlying atomic value.
-  static constexpr std::int64_t kMemoryReportGranularity = 4096;
+  std::uint64_t _reportGranularity;
+
+  // the underlying metric to publish to. can be a nullptr!
+  metrics::Gauge<std::uint64_t>* _metric;
+
+  // the underlying ResourceMonitor to publish to. can be a nullptr!
+  ResourceMonitor* _resourceMonitor;
+
+  containers::SmallVector<std::uint64_t, 4> _savePoints;
 };
 
 }  // namespace arangodb

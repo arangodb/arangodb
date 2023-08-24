@@ -45,7 +45,7 @@ RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
     : RocksDBTransactionMethods(state),
       _callback(callback),
       _db(db),
-      _memoryTracker(state) {
+      _memoryTracker(state, /*reportGranularity*/ 8192) {
   TRI_ASSERT(_state != nullptr);
 
   TRI_ASSERT(!_state->isReadOnlyTransaction());
