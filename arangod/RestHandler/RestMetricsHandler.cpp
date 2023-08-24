@@ -297,7 +297,6 @@ RestStatus RestMetricsHandler::makeRedirection(std::string const& serverId,
     // TODO(MBkkt) move response
     // the response will not contain any velocypack.
     // we need to forward the request with content-type text/plain.
-    // we need to forward the request with content-type text/plain.
     if (r.response().header.meta().contains(StaticStrings::ContentEncoding)) {
       // forward original Content-Encoding header
       me._response->setHeaderNC(
