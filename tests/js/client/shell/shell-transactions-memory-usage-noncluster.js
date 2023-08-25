@@ -33,7 +33,7 @@ const clearTransactions = () => {
   arango.DELETE("/_api/transaction/history");
 };
 
-const getTransactions = (database = '_system', collections = [cn], type = '', origin = '') => {
+const getTransactions = (database = '_system', collections, type = '', origin = '') => {
   let trx = arango.GET("/_api/transaction/history");
 
   trx = trx.filter((trx) => {
