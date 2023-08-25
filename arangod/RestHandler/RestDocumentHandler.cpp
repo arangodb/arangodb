@@ -615,7 +615,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   // find and load collection given by name or identifier
   _activeTrx = createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
-      transaction::OperationOriginREST{"updating/replacing document(s)"},
+      transaction::OperationOriginREST{"modifying document(s)"},
       std::move(trxOpts));
 
   addTransactionHints(cname, isArrayCase, false);

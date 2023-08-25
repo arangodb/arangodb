@@ -1540,8 +1540,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   }
 
   VPackSlice update = updateBuilder.slice();
-  auto origin =
-      transaction::OperationOriginREST{"updating/replacing document(s)"};
+  auto origin = transaction::OperationOriginREST{"modifying document(s)"};
   transaction::V8Context transactionContext(col->vocbase(), origin, true);
 
   bool payloadIsArray = args[0]->IsArray();
@@ -1651,8 +1650,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   auto& vocbase = GetContextVocBase(isolate);
   bool extendedNames =
       vocbase.server().getFeature<DatabaseFeature>().extendedNames();
-  auto origin =
-      transaction::OperationOriginREST{"updating/replacing document(s)"};
+  auto origin = transaction::OperationOriginREST{"modifying document(s)"};
   transaction::V8Context transactionContext(vocbase, origin, true);
   VPackBuilder updateBuilder;
 
