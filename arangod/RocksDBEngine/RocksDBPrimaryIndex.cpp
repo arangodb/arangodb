@@ -646,7 +646,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   foundInCache = false;
   bool lockTimeout = false;
-  std::shared_ptr<cache::Cache> cache = useCache();
+  auto cache = useCache();
   if (cache != nullptr) {
     // check cache first for fast path
     auto f = cache->find(key->string().data(),
