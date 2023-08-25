@@ -169,6 +169,9 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
   {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
+    auto origin = ctx->operationOrigin();
+    ASSERT_EQ(transaction::OperationOrigin::Type::kInternal, origin.type);
+    ASSERT_EQ("unit test", origin.description);
 
     SingleCollectionTransaction trx(ctx, "testCollection",
                                     AccessMode::Type::WRITE);
@@ -521,7 +524,12 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
   }
 
   auto ctx = std::make_shared<transaction::AQLStandaloneContext>(
-      vocbase, tid, arangodb::transaction::OperationOriginTestCase{});
+      vocbase, tid,
+      arangodb::transaction::OperationOriginAQL{"running AQL query"});
+  auto origin = ctx->operationOrigin();
+  ASSERT_EQ(transaction::OperationOrigin::Type::kAQL, origin.type);
+  ASSERT_EQ("running AQL query", origin.description);
+
   auto qq = "FOR doc IN testCollection RETURN doc";
   arangodb::aql::QueryResult qres = executeQuery(vocbase, qq, ctx);
   ASSERT_TRUE(qres.ok());

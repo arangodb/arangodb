@@ -39,13 +39,30 @@
 
 using namespace arangodb;
 
+namespace {
+metrics::Gauge<std::uint64_t>* determineMetric(
+    RocksDBTransactionState const* state) noexcept {
+  TRI_ASSERT(state != nullptr);
+
+  switch (state->operationOrigin().type) {
+    case transaction::OperationOrigin::Type::kAQL:
+      return nullptr;
+    case transaction::OperationOrigin::Type::kREST:
+      return &state->statistics()._restTransactionsMemoryUsage;
+    case transaction::OperationOrigin::Type::kInternal:
+      return &state->statistics()._internalTransactionsMemoryUsage;
+  }
+}
+}  // namespace
+
 RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
     RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
     rocksdb::TransactionDB* db)
     : RocksDBTransactionMethods(state),
       _callback(callback),
       _db(db),
-      _memoryTracker(state, /*reportGranularity*/ 8192) {
+      _memoryTracker(_state, ::determineMetric(_state),
+                     /*reportGranularity*/ 8192) {
   TRI_ASSERT(_state != nullptr);
 
   TRI_ASSERT(!_state->isReadOnlyTransaction());

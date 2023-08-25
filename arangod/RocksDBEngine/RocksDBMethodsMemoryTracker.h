@@ -25,7 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Containers/SmallVector.h"
-#include "Metrics/Gauge.h"
+#include "Metrics/Fwd.h"
 
 #include <cstdint>
 
@@ -46,6 +46,7 @@ class RocksDBMethodsMemoryTracker {
       delete;
 
   explicit RocksDBMethodsMemoryTracker(RocksDBTransactionState* state,
+                                       metrics::Gauge<std::uint64_t>* _metric,
                                        std::uint64_t reportGranularity);
 
   TEST_VIRTUAL ~RocksDBMethodsMemoryTracker();

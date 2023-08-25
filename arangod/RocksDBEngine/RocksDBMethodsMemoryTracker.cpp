@@ -32,7 +32,8 @@
 namespace arangodb {
 
 RocksDBMethodsMemoryTracker::RocksDBMethodsMemoryTracker(
-    RocksDBTransactionState* state, std::uint64_t reportGranularity)
+    RocksDBTransactionState* state, metrics::Gauge<std::uint64_t>* metric,
+    std::uint64_t reportGranularity)
     : _memoryUsage(0),
       _memoryUsageAtBeginQuery(0),
       _lastPublishedValueMetric(0),
@@ -42,21 +43,8 @@ RocksDBMethodsMemoryTracker::RocksDBMethodsMemoryTracker(
       _state(state),
 #endif
       _reportGranularity(reportGranularity),
-      _metric(nullptr),
+      _metric(metric),
       _resourceMonitor(nullptr) {
-  TRI_ASSERT(state != nullptr);
-
-  switch (state->operationOrigin().type) {
-    case transaction::OperationOrigin::Type::kAQL:
-      _metric = nullptr;
-      break;
-    case transaction::OperationOrigin::Type::kREST:
-      _metric = &state->statistics()._restTransactionsMemoryUsage;
-      break;
-    case transaction::OperationOrigin::Type::kInternal:
-      _metric = &state->statistics()._internalTransactionsMemoryUsage;
-      break;
-  }
 }
 
 RocksDBMethodsMemoryTracker::~RocksDBMethodsMemoryTracker() {
@@ -213,10 +201,11 @@ void RocksDBMethodsMemoryTracker::publish(bool force) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // track accurate memory usage, for testing purposes only.
-  TRI_ASSERT(_state != nullptr);
-  // publish to state for internal test purposes. this won't throw.
-  _state->adjustMemoryUsage(static_cast<std::int64_t>(_memoryUsage) -
-                            static_cast<std::int64_t>(_lastPublishedValue));
+  if (_state != nullptr) {
+    // publish to state for internal test purposes. this won't throw.
+    _state->adjustMemoryUsage(static_cast<std::int64_t>(_memoryUsage) -
+                              static_cast<std::int64_t>(_lastPublishedValue));
+  }
   _lastPublishedValue = _memoryUsage;
 #endif
 }
