@@ -2055,7 +2055,7 @@ void RocksDBCollection::setupCache() const {
 
 std::shared_ptr<cache::Cache> RocksDBCollection::useCache() const noexcept {
   // note: this can return a nullptr. the caller has to check the result
-  return _cache;
+  return std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
 }
 
 void RocksDBCollection::destroyCache() const {

@@ -335,7 +335,7 @@ void RocksDBIndex::compact() {
 
 std::shared_ptr<cache::Cache> RocksDBIndex::useCache() const noexcept {
   // note: this can return a nullptr. the caller has to check the result
-  return _cache;
+  return std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
 }
 
 bool RocksDBIndex::canWarmup() const noexcept { return useCache() != nullptr; }
