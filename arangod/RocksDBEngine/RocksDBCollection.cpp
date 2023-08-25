@@ -2059,7 +2059,7 @@ std::shared_ptr<cache::Cache> RocksDBCollection::useCache() const noexcept {
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
     return std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
   }
-  return std::shared_ptr<cache::Cache>();
+  return {};
 }
 
 void RocksDBCollection::destroyCache() const {
