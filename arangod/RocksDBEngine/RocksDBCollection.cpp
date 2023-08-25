@@ -1904,7 +1904,6 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
   }
 
   if (fillCache && cache != nullptr && !lockTimeout) {
-    TRI_ASSERT(cache != nullptr);
     // write entry back to cache
     cache::Cache::SimpleInserter<DocumentCacheType>{
         static_cast<DocumentCacheType&>(*cache), key->string().data(),
