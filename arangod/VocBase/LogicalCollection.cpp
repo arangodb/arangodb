@@ -357,20 +357,31 @@ replication::Version LogicalCollection::replicationVersion() const noexcept {
 }
 
 std::string const& LogicalCollection::distributeShardsLike() const noexcept {
-  TRI_ASSERT(_sharding != nullptr);
-  return _sharding->distributeShardsLike();
-}
+  if (ServerState::instance()->isCoordinator() &&
+      replicationVersion() == replication::Version::TWO) {
+    auto& cf = vocbase().server().getFeature<ClusterFeature>();
+    auto& ci = cf.clusterInfo();
 
-void LogicalCollection::distributeShardsLike(std::string const& cid,
-                                             ShardingInfo const* other) {
-  TRI_ASSERT(_sharding != nullptr);
-  _sharding->distributeShardsLike(cid, other);
-}
-
-std::vector<std::string> const& LogicalCollection::avoidServers()
-    const noexcept {
-  TRI_ASSERT(_sharding != nullptr);
-  return _sharding->avoidServers();
+    auto myGroup = ci.getCollectionGroupById(groupID());
+    if (myGroup == nullptr) {
+      // Protect against the race: Collection is in use and dropped
+      // at the same time. We have no option to get the real
+      // distributeShardsLike back, but the collection is
+      // to be erased anyhow, so nothing too bad can happen
+      return StaticStrings::Empty;
+    }
+    TRI_ASSERT(myGroup != nullptr)
+        << "Collection part of a Group that does not exist";
+    auto const& leader = myGroup->groupLeader;
+    if (leader == std::to_string(id().id())) {
+      // If i am the leader, return the empty string
+      return StaticStrings::Empty;
+    }
+    return myGroup->groupLeader;
+  } else {
+    TRI_ASSERT(_sharding != nullptr);
+    return _sharding->distributeShardsLike();
+  }
 }
 
 bool LogicalCollection::isSatellite() const noexcept {
