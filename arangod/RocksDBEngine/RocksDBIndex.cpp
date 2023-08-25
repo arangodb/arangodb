@@ -336,7 +336,7 @@ std::shared_ptr<cache::Cache> RocksDBIndex::useCache() const noexcept {
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
     return std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
   }
-  return std::shared_ptr<cache::Cache>();
+  return {};
 }
 
 bool RocksDBIndex::canWarmup() const noexcept { return useCache() != nullptr; }
