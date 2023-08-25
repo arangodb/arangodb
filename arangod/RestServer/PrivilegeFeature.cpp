@@ -177,7 +177,7 @@ void PrivilegeFeature::extractPrivileges() {
     int uidNumber = NumberUtils::atoi_positive<int>(
         _uid.data(), _uid.data() + _uid.size(), valid);
 
-    if (!valid) {
+    if (valid) {
 #ifdef ARANGODB_HAVE_GETPWUID
       passwd* p = getpwuid(uidNumber);
 

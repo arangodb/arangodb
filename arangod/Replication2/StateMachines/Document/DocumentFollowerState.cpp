@@ -56,6 +56,7 @@ DocumentFollowerState::~DocumentFollowerState() = default;
 
 auto DocumentFollowerState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
+  _resigning = true;
   return _guardedData.doUnderLock([](auto& data) {
     if (data.didResign()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
@@ -178,6 +179,11 @@ auto DocumentFollowerState::applyEntries(
           std::optional<LogIndex> releaseIndex;
 
           while (auto entry = ptr->next()) {
+            if (self->_resigning) {
+              // We have not officially resigned yet, but we are about to. So,
+              // we can just stop here.
+              break;
+            }
             auto [index, doc] = *entry;
 
             auto currentReleaseIndex = std::visit(
@@ -201,6 +207,10 @@ auto DocumentFollowerState::applyEntries(
           return releaseIndex;
         });
       });
+
+  if (_resigning) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+  }
 
   if (applyResult.fail()) {
     return applyResult.result();
@@ -575,6 +585,18 @@ auto DocumentFollowerState::GuardedData::applyEntry(
   }
 
   // Once the shard has been created, we can release the entry.
+  return ResultT<std::optional<LogIndex>>::success(
+      activeTransactions.getReleaseIndex().value_or(index));
+}
+
+auto DocumentFollowerState::GuardedData::applyEntry(
+    ReplicatedOperation::ModifyShard const& op, LogIndex index)
+    -> ResultT<std::optional<LogIndex>> {
+  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
+    return res;
+  }
+
+  // Once the shard has been modified, we can release the entry.
   return ResultT<std::optional<LogIndex>>::success(
       activeTransactions.getReleaseIndex().value_or(index));
 }

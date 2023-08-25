@@ -12,12 +12,6 @@ A JSON representation of a single document.
 
 @RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{collection,string,optional}
-The name of the collection. This query parameter is only for backward compatibility.
-In ArangoDB versions < 3.0, the URL path was `/_api/document` and
-this query parameter was required. This combination still works, but
-the recommended way is to specify the collection in the URL path.
-
 @RESTQUERYPARAM{waitForSync,boolean,optional}
 Wait until document has been synced to disk.
 
