@@ -454,14 +454,16 @@ else ()
   add_definitions(-DUSE_BUILD_ID_READER=false)
 endif ()
 
+if (NOT MSVC)
 # Guess whether we're using mold
-execute_process(
-  COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_EXE_LINKER_FLAGS} -Wl,--version
-  OUTPUT_VARIABLE LINKER_VERSION_OUT)
-if (LINKER_VERSION_OUT MATCHES ^mold)
-  SET(LINKER_IS_MOLD TRUE)
-else ()
-  SET(LINKER_IS_MOLD FALSE)
+  execute_process(
+    COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_EXE_LINKER_FLAGS} -Wl,--version
+    OUTPUT_VARIABLE LINKER_VERSION_OUT)
+  if (LINKER_VERSION_OUT MATCHES ^mold)
+    SET(LINKER_IS_MOLD TRUE)
+  else ()
+    SET(LINKER_IS_MOLD FALSE)
+  endif ()
 endif ()
 
 # mold doesn't support the linker scripts currently used for the build id reader, and will result in the error
