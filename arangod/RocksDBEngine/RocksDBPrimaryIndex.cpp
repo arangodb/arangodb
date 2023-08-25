@@ -617,7 +617,7 @@ RocksDBPrimaryIndex::coveredFields() const {
 
 void RocksDBPrimaryIndex::load() {
   RocksDBIndex::load();
-  if (std::shared_ptr<cache::Cache> cache = useCache()) {
+  if (auto cache = useCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb =
         static_cast<RocksDBCollection*>(_collection.getPhysical());
