@@ -23,6 +23,8 @@ devel
     operations, such as background statistics, TTL index maintenance, 
     replication etc.
 
+* BTS-1124: wait for license to be applied locally before responding to the request.
+
 * BTS-1566: remove redundant responsibility for creating local databases on
   coordinators.
 
