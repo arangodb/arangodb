@@ -351,13 +351,13 @@ bool ServerState::readOnlyByLicense() {
 bool ServerState::setReadOnly(ReadOnlyMode ro) {
   auto ret = readOnly();
   if (ro == API_FALSE) {
-    ::serverStateReadOnly.exchange(false, std::memory_order_release);
+    ::serverStateReadOnly.store(false, std::memory_order_release);
   } else if (ro == API_TRUE) {
-    ::serverStateReadOnly.exchange(true, std::memory_order_release);
+    ::serverStateReadOnly.store(true, std::memory_order_release);
   } else if (ro == LICENSE_FALSE) {
-    ::licenseReadOnly.exchange(false, std::memory_order_release);
+    ::licenseReadOnly.store(false, std::memory_order_release);
   } else if (ro == LICENSE_TRUE) {
-    ::licenseReadOnly.exchange(true, std::memory_order_release);
+    ::licenseReadOnly.store(true, std::memory_order_release);
   }
   return ret;
 }
