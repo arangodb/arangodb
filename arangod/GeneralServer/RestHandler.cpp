@@ -604,7 +604,8 @@ void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
 }
 
 void RestHandler::compressResponse() {
-  if (!_isAsyncRequest && _response->isCompressionAllowed()) {
+  if (!_isAsyncRequest && _response->isCompressionAllowed() &&
+      !_response->headers().contains(StaticStrings::ContentEncoding)) {
     // TODO: only enable response compression if response size
     // exceeds some threshold, so that we don't waste time with
     // compression setup for small responses
