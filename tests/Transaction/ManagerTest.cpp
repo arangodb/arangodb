@@ -229,7 +229,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(ctx, "testCollection",
+    SingleCollectionTransaction trx(std::move(ctx), "testCollection",
                                     AccessMode::Type::WRITE);
     ASSERT_TRUE(!trx.isMainTransaction());
     ASSERT_FALSE(
@@ -282,7 +282,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(ctx, "testCollection",
+    SingleCollectionTransaction trx(std::move(ctx), "testCollection",
                                     AccessMode::Type::WRITE);
     ASSERT_TRUE(!trx.isMainTransaction());
     ASSERT_TRUE(
@@ -328,7 +328,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(ctx, "testCollection",
+    SingleCollectionTransaction trx(std::move(ctx), "testCollection",
                                     AccessMode::Type::WRITE);
     ASSERT_TRUE(!trx.isMainTransaction());
 
@@ -509,7 +509,7 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
   {
     auto ctx = transaction::StandaloneContext::create(
         vocbase, arangodb::transaction::OperationOriginTestCase{});
-    SingleCollectionTransaction trx(ctx, "testCollection",
+    SingleCollectionTransaction trx(std::move(ctx), "testCollection",
                                     AccessMode::Type::WRITE);
     ASSERT_TRUE(trx.begin().ok());
 
@@ -553,7 +553,7 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
 
-    SingleCollectionTransaction trx(ctx, "testCollection",
+    SingleCollectionTransaction trx(std::move(ctx), "testCollection",
                                     AccessMode::Type::WRITE);
     ASSERT_TRUE(!trx.isMainTransaction());
 
@@ -566,7 +566,6 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
   ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
             transaction::Status::RUNNING);
 
-  //
   mgr->abortManagedTrx(
       [](TransactionState const& state, std::string const& /*user*/) -> bool {
         TransactionCollection* tcoll =
@@ -634,4 +633,62 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
                             transaction::OperationOriginTestCase{}, false);
   ASSERT_EQ(res.errorNumber(), TRI_ERROR_FORBIDDEN);
+}
+
+TEST_F(TransactionManagerTest, transaction_invalid_mode) {
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json = VPackParser::fromJson("{ \"name\": \"testCollection\" }");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_NE(coll, nullptr);
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"read\": [\"testCollection\"]}}");
+  Result res = mgr->ensureManagedTrx(
+      vocbase, tid, json->slice(),
+      transaction::OperationOriginInternal{"some test"}, false);
+  ASSERT_TRUE(res.ok());
+
+  auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+  ASSERT_NE(ctx.get(), nullptr);
+
+  ASSERT_THROW(SingleCollectionTransaction(std::move(ctx), "testCollection",
+                                           AccessMode::Type::WRITE),
+               arangodb::basics::Exception);
+  ;
+
+  res = mgr->abortManagedTrx(tid, vocbase.name());
+  ASSERT_TRUE(res.ok());
+}
+
+TEST_F(TransactionManagerTest, transaction_origin) {
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json = VPackParser::fromJson("{ \"name\": \"testCollection\" }");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_NE(coll, nullptr);
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"write\": [\"testCollection\"]}}");
+  Result res = mgr->ensureManagedTrx(
+      vocbase, tid, json->slice(),
+      transaction::OperationOriginInternal{"some test"}, false);
+  ASSERT_TRUE(res.ok());
+
+  auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+  ASSERT_NE(ctx.get(), nullptr);
+
+  {
+    SingleCollectionTransaction trx(std::move(ctx), "testCollection",
+                                    AccessMode::Type::WRITE);
+    ASSERT_FALSE(trx.isMainTransaction());
+    auto origin = trx.state()->operationOrigin();
+    ASSERT_EQ(transaction::OperationOrigin::Type::kInternal, origin.type);
+    ASSERT_EQ("some test", origin.description);
+  }
+
+  res = mgr->abortManagedTrx(tid, vocbase.name());
+  ASSERT_TRUE(res.ok());
 }
