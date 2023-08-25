@@ -41,8 +41,9 @@ RocksDBSstFileMethods::RocksDBSstFileMethods(
     bool isForeground, rocksdb::DB* rootDB,
     RocksDBTransactionCollection* trxColl, RocksDBIndex& ridx,
     rocksdb::Options const& dbOptions, std::string const& idxPath,
-    StorageUsageTracker& usageTracker)
-    : RocksDBMethods(),
+    StorageUsageTracker& usageTracker,
+    RocksDBMethodsMemoryTracker& memoryTracker)
+    : RocksDBBatchedBaseMethods(memoryTracker),
       _isForeground(isForeground),
       _rootDB(rootDB),
       _trxColl(trxColl),
@@ -54,12 +55,12 @@ RocksDBSstFileMethods::RocksDBSstFileMethods(
       _usageTracker(usageTracker),
       _bytesWrittenToDir(0) {}
 
-RocksDBSstFileMethods::RocksDBSstFileMethods(rocksdb::DB* rootDB,
-                                             rocksdb::ColumnFamilyHandle* cf,
-                                             rocksdb::Options const& dbOptions,
-                                             std::string const& idxPath,
-                                             StorageUsageTracker& usageTracker)
-    : RocksDBMethods(),
+RocksDBSstFileMethods::RocksDBSstFileMethods(
+    rocksdb::DB* rootDB, rocksdb::ColumnFamilyHandle* cf,
+    rocksdb::Options const& dbOptions, std::string const& idxPath,
+    StorageUsageTracker& usageTracker,
+    RocksDBMethodsMemoryTracker& memoryTracker)
+    : RocksDBBatchedBaseMethods(memoryTracker),
       _isForeground(false),
       _rootDB(rootDB),
       _trxColl(nullptr),
@@ -171,6 +172,13 @@ void RocksDBSstFileMethods::cleanUpFiles() {
   _bytesWrittenToDir = 0;
 }
 
+rocksdb::Status RocksDBSstFileMethods::GetFromSnapshot(
+    rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+    rocksdb::PinnableSlice*, ReadOwnWrites, rocksdb::Snapshot const*) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "SstFileMethods does not provide GetFromSnapshot");
+}
+
 rocksdb::Status RocksDBSstFileMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
                                            rocksdb::PinnableSlice* val,
@@ -223,4 +231,8 @@ rocksdb::Status RocksDBSstFileMethods::SingleDelete(
 
 void RocksDBSstFileMethods::PutLogData(rocksdb::Slice const& blob) {
   TRI_ASSERT(false);
+}
+
+size_t RocksDBSstFileMethods::currentWriteBatchSize() const noexcept {
+  return _bytesToWriteCount;
 }

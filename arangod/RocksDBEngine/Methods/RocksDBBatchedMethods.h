@@ -23,22 +23,19 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 
 namespace arangodb {
-
 /// wraps a writebatch - non transactional
-class RocksDBBatchedMethods final : public RocksDBMethods {
+class RocksDBBatchedMethods final : public RocksDBBatchedBaseMethods {
  public:
-  explicit RocksDBBatchedMethods(rocksdb::WriteBatch*);
+  explicit RocksDBBatchedMethods(rocksdb::WriteBatch*,
+                                 RocksDBMethodsMemoryTracker& memoryTracker);
 
   rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle*,
                                   rocksdb::Slice const&,
                                   rocksdb::PinnableSlice*, ReadOwnWrites,
-                                  rocksdb::Snapshot const*) override {
-    return {};
-  }
-
+                                  rocksdb::Snapshot const*) override;
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
@@ -56,6 +53,8 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
   void PutLogData(rocksdb::Slice const&) override;
 
  private:
+  size_t currentWriteBatchSize() const noexcept override;
+
   rocksdb::WriteBatch* _wb;
 };
 

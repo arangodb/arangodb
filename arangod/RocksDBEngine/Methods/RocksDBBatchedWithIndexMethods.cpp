@@ -26,8 +26,9 @@
 using namespace arangodb;
 
 RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(
-    rocksdb::TransactionDB* db, rocksdb::WriteBatchWithIndex* wb)
-    : RocksDBMethods(), _db(db), _wb(wb) {
+    rocksdb::TransactionDB* db, rocksdb::WriteBatchWithIndex* wb,
+    RocksDBMethodsMemoryTracker& memoryTracker)
+    : RocksDBBatchedBaseMethods(memoryTracker), _db(db), _wb(wb) {
   TRI_ASSERT(_db != nullptr);
   TRI_ASSERT(_wb != nullptr);
 }
@@ -86,4 +87,8 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::GetFromSnapshot(
     rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
     rocksdb::PinnableSlice*, ReadOwnWrites, rocksdb::Snapshot const*) {
   return {};
+}
+
+size_t RocksDBBatchedWithIndexMethods::currentWriteBatchSize() const noexcept {
+  return _wb->GetWriteBatch()->GetDataSize();
 }

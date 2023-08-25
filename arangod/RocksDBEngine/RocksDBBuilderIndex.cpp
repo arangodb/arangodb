@@ -34,7 +34,9 @@
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif
 #include "Logger/LogMacros.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -43,8 +45,10 @@
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -80,7 +84,8 @@ constexpr size_t getBatchSize(size_t numDocsHint) noexcept {
 }  // namespace
 
 namespace arangodb {
-Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
+Result partiallyCommitInsertions(RocksDBBatchedBaseMethods& batched,
+                                 rocksdb::WriteBatchBase& batch,
                                  rocksdb::DB* rootDB,
                                  RocksDBTransactionCollection* trxColl,
                                  std::atomic<uint64_t>& docsProcessed,
@@ -94,6 +99,7 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
     }
   }
   batch.Clear();
+  batched.resetMemoryUsage();
 
   auto ops = trxColl->stealTrackedIndexOperations();
   if (!ops.empty()) {
@@ -120,10 +126,11 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
 }
 
 Result fillIndexSingleThreaded(
-    bool foreground, RocksDBMethods& batched, rocksdb::Options const& dbOptions,
-    rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
-    trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
-    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it,
+    bool foreground, RocksDBBatchedBaseMethods& batched,
+    rocksdb::Options const& dbOptions, rocksdb::WriteBatchBase& batch,
+    std::atomic<std::uint64_t>& docsProcessed, trx::BuilderTrx& trx,
+    RocksDBIndex& ridx, rocksdb::Snapshot const* snap, rocksdb::DB* rootDB,
+    std::unique_ptr<rocksdb::Iterator> it,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   Result res;
   uint64_t numDocsWritten = 0;
@@ -159,8 +166,8 @@ Result fillIndexSingleThreaded(
         }
       }
 
-      res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed,
-                                      ridx, foreground);
+      res = partiallyCommitInsertions(batched, batch, rootDB, trxColl,
+                                      docsProcessed, ridx, foreground);
 
       // here come our 13 reasons why we may want to abort the index creation...
 
@@ -191,8 +198,8 @@ Result fillIndexSingleThreaded(
   }
 
   if (res.ok()) {
-    res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed, ridx,
-                                    foreground);
+    res = partiallyCommitInsertions(batched, batch, rootDB, trxColl,
+                                    docsProcessed, ridx, foreground);
   }
 
   if (res.ok()) {  // required so iresearch commits
@@ -259,7 +266,7 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx,
   RocksDBLogValue val =
       RocksDBLogValue::TrackedDocumentInsert(documentId, slice);
   mthd->PutLogData(val.slice());
-  return Result();  // do nothing
+  return {};  // do nothing
 }
 
 /// remove index elements and put it in the specified write batch.
@@ -271,14 +278,13 @@ Result RocksDBBuilderIndex::remove(transaction::Methods& trx,
   RocksDBLogValue val =
       RocksDBLogValue::TrackedDocumentRemove(documentId, slice);
   mthd->PutLogData(val.slice());
-  return Result();  // do nothing
+  return {};  // do nothing
 }
 
 // fast mode assuming exclusive access locked from outside
 template<bool foreground>
-
 static Result fillIndex(
-    rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
+    rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBBatchedBaseMethods& batched,
     rocksdb::WriteBatchBase& batch, rocksdb::Snapshot const* snap,
     std::atomic<uint64_t>& docsProcessed, bool isUnique, size_t numThreads,
     uint64_t threadBatchSize, rocksdb::Options const& dbOptions,
@@ -348,13 +354,22 @@ Result RocksDBBuilderIndex::fillIndexForeground(
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::DB* db = engine.db()->GetRootDB();
 
+  auto& metric = _collection.vocbase()
+                     .server()
+                     .getFeature<metrics::MetricsFeature>()
+                     .serverStatistics()
+                     ._transactionsStatistics._restTransactionsMemoryUsage;
+  RocksDBMethodsMemoryTracker memoryTracker(
+      nullptr, &metric,
+      /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
+
   Result res;
   if (this->unique()) {
-    const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
+    rocksdb::Comparator const* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need
     // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, getBatchSize(_numDocsHint));
-    RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
+    RocksDBBatchedWithIndexMethods methods(engine.db(), &batch, memoryTracker);
     res = ::fillIndex<true>(
         db, *internal, methods, batch, snap, std::ref(_docsProcessed), true,
         _numThreads, this->kThreadBatchSize,
@@ -364,7 +379,7 @@ Result RocksDBBuilderIndex::fillIndexForeground(
     // contain the document id we can therefore get away with a cheap
     // WriteBatch
     rocksdb::WriteBatch batch(getBatchSize(_numDocsHint));
-    RocksDBBatchedMethods methods(&batch);
+    RocksDBBatchedMethods methods(&batch, memoryTracker);
     res = ::fillIndex<true>(db, *internal, methods, batch, snap,
                             std::ref(_docsProcessed), false, _numThreads,
                             this->kThreadBatchSize,
@@ -591,9 +606,9 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   uint64_t _iterations = 0;
 };
 
-Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
-               rocksdb::WriteBatchBase& wb, AccessMode::Type mode,
-               rocksdb::SequenceNumber startingFrom,
+Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
+               RocksDBBatchedBaseMethods& batched, rocksdb::WriteBatchBase& wb,
+               AccessMode::Type mode, rocksdb::SequenceNumber startingFrom,
                rocksdb::SequenceNumber& lastScannedTick, uint64_t& numScanned,
                std::function<void(uint64_t)> const& reportProgress,
                LowerBoundTracker& lowerBoundTracker) {
@@ -621,7 +636,7 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
 
   ReplayHandler replay(rcoll->objectId(), ridx, trx, &batched);
 
-  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
+  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
 
@@ -641,6 +656,7 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
       }
     }
     wb.Clear();
+    batched.resetMemoryUsage();
 
     auto ops = trxColl->stealTrackedIndexOperations();
     if (!ops.empty()) {
@@ -773,15 +789,24 @@ Result RocksDBBuilderIndex::fillIndexBackground(
   }
 #endif
 
+  auto& metric = _collection.vocbase()
+                     .server()
+                     .getFeature<metrics::MetricsFeature>()
+                     .serverStatistics()
+                     ._transactionsStatistics._restTransactionsMemoryUsage;
+  RocksDBMethodsMemoryTracker memoryTracker(
+      nullptr, &metric,
+      /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
+
   Result res;
   // Step 1. Capture with snapshot
   rocksdb::DB* db = engine.db()->GetRootDB();
   if (internal->unique()) {
-    const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
+    rocksdb::Comparator const* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need
     // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-    RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
+    RocksDBBatchedWithIndexMethods methods(engine.db(), &batch, memoryTracker);
     res = ::fillIndex<false>(
         db, *internal, methods, batch, snap, std::ref(_docsProcessed), true,
         _numThreads, kThreadBatchSize,
@@ -791,7 +816,7 @@ Result RocksDBBuilderIndex::fillIndexBackground(
     // contain the document id we can therefore get away with a cheap
     // WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    RocksDBBatchedMethods methods(&batch);
+    RocksDBBatchedMethods methods(&batch, memoryTracker);
     res = ::fillIndex<false>(db, *internal, methods, batch, snap,
                              std::ref(_docsProcessed), false, _numThreads,
                              kThreadBatchSize,
@@ -817,13 +842,14 @@ Result RocksDBBuilderIndex::fillIndexBackground(
     lastScanned = 0;
     numScanned = 0;
     if (internal->unique()) {
-      const rocksdb::Comparator* cmp =
+      rocksdb::Comparator const* cmp =
           internal->columnFamily()->GetComparator();
       // unique index. we need to keep track of all our changes because we
       // need to avoid duplicate index keys. must therefore use a
       // WriteBatchWithIndex
       rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-      RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
+      RocksDBBatchedWithIndexMethods methods(engine.db(), &batch,
+                                             memoryTracker);
       res = ::catchup(db, *internal, methods, batch, AccessMode::Type::WRITE,
                       scanFrom, lastScanned, numScanned, reportProgress,
                       *lowerBoundTracker);
@@ -832,7 +858,7 @@ Result RocksDBBuilderIndex::fillIndexBackground(
       // contain the document id we can therefore get away with a cheap
       // WriteBatch
       rocksdb::WriteBatch batch(32 * 1024 * 1024);
-      RocksDBBatchedMethods methods(&batch);
+      RocksDBBatchedMethods methods(&batch, memoryTracker);
       res = ::catchup(db, *internal, methods, batch, AccessMode::Type::WRITE,
                       scanFrom, lastScanned, numScanned, reportProgress,
                       *lowerBoundTracker);
@@ -853,11 +879,11 @@ Result RocksDBBuilderIndex::fillIndexBackground(
 
   scanFrom = lastScanned;
   if (internal->unique()) {
-    const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
+    rocksdb::Comparator const* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need
     // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-    RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
+    RocksDBBatchedWithIndexMethods methods(engine.db(), &batch, memoryTracker);
     res = ::catchup(db, *internal, methods, batch, AccessMode::Type::EXCLUSIVE,
                     scanFrom, lastScanned, numScanned, reportProgress,
                     *lowerBoundTracker);
@@ -866,7 +892,7 @@ Result RocksDBBuilderIndex::fillIndexBackground(
     // contain the document id we can therefore get away with a cheap
     // WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    RocksDBBatchedMethods methods(&batch);
+    RocksDBBatchedMethods methods(&batch, memoryTracker);
     res = ::catchup(db, *internal, methods, batch, AccessMode::Type::EXCLUSIVE,
                     scanFrom, lastScanned, numScanned, reportProgress,
                     *lowerBoundTracker);

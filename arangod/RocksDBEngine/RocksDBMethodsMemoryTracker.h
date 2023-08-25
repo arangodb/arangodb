@@ -69,6 +69,8 @@ class RocksDBMethodsMemoryTracker {
 
   std::uint64_t memoryUsage() const noexcept;
 
+  static constexpr std::uint64_t kDefaultGranularity = 8192;
+
  protected:
   void publish(bool force);
 
