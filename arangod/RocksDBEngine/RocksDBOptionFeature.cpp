@@ -279,7 +279,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _blockCacheType(::kBlockCacheTypeLRU),
       _checksumType(::kChecksumTypeXXHash64),
       _compactionStyle(::kCompactionStyleLevel),
-      _formatVersion(5),
+      _formatVersion(6),
       _enableIndexCompression(
           rocksDBTableOptionsDefaults.enable_index_compression),
       _useJemallocAllocator(false),
@@ -1122,7 +1122,7 @@ version.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000);
 
-  std::unordered_set<uint32_t> formatVersions = {3, 4, 5};
+  std::unordered_set<uint32_t> formatVersions = {3, 4, 5, 6};
   options
       ->addOption("--rocksdb.format-version",
                   "The table format version to use inside RocksDB.",
