@@ -238,6 +238,7 @@ def create_test_job(test, cluster, edition, arch):
     """creates the test job definition to be put into the config yaml"""
     params = test["params"]
     suite_name = test["name"]
+    flags = test["flags"]
     suffix = params.get("suffix", "")
     if suffix:
         suite_name += f"-{suffix}"
@@ -255,6 +256,18 @@ def create_test_job(test, cluster, edition, arch):
     }
 
     extra_args = test["args"]
+
+    if 'sniff' in flags:
+        # TODO
+        # if IS_WINDOWS and 'TSHARK' in os.environ:
+        #     self.args += ['--sniff', 'true',
+        #                     '--sniffProgram',  os.environ['TSHARK'],
+        #                     '--sniffDevice', os.environ['DUMPDEVICE']]
+        # elif IS_MAC:
+        #     self.args += ['--sniff', 'sudo']
+        # else:
+        extra_args += ['--sniff', 'true']
+
     if extra_args != []:
         result["extraArgs"] = " ".join(extra_args)
 
