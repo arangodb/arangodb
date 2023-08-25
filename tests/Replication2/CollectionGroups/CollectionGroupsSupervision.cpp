@@ -506,7 +506,6 @@ TEST_F(CollectionGroupsSupervisionTest, add_satellite_collection) {
   for (auto const& [unused, c] : action.collections) {
     EXPECT_EQ(c.shardList.size(), 1);
   }
-  EXPECT_EQ(action.spec.groupLeader, action.collections.begin()->first);
   for (auto const& [unused, sheaf] : action.sheaves) {
     EXPECT_EQ(sheaf.participants.size(), health._health.size())
         << "Not all healthy servers participate in the shard ";

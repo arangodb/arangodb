@@ -77,6 +77,12 @@ auto computeEvenDistributionForServers(
     std::shuffle(servers.begin(), servers.end(), g);
   }
 
+  if (replicationFactor == 0) {
+    // Satellite collection case.
+    // Replicate everywhere
+    replicationFactor = servers.size();
+  }
+
   EvenDistribution distribution{numberOfShards, replicationFactor, {}, false};
   std::unordered_set<ParticipantId> plannedServers;
   auto res = distribution.planShardsOnServers(servers, plannedServers);
@@ -224,8 +230,7 @@ auto createCollectionGroupTarget(
       }
     }
     collections[cid] = ag::CollectionPlanSpecification{
-        targetCollection, std::move(shardList),
-        std::move(mapping)};
+        targetCollection, std::move(shardList), std::move(mapping)};
     spec.collections[cid];
   }
 
