@@ -92,8 +92,6 @@ queues thread wake up less.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30610)
-      .setIntroducedIn(30706)
       .setLongDescription(R"(If set to `true`, all Foxx services in all
 databases are synchronized between multiple Coordinators during the startup
 sequence. This ensures that all Foxx services are up-to-date when a Coordinator

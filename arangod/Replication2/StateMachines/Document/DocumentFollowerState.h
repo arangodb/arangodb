@@ -98,6 +98,8 @@ struct DocumentFollowerState
         -> ResultT<std::optional<LogIndex>>;
     auto applyEntry(ReplicatedOperation::AbortAllOngoingTrx const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::ModifyShard const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
     auto applyEntry(ReplicatedOperation::DropShard const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
     auto applyEntry(ReplicatedOperation::CreateShard const&, LogIndex)
@@ -111,6 +113,9 @@ struct DocumentFollowerState
 
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
+
+  std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of the
+                                        // state machine upon resigning
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

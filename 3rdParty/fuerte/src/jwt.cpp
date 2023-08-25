@@ -20,6 +20,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/escaping.h>
+#include <absl/strings/internal/escaping.h>
+#include <absl/strings/str_cat.h>
 #include <fuerte/helper.h>
 #include <fuerte/jwt.h>
 #include <openssl/evp.h>
@@ -40,8 +43,8 @@
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
 /// generate a JWT token for internal cluster communication
-std::string jwt::generateInternalToken(std::string const& secret,
-                                       std::string const& id) {
+std::string jwt::generateInternalToken(std::string_view secret,
+                                       std::string_view id) {
   std::chrono::seconds iss = std::chrono::duration_cast<std::chrono::seconds>(
       std::chrono::system_clock::now().time_since_epoch());
   /*std::chrono::seconds exp =
@@ -59,8 +62,8 @@ std::string jwt::generateInternalToken(std::string const& secret,
 }
 
 /// Generate JWT token as used for 'users' in arangodb
-std::string jwt::generateUserToken(std::string const& secret,
-                                   std::string const& username,
+std::string jwt::generateUserToken(std::string_view secret,
+                                   std::string_view username,
                                    std::chrono::seconds validFor) {
   assert(!secret.empty());
 
@@ -79,8 +82,7 @@ std::string jwt::generateUserToken(std::string const& secret,
   return generateRawJwt(secret, bodyBuilder.slice());
 }
 
-std::string jwt::generateRawJwt(std::string const& secret,
-                                VPackSlice const& body) {
+std::string jwt::generateRawJwt(std::string_view secret, VPackSlice bodySlice) {
   VPackBuilder headerBuilder;
   {
     VPackObjectBuilder h(&headerBuilder);
@@ -90,16 +92,28 @@ std::string jwt::generateRawJwt(std::string const& secret,
 
   // https://tools.ietf.org/html/rfc7515#section-2 requires
   // JWT to use base64-encoding without trailing padding `=` chars
-  bool const pad = false;
+  // TODO: Maybe I wrong but it looks like we **should** use only base64url
+  //  Which is by default without padding.
 
-  std::string fullMessage(encodeBase64(headerBuilder.toJson(), pad) + "." +
-                          encodeBase64(body.toJson(), pad));
+  auto header = headerBuilder.toJson();
+  auto body = bodySlice.toJson();
+  std::string headerBase64;
+  std::string bodyBase64;
+
+  absl::strings_internal::Base64EscapeInternal(
+      reinterpret_cast<unsigned char const*>(header.data()), header.size(),
+      &headerBase64, false, absl::strings_internal::kBase64Chars);
+  absl::strings_internal::Base64EscapeInternal(
+      reinterpret_cast<unsigned char const*>(body.data()), body.size(),
+      &bodyBase64, false, absl::strings_internal::kBase64Chars);
+
+  auto fullMessage = absl::StrCat(headerBase64, ".", bodyBase64);
 
   std::string signature =
-      sslHMAC(secret.c_str(), secret.length(), fullMessage.c_str(),
-              fullMessage.length(), Algorithm::ALGORITHM_SHA256);
+      sslHMAC(secret.data(), secret.size(), fullMessage.data(),
+              fullMessage.size(), Algorithm::ALGORITHM_SHA256);
 
-  return fullMessage + "." + encodeBase64U(signature, pad);
+  return absl::StrCat(fullMessage, ".", absl::WebSafeBase64Escape(signature));
 }
 
 // code from ArangoDBs SslInterface.cpp
