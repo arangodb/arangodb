@@ -2048,7 +2048,6 @@ void RocksDBCollection::setupCache() const {
     LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
     cache = _cacheManager->createCache<cache::BinaryKeyHasher>(
         cache::CacheType::Transactional);
-
     std::atomic_store_explicit(&_cache, std::move(cache),
                                std::memory_order_relaxed);
   }
@@ -2062,10 +2061,10 @@ std::shared_ptr<cache::Cache> RocksDBCollection::useCache() const noexcept {
 void RocksDBCollection::destroyCache() const {
   auto cache = _cache;
   if (cache != nullptr) {
+    std::atomic_store_explicit(&_cache, {}, std::memory_order_relaxed);
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
     _cacheManager->destroyCache(std::move(cache));
-    std::atomic_store_explicit(&_cache, {}, std::memory_order_relaxed);
   }
 }
 

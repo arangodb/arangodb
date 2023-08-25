@@ -196,11 +196,10 @@ void RocksDBIndex::destroyCache() noexcept {
   auto cache = _cache;
   if (cache != nullptr) {
     try {
+      std::atomic_store_explicit(&_cache, {}, std::memory_order_relaxed);
       TRI_ASSERT(_cacheManager != nullptr);
-      // must have a cache...
       LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
       _cacheManager->destroyCache(std::move(cache));
-      std::atomic_store_explicit(&_cache, {}, std::memory_order_relaxed);
     } catch (...) {
       // meh
     }
