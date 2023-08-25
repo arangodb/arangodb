@@ -761,7 +761,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
   TRI_ASSERT(iid.isEdge());
   TRI_ASSERT(objectId() != 0);
 
-  if (_cacheEnabled) {
+  if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();
   }
 }

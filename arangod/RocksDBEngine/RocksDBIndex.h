@@ -182,6 +182,7 @@ class RocksDBIndex : public Index {
                rocksdb::ColumnFamilyHandle* cf, bool useCache,
                cache::Manager* cacheManager, RocksDBEngine& engine);
 
+  // note: this can return a nullptr. the caller has to check the result
   std::shared_ptr<cache::Cache> useCache() const noexcept;
 
   bool canWarmup() const noexcept override;
@@ -217,7 +218,7 @@ class RocksDBIndex : public Index {
 
   // the actual cache object. can be a nullptr, and can only be set if
   // _cacheManager != nullptr.
-  // only use with std::atomic_load|store_explicit()!
+  // modify only with std::atomic_load_store_explicit()!
   mutable std::shared_ptr<cache::Cache> _cache;
 };
 }  // namespace arangodb

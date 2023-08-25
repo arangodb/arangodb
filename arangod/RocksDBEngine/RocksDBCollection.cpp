@@ -2032,8 +2032,8 @@ Result RocksDBCollection::lookupDocumentVPack(
 }
 
 void RocksDBCollection::setupCache() const {
-  if (_cacheManager == nullptr ||
-      !_cacheEnabled.load(std::memory_order_relaxed)) {
+  TRI_ASSERT(_cacheManager != nullptr);
+  if (!_cacheEnabled.load(std::memory_order_relaxed)) {
     // if we cannot have a cache, return immediately
     return;
   }
@@ -2042,7 +2042,7 @@ void RocksDBCollection::setupCache() const {
   // by _cacheEnabled already.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  auto cache = std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
+  auto cache = _cache;
   if (cache == nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
@@ -2054,16 +2054,13 @@ void RocksDBCollection::setupCache() const {
   }
 }
 
-/// is this collection using a cache
 std::shared_ptr<cache::Cache> RocksDBCollection::useCache() const noexcept {
-  if (_cacheEnabled.load(std::memory_order_relaxed)) {
-    return std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
-  }
-  return {};
+  // note: this can return a nullptr. the caller has to check the result
+  return _cache;
 }
 
 void RocksDBCollection::destroyCache() const {
-  auto cache = std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
+  auto cache = _cache;
   if (cache != nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";

@@ -234,7 +234,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @brief destory hash-cache
   void destroyCache() const;
 
-  /// is this collection using a cache
+  /// @brief: this can return a nullptr. the caller has to check the result
   std::shared_ptr<cache::Cache> useCache() const noexcept;
 
   /// @brief track key in file
@@ -264,7 +264,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   cache::Manager* _cacheManager;
 
   /// @brief document cache (optional)
-  // only use with std::atomic_load|store_explicit()!
+  /// modify only with std::atomic_load_store_explicit()!
   mutable std::shared_ptr<cache::Cache> _cache;
 
   std::atomic_bool _cacheEnabled;

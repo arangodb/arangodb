@@ -107,6 +107,7 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
 RocksDBIndex::~RocksDBIndex() {
   _engine.removeIndexMapping(_objectId);
   if (useCache()) {
+    TRI_ASSERT(_cacheManager != nullptr);
     destroyCache();
   }
 }
@@ -170,8 +171,8 @@ void RocksDBIndex::setCacheEnabled(bool enable) noexcept {
 }
 
 void RocksDBIndex::setupCache() {
-  if (_cacheManager == nullptr ||
-      !_cacheEnabled.load(std::memory_order_relaxed)) {
+  TRI_ASSERT(_cacheManager != nullptr);
+  if (!_cacheEnabled.load(std::memory_order_relaxed)) {
     // if we cannot have a cache, return immediately
     return;
   }
@@ -180,7 +181,7 @@ void RocksDBIndex::setupCache() {
   // by _cacheEnabled already.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  auto cache = std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
+  auto cache = _cache;
   if (cache == nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("49e6c", DEBUG, Logger::CACHE) << "Creating index cache";
@@ -192,7 +193,7 @@ void RocksDBIndex::setupCache() {
 }
 
 void RocksDBIndex::destroyCache() noexcept {
-  auto cache = std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
+  auto cache = _cache;
   if (cache != nullptr) {
     try {
       TRI_ASSERT(_cacheManager != nullptr);
@@ -251,6 +252,7 @@ void RocksDBIndex::truncateCommit(TruncateGuard&& guard,
                                   transaction::Methods* /*trx*/) {
   // simply drop the cache and re-create it
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
+    TRI_ASSERT(_cacheManager != nullptr);
     destroyCache();
     setupCache();
   }
@@ -333,10 +335,8 @@ void RocksDBIndex::compact() {
 }
 
 std::shared_ptr<cache::Cache> RocksDBIndex::useCache() const noexcept {
-  if (_cacheEnabled.load(std::memory_order_relaxed)) {
-    return std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
-  }
-  return {};
+  // note: this can return a nullptr. the caller has to check the result
+  return _cache;
 }
 
 bool RocksDBIndex::canWarmup() const noexcept { return useCache() != nullptr; }
