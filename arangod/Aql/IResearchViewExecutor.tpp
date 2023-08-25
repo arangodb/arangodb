@@ -54,6 +54,9 @@
 #include <search/cost.hpp>
 #include <utility>
 
+#include <random>
+#include <algorithm>
+
 // TODO Eliminate access to the plan if possible!
 // I think it is used for two things only:
 //  - to get the Ast, which can simply be passed on its own, and
@@ -1772,6 +1775,11 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
     }
   }
 
+  std::random_device rd;
+  std::mt19937 g(rd());
+ 
+  std::shuffle(_segments.begin(), _segments.end(), g);
+  
   _heap_it.reset(_segments.size());
 }
 

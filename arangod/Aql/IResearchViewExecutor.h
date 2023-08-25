@@ -667,7 +667,7 @@ class IResearchViewMergeExecutor
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
     Segment& operator=(Segment const&) = delete;
-    Segment& operator=(Segment&&) = delete;
+    Segment& operator=(Segment&&) = default;
 
     irs::doc_iterator::ptr docs;
     irs::document const* doc{};
