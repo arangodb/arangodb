@@ -316,6 +316,12 @@ auto checkAssociatedReplicatedLogs(
 
     auto expectedReplicationFactor =
         target.attributes.mutableAttributes.replicationFactor;
+
+    if (expectedReplicationFactor == 0) {
+      // 0 is Satellite, replicate everywhere
+      expectedReplicationFactor = getHealthyParticipants(health).size();
+    }
+
     auto currentReplicationFactor = log.target.participants.size();
     if (currentReplicationFactor < expectedReplicationFactor) {
       // add a new server to the replicated log
