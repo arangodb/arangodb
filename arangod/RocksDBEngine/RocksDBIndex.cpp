@@ -349,7 +349,7 @@ std::shared_ptr<cache::Cache> RocksDBIndex::makeCache() const {
 
 // banish given key from transactional cache
 bool RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
-  if (std::shared_ptr<cache::Cache> cache = useCache()) {
+  if (auto cache = useCache()) {
     do {
       auto status = cache->banish(data, static_cast<uint32_t>(len));
       if (status == TRI_ERROR_NO_ERROR) {
