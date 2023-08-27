@@ -97,29 +97,6 @@ namespace {
   return skipped;
 }
 
-[[maybe_unused]] inline std::shared_ptr<arangodb::LogicalCollection>
-lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
-                 aql::QueryContext& query) {
-  TRI_ASSERT(trx.state());
-
-  // `Methods::documentCollection(DataSourceId)` may throw exception
-  auto* collection =
-      trx.state()->collection(cid, arangodb::AccessMode::Type::READ);
-
-  if (!collection) {
-    std::stringstream msg;
-    msg << "failed to find collection while reading document from arangosearch "
-           "view, cid '"
-        << cid << "'";
-    query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                     msg.str());
-
-    return nullptr;  // not a valid collection reference
-  }
-
-  return collection->collection();
-}
-
 [[maybe_unused]] inline void reset(ColumnIterator& column,
                                    irs::doc_iterator::ptr&& itr) noexcept {
   TRI_ASSERT(itr);
@@ -1415,38 +1392,32 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
         [buffer = &this->_indexReadBuffer](size_t lhs, size_t rhs) -> bool {
           auto const& lhs_val = buffer->getValue(lhs);
           auto const& rhs_val = buffer->getValue(rhs);
-          if (lhs_val.readerOffset() < rhs_val.readerOffset()) {
-            return true;
-          } else if (lhs_val.readerOffset() > rhs_val.readerOffset()) {
-            return false;
+          auto const lhs_offset = lhs_val.readerOffset();
+          auto const rhs_offset = rhs_val.readerOffset();
+          if (lhs_offset != rhs_offset) {
+            return lhs_offset < rhs_offset;
           }
           return lhs_val.irsDocId() < rhs_val.irsDocId();
         });
 
     size_t lastSegmentIdx = count;
     ColumnIterator pkReader;
-    aql::QueryContext& query = this->_infos.getQuery();
-    std::shared_ptr<arangodb::LogicalCollection> collection;
+    LogicalCollection const* collection{};
     auto orderIt = pkReadingOrder.begin();
     while (orderIt != pkReadingOrder.end()) {
       auto& value = this->_indexReadBuffer.getValue(*orderIt);
       auto const irsDocId = value.irsDocId();
       auto const segmentIdx = value.readerOffset();
       if (lastSegmentIdx != segmentIdx) {
-        lastSegmentIdx = segmentIdx;
-        auto& segmentReader = (*this->_reader)[lastSegmentIdx];
+        auto& segmentReader = (*this->_reader)[segmentIdx];
         auto pkIt = ::pkColumn(segmentReader);
         pkReader.itr.reset();
-        DataSourceId const cid = this->_reader->cid(lastSegmentIdx);
-        collection = lookupCollection(this->_trx, cid, query);
-        if (ADB_UNLIKELY(!pkIt || !collection)) {
+        collection = &this->_reader->collection(segmentIdx);
+        TRI_ASSERT(collection);
+        if (ADB_UNLIKELY(!pkIt)) {
           LOG_TOPIC("bd02b", WARN, arangodb::iresearch::TOPIC)
-              << "encountered a sub-reader without a primary key column or "
-                 "without the collection while "
-                 "executing a query, ignoring";
-          while ((++orderIt) != pkReadingOrder.end() &&
-                 *orderIt == lastSegmentIdx) {
-          }
+              << "encountered a sub-reader without a primary key column "
+                 "while executing a query, ignoring";
           continue;
         }
         ::reset(pkReader, std::move(pkIt));
@@ -1461,6 +1432,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
             continue;
           }
         }
+        lastSegmentIdx = segmentIdx;
       }
 
       LocalDocumentId documentId;
@@ -1477,7 +1449,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
               << value.irsDocId() << "'";
         }
       }
-      value.decode(documentId, collection.get());
+      value.decode(documentId, collection);
       if constexpr (Base::usesStoredValues) {
         auto const& columnsFieldsRegs =
             this->infos().getOutNonMaterializedViewRegs();
@@ -1549,27 +1521,11 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
         continue;
       }
 
-      // CID is constant until the next resetIterator(). Save the
-      // corresponding collection so we don't have to look it up every time.
+      // collection is constant until the next resetIterator().
+      // save it to don't have to look it up every time.
       if constexpr (Base::isMaterialized) {
-        DataSourceId const cid = this->_reader->cid(_readerOffset);
-        aql::QueryContext& query = this->_infos.getQuery();
-        auto collection = lookupCollection(this->_trx, cid, query);
-
-        if (!collection) {
-          query.warnings().registerWarning(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-              absl::StrCat(
-                  "failed to find collection while reading document from "
-                  "arangosearch view, cid '",
-                  cid.id(), "'"));
-
-          // We don't have a collection, skip the current reader.
-          reset();
-          continue;
-        }
-
-        _collection = collection.get();
+        _collection = &this->_reader->collection(_readerOffset);
+        TRI_ASSERT(_collection);
       }
       this->_indexReadBuffer.reset();
     }
@@ -1595,8 +1551,8 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       continue;
     }
     if constexpr (Base::isMaterialized) {
-      // The CID must stay the same for all documents in the buffer
-      TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
+      // The collection must stay the same for all documents in the buffer
+      TRI_ASSERT(_collection == &this->_reader->collection(_readerOffset));
       if (!documentId.isSet()) {
         // No document read, we cannot write it.
         continue;
@@ -1779,29 +1735,10 @@ void IResearchViewExecutor<ExecutionTraits>::saveCollection() {
   // We're in the middle of a reader, save the collection in case produceRows()
   // needs it.
   if (_itr) {
-    // CID is constant until the next resetIterator(). Save the corresponding
-    // collection so we don't have to look it up every time.
-
-    DataSourceId const cid = this->_reader->cid(_readerOffset);
-    aql::QueryContext& query = this->_infos.getQuery();
-    auto collection = lookupCollection(this->_trx, cid, query);
-
-    if (!collection) {
-      query.warnings().registerWarning(
-          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          absl::StrCat("failed to find collection while reading document from "
-                       "arangosearch view, cid '",
-                       cid.id(), "'"));
-
-      // We don't have a collection, skip the current reader.
-      ++_readerOffset;
-      _currentSegmentPos = 0;
-      _itr.reset();
-      _doc = nullptr;
-    }
-
+    // collection is constant until the next resetIterator().
+    // save it to don't have to look it up every time.
+    _collection = &this->_reader->collection(_readerOffset);
     this->_indexReadBuffer.reset();
-    _collection = collection.get();
   }
 }
 
@@ -1919,23 +1856,11 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
         numScores = this->infos().scorers().size();
       }
     }
-    std::shared_ptr<arangodb::LogicalCollection> collection{nullptr};
     irs::doc_iterator::ptr pkReader;
+    LogicalCollection const* collection{};
     if constexpr (Base::isMaterialized) {
-      DataSourceId const cid = this->_reader->cid(i);
-      aql::QueryContext& query = this->_infos.getQuery();
-      collection = lookupCollection(this->_trx, cid, query);
-      if (!collection) {
-        std::stringstream msg;
-        msg << "failed to find collection while reading document from "
-               "arangosearch view, cid '"
-            << cid.id() << "'";
-        query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                         msg.str());
-
-        // We don't have a collection, skip the current segment.
-        continue;
-      }
+      collection = &this->_reader->collection(i);
+      TRI_ASSERT(collection);
       pkReader = ::pkColumn(segment);
       if (ADB_UNLIKELY(!pkReader)) {
         LOG_TOPIC("ee041", WARN, arangodb::iresearch::TOPIC)
@@ -1957,9 +1882,9 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
       TRI_ASSERT(i * storedValuesCount < this->_storedValuesReaders.size());
       auto& sortReader = this->_storedValuesReaders[i * storedValuesCount];
 
-      _segments.emplace_back(std::move(it), *doc, *score, numScores,
-                             collection.get(), std::move(pkReader), i,
-                             sortReader.itr.get(), sortReader.value, nullptr);
+      _segments.emplace_back(std::move(it), *doc, *score, numScores, collection,
+                             std::move(pkReader), i, sortReader.itr.get(),
+                             sortReader.value, nullptr);
     } else {
       auto itr = ::sortColumn(segment);
 
@@ -1975,9 +1900,9 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
         sortValue = &NoPayload;
       }
 
-      _segments.emplace_back(std::move(it), *doc, *score, numScores,
-                             collection.get(), std::move(pkReader), i,
-                             itr.get(), sortValue, std::move(itr));
+      _segments.emplace_back(std::move(it), *doc, *score, numScores, collection,
+                             std::move(pkReader), i, itr.get(), sortValue,
+                             std::move(itr));
     }
   }
 
