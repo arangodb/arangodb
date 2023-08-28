@@ -266,7 +266,7 @@ auto pickBestServerToRemoveFromLog(
   }
 
   auto const compareTuple = [&](auto const& server) {
-    bool const isHealthy = not health.notIsFailed(server);
+    bool const isHealthy = health.notIsFailed(server);
     bool const isPlanLeader = leader == server;
     bool const isTargetLeader = log.target.leader == server;
 
@@ -318,8 +318,8 @@ auto checkAssociatedReplicatedLogs(
         target.attributes.mutableAttributes.replicationFactor;
 
     if (expectedReplicationFactor == 0) {
-      // 0 is Satellite, replicate everywhere
-      expectedReplicationFactor = getHealthyParticipants(health).size();
+      // 0 is Satellite, replicate everywhere, even to non-healthy servers
+      expectedReplicationFactor = health._health.size();
     }
 
     auto currentReplicationFactor = log.target.participants.size();
