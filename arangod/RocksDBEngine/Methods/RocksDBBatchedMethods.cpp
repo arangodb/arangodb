@@ -66,7 +66,7 @@ rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
   rocksdb::Status s = _wb->Put(cf, key.string(), val);
   if (s.ok()) {
     // size of WriteBatch got increased. track memory usage of WriteBatch
-    _memoryTracker.increaseMemoryUsage((currentWriteBatchSize() - beforeSize));
+    _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
   }
   return s;
 }
@@ -84,7 +84,7 @@ rocksdb::Status RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
   rocksdb::Status s = _wb->Delete(cf, key.string());
   if (s.ok()) {
     // size of WriteBatch got increased. track memory usage of WriteBatch
-    _memoryTracker.increaseMemoryUsage((currentWriteBatchSize() - beforeSize));
+    _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
   }
   return s;
 }
@@ -96,7 +96,7 @@ rocksdb::Status RocksDBBatchedMethods::SingleDelete(
   rocksdb::Status s = _wb->SingleDelete(cf, key.string());
   if (s.ok()) {
     // size of WriteBatch got increased. track memory usage of WriteBatch
-    _memoryTracker.increaseMemoryUsage((currentWriteBatchSize() - beforeSize));
+    _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
   }
   return s;
 }
@@ -105,7 +105,7 @@ void RocksDBBatchedMethods::PutLogData(rocksdb::Slice const& blob) {
   std::uint64_t beforeSize = currentWriteBatchSize();
   _wb->PutLogData(blob);
   // size of WriteBatch got increased. track memory usage of WriteBatch
-  _memoryTracker.increaseMemoryUsage((currentWriteBatchSize() - beforeSize));
+  _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
 }
 
 size_t RocksDBBatchedMethods::currentWriteBatchSize() const noexcept {

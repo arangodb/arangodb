@@ -73,7 +73,7 @@ namespace {
 
 constexpr size_t getBatchSize(size_t numDocsHint) noexcept {
   if (numDocsHint >= 8192) {
-    return 32 * 1024 * 1024;
+    return 16 * 1024 * 1024;
   } else if (numDocsHint >= 1024) {
     return 4 * 1024 * 1024;
   } else {
@@ -805,7 +805,7 @@ Result RocksDBBuilderIndex::fillIndexBackground(
     rocksdb::Comparator const* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need
     // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
-    rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
+    rocksdb::WriteBatchWithIndex batch(cmp, getBatchSize(_numDocsHint));
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch, memoryTracker);
     res = ::fillIndex<false>(
         db, *internal, methods, batch, snap, std::ref(_docsProcessed), true,
@@ -815,7 +815,7 @@ Result RocksDBBuilderIndex::fillIndexBackground(
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap
     // WriteBatch
-    rocksdb::WriteBatch batch(32 * 1024 * 1024);
+    rocksdb::WriteBatch batch(getBatchSize(_numDocsHint));
     RocksDBBatchedMethods methods(&batch, memoryTracker);
     res = ::fillIndex<false>(db, *internal, methods, batch, snap,
                              std::ref(_docsProcessed), false, _numThreads,
@@ -847,7 +847,7 @@ Result RocksDBBuilderIndex::fillIndexBackground(
       // unique index. we need to keep track of all our changes because we
       // need to avoid duplicate index keys. must therefore use a
       // WriteBatchWithIndex
-      rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
+      rocksdb::WriteBatchWithIndex batch(cmp, getBatchSize(_numDocsHint));
       RocksDBBatchedWithIndexMethods methods(engine.db(), &batch,
                                              memoryTracker);
       res = ::catchup(db, *internal, methods, batch, AccessMode::Type::WRITE,
@@ -857,7 +857,7 @@ Result RocksDBBuilderIndex::fillIndexBackground(
       // non-unique index. all index keys will be unique anyway because they
       // contain the document id we can therefore get away with a cheap
       // WriteBatch
-      rocksdb::WriteBatch batch(32 * 1024 * 1024);
+      rocksdb::WriteBatch batch(getBatchSize(_numDocsHint));
       RocksDBBatchedMethods methods(&batch, memoryTracker);
       res = ::catchup(db, *internal, methods, batch, AccessMode::Type::WRITE,
                       scanFrom, lastScanned, numScanned, reportProgress,
@@ -882,7 +882,7 @@ Result RocksDBBuilderIndex::fillIndexBackground(
     rocksdb::Comparator const* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need
     // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
-    rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
+    rocksdb::WriteBatchWithIndex batch(cmp, getBatchSize(_numDocsHint));
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch, memoryTracker);
     res = ::catchup(db, *internal, methods, batch, AccessMode::Type::EXCLUSIVE,
                     scanFrom, lastScanned, numScanned, reportProgress,
@@ -891,7 +891,7 @@ Result RocksDBBuilderIndex::fillIndexBackground(
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap
     // WriteBatch
-    rocksdb::WriteBatch batch(32 * 1024 * 1024);
+    rocksdb::WriteBatch batch(getBatchSize(_numDocsHint));
     RocksDBBatchedMethods methods(&batch, memoryTracker);
     res = ::catchup(db, *internal, methods, batch, AccessMode::Type::EXCLUSIVE,
                     scanFrom, lastScanned, numScanned, reportProgress,

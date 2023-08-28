@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBBatchedWithIndexMethods.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 
 using namespace arangodb;
 
@@ -40,9 +41,8 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::Get(
   rocksdb::ReadOptions ro;
   if (readOwnWrites == ReadOwnWrites::yes) {
     return _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
-  } else {
-    return _db->Get(ro, cf, key, val);
   }
+  return _db->Get(ro, cf, key, val);
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::GetForUpdate(
@@ -57,30 +57,64 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::Put(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
     rocksdb::Slice const& val, bool assume_tracked) {
   TRI_ASSERT(cf != nullptr);
-  return _wb->Put(cf, key.string(), val);
+  std::uint64_t beforeSize = currentWriteBatchSize();
+  rocksdb::Status s = _wb->Put(cf, key.string(), val);
+  if (s.ok()) {
+    // size of WriteBatch got increased. track memory usage of WriteBatch
+    _memoryTracker.increaseMemoryUsage((currentWriteBatchSize() - beforeSize) +
+                                       indexingOverhead(key.string().size()));
+  }
+  return s;
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::PutUntracked(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key,
     rocksdb::Slice const& val) {
-  return RocksDBBatchedWithIndexMethods::Put(cf, key, val,
-                                             /*assume_tracked*/ false);
+  std::uint64_t beforeSize = currentWriteBatchSize();
+  rocksdb::Status s =
+      RocksDBBatchedWithIndexMethods::Put(cf, key, val,
+                                          /*assume_tracked*/ false);
+  if (s.ok()) {
+    // size of WriteBatch got increased. track memory usage of WriteBatch
+    // plus potential overhead of indexing
+    _memoryTracker.increaseMemoryUsage((currentWriteBatchSize() - beforeSize) +
+                                       indexingOverhead(key.string().size()));
+  }
+  return s;
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::Delete(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
-  return _wb->Delete(cf, key.string());
+  std::uint64_t beforeSize = currentWriteBatchSize();
+  rocksdb::Status s = _wb->Delete(cf, key.string());
+  if (s.ok()) {
+    // size of WriteBatch got increased. track memory usage of WriteBatch
+    // plus potential overhead of indexing
+    _memoryTracker.increaseMemoryUsage((currentWriteBatchSize() - beforeSize) +
+                                       indexingOverhead(key.string().size()));
+  }
+  return s;
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::SingleDelete(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
-  return _wb->SingleDelete(cf, key.string());
+  std::uint64_t beforeSize = currentWriteBatchSize();
+  rocksdb::Status s = _wb->SingleDelete(cf, key.string());
+  if (s.ok()) {
+    // size of WriteBatch got increased. track memory usage of WriteBatch
+    // plus potential overhead of indexing
+    _memoryTracker.increaseMemoryUsage((currentWriteBatchSize() - beforeSize) +
+                                       indexingOverhead(key.string().size()));
+  }
+  return s;
 }
 
 void RocksDBBatchedWithIndexMethods::PutLogData(rocksdb::Slice const& blob) {
+  std::uint64_t beforeSize = currentWriteBatchSize();
   _wb->PutLogData(blob);
+  _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::GetFromSnapshot(
@@ -91,4 +125,9 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::GetFromSnapshot(
 
 size_t RocksDBBatchedWithIndexMethods::currentWriteBatchSize() const noexcept {
   return _wb->GetWriteBatch()->GetDataSize();
+}
+
+size_t RocksDBBatchedWithIndexMethods::indexingOverhead(
+    size_t keySize) const noexcept {
+  return keySize + fixedIndexingEntryOverhead;
 }
