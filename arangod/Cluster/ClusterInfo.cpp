@@ -581,7 +581,12 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
 /// @brief destroys a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo::~ClusterInfo() = default;
+ClusterInfo::~ClusterInfo() {
+  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
+  _planMemoryUsage = 0;
+  _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
+  _currentMemoryUsage = 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
