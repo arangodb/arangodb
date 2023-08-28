@@ -49,6 +49,7 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 class PhysicalCollection;
+struct ResourceMonitor;
 enum class ReadOwnWrites : bool;
 namespace aql {
 struct AqlValue;
@@ -64,6 +65,11 @@ struct Variable;
 
 struct DocumentProducingFunctionContext {
  public:
+  DocumentProducingFunctionContext(DocumentProducingFunctionContext const&) =
+      delete;
+  DocumentProducingFunctionContext& operator=(
+      DocumentProducingFunctionContext const&) = delete;
+
   // constructor called from EnumerateCollectionExecutor
   DocumentProducingFunctionContext(transaction::Methods& trx,
                                    InputAqlItemRow const& inputRow,
@@ -141,6 +147,8 @@ struct DocumentProducingFunctionContext {
   Expression* _filter;
   aql::Projections const& _projections;
   aql::Projections const& _filterProjections;
+  ResourceMonitor& _resourceMonitor;
+
   uint64_t _numScanned;
   uint64_t _numFiltered;
 

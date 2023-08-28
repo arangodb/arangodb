@@ -85,6 +85,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
@@ -132,6 +133,7 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
 #include <iomanip>
@@ -494,11 +496,9 @@ RAM than this threshold value are aborted automatically with error 32
                      "transaction, and a new transaction is started.",
                      new UInt64Parameter(&_intermediateCommitCount));
 
-  options
-      ->addOption("--rocksdb.max-parallel-compactions",
-                  "The maximum number of parallel compactions jobs.",
-                  new UInt64Parameter(&_maxParallelCompactions))
-      .setIntroducedIn(30711);
+  options->addOption("--rocksdb.max-parallel-compactions",
+                     "The maximum number of parallel compactions jobs.",
+                     new UInt64Parameter(&_maxParallelCompactions));
 
   options
       ->addOption(
@@ -515,20 +515,17 @@ write-ahead logs to disk is only performed for not-yet synchronized data, and
 only for operations that have been executed without the `waitForSync`
 attribute.)");
 
-  options
-      ->addOption(
-          "--rocksdb.sync-delay-threshold",
-          "The threshold for self-observation of WAL disk syncs "
-          "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
-          "than this threshold triggers a warning ",
-          new UInt64Parameter(&_syncDelayThreshold),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30608)
-      .setIntroducedIn(30705);
+  options->addOption(
+      "--rocksdb.sync-delay-threshold",
+      "The threshold for self-observation of WAL disk syncs "
+      "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
+      "than this threshold triggers a warning ",
+      new UInt64Parameter(&_syncDelayThreshold),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle,
+          arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--rocksdb.wal-file-timeout",
@@ -776,7 +773,6 @@ RocksDB internals and performance.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30604)
       .setDeprecatedIn(31000);
 
   options
@@ -1334,7 +1330,7 @@ void RocksDBEngine::start() {
   _logPersistor = logPersistor;
 
   if (auto* syncer = syncThread(); syncer != nullptr) {
-    syncer->registerSyncListener(logPersistor);
+    syncer->registerSyncListener(std::move(logPersistor));
   } else {
     LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
         << "In replication2 databases, setting waitForSync to false will not "
@@ -3422,8 +3418,23 @@ DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t,
 DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
 DECLARE_GAUGE(rocksdb_total_sst_files, uint64_t, "rocksdb_total_sst_files");
 
+void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
+  // get generic capabilities
+  VPackBuilder main;
+  StorageEngine::getCapabilities(main);
+
+  VPackBuilder own;
+  own.openObject();
+  own.add("endianness", VPackValue(rocksDBEndiannessString(
+                            rocksutils::getRocksDBKeyFormatEndianness())));
+  own.close();
+
+  VPackCollection::merge(builder, main.slice(), own.slice(), false);
+}
+
 void RocksDBEngine::getStatistics(std::string& result) const {
-  VPackBuilder stats;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder stats(buffer);
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
 
@@ -3434,6 +3445,7 @@ void RocksDBEngine::getStatistics(std::string& result) const {
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
       if (!name.empty() && name.front() != 'r') {
+        // prepend name with "rocksdb_"
         name = absl::StrCat(kEngineName, "_", name);
       }
       result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
@@ -3510,7 +3522,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     builder.close();
   };
 
-  builder.openObject();
+  builder.openObject(/*unindexed*/ true);
   int64_t numSstFilesOnAllLevels = 0;
   for (int i = 0; i < _optionsProvider.getOptions().num_levels; ++i) {
     numSstFilesOnAllLevels += addIntAllCf(

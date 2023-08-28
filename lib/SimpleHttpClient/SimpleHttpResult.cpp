@@ -241,7 +241,7 @@ std::string SimpleHttpResult::getHeaderField(std::string const& name,
 }
 
 bool SimpleHttpResult::hasHeaderField(std::string const& name) const {
-  return _headerFields.find(name) != _headerFields.end();
+  return _headerFields.contains(name);
 }
 
 }  // namespace httpclient

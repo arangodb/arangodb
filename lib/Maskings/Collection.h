@@ -25,21 +25,24 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-
 #include "Maskings/AttributeMasking.h"
 #include "Maskings/CollectionFilter.h"
 #include "Maskings/CollectionSelection.h"
 #include "Maskings/ParseResult.h"
 
+#include <string_view>
+#include <vector>
+
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+
 namespace maskings {
 class Collection {
  public:
-  static ParseResult<Collection> parse(Maskings* maskings, VPackSlice const&);
+  static ParseResult<Collection> parse(Maskings* maskings,
+                                       velocypack::Slice def);
 
  public:
   Collection() {}
@@ -50,7 +53,7 @@ class Collection {
 
   CollectionSelection selection() const noexcept { return _selection; }
 
-  MaskingFunction* masking(std::vector<std::string> const& path) const;
+  MaskingFunction* masking(std::vector<std::string_view> const& path) const;
 
  private:
   CollectionSelection _selection;

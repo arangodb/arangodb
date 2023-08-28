@@ -2,10 +2,10 @@ import { Button, Stack } from "@chakra-ui/react";
 import { useFormikContext } from "formik";
 import React from "react";
 import { ModalFooter } from "../../../components/modal";
-import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { EditGraphButtons } from "../listGraphs/EditGraphButtons";
+import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 
-export const GraphModalFooter = ({ onClose }: { onClose: () => void; }) => {
+export const GraphModalFooter = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
   const { isSubmitting } = useFormikContext();
   return (
@@ -17,11 +17,9 @@ export const GraphModalFooter = ({ onClose }: { onClose: () => void; }) => {
         <Button onClick={onClose} colorScheme="gray">
           Cancel
         </Button>
-        {mode === "add" && (
-          <Button colorScheme="blue" type="submit" isLoading={isSubmitting}>
-            Create
-          </Button>
-        )}
+        <Button colorScheme="blue" type="submit" isLoading={isSubmitting}>
+          {mode === "add" ? "Create" : "Save"}
+        </Button>
       </Stack>
     </ModalFooter>
   );

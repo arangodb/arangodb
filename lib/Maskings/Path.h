@@ -27,24 +27,26 @@
 
 #include "Maskings/ParseResult.h"
 
-namespace arangodb {
-namespace maskings {
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace arangodb::maskings {
 class Path {
  public:
-  static ParseResult<Path> parse(std::string const&);
+  static ParseResult<Path> parse(std::string_view def);
 
  public:
-  Path() : _wildcard(false) {}
+  Path() : _wildcard(false), _any(false) {}
 
   Path(bool wildcard, bool any, std::vector<std::string> const& components)
       : _wildcard(wildcard), _any(any), _components(components) {}
 
-  bool match(std::vector<std::string> const& path) const;
+  bool match(std::vector<std::string_view> const& path) const;
 
  private:
   bool _wildcard;
   bool _any;
   std::vector<std::string> _components;
 };
-}  // namespace maskings
-}  // namespace arangodb
+}  // namespace arangodb::maskings

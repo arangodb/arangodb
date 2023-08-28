@@ -183,6 +183,7 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice info) override;
 
+  void getCapabilities(velocypack::Builder& builder) const override;
   void getStatistics(velocypack::Builder& builder) const override;
   void getStatistics(std::string& result) const override;
 

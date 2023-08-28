@@ -36,8 +36,12 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "CrashHandler/CrashHandler.h"
+#endif
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -96,6 +100,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
         _index(index),
         _key(std::move(key)),
         _isId(lookupByIdAttribute),
+        _withCache(_index->useCache() != nullptr),
         _done(false) {
     TRI_ASSERT(_key.slice().isString());
 
@@ -148,7 +153,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     if (documentId.isSet()) {
       cb(documentId);
     }
-    if (_index->hasCache()) {
+    if (_withCache) {
       incrCacheStats(foundInCache);
     }
     return false;
@@ -172,7 +177,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
       auto data = SliceCoveringData(_key.slice());
       cb(documentId, data);
     }
-    if (_index->hasCache()) {
+    if (_withCache) {
       incrCacheStats(foundInCache);
     }
     return false;
@@ -184,6 +189,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
   RocksDBPrimaryIndex* _index;
   VPackBuilder _key;
   bool const _isId;
+  bool const _withCache;
   bool _done;
 };
 
@@ -202,7 +208,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
         _keys(std::move(keys)),
         _iterator(_keys.slice()),
         _memoryUsage(0),
-        _isId(lookupByIdAttribute) {
+        _isId(lookupByIdAttribute),
+        _withCache(_index->useCache() != nullptr) {
     TRI_ASSERT(_keys.slice().isArray());
 
     ResourceUsageScope scope(_resourceMonitor, _keys.size());
@@ -267,7 +274,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
         cb(documentId);
         --limit;
       }
-      if (_index->hasCache()) {
+      if (_withCache) {
         incrCacheStats(foundInCache);
       }
 
@@ -298,7 +305,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
         cb(documentId, data);
         --limit;
       }
-      if (_index->hasCache()) {
+      if (_withCache) {
         incrCacheStats(foundInCache);
       }
 
@@ -319,6 +326,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
   velocypack::ArrayIterator _iterator;
   size_t _memoryUsage;
   bool const _isId;
+  bool const _withCache;
 };
 
 template<bool reverse, bool mustCheckBounds>
@@ -590,8 +598,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(LogicalCollection& collection,
               .getFeature<EngineSelectorFeature>()
               .engine<RocksDBEngine>()),
       _coveredFields({{AttributeName(StaticStrings::KeyString, false)},
-                      {AttributeName(StaticStrings::IdString, false)}}),
-      _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
+                      {AttributeName(StaticStrings::IdString, false)}}) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
                         RocksDBColumnFamilyManager::Family::PrimaryIndex));
   TRI_ASSERT(objectId() != 0);
@@ -610,14 +617,14 @@ RocksDBPrimaryIndex::coveredFields() const {
 
 void RocksDBPrimaryIndex::load() {
   RocksDBIndex::load();
-  if (hasCache()) {
+  if (auto cache = useCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb =
         static_cast<RocksDBCollection*>(_collection.getPhysical());
     uint64_t numDocs = rdb->meta().numberDocuments();
 
     if (numDocs > 0) {
-      _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
+      cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
     }
   }
 }
@@ -639,11 +646,11 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   foundInCache = false;
   bool lockTimeout = false;
-  if (hasCache()) {
-    TRI_ASSERT(_cache != nullptr);
+  auto cache = useCache();
+  if (cache != nullptr) {
     // check cache first for fast path
-    auto f = _cache->find(key->string().data(),
-                          static_cast<uint32_t>(key->string().size()));
+    auto f = cache->find(key->string().data(),
+                         static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
       foundInCache = true;
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
@@ -664,11 +671,10 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     return LocalDocumentId();
   }
 
-  if (hasCache() && !lockTimeout) {
-    TRI_ASSERT(_cache != nullptr);
+  if (cache != nullptr && !lockTimeout) {
     // write entry back to cache
     cache::Cache::SimpleInserter<PrimaryIndexCacheType>{
-        static_cast<PrimaryIndexCacheType&>(*_cache), key->string().data(),
+        static_cast<PrimaryIndexCacheType&>(*cache), key->string().data(),
         static_cast<uint32_t>(key->string().size()), val.data(),
         static_cast<uint64_t>(val.size())};
   }
@@ -778,9 +784,30 @@ Result RocksDBPrimaryIndex::update(
     LocalDocumentId const& /*oldDocumentId*/, velocypack::Slice oldDoc,
     LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
     OperationOptions const& /*options*/, bool /*performChecks*/) {
-  Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
+
+  Result res;
+  if (oldDoc.get(StaticStrings::KeyString).stringView() !=
+      newDoc.get(StaticStrings::KeyString).stringView()) {
+    res.reset(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("invalid primary index update in '",
+                     _collection.vocbase().name(), "/", _collection.name()));
+    res.withError([&oldDoc, &newDoc](result::Error& err) {
+      err.appendErrorMessage("; old key: ");
+      err.appendErrorMessage(oldDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage("; new key: ");
+      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
+    });
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    LOG_TOPIC("f3b56", ERR, Logger::ENGINES) << res.errorMessage();
+    CrashHandler::logBacktrace();
+#endif
+    TRI_ASSERT(false) << res.errorMessage();
+    return res;
+  }
+
   RocksDBKeyLeaser key(&trx);
 
   key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
@@ -791,6 +818,27 @@ Result RocksDBPrimaryIndex::update(
   // invalidate new index cache entry to avoid caching without committing first
   invalidateCacheEntry(key->string().data(),
                        static_cast<uint32_t>(key->string().size()));
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), nullptr);
+    if (s.IsNotFound()) {
+      // the key must have existed before in the primary index
+      res.reset(TRI_ERROR_ARANGO_CONFLICT,
+                "inconsistency with non-existing primary key detected");
+      res.withError([&oldDoc, &newDoc](result::Error& err) {
+        err.appendErrorMessage("; old key: ");
+        err.appendErrorMessage(
+            oldDoc.get(StaticStrings::KeyString).copyString());
+        err.appendErrorMessage("; new key: ");
+        err.appendErrorMessage(
+            newDoc.get(StaticStrings::KeyString).copyString());
+      });
+      TRI_ASSERT(false) << "primary index update: " << res.errorMessage();
+      return res;
+    }
+  }
+#endif
 
   rocksdb::Status s =
       mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ false);
@@ -925,9 +973,11 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       Result res = trx->resolveId(value.data(), value.length(), collection, key,
                                   outLength);
 
+      bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
+
       if (!res.ok()) {
         // using the name of an unknown collection
-        if (_isRunningInCluster) {
+        if (isRunningInCluster) {
           // translate from our own shard name to "real" collection name
           return value.compare(
               trx->resolver()->getCollectionName(_collection.id()));
@@ -938,10 +988,10 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       TRI_ASSERT(key);
       TRI_ASSERT(collection);
 
-      if (!_isRunningInCluster && collection->id() != _collection.id()) {
+      if (!isRunningInCluster && collection->id() != _collection.id()) {
         // using the name of a different collection...
         return value.compare(_collection.name());
-      } else if (_isRunningInCluster &&
+      } else if (isRunningInCluster &&
                  collection->planId() != _collection.planId()) {
         // using a different collection
         // translate from our own shard name to "real" collection name
@@ -1215,13 +1265,15 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(key != nullptr);
 
-    if (!_isRunningInCluster && collection->id() != _collection.id()) {
+    bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
+
+    if (!isRunningInCluster && collection->id() != _collection.id()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
     }
 
-    if (_isRunningInCluster) {
+    if (isRunningInCluster) {
 #ifdef USE_ENTERPRISE
       if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) {
         auto c = dynamic_cast<VirtualClusterSmartEdgeCollection const*>(

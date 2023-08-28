@@ -37,17 +37,17 @@ void GreetingsFeature::prepare() {
   LOG_TOPIC("e52b0", INFO, arangodb::Logger::FIXME)
       << "" << rest::Version::getVerboseVersionString();
 
-  // building in maintainer mode or enabling catch test code will incur runtime
+  // building in maintainer mode or enabling unit test code will incur runtime
   // overhead, so warn users about this
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // maintainer mode
   constexpr bool warn = true;
 #else
-  // catch-tests on (enables TEST_VIRTUAL)
+  // unit tests on (enables TEST_VIRTUAL)
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   constexpr bool warn = true;
 #else
-  // neither maintainer mode nor catch tests
+  // neither maintainer mode nor unit tests
   constexpr bool warn = false;
 #endif
 #endif

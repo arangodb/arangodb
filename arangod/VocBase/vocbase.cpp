@@ -54,13 +54,18 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
-#include "Containers/Helpers.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Containers/Helpers.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
+#include "Network/ConnectionPool.h"
+#include "Network/NetworkFeature.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
@@ -71,11 +76,6 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Replication2/Version.h"
-#include "Metrics/Counter.h"
-#include "Metrics/Gauge.h"
-#include "Network/ConnectionPool.h"
-#include "Network/NetworkFeature.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -502,7 +502,7 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
 
 void TRI_vocbase_t::stop() {
   try {
-    _logManager->resignAll();
+    shutdownReplicatedLogs();
 
     // stop replication
     if (_replicationApplier != nullptr) {
@@ -1374,7 +1374,7 @@ Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
 }
 
 TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info)
-    : _server(info.server()), _info(std::move(info)), _deadlockDetector(false) {
+    : _server(info.server()), _info(std::move(info)) {
   TRI_ASSERT(_info.valid());
 
   if (_info.server().hasFeature<QueryRegistryFeature>()) {
@@ -1407,8 +1407,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_t::MockConstruct,
                              CreateDatabaseInfo&& info)
     : _server(info.server()),
       _info(std::move(info)),
-      _logManager(std::make_shared<VocBaseLogManager>(*this, name())),
-      _deadlockDetector(false) {}
+      _logManager(std::make_shared<VocBaseLogManager>(*this, name())) {}
 #endif
 
 TRI_vocbase_t::~TRI_vocbase_t() {
@@ -1470,6 +1469,10 @@ void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
 
 void TRI_vocbase_t::setShardingPrototype(ShardingPrototype type) {
   _info.shardingPrototype(type);
+}
+
+void TRI_vocbase_t::setSharding(std::string_view sharding) {
+  _info.setSharding(sharding);
 }
 
 ShardingPrototype TRI_vocbase_t::shardingPrototype() const {

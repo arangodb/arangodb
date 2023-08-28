@@ -7,7 +7,8 @@ import { FormField } from "../../../components/form/FormField";
 import {
   createGraph,
   GENERAL_GRAPH_FIELDS_MAP,
-  GRAPH_VALIDATION_SCHEMA
+  GRAPH_VALIDATION_SCHEMA,
+  updateGraph
 } from "../listGraphs/graphListHelpers";
 import { useGraphsModeContext } from "../listGraphs/GraphsModeContext";
 import { ClusterFields } from "./ClusterFields";
@@ -36,7 +37,19 @@ const INITIAL_VALUES: GeneralGraphCreateValues = {
 export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
   const { initialGraph, mode } = useGraphsModeContext();
   const { documentCollectionOptions } = useCollectionOptions();
+  const isEditMode = mode === "edit";
   const handleSubmit = async (values: GeneralGraphCreateValues) => {
+    if (isEditMode) {
+      const info = await updateGraph({
+        values,
+        initialGraph,
+        onSuccess: () => {
+          mutate("/graphs");
+          onClose();
+        }
+      });
+      return info;
+    }
     const info = await createGraph({
       values,
       onSuccess: () => {
@@ -58,7 +71,7 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
             <FormField
               field={{
                 ...generalGraphFieldsMap.name,
-                isDisabled: mode === "edit"
+                isDisabled: isEditMode
               }}
             />
             {window.frontendConfig.isCluster && (
@@ -70,8 +83,7 @@ export const GeneralGraphForm = ({ onClose }: { onClose: () => void }) => {
             <FormField
               field={{
                 ...generalGraphFieldsMap.orphanCollections,
-                options: documentCollectionOptions,
-                isDisabled: mode === "edit"
+                options: documentCollectionOptions
               }}
             />
           </FieldsGrid>

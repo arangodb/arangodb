@@ -125,26 +125,6 @@
   EXPECT_EQ(std::string(buffer), std::string(expectedValue));
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a uint32_t to octal
-////////////////////////////////////////////////////////////////////////////////
-
-#define CHECK_CONVERSION_UINT32_OCTAL(value, expectedValue, buffer)  \
-  actualLength =                                                     \
-      TRI_StringUInt32OctalInPlace((uint32_t)value, (char*)&buffer); \
-  EXPECT_EQ(actualLength, strlen(expectedValue));                    \
-  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a uint64_t to octal
-////////////////////////////////////////////////////////////////////////////////
-
-#define CHECK_CONVERSION_UINT64_OCTAL(value, expectedValue, buffer)  \
-  actualLength =                                                     \
-      TRI_StringUInt64OctalInPlace((uint64_t)value, (char*)&buffer); \
-  EXPECT_EQ(actualLength, strlen(expectedValue));                    \
-  EXPECT_EQ(std::string(buffer), std::string(expectedValue));
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test int8_t conversion
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -378,57 +358,4 @@ TEST(CConversionsTest, tst_uint64_hex) {
   CHECK_CONVERSION_UINT64_HEX(47634665765536ULL, "2B52CF54FAA0", buffer)
   CHECK_CONVERSION_UINT64_HEX(8668398959769325ULL, "1ECBDCE8C4B6ED", buffer)
   CHECK_CONVERSION_UINT64_HEX(UINT64_MAX, "FFFFFFFFFFFFFFFF", buffer)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test uint32_t octal conversion
-////////////////////////////////////////////////////////////////////////////////
-
-TEST(CConversionsTest, tst_uint32_octal) {
-  char buffer[128];
-  size_t actualLength;
-
-  CHECK_CONVERSION_UINT32_OCTAL(0UL, "0", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(1UL, "1", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(8UL, "10", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(9UL, "11", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(10UL, "12", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(128UL, "200", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(257UL, "401", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(4096UL, "10000", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(32683UL, "77653", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(65535UL, "177777", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(65536UL, "200000", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(2147483648UL, "20000000000", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(4294967294UL, "37777777776", buffer)
-  CHECK_CONVERSION_UINT32_OCTAL(UINT32_MAX, "37777777777", buffer)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test uint64_t octal conversion
-////////////////////////////////////////////////////////////////////////////////
-
-TEST(CConversionsTest, tst_uint64_octal) {
-  char buffer[128];
-  size_t actualLength;
-
-  CHECK_CONVERSION_UINT64_OCTAL(0ULL, "0", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(1ULL, "1", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(8ULL, "10", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(9ULL, "11", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(10ULL, "12", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(128ULL, "200", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(257ULL, "401", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(4096ULL, "10000", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(32683ULL, "77653", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(65535ULL, "177777", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(65536ULL, "200000", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(2147483648UL, "20000000000", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(4294967294UL, "37777777776", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(96949632432ULL, "1322251376660", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(4611686018427387903ULL, "377777777777777777777",
-                                buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(9694963243245737662ULL,
-                                "1032133333204010313276", buffer)
-  CHECK_CONVERSION_UINT64_OCTAL(UINT64_MAX, "1777777777777777777777", buffer);
 }

@@ -545,7 +545,7 @@ Result GraphManager::ensureCollections(
       return resolver.getCollectionNameCluster(
           DataSourceId{basics::StringUtils::uint64(distLike)});
     }
-    return col.distributeShardsLike();
+    return distLike;
   };
 
   auto anyExistingCollection =

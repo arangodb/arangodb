@@ -1067,7 +1067,7 @@ void ClusterInfo::loadPlan() {
     return;
   }
 
-  std::set<std::string> buildingDatabases;
+  containers::FlatHashSet<std::string> buildingDatabases;
   decltype(_plannedDatabases) newDatabases{_resourceMonitor};
   decltype(_shards) newShards{_resourceMonitor};
   decltype(_shardsToPlanServers) newShardsToPlanServers{_resourceMonitor};
@@ -1539,14 +1539,13 @@ void ClusterInfo::loadPlan() {
               collectionId);  // delete from maps with shardID as key
           newShardToName.erase(collectionId);
         }
-        auto copy_it = it++;
-        _newPlannedCollections.erase(copy_it);
+        _newPlannedCollections.erase(it);
       }
       continue;
     }
 
     // Skip databases that are still building.
-    if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
+    if (buildingDatabases.contains(databaseName)) {
       continue;
     }
 
@@ -1744,8 +1743,27 @@ void ClusterInfo::loadPlan() {
         // the name as key:
         continue;
       }
-      auto const& groupLeader =
-          colPair.second.collection->distributeShardsLike();
+      auto const& groupLeader = std::invoke([&]() -> std::string const& {
+        if (colPair.second.collection->replicationVersion() ==
+            replication::Version::TWO) {
+          // For Replication2 we cannot call distributeShardsLike() because it
+          // will look into the objects we are just building here.
+          if (auto it = newCollectionGroups.find(
+                  colPair.second.collection->groupID());
+              it != newCollectionGroups.end()) {
+            auto const& leader = it->second->groupLeader;
+            if (leader == colPair.second.collection->name()) {
+              return StaticStrings::Empty;
+            }
+            return leader;
+          }
+          TRI_ASSERT(false) << "newCollectionGroups is required to contain the "
+                               "collection we investigate.";
+          return StaticStrings::Empty;
+        } else {
+          return colPair.second.collection->distributeShardsLike();
+        }
+      });
       if (!groupLeader.empty()) {
         auto groupLeaderCol = newShards.find(groupLeader);
         if (groupLeaderCol != newShards.end()) {
@@ -1812,18 +1830,38 @@ void ClusterInfo::loadPlan() {
       // system database does not have a shardingPrototype set...
       // sharding prototype of _system database defaults to _users nowadays
       systemDB->setShardingPrototype(ShardingPrototype::Users);
-      // but for "old" databases it may still be "_graphs". we need to find out!
-      // find _system database in Plan
       auto it = _newPlannedCollections.find(StaticStrings::SystemDatabase);
       if (it != _newPlannedCollections.end()) {
-        // find _graphs collection in Plan
-        auto it2 = (*it).second->find(StaticStrings::GraphCollection);
-        if (it2 != (*it).second->end()) {
-          // found!
-          if ((*it2).second.collection->distributeShardsLike().empty()) {
-            // _graphs collection has no distributeShardsLike, so it is
-            // the prototype!
-            systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+        // but for "old" databases it may still be "_graphs". we need to find
+        // out! find _system database in Plan. Replication TWO databases cannot
+        // be old.
+        if (systemDB->replicationVersion() == replication::Version::ONE) {
+          // find _graphs collection in Plan
+          auto it2 = (*it).second->find(StaticStrings::GraphCollection);
+          if (it2 != (*it).second->end()) {
+            // found!
+            if ((*it2).second.collection->distributeShardsLike().empty()) {
+              // _graphs collection has no distributeShardsLike, so it is
+              // the prototype!
+              systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+            }
+          }
+        }
+
+        // The systemDB does initially set the sharding attribute. Therefore,
+        // we need to set it here.
+        if (newPlan.contains(StaticStrings::SystemDatabase)) {
+          auto planSlice = newPlan[StaticStrings::SystemDatabase]->slice();
+          if (planSlice.isArray() && planSlice.length() == 1) {
+            if (planSlice.at(0).isObject()) {
+              auto entrySlice = planSlice.at(0);
+              auto path = std::vector<std::string>{
+                  "arango", "Plan", "Databases", StaticStrings::SystemDatabase,
+                  StaticStrings::Sharding};
+              if (entrySlice.hasKey(path) && entrySlice.get(path).isString()) {
+                systemDB->setSharding(entrySlice.get(path).copyString());
+              }
+            }
           }
         }
       }
@@ -5036,11 +5074,6 @@ ServersKnown ClusterInfo::rebootIds() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  if (serverID == "debug-follower") {
-    return "tcp://127.0.0.1:3000";
-  }
-#endif
   int tries = 0;
 
   if (!_serversProt.isValid) {
@@ -5061,7 +5094,7 @@ std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
         serverID_ = (*ita).second;
       }
 
-      // _servers is a map-type <ServerId, std::string>
+      // _servers is a map-type <ServerId, pmr::ManagedString>
       auto it = _servers.find(serverID_);
 
       if (it != _servers.end()) {
@@ -6438,8 +6471,9 @@ ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 bool ClusterInfo::SyncerThread::notify() {
   std::lock_guard<std::mutex> lck(_m);
   _news = true;
+  // TODO: can we move the notify_one() call outside of the mutex?
   _cv.notify_one();
-  return _news;
+  return true;
 }
 
 void ClusterInfo::SyncerThread::beginShutdown() {
@@ -6457,10 +6491,11 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 bool ClusterInfo::SyncerThread::start() {
   ThreadNameFetcher nameFetcher;
   std::string_view name = nameFetcher.get();
+  if (name.empty()) {
+    name = "unknown syncer thread";
+  }
 
-  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER)
-      << "Starting "
-      << (name.empty() ? std::string_view("by unknown thread") : name);
+  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER) << "Starting " << name;
   return Thread::start();
 }
 

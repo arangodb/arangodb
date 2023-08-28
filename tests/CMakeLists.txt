@@ -18,6 +18,7 @@ add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
 add_subdirectory(Futures)
+add_subdirectory(BuildId)
 
 # ----------------------------------------
 # Link directories
@@ -251,7 +252,6 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalViewTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
-  VPackDeserializer/BasicTests.cpp
   Cluster/ShardAutoRebalancerTest.cpp)
 
 if (LINUX)

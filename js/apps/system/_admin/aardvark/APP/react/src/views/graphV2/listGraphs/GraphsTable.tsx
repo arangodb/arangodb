@@ -1,4 +1,4 @@
-import { ViewIcon } from "@chakra-ui/icons";
+import { EditIcon } from "@chakra-ui/icons";
 import { Button, Link, Stack, useDisclosure } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import { GraphInfo } from "arangojs/graph";
@@ -10,7 +10,6 @@ import { useSortableReactTable } from "../../../components/table/useSortableReac
 import { EditGraphModal } from "./EditGraphModal";
 import { detectGraphType } from "./graphListHelpers";
 import { useGraphsListContext } from "./GraphsListContext";
-import { GraphsModeProvider } from "./GraphsModeContext";
 
 const columnHelper = createColumnHelper<GraphInfo>();
 
@@ -65,15 +64,13 @@ const ActionCell = ({ info }: { info: CellContext<GraphInfo, any> }) => {
 
   return (
     <>
-      <GraphsModeProvider mode="edit">
-        <EditGraphModal
-          isOpen={isOpen}
-          onClose={onClose}
-          graph={info.cell.row.original}
-        />
-      </GraphsModeProvider>
+      <EditGraphModal
+        isOpen={isOpen}
+        onClose={onClose}
+        graph={info.cell.row.original}
+      />
       <Button onClick={onOpen} size="xs">
-        <ViewIcon />
+        <EditIcon />
       </Button>
     </>
   );
