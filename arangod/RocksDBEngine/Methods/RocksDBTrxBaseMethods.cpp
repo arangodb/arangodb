@@ -52,6 +52,8 @@ metrics::Gauge<std::uint64_t>* determineMetric(
     case transaction::OperationOrigin::Type::kInternal:
       return &state->statistics()._internalTransactionsMemoryUsage;
   }
+  // we should not get here at all
+  return nullptr;
 }
 }  // namespace
 
