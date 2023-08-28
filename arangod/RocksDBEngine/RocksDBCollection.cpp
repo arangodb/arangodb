@@ -332,7 +332,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                       .serverStatistics()
                       ._transactionsStatistics) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
-  if (_cacheEnabled) {
+  if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();
   }
 }
@@ -385,21 +385,23 @@ void RocksDBCollection::deferDropCollection(
 }
 
 Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
-  _cacheEnabled = _cacheManager != nullptr && !_logicalCollection.system() &&
-                  !_logicalCollection.isAStub() &&
-                  !ServerState::instance()->isCoordinator() &&
-                  basics::VelocyPackHelper::getBooleanValue(
-                      slice, StaticStrings::CacheEnabled, _cacheEnabled);
-  primaryIndex()->setCacheEnabled(_cacheEnabled);
+  bool cacheEnabled = _cacheManager != nullptr &&
+                      !_logicalCollection.system() &&
+                      !_logicalCollection.isAStub() &&
+                      !ServerState::instance()->isCoordinator() &&
+                      basics::VelocyPackHelper::getBooleanValue(
+                          slice, StaticStrings::CacheEnabled,
+                          _cacheEnabled.load(std::memory_order_relaxed));
+  _cacheEnabled.store(cacheEnabled, std::memory_order_relaxed);
+  primaryIndex()->setCacheEnabled(cacheEnabled);
 
-  if (_cacheEnabled) {
+  if (cacheEnabled) {
     setupCache();
     primaryIndex()->setupCache();
   } else {
     // will do nothing if cache is not present
     destroyCache();
     primaryIndex()->destroyCache();
-    TRI_ASSERT(_cache == nullptr);
   }
 
   // nothing else to do
@@ -410,7 +412,8 @@ Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add(StaticStrings::ObjectId, VPackValue(std::to_string(objectId())));
-  result.add(StaticStrings::CacheEnabled, VPackValue(_cacheEnabled));
+  result.add(StaticStrings::CacheEnabled,
+             VPackValue(_cacheEnabled.load(std::memory_order_relaxed)));
   TRI_ASSERT(result.isOpenObject());
 }
 
@@ -1075,7 +1078,7 @@ Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
           std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
 
-    res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/ true,
+    res = lookupDocumentVPack(trx, documentId, ps, /*withCache*/ true,
                               /*fillCache*/ true, readOwnWrites);
     if (res.ok()) {
       cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
@@ -1240,6 +1243,10 @@ Result RocksDBCollection::remove(transaction::Methods& trx,
   return res;
 }
 
+bool RocksDBCollection::cacheEnabled() const noexcept {
+  return _cacheEnabled.load(std::memory_order_relaxed);
+}
+
 bool RocksDBCollection::hasDocuments() {
   RocksDBEngine& engine = _logicalCollection.vocbase()
                               .server()
@@ -1269,12 +1276,12 @@ void RocksDBCollection::figuresSpecific(
                           &r, 1, &out);
 
   builder.add("documentsSize", VPackValue(out));
-  bool cacheInUse = useCache();
-  builder.add("cacheInUse", VPackValue(cacheInUse));
-  if (cacheInUse) {
-    builder.add("cacheSize", VPackValue(_cache->size()));
-    builder.add("cacheUsage", VPackValue(_cache->usage()));
-    auto hitRates = _cache->hitRates();
+  auto cache = useCache();
+  builder.add("cacheInUse", VPackValue(cache != nullptr));
+  if (cache != nullptr) {
+    builder.add("cacheSize", VPackValue(cache->size()));
+    builder.add("cacheUsage", VPackValue(cache->usage()));
+    auto hitRates = cache->hitRates();
     double rate = hitRates.first;
     rate = std::isnan(rate) ? 0.0 : rate;
     builder.add("cacheLifeTimeHitRate", VPackValue(rate));
@@ -1407,7 +1414,7 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   TRI_ASSERT(!options.checkUniqueConstraintsInPreflight ||
              state->isOnlyExclusiveTransaction());
 
-  bool const performPreflightChecks =
+  bool performPreflightChecks =
       (options.checkUniqueConstraintsInPreflight ||
        state->numOperations() >= ::preflightThreshold);
 
@@ -1851,7 +1858,7 @@ Result RocksDBCollection::modifyDocument(
 Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
                                          LocalDocumentId documentId,
                                          velocypack::Builder& builder,
-                                         bool readCache, bool fillCache,
+                                         bool withCache, bool fillCache,
                                          ReadOwnWrites readOwnWrites) const {
   TRI_ASSERT(trx.state()->isRunning());
   TRI_ASSERT(objectId() != 0);
@@ -1860,11 +1867,12 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
   key->constructDocument(objectId(), documentId);
 
   bool lockTimeout = false;
-  if (readCache && useCache()) {
-    TRI_ASSERT(_cache != nullptr);
+  std::shared_ptr<cache::Cache> cache;
+  if (withCache && (cache = useCache())) {
+    TRI_ASSERT(cache != nullptr);
     // check cache first for fast path
-    auto f = _cache->find(key->string().data(),
-                          static_cast<uint32_t>(key->string().size()));
+    auto f = cache->find(key->string().data(),
+                         static_cast<uint32_t>(key->string().size()));
     if (f.found()) {  // copy finding into buffer
       builder.add(
           VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
@@ -1895,11 +1903,10 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
     return rocksutils::convertStatus(s, rocksutils::document);
   }
 
-  if (fillCache && useCache() && !lockTimeout) {
-    TRI_ASSERT(_cache != nullptr);
+  if (fillCache && cache != nullptr && !lockTimeout) {
     // write entry back to cache
     cache::Cache::SimpleInserter<DocumentCacheType>{
-        static_cast<DocumentCacheType&>(*_cache), key->string().data(),
+        static_cast<DocumentCacheType&>(*cache), key->string().data(),
         static_cast<uint32_t>(key->string().size()), ps.data(),
         static_cast<uint64_t>(ps.size())};
   }
@@ -1913,7 +1920,7 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
 /// @brief lookup document in cache and / or rocksdb
 arangodb::Result RocksDBCollection::lookupDocumentVPack(
     transaction::Methods* trx, LocalDocumentId const& documentId,
-    rocksdb::PinnableSlice& ps, bool readCache, bool fillCache,
+    rocksdb::PinnableSlice& ps, bool withCache, bool fillCache,
     ReadOwnWrites readOwnWrites) const {
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(objectId() != 0);
@@ -1923,11 +1930,12 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   key->constructDocument(objectId(), documentId);
 
   bool lockTimeout = false;
-  if (readCache && useCache()) {
-    TRI_ASSERT(_cache != nullptr);
+  std::shared_ptr<cache::Cache> cache;
+  if (withCache && (cache = useCache())) {
+    TRI_ASSERT(cache != nullptr);
     // check cache first for fast path
-    auto f = _cache->find(key->string().data(),
-                          static_cast<uint32_t>(key->string().size()));
+    auto f = cache->find(key->string().data(),
+                         static_cast<uint32_t>(key->string().size()));
     if (f.found()) {  // copy finding into buffer
       ps.PinSelf(
           rocksdb::Slice(reinterpret_cast<char const*>(f.value()->value()),
@@ -1957,11 +1965,10 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
     return rocksutils::convertStatus(s, rocksutils::document);
   }
 
-  if (fillCache && useCache() && !lockTimeout) {
-    TRI_ASSERT(_cache != nullptr);
+  if (fillCache && cache != nullptr && !lockTimeout) {
     // write entry back to cache
     cache::Cache::SimpleInserter<DocumentCacheType>{
-        static_cast<DocumentCacheType&>(*_cache), key->string().data(),
+        static_cast<DocumentCacheType&>(*cache), key->string().data(),
         static_cast<uint32_t>(key->string().size()), ps.data(),
         static_cast<uint64_t>(ps.size())};
   }
@@ -1980,11 +1987,11 @@ Result RocksDBCollection::lookupDocumentVPack(
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), documentId);
 
-  if (withCache && useCache()) {
-    TRI_ASSERT(_cache != nullptr);
+  std::shared_ptr<cache::Cache> cache;
+  if (withCache && (cache = useCache())) {
     // check cache first for fast path
-    auto f = _cache->find(key->string().data(),
-                          static_cast<uint32_t>(key->string().size()));
+    auto f = cache->find(key->string().data(),
+                         static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
       cb(documentId,
          VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
@@ -2013,11 +2020,10 @@ Result RocksDBCollection::lookupDocumentVPack(
   TRI_ASSERT(ps.size() > 0);
   cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
 
-  if (withCache && useCache()) {
-    TRI_ASSERT(_cache != nullptr);
+  if (withCache && cache != nullptr) {
     // write entry back to cache
     cache::Cache::SimpleInserter<DocumentCacheType>{
-        static_cast<DocumentCacheType&>(*_cache), key->string().data(),
+        static_cast<DocumentCacheType&>(*cache), key->string().data(),
         static_cast<uint32_t>(key->string().size()), ps.data(),
         static_cast<uint64_t>(ps.size())};
   }
@@ -2026,7 +2032,8 @@ Result RocksDBCollection::lookupDocumentVPack(
 }
 
 void RocksDBCollection::setupCache() const {
-  if (_cacheManager == nullptr || !_cacheEnabled) {
+  TRI_ASSERT(_cacheManager != nullptr);
+  if (!_cacheEnabled.load(std::memory_order_relaxed)) {
     // if we cannot have a cache, return immediately
     return;
   }
@@ -2035,30 +2042,38 @@ void RocksDBCollection::setupCache() const {
   // by _cacheEnabled already.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  if (_cache == nullptr) {
+  auto cache = _cache;
+  if (cache == nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
-    _cache = _cacheManager->createCache<cache::BinaryKeyHasher>(
+    cache = _cacheManager->createCache<cache::BinaryKeyHasher>(
         cache::CacheType::Transactional);
+    std::atomic_store_explicit(&_cache, std::move(cache),
+                               std::memory_order_relaxed);
   }
 }
 
+std::shared_ptr<cache::Cache> RocksDBCollection::useCache() const noexcept {
+  // note: this can return a nullptr. the caller has to check the result
+  return std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
+}
+
 void RocksDBCollection::destroyCache() const {
-  if (_cache != nullptr) {
+  auto cache = _cache;
+  if (cache != nullptr) {
+    std::atomic_store_explicit(&_cache, {}, std::memory_order_relaxed);
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
-    _cacheManager->destroyCache(std::move(_cache));
-    _cache.reset();
+    _cacheManager->destroyCache(std::move(cache));
   }
 }
 
 // banish given key from transactional cache
 void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
-  if (useCache()) {
-    TRI_ASSERT(_cache != nullptr);
+  if (std::shared_ptr<cache::Cache> cache = useCache()) {
     do {
-      auto status = _cache->banish(k.buffer()->data(),
-                                   static_cast<uint32_t>(k.buffer()->size()));
+      auto status = cache->banish(k.buffer()->data(),
+                                  static_cast<uint32_t>(k.buffer()->size()));
       if (status == TRI_ERROR_NO_ERROR ||
           status == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         break;
