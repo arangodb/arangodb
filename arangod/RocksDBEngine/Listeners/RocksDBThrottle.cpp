@@ -94,8 +94,12 @@ RocksDBThrottle::RocksDBThrottle(
           metricsFeature.get({"arangodb_memory_maps_limit", ""}))) {
   TRI_ASSERT(_scalingFactor != 0);
 
-  LOG_TOPIC("7ffe9", DEBUG, arangodb::Logger::ENGINES)
-      << _fileDescriptorsStopTrigger << " " << _memoryMapsStopTrigger;
+  LOG_TOPIC("373fb", TRACE, arangodb::Logger::ENGINES) <<   
+    " RocksDB throttle configure: with slots: " << numSlots << ", frequency: " << frequency <<
+    ", scaling factor: " << scalingFactor << " max write rate: " << maxWriteRate <<
+    "fd stop trigger: " << _fileDescriptorsStopTrigger << " mapped memory stop trigger: " <<
+    _memoryMapsStopTrigger;
+
 }
 
 // Shutdown the background thread only if it was ever started
@@ -204,6 +208,7 @@ void RocksDBThrottle::setThrottleWriteRate(std::chrono::microseconds micros,
   TRI_ASSERT(micros.count() >= 0);
   // throw out anything smaller than 32Mbytes ... be better if this
   //  was calculated against write_buffer_size, but that varies by column family
+
   if ((64 << 19) < bytes) {
     // lock _threadMutex while we update _throttleData
     std::lock_guard mutexLocker{_threadMutex};
@@ -276,7 +281,8 @@ void RocksDBThrottle::threadLoop() {
 void RocksDBThrottle::recalculateThrottle() {
   std::chrono::microseconds totalMicros{0};
 
-  auto [compactionBacklog, pendingCompactionBytes] = computeBacklog();
+  auto [compactionBacklog, pendingCompactionBytes] =
+    _internalRocksDB ? computeBacklog() : std::pair<int64_t,int64_t>{};
 
   TRI_ASSERT(_throttleData != nullptr);
   auto& throttleData = *_throttleData;
@@ -310,8 +316,8 @@ void RocksDBThrottle::recalculateThrottle() {
   // buffers
   uint64_t adjustmentBytes = (totalBytes * compactionBacklog) / 10;
 
-  uint64_t compactionHardLimit =
-      _internalRocksDB->GetOptions().hard_pending_compaction_bytes_limit;
+  uint64_t compactionHardLimit = _internalRocksDB ?
+    _internalRocksDB->GetOptions().hard_pending_compaction_bytes_limit : 0;
 
   uint64_t adjustmentBytesCor;
 
