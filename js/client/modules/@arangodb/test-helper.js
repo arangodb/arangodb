@@ -265,11 +265,10 @@ exports.getMetricSingle = function (name) {
   return getMetricName(res.body, name);
 };
 
-exports.getCompleteMetricsValues = function (name) {
+exports.getCompleteMetricsValues = function (name, roles = "") {
   const isCluster = require("internal").isCluster();
   if (isCluster) {
-    let metrics = exports.getDBServersClusterMetricsByName(name);
-    assertTrue(metrics.length == 3);
+    let metrics = exports.getClusterMetricsByName(name, roles);
     if (typeof name == "string") {
       let sum = 0;
       metrics.forEach( num => {
@@ -591,20 +590,27 @@ exports.triggerMetrics = function () {
   require("internal").sleep(2);
 };
 
-exports.getDBServersClusterAllMetrics = function () {
+exports.getAllClusterMetrics = function (roles = "") {
   exports.triggerMetrics();
   let res = [];
-  let dbServerEndpoints = exports.getDBServerEndpoints();
-  dbServerEndpoints.forEach(server => {
-    res.push(exports.getAllMetric(server, ''));
+  let endpoints = [];
+  if (roles === "" || roles === "dbservers" || roles === "all") {
+    endpoints = endpoints.concat(exports.getDBServerEndpoints());
+  }
+  if (roles === "coordinators" || roles === "all") {
+    endpoints = endpoints.concat(exports.getCoordinatorEndpoints());
+  }
+
+  endpoints.forEach(e => {
+    res.push(exports.getAllMetric(e, ''));
   });
   return res;
 };
 
-exports.getDBServersClusterMetricsByName = function (name) {
-  let dbServersMetrics = exports.getDBServersClusterAllMetrics();
+exports.getClusterMetricsByName = function (name, roles = "") {
+  let metrics = exports.getAllClusterMetrics(roles);
   let res = [];
-  dbServersMetrics.forEach(text => {
+  metrics.forEach(text => {
     res.push(getMetricName(text, name));
   });
   return res;
