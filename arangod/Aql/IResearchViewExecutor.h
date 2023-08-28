@@ -616,6 +616,7 @@ class IResearchViewExecutor
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;
+  std::vector<size_t> _readerOffsetTranslation;
   size_t _currentSegmentPos;  // current document iterator position in segment
   size_t _totalPos;           // total position for full snapshot
   LogicalCollection const* _collection{};

@@ -969,6 +969,7 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
                                                               Infos& infos)
     : Base{fetcher, infos},
       _readerOffset{0},
+      _readerOffsetTranslation{},
       _currentSegmentPos{0},
       _totalPos{0},
       _scr{&irs::score::kNoScore},
@@ -976,6 +977,15 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
   this->_storedValuesReaders.resize(
       this->_infos.getOutNonMaterializedViewRegs().size());
   TRI_ASSERT(infos.scoresSort().empty());
+  // Compute translation table HERE:
+  size_t count = this->_reader->size();
+  _readerOffsetTranslation.reserve(count);
+  for (size_t i = 0; i < count; ++i) {
+    _readerOffsetTranslation.push_back(i);
+  }
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(_readerOffsetTranslation.begin(), _readerOffsetTranslation.end(), g);
 }
 
 template<typename ExecutionTraits>
@@ -1338,7 +1348,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       // CID is constant until the next resetIterator(). Save the
       // corresponding collection so we don't have to look it up every time.
       if constexpr (Base::isMaterialized) {
-        DataSourceId const cid = this->_reader->cid(_readerOffset);
+        DataSourceId const cid = this->_reader->cid(_readerOffsetTranslation[_readerOffset]);
         aql::QueryContext& query = this->_infos.getQuery();
         auto collection = lookupCollection(this->_trx, cid, query);
 
@@ -1382,18 +1392,18 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
     }
     if constexpr (Base::isMaterialized) {
       // The CID must stay the same for all documents in the buffer
-      TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
+      TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffsetTranslation[_readerOffset]));
       if (!documentId.isSet()) {
         // No document read, we cannot write it.
         continue;
       }
     }
     if constexpr (Base::isLateMaterialized) {
-      this->_indexReadBuffer.pushValue(this->_reader->snapshot(_readerOffset),
-                                       this->_reader->segment(_readerOffset),
+      this->_indexReadBuffer.pushValue(this->_reader->snapshot(_readerOffsetTranslation[_readerOffset]),
+                                       this->_reader->segment(_readerOffsetTranslation[_readerOffset]),
                                        _doc->value);
     } else {
-      this->_indexReadBuffer.pushValue(this->_reader->snapshot(_readerOffset),
+      this->_indexReadBuffer.pushValue(this->_reader->snapshot(_readerOffsetTranslation[_readerOffset]),
                                        documentId);
     }
     gotData = true;
@@ -1401,7 +1411,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
       this->_indexReadBuffer.pushSearchDoc(
-          this->_reader->segment(_readerOffset), _doc->value);
+          this->_reader->segment(_readerOffsetTranslation[_readerOffset]), _doc->value);
     }
 
     // in the ordered case we have to write scores as well as a document
@@ -1437,7 +1447,7 @@ bool IResearchViewExecutor<ExecutionTraits>::resetIterator() {
   TRI_ASSERT(this->_filter);
   TRI_ASSERT(!_itr);
 
-  auto& segmentReader = (*this->_reader)[_readerOffset];
+  auto& segmentReader = (*this->_reader)[_readerOffsetTranslation[_readerOffset]];
 
   if constexpr (Base::isMaterialized) {
     auto it = ::pkColumn(segmentReader);
@@ -1568,7 +1578,7 @@ void IResearchViewExecutor<ExecutionTraits>::saveCollection() {
     // CID is constant until the next resetIterator(). Save the corresponding
     // collection so we don't have to look it up every time.
 
-    DataSourceId const cid = this->_reader->cid(_readerOffset);
+    DataSourceId const cid = this->_reader->cid(_readerOffsetTranslation[_readerOffset]);
     aql::QueryContext& query = this->_infos.getQuery();
     auto collection = lookupCollection(this->_trx, cid, query);
 
@@ -1775,11 +1785,6 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
     }
   }
 
-  std::random_device rd;
-  std::mt19937 g(rd());
- 
-  std::shuffle(_segments.begin(), _segments.end(), g);
-  
   _heap_it.reset(_segments.size());
 }
 
