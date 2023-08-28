@@ -69,6 +69,31 @@ auto computeEvenDistributionForServers(
     std::size_t numberOfShards, std::size_t replicationFactor,
     replicated_log::ParticipantsHealth const& health)
     -> ResultT<EvenDistribution> {
+  if (replicationFactor == 0) {
+    // Satellite collection case.
+    // Replicate everywhere
+    std::vector<ParticipantId> allParticipants;
+    allParticipants.reserve(health._health.size());
+    for (auto const& [p, h] : health._health) {
+      allParticipants.push_back(p);
+    }
+    {
+      // TODO reuse random device?
+      std::random_device rd;
+      std::mt19937 g(rd());
+      std::shuffle(allParticipants.begin(), allParticipants.end(), g);
+    }
+    EvenDistribution distribution{
+        numberOfShards, allParticipants.size(), {}, false};
+    std::unordered_set<ParticipantId> plannedServers;
+    auto res =
+        distribution.planShardsOnServers(allParticipants, plannedServers);
+    if (res.fail()) {
+      return res;
+    }
+    return distribution;
+  }
+
   auto servers = getHealthyParticipants(health);
   {
     // TODO reuse random device?
@@ -76,13 +101,6 @@ auto computeEvenDistributionForServers(
     std::mt19937 g(rd());
     std::shuffle(servers.begin(), servers.end(), g);
   }
-
-  if (replicationFactor == 0) {
-    // Satellite collection case.
-    // Replicate everywhere
-    replicationFactor = servers.size();
-  }
-
   EvenDistribution distribution{numberOfShards, replicationFactor, {}, false};
   std::unordered_set<ParticipantId> plannedServers;
   auto res = distribution.planShardsOnServers(servers, plannedServers);
