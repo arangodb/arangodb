@@ -23,18 +23,17 @@
 
 #pragma once
 
-#include "Basics/ResultT.h"
 #include "Agency/AgencyCommon.h"
+#include "Basics/ResultT.h"
 
+#include <atomic>
+#include <chrono>
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <string_view>
-#include <cstring>
-#include <chrono>
-
-#include <vector>
-#include <unordered_map>
 #include <span>
+#include <vector>
 
 #include <velocypack/String.h>
 #include <velocypack/Slice.h>
