@@ -912,11 +912,6 @@ NodePtr Node::create(VPackSlice slice) {
                                       keyStr.c_str());
       }
 
-      // ADB_PROD_ASSERT(trans.find(keyStr) == nullptr)
-      //    << "key `" << keyStr
-      //    << "` could not be inserted, because it is "
-      //       "already present in the map. slice="
-      //    << slice.toJson();
       trans.set(std::move(keyStr), Node::create(sub));
     }
     return allocateNode(trans.persistent());
@@ -989,9 +984,15 @@ velocypack::ValueType consensus::Node::getVelocyPackValueType() const noexcept {
 
 std::atomic<std::size_t> Node::memoryUsage = 0;
 
-void Node::increaseMemoryUsage(std::size_t d) noexcept { memoryUsage += d; }
+void Node::increaseMemoryUsage(std::size_t d) noexcept {
+  memoryUsage.fetch_add(d, std::memory_order_relaxed);
+}
 
-void Node::decreaseMemoryUsage(std::size_t d) noexcept { memoryUsage -= d; }
+void Node::decreaseMemoryUsage(std::size_t d) noexcept {
+  [[maybe_unused]] auto previous =
+      memoryUsage.fetch_sub(d, std::memory_order_relaxed);
+  TRI_ASSERT(previous >= d);
+}
 
 constexpr std::string_view nodeMetricsHelpText =
     "Memory used by agency store/cache";
