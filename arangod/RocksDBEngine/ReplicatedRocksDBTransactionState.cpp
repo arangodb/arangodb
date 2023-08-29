@@ -54,6 +54,7 @@ Result ReplicatedRocksDBTransactionState::beginTransaction(
     return res;
   }
 
+  std::shared_lock lock{_collectionsLock};
   for (auto& col : _collections) {
     res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
               .beginTransaction();
@@ -67,6 +68,7 @@ Result ReplicatedRocksDBTransactionState::beginTransaction(
 
 /// @brief commit a transaction
 futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
+  std::shared_lock lock{_collectionsLock};
   _hasActiveTrx = false;
 
   if (!mustBeReplicated()) {
@@ -173,6 +175,7 @@ std::lock_guard<std::mutex> ReplicatedRocksDBTransactionState::lockCommit() {
 
 /// @brief abort and rollback a transaction
 Result ReplicatedRocksDBTransactionState::doAbort() {
+  std::shared_lock lock{_collectionsLock};
   _hasActiveTrx = false;
 
   if (!mustBeReplicated()) {
@@ -245,6 +248,7 @@ RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(
 }
 
 void ReplicatedRocksDBTransactionState::beginQuery(bool isModificationQuery) {
+  std::shared_lock lock{_collectionsLock};
   for (auto& col : _collections) {
     static_cast<ReplicatedRocksDBTransactionCollection&>(*col).beginQuery(
         isModificationQuery);
@@ -253,6 +257,7 @@ void ReplicatedRocksDBTransactionState::beginQuery(bool isModificationQuery) {
 
 void ReplicatedRocksDBTransactionState::endQuery(
     bool isModificationQuery) noexcept {
+  std::shared_lock lock{_collectionsLock};
   for (auto& col : _collections) {
     static_cast<ReplicatedRocksDBTransactionCollection&>(*col).endQuery(
         isModificationQuery);
@@ -261,6 +266,7 @@ void ReplicatedRocksDBTransactionState::endQuery(
 
 TRI_voc_tick_t ReplicatedRocksDBTransactionState::lastOperationTick()
     const noexcept {
+  std::shared_lock lock{_collectionsLock};
   return std::accumulate(
       _collections.begin(), _collections.end(), (TRI_voc_tick_t)0,
       [](auto maxTick, auto& col) {
@@ -271,7 +277,7 @@ TRI_voc_tick_t ReplicatedRocksDBTransactionState::lastOperationTick()
 }
 
 uint64_t ReplicatedRocksDBTransactionState::numCommits() const noexcept {
-  // TODO
+  std::shared_lock lock{_collectionsLock};
   return std::accumulate(
       _collections.begin(), _collections.end(), (uint64_t)0,
       [](auto sum, auto& col) {
@@ -283,6 +289,7 @@ uint64_t ReplicatedRocksDBTransactionState::numCommits() const noexcept {
 
 uint64_t ReplicatedRocksDBTransactionState::numIntermediateCommits()
     const noexcept {
+  std::shared_lock lock{_collectionsLock};
   return std::accumulate(
       _collections.begin(), _collections.end(), (uint64_t)0,
       [](auto sum, auto& col) {
@@ -315,6 +322,7 @@ ReplicatedRocksDBTransactionState::performIntermediateCommitIfRequired(
 }
 
 bool ReplicatedRocksDBTransactionState::hasOperations() const noexcept {
+  std::shared_lock lock{_collectionsLock};
   return std::any_of(
       _collections.begin(), _collections.end(), [](auto const& col) {
         return static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
@@ -323,6 +331,7 @@ bool ReplicatedRocksDBTransactionState::hasOperations() const noexcept {
 }
 
 uint64_t ReplicatedRocksDBTransactionState::numOperations() const noexcept {
+  std::shared_lock lock{_collectionsLock};
   return std::accumulate(
       _collections.begin(), _collections.end(), (uint64_t)0,
       [](auto ops, auto& col) {
@@ -339,6 +348,7 @@ uint64_t ReplicatedRocksDBTransactionState::numPrimitiveOperations()
 
 bool ReplicatedRocksDBTransactionState::ensureSnapshot() {
   bool result = false;
+  std::shared_lock lock{_collectionsLock};
   for (auto& col : _collections) {
     result |= static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
                   .ensureSnapshot();

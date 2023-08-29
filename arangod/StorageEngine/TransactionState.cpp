@@ -70,6 +70,7 @@ TransactionState::~TransactionState() {
   TRI_ASSERT(_status != transaction::Status::RUNNING);
 
   // process collections in reverse order, free all collections
+  std::shared_lock lock{_collectionsLock};
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
     (*it)->releaseUsage();
     delete (*it);
@@ -82,7 +83,7 @@ TransactionCollection* TransactionState::collection(
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
-  std::lock_guard lock(_collectionsLock);
+  std::shared_lock lock(_collectionsLock);
   auto collectionOrPos = findCollectionOrPos(cid);
 
   return std::visit(
@@ -104,6 +105,7 @@ TransactionCollection* TransactionState::collection(
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
+  std::shared_lock lock{_collectionsLock};
   auto it = std::find_if(_collections.begin(), _collections.end(),
                          [&name](TransactionCollection const* trxColl) {
                            return trxColl->collectionName() == name;
@@ -202,7 +204,7 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
                                                bool lockUsage) {
   Result res;
 
-  std::lock_guard lock(_collectionsLock);
+  std::unique_lock lock(_collectionsLock);
 
   // check if we already got this collection in the _collections vector
   auto colOrPos = findCollectionOrPos(cid);
@@ -285,6 +287,7 @@ Result TransactionState::useCollections() {
   Result res;
   // process collections in forward order
 
+  std::shared_lock lock{_collectionsLock};
   for (TransactionCollection* trxCollection : _collections) {
     res = trxCollection->lockUsage();
 
@@ -298,6 +301,7 @@ Result TransactionState::useCollections() {
 /// @brief find a collection in the transaction's list of collections
 TransactionCollection* TransactionState::findCollection(
     DataSourceId cid) const {
+  std::shared_lock lock{_collectionsLock};
   for (auto* trxCollection : _collections) {
     if (cid == trxCollection->id()) {
       // found
@@ -322,6 +326,8 @@ TransactionCollection* TransactionState::findCollection(
 ///        have to use this position for insert.
 auto TransactionState::findCollectionOrPos(DataSourceId cid) const
     -> std::variant<CollectionNotFound, CollectionFound> {
+  // This method is always called under a lock on _collectionsLock.
+
   size_t const n = _collections.size();
   size_t i;
 
@@ -417,6 +423,7 @@ Result TransactionState::checkCollectionPermission(
 /// @brief clear the query cache for all collections that were modified by
 /// the transaction
 void TransactionState::clearQueryCache() const {
+  std::shared_lock lock{_collectionsLock};
   if (_collections.empty()) {
     return;
   }

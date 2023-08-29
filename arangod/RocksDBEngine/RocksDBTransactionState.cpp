@@ -151,6 +151,7 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
     manager->endTransaction(_cacheTx);
     _cacheTx = nullptr;
 
+    std::shared_lock lock{_collectionsLock};
     for (auto& trxColl : _collections) {
       auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
       try {
@@ -325,6 +326,7 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const noexcept {
   if (!AccessMode::isWriteOrExclusive(_type)) {
     return false;
   }
+  std::shared_lock lock{_collectionsLock};
   return std::none_of(_collections.begin(), _collections.end(), [](auto* coll) {
     return AccessMode::isWrite(coll->accessType());
   });

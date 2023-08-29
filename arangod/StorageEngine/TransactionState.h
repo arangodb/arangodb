@@ -39,6 +39,7 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
+#include <shared_mutex>
 #include <string_view>
 #include <variant>
 
@@ -174,6 +175,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// @brief run a callback on all collections of the transaction
   template<typename F>
   void allCollections(F&& cb) {
+    std::shared_lock lock{_collectionsLock};
     for (auto& trxCollection : _collections) {
       TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
       if (!std::forward<F>(cb)(*trxCollection)) {  // abort early
@@ -183,7 +185,10 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   }
 
   /// @brief return the number of collections in the transaction
-  [[nodiscard]] size_t numCollections() const { return _collections.size(); }
+  [[nodiscard]] size_t numCollections() const {
+    std::shared_lock lock{_collectionsLock};
+    return _collections.size();
+  }
 
   /// @brief whether or not a transaction consists of a single operation
   [[nodiscard]] bool isSingleOperation() const {
@@ -392,7 +397,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   // in case of read-only transactions collections can be added lazily.
   // this can happen concurrently, so for this we need to protect the list
-  mutable std::mutex _collectionsLock;
+  mutable std::shared_mutex _collectionsLock;
   containers::SmallVector<TransactionCollection*, 8> _collections;
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
