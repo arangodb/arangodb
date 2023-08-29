@@ -1133,19 +1133,23 @@ class ClusterInfo final {
 
   ProtectionData _planProt;
 
-  uint64_t _planVersion;     // This is the version in the Plan which underlies
-                             // the data in _plannedCollections and _shards
-  uint64_t _planIndex;       // This is the Raft index, which corresponds to the
-                             // above plan version
+  uint64_t _planVersion;  // This is the version in the Plan which underlies
+                          // the data in _plannedCollections and _shards
+  uint64_t _planIndex;    // This is the Raft index, which corresponds to the
+                          // above plan version
+  uint64_t _planMemoryUsage;  // memory usage of VPack objects inside _plan
+
+  AssocUnorderedContainer<pmr::DatabaseID,
+                          AssocUnorderedContainer<pmr::ServerID, VPackSlice>>
+      _currentDatabases;  // from Current/Databases
+  ProtectionData _currentProt;
   uint64_t _currentVersion;  // This is the version in Current which underlies
                              // the data in _currentDatabases,
                              // _currentCollections and _shardsIds
   uint64_t _currentIndex;    // This is the Raft index, which corresponds to the
                              // above current version
-  AssocUnorderedContainer<pmr::DatabaseID,
-                          AssocUnorderedContainer<pmr::ServerID, VPackSlice>>
-      _currentDatabases;  // from Current/Databases
-  ProtectionData _currentProt;
+  uint64_t
+      _currentMemoryUsage;  // memory usage of VPack objects inside _current
 
   // We need information about collections, again we have
   // data from Plan and from Current.

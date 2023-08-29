@@ -23,18 +23,17 @@
 
 #pragma once
 
-#include "Basics/ResultT.h"
 #include "Agency/AgencyCommon.h"
+#include "Basics/ResultT.h"
 
+#include <atomic>
+#include <chrono>
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <string_view>
-#include <cstring>
-#include <chrono>
-
-#include <vector>
-#include <unordered_map>
 #include <span>
+#include <vector>
 
 #include <velocypack/String.h>
 #include <velocypack/Slice.h>
@@ -334,9 +333,6 @@ class Node : public std::enable_shared_from_this<Node> {
   }
 
   velocypack::ValueType getVelocyPackValueType() const noexcept;
-
-  bool isLeaveNode() const noexcept { return !isObject(); }
-  bool isPrimitiveValue() const noexcept { return !isObject() && !isArray(); }
 
   bool isReadLockable(std::string_view by) const;
   bool isWriteLockable(std::string_view by) const;
