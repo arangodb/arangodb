@@ -56,8 +56,8 @@ class RocksDBMethods {
                                           rocksdb::PinnableSlice*,
                                           ReadOwnWrites,
                                           rocksdb::Snapshot const*) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "RocksDBMethods does not provide MultiGet");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "RocksDBMethods does not provide GetFromSnapshot");
   }
 
   // Read multiple keys from snapshot and return multiple values and statuses
