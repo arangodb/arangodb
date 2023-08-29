@@ -79,7 +79,7 @@ function RevisionTreeTrackingSuite () {
       db._drop(cn);
     },
     
-    testMemoryUsageShouldIncreaseAfterBatchedInserts: function () {
+    testRevisionTreeMemoryUsageShouldIncreaseAfterBatchedInserts: function () {
       // wait until all pending estimates & revision tree buffers have been applied
       let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
       assertNull(res);
@@ -115,7 +115,7 @@ function RevisionTreeTrackingSuite () {
       assertTrue(metric2 === 0);
     },
     
-    testMemoryUsageShouldIncreaseAfterSingleInserts: function () {
+    testRevisionTreeMemoryUsageShouldIncreaseAfterSingleInserts: function () {
       // wait until all pending estimates & revision tree buffers have been applied
       let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
       assertNull(res);
@@ -158,7 +158,7 @@ function RevisionTreeTrackingSuite () {
       assertTrue(metric2 === 0);
     },
 
-    testMemoryUsageShouldIncreaseAndDecreaseAfterAql: function () {
+    testRevisionTreeMemoryUsageShouldIncreaseAndDecreaseAfterAql: function () {
       // wait until all pending estimates & revision tree buffers have been applied
       let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
       assertNull(res);
