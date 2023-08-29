@@ -3,6 +3,16 @@ devel
 
 * FE-248: Improve collections list UI.
 
+* BTS-1124: wait for license to be applied locally before responding to the request.
+
+* BTS-1566: remove redundant responsibility for creating local databases on
+  coordinators.
+
+* Prepare internal NetwortkFeature to transparently handle gzip-encoded
+  responses.
+
+* FE-309: Store created_at timestamp for queries in web UI.
+
 * Remove attribute `dfdb` from response of storage engine API (GET 
   `/_api/engine`). 
 

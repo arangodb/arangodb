@@ -52,6 +52,7 @@ auto inspect(Inspector& f, CollectionGroup::Attributes& x) {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionGroup& x) {
   return f.object(x).fields(f.field(StaticStrings::Id, x.id),
+                            f.field(StaticStrings::Leader, x.groupLeader),
                             f.field("collections", x.collections),
                             f.field("attributes", x.attributes));
 }

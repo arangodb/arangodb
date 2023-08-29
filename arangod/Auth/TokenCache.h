@@ -97,11 +97,10 @@ class TokenCache {
 
 #ifdef USE_ENTERPRISE
   /// set new jwt secret, regenerate _jwtToken
-  void setJwtSecrets(std::string const& active,
-                     std::vector<std::string> const& passive);
+  void setJwtSecrets(std::string active, std::vector<std::string> passive);
 #else
   /// set new jwt secret, regenerate _jwtToken
-  void setJwtSecret(std::string const& active);
+  void setJwtSecret(std::string active);
 #endif
 
   /// Get the jwt token, which should be used for communication
@@ -118,11 +117,12 @@ class TokenCache {
   /// Check JWT token contents
   TokenCache::Entry checkAuthenticationJWT(std::string const& secret);
 
-  bool validateJwtHeader(std::string const&);
-  TokenCache::Entry validateJwtBody(std::string const&);
-  bool validateJwtHMAC256Signature(std::string const&, std::string const&);
+  bool validateJwtHeader(std::string_view headerWebBase64);
+  TokenCache::Entry validateJwtBody(std::string_view bodyWebBase64);
+  bool validateJwtHMAC256Signature(std::string_view message,
+                                   std::string_view signatureWebBase64);
 
-  std::shared_ptr<velocypack::Builder> parseJson(std::string const& str,
+  std::shared_ptr<velocypack::Builder> parseJson(std::string_view str,
                                                  char const* hint);
 
   /// generate new superuser jwtToken

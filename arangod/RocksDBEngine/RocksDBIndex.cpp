@@ -106,7 +106,8 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
 
 RocksDBIndex::~RocksDBIndex() {
   _engine.removeIndexMapping(_objectId);
-  if (hasCache()) {
+  if (useCache()) {
+    TRI_ASSERT(_cacheManager != nullptr);
     destroyCache();
   }
 }
@@ -118,16 +119,13 @@ rocksdb::Comparator const* RocksDBIndex::comparator() const {
 void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   Index::toVelocyPackFigures(builder);
-  bool cacheInUse = hasCache();
-  builder.add("cacheInUse", VPackValue(cacheInUse));
-  if (cacheInUse) {
-    TRI_ASSERT(_cache != nullptr);
-    TRI_ASSERT(_cacheManager != nullptr);
-
-    auto [size, usage] = _cache->sizeAndUsage();
+  auto cache = useCache();
+  builder.add("cacheInUse", VPackValue(cache != nullptr));
+  if (cache != nullptr) {
+    auto [size, usage] = cache->sizeAndUsage();
     builder.add("cacheSize", VPackValue(size));
     builder.add("cacheUsage", VPackValue(usage));
-    auto hitRates = _cache->hitRates();
+    auto hitRates = cache->hitRates();
     double rate = hitRates.first;
     rate = std::isnan(rate) ? 0.0 : rate;
     builder.add("cacheLifeTimeHitRate", VPackValue(rate));
@@ -141,18 +139,16 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 void RocksDBIndex::load() {
-  if (_cacheEnabled) {
+  if (_cacheEnabled.load(std::memory_order_relaxed)) {
     TRI_ASSERT(_cacheManager != nullptr);
     setupCache();
   }
 }
 
 void RocksDBIndex::unload() {
-  if (hasCache()) {
+  if (useCache()) {
     TRI_ASSERT(_cacheManager != nullptr);
     destroyCache();
-    TRI_ASSERT(_cache == nullptr);
-    TRI_ASSERT(_cacheManager != nullptr);
   }
 }
 
@@ -169,8 +165,14 @@ void RocksDBIndex::toVelocyPack(
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 }
 
+void RocksDBIndex::setCacheEnabled(bool enable) noexcept {
+  // allow disabling and enabling of caches for the primary index
+  _cacheEnabled.store(enable, std::memory_order_relaxed);
+}
+
 void RocksDBIndex::setupCache() {
-  if (_cacheManager == nullptr || !_cacheEnabled) {
+  TRI_ASSERT(_cacheManager != nullptr);
+  if (!_cacheEnabled.load(std::memory_order_relaxed)) {
     // if we cannot have a cache, return immediately
     return;
   }
@@ -179,22 +181,25 @@ void RocksDBIndex::setupCache() {
   // by _cacheEnabled already.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  if (_cache == nullptr) {
+  auto cache = _cache;
+  if (cache == nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
     LOG_TOPIC("49e6c", DEBUG, Logger::CACHE) << "Creating index cache";
     // virtual call!
-    _cache = makeCache();
+    cache = makeCache();
+    std::atomic_store_explicit(&_cache, std::move(cache),
+                               std::memory_order_relaxed);
   }
 }
 
 void RocksDBIndex::destroyCache() noexcept {
-  if (_cache != nullptr) {
+  auto cache = _cache;
+  if (cache != nullptr) {
     try {
+      std::atomic_store_explicit(&_cache, {}, std::memory_order_relaxed);
       TRI_ASSERT(_cacheManager != nullptr);
-      // must have a cache...
       LOG_TOPIC("b5d85", DEBUG, Logger::CACHE) << "Destroying index cache";
-      _cacheManager->destroyCache(std::move(_cache));
-      _cache.reset();
+      _cacheManager->destroyCache(std::move(cache));
     } catch (...) {
       // meh
     }
@@ -245,10 +250,10 @@ void RocksDBIndex::truncateCommit(TruncateGuard&& guard,
                                   TRI_voc_tick_t /*tick*/,
                                   transaction::Methods* /*trx*/) {
   // simply drop the cache and re-create it
-  if (_cacheEnabled) {
+  if (_cacheEnabled.load(std::memory_order_relaxed)) {
+    TRI_ASSERT(_cacheManager != nullptr);
     destroyCache();
     setupCache();
-    TRI_ASSERT(_cache != nullptr);
   }
 }
 
@@ -328,7 +333,12 @@ void RocksDBIndex::compact() {
   }
 }
 
-bool RocksDBIndex::canWarmup() const noexcept { return hasCache(); }
+std::shared_ptr<cache::Cache> RocksDBIndex::useCache() const noexcept {
+  // note: this can return a nullptr. the caller has to check the result
+  return std::atomic_load_explicit(&_cache, std::memory_order_relaxed);
+}
+
+bool RocksDBIndex::canWarmup() const noexcept { return useCache() != nullptr; }
 
 std::shared_ptr<cache::Cache> RocksDBIndex::makeCache() const {
   TRI_ASSERT(_cacheManager != nullptr);
@@ -338,10 +348,9 @@ std::shared_ptr<cache::Cache> RocksDBIndex::makeCache() const {
 
 // banish given key from transactional cache
 bool RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
-  if (hasCache()) {
-    TRI_ASSERT(_cache != nullptr);
+  if (auto cache = useCache()) {
     do {
-      auto status = _cache->banish(data, static_cast<uint32_t>(len));
+      auto status = cache->banish(data, static_cast<uint32_t>(len));
       if (status == TRI_ERROR_NO_ERROR) {
         return true;
       }

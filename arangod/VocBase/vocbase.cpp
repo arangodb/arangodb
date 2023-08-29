@@ -54,13 +54,18 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
-#include "Containers/Helpers.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Containers/Helpers.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
+#include "Network/ConnectionPool.h"
+#include "Network/NetworkFeature.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
@@ -71,11 +76,6 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Replication2/Version.h"
-#include "Metrics/Counter.h"
-#include "Metrics/Gauge.h"
-#include "Network/ConnectionPool.h"
-#include "Network/NetworkFeature.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -502,7 +502,7 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
 
 void TRI_vocbase_t::stop() {
   try {
-    _logManager->resignAll();
+    shutdownReplicatedLogs();
 
     // stop replication
     if (_replicationApplier != nullptr) {

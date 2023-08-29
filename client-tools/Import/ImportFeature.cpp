@@ -93,12 +93,10 @@ void ImportFeature::collectOptions(
   options->addOption("--file", "The file to import (\"-\" for stdin).",
                      new StringParameter(&_filename));
 
-  options
-      ->addOption("--auto-rate-limit",
-                  "Adjust the data loading rate automatically, starting at "
-                  "`--batch-size` bytes per thread per second.",
-                  new BooleanParameter(&_autoChunkSize))
-      .setIntroducedIn(30711);
+  options->addOption("--auto-rate-limit",
+                     "Adjust the data loading rate automatically, starting at "
+                     "`--batch-size` bytes per thread per second.",
+                     new BooleanParameter(&_autoChunkSize));
 
   options->addOption("--backslash-escape",
                      "Use backslash as the escape character for quotes. Used "
@@ -247,11 +245,9 @@ void ImportFeature::collectOptions(
       "Show 10 second latency statistics (values in microseconds).",
       new BooleanParameter(&_latencyStats));
 
-  options
-      ->addOption("--skip-validation",
-                  "Skip document schema validation during import.",
-                  new BooleanParameter(&_skipValidation))
-      .setIntroducedIn(30700);
+  options->addOption("--skip-validation",
+                     "Skip document schema validation during import.",
+                     new BooleanParameter(&_skipValidation));
 }
 
 void ImportFeature::validateOptions(
