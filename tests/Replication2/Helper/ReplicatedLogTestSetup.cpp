@@ -71,15 +71,23 @@ void LogConfig::installConfig(bool establishLeadership) {
       IHasScheduler::runAll(followers);
     }
 
+    EXPECT_TRUE(future.isReady());
     EXPECT_TRUE(future.hasValue());
     auto leaderStatus = leader->get().log->getQuickStatus();
     EXPECT_EQ(leaderStatus.role, replicated_log::ParticipantRole::kLeader);
     EXPECT_TRUE(leaderStatus.leadershipEstablished);
     for (auto& follower : followers) {
-      auto followerStatus = follower.get().log->getQuickStatus();
-      EXPECT_EQ(followerStatus.role,
-                replicated_log::ParticipantRole::kFollower);
-      EXPECT_TRUE(followerStatus.leadershipEstablished);
+      if (follower.get().abstractFollowerType ==
+          LogArguments::AbstractFollowerType::DelayedLogFollower) {
+        auto followerStatus = follower.get().log->getQuickStatus();
+        EXPECT_EQ(followerStatus.role,
+                  replicated_log::ParticipantRole::kFollower);
+        EXPECT_TRUE(followerStatus.leadershipEstablished);
+      } else {
+        // The fake abstract follower doesn't have a status, and doesn't keep
+        // track of the commit index. So no checks here.
+        TRI_ASSERT(follower.get().fakeAbstractFollower != nullptr);
+      }
     }
   }
 }

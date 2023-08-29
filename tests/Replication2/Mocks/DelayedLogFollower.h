@@ -72,8 +72,13 @@ struct DelayedLogFollower : replicated_log::ILogFollower {
     WaitForAsyncPromise promise;
   };
   [[nodiscard]] auto pendingAppendEntries() const
-      -> std::list<std::shared_ptr<AsyncRequest>>;
+      -> std::list<std::shared_ptr<AsyncRequest>> const&;
   [[nodiscard]] auto hasPendingAppendEntries() const -> bool;
+  [[nodiscard]] auto currentRequest() const
+      -> replicated_log::AppendEntriesRequest const& {
+    TRI_ASSERT(_asyncQueue.size() == 1);
+    return _asyncQueue.front()->request;
+  }
 
   auto getParticipantId() const noexcept -> ParticipantId const& override {
     return _follower->getParticipantId();

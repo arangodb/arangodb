@@ -77,7 +77,7 @@ void DelayedLogFollower::runAllAsyncAppendEntries() {
 }
 
 auto DelayedLogFollower::pendingAppendEntries() const
-    -> std::list<std::shared_ptr<AsyncRequest>> {
+    -> std::list<std::shared_ptr<AsyncRequest>> const& {
   return _asyncQueue;
 }
 

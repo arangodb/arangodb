@@ -39,8 +39,8 @@ TEST_F(MultiTermTest, add_follower_test) {
 
   config->installConfig(true);
   {
-    auto idx = leaderLogContainer->stateHandleMock->logLeaderMethods->insert(
-        LogPayload::createFromString("first entry"), false);
+    auto idx =
+        leaderLogContainer->insert(LogPayload::createFromString("first entry"));
     auto f = leaderLog->getParticipant()->waitFor(idx);
     // Note that the leader inserts a first log entry to establish leadership
     ASSERT_EQ(idx, LogIndex{2});
@@ -106,8 +106,8 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
 
   config->installConfig(true);
   {
-    auto idx = leaderLogContainer->stateHandleMock->logLeaderMethods->insert(
-        LogPayload::createFromString("first entry"), false);
+    auto idx =
+        leaderLogContainer->insert(LogPayload::createFromString("first entry"));
     auto f = leaderLog->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f.isReady());
     leaderLogContainer->runAll();
@@ -137,8 +137,8 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
                            {.term = 1_T, .writeConcern = 2});
   config->installConfig(true);
   {
-    auto idx = leaderLogContainer->stateHandleMock->logLeaderMethods->insert(
-        LogPayload::createFromString("first entry"), false);
+    auto idx =
+        leaderLogContainer->insert(LogPayload::createFromString("first entry"));
     auto f = leaderLog->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f.isReady());
     leaderLogContainer->runAll();
@@ -227,8 +227,8 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
                            {.term = 1_T, .writeConcern = 2});
   config->installConfig(true);
   {
-    auto idx = leaderLogContainer->stateHandleMock->logLeaderMethods->insert(
-        LogPayload::createFromString("first entry"), false);
+    auto idx =
+        leaderLogContainer->insert(LogPayload::createFromString("first entry"));
     auto f = leaderLog->getParticipant()->waitFor(idx);
     EXPECT_FALSE(f.isReady());
     leaderLogContainer->runAll();

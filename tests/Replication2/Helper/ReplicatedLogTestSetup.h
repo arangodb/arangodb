@@ -26,6 +26,7 @@
 #include <gtest/gtest.h>
 
 #include "Replication2/Mocks/DelayedLogFollower.h"
+#include "Replication2/Mocks/FakeAbstractFollower.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/FakeFollowerFactory.h"
 #include "Replication2/Mocks/FakeReplicatedState.h"
@@ -59,6 +60,11 @@ struct LogArguments {
 
   std::shared_ptr<ReplicatedLogGlobalSettings> options =
       std::make_shared<ReplicatedLogGlobalSettings>();
+
+  enum class AbstractFollowerType {
+    DelayedLogFollower,
+    FakeAbstractFollower
+  } abstractFollowerType = AbstractFollowerType::DelayedLogFollower;
 };
 struct ConfigArguments {
   LogTerm term = LogTerm{1};
@@ -86,6 +92,8 @@ struct LogConfig {
       ConfigArguments configArguments) -> LogConfig;
 };
 
+struct LogWithFakes {};
+
 // Holds one replicated log participant, together will all the necessary mocks
 // and fakes.
 struct LogContainer : IHasScheduler {
@@ -97,6 +105,7 @@ struct LogContainer : IHasScheduler {
         logId(logId),
         serverInstance(std::move(serverId)),
         logMetrics(std::move(logMetrics)),
+        abstractFollowerType(fakeArguments.abstractFollowerType),
         storageContext(
             std::make_shared<storage::test::FakeStorageEngineMethodsContext>(
                 12, gid.id, storageExecutor, fakeArguments.initialLogRange,
@@ -111,34 +120,26 @@ struct LogContainer : IHasScheduler {
         auto& followerContainer = it.get();
         fakeFollowerFactory->followerThunks.try_emplace(
             followerContainer.serverInstance.serverId, [&followerContainer]() {
-              auto follower = followerContainer.getAsFollower();
-              if (followerContainer.delayedLogFollower != nullptr) {
-                // followerContainer.delayedLogFollower->scheduler.dropWork();
-                // followerContainer.delayedLogFollower->replaceFollowerWith(
-                //     follower);
-              } else {
-                // // Note: Follower instances must have their config installed
-                // // already for getAsFollower to work.
-                // // TODO catch exception and print an error?
-                followerContainer.delayedLogFollower =
-                    std::make_shared<DelayedLogFollower>(follower);
-              }
-              return followerContainer.delayedLogFollower;
+              return followerContainer.getAbstractFollower();
             });
       }
     } else {
       stateHandleMock->expectFollower();
-      if (delayedLogFollower == nullptr) {
-        delayedLogFollower = std::make_shared<DelayedLogFollower>(nullptr);
-      }
     }
     auto fut =
         log->updateConfig(std::move(conf->termSpec),
                           std::move(conf->participantsConfig), serverInstance);
     if (!isLeader) {
+      // TODO This is to trigger the "lazy instantiate" of the follower.
+      //      That functionality should be moved to a separate function.
+      std::ignore = getAbstractFollower();
       return std::move(fut).thenValue([&](futures::Unit&&) {
-        delayedLogFollower->scheduler.dropWork();
-        delayedLogFollower->replaceFollowerWith(getAsFollower());
+        if (delayedLogFollower != nullptr) {
+          delayedLogFollower->scheduler.dropWork();
+          delayedLogFollower->replaceFollowerWith(getAsFollower());
+        } else {
+          TRI_ASSERT(fakeAbstractFollower != nullptr);
+        }
       });
     } else {
       return fut;
@@ -159,12 +160,55 @@ struct LogContainer : IHasScheduler {
     return follower;
   }
 
+  // Get an AbstractFollower for the leader to use. Will usually be a
+  // DelayedLogFollower, but can also be a FakeAbstractFollower.
+  // TODO This is both a lazy instantiate, and a get. Maybe split these up.
+  [[nodiscard]] auto getAbstractFollower()
+      -> std::shared_ptr<replicated_log::AbstractFollower> {
+    switch (abstractFollowerType) {
+      case LogArguments::AbstractFollowerType::DelayedLogFollower: {
+        if (delayedLogFollower != nullptr) {
+          // followerContainer.delayedLogFollower->scheduler.dropWork();
+          // followerContainer.delayedLogFollower->replaceFollowerWith(
+          //     follower);
+        } else {
+          // // Note: Follower instances must have their config installed
+          // // already for getAsFollower to work.
+          // // TODO catch exception and print an error?
+          auto follower = getAsFollower();
+          delayedLogFollower = std::make_shared<DelayedLogFollower>(follower);
+        }
+        TRI_ASSERT(fakeAbstractFollower == nullptr);
+        return delayedLogFollower;
+      } break;
+      case LogArguments::AbstractFollowerType::FakeAbstractFollower: {
+        if (fakeAbstractFollower == nullptr) {
+          fakeAbstractFollower =
+              std::make_shared<FakeAbstractFollower>(serverInstance.serverId);
+        }
+        TRI_ASSERT(delayedLogFollower == nullptr);
+        return fakeAbstractFollower;
+      } break;
+    }
+  }
+  // Calls insert from the state machine's perspective. Only works on the leader
+  // (obviously), and only after leadership has been established.
+  [[nodiscard]] auto insert(LogPayload payload, bool waitForSync = false) {
+    return stateHandleMock->logLeaderMethods->insert(std::move(payload),
+                                                     waitForSync);
+  }
+
   auto runAll() noexcept -> std::size_t override {
-    if (delayedLogFollower == nullptr) {
-      return IHasScheduler::runAll(logScheduler, storageExecutor);
-    } else {
+    if (delayedLogFollower != nullptr) {
+      TRI_ASSERT(fakeAbstractFollower == nullptr);
       return IHasScheduler::runAll(logScheduler, storageExecutor,
                                    delayedLogFollower->scheduler);
+    } else if (fakeAbstractFollower != nullptr) {
+      TRI_ASSERT(delayedLogFollower == nullptr);
+      return IHasScheduler::runAll(logScheduler, storageExecutor,
+                                   fakeAbstractFollower);
+    } else {
+      return IHasScheduler::runAll(logScheduler, storageExecutor);
     }
   }
   auto hasWork() const noexcept -> bool override {
@@ -195,6 +239,8 @@ struct LogContainer : IHasScheduler {
   std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetrics;
 
   GlobalLogIdentifier gid = GlobalLogIdentifier("db", logId);
+
+  LogArguments::AbstractFollowerType abstractFollowerType;
 
   std::shared_ptr<storage::rocksdb::test::DelayedExecutor> storageExecutor =
       std::make_shared<storage::rocksdb::test::DelayedExecutor>();
@@ -229,7 +275,11 @@ struct LogContainer : IHasScheduler {
   replicated_log::ReplicatedLogConnection connection = log->connect(
       std::unique_ptr<replicated_log::IReplicatedStateHandle>(stateHandleMock));
 
+  // Note that we only ever use one of these. If the FakeAbstractFollower
+  // is used, `log` will be unused.
+  // TODO Maybe we can abstract this better, so this isn't such a pitfall.
   std::shared_ptr<DelayedLogFollower> delayedLogFollower = nullptr;
+  std::shared_ptr<FakeAbstractFollower> fakeAbstractFollower = nullptr;
 };
 
 // One replicated log instance, including all participants, possibly going over
@@ -239,7 +289,9 @@ struct WholeLog {
   // Relying on stable pointers and references to logs for now. Move to
   // shared_ptr<LogContainer> if necessary.
   std::map<ParticipantId, LogContainer> logs;
-  // TODO We'll probably need multiple configs in the same term.
+  // TODO We might need to allow for multiple configs in the same term, or
+  //      changing a config mid-term.
+  //      Currently, we don't need the whole history, but it doesn't hurt.
   std::map<LogTerm, LogConfig> terms;
 
   explicit WholeLog(LoggerContext loggerContext, LogId logId)
@@ -357,6 +409,9 @@ struct ReplicatedLogTest : ::testing::Test {
     return wholeLog.createParticipant(fakeArguments);
   }
 
+  // TODO Maybe take `LogContainer*` instead of
+  //      `std::reference_wrapper<LogContainer>`? It should match what
+  //      createParticipant returns, for convenience and consistency.
   auto addNewTerm(std::optional<std::reference_wrapper<LogContainer>> leader,
                   std::vector<std::reference_wrapper<LogContainer>> follower,
                   ConfigArguments configArguments) {
