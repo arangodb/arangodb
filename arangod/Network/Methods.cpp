@@ -249,7 +249,7 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
   NetworkFeature& nf = server.getFeature<NetworkFeature>();
   nf.sendRequest(
       *pool, options, endpoint, std::move(req),
-      [pack(std::move(p)), pool, &options, endpoint](
+      [pack(std::move(p)), pool, options, endpoint](
           fuerte::Error err, std::unique_ptr<fuerte::Request> req,
           std::unique_ptr<fuerte::Response> res, bool isFromPool) mutable {
         TRI_ASSERT(req != nullptr || err == fuerte::Error::ConnectionCanceled);
@@ -258,8 +258,8 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
                            err == fuerte::Error::WriteError)) {
           // retry under certain conditions
           // cppcheck-suppress accessMoved
-          actuallySendRequest(std::move(pack), pool, options, endpoint,
-                              std::move(req));
+          actuallySendRequest(std::move(pack), pool, std::move(options),
+                              std::move(endpoint), std::move(req));
           return;
         }
 
