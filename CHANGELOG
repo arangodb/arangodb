@@ -1,3 +1,10 @@
+v3.11.4 (XXXX-XX-XX)
+--------------------
+
+* Fixed BTS-1590: Fixed potentially undefined behavior in NetworkFeature, when
+  it was referring to an options object that could have been destroyed already.
+
+
 v3.11.3 (2023-08-17)
 --------------------
 
@@ -13,9 +20,6 @@ v3.11.3 (2023-08-17)
 * BTS-1549: adjust permission handling in experimental dump to the same behavior
   as in non-experimental dump.
 
-* Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition was
-  executed through an index lookup.
-
 * Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used in
   the row based variant like (e.g. WINDOW { preceding: 1, following: 1 }) it
   errored with:  mandatory variable "inVariable" not found. This variable is now
@@ -24,9 +28,6 @@ v3.11.3 (2023-08-17)
 * Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used on
   a OneShardDatabase, or on data from a collection that only has one shard, the
   preceding and following clauses were flipped.
-
-* Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition was
-  executed through an index lookup.
 
 * Updated arangosync to v2.19.3.
 
