@@ -1047,7 +1047,7 @@ Result RocksDBCollection::readFromSnapshot(
   }
 
   return lookupDocumentVPack(
-      trx, token, cb, /*withCache*/ true, readOwnWrites,
+      trx, token, cb, /*withCache*/ false, readOwnWrites,
       basics::downCast<RocksDBEngine::RocksDBSnapshot>(&snapshot));
 }
 

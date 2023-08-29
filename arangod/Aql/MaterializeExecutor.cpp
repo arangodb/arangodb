@@ -25,6 +25,10 @@
 
 #include "Aql/QueryContext.h"
 #include "Aql/Stats.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "IResearch/IResearchReadUtils.h"
 #include <formats/formats.hpp>
@@ -153,6 +157,40 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
     // between iresearch and storage engine
     fillBuffer(inputRange);
   }
+  if constexpr (!localDocumentId && kEnableMultiGet) {
+    auto it = _readOrder.begin();
+    auto end = _readOrder.end();
+    std::sort(it, end, [](const auto& lhs, const auto& rhs) {
+      return lhs->segment->snapshot < rhs->segment->snapshot;
+    });
+    StorageSnapshot const* lastSnapshot{};
+    auto fillKeys = [&](size_t& i) {
+      if (it == end) {
+        return MultiGetState::kLast;
+      }
+      auto const* snapshot = (*it)->segment->snapshot;
+      if (lastSnapshot != snapshot) {
+        lastSnapshot = snapshot;
+        return MultiGetState::kWork;
+      }
+      _context.snapshot = snapshot;
+
+      auto doc = it++;
+      auto const storage = (*doc)->storage;
+      if (ADB_UNLIKELY(!storage.isSet())) {
+        return MultiGetState::kNext;
+      }
+
+      auto& logical = *(*doc)->segment->collection;
+      _context.serialize(_trx, logical, storage);
+
+      (*doc)->segment = nullptr;
+      (*doc)->executor = i++;
+
+      return MultiGetState::kNext;
+    };
+    _context.multiGet(_readOrder.size(), fillKeys);
+  }
   auto doc = _bufferedDocs.begin();
   auto end = _bufferedDocs.end();
   auto& callback = _readDocumentContext._callback;
@@ -179,7 +217,6 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
       }
     }
 
-    // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
     if constexpr (localDocumentId) {
       static_assert(isSingleCollection);
       written =
@@ -190,13 +227,18 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
                   callback, ReadOwnWrites::no)
               .ok();
     } else if (doc != end) {
-      auto const storage = doc->storage;
-      if (storage.isSet()) {
-        written =
-            doc->segment->collection->getPhysical()
-                ->readFromSnapshot(&_trx, storage, callback, ReadOwnWrites::no,
-                                   *doc->segment->snapshot)
-                .ok();
+      if (auto* segment = doc->segment; kEnableMultiGet && segment == nullptr) {
+        auto const executor = doc->executor;
+        written = _context.statuses[executor].ok();
+        if (written) {
+          callback({}, VPackSlice{reinterpret_cast<uint8_t const*>(
+                           _context.values[executor].ToStringView().data())});
+        }
+      } else if (auto const storage = doc->storage; storage.isSet()) {
+        written = segment->collection->getPhysical()
+                      ->readFromSnapshot(&_trx, storage, callback,
+                                         ReadOwnWrites::no, *segment->snapshot)
+                      .ok();
       }
       ++doc;
     }

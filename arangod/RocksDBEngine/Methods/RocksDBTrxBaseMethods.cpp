@@ -574,13 +574,27 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
   return {};
 }
 
+void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
+                                     rocksdb::ColumnFamilyHandle& family,
+                                     size_t count, rocksdb::Slice* keys,
+                                     rocksdb::PinnableSlice* values,
+                                     rocksdb::Status* statuses) {
+  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
+    _readOptions.snapshot = was;
+  };
+  _readOptions.snapshot = snapshot;
+
+  // Timestamps and multiple ColumnFamilies are not necessary for us
+  _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
+}
+
 rocksdb::Status RocksDBTrxBaseMethods::GetFromSnapshot(
     rocksdb::ColumnFamilyHandle* family, rocksdb::Slice const& slice,
     rocksdb::PinnableSlice* pinnable, ReadOwnWrites rw,
     rocksdb::Snapshot const* snapshot) {
-  auto oldSnapshot = _readOptions.snapshot;
-  auto restoreSnapshot = absl::Cleanup{
-      [oldSnapshot, this]() { _readOptions.snapshot = oldSnapshot; }};
+  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
+    _readOptions.snapshot = was;
+  };
   _readOptions.snapshot = snapshot;
   return Get(family, slice, pinnable, rw);
 }

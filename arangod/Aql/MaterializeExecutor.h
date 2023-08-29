@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
+#include "Aql/MultiGet.h"
 #include "Indexes/IndexIterator.h"
 #include "IResearch/SearchDoc.h"
 #include "Transaction/Methods.h"
@@ -161,13 +162,17 @@ class MaterializeExecutor {
         : segment{doc.segment()}, search{doc.doc()} {}
 
     iresearch::ViewSegment const* segment;
+
     union {
       irs::doc_id_t search;
       LocalDocumentId storage;
+      size_t executor;
     };
   };
   std::vector<BufferRecord> _bufferedDocs;
   std::vector<BufferRecord*> _readOrder;
+
+  MultiGetContext _context;
 
   transaction::Methods _trx;
   ReadContext _readDocumentContext;
