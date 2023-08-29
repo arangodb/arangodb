@@ -4,6 +4,10 @@ v3.11.4 (XXXX-XX-XX)
 * Fixed BTS-1590: Fixed potentially undefined behavior in NetworkFeature, when
   it was referring to an options object that could have been destroyed already.
 
+* Allow compression content-negotation in metrics API, so that responses from
+  the metrics API at `/_admin/metrics` can be sent compressed if the client
+  supports it.
+
 
 v3.11.3 (2023-08-17)
 --------------------
