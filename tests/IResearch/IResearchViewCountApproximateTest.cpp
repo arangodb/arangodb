@@ -27,6 +27,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IResearchViewExecutor.h"
+#include "Aql/IResearchViewExecutor.tpp"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
