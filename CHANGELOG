@@ -3,6 +3,23 @@ devel
 
 * FE-365: fix query import breaking due to extra fields.
 
+* BTS-1124: wait for license to be applied locally before responding to the request.
+
+* BTS-1566: remove redundant responsibility for creating local databases on
+  coordinators.
+
+* Prepare internal NetwortkFeature to transparently handle gzip-encoded
+  responses.
+
+* FE-309: Store created_at timestamp for queries in web UI.
+
+* Remove attribute `dfdb` from response of storage engine API (GET 
+  `/_api/engine`). 
+
+* The storage engine API (GET `/_api/engine`) now returns an `endianness`
+  attribute for the RocksDB storage engine on single servers and database
+  servers.
+
 * Allow compression content-negotation in metrics API, so that responses from
   the metrics API at `/_admin/metrics` can be sent compressed if the client
   supports it.

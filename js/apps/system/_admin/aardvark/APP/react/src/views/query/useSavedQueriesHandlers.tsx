@@ -20,7 +20,12 @@ export const useSavedQueriesHandlers = ({
   const onSaveAs = async (queryName: string) => {
     const newQueries = [
       ...(savedQueries || []),
-      { name: queryName, value: queryValue, parameter: queryBindParams }
+      {
+        name: queryName,
+        value: queryValue,
+        parameter: queryBindParams,
+        created_at: Date.now()
+      }
     ];
     await patchQueries({
       queries: newQueries,
@@ -39,6 +44,7 @@ export const useSavedQueriesHandlers = ({
             name: queryName,
             value: queryValue,
             parameter: queryBindParams,
+            created_at: query.created_at,
             modified_at: Date.now()
           };
         }

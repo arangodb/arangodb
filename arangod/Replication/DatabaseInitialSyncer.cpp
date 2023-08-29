@@ -215,9 +215,9 @@ arangodb::Result fetchRevisions(
     // server replication when the leader uses authentication with
     // username/password
     headers.emplace(arangodb::StaticStrings::Authorization,
-                    "Basic " + arangodb::basics::StringUtils::encodeBase64(
-                                   config.applier._username + ":" +
-                                   config.applier._password));
+                    "Basic " + absl::Base64Escape(
+                                   absl::StrCat(config.applier._username, ":",
+                                                config.applier._password)));
   }
 
   config.progress.set("fetching documents by revision for collection '" +
