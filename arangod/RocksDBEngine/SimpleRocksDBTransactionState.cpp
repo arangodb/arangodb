@@ -94,7 +94,6 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
   // here, as it wouldn't be safe
   bool disableIndexing = true;
 
-  std::shared_lock lock{_collectionsLock};
   for (auto& trxCollection : _collections) {
     if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
       continue;
@@ -227,7 +226,6 @@ rocksdb::SequenceNumber SimpleRocksDBTransactionState::prepare() {
 
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
 
-  std::shared_lock lock{_collectionsLock};
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
 
@@ -241,7 +239,6 @@ rocksdb::SequenceNumber SimpleRocksDBTransactionState::prepare() {
 void SimpleRocksDBTransactionState::commit(
     rocksdb::SequenceNumber lastWritten) {
   TRI_ASSERT(lastWritten > 0);
-  std::shared_lock lock{_collectionsLock};
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
     // we need this in case of an intermediate commit. The number of
@@ -252,7 +249,6 @@ void SimpleRocksDBTransactionState::commit(
 }
 
 void SimpleRocksDBTransactionState::cleanup() {
-  std::shared_lock lock{_collectionsLock};
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
     coll->abortCommit(id());

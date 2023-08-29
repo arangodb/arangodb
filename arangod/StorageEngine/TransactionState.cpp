@@ -70,7 +70,6 @@ TransactionState::~TransactionState() {
   TRI_ASSERT(_status != transaction::Status::RUNNING);
 
   // process collections in reverse order, free all collections
-  std::shared_lock lock{_collectionsLock};
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
     (*it)->releaseUsage();
     delete (*it);
@@ -85,6 +84,7 @@ TransactionCollection* TransactionState::collection(
 
   std::shared_lock lock(_collectionsLock);
   auto collectionOrPos = findCollectionOrPos(cid);
+  lock.unlock();
 
   return std::visit(
       overload{
@@ -286,8 +286,6 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
 Result TransactionState::useCollections() {
   Result res;
   // process collections in forward order
-
-  std::shared_lock lock{_collectionsLock};
   for (TransactionCollection* trxCollection : _collections) {
     res = trxCollection->lockUsage();
 
@@ -423,7 +421,6 @@ Result TransactionState::checkCollectionPermission(
 /// @brief clear the query cache for all collections that were modified by
 /// the transaction
 void TransactionState::clearQueryCache() const {
-  std::shared_lock lock{_collectionsLock};
   if (_collections.empty()) {
     return;
   }
