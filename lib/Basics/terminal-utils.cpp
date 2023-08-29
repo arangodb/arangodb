@@ -42,7 +42,8 @@ TerminalSize defaultTerminalSize() {
 
     if (e != 0) {
       bool valid = false;
-      int value = static_cast<int>(NumberUtils::atoi_positive(e, e + strlen(e), valid);
+      int value =
+          static_cast<int>(NumberUtils::atoi_positive(e, e + strlen(e), valid));
 
       if (valid && columns != 0) {
         return value;

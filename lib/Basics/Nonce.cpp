@@ -30,6 +30,8 @@
 #include <mutex>
 #include <string_view>
 
+#include <absl/strings/escaping.h>
+
 #include "Nonce.h"
 
 #include "Basics/StringUtils.h"
@@ -66,8 +68,8 @@ std::string createNonce() {
   memcpy(buffer + 4, &rand1, 4);
   memcpy(buffer + 8, &rand2, 4);
 
-  return StringUtils::encodeBase64U(
-      std::string_view(reinterpret_cast<char const*>(&buffer[0]), 12));
+  return absl::WebSafeBase64Escape(
+      std::string_view{reinterpret_cast<char const*>(&buffer[0]), 12});
 }
 
 bool checkAndMark(std::string const& nonce) {

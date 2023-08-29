@@ -354,7 +354,7 @@ const replicatedStateFollowerSuite = function (dbParams) {
   let logs = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
-    lh.testHelperFunctions(database, {replicationVersion: "2"});
+    lh.testHelperFunctions(database, dbParams);
 
   return {
     setUpAll,
@@ -363,8 +363,12 @@ const replicatedStateFollowerSuite = function (dbParams) {
       collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": rc, "replicationFactor": rc});
       shards = collection.shards();
       shardId = shards[0];
-      shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
-      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+      if (isReplication2) {
+        shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+        logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+      } else {
+        shardsToLogs = {[shardId]: null};
+      }
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
@@ -583,20 +587,51 @@ const replicatedStateRecoverySuite = function () {
  */
 const replicatedStateDocumentStoreSuiteReplication1 = function () {
   const dbNameR1 = "replication1TestDatabase";
-  const {setUpAll, tearDownAll, setUp, tearDown} =
+  const {setUpAll, tearDownAll, setUp, tearDownAnd} =
     lh.testHelperFunctions(dbNameR1, {replicationVersion: "1"});
+  let collection = null;
 
   return {
     setUpAll,
     tearDownAll,
     setUp,
-    tearDown,
+    tearDown: tearDownAnd(() => {
+      if (collection !== null) {
+        collection.drop();
+      }
+      collection = null;
+    }),
 
     testDoesNotCreateReplicatedStateForEachShard: function() {
-      db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+      collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
       let plan = lh.readAgencyValueAt(`Plan/ReplicatedLogs/${dbNameR1}`);
       assertEqual(plan, undefined, `Expected no replicated logs in agency, got ${JSON.stringify(plan)}`);
     },
+
+    testChangeCollectionProperties: function () {
+      // This test does not work with replication version 2,
+      // because the collection properties must be written to Target.
+      // I'm leaving this test here for now, because it is a good example.
+      // We should eventually port it to replication2.
+      collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
+      collection.properties({computedValues: [{
+          name: "createdAt",
+          expression: "RETURN DATE_NOW()",
+          overwrite: true,
+          computeOn: ["insert"]
+      }]});
+
+      let cnt = 0;
+      lh.waitFor(() => {
+        ++cnt;
+        collection.insert({_key: `bar${cnt}`});
+        let doc = collection.document(`bar${cnt}`);
+        if ("createdAt" in doc) {
+          return true;
+        }
+        return Error(`No createdAt property in doc: ${JSON.stringify(doc)}`);
+      });
+    }
   };
 };
 
@@ -917,10 +952,17 @@ const replicatedStateSnapshotTransferSuite = function () {
   };
 };
 
+/**
+ * This test suite checks the correctness of a DocumentState shard-related operations.
+ */
 const replicatedStateDocumentShardsSuite = function () {
-  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd, stopServerWait} =
       lh.testHelperFunctions(database, {replicationVersion: "2"});
 
+  /*
+   * For each shard of the collection, go through the list of corresponding servers.
+   * Then, for each server, check that the shard is bound to the correct replicated log.
+   */
   const checkCollectionShards = function (collection) {
     const shards = collection.shards(true);
     const shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
@@ -940,25 +982,91 @@ const replicatedStateDocumentShardsSuite = function () {
     setUp: setUpAnd(() => {
     }),
     tearDown: tearDownAnd(() => {
+      db._drop(collectionName);
     }),
 
     testCreateSingleCollection: function () {
       const collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
       checkCollectionShards(collection);
-      collection.drop();
     },
 
     testCreateMultipleCollections: function () {
       const collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
       checkCollectionShards(collection);
-      const collection2 = db._create("other-collection", {
-        numberOfShards: 4,
-        distributeShardsLike: collectionName,
-      });
-      checkCollectionShards(collection2);
-      collection2.drop();
-      collection.drop();
+      try {
+        const collection2 = db._create("other-collection", {
+          numberOfShards: 4,
+          distributeShardsLike: collectionName,
+        });
+        checkCollectionShards(collection2);
+      } finally {
+        db._drop("other-collection");
+      }
     },
+
+    testModifyShard: function () {
+      const collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
+
+      // TODO currently we cannot modify collection.properties for replication2, because the API must write to `Target`.
+      const cid = collection._id;
+      let {plan} = ch.readCollection(database, cid);
+      plan.computedValues = [{
+        name: "createdAt",
+        expression: "RETURN DATE_NOW()",
+        overwrite: true,
+        keepNull: true,
+        failOnWarning: false,
+        computeOn: ["insert"]
+      }];
+      helper.agency.set(`Plan/Collections/${database}/${cid}`, plan);
+      helper.agency.increaseVersion(`Plan/Version`);
+
+      // Wait for the shard to be modified.
+      let cnt = 0;
+      lh.waitFor(() => {
+        ++cnt;
+        collection.insert({_key: `bar${cnt}`});
+        let doc = collection.document(`bar${cnt}`);
+        if ("createdAt" in doc) {
+          return true;
+        }
+        return Error(`No createdAt property in doc: ${JSON.stringify(doc)}`);
+      });
+      const firstTermCollection = collection.toArray();
+
+      // Get the log id.
+      const {logId, shardId} = dh.getSingleLogId(database, collection);
+
+      // Check if the ModifyShard command appears in the log during the current term.
+      let logContents = lh.dumpLogHead(logId);
+      let modifyShardEntryFound = _.some(logContents, entry => {
+        if (entry.payload === undefined) {
+          return false;
+        }
+        return entry.payload.operation.type === "ModifyShard";
+      });
+      assertTrue(modifyShardEntryFound, `Log contents for ${shardId}: ${JSON.stringify(logContents)}`);
+
+      // Trigger a fail-over, so that ModifyShard is executed during recovery.
+      const participants = lhttp.listLogs(lh.coordinators[0], database).result[logId];
+      let leader = participants[0];
+      let followers = participants.slice(1);
+      let term = lh.readReplicatedLogAgency(database, logId).plan.currentTerm.term;
+      let newTerm = term + 2;
+      stopServerWait(leader);
+      lh.waitFor(lp.replicatedLogLeaderEstablished(database, logId, newTerm, followers));
+
+      // The new leader should have executed the ModifyShard command.
+      collection.insert({_key: "foo"});
+      let doc = collection.document("foo");
+      assertTrue('createdAt' in doc, JSON.stringify(doc));
+
+      // The previous computed-values should hold.
+      for (let originalDoc of firstTermCollection) {
+        let doc = collection.document(originalDoc._key);
+        assertEqual(doc, originalDoc);
+      }
+    }
   };
 };
 

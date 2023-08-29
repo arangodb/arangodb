@@ -280,29 +280,36 @@ RestStatus RestMetricsHandler::makeRedirection(std::string const& serverId,
                            _request->requestPath(), VPackBuffer<uint8_t>{},
                            options, buildHeaders(_request->headers()));
 
-  return waitForFuture(std::move(f).thenValue(
-      [self = shared_from_this(), last](network::Response&& r) {
-        auto& me = basics::downCast<RestMetricsHandler>(*self);
-        if (r.fail() || !r.hasResponse()) {
-          TRI_ASSERT(r.fail());
-          me.generateError(r.combinedResult());
-          return;
-        }
-        if (last) {
-          auto& cm = me.server().getFeature<metrics::ClusterMetricsFeature>();
-          if (cm.isEnabled()) {
-            cm.update(metrics::CollectMode::TriggerGlobal);
-          }
-        }
-        // TODO(MBkkt) move response
-        // the response will not contain any velocypack.
-        // we need to forward the request with content-type text/plain.
-        me._response->setResponseCode(rest::ResponseCode::OK);
-        me._response->setContentType(rest::ContentType::TEXT);
-        auto payload = r.response().stealPayload();
-        me._response->addRawPayload(
-            {reinterpret_cast<char const*>(payload->data()), payload->size()});
-      }));
+  return waitForFuture(std::move(f).thenValue([self = shared_from_this(),
+                                               last](network::Response&& r) {
+    auto& me = basics::downCast<RestMetricsHandler>(*self);
+    if (r.fail() || !r.hasResponse()) {
+      TRI_ASSERT(r.fail());
+      me.generateError(r.combinedResult());
+      return;
+    }
+    if (last) {
+      auto& cm = me.server().getFeature<metrics::ClusterMetricsFeature>();
+      if (cm.isEnabled()) {
+        cm.update(metrics::CollectMode::TriggerGlobal);
+      }
+    }
+    // TODO(MBkkt) move response
+    // the response will not contain any velocypack.
+    // we need to forward the request with content-type text/plain.
+    if (r.response().header.meta().contains(StaticStrings::ContentEncoding)) {
+      // forward original Content-Encoding header
+      me._response->setHeaderNC(
+          StaticStrings::ContentEncoding,
+          r.response().header.metaByKey(StaticStrings::ContentEncoding));
+    }
+
+    me._response->setResponseCode(rest::ResponseCode::OK);
+    me._response->setContentType(rest::ContentType::TEXT);
+    auto payload = r.response().stealPayload();
+    me._response->addRawPayload(
+        {reinterpret_cast<char const*>(payload->data()), payload->size()});
+  }));
 }
 
 }  // namespace arangodb

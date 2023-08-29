@@ -1230,7 +1230,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
   TRI_ASSERT(_fields.size() == _paths.size());
   TRI_ASSERT(_storedValues.size() == _storedValuesPaths.size());
 
-  if (_cacheEnabled) {
+  if (_cacheEnabled.load(std::memory_order_relaxed)) {
     // create a hash cache in front of the index if requested.
     // note: _cacheEnabled contains the user's setting for caching.
     // the cache may effectively still be turned off for system
@@ -1292,12 +1292,14 @@ void RocksDBVPackIndex::toVelocyPack(
 
   builder.add(StaticStrings::IndexDeduplicate, VPackValue(_deduplicate));
   builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
-  builder.add(StaticStrings::CacheEnabled, VPackValue(_cacheEnabled));
+  builder.add(StaticStrings::CacheEnabled,
+              VPackValue(_cacheEnabled.load(std::memory_order_relaxed)));
   builder.close();
 }
 
 Result RocksDBVPackIndex::warmup() {
-  if (!hasCache()) {
+  auto cache = useCache();
+  if (cache == nullptr) {
     return {};
   }
 
@@ -1312,7 +1314,7 @@ Result RocksDBVPackIndex::warmup() {
   auto rocksColl = toRocksDBCollection(_collection);
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
   expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
-  _cache->sizeHint(expectedCount);
+  cache->sizeHint(expectedCount);
 
   warmupInternal(&trx);
 
@@ -1738,6 +1740,7 @@ Result RocksDBVPackIndex::insertUnique(
 
   transaction::StringLeaser leased(&trx);
   rocksdb::PinnableSlice existing(leased.get());
+  auto cache = useCache();
   bool const isIndexCreation =
       trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION);
 
@@ -1763,12 +1766,12 @@ Result RocksDBVPackIndex::insertUnique(
       res = rocksutils::convertStatus(s, rocksutils::index);
       break;
     }
-    if (!isIndexCreation) {
+    if (!isIndexCreation && cache != nullptr) {
       // banish key in in-memory cache and optionally schedule
       // an index entry reload.
       // not necessary during index creation, because nothing
       // will be in the in-memory cache.
-      handleCacheInvalidation(trx, options, key.string());
+      handleCacheInvalidation(*cache, trx, options, key.string());
     }
   }
 
@@ -1848,7 +1851,8 @@ Result RocksDBVPackIndex::insertNonUnique(
     value = RocksDBValue::VPackIndexValue(leased->slice());
   }
 
-  bool const isIndexCreation =
+  auto cache = useCache();
+  bool isIndexCreation =
       trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION);
 
   rocksdb::Status s;
@@ -1862,12 +1866,12 @@ Result RocksDBVPackIndex::insertNonUnique(
       return addErrorMsg(res, doc.get(StaticStrings::KeyString).stringView());
     }
 
-    if (!isIndexCreation) {
+    if (!isIndexCreation && cache != nullptr) {
       // banish key in in-memory cache and optionally schedule
       // an index entry reload.
       // not necessary during index creation, because nothing
       // will be in the in-memory cache.
-      handleCacheInvalidation(trx, options, key.string());
+      handleCacheInvalidation(*cache, trx, options, key.string());
     }
   }
 
@@ -1883,15 +1887,15 @@ Result RocksDBVPackIndex::insertNonUnique(
   return {};
 }
 
-void RocksDBVPackIndex::handleCacheInvalidation(transaction::Methods& trx,
+void RocksDBVPackIndex::handleCacheInvalidation(cache::Cache& cache,
+                                                transaction::Methods& trx,
                                                 OperationOptions const& options,
                                                 rocksdb::Slice key) {
   auto slice = ::lookupValueFromSlice(key);
   invalidateCacheEntry(slice);
-  if (_cache != nullptr &&
-      ((_forceCacheRefill &&
-        options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
-       options.refillIndexCaches == RefillIndexCaches::kRefill)) {
+  if ((_forceCacheRefill &&
+       options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
+      options.refillIndexCaches == RefillIndexCaches::kRefill) {
     RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
         _collection.id(), id(), {slice.data(), slice.size()});
   }
@@ -1992,6 +1996,8 @@ Result RocksDBVPackIndex::update(
     }
   }
 
+  auto cache = useCache();
+
   RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
   for (auto const& key : elements) {
     rocksdb::Status s =
@@ -2002,7 +2008,9 @@ Result RocksDBVPackIndex::update(
       break;
     }
 
-    handleCacheInvalidation(trx, options, key.string());
+    if (cache != nullptr) {
+      handleCacheInvalidation(*cache, trx, options, key.string());
+    }
   }
 
   return res;
@@ -2036,6 +2044,8 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
     }
   }
 
+  auto cache = useCache();
+
   IndexingDisabler guard(
       mthds, !_unique && trx.state()->hasHint(
                              transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
@@ -2051,7 +2061,9 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
     if (s.ok()) {
       // banish key in in-memory cache and optionally schedule
       // an index entry reload.
-      handleCacheInvalidation(trx, options, key.string());
+      if (cache != nullptr) {
+        handleCacheInvalidation(*cache, trx, options, key.string());
+      }
     } else {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
     }
@@ -2077,7 +2089,11 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
 
 void RocksDBVPackIndex::refillCache(transaction::Methods& trx,
                                     std::vector<std::string> const& keys) {
-  if (_cache == nullptr || keys.empty()) {
+  if (keys.empty()) {
+    return;
+  }
+  auto cache = useCache();
+  if (cache == nullptr) {
     return;
   }
 
@@ -2119,7 +2135,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
   isUniqueIndexIterator = false;
 
   bool reverse = !opts.ascending;
-  bool useCache = opts.useCache;
+  bool withCache = opts.useCache;
 
   VPackArrayIterator it(searchValues);
 
@@ -2160,7 +2176,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
     // unique index iterator can only be used if all index fields are
     // covered. we cannot do range lookups etc.
     return std::make_unique<RocksDBVPackUniqueIndexIterator>(
-        monitor, &_collection, trx, this, useCache ? _cache : nullptr,
+        monitor, &_collection, trx, this, withCache ? useCache() : nullptr,
         leftSearch->slice(), opts, readOwnWrites);
   }
 
@@ -2172,14 +2188,14 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
 
   return buildIteratorFromBounds(monitor, trx, reverse, opts, readOwnWrites,
                                  std::move(bounds), format,
-                                 /*useCache*/ allEq && useCache);
+                                 /*useCache*/ allEq && withCache);
 }
 
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
     ResourceMonitor& monitor, transaction::Methods* trx, bool reverse,
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
     RocksDBKeyBounds&& bounds, RocksDBVPackIndexSearchValueFormat format,
-    bool useCache) const {
+    bool withCache) const {
   TRI_ASSERT(!bounds.empty());
   TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
 
@@ -2194,21 +2210,21 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
       if (mustCheckBounds) {
         return std::make_unique<RocksDBVPackIndexIterator<true, true, true>>(
             monitor, &_collection, trx, this, std::move(bounds),
-            useCache ? _cache : nullptr, opts, readOwnWrites, format);
+            withCache ? useCache() : nullptr, opts, readOwnWrites, format);
       }
       return std::make_unique<RocksDBVPackIndexIterator<true, true, false>>(
           monitor, &_collection, trx, this, std::move(bounds),
-          useCache ? _cache : nullptr, opts, readOwnWrites, format);
+          withCache ? useCache() : nullptr, opts, readOwnWrites, format);
     }
     // forward version
     if (mustCheckBounds) {
       return std::make_unique<RocksDBVPackIndexIterator<true, false, true>>(
           monitor, &_collection, trx, this, std::move(bounds),
-          useCache ? _cache : nullptr, opts, readOwnWrites, format);
+          withCache ? useCache() : nullptr, opts, readOwnWrites, format);
     }
     return std::make_unique<RocksDBVPackIndexIterator<true, false, false>>(
         monitor, &_collection, trx, this, std::move(bounds),
-        useCache ? _cache : nullptr, opts, readOwnWrites, format);
+        withCache ? useCache() : nullptr, opts, readOwnWrites, format);
   }
 
   // non-unique index
@@ -2217,21 +2233,21 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
     if (mustCheckBounds) {
       return std::make_unique<RocksDBVPackIndexIterator<false, true, true>>(
           monitor, &_collection, trx, this, std::move(bounds),
-          useCache ? _cache : nullptr, opts, readOwnWrites, format);
+          withCache ? useCache() : nullptr, opts, readOwnWrites, format);
     }
     return std::make_unique<RocksDBVPackIndexIterator<false, true, false>>(
         monitor, &_collection, trx, this, std::move(bounds),
-        useCache ? _cache : nullptr, opts, readOwnWrites, format);
+        withCache ? useCache() : nullptr, opts, readOwnWrites, format);
   }
   // forward version
   if (mustCheckBounds) {
     return std::make_unique<RocksDBVPackIndexIterator<false, false, true>>(
         monitor, &_collection, trx, this, std::move(bounds),
-        useCache ? _cache : nullptr, opts, readOwnWrites, format);
+        withCache ? useCache() : nullptr, opts, readOwnWrites, format);
   }
   return std::make_unique<RocksDBVPackIndexIterator<false, false, false>>(
       monitor, &_collection, trx, this, std::move(bounds),
-      useCache ? _cache : nullptr, opts, readOwnWrites, format);
+      withCache ? useCache() : nullptr, opts, readOwnWrites, format);
 }
 
 // build bounds for an index range

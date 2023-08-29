@@ -23,6 +23,8 @@
 
 #include <optional>
 
+#include <absl/strings/escaping.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
@@ -46,8 +48,8 @@ using namespace arangodb::replication2;
 
 bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto spec = std::invoke([&]() -> std::optional<agency::LogPlanSpecification> {
-    auto buffer =
-        StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
+    std::string buffer;
+    absl::Base64Unescape(_description.get(REPLICATED_LOG_SPEC), &buffer);
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
     if (!slice.isNone()) {
       return velocypack::deserialize<agency::LogPlanSpecification>(slice);
