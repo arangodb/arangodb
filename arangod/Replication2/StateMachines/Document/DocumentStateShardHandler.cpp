@@ -73,6 +73,27 @@ auto DocumentStateShardHandler::ensureShard(
   return true;
 }
 
+auto DocumentStateShardHandler::modifyShard(
+    ShardID shard, CollectionID collection,
+    std::shared_ptr<VPackBuilder> properties, std::string followersToDrop)
+    -> ResultT<bool> {
+  std::unique_lock lock(_shardMap.mutex);
+  if (!_shardMap.shards.contains(shard)) {
+    return false;
+  }
+
+  if (auto res = _maintenance->executeModifyCollectionAction(
+          std::move(shard), std::move(collection), std::move(properties),
+          std::move(followersToDrop));
+      res.fail()) {
+    return res;
+  }
+  lock.unlock();
+
+  _maintenance->addDirty();
+  return true;
+}
+
 auto DocumentStateShardHandler::dropShard(ShardID const& shard)
     -> ResultT<bool> {
   std::unique_lock lock(_shardMap.mutex);

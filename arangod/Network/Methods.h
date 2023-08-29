@@ -140,8 +140,14 @@ struct RequestOptions {
   std::string acceptType;   // uses vpack by default
   fuerte::StringMap parameters;
   Timeout timeout = TimeoutDefault;
-  bool retryNotFound = false;  // retry if answer is "datasource not found"
-  bool skipScheduler = false;  // do not use Scheduler queue
+  // retry if answer is "datasource not found"
+  bool retryNotFound = false;
+  // do not use Scheduler queue
+  bool skipScheduler = false;
+  // transparently handle content-encoding. enabling this will automatically
+  // uncompress responses that have the `Content-Encoding: gzip|deflate` header
+  // set.
+  bool handleContentEncoding = false;
   RequestLane continuationLane = RequestLane::CONTINUATION;
 
   // Normally this is empty, if it is set to the ID of a server in the

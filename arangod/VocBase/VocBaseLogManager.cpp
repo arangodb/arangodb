@@ -65,9 +65,8 @@ auto VocBaseLogManager::getReplicatedStateById(replication2::LogId id)
       iter != guard->statesAndLogs.end()) {
     return {iter->second.state};
   } else {
-    return Result(
-        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        fmt::format("replicated state %" PRIu64 " not found", id.id()));
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  fmt::format("replicated state {} not found", id.id()));
   }
 }
 
@@ -292,7 +291,14 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
   // TODO Make this atomic without crashing on errors if possible
 
   if (resignAllWasCalled) {
-    return {TRI_ERROR_SHUTTING_DOWN};
+    // TODO This error code is not always correct. We'd probably have to
+    // distinguish between whether resignAll was called due to a shutdown, or
+    // due to dropping a database.
+    return Result{
+        TRI_ERROR_SHUTTING_DOWN,
+        fmt::format("Abort replicated state creation because all logs from the "
+                    "current database are being resigned, log id: {}",
+                    id.id())};
   }
   if (auto iter = statesAndLogs.find(id); iter != std::end(statesAndLogs)) {
     return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER};

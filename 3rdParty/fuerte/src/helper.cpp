@@ -22,14 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <fuerte/helper.h>
+#include <string.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-#include "http.h"
-
-#include <string.h>
 #include <sstream>
 #include <stdexcept>
+
+#include "http.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -147,81 +147,6 @@ std::string to_string(Message& message) {
   return ss.str();
 }
 
-// .............................................................................
-// BASE64
-// .............................................................................
-
-char const* const BASE64_CHARS =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    "abcdefghijklmnopqrstuvwxyz"
-    "0123456789+/";
-
-std::string encodeBase64(std::string const& in, bool pad) {
-  unsigned char charArray3[3];
-  unsigned char charArray4[4];
-
-  std::string ret;
-  ret.reserve((in.size() * 4 / 3) + 2);
-
-  int i = 0;
-
-  unsigned char const* bytesToEncode =
-      reinterpret_cast<unsigned char const*>(in.c_str());
-  size_t in_len = in.size();
-
-  while (in_len--) {
-    charArray3[i++] = *(bytesToEncode++);
-
-    if (i == 3) {
-      charArray4[0] = (charArray3[0] & 0xfc) >> 2;
-      charArray4[1] =
-          ((charArray3[0] & 0x03) << 4) + ((charArray3[1] & 0xf0) >> 4);
-      charArray4[2] =
-          ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
-      charArray4[3] = charArray3[2] & 0x3f;
-
-      for (i = 0; i < 4; i++) {
-        ret += BASE64_CHARS[charArray4[i]];
-      }
-
-      i = 0;
-    }
-  }
-
-  if (i != 0) {
-    for (int j = i; j < 3; j++) {
-      charArray3[j] = '\0';
-    }
-
-    charArray4[0] = (charArray3[0] & 0xfc) >> 2;
-    charArray4[1] =
-        ((charArray3[0] & 0x03) << 4) + ((charArray3[1] & 0xf0) >> 4);
-    charArray4[2] =
-        ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
-    charArray4[3] = charArray3[2] & 0x3f;
-
-    for (int j = 0; (j < i + 1); j++) {
-      ret += BASE64_CHARS[charArray4[j]];
-    }
-
-    if (pad) {
-      while ((i++ < 3)) {
-        ret += '=';
-      }
-    }
-  }
-
-  return ret;
-}
-
-std::string encodeBase64U(std::string const& in, bool pad) {
-  std::string encoded = encodeBase64(in, pad);
-  // replace '+', '/' with '-' and '_'
-  std::replace(encoded.begin(), encoded.end(), '+', '-');
-  std::replace(encoded.begin(), encoded.end(), '/', '_');
-  return encoded;
-}
-
 void toLowerInPlace(std::string& str) {
   // unrolled version of
   // for (auto& c : str) {
@@ -262,7 +187,7 @@ std::string extractPathParameters(std::string_view p, StringMap& params) {
   if (pos == p.npos) {
     return std::string(p);
   }
-  
+
   std::string result(p.substr(0, pos));
 
   while (pos != p.npos && pos + 1 < p.length()) {
@@ -272,9 +197,8 @@ std::string extractPathParameters(std::string_view p, StringMap& params) {
     }
     std::string_view key = p.substr(pos + 1, pos2 - pos - 1);
     pos = p.find('&', pos2 + 1);  // points to next '&' or string::npos
-    std::string_view value = pos == p.npos
-                                 ? p.substr(pos2 + 1)
-                                 : p.substr(pos2 + 1, pos - pos2 - 1);
+    std::string_view value =
+        pos == p.npos ? p.substr(pos2 + 1) : p.substr(pos2 + 1, pos - pos2 - 1);
     params.emplace(http::urlDecode(key), http::urlDecode(value));
   }
 

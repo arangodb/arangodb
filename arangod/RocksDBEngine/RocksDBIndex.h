@@ -34,6 +34,7 @@
 #include <rocksdb/status.h>
 #include <rocksdb/slice.h>
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 
@@ -102,10 +103,7 @@ class RocksDBIndex : public Index {
   /// compact the index, should reduce read amplification
   void compact();
 
-  void setCacheEnabled(bool enable) {
-    // allow disabling and enabling of caches for the primary index
-    _cacheEnabled = enable;
-  }
+  void setCacheEnabled(bool enable) noexcept;
 
   void setupCache();
   void destroyCache() noexcept;
@@ -184,9 +182,8 @@ class RocksDBIndex : public Index {
                rocksdb::ColumnFamilyHandle* cf, bool useCache,
                cache::Manager* cacheManager, RocksDBEngine& engine);
 
-  bool hasCache() const noexcept {
-    return _cacheEnabled && (_cache != nullptr);
-  }
+  // note: this can return a nullptr. the caller has to check the result
+  std::shared_ptr<cache::Cache> useCache() const noexcept;
 
   bool canWarmup() const noexcept override;
 
@@ -210,11 +207,7 @@ class RocksDBIndex : public Index {
 
   // user-side request for caching. will effectively be followed only if
   // _cacheManager != nullptr.
-  bool _cacheEnabled;
-
-  // the actual cache object. can be a nullptr, and can only be set if
-  // _cacheManager != nullptr.
-  mutable std::shared_ptr<cache::Cache> _cache;
+  std::atomic_bool _cacheEnabled;
 
   // we have to store references to the engine because the
   // vocbase might already be destroyed at the time the destructor is executed
@@ -222,5 +215,10 @@ class RocksDBIndex : public Index {
 
  private:
   uint64_t const _objectId;
+
+  // the actual cache object. can be a nullptr, and can only be set if
+  // _cacheManager != nullptr.
+  // access only with std::atomic_load|store_explicit()!
+  mutable std::shared_ptr<cache::Cache> _cache;
 };
 }  // namespace arangodb

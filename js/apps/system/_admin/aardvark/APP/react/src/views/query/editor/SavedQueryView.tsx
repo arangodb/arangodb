@@ -150,7 +150,18 @@ const TABLE_COLUMNS = [
       filterType: "text"
     }
   }),
-  columnHelper.accessor("modified_at", {
+  columnHelper.accessor(row => row.created_at || 0, {
+    header: "Created At",
+    id: "created_at",
+    enableColumnFilter: false,
+    cell: info => {
+      const cellValue = info.cell.getValue();
+      return cellValue
+        ? momentMin(cellValue).format("YYYY-MM-DD HH:mm:ss")
+        : "-";
+    }
+  }),
+  columnHelper.accessor(row => row.modified_at || 0, {
     header: "Modified At",
     id: "modified_at",
     enableColumnFilter: false,
@@ -186,6 +197,12 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
   const tableInstance = useSortableReactTable<QueryType>({
     columns: TABLE_COLUMNS,
     data: finalData,
+    initialSorting: [
+      {
+        id: "created_at",
+        desc: true
+      }
+    ],
     initialRowSelection: {
       0: true
     },
