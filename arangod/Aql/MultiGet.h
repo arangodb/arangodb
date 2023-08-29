@@ -36,6 +36,8 @@
 
 namespace arangodb::aql {
 
+// We want to test old behavior for some configuration
+// Linux arm choosed because most developers use x86 or apple arm
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(__linux__) && \
     defined(__aarch64__)
 inline constexpr bool kEnableMultiGet = false;
