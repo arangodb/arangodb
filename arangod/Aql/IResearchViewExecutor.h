@@ -380,11 +380,7 @@ class IndexReadBuffer {
     _storedValuesCount = stored;
   }
 
-  auto getMaterializeRange(size_t skip) const {
-    // TODO(MBkkt) avoid unnecessary copies here!
-    auto start = _rows.size() > skip ? skip : _rows.size();
-    return std::vector<size_t>{_rows.begin() + start, _rows.end()};
-  }
+  std::vector<size_t> getMaterializeRange(size_t skip) const;
 
   void setStoredValue(size_t idx, irs::bytes_view value) {
     TRI_ASSERT(idx < _storedValuesBuffer.size());

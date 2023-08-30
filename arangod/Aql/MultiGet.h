@@ -63,7 +63,7 @@ class MultiGetContext {
  private:
   void serialize(uint64_t objectId, LocalDocumentId id) noexcept {
     rocksutils::uint64ToPersistentRaw(_buffer.data(), objectId);
-    rocksutils::uint64ToPersistentRaw(_buffer.data(), id.id());
+    rocksutils::uint64ToPersistentRaw(_buffer.data() + kKeySize / 2, id.id());
     _keys[_pos] = {_buffer.data() + _pos * kKeySize, kKeySize};
     ++_pos;
   }

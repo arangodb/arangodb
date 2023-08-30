@@ -554,6 +554,23 @@ void IndexReadBuffer<ValueType, copyStored>::assertSizeCoherence()
              (_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters));
 }
 
+template<typename ValueType, bool copyStored>
+std::vector<size_t> IndexReadBuffer<ValueType, copyStored>::getMaterializeRange(
+    size_t skip) const {
+  // TODO(MBkkt) avoid unnecessary copies and conditions here!
+  auto const size = _keyBuffer.size();
+  TRI_ASSERT(_rows.size() <= size)
+  TRI_ASSERT(_keyBaseIdx <= size);
+  skip = std::min(std::max(skip, _keyBaseIdx), _keyBuffer.size());
+  std::vector<size_t> rows(size - skip);
+  if (!_rows.empty()) {
+    std::copy(_rows.begin() + skip, _rows.end(), rows.begin());
+  } else {
+    std::iota(rows.begin(), rows.end(), skip);
+  }
+  return rows;
+}
+
 template<typename Impl, typename ExecutionTraits>
 IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
     Fetcher&, Infos& infos)
