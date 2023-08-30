@@ -225,7 +225,6 @@ target_compile_definitions(iresearch-static PRIVATE -DDISABLE_EXECINFO)
 
 UpdateModule(${GIT_EXECUTABLE} "rocksdb" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
 
-set(WITH_LIBURING ON)
 add_subdirectory(rocksdb)
 add_library(rocksdb_interface INTERFACE)
 target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/include)
