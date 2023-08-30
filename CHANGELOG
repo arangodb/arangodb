@@ -1,5 +1,11 @@
 devel
 -----
+* BTS-842: make the error message for edge document validation slightly
+  clearer
+>
+* ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
+  "conflict, _rev values do not match" for non-local edges in Smart- and
+  EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
 
 * Renamed arangodump startup option `--use-experimental-dump` to 
   `--parallel-dump`. 
