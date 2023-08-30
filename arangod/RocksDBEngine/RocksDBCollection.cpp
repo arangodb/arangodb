@@ -2007,8 +2007,9 @@ Result RocksDBCollection::lookupDocumentVPack(
   auto* family = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
   rocksdb::Status s =
-      snapshot ? mthd->Get(snapshot->getSnapshot(), *family, key->string(), ps)
-               : mthd->Get(family, key->string(), &ps, readOwnWrites);
+      snapshot
+          ? mthd->SingleGet(snapshot->getSnapshot(), *family, key->string(), ps)
+          : mthd->Get(family, key->string(), &ps, readOwnWrites);
 
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
