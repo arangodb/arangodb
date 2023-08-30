@@ -336,9 +336,9 @@ function dumpIntegrationSuite() {
       db._useDatabase("_system");
     },
     
-    testNonExperimentalDump: function () {
+    testNonParallelDump: function () {
       let path = fs.getTempFile();
-      let args = ['--collection', cn, '--compress-output', 'false', '--use-experimental-dump', 'false'];
+      let args = ['--collection', cn, '--compress-output', 'false', '--parallel-dump', 'false'];
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);
@@ -346,12 +346,12 @@ function dumpIntegrationSuite() {
       fs.removeDirectoryRecursive(path, true);
     },
     
-    testExperimentalDumpSingle: function () {
+    testParallelDumpSingle: function () {
       if (isCluster) {
         return;
       }
       let path = fs.getTempFile();
-      let args = ['--collection', cn, '--compress-output', 'false', '--use-experimental-dump', 'true'];
+      let args = ['--collection', cn, '--compress-output', 'false', '--parallel-dump', 'true'];
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);
@@ -359,12 +359,12 @@ function dumpIntegrationSuite() {
       fs.removeDirectoryRecursive(path, true);
     },
     
-    testExperimentalDumpCluster: function () {
+    testParallelDumpCluster: function () {
       if (!isCluster) {
         return;
       }
       let path = fs.getTempFile();
-      let args = ['--collection', cn, '--compress-output', 'false', '--use-experimental-dump', 'true'];
+      let args = ['--collection', cn, '--compress-output', 'false', '--parallel-dump', 'true'];
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);
@@ -372,19 +372,19 @@ function dumpIntegrationSuite() {
       fs.removeDirectoryRecursive(path, true);
     },
     
-    testNonExperimentalDumpSplitFiles: function () {
+    testNonParallelDumpSplitFiles: function () {
       let path = fs.getTempFile();
-      let args = ['--collection', cn, '--compress-output', 'false', '--use-experimental-dump', 'false', '--split-files', 'true'];
+      let args = ['--collection', cn, '--compress-output', 'false', '--parallel-dump', 'false', '--split-files', 'true'];
       let tree = runDump(path, args, 1 /*exit code*/);
       assertEqual([""], tree);
     },
     
-    testExperimentalDumpSplitFilesSingle: function () {
+    testParallelDumpSplitFilesSingle: function () {
       if (isCluster) {
         return;
       }
       let path = fs.getTempFile();
-      let args = ['--collection', cn, '--compress-output', 'false', '--use-experimental-dump', 'true', '--split-files', 'true'];
+      let args = ['--collection', cn, '--compress-output', 'false', '--parallel-dump', 'true', '--split-files', 'true'];
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);
@@ -393,12 +393,12 @@ function dumpIntegrationSuite() {
       fs.removeDirectoryRecursive(path, true);
     },
     
-    testExperimentalDumpSplitFilesCluster: function () {
+    testParallelDumpSplitFilesCluster: function () {
       if (!isCluster) {
         return;
       }
       let path = fs.getTempFile();
-      let args = ['--collection', cn, '--compress-output', 'false', '--use-experimental-dump', 'true', '--split-files', 'true'];
+      let args = ['--collection', cn, '--compress-output', 'false', '--parallel-dump', 'true', '--split-files', 'true'];
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);
@@ -406,12 +406,12 @@ function dumpIntegrationSuite() {
       fs.removeDirectoryRecursive(path, true);
     },
     
-    testExperimentalDumpIncludeSystemCollections: function () {
+    testParallelDumpIncludeSystemCollections: function () {
       if (!isCluster) {
         return;
       }
       let path = fs.getTempFile();
-      let args = ['--compress-output', 'false', '--use-experimental-dump', 'true', '--include-system-collections', 'true'];
+      let args = ['--compress-output', 'false', '--parallel-dump', 'true', '--include-system-collections', 'true'];
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);
@@ -421,12 +421,12 @@ function dumpIntegrationSuite() {
       fs.removeDirectoryRecursive(path, true);
     },
     
-    testExperimentalDumpUsersCollection: function () {
+    testParallelDumpUsersCollection: function () {
       if (!isCluster) {
         return;
       }
       let path = fs.getTempFile();
-      let args = ['--collection', cn, '--compress-output', 'false', '--use-experimental-dump', 'true', '--collection', '_users'];
+      let args = ['--collection', cn, '--compress-output', 'false', '--parallel-dump', 'true', '--collection', '_users'];
       let tree = runDump(path, args, 0);
       checkEncryption(tree, path, "none");
       checkStructureFile(tree, path, true, cn);

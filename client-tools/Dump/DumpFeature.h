@@ -82,7 +82,7 @@ class DumpFeature final : public ArangoDumpFeature {
     bool useGzipForStorage{true};
     bool useGzipForTransport{false};
     bool useVPack{false};
-    bool useExperimentalDump{false};
+    bool useParalleDump{false};
     bool splitFiles{false};
     std::uint64_t dbserverWorkerThreads{5};
     std::uint64_t dbserverPrefetchBatches{5};

@@ -643,7 +643,7 @@ Result DumpFeature::DumpCollectionJob::run(
     }
   }
 
-  if (res.ok() && !options.useExperimentalDump) {
+  if (res.ok() && !options.useParalleDump) {
     // always create the file so that arangorestore does not complain
     auto file = directory.writableFile(
         absl::StrCat(escapedName, "_", hexString, ".data.",
@@ -867,7 +867,7 @@ void DumpFeature::collectOptions(
 
   options
       ->addOption("--parallel-dump", "Enable experimental dump behavior.",
-                  new BooleanParameter(&_options.useExperimentalDump),
+                  new BooleanParameter(&_options.useParalleDump),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
@@ -966,7 +966,7 @@ void DumpFeature::validateOptions(
     _options.threadCount = clamped;
   }
 
-  if (_options.splitFiles && !_options.useExperimentalDump) {
+  if (_options.splitFiles && !_options.useParalleDump) {
     LOG_TOPIC("b0cbe", FATAL, Logger::DUMP)
         << "--split-files is only available when using "
            "--parallel-dump.";
@@ -1189,7 +1189,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       continue;
     }
 
-    if (_options.useExperimentalDump) {
+    if (_options.useParalleDump) {
       if (_options.clusterMode) {
         // cluster: now build a list of shards for each server
         for (auto const& [shard, servers] : VPackObjectIterator(
@@ -1206,11 +1206,13 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
               continue;
             }
           }
+          TRI_ASSERT(!serverStr.empty());
           shardsByServer[std::move(serverStr)][std::move(shardStr)]
               .collectionName = name;
         }
       } else {
         // single server mode: all "shards" are on one server
+        TRI_ASSERT(!_options.clusterMode);
         shardsByServer[""][name].collectionName = name;
       }
     }
@@ -1222,7 +1224,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     _clientTaskQueue.queueJob(std::move(dumpJob));
   }
 
-  if (_options.useExperimentalDump) {
+  if (_options.useParalleDump) {
     // now start jobs for each dbserver
     fileProvider = std::make_shared<DumpFileProvider>(
         *_directory, restrictList, _options.splitFiles, _options.useVPack);
@@ -1750,7 +1752,7 @@ DumpFeature::ParallelDumpServer::ParallelDumpServer(
       shards(std::move(shards)),
       server(std::move(server)),
       queue(options.localWriterThreads) {
-  TRI_ASSERT(options.clusterMode == !server.empty());
+  TRI_ASSERT(options.clusterMode != this->server.empty());
 }
 
 std::unique_ptr<httpclient::SimpleHttpResult>

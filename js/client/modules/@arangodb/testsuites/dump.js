@@ -193,7 +193,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.dumpConfig.setThreads(this.dumpOptions.threads);
     }
     if (this.dumpOptions.useParallelDump) {
-      this.dumpConfig.setUseExperimentalParallelDump();
+      this.dumpConfig.setUseParallelDump();
     }
     if (this.dumpOptions.splitFiles) {
       this.dumpConfig.setUseSplitFiles();
