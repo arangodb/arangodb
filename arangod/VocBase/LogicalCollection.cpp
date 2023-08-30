@@ -34,6 +34,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterCollectionMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -1071,9 +1072,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
 
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
-    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-    return ci.setCollectionPropertiesCoordinator(
-        vocbase().name(), std::to_string(id().id()), this);
+    return ClusterCollectionMethods::updateCollectionProperties(vocbase(),
+                                                                *this);
   }
 
   engine.changeCollection(vocbase(), *this);

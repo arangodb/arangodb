@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Cluster/AgencyCache.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
@@ -42,14 +43,33 @@
 #include "Rest/GeneralResponse.h"
 #include "Sharding/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Collection.h>
 
 using namespace arangodb;
 
 namespace {
 
 auto reactToPreconditions(AsyncAgencyCommResult&& agencyRes)
+    -> ResultT<uint64_t> {
+  // We ordered the creation of collection, if this was not
+  // successful we may try again, if it was, we continue with next
+  // step.
+  if (auto res = agencyRes.asResult(); res.fail()) {
+    return res;
+  }
+
+  // extract raft index
+  auto slice = agencyRes.slice().get("results");
+  TRI_ASSERT(slice.isArray());
+  TRI_ASSERT(!slice.isEmptyArray());
+  return slice.at(slice.length() - 1).getNumericValue<uint64_t>();
+}
+
+auto reactToPreconditionsCreate(AsyncAgencyCommResult&& agencyRes)
     -> ResultT<uint64_t> {
   // We ordered the creation of collection, if this was not
   // successful we may try again, if it was, we continue with next
@@ -452,7 +472,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 
   auto future =
       aac.sendWriteTransaction(120s, std::move(buildingTransaction.get()))
-          .thenValue(::reactToPreconditions)
+          .thenValue(::reactToPreconditionsCreate)
           .thenValue(waitForOperationRoundtrip(ci))
           .thenValue(waitForCurrentToCatchUp(server, callbackInfos,
                                              callbackList, pollInterval));
@@ -767,5 +787,80 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     return createCollectionsOnCoordinatorImpl<replication::Version::ONE>(
         vocbase, std::move(collections), ignoreDistributeShardsLikeErrors,
         waitForSyncReplication, enforceReplicationFactor, isNewDatabase);
+  }
+}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set collection properties in coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+[[nodiscard]] auto ClusterCollectionMethods::updateCollectionProperties(
+    TRI_vocbase_t& vocbase, LogicalCollection const& col) -> Result {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  AsyncAgencyComm aac;
+
+  if (vocbase.replicationVersion() == replication::Version::TWO) {
+    return {TRI_ERROR_NOT_IMPLEMENTED};
+  } else {
+    auto const& databaseName = vocbase.name();
+    auto const& collectionID = std::to_string(col.id().id());
+    auto const& server = vocbase.server();
+    
+    AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
+                                      AgencyPrecondition::Type::EMPTY, false);
+    AgencyOperation incrementVersion("Plan/Version",
+                                     AgencySimpleOperationType::INCREMENT_OP);
+
+    auto& agencyCache = server.getFeature<ClusterFeature>().agencyCache();
+    auto [acb, index] =
+        agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
+            "Plan/Collections/" + databaseName + "/" + collectionID)});
+
+    velocypack::Slice collection =
+        acb->slice()[0].get(std::initializer_list<std::string_view>{
+            AgencyCommHelper::path(), "Plan", "Collections", databaseName,
+            collectionID});
+
+    if (!collection.isObject()) {
+      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    }
+
+    VPackBuilder temp;
+    temp.openObject();
+    temp.add(StaticStrings::WaitForSyncString, VPackValue(col.waitForSync()));
+    if (col.isSatellite()) {
+      temp.add(StaticStrings::ReplicationFactor,
+               VPackValue(StaticStrings::Satellite));
+    } else {
+      temp.add(StaticStrings::ReplicationFactor,
+               VPackValue(col.replicationFactor()));
+    }
+    temp.add(StaticStrings::MinReplicationFactor,
+             VPackValue(col.writeConcern()));  // deprecated in 3.6
+    temp.add(StaticStrings::WriteConcern, VPackValue(col.writeConcern()));
+    temp.add(StaticStrings::UsesRevisionsAsDocumentIds,
+             VPackValue(col.usesRevisionsAsDocumentIds()));
+    temp.add(StaticStrings::SyncByRevision, VPackValue(col.syncByRevision()));
+    temp.add(VPackValue(StaticStrings::ComputedValues));
+    col.computedValuesToVelocyPack(temp);
+    temp.add(VPackValue(StaticStrings::Schema));
+    col.schemaToVelocyPack(temp);
+    col.getPhysical()->getPropertiesVPack(temp);
+    temp.close();
+
+    VPackBuilder builder =
+        VPackCollection::merge(collection, temp.slice(), false);
+
+    AgencyOperation setColl(
+        "Plan/Collections/" + databaseName + "/" + collectionID,
+        AgencyValueOperationType::SET, builder.slice());
+
+    AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
+
+    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+    using namespace std::chrono_literals;
+    auto future = aac.sendTransaction(120s, trans)
+                  .thenValue(::reactToPreconditions)
+                  .thenValue(waitForOperationRoundtrip(ci));
+    return future.get();
   }
 }
