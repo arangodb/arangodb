@@ -1,6 +1,10 @@
 devel
 -----
 
+* ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
+  "conflict, _rev values do not match" for non-local edges in Smart- and
+  EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
+
 * FE-248: Improve collections list UI.
 
 * BTS-1124: wait for license to be applied locally before responding to the request.
