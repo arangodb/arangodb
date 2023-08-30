@@ -179,7 +179,18 @@ class IResearchViewExecutorInfos {
   bool const _volatileFilter;
 };
 
-class IResearchViewStats;
+class IResearchViewStats {
+ public:
+  void incrScanned() noexcept { ++_scannedIndex; }
+  void incrScanned(size_t value) noexcept { _scannedIndex += value; }
+  void operator+=(IResearchViewStats const& stats) {
+    _scannedIndex += stats._scannedIndex;
+  }
+  size_t getScanned() const noexcept { return _scannedIndex; }
+
+ private:
+  size_t _scannedIndex{};
+};
 
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                                   IResearchViewStats const& viewStats) noexcept;
