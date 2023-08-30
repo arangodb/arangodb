@@ -33,14 +33,13 @@
 #include <velocypack/Slice.h>
 
 #include "Agency/AgencyComm.h"
-
+#include "Agency/AgencyCommon.h"
 #include "Agency/PathComponent.h"
 #include "Basics/ResultT.h"
 #include "Basics/debugging.h"
 #include "Futures/Future.h"
 #include "Network/Methods.h"
 #include "Network/Utils.h"
-#include "AgencyCommon.h"
 
 namespace arangodb {
 
@@ -48,11 +47,11 @@ struct AsyncAgencyCommResult {
   arangodb::fuerte::Error error;
   std::unique_ptr<arangodb::fuerte::Response> response;
 
-  [[nodiscard]] bool ok() const {
+  [[nodiscard]] bool ok() const noexcept {
     return arangodb::fuerte::Error::NoError == this->error;
   }
 
-  [[nodiscard]] bool fail() const { return !ok(); }
+  [[nodiscard]] bool fail() const noexcept { return !ok(); }
 
   VPackSlice slice() const {
     TRI_ASSERT(response != nullptr);
@@ -278,23 +277,23 @@ class AsyncAgencyComm final {
   using ClientId = std::string;
 
   [[nodiscard]] FutureResult sendWithFailover(
-      arangodb::fuerte::RestVerb method, std::string const& url,
+      arangodb::fuerte::RestVerb method, std::string_view url,
       network::Timeout timeout, RequestType type,
       std::vector<ClientId> clientIds,
       velocypack::Buffer<uint8_t>&& body) const;
 
   [[nodiscard]] FutureResult sendWithFailover(
-      arangodb::fuerte::RestVerb method, std::string const& url,
+      arangodb::fuerte::RestVerb method, std::string_view url,
       network::Timeout timeout, RequestType type,
       std::vector<ClientId> clientIds, AgencyTransaction const& trx) const;
 
   [[nodiscard]] FutureResult sendWithFailover(
-      arangodb::fuerte::RestVerb method, std::string const& url,
+      arangodb::fuerte::RestVerb method, std::string_view url,
       network::Timeout timeout, RequestType type,
       velocypack::Buffer<uint8_t>&& body) const;
 
   [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
-                                              std::string const& url,
+                                              std::string_view url,
                                               network::Timeout timeout,
                                               RequestType type,
                                               uint64_t index) const;

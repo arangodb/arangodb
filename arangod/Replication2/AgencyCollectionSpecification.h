@@ -47,6 +47,7 @@ struct CollectionGroupId : basics::Identifier {
  */
 struct CollectionGroup {
   CollectionGroupId id;
+  CollectionID groupLeader;
 
   struct Collection {};
   std::unordered_map<CollectionID, Collection> collections;

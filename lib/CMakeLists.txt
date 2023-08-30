@@ -198,6 +198,7 @@ add_library(arango STATIC
   Endpoint/EndpointList.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
+  Maskings/MaskingFunction.cpp
   Maskings/Maskings.cpp
   Maskings/Path.cpp
   Maskings/RandomMask.cpp
@@ -232,6 +233,7 @@ add_library(arango STATIC
 
 target_link_libraries(arango
   PUBLIC s2
+         arango_build_id
          boost_system
          boost_boost
          arango_futures
@@ -299,3 +301,4 @@ add_subdirectory(VelocypackUtils)
 add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)
 add_subdirectory(Inspection)
+add_subdirectory(BuildId)

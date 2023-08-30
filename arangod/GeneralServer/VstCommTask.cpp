@@ -49,6 +49,9 @@
 #include <velocypack/Options.h>
 #include <velocypack/Validator.h>
 
+#include <absl/strings/str_cat.h>
+#include <absl/strings/escaping.h>
+
 #include <string>
 #include <string_view>
 
@@ -541,7 +544,6 @@ template<SocketType T>
 void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId,
                                           ServerState::Mode mode) {
   std::string authString;
-  std::string user;
   _authMethod = AuthenticationMethod::NONE;
 
   std::string_view encryption = header.at(2).stringView();
@@ -549,9 +551,9 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId,
     authString = header.at(3).copyString();
     _authMethod = AuthenticationMethod::JWT;
   } else if (encryption == "plain") {
-    user = header.at(3).copyString();
-    std::string pass = header.at(4).copyString();
-    authString = basics::StringUtils::encodeBase64(user + ":" + pass);
+    auto user = header.at(3).stringView();
+    auto pass = header.at(4).stringView();
+    authString = absl::Base64Escape(absl::StrCat(user, ":", pass));
     _authMethod = AuthenticationMethod::BASIC;
   } else {
     LOG_TOPIC("01f44", WARN, Logger::REQUESTS) << "Unknown VST encryption type";

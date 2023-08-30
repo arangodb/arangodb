@@ -26,6 +26,7 @@
 #include <fuerte/connection.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/EncodingUtils.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
@@ -149,30 +150,23 @@ void NetworkFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("network", "cluster-internal networking");
 
-  options
-      ->addOption("--network.io-threads",
-                  "The number of network I/O threads for cluster-internal "
-                  "communication.",
-                  new UInt32Parameter(&_numIOThreads))
-      .setIntroducedIn(30600);
-  options
-      ->addOption("--network.max-open-connections",
-                  "The maximum number of open TCP connections for "
-                  "cluster-internal communication per endpoint",
-                  new UInt64Parameter(&_maxOpenConnections))
-      .setIntroducedIn(30600);
-  options
-      ->addOption("--network.idle-connection-ttl",
-                  "The default time-to-live of idle connections for "
-                  "cluster-internal communication (in milliseconds).",
-                  new UInt64Parameter(&_idleTtlMilli))
-      .setIntroducedIn(30600);
-  options
-      ->addOption("--network.verify-hosts",
-                  "Verify peer certificates when using TLS in cluster-internal "
-                  "communication.",
-                  new BooleanParameter(&_verifyHosts))
-      .setIntroducedIn(30600);
+  options->addOption("--network.io-threads",
+                     "The number of network I/O threads for cluster-internal "
+                     "communication.",
+                     new UInt32Parameter(&_numIOThreads));
+  options->addOption("--network.max-open-connections",
+                     "The maximum number of open TCP connections for "
+                     "cluster-internal communication per endpoint",
+                     new UInt64Parameter(&_maxOpenConnections));
+  options->addOption("--network.idle-connection-ttl",
+                     "The default time-to-live of idle connections for "
+                     "cluster-internal communication (in milliseconds).",
+                     new UInt64Parameter(&_idleTtlMilli));
+  options->addOption(
+      "--network.verify-hosts",
+      "Verify peer certificates when using TLS in cluster-internal "
+      "communication.",
+      new BooleanParameter(&_verifyHosts));
 
   std::unordered_set<std::string> protos = {"", "http", "http2", "h2", "vst"};
 
@@ -184,7 +178,6 @@ void NetworkFeature::collectOptions(
           "The network protocol to use for cluster-internal communication.",
           new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
           options::makeDefaultFlags(options::Flags::Uncommon))
-      .setIntroducedIn(30700)
       .setDeprecatedIn(30900);
 
   options
@@ -390,10 +383,11 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   }
   conn->sendRequest(
       std::move(req),
-      [this, &pool, isFromPool, cb = std::move(cb),
-       endpoint = std::move(endpoint)](fuerte::Error err,
-                                       std::unique_ptr<fuerte::Request> req,
-                                       std::unique_ptr<fuerte::Response> res) {
+      [this, &pool, isFromPool,
+       handleContentEncoding = options.handleContentEncoding,
+       cb = std::move(cb), endpoint = std::move(endpoint)](
+          fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+          std::unique_ptr<fuerte::Response> res) {
         if (req->timeQueued().time_since_epoch().count() != 0 &&
             req->timeAsyncWrite().time_since_epoch().count() != 0) {
           // In the 0 cases fuerte did not even accept or start to send
@@ -448,6 +442,30 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
         }
         TRI_ASSERT(req != nullptr);
         finishRequest(pool, err, req, res);
+        if (res != nullptr && handleContentEncoding) {
+          // transparently handle decompression
+          auto const& encoding =
+              res->header.metaByKey(StaticStrings::ContentEncoding);
+          if (encoding == StaticStrings::EncodingGzip) {
+            velocypack::Buffer<uint8_t> uncompressed;
+            auto r = encoding::gzipUncompress(
+                reinterpret_cast<uint8_t const*>(res->payload().data()),
+                res->payload().size(), uncompressed);
+            if (r != TRI_ERROR_NO_ERROR) {
+              THROW_ARANGO_EXCEPTION(r);
+            }
+            res->setPayload(std::move(uncompressed), 0);
+          } else if (encoding == StaticStrings::EncodingDeflate) {
+            velocypack::Buffer<uint8_t> uncompressed;
+            auto r = encoding::gzipInflate(
+                reinterpret_cast<uint8_t const*>(res->payload().data()),
+                res->payload().size(), uncompressed);
+            if (r != TRI_ERROR_NO_ERROR) {
+              THROW_ARANGO_EXCEPTION(r);
+            }
+            res->setPayload(std::move(uncompressed), 0);
+          }
+        }
         cb(err, std::move(req), std::move(res), isFromPool);
       });
 }

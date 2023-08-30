@@ -43,7 +43,18 @@ struct Collection;
 class ExecutionPlan;
 struct Variable;
 
-class CollectionAccessingNode {
+class DataAccessingNode {
+ public:
+  virtual ~DataAccessingNode() = default;
+  virtual aql::Collection const* collection() const = 0;
+  virtual bool isUsedAsSatellite() const = 0;
+  virtual void useAsSatelliteOf(ExecutionNodeId) = 0;
+  virtual aql::Collection const* prototypeCollection() const = 0;
+  virtual void setPrototype(arangodb::aql::Collection const*,
+                            arangodb::aql::Variable const*) = 0;
+};
+
+class CollectionAccessingNode : public DataAccessingNode {
  public:
   explicit CollectionAccessingNode(aql::Collection const* collection);
   CollectionAccessingNode(ExecutionPlan* plan,
@@ -62,7 +73,7 @@ class CollectionAccessingNode {
   TRI_vocbase_t* vocbase() const;
 
   /// @brief return the collection
-  aql::Collection const* collection() const;
+  aql::Collection const* collection() const final;
 
   /// @brief modify collection after cloning
   /// should be used only in smart-graph context!
@@ -98,18 +109,18 @@ class CollectionAccessingNode {
 
   /// @brief set the prototype collection when using distributeShardsLike
   void setPrototype(arangodb::aql::Collection const* prototypeCollection,
-                    arangodb::aql::Variable const* prototypeOutVariable);
+                    arangodb::aql::Variable const* prototypeOutVariable) final;
 
-  aql::Collection const* prototypeCollection() const;
+  aql::Collection const* prototypeCollection() const final;
   aql::Variable const* prototypeOutVariable() const;
 
-  bool isUsedAsSatellite() const;
+  bool isUsedAsSatellite() const final;
 
   /// @brief Use this collection access as a satellite of the prototype.
   /// This will work transitively, even if the prototypeAccess is only
   /// subsequently marked as a satellite of another access. However, after
   /// se- and deserialization, this won't work anymore.
-  void useAsSatelliteOf(ExecutionNodeId prototypeAccessId);
+  void useAsSatelliteOf(ExecutionNodeId prototypeAccessId) final;
 
   void cloneInto(CollectionAccessingNode& c) const {
     c._collectionAccess = _collectionAccess;

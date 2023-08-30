@@ -89,7 +89,7 @@ function makeDataWrapper (options) {
       return true;
     }
     runOneTest(file) {
-      let res = {'total':0, 'duration':0.0, 'status':true, message: ''};
+      let res = {'total':0, 'duration':0.0, 'status':true, message: '', 'failed': 0};
       let tests = [
         fs.join(this.options.rtasource, 'test_data', 'makedata.js'),
         fs.join(this.options.rtasource, 'test_data', 'checkdata.js'),
@@ -162,12 +162,13 @@ function makeDataWrapper (options) {
         if (!rc.status) {
           let rx = new RegExp(/\\n/g);
           res.message += file + ':\n' + fs.read(args['log.file']).replace(rx, '\n');
+          res.status = false;
+          res.failed += 1;
         } else {
           fs.remove(args['log.file']);
         }
         res.total++;
         res.duration += rc.duration;
-        res.status &= rc.status;
         if ((this.options.cluster) && (count === 3)) {
           print('relaunching dbserver');
           stoppedDbServerInstance.restartOneInstance({});

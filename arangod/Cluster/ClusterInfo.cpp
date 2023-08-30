@@ -531,9 +531,11 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
       _plannedDatabases(_resourceMonitor),
       _planVersion(0),
       _planIndex(0),
+      _planMemoryUsage(0),
+      _currentDatabases(_resourceMonitor),
       _currentVersion(0),
       _currentIndex(0),
-      _currentDatabases(_resourceMonitor),
+      _currentMemoryUsage(0),
       _plannedCollections(_resourceMonitor),
       _newPlannedCollections(_resourceMonitor),
       _shards(_resourceMonitor),
@@ -579,7 +581,12 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
 /// @brief destroys a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo::~ClusterInfo() = default;
+ClusterInfo::~ClusterInfo() {
+  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
+  _planMemoryUsage = 0;
+  _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
+  _currentMemoryUsage = 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
@@ -1743,8 +1750,27 @@ void ClusterInfo::loadPlan() {
         // the name as key:
         continue;
       }
-      auto const& groupLeader =
-          colPair.second.collection->distributeShardsLike();
+      auto const& groupLeader = std::invoke([&]() -> std::string const& {
+        if (colPair.second.collection->replicationVersion() ==
+            replication::Version::TWO) {
+          // For Replication2 we cannot call distributeShardsLike() because it
+          // will look into the objects we are just building here.
+          if (auto it = newCollectionGroups.find(
+                  colPair.second.collection->groupID());
+              it != newCollectionGroups.end()) {
+            auto const& leader = it->second->groupLeader;
+            if (leader == colPair.second.collection->name()) {
+              return StaticStrings::Empty;
+            }
+            return leader;
+          }
+          TRI_ASSERT(false) << "newCollectionGroups is required to contain the "
+                               "collection we investigate.";
+          return StaticStrings::Empty;
+        } else {
+          return colPair.second.collection->distributeShardsLike();
+        }
+      });
       if (!groupLeader.empty()) {
         auto groupLeaderCol = newShards.find(groupLeader);
         if (groupLeaderCol != newShards.end()) {
@@ -1811,18 +1837,21 @@ void ClusterInfo::loadPlan() {
       // system database does not have a shardingPrototype set...
       // sharding prototype of _system database defaults to _users nowadays
       systemDB->setShardingPrototype(ShardingPrototype::Users);
-      // but for "old" databases it may still be "_graphs". we need to find out!
-      // find _system database in Plan
       auto it = _newPlannedCollections.find(StaticStrings::SystemDatabase);
       if (it != _newPlannedCollections.end()) {
-        // find _graphs collection in Plan
-        auto it2 = (*it).second->find(StaticStrings::GraphCollection);
-        if (it2 != (*it).second->end()) {
-          // found!
-          if ((*it2).second.collection->distributeShardsLike().empty()) {
-            // _graphs collection has no distributeShardsLike, so it is
-            // the prototype!
-            systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+        // but for "old" databases it may still be "_graphs". we need to find
+        // out! find _system database in Plan. Replication TWO databases cannot
+        // be old.
+        if (systemDB->replicationVersion() == replication::Version::ONE) {
+          // find _graphs collection in Plan
+          auto it2 = (*it).second->find(StaticStrings::GraphCollection);
+          if (it2 != (*it).second->end()) {
+            // found!
+            if ((*it2).second.collection->distributeShardsLike().empty()) {
+              // _graphs collection has no distributeShardsLike, so it is
+              // the prototype!
+              systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+            }
           }
         }
 
@@ -1851,6 +1880,17 @@ void ClusterInfo::loadPlan() {
   _planVersion = changeSet.version;
   _planIndex = changeSet.ind;
   _plan.swap(newPlan);
+
+  // update memory usage
+  std::uint64_t memoryUsage = 0;
+  for (auto const& it : _plan) {
+    TRI_ASSERT(it.second != nullptr);
+    memoryUsage += it.second->slice().byteSize();
+  }
+  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
+  _resourceMonitor.increaseMemoryUsage(memoryUsage);
+  _planMemoryUsage = memoryUsage;
+
   LOG_TOPIC("54321", DEBUG, Logger::CLUSTER)
       << "Updating ClusterInfo plan: version=" << _planVersion
       << " index=" << _planIndex;
@@ -2126,6 +2166,15 @@ void ClusterInfo::loadCurrent() {
   WRITE_LOCKER(writeLocker, _currentProt.lock);
 
   _current.swap(newCurrent);
+  std::uint64_t memoryUsage = 0;
+  for (auto const& it : _current) {
+    TRI_ASSERT(it.second != nullptr);
+    memoryUsage += it.second->slice().byteSize();
+  }
+  _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
+  _resourceMonitor.increaseMemoryUsage(memoryUsage);
+  _currentMemoryUsage = memoryUsage;
+
   _currentVersion = changeSet.version;
   _currentIndex = changeSet.ind;
   LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
@@ -5052,11 +5101,6 @@ ServersKnown ClusterInfo::rebootIds() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  if (serverID == "debug-follower") {
-    return "tcp://127.0.0.1:3000";
-  }
-#endif
   int tries = 0;
 
   if (!_serversProt.isValid) {
@@ -5077,7 +5121,7 @@ std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
         serverID_ = (*ita).second;
       }
 
-      // _servers is a map-type <ServerId, std::string>
+      // _servers is a map-type <ServerId, pmr::ManagedString>
       auto it = _servers.find(serverID_);
 
       if (it != _servers.end()) {
@@ -6454,8 +6498,9 @@ ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 bool ClusterInfo::SyncerThread::notify() {
   std::lock_guard<std::mutex> lck(_m);
   _news = true;
+  // TODO: can we move the notify_one() call outside of the mutex?
   _cv.notify_one();
-  return _news;
+  return true;
 }
 
 void ClusterInfo::SyncerThread::beginShutdown() {
@@ -6473,10 +6518,11 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 bool ClusterInfo::SyncerThread::start() {
   ThreadNameFetcher nameFetcher;
   std::string_view name = nameFetcher.get();
+  if (name.empty()) {
+    name = "unknown syncer thread";
+  }
 
-  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER)
-      << "Starting "
-      << (name.empty() ? std::string_view("by unknown thread") : name);
+  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER) << "Starting " << name;
   return Thread::start();
 }
 

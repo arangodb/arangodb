@@ -91,21 +91,6 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
                                    "invalid number of shards");
   }
 
-  auto avoidServersSlice = info.get("avoidServers");
-  if (avoidServersSlice.isArray()) {
-    for (VPackSlice i : VPackArrayIterator(avoidServersSlice)) {
-      if (i.isString()) {
-        _avoidServers.push_back(i.copyString());
-      } else {
-        LOG_TOPIC("e5bc6", ERR, arangodb::Logger::FIXME)
-            << "avoidServers must be a vector of strings, we got "
-            << avoidServersSlice.toJson() << ". discarding!";
-        _avoidServers.clear();
-        break;
-      }
-    }
-  }
-
   size_t replicationFactor = _replicationFactor;
   Result res = extractReplicationFactor(info, isSmart, replicationFactor);
   if (res.fail()) {
@@ -189,7 +174,6 @@ ShardingInfo::ShardingInfo(ShardingInfo const& other,
       _replicationFactor(other.replicationFactor()),
       _writeConcern(other.writeConcern()),
       _distributeShardsLike(other.distributeShardsLike()),
-      _avoidServers(other.avoidServers()),
       _shardKeys(other.shardKeys()),
       _shardIds(std::make_shared<ShardMap>()),
       _shardingStrategy() {
@@ -304,10 +288,6 @@ Result ShardingInfo::extractShardKeys(velocypack::Slice info,
   return {};
 }
 
-bool ShardingInfo::usesSameShardingStrategy(ShardingInfo const* other) const {
-  return _shardingStrategy->isCompatible(other->_shardingStrategy.get());
-}
-
 std::string ShardingInfo::shardingStrategyName() const {
   return _shardingStrategy->name();
 }
@@ -383,57 +363,11 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
 
   result.close();  // shardKeys
 
-  if (!_avoidServers.empty()) {
-    result.add(VPackValue("avoidServers"));
-    result.openArray();
-    for (auto const& server : _avoidServers) {
-      result.add(VPackValue(server));
-    }
-    result.close();
-  }
-
   _shardingStrategy->toVelocyPack(result);
 }
 
 std::string const& ShardingInfo::distributeShardsLike() const noexcept {
   return _distributeShardsLike;
-}
-
-void ShardingInfo::distributeShardsLike(std::string const& cid,
-                                        ShardingInfo const* other) {
-  if (_shardKeys.size() != other->shardKeys().size()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "cannot distribute shards like "
-        "a collection with a different number of shard key attributes");
-  }
-
-  if (!usesSameShardingStrategy(other)) {
-    auto& server = _collection->vocbase().server();
-    auto& shr = server.getFeature<ShardingFeature>();
-    // other collection has a different sharding strategy
-    // adjust our sharding so it uses the same strategy as the other
-    // collection
-    _shardingStrategy = shr.create(other->shardingStrategyName(), this);
-  }
-
-  _distributeShardsLike = cid;
-
-  if (_collection->isSmart() && _collection->type() == TRI_COL_TYPE_EDGE) {
-    return;
-  }
-
-  _replicationFactor = other->replicationFactor();
-  _writeConcern = other->writeConcern();
-  _numberOfShards = other->numberOfShards();
-}
-
-std::vector<std::string> const& ShardingInfo::avoidServers() const noexcept {
-  return _avoidServers;
-}
-
-void ShardingInfo::avoidServers(std::vector<std::string> const& avoidServers) {
-  _avoidServers = avoidServers;
 }
 
 size_t ShardingInfo::replicationFactor() const noexcept {
@@ -489,7 +423,6 @@ void ShardingInfo::makeSatellite() {
   _replicationFactor = 0;
   _writeConcern = 0;
   _numberOfShards = 1;
-  _avoidServers.clear();
 }
 
 size_t ShardingInfo::numberOfShards() const noexcept { return _numberOfShards; }

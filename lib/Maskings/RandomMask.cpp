@@ -26,32 +26,35 @@
 #include "Maskings/Maskings.h"
 #include "Random/RandomGenerator.h"
 
+#include <memory>
+
 using namespace arangodb;
 using namespace arangodb::maskings;
 
 ParseResult<AttributeMasking> RandomMask::create(Path path, Maskings* maskings,
-                                                 VPackSlice const&) {
-  return ParseResult<AttributeMasking>(
-      AttributeMasking(path, new RandomMask(maskings)));
+                                                 velocypack::Slice /*def*/) {
+  return ParseResult<AttributeMasking>(AttributeMasking(
+      std::move(path), std::make_shared<RandomMask>(maskings)));
 }
 
-VPackValue RandomMask::mask(bool value, std::string&) const {
+void RandomMask::mask(bool value, velocypack::Builder& out,
+                      std::string&) const {
   int64_t result = RandomGenerator::interval(static_cast<int64_t>(0),
                                              static_cast<int64_t>(1));
 
-  return VPackValue(result % 2 == 0);
+  out.add(VPackValue(result % 2 == 0));
 }
 
-VPackValue RandomMask::mask(int64_t, std::string&) const {
+void RandomMask::mask(int64_t, velocypack::Builder& out, std::string&) const {
   int64_t result = RandomGenerator::interval(static_cast<int64_t>(-1000),
                                              static_cast<int64_t>(1000));
 
-  return VPackValue(result);
+  out.add(VPackValue(result));
 }
 
-VPackValue RandomMask::mask(double, std::string&) const {
+void RandomMask::mask(double, velocypack::Builder& out, std::string&) const {
   int64_t result = RandomGenerator::interval(static_cast<int64_t>(-1000),
                                              static_cast<int64_t>(1000));
 
-  return VPackValue(1.0 * result / 100);
+  out.add(VPackValue(1.0 * result / 100));
 }

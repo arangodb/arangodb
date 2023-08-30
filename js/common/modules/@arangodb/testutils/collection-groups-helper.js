@@ -100,6 +100,7 @@ const createCollectionGroupTarget = function (database, config) {
   const cids = new Array(numberOfCollections).fill(undefined).map(() => lh.nextUniqueLogId());
   const target = {
     id: gid,
+    leader: "",
     collections: {},
     attributes: {
       mutable: {
