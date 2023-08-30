@@ -55,12 +55,14 @@ class FileDescriptorsFeature : public ArangodFeature {
   // passed since the last counting
   void countOpenFilesIfNeeded();
 
+  void updateIntervalForUnitTests(uint64_t interval);
+
  private:
   void adjustFileDescriptors();
 
   uint64_t _descriptorsMinimum;
 
-  uint64_t _countDescriptorsInterval;
+  std::atomic<uint64_t> _countDescriptorsInterval;
 
   metrics::Gauge<uint64_t>& _fileDescriptorsCurrent;
   metrics::Gauge<uint64_t>& _fileDescriptorsLimit;

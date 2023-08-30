@@ -135,6 +135,7 @@ FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
           arangodb_file_descriptors_current{})),
       _fileDescriptorsLimit(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_file_descriptors_limit{})) {
+
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<EnvironmentFeature>();
@@ -150,16 +151,20 @@ void FileDescriptorsFeature::collectOptions(
                                    arangodb::options::Flags::OsLinux,
                                    arangodb::options::Flags::OsMac));
 
+  uint64_t countDescriptorsInterval{_countDescriptorsInterval.load()};
   options
       ->addOption(
           "--server.count-descriptors-interval",
           "Controls the interval (in milliseconds) in which the number of open "
           "file descriptors for the process is determined "
           "(0 = disable counting).",
-          new UInt64Parameter(&_countDescriptorsInterval),
+          new UInt64Parameter(&countDescriptorsInterval),
           arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                        arangodb::options::Flags::OsLinux))
       .setIntroducedIn(31100);
+  if (countDescriptorsInterval != _countDescriptorsInterval.load()) {
+    _countDescriptorsInterval.store(countDescriptorsInterval);
+  }
 }
 
 void FileDescriptorsFeature::validateOptions(
@@ -175,12 +180,13 @@ void FileDescriptorsFeature::validateOptions(
   }
 
   constexpr uint64_t lowerBound = 10000;
-  if (_countDescriptorsInterval > 0 && _countDescriptorsInterval < lowerBound) {
+  uint64_t countDescriptorsInterval = _countDescriptorsInterval.load();
+  if (countDescriptorsInterval > 0 && countDescriptorsInterval < lowerBound) {
     LOG_TOPIC("c3011", WARN, Logger::SYSCALL)
         << "too low value for `--server.count-descriptors-interval`. Should be "
            "at least "
         << lowerBound;
-    _countDescriptorsInterval = lowerBound;
+    _countDescriptorsInterval.store(lowerBound);
   }
 }
 
@@ -233,7 +239,7 @@ void FileDescriptorsFeature::countOpenFiles() {
 }
 
 void FileDescriptorsFeature::countOpenFilesIfNeeded() {
-  if (_countDescriptorsInterval == 0) {
+  if (_countDescriptorsInterval.load() == 0) {
     return;
   }
 
@@ -244,7 +250,7 @@ void FileDescriptorsFeature::countOpenFilesIfNeeded() {
   if (guard.owns_lock() &&
       (_lastCountStamp.time_since_epoch().count() == 0 ||
        now - _lastCountStamp >
-           std::chrono::milliseconds(_countDescriptorsInterval))) {
+       std::chrono::milliseconds(_countDescriptorsInterval.load()))) {
     countOpenFiles();
     _lastCountStamp = now;
   }
