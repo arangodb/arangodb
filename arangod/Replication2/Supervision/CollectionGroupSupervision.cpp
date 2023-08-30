@@ -301,8 +301,13 @@ auto pickBestServerToRemoveFromLog(
                      // then remove leaders that are not Target leaders
                      return compareTuple(left) < compareTuple(right);
                    });
+#if false
+  // TODO i think this assertion is not correct. It is possible that the leader
+  // is the only dead server, if we race with a server failure and
+  // decreasing of replicationFactor.
   ADB_PROD_ASSERT(not log.target.leader or
                   servers.front() != log.target.leader);
+#endif
   return servers.front();
 }
 
@@ -324,20 +329,21 @@ auto checkAssociatedReplicatedLogs(
         << " is in plan, but the replicated log " << sheaf.replicatedLog
         << " is missing.";
     auto const& log = logs.at(sheaf.replicatedLog);
-    auto const& wantedConfig =
+    auto wantedConfig =
         createLogConfigFromGroupAttributes(target.attributes);
-
-    if (log.target.config != wantedConfig) {
-      // we have to update this replicated log
-      return UpdateReplicatedLogConfig{sheaf.replicatedLog, wantedConfig};
-    }
-
     auto expectedReplicationFactor =
         target.attributes.mutableAttributes.replicationFactor;
 
     if (expectedReplicationFactor == 0) {
       // 0 is Satellite, replicate everywhere, even to non-healthy servers
       expectedReplicationFactor = health._health.size();
+      wantedConfig.softWriteConcern = expectedReplicationFactor;
+      wantedConfig.writeConcern = std::floor(expectedReplicationFactor / 2) + 1;
+    }
+
+    if (log.target.config != wantedConfig) {
+      // we have to update this replicated log
+      return UpdateReplicatedLogConfig{sheaf.replicatedLog, wantedConfig};
     }
 
     auto currentReplicationFactor = log.target.participants.size();
