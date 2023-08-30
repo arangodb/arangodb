@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-288: Improve collection index UI
+
 * Remove attribute `dfdb` from response of storage engine API (GET 
   `/_api/engine`). 
 
