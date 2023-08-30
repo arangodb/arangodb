@@ -837,14 +837,20 @@ void DumpFeature::collectOptions(
   options
       ->addOption("--compress-transfer",
                   "Compress data for transport using the gzip format.",
-                  new BooleanParameter(&_options.useGzipForTransport))
+                  new BooleanParameter(&_options.useGzipForTransport),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
 
   options
       ->addOption("--dump-vpack",
                   "Dump collection data in velocypack format (more compact "
                   "than JSON, but requires ArangoDB 3.12 or higher to restore)",
-                  new BooleanParameter(&_options.useVPack))
+                  new BooleanParameter(&_options.useVPack),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
 
   options
