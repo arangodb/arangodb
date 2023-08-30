@@ -225,25 +225,14 @@ class ConfigBuilder {
       this.config['--compress-output'] = false;
     }
   }
-  activateEnvelopes() {
-    if (this.type === 'dump') {
-      this.config['--envelope'] = true;
-    }
-  }
   setUseExperimentalParallelDump() {
     if (this.type === 'dump') {
       this.config['use-experimental-dump'] = true;
     }
   }
-
   setUseSplitFiles() {
     if (this.type === 'dump') {
       this.config['split-files'] = true;
-    }
-  }
-  deactivateEnvelopes() {
-    if (this.type === 'dump') {
-      this.config['--envelope'] = false;
     }
   }
   setRootDir(dir) { this.rootDir = dir; }

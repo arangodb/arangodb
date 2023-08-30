@@ -61,9 +61,8 @@ function dumpIntegrationSuite () {
       assertEqual(10, data.length);
       data.forEach(function(line) {
         line = JSON.parse(line);
-        assertEqual(2300, line.type);
-        assertTrue(line.data.hasOwnProperty('_key'));
-        assertTrue(line.data.hasOwnProperty('_rev'));
+        assertTrue(line.hasOwnProperty('_key'));
+        assertTrue(line.hasOwnProperty('_rev'));
       });
     }
   };

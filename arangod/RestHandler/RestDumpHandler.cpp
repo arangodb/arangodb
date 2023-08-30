@@ -203,6 +203,7 @@ void RestDumpHandler::handleCommandDumpNext() {
   _response->addRawPayload(batch->content);
   _response->setGenerateBody(true);
   _response->setResponseCode(rest::ResponseCode::OK);
+  _response->setAllowCompression(true);
 
   // prolong lifetime of context, so that it is still there for follow-up
   // requests.

@@ -1,7 +1,24 @@
 devel
 -----
 
-* BTS-1124: wait for license to be applied locally before responding to the request.
+* Obsolete the following options of arangodump:
+  - `--envelope`: setting this option to true previously wrapped every dumped
+    document into a {data, type} envelope. This was useful for the MMFiles
+    storage engine, where dumps could also include document removals. With the
+    RocksDB storage engine, the envelope only caused overhead and increased the
+    size of the dumps. The default value of `--envelope` was changed to `false`
+    in ArangoDB 3.9 already, so by default all arangodump invocations since
+    then created non-envelope dumps. With the option being removed now, all
+    arangodump invocations will unconditionally create non-envelope dumps.
+  - `--tick-start`: setting this option allowed to restrict the dumped data
+    to some time range with the MMFiles storage engine. It had no effect for
+    the RocksDB storage engine and so it is removed now.
+  - `--tick-end`: setting this option allowed to restrict the dumped data
+    to some time range with the MMFiles storage engine. It had no effect for
+    the RocksDB storage engine and so it is removed now.
+
+* BTS-1124: wait for license to be applied locally before responding to the 
+  request.
 
 * BTS-1566: remove redundant responsibility for creating local databases on
   coordinators.

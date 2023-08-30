@@ -50,6 +50,7 @@ add_library(arango_lightweight STATIC
         Basics/FileUtils.cpp
         Basics/Guarded.h
         Basics/Identifier.cpp
+        Basics/InputProcessors.cpp
         Basics/NumberOfCores.cpp
         Basics/PageSize.cpp
         Basics/PhysicalMemory.cpp
