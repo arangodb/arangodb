@@ -1325,21 +1325,30 @@ Result RestReplicationHandler::parseBatch(
     transaction::Methods& trx, std::string const& collectionName,
     VPackBuilder& documentsToInsert,
     std::unordered_set<std::string>& documentsToRemove) {
-  if (_request->contentType() == ContentType::DUMP) {
-    return parseBatchDump(trx, collectionName, documentsToInsert,
-                          documentsToRemove);
-  }
   if (_request->contentType() == ContentType::VPACK) {
     return parseBatchVPack(trx, collectionName, documentsToInsert);
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
+
+  if (_request->contentType() == ContentType::DUMP ||
+      _request->contentType() == ContentType::TEXT ||
+      _request->contentType() == ContentType::JSON) {
+    return parseBatchDump(trx, collectionName, documentsToInsert,
+                          documentsToRemove);
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      absl::StrCat("invalid request type: ",
+                   contentTypeToString(_request->contentType())));
 }
 
 Result RestReplicationHandler::parseBatchDump(
     transaction::Methods& trx, std::string const& collectionName,
     VPackBuilder& documentsToInsert,
     std::unordered_set<std::string>& documentsToRemove) {
-  TRI_ASSERT(_request->contentType() == ContentType::DUMP);
+  TRI_ASSERT(_request->contentType() == ContentType::DUMP ||
+             _request->contentType() == ContentType::TEXT ||
+             _request->contentType() == ContentType::JSON);
 
   bool const isUsersCollection =
       collectionName == StaticStrings::UsersCollection;
