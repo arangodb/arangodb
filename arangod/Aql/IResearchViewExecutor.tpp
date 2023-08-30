@@ -735,7 +735,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
       if constexpr (Traits::ExplicitScanned) {
         stats.incrScanned(impl.getScanned());
       }
-      if constexpr (isMaterialized && kEnableMultiGet) {
+      if constexpr (isMaterialized) {
         // TODO(MBkkt) unify it more with MaterializeExecutor
         auto pkReadingOrder = _indexReadBuffer.getMaterializeRange(0);
         auto it = pkReadingOrder.begin();
@@ -750,7 +750,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
             return lhs_segment->snapshot < rhs_segment->snapshot;
           });
         } else {
-          segment = std::exchange(impl._segment, nullptr);
+          segment = impl._segment;
           _context.snapshot = segment->snapshot;
         }
         StorageSnapshot const* lastSnapshot{};
@@ -941,23 +941,14 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
 
     writeSearchDoc(ctx, _indexReadBuffer.getSearchDoc(bufferEntry), reg);
   }
-  if constexpr (isMaterialized && kEnableMultiGet) {
+  if constexpr (isMaterialized) {
     TRI_ASSERT(!segment);
     auto& r = _context.statuses[value.result];
     if (ADB_UNLIKELY(!r.ok())) {
       return false;
     }
-    auto data = _context.values[value.result].ToStringView().data();
-    ctx.callback(LocalDocumentId{},
-                 VPackSlice{reinterpret_cast<uint8_t const*>(data)});
-  } else if constexpr (isMaterialized) {
-    TRI_ASSERT(value.id.isSet());
-    auto& physical = *segment->collection->getPhysical();
-    auto r = physical.readFromSnapshot(&_trx, value.id, ctx.callback,
-                                       ReadOwnWrites::no, *segment->snapshot);
-    if (ADB_UNLIKELY(!r.ok())) {
-      return false;
-    }
+    auto const* data = _context.values[value.result].data();
+    ctx.callback({}, VPackSlice{reinterpret_cast<uint8_t const*>(data)});
   }
   if constexpr (isLateMaterialized) {
     writeSearchDoc(ctx, value, ctx.getDocumentIdReg());
@@ -1425,9 +1416,9 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
   }
   return true;
 }
+
 template<typename ExecutionTraits>
-bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
-    IResearchViewExecutor::ReadContext& ctx) {
+bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
   size_t const atMost = ctx.outputRow.numRowsLeft();
   TRI_ASSERT(this->_indexReadBuffer.empty());

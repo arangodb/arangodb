@@ -110,9 +110,21 @@ rocksdb::Status RocksDBReadOnlyBaseMethods::SingleDelete(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
+rocksdb::Status arangodb::RocksDBReadOnlyBaseMethods::Get(
+    rocksdb::Snapshot const* snapshot, rocksdb::ColumnFamilyHandle& family,
+    rocksdb::Slice const& key, rocksdb::PinnableSlice& value) {
+  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
+    _readOptions.snapshot = was;
+  };
+  _readOptions.snapshot = snapshot;
+
+  return _db->Get(_readOptions, &family, key, &value);
+}
+
 void RocksDBReadOnlyBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
                                           rocksdb::ColumnFamilyHandle& family,
-                                          size_t count, rocksdb::Slice* keys,
+                                          size_t count,
+                                          rocksdb::Slice const* keys,
                                           rocksdb::PinnableSlice* values,
                                           rocksdb::Status* statuses) {
   absl::Cleanup restore = [&, was = _readOptions.snapshot] {
@@ -122,17 +134,6 @@ void RocksDBReadOnlyBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
 
   // Timestamps and multiple ColumnFamilies are not necessary for us
   _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
-}
-
-rocksdb::Status arangodb::RocksDBReadOnlyBaseMethods::GetFromSnapshot(
-    rocksdb::ColumnFamilyHandle* family, rocksdb::Slice const& slice,
-    rocksdb::PinnableSlice* pinnable, ReadOwnWrites rw,
-    rocksdb::Snapshot const* snapshot) {
-  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
-    _readOptions.snapshot = was;
-  };
-  _readOptions.snapshot = snapshot;
-  return Get(family, slice, pinnable, rw);
 }
 
 void RocksDBReadOnlyBaseMethods::PutLogData(rocksdb::Slice const& blob) {

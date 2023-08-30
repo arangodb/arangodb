@@ -2004,14 +2004,11 @@ Result RocksDBCollection::lookupDocumentVPack(
 
   RocksDBMethods* mthd =
       RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
+  auto* family = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
   rocksdb::Status s =
-      snapshot ? mthd->GetFromSnapshot(
-                     RocksDBColumnFamilyManager::get(
-                         RocksDBColumnFamilyManager::Family::Documents),
-                     key->string(), &ps, readOwnWrites, snapshot->getSnapshot())
-               : mthd->Get(RocksDBColumnFamilyManager::get(
-                               RocksDBColumnFamilyManager::Family::Documents),
-                           key->string(), &ps, readOwnWrites);
+      snapshot ? mthd->Get(snapshot->getSnapshot(), *family, key->string(), ps)
+               : mthd->Get(family, key->string(), &ps, readOwnWrites);
 
   if (!s.ok()) {
     return rocksutils::convertStatus(s);

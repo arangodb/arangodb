@@ -36,22 +36,17 @@
 
 namespace arangodb::aql {
 
-// We want to test old behavior for some configuration
-// Linux arm choosed because most developers use x86 or apple arm
-#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(__linux__) && \
-    defined(__aarch64__)
-inline constexpr bool kEnableMultiGet = false;
-#else
-inline constexpr bool kEnableMultiGet = true;
-#endif
+class MultiGetContext {
+ public:
+  static constexpr size_t kKeySize = sizeof(uint64_t) * 2;
+  static constexpr size_t kBatchSize = 32;  // copied from rocksdb
+  // TODO(MBkkt) benchmark and choose best threshold
+  static constexpr size_t kThreshold = 1;
 
-struct MultiGetContext {
   RocksDBTransactionMethods* methods{};
   StorageSnapshot const* snapshot{};
-  std::string keysBuffer;
-  std::vector<rocksdb::Slice> keys;
-  std::vector<rocksdb::Status> statuses;
-  std::vector<rocksdb::PinnableSlice> values;
+  using ValueType = std::unique_ptr<uint8_t[]>;  // null mean was error
+  std::vector<ValueType> values;
 
   template<typename Func>
   void multiGet(size_t expected, Func&& func);
@@ -62,57 +57,84 @@ struct MultiGetContext {
     if (ADB_UNLIKELY(!methods)) {
       methods = RocksDBTransactionState::toMethods(&trx, logical.id());
     }
-
-    auto const objectId = physical.objectId();
-    auto const start = keysBuffer.size();
-    rocksutils::uint64ToPersistent(keysBuffer, objectId);
-    rocksutils::uint64ToPersistent(keysBuffer, id.id());
-    TRI_ASSERT(keysBuffer.size() - start == sizeof(uint64_t) * 2);
-
-    keys.emplace_back(keysBuffer.data() + start, sizeof(uint64_t) * 2);
+    serialize(physical.objectId(), id);
   }
+
+ private:
+  void serialize(uint64_t objectId, LocalDocumentId id) noexcept {
+    rocksutils::uint64ToPersistentRaw(_buffer.data(), objectId);
+    rocksutils::uint64ToPersistentRaw(_buffer.data(), id.id());
+    _keys[_pos++] = {_buffer.data() + _bytes, kKeySize};
+    _bytes += kKeySize;
+  }
+
+  rocksdb::Snapshot const* getSnapshot() const noexcept {
+    TRI_ASSERT(snapshot != nullptr);
+    auto& impl = static_cast<RocksDBEngine::RocksDBSnapshot const&>(*snapshot);
+    auto const* rocksdbSnapshot = impl.getSnapshot();
+    TRI_ASSERT(rocksdbSnapshot != nullptr);
+    return rocksdbSnapshot;
+  }
+
+  // TODO(MBkkt) Maybe move on stack multiGet?
+  size_t _pos;
+  size_t _bytes;
+  std::array<char, kBatchSize * kKeySize> _buffer;
+  std::array<rocksdb::Slice, kBatchSize> _keys;
+  std::array<rocksdb::Status, kBatchSize> _statuses;
+  std::array<rocksdb::PinnableSlice, kBatchSize> _values;
 };
 
 enum class MultiGetState : uint8_t {
   kNext = 1U << 0U,
-  kWork = 1U << 1U,
-  kLast = 1U << 2U,
+  kWork = 1U << 1U,  // returned from func when we want separate batch
+  kLast = 1U << 2U,  // returned from func when no more keys
 };
 
 template<typename Func>
 void MultiGetContext::multiGet(size_t expected, Func&& func) {
-  keysBuffer.clear();
-  keysBuffer.reserve(expected * sizeof(uint64_t) * 2);
-  keys.clear();
-  keys.reserve(expected);
-  if (statuses.size() < expected) {
-    statuses.resize(expected);
-    values.resize(expected);
-  }
+  values.clear();
+  values.resize(expected);
+
+  _pos = 0;
+  _bytes = 0;
+
   auto& family = *RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
-  size_t last = 0;
-  size_t i = 0;
+
   bool running = true;
+  size_t i = 0;
   while (running) {
-    switch (func(i)) {
-      case MultiGetState::kNext:
-        break;
-      case MultiGetState::kLast:
-        running = false;
-        [[fallthrough]];
-      case MultiGetState::kWork:
-        if (i != last) {
-          TRI_ASSERT(snapshot != nullptr);
-          auto& rocksdbSnapshot =
-              static_cast<RocksDBEngine::RocksDBSnapshot const&>(*snapshot);
-          methods->MultiGet(rocksdbSnapshot.getSnapshot(), family, i - last,
-                            keys.data() + last, values.data() + last,
-                            statuses.data() + last);
-        }
-        last = i;
-        break;
+    auto const state = func(i);
+    if (state == MultiGetState::kNext && _pos < kBatchSize) {
+      continue;
     }
+    running = state != MultiGetState::kLast;
+    if (_pos == 0) {
+      continue;
+    }
+    auto const* snapshot = getSnapshot();
+    if (_pos <= kThreshold) {
+      _statuses[0] = methods->Get(snapshot, family, _keys[0], _values[0]);
+    } else {
+      methods->MultiGet(snapshot, family, _pos, &_keys[0], &_values[0],
+                        &_statuses[0]);
+    }
+    auto it = values.begin() + i, end = it + _pos;
+    for (size_t c = 0; it != end; ++it, ++c) {
+      TRI_ASSERT(!*it);
+      if (!_statuses[c].ok()) {
+        continue;
+      }
+      // TODO(MBkkt) Maybe we can avoid call byteSize() and rely on size()?
+      auto const* data = _values[c].data();
+      VPackSlice slice{reinterpret_cast<uint8_t const*>(data)};
+      const auto size = slice.byteSize();
+      *it = ValueType{new uint8_t[size]};
+      memcpy(it->get(), data, size);
+    }
+    _pos = 0;
+    _bytes = 0;
   }
 }
 

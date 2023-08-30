@@ -574,9 +574,21 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
   return {};
 }
 
+rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::Snapshot const* snapshot,
+                                           rocksdb::ColumnFamilyHandle& family,
+                                           rocksdb::Slice const& key,
+                                           rocksdb::PinnableSlice& value) {
+  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
+    _readOptions.snapshot = was;
+  };
+  _readOptions.snapshot = snapshot;
+
+  return _db->Get(_readOptions, &family, key, &value);
+}
+
 void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
                                      rocksdb::ColumnFamilyHandle& family,
-                                     size_t count, rocksdb::Slice* keys,
+                                     size_t count, rocksdb::Slice const* keys,
                                      rocksdb::PinnableSlice* values,
                                      rocksdb::Status* statuses) {
   absl::Cleanup restore = [&, was = _readOptions.snapshot] {

@@ -602,7 +602,7 @@ class IResearchViewExecutorBase {
   InputAqlItemRow _inputRow;
   IndexReadBufferType _indexReadBuffer;
   IRS_NO_UNIQUE_ADDRESS
-  irs::utils::Need<isMaterialized && kEnableMultiGet, MultiGetContext> _context;
+  irs::utils::Need<isMaterialized, MultiGetContext> _context;
   iresearch::ViewExpressionContext _ctx;
   FilterCtx _filterCtx;
   iresearch::ViewSnapshotPtr _reader;
@@ -780,10 +780,7 @@ struct MergeSortExecutorValue {
   auto const& value() const noexcept { return _value; }
   auto const* segment() const noexcept { return _segment; }
 
-  void translate(size_t i) noexcept {
-    _value.result = i;
-    _segment = nullptr;
-  }
+  void translate(size_t i) noexcept { _value.result = i; }
 
  private:
   DocumentValue _value;
@@ -857,7 +854,6 @@ struct HeapSortExecutorValue {
     TRI_ASSERT(_translated);
 #endif
     _value.result = i;
-    _segment = nullptr;
   }
 
   [[nodiscard]] irs::doc_id_t docId() const noexcept {
