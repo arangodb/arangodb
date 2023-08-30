@@ -1,6 +1,10 @@
 v3.9.12 (2023-08-23)
 --------------------
 
+* ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
+  "conflict, _rev values do not match" for non-local edges in Smart- and
+  EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
+
 * Fixed GH issue #19630: SEARCH LIKE returns suitable and unsuitable results.
 
 * Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where
