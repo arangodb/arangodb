@@ -40,6 +40,7 @@ agency::CollectionGroupId CollectionGroupUpdates::addNewGroup(
   auto newId = agency::CollectionGroupId(generateId());
   agency::CollectionGroupTargetSpecification g;
   g.id = newId;
+  g.groupLeader = ::toCollectionIdString(collection.id);
   g.version = 1;
   g.attributes.mutableAttributes.waitForSync = collection.waitForSync;
   g.attributes.mutableAttributes.writeConcern = collection.writeConcern.value();

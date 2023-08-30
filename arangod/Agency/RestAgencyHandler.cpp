@@ -31,11 +31,11 @@
 #include "Agency/Agent.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
-#include "Metrics/Histogram.h"
-#include "Metrics/LogScale.h"
 
 using namespace arangodb;
 
@@ -53,29 +53,29 @@ RestAgencyHandler::RestAgencyHandler(ArangodServer& server,
                                      GeneralResponse* response, Agent* agent)
     : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
-inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
+RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("46536", WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportTooManySuffices() {
+RestStatus RestAgencyHandler::reportTooManySuffices() {
   LOG_TOPIC("ef6ae", WARN, Logger::AGENCY)
       << "Too many suffixes. Agency public interface takes one path.";
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportUnknownMethod() {
+RestStatus RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC("9b810", WARN, Logger::AGENCY)
       << "Public REST interface has no method " << _request->suffixes()[0];
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportMessage(rest::ResponseCode code,
-                                                   std::string const& message) {
+RestStatus RestAgencyHandler::reportMessage(rest::ResponseCode code,
+                                            std::string const& message) {
   LOG_TOPIC("8a454", DEBUG, Logger::AGENCY) << message;
   Builder body;
   {
@@ -171,7 +171,7 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
               VPackSlice res = rb->slice();
 
               if (res.isObject() && res.hasKey("result")) {
-                if (res.hasKey("error")) {  // leadership loss
+                if (res.hasKey(StaticStrings::Error)) {  // leadership loss
                   generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                                 TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
                                 "No leader");
@@ -221,11 +221,9 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
                   }
                   generateResult(rest::ResponseCode::OK,
                                  std::move(*builder.steal()));
-                  return;
                 } else {
                   generateResult(rest::ResponseCode::OK,
                                  std::move(*rb->steal()));
-                  return;
                 }
               } else {
                 generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
@@ -258,13 +256,12 @@ static bool readValue(GeneralRequest const& req, char const* name, T& val) {
     LOG_TOPIC("f4732", DEBUG, Logger::AGENCY)
         << "Query string " << name << " missing.";
     return false;
-  } else {
-    if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
-      LOG_TOPIC("f4237", WARN, Logger::AGENCY)
-          << "Conversion of query string " << name << " with " << val_str
-          << " to " << typeid(T).name() << " failed";
-      return false;
-    }
+  }
+  if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
+    LOG_TOPIC("f4237", WARN, Logger::AGENCY)
+        << "Conversion of query string " << name << " with " << val_str
+        << " to " << typeid(T).name() << " failed";
+    return false;
   }
   return true;
 }

@@ -166,14 +166,14 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
  private:
   std::unique_ptr<IndexIterator> createEqIterator(
       ResourceMonitor& monitor, transaction::Methods* trx, aql::AstNode const*,
-      aql::AstNode const* valNode, bool useCache,
+      aql::AstNode const* valNode, bool withCache,
       ReadOwnWrites readOwnWrites) const;
 
   std::unique_ptr<IndexIterator> createInIterator(ResourceMonitor& monitor,
                                                   transaction::Methods* trx,
                                                   aql::AstNode const*,
                                                   aql::AstNode const* valNode,
-                                                  bool useCache) const;
+                                                  bool withCache) const;
 
   // populate the keys builder with a single (string) lookup value
   void fillLookupValue(velocypack::Builder& keys,
@@ -189,7 +189,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void warmupInternal(transaction::Methods* trx, rocksdb::Slice lower,
                       rocksdb::Slice upper);
 
-  void handleCacheInvalidation(transaction::Methods& trx,
+  void handleCacheInvalidation(cache::Cache& cache, transaction::Methods& trx,
                                OperationOptions const& options,
                                std::string_view fromToRef);
 

@@ -240,7 +240,6 @@ All specifications of endpoints apply.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600)
       .setLongDescription(R"(This value is used as the default write concern
 for databases, which in turn is used as the default for collections.
 
@@ -264,7 +263,6 @@ the same value on all Coordinators.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600)
       .setLongDescription(R"(If you don't set this option, it defaults to the
 value of the `--cluster.min-replication-factor` option. If set, the value must
 be between the values of `--cluster.min-replication-factor` and
@@ -285,7 +283,6 @@ Coordinators.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600)
       .setLongDescription(R"(If you change the value of this setting and
 restart the servers, no changes are applied to existing collections that would
 violate the new setting.
@@ -303,7 +300,6 @@ Coordinators.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600)
       .setLongDescription(R"(If you change the value of this setting and
 restart the servers, no changes are applied to existing collections that would
 violate the new setting.
@@ -320,7 +316,6 @@ Coordinators.)");
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30501)
       .setLongDescription(R"(If you change the value of this setting and
 restart the servers, no changes are applied to existing collections that would
 violate the new setting.
@@ -336,7 +331,6 @@ Coordinators.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30600)
       .setLongDescription(R"(If set to `true`, forces the cluster into creating
 all future collections with only a single shard and using the same DB-Server as
 as these collections' shards leader. All collections created this way are
