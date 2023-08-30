@@ -17,6 +17,8 @@ devel
     to some time range with the MMFiles storage engine. It had no effect for
     the RocksDB storage engine and so it is removed now.
 
+* FE-248: Improve collections list UI.
+
 * BTS-1124: wait for license to be applied locally before responding to the 
   request.
 
