@@ -329,8 +329,7 @@ auto checkAssociatedReplicatedLogs(
         << " is in plan, but the replicated log " << sheaf.replicatedLog
         << " is missing.";
     auto const& log = logs.at(sheaf.replicatedLog);
-    auto wantedConfig =
-        createLogConfigFromGroupAttributes(target.attributes);
+    auto wantedConfig = createLogConfigFromGroupAttributes(target.attributes);
     auto expectedReplicationFactor =
         target.attributes.mutableAttributes.replicationFactor;
 
