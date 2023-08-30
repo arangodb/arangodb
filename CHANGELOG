@@ -9,6 +9,8 @@ devel
   The timeouts have now been unified, so that the request timeout is 60 seconds
   and that the HeartbeatThread waits for at most 65 seconds (as before).
 
+* FE-248: Improve collections list UI.
+
 * BTS-1124: wait for license to be applied locally before responding to the request.
 
 * BTS-1566: remove redundant responsibility for creating local databases on
