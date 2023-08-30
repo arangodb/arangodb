@@ -298,7 +298,9 @@ class IndexReadBuffer {
   irs::score_t* pushNoneScores(size_t count);
 
   template<typename... Args>
-  void pushValue(Args&&... args);
+  void pushValue(Args&&... args) {
+    _keyBuffer.emplace_back(std::forward<Args>(args)...);
+  }
 
   void pushSearchDoc(irs::doc_id_t docId,
                      iresearch::ViewSegment const& segment) {
@@ -327,6 +329,8 @@ class IndexReadBuffer {
   bool empty() const noexcept;
 
   size_t pop_front() noexcept;
+
+  void skip(size_t count) noexcept { _keyBaseIdx += count; }
 
   // This is violated while documents and scores are pushed, but must hold
   // before and after.
@@ -392,14 +396,17 @@ class IndexReadBuffer {
     _storedValuesBuffer.emplace_back(value.data(), value.size());
   }
 
-  using StoredValuesContainer =
-      std::conditional_t<copyStored, std::vector<irs::bstring>,
-                         std::vector<irs::bytes_view>>;
+  using StoredValue =
+      std::conditional_t<copyStored, irs::bstring, irs::bytes_view>;
 
-  StoredValuesContainer const& getStoredValues() const noexcept;
+  using StoredValues = std::vector<StoredValue>;
+
+  StoredValues const& getStoredValues() const noexcept {
+    return _storedValuesBuffer;
+  }
 
   struct BufferHeapSortElement : iresearch::HeapSortElement {
-    StoredValuesContainer* container{};
+    StoredValues* container{};
     size_t offset{};
     size_t multiplier{};
   };
@@ -428,14 +435,14 @@ class IndexReadBuffer {
   // FIXME(gnusi): compile time
   std::vector<iresearch::SearchDoc> _searchDocs;
   std::vector<irs::score_t> _scoreBuffer;
-  StoredValuesContainer _storedValuesBuffer;
+  StoredValues _storedValuesBuffer;
   // Heap Sort facilities
   // atMost * <num heap only values>
-  StoredValuesContainer _heapOnlyStoredValuesBuffer;
+  StoredValues _heapOnlyStoredValuesBuffer;
   // <num heap only values>
   std::vector<ColumnIterator> _heapOnlyStoredValuesReaders;
   // <num heap only values>
-  StoredValuesContainer _currentDocumentBuffer;
+  StoredValues _currentDocumentBuffer;
   IRS_NO_UNIQUE_ADDRESS
   irs::utils::Need<!copyStored, std::vector<velocypack::Slice>>
       _currentDocumentSlices;
@@ -532,14 +539,8 @@ class IResearchViewExecutorBase {
     InputAqlItemRow& inputRow;
     OutputAqlItemRow& outputRow;
 
-    template<auto t = iresearch::MaterializeType::LateMaterialize>
-    std::enable_if_t<contains(t), RegisterId> getDocumentIdReg()
-        const noexcept {
-      return documentOutReg;
-    }
-
-    template<auto t = iresearch::MaterializeType::Materialize>
-    std::enable_if_t<contains(t), RegisterId> getDocumentReg() const noexcept {
+    auto getDocumentIdReg() const noexcept {
+      static_assert(isLateMaterialized);
       return documentOutReg;
     }
 
@@ -573,7 +574,7 @@ class IResearchViewExecutorBase {
 
   bool writeStoredValue(
       ReadContext& ctx,
-      typename IndexReadBufferType::StoredValuesContainer const& storedValues,
+      typename IndexReadBufferType::StoredValues const& storedValues,
       size_t index, FieldRegisters const& fieldsRegs);
   bool writeStoredValue(ReadContext& ctx, irs::bytes_view storedValue,
                         FieldRegisters const& fieldsRegs);
@@ -605,10 +606,12 @@ class IResearchViewExecutorBase {
   containers::FlatHashSet<ptrdiff_t> _storedColumnsMask;
   std::array<char, iresearch::kSearchDocBufSize> _buf;
   bool _isInitialized{};
+  bool _isMaterialized{};
   // new mangling only:
   iresearch::AnalyzerProvider _provider;
 
  private:
+  void materialize();
   bool next(ReadContext& ctx, IResearchViewStats& stats);
 };
 
