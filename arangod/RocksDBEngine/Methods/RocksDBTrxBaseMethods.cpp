@@ -599,17 +599,6 @@ void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
   _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
 }
 
-rocksdb::Status RocksDBTrxBaseMethods::GetFromSnapshot(
-    rocksdb::ColumnFamilyHandle* family, rocksdb::Slice const& slice,
-    rocksdb::PinnableSlice* pinnable, ReadOwnWrites rw,
-    rocksdb::Snapshot const* snapshot) {
-  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
-    _readOptions.snapshot = was;
-  };
-  _readOptions.snapshot = snapshot;
-  return Get(family, slice, pinnable, rw);
-}
-
 size_t RocksDBTrxBaseMethods::indexingOverhead(size_t keySize) const noexcept {
   if (_indexingDisabled) {
     return 0;
