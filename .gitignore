@@ -148,3 +148,7 @@ js/node/**/*.map
 js/node/**/*.map.gz
 js/apps/**/*.map
 js/apps/**/*.map.gz
+
+swagger-ui-es-bundle*
+swagger-ui.js
+swagger-ui.js.map

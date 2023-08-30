@@ -7,6 +7,8 @@ devel
   "conflict, _rev values do not match" for non-local edges in Smart- and
   EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
 
+* Upgraded Swagger-UI to v5.4.1
+
 * FE-248: Improve collections list UI.
 
 * BTS-1124: wait for license to be applied locally before responding to the request.
