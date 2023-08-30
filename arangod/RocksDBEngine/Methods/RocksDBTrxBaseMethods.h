@@ -89,10 +89,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   /// @brief add an operation for a transaction
   Result addOperation(TRI_voc_document_operation_e opType) override;
 
-  rocksdb::Status Get(rocksdb::Snapshot const* snapshot,
-                      rocksdb::ColumnFamilyHandle& family,
-                      rocksdb::Slice const& key,
-                      rocksdb::PinnableSlice& value) final;
+  rocksdb::Status SingleGet(rocksdb::Snapshot const* snapshot,
+                            rocksdb::ColumnFamilyHandle& family,
+                            rocksdb::Slice const& key,
+                            rocksdb::PinnableSlice& value) final;
   void MultiGet(rocksdb::Snapshot const* snapshot,
                 rocksdb::ColumnFamilyHandle& family, size_t count,
                 rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,

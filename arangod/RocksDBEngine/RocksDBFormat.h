@@ -85,14 +85,14 @@ template<typename T>
 inline void uintToPersistentRawLE(char* p, T value) {
   static_assert(std::is_unsigned_v<T>, "type must be unsigned");
   value = basics::hostToLittle(value);
-  memcpy(p, value, sizeof(T));
+  memcpy(p, &value, sizeof(T));
 }
 
 template<typename T>
 inline void uintToPersistentRawBE(char* p, T value) {
   static_assert(std::is_unsigned_v<T>, "type must be unsigned");
   value = basics::hostToBig(value);
-  memcpy(p, value, sizeof(T));
+  memcpy(p, &value, sizeof(T));
 }
 
 }  // namespace arangodb::rocksutils

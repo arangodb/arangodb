@@ -51,10 +51,10 @@ class RocksDBMethods {
                               rocksdb::Slice const&, rocksdb::PinnableSlice*,
                               ReadOwnWrites) = 0;
 
-  virtual rocksdb::Status Get(rocksdb::Snapshot const* snapshot,
-                              rocksdb::ColumnFamilyHandle& family,
-                              rocksdb::Slice const& key,
-                              rocksdb::PinnableSlice& value) {
+  virtual rocksdb::Status SingleGet(rocksdb::Snapshot const* snapshot,
+                                    rocksdb::ColumnFamilyHandle& family,
+                                    rocksdb::Slice const& key,
+                                    rocksdb::PinnableSlice& value) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "RocksDBMethods does not provide Get from snapshot");

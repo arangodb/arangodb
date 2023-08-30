@@ -110,7 +110,7 @@ rocksdb::Status RocksDBReadOnlyBaseMethods::SingleDelete(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
-rocksdb::Status arangodb::RocksDBReadOnlyBaseMethods::Get(
+rocksdb::Status arangodb::RocksDBReadOnlyBaseMethods::SingleGet(
     rocksdb::Snapshot const* snapshot, rocksdb::ColumnFamilyHandle& family,
     rocksdb::Slice const& key, rocksdb::PinnableSlice& value) {
   absl::Cleanup restore = [&, was = _readOptions.snapshot] {
