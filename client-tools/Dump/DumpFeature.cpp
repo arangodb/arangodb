@@ -76,6 +76,13 @@ constexpr uint64_t MinChunkSize = 1024 * 128;
 // NB: larger value may cause tcp issues (check exact limits)
 constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 
+std::string serverLabel(std::string const& server) {
+  if (server.empty()) {
+    return "on server";
+  }
+  return absl::StrCat("on server '", server, "'");
+}
+
 constexpr std::string_view getSuffix(bool useVPack) noexcept {
   std::string_view suffix("json");
   if (useVPack) {
@@ -220,12 +227,13 @@ std::pair<arangodb::Result, uint64_t> startBatch(
     std::string const& DBserver) {
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::StringUtils::uint64;
+  using arangodb::basics::StringUtils::urlEncode;
 
   std::string url =
       "/_api/replication/batch?serverId=" + clientId + "&syncerId=" + syncerId;
   std::string const body = "{\"ttl\":600}";
   if (!DBserver.empty()) {
-    url += "&DBserver=" + DBserver;
+    url += absl::StrCat("&DBserver=", urlEncode(DBserver));
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
@@ -265,7 +273,8 @@ void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
                    "&syncerId=", syncerId);
   std::string const body = "{\"ttl\":600}";
   if (!DBserver.empty()) {
-    url += absl::StrCat("&DBserver=", DBserver);
+    using arangodb::basics::StringUtils::urlEncode;
+    url += absl::StrCat("&DBserver=", urlEncode(DBserver));
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
@@ -282,7 +291,8 @@ void endBatch(arangodb::httpclient::SimpleHttpClient& client,
   std::string url =
       absl::StrCat("/_api/replication/batch/", batchId, "?serverId=", clientId);
   if (!DBserver.empty()) {
-    url += absl::StrCat("&DBserver=", DBserver);
+    using arangodb::basics::StringUtils::urlEncode;
+    url += absl::StrCat("&DBserver=", urlEncode(DBserver));
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
@@ -384,7 +394,9 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
                    "&array=", (job.options.useVPack ? "true" : "false"));
   if (job.options.clusterMode) {
     // we are in cluster mode, must specify dbserver
-    baseUrl += absl::StrCat("&DBserver=", server);
+    TRI_ASSERT(!server.empty());
+    using arangodb::basics::StringUtils::urlEncode;
+    baseUrl += absl::StrCat("&DBserver=", urlEncode(server));
   }
 
   std::unordered_map<std::string, std::string> headers;
@@ -532,7 +544,7 @@ namespace arangodb {
 DumpFeature::DumpJob::DumpJob(ManagedDirectory& directory, DumpFeature& feature,
                               Options const& options,
                               maskings::Maskings* maskings, Stats& stats,
-                              VPackSlice collectionInfo)
+                              velocypack::Slice collectionInfo)
     : directory{directory},
       feature{feature},
       options{options},
@@ -557,8 +569,8 @@ DumpFeature::DumpJob::~DumpJob() = default;
 
 DumpFeature::DumpCollectionJob::DumpCollectionJob(
     ManagedDirectory& directory, DumpFeature& feature, Options const& options,
-    maskings::Maskings* maskings, Stats& stats, VPackSlice collectionInfo,
-    uint64_t batchId)
+    maskings::Maskings* maskings, Stats& stats,
+    velocypack::Slice collectionInfo, uint64_t batchId)
     : DumpJob(directory, feature, options, maskings, stats, collectionInfo),
       batchId(batchId) {}
 
@@ -700,9 +712,9 @@ Result DumpFeature::DumpCollectionJob::run(
 
 DumpFeature::DumpShardJob::DumpShardJob(
     ManagedDirectory& directory, DumpFeature& feature, Options const& options,
-    maskings::Maskings* maskings, Stats& stats, VPackSlice collectionInfo,
-    std::string const& shardName, std::string const& server,
-    std::shared_ptr<ManagedDirectory::File> file)
+    maskings::Maskings* maskings, Stats& stats,
+    velocypack::Slice collectionInfo, std::string const& shardName,
+    std::string const& server, std::shared_ptr<ManagedDirectory::File> file)
     : DumpJob(directory, feature, options, maskings, stats, collectionInfo),
       shardName(shardName),
       server(server),
@@ -854,13 +866,15 @@ void DumpFeature::collectOptions(
       .setIntroducedIn(31200);
 
   options
-      ->addOption("--use-experimental-dump",
-                  "Enable experimental dump behavior.",
+      ->addOption("--parallel-dump", "Enable experimental dump behavior.",
                   new BooleanParameter(&_options.useExperimentalDump),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200);
+  // option was renamed in 3.12
+  options->addOldOption("--use-experimental-dump", "--parallel-dump");
+
   options
       ->addOption(
           "--split-files",
@@ -869,7 +883,7 @@ void DumpFeature::collectOptions(
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(This option only has effect when the option
-`--use-experimental-dump` is set to `true`. Restoring split files also
+`--parallel-dump` is set to `true`. Restoring split files also
 requires an arangorestore version that is capable of restoring data of a
 single collection/shard from multiple files.)")
       .setIntroducedIn(31200);
@@ -955,7 +969,7 @@ void DumpFeature::validateOptions(
   if (_options.splitFiles && !_options.useExperimentalDump) {
     LOG_TOPIC("b0cbe", FATAL, Logger::DUMP)
         << "--split-files is only available when using "
-           "--use-experimental-dump.";
+           "--parallel-dump.";
     FATAL_ERROR_EXIT();
   }
 }
@@ -1176,22 +1190,28 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     }
 
     if (_options.useExperimentalDump) {
-      for (auto const& [shard, servers] : VPackObjectIterator(
-               collectionInfo.get("parameters").get("shards"))) {
-        TRI_ASSERT(servers.isArray());
-        auto serverStr = servers.at(0).copyString();
-        auto shardStr = shard.copyString();
+      if (_options.clusterMode) {
+        // cluster: now build a list of shards for each server
+        for (auto const& [shard, servers] : VPackObjectIterator(
+                 collectionInfo.get("parameters").get("shards"))) {
+          TRI_ASSERT(servers.isArray());
+          auto serverStr = servers.at(0).copyString();
+          auto shardStr = shard.copyString();
 
-        if (!_options.shards.empty()) {
-          // dump is restricted to specific shards
-          if (std::find(_options.shards.begin(), _options.shards.end(),
-                        shardStr) == _options.shards.end()) {
-            // do not dump this shard, as it is not in the include list
-            continue;
+          if (!_options.shards.empty()) {
+            // dump is restricted to specific shards
+            if (std::find(_options.shards.begin(), _options.shards.end(),
+                          shardStr) == _options.shards.end()) {
+              // do not dump this shard, as it is not in the include list
+              continue;
+            }
           }
+          shardsByServer[std::move(serverStr)][std::move(shardStr)]
+              .collectionName = name;
         }
-        shardsByServer[std::move(serverStr)][std::move(shardStr)]
-            .collectionName = name;
+      } else {
+        // single server mode: all "shards" are on one server
+        shardsByServer[""][name].collectionName = name;
       }
     }
 
@@ -1406,19 +1426,11 @@ void DumpFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (role == "DBSERVER" || role == "PRIMARY") {
+  if (role == "PRIMARY") {
     LOG_TOPIC("eeabc", WARN, arangodb::Logger::DUMP)
         << "You connected to a DBServer node, but operations in a cluster "
            "should be carried out via a Coordinator. This is an unsupported "
            "operation!";
-  }
-
-  if (!_options.clusterMode) {
-    if (_options.useExperimentalDump) {
-      LOG_TOPIC("7a01a", WARN, Logger::DUMP)
-          << "parallel dumping only supported in cluster mode";
-      _options.useExperimentalDump = false;
-    }
   }
 
   // set up threads and workers
@@ -1576,7 +1588,13 @@ void DumpFeature::ParallelDumpServer::createDumpContext(
   auto bodystr = builder.toJson();
   size_t retryCount = 100;
 
-  auto url = absl::StrCat("_api/dump/start?dbserver=", server);
+  using arangodb::basics::StringUtils::urlEncode;
+
+  std::string url = absl::StrCat("/_api/dump/start?useVPack=",
+                                 (options.useVPack ? "true" : "false"));
+  if (!server.empty()) {
+    url += absl::StrCat("&dbserver=", urlEncode(server));
+  }
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response;
   while (true) {
     response.reset(client.request(arangodb::rest::RequestType::POST, url,
@@ -1586,8 +1604,8 @@ void DumpFeature::ParallelDumpServer::createDumpContext(
         client.getErrorMessage(), response.get());
     if (check.fail()) {
       LOG_TOPIC("45d6e", ERR, Logger::DUMP)
-          << "An error occurred while creating a dump context on '" << server
-          << "': " << check.errorMessage();
+          << "An error occurred while creating a dump context"
+          << serverLabel(server) << ": " << check;
       bool const retry = shouldRetryRequest(response.get(), check);
 
       if (retry && --retryCount > 0) {
@@ -1598,7 +1616,7 @@ void DumpFeature::ParallelDumpServer::createDumpContext(
         LOG_TOPIC("7a3e4", ERR, Logger::DUMP) << "Too many connection errors.";
       }
       LOG_TOPIC("bdecf", FATAL, Logger::DUMP)
-          << "failed to create dump context on server " << server << ": "
+          << "failed to create dump context" << serverLabel(server) << ": "
           << check.errorMessage();
       FATAL_ERROR_EXIT();
     } else {
@@ -1610,15 +1628,19 @@ void DumpFeature::ParallelDumpServer::createDumpContext(
   dumpId = response->getHeaderField(StaticStrings::DumpId, headerExtracted);
   if (!headerExtracted) {
     LOG_TOPIC("d7a76", FATAL, Logger::DUMP)
-        << "dump create response did not contain any dump id for server "
-        << server << " body: " << response->getBody();
+        << "dump create response did not contain any dump id"
+        << serverLabel(server) << ". body: " << response->getBody();
     FATAL_ERROR_EXIT();
   }
 }
 
 void DumpFeature::ParallelDumpServer::finishDumpContext(
     httpclient::SimpleHttpClient& client) {
-  auto url = absl::StrCat("_api/dump/", dumpId, "?dbserver=", server);
+  using arangodb::basics::StringUtils::urlEncode;
+  auto url = absl::StrCat("/_api/dump/", dumpId);
+  if (!server.empty()) {
+    url += absl::StrCat("?dbserver=", urlEncode(server));
+  }
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::DELETE_REQ, url, nullptr, 0,
                      {}));
@@ -1626,15 +1648,15 @@ void DumpFeature::ParallelDumpServer::finishDumpContext(
                                                       response.get());
   if (check.fail()) {
     LOG_TOPIC("bdedf", WARN, Logger::DUMP)
-        << "failed to finish dump context on server " << server << ": "
-        << check.errorMessage();
+        << "failed to finish dump context" << serverLabel(server) << ": "
+        << check;
   }
 }
 
 Result DumpFeature::ParallelDumpServer::run(
     httpclient::SimpleHttpClient& client) {
   LOG_TOPIC("23f92", INFO, Logger::DUMP)
-      << "preparing data stream for server " << server;
+      << "preparing data stream" << serverLabel(server);
 
   // create context on dbserver
   createDumpContext(client);
@@ -1691,14 +1713,14 @@ void DumpFeature::ParallelDumpServer::ParallelDumpServer::printBlockStats() {
 void DumpFeature::ParallelDumpServer::ParallelDumpServer::countBlocker(
     BlockAt where, int64_t c) {
   /* clang-format off */
-  const char* locations[] = {
+  char const* locations[] = {
       "writer threads - consider increasing the number of network threads",
       "network threads - consider increasing the number of local writer threads",
       "dbserver get batch - consider increasing the parallelism on dbservers",
       "dbserver put batch - consider increasing the number of network threads",
   };
   /* clang-format on */
-  const char* msg = nullptr;
+  char const* msg = nullptr;
   auto actual = blockCounter[where].fetch_add(c);
   if (actual == 100) {
     msg = locations[2 * where];
@@ -1710,14 +1732,14 @@ void DumpFeature::ParallelDumpServer::ParallelDumpServer::countBlocker(
 
   if (msg) {
     LOG_TOPIC("3cc53", DEBUG, Logger::DUMP)
-        << "when dumping data from server " << server << " system blocking at "
+        << "when dumping data" << serverLabel(server) << " system blocking at "
         << msg;
   }
 }
 
 DumpFeature::ParallelDumpServer::ParallelDumpServer(
     ManagedDirectory& directory, DumpFeature& feature,
-    ClientManager& clientManager, const DumpFeature::Options& options,
+    ClientManager& clientManager, DumpFeature::Options const& options,
     maskings::Maskings* maskings, DumpFeature::Stats& stats,
     std::shared_ptr<DumpFileProvider> fileProvider,
     std::unordered_map<std::string, ShardInfo> shards, std::string server)
@@ -1727,29 +1749,42 @@ DumpFeature::ParallelDumpServer::ParallelDumpServer(
       fileProvider(std::move(fileProvider)),
       shards(std::move(shards)),
       server(std::move(server)),
-      queue(options.localWriterThreads) {}
+      queue(options.localWriterThreads) {
+  TRI_ASSERT(options.clusterMode == !server.empty());
+}
 
 std::unique_ptr<httpclient::SimpleHttpResult>
 DumpFeature::ParallelDumpServer::receiveNextBatch(
     httpclient::SimpleHttpClient& client, std::uint64_t batchId,
     std::optional<std::uint64_t> lastBatch) {
-  std::string url = absl::StrCat("_api/dump/next/", dumpId,
-                                 "?batchId=", batchId, "&dbserver=", server);
+  using arangodb::basics::StringUtils::urlEncode;
+  std::string url =
+      absl::StrCat("/_api/dump/next/", dumpId, "?batchId=", batchId);
+  if (!server.empty()) {
+    url += absl::StrCat("&dbserver=", urlEncode(server));
+  }
   if (lastBatch) {
     url += "&lastBatch=" + std::to_string(*lastBatch);
+  }
+
+  std::unordered_map<std::string, std::string> headers;
+  if (options.useGzipForTransport) {
+    headers.emplace(arangodb::StaticStrings::AcceptEncoding,
+                    arangodb::StaticStrings::EncodingGzip);
   }
 
   std::size_t retryCounter = 100;
 
   while (true) {
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-        client.request(arangodb::rest::RequestType::POST, url, nullptr, 0, {}));
+        client.request(arangodb::rest::RequestType::POST, url, nullptr, 0,
+                       headers));
     auto check = ::arangodb::HttpResponseChecker::check(
         client.getErrorMessage(), response.get());
     if (check.fail()) {
       LOG_TOPIC("ad972", ERR, arangodb::Logger::DUMP)
-          << "An error occurred while dumping from server '" << server
-          << "': " << check.errorMessage();
+          << "An error occurred while dumping" << serverLabel(server) << ": "
+          << check;
 
       bool const retry = shouldRetryRequest(response.get(), check);
       if (!retry || --retryCounter == 0) {
@@ -1757,7 +1792,7 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
           LOG_TOPIC("684ee", FATAL, Logger::DUMP) << "Too many network errors.";
         }
         LOG_TOPIC("5cb01", FATAL, Logger::DUMP)
-            << "Unrecoverable network/http error: " << check.errorMessage();
+            << "Unrecoverable network/http error: " << check;
         FATAL_ERROR_EXIT();
       }
     } else if (response->getHttpReturnCode() == 204) {
@@ -1787,6 +1822,7 @@ void DumpFeature::ParallelDumpServer::runNetworkThread(
       break;
     }
     ++stats.totalBatches;
+    stats.totalReceived += static_cast<uint64_t>(response->getBody().size());
     auto [stopped, blocked] = queue.push(std::move(response));
     if (stopped) {
       LOG_TOPIC("b3cf8", DEBUG, Logger::DUMP)
@@ -1798,10 +1834,10 @@ void DumpFeature::ParallelDumpServer::runNetworkThread(
     lastBatchId = batchId;
   }
   LOG_TOPIC("ac308", DEBUG, Logger::DUMP)
-      << "dbserver " << server << " exhausted";
+      << serverLabel(server) << " exhausted";
 }
 
-void DumpFeature::ParallelDumpServer::runWriterThread() noexcept {
+void DumpFeature::ParallelDumpServer::runWriterThread() {
   std::unordered_map<std::string, std::shared_ptr<ManagedDirectory::File>>
       filesByShard;
 
@@ -1831,7 +1867,6 @@ void DumpFeature::ParallelDumpServer::runWriterThread() noexcept {
       countBlocker(kLocalQueue, 1);
     }
     // Decode which shard this is from header field
-    arangodb::basics::StringBuffer const& body = response->getBody();
     bool headerExtracted;
     auto shardId =
         response->getHeaderField(StaticStrings::DumpShardId, headerExtracted);
@@ -1854,14 +1889,31 @@ void DumpFeature::ParallelDumpServer::runWriterThread() noexcept {
 
     countBlocker(kRemoteQueue, count);
 
+    std::string_view body = {response->getBody().c_str(),
+                             response->getBody().size()};
+
+    // transparently uncompress gzip-encoded data
+    std::string uncompressed;
+    auto header = response->getHeaderField(
+        arangodb::StaticStrings::ContentEncoding, headerExtracted);
+    if (headerExtracted && header == arangodb::StaticStrings::EncodingGzip) {
+      auto res = arangodb::encoding::gzipUncompress(
+          reinterpret_cast<uint8_t const*>(body.data()), body.size(),
+          uncompressed);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      body = uncompressed;
+    }
+
     auto file = getFileForShard(shardId);
     arangodb::Result result =
-        dumpData(stats, maskings, *file, {body.data(), body.size()},
+        dumpData(stats, maskings, *file, body,
                  shards.at(shardId).collectionName, options.useVPack);
 
     if (result.fail()) {
       LOG_TOPIC("77881", FATAL, Logger::DUMP)
-          << "Failed to write data: " << result.errorMessage();
+          << "Failed to write data: " << result;
       FATAL_ERROR_EXIT();
     }
   }

@@ -188,7 +188,7 @@ class DumpFeature final : public ArangoDumpFeature {
         std::optional<std::uint64_t> lastBatch);
 
     void runNetworkThread(size_t threadId) noexcept;
-    void runWriterThread() noexcept;
+    void runWriterThread();
 
     void createDumpContext(httpclient::SimpleHttpClient& client);
     void finishDumpContext(httpclient::SimpleHttpClient& client);
