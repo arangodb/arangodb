@@ -303,18 +303,10 @@ IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer(
 }
 
 template<typename ValueType, bool copyStored>
-ValueType const& IndexReadBuffer<ValueType, copyStored>::getValue(
-    IndexReadBufferEntry bufferEntry) const noexcept {
-  assertSizeCoherence();
-  TRI_ASSERT(bufferEntry < _keyBuffer.size());
-  return _keyBuffer[bufferEntry];
-}
-
-template<typename ValueType, bool copyStored>
 ScoreIterator IndexReadBuffer<ValueType, copyStored>::getScores(
-    IndexReadBufferEntry bufferEntry) noexcept {
+    size_t idx) noexcept {
   assertSizeCoherence();
-  return ScoreIterator{_scoreBuffer, bufferEntry, _numScoreRegisters};
+  return ScoreIterator{_scoreBuffer, idx, _numScoreRegisters};
 }
 
 template<typename ValueType, bool copySorted>
@@ -542,8 +534,7 @@ bool IndexReadBuffer<ValueType, copyStored>::empty() const noexcept {
 }
 
 template<typename ValueType, bool copyStored>
-IndexReadBufferEntry
-IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
+size_t IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
   TRI_ASSERT(!empty());
   TRI_ASSERT(_keyBaseIdx < _keyBuffer.size());
   assertSizeCoherence();
@@ -788,9 +779,9 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
         _context.multiGet(pkReadingOrder.size(), fillKeys);
       }
     }
-    IndexReadBufferEntry const bufferEntry = _indexReadBuffer.pop_front();
 
-    if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
+    auto const idx = _indexReadBuffer.pop_front();
+    if (ADB_LIKELY(impl.writeRow(ctx, idx))) {
       break;
     } else {
       // to get correct stats we should continue looking for
@@ -936,18 +927,16 @@ inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
 
 template<typename Impl, typename ExecutionTraits>
 template<typename Value>
-bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
-    ReadContext& ctx, [[maybe_unused]] IndexReadBufferEntry bufferEntry,
-    Value const& value, iresearch::ViewSegment const* segment) {
+bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRowImpl(
+    ReadContext& ctx, size_t idx, Value const& value) {
   if constexpr (ExecutionTraits::EmitSearchDoc) {
     // FIXME: This could be avoided by using only late materialization register
     auto reg = infos().searchDocIdRegId();
     TRI_ASSERT(reg.isValid());
 
-    writeSearchDoc(ctx, _indexReadBuffer.getSearchDoc(bufferEntry), reg);
+    writeSearchDoc(ctx, _indexReadBuffer.getSearchDoc(idx), reg);
   }
   if constexpr (isMaterialized) {
-    TRI_ASSERT(!segment);
     auto& r = _context.values[value.result];
     if (ADB_UNLIKELY(!r)) {
       return false;
@@ -961,7 +950,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     auto const& columnsFieldsRegs = infos().getOutNonMaterializedViewRegs();
     TRI_ASSERT(!columnsFieldsRegs.empty());
     auto const& storedValues = _indexReadBuffer.getStoredValues();
-    auto index = bufferEntry * columnsFieldsRegs.size();
+    auto index = idx * columnsFieldsRegs.size();
     TRI_ASSERT(index < storedValues.size());
     for (auto it = columnsFieldsRegs.cbegin(); it != columnsFieldsRegs.cend();
          ++it) {
@@ -981,7 +970,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     // scorer register are placed right before the document output register
     auto const& scoreRegisters = infos().getScoreRegisters();
     auto scoreRegIter = scoreRegisters.begin();
-    for (auto const& it : _indexReadBuffer.getScores(bufferEntry)) {
+    for (auto const& it : _indexReadBuffer.getScores(idx)) {
       TRI_ASSERT(scoreRegIter != scoreRegisters.end());
       auto const val = AqlValueHintDouble(it);
       ctx.outputRow.moveValueInto(*scoreRegIter, ctx.inputRow, val);
@@ -1219,12 +1208,12 @@ void IResearchViewHeapSortExecutor<ExecutionTraits>::reset(
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewHeapSortExecutor<ExecutionTraits>::writeRow(
-    ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
+bool IResearchViewHeapSortExecutor<ExecutionTraits>::writeRow(ReadContext& ctx,
+                                                              size_t idx) {
   static_assert(!Base::isLateMaterialized,
                 "HeapSort superseeds LateMaterialization");
-  auto const& value = this->_indexReadBuffer.getValue(bufferEntry);
-  return Base::writeRow(ctx, bufferEntry, value.value(), value.segment());
+  auto const& value = this->_indexReadBuffer.getValue(idx);
+  return Base::writeRowImpl(ctx, idx, value.value());
 }
 
 template<typename ExecutionTraits>
@@ -1671,10 +1660,10 @@ void IResearchViewExecutor<ExecutionTraits>::saveCollection() {
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewExecutor<ExecutionTraits>::writeRow(
-    IResearchViewExecutor::ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
-  auto const& value = this->_indexReadBuffer.getValue(bufferEntry);
-  return Base::writeRow(ctx, bufferEntry, value, _segment);
+bool IResearchViewExecutor<ExecutionTraits>::writeRow(ReadContext& ctx,
+                                                      size_t idx) {
+  auto const& value = this->_indexReadBuffer.getValue(idx);
+  return Base::writeRowImpl(ctx, idx, value);
 }
 
 template<typename ExecutionTraits>
@@ -1962,14 +1951,13 @@ size_t IResearchViewMergeExecutor<ExecutionTraits>::skipAll(
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewMergeExecutor<ExecutionTraits>::writeRow(
-    IResearchViewMergeExecutor::ReadContext& ctx,
-    IndexReadBufferEntry bufferEntry) {
-  auto const& value = this->_indexReadBuffer.getValue(bufferEntry);
+bool IResearchViewMergeExecutor<ExecutionTraits>::writeRow(ReadContext& ctx,
+                                                           size_t idx) {
+  auto const& value = this->_indexReadBuffer.getValue(idx);
   if constexpr (Base::isLateMaterialized) {
-    return Base::writeRow(ctx, bufferEntry, value, nullptr);
+    return Base::writeRowImpl(ctx, idx, value);
   } else {
-    return Base::writeRow(ctx, bufferEntry, value.value(), value.segment());
+    return Base::writeRowImpl(ctx, idx, value.value());
   }
 }
 

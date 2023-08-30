@@ -64,8 +64,8 @@ class MultiGetContext {
   void serialize(uint64_t objectId, LocalDocumentId id) noexcept {
     rocksutils::uint64ToPersistentRaw(_buffer.data(), objectId);
     rocksutils::uint64ToPersistentRaw(_buffer.data(), id.id());
-    _keys[_pos++] = {_buffer.data() + _bytes, kKeySize};
-    _bytes += kKeySize;
+    _keys[_pos] = {_buffer.data() + _pos * kKeySize, kKeySize};
+    ++_pos;
   }
 
   rocksdb::Snapshot const* getSnapshot() const noexcept {
@@ -78,7 +78,6 @@ class MultiGetContext {
 
   // TODO(MBkkt) Maybe move on stack multiGet?
   size_t _pos;
-  size_t _bytes;
   std::array<char, kBatchSize * kKeySize> _buffer;
   std::array<rocksdb::Slice, kBatchSize> _keys;
   std::array<rocksdb::Status, kBatchSize> _statuses;
@@ -97,7 +96,6 @@ void MultiGetContext::multiGet(size_t expected, Func&& func) {
   values.resize(expected);
 
   _pos = 0;
-  _bytes = 0;
 
   auto& family = *RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
@@ -120,9 +118,10 @@ void MultiGetContext::multiGet(size_t expected, Func&& func) {
       methods->MultiGet(snapshot, family, _pos, &_keys[0], &_values[0],
                         &_statuses[0]);
     }
-    auto it = values.begin() + i, end = it + _pos;
+    auto end = values.begin() + i;
+    auto it = end - _pos;
     for (size_t c = 0; it != end; ++it, ++c) {
-      TRI_ASSERT(!*it);
+      TRI_ASSERT(*it == nullptr);
       if (!_statuses[c].ok()) {
         continue;
       }
@@ -134,7 +133,6 @@ void MultiGetContext::multiGet(size_t expected, Func&& func) {
       memcpy(it->get(), data, size);
     }
     _pos = 0;
-    _bytes = 0;
   }
 }
 

@@ -219,8 +219,6 @@ struct FilterCtx final : irs::attribute_provider {
 // avoid multiple access rights check! Adding buffering for
 // LateMaterializeExecutor!
 
-using IndexReadBufferEntry = size_t;
-
 class ScoreIterator {
  public:
   ScoreIterator(std::span<float_t> scoreBuffer, size_t keyIdx,
@@ -248,7 +246,11 @@ class IndexReadBuffer {
 
   explicit IndexReadBuffer(size_t numScoreRegisters, ResourceMonitor& monitor);
 
-  ValueType const& getValue(IndexReadBufferEntry bufferEntry) const noexcept;
+  ValueType const& getValue(size_t idx) const noexcept {
+    assertSizeCoherence();
+    TRI_ASSERT(_keyBuffer.size() > idx);
+    return _keyBuffer[idx];
+  }
 
   ValueType& getValue(size_t idx) noexcept {
     TRI_ASSERT(_keyBuffer.size() > idx);
@@ -260,7 +262,7 @@ class IndexReadBuffer {
     return _searchDocs[idx];
   }
 
-  ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
+  ScoreIterator getScores(size_t idx) noexcept;
 
   void setHeapSort(std::span<iresearch::HeapSortElement const> s,
                    iresearch::IResearchViewNode::ViewValuesRegisters const&
@@ -324,7 +326,7 @@ class IndexReadBuffer {
 
   bool empty() const noexcept;
 
-  IndexReadBufferEntry pop_front() noexcept;
+  size_t pop_front() noexcept;
 
   // This is violated while documents and scores are pushed, but must hold
   // before and after.
@@ -566,8 +568,7 @@ class IResearchViewExecutorBase {
   }
 
   template<typename Value>
-  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry,
-                Value const& value, iresearch::ViewSegment const* segment);
+  bool writeRowImpl(ReadContext& ctx, size_t idx, Value const& value);
 
   void writeSearchDoc(ReadContext& ctx, iresearch::SearchDoc const& doc,
                       RegisterId reg);
@@ -641,7 +642,7 @@ class IResearchViewExecutor
 
   bool fillBuffer(ReadContext& ctx);
 
-  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
+  bool writeRow(ReadContext& ctx, size_t idx);
 
   bool resetIterator();
 
@@ -755,7 +756,7 @@ class IResearchViewMergeExecutor
 
   bool fillBuffer(ReadContext& ctx);
 
-  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
+  bool writeRow(ReadContext& ctx, size_t idx);
 
   void reset(bool needFullCount);
   size_t skip(size_t toSkip, IResearchViewStats&);
@@ -820,7 +821,7 @@ class IResearchViewHeapSortExecutor
   bool fillBuffer(ReadContext& ctx);
   bool fillBufferInternal(size_t skip);
 
-  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
+  bool writeRow(ReadContext& ctx, size_t idx);
 
   size_t _totalCount{};
   size_t _scannedCount{};
