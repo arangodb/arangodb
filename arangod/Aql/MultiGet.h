@@ -115,7 +115,7 @@ void MultiGetContext::multiGet(size_t expected, Func&& func) {
     }
     auto const* snapshot = getSnapshot();
     if (_pos <= kThreshold) {
-      _statuses[0] = methods->Get(snapshot, family, _keys[0], _values[0]);
+      _statuses[0] = methods->SingleGet(snapshot, family, _keys[0], _values[0]);
     } else {
       methods->MultiGet(snapshot, family, _pos, &_keys[0], &_values[0],
                         &_statuses[0]);
