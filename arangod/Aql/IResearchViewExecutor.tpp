@@ -259,13 +259,18 @@ template<typename Impl, typename ExecutionTraits>
 IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::ReadContext(
     RegisterId documentOutReg, InputAqlItemRow& inputRow,
     OutputAqlItemRow& outputRow)
-    : inputRow(inputRow), outputRow(outputRow), documentOutReg(documentOutReg) {
-  if constexpr (isMaterialized) {
-    callback = [this](LocalDocumentId /*id*/, VPackSlice doc) {
-      this->outputRow.moveValueInto(getDocumentReg(), this->inputRow, doc);
-      return true;
-    };
-  }
+    : inputRow(inputRow),
+      outputRow(outputRow),
+      documentOutReg(documentOutReg) {}
+
+template<typename Impl, typename ExecutionTraits>
+void IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::moveInto(
+    std::unique_ptr<uint8_t[]> data) noexcept {
+  AqlValue value{std::move(data)};
+  bool mustDestroy = true;
+  AqlValueGuard guard{value, mustDestroy};
+  // TODO(MBkkt) add moveValueInto overload for std::unique_ptr<uint8_t[]>
+  outputRow.moveValueInto(getDocumentReg(), inputRow, guard);
 }
 
 ScoreIterator::ScoreIterator(std::span<float_t> scoreBuffer, size_t keyIdx,
@@ -943,12 +948,11 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
   }
   if constexpr (isMaterialized) {
     TRI_ASSERT(!segment);
-    auto& r = _context.statuses[value.result];
-    if (ADB_UNLIKELY(!r.ok())) {
+    auto& r = _context.values[value.result];
+    if (ADB_UNLIKELY(!r)) {
       return false;
     }
-    auto const* data = _context.values[value.result].data();
-    ctx.callback({}, VPackSlice{reinterpret_cast<uint8_t const*>(data)});
+    ctx.moveInto(std::move(r));
   }
   if constexpr (isLateMaterialized) {
     writeSearchDoc(ctx, value, ctx.getDocumentIdReg());

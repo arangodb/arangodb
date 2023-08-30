@@ -545,17 +545,10 @@ class IResearchViewExecutorBase {
       return documentOutReg;
     }
 
-    template<auto t = iresearch::MaterializeType::Materialize>
-    std::enable_if_t<contains(t), IndexIterator::DocumentCallback const&>
-    getDocumentCallback() const noexcept {
-      return callback;
-    }
+    void moveInto(std::unique_ptr<uint8_t[]> data) noexcept;
 
    private:
     RegisterId documentOutReg;
-
-   public:
-    IndexIterator::DocumentCallback callback;
   };
 
   IResearchViewExecutorBase(IResearchViewExecutorBase&&) = default;

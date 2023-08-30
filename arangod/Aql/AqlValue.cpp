@@ -1357,6 +1357,7 @@ AqlValue::AqlValue() noexcept {
 }
 
 AqlValue::AqlValue(std::unique_ptr<uint8_t[]> data) noexcept {
+  TRI_ASSERT(data);
   velocypack::Slice slice{data.get()};
   setManagedSliceData(MemoryOriginType::New, slice.byteSize());
   _data.managedSliceMeta.managedPointer = data.release();
