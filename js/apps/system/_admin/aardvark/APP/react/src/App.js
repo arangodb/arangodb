@@ -13,6 +13,7 @@ require('../../frontend/js/arango/arangoValidationHelper.js');
 
 // import new react views
 require('./views/analyzers/AnalyzersReactView');
+require('./views/collections/CollectionsReactView');
 require('./views/graphV2/listGraphs/GraphsListReactView');
 require('./views/databases/DatabasesReactView');
 require('./views/graphV2/viewGraph/GraphV2ReactView');
