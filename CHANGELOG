@@ -1,6 +1,10 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
+  "conflict, _rev values do not match" for non-local edges in Smart- and
+  EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
+
 * Upgraded Swagger-UI to v5.4.1.
 
 * Fixed BTS-1590: Fixed potentially undefined behavior in NetworkFeature, when
