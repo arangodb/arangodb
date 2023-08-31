@@ -31,16 +31,12 @@
 
 const jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const base_fail_at = require("fs").join(require('internal').pathForTesting('client'), 
-    'shell', 'shell-improved-metrics-accounting-fail-at.inc');
-
 const base = require("fs").join(require('internal').pathForTesting('client'), 
     'shell', 'shell-improved-metrics-accounting.inc');
 
 const arangosearch_base = require("fs").join(require('internal').pathForTesting('client'), 
     'shell', 'api', 'arangosearch-memory-metrics.inc');    
 
-const ImprovedMemoryAccountingFailAt = require("internal").load(base_fail_at);
 const ImprovedMemoryAccounting = require("internal").load(base);
 const ImprovedMemoryAccountingArangoSearch = require("internal").load(arangosearch_base);
 
@@ -48,6 +44,10 @@ const ImprovedMemoryAccountingArangoSearch = require("internal").load(arangosear
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 if (internal.debugCanUseFailAt()) {
+    const base_fail_at = require("fs").join(require('internal').pathForTesting('client'), 
+    'shell', 'shell-improved-metrics-accounting-fail-at.inc');
+    const ImprovedMemoryAccountingFailAt = require("internal").load(base_fail_at);
+
     jsunity.run(function ImprovedMemoryAccountingFailAtTestSuite_repl() {
         let suite = {
         };

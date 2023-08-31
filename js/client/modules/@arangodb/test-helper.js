@@ -225,31 +225,17 @@ exports.getAllMetric = function (endpoint, tags) {
   return res.body;
 };
 
-function getMetricName(text, args) {
-  let func = (name) => {
-    let re = new RegExp("^" + name);
-    let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-    if (!matches.length) {
-      throw "Metric " + name + " not found";
-    }
-    let res = 0;
-    for(let i = 0; i < matches.length; i+= 1) {
-      res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
-    }
-    return res;
-  };
-
-  if (typeof args == "object") {
-    let res = [];
-    args.forEach(name => {
-      res.push(func(name));
-    });
-    return res;
-  } else if (typeof args == "string") {
-    return func(args);
-  } else {
-    throw `Value ${args} is not supported!`
+function getMetricName(text, name) {
+  let re = new RegExp("^" + name);
+  let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+  if (!matches.length) {
+    throw "Metric " + name + " not found";
   }
+  let res = 0;
+  for(let i = 0; i < matches.length; i+= 1) {
+    res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+  }
+  return res;
 }
 
 exports.getMetric = function (endpoint, name) {
@@ -267,16 +253,59 @@ exports.getMetricSingle = function (name) {
 
 exports.getCompleteMetricsValues = function (name, roles = "") {
   const isCluster = require("internal").isCluster();
+  // 'name' argument can be either string or array of strings.
+  // If 'name' is string, we want to get the only one metric value with name 'name'
+  // If 'name' is array of strings, we want to get values for every metric which is defined in this array 
+
   if (isCluster) {
     let metrics = exports.getClusterMetricsByName(name, roles);
     if (typeof name == "string") {
-      let sum = 0;
+      // In case of "string", we will have 1d array with values of metrics from each dbserver
+
+      // It may happen that some db servers will not have required metric. 
+      // But if all of them don't have it - throw a error.
+      if (metrics.every( (val) => Number.isNaN(val) === true )) {
+        // If we got NaN from every endpoint - throw error
+        throw "Metric " + name + " not found";
+      }
+      let res = 0;
       metrics.forEach( num => {
-        sum += num;
+        if(!Number.isNaN(num)) {
+          // avoid adding NaN
+          res += num;
+        }
       });
-      return sum;
+      assertFalse(Number.isNaN(res)); // res should not be NaN
+      return res;
     } else {
-      return metrics.reduce((acc, metrics) => acc.map((sum, i) => sum + metrics[i]), new Array(metrics[0].length).fill(0));
+      function transpose(matrix) {
+        return matrix[0].map((col, i) => matrix.map(row => row[i]));
+      };
+
+      let result_metrics = [];
+      // We have a matrix. Every row represent metrics values from only one dbserver.
+      // Number of rows equal to number of dbservers
+      // Number of columns equal to number of required metrics (name.length)
+      // We will transpose this matrix. After that in row 'i' we have values for metric 'i' from all dbservers.
+      let m = transpose(metrics);
+
+
+      for (let i = 0; i < m.length; i += 1) {
+        let row = m[i]; // Every row represents values for this metric from all db servers.
+        // Now assert that at least one dbserver returned real value. Throw otherwise
+        assertFalse(row.every((val) => Number.isNaN(val) === true), `Metric ${name[i]} not found`);
+        
+        let accumulated = 0;
+        row.forEach(v => {
+          if (!Number.isNaN(v)) {
+            accumulated += v;
+          }
+        });
+        result_metrics.push(accumulated);
+      }
+      // Result array shouldn't contain NaN at all
+      assertTrue(result_metrics.every((val) => Number.isNaN(val) === false));
+      return result_metrics;
     }
   } else {
     return exports.getMetricSingle(name);
@@ -608,12 +637,35 @@ exports.getAllClusterMetrics = function (roles = "") {
 };
 
 exports.getClusterMetricsByName = function (name, roles = "") {
-  let metrics = exports.getAllClusterMetrics(roles);
-  let res = [];
-  metrics.forEach(text => {
-    res.push(getMetricName(text, name));
+  function func (text, name_str) {
+    let value;
+    try {
+      value = getMetricName(text, name_str);
+    } catch (e) {
+      value = NaN;
+    }
+    return value;
+  };
+  let result = [];
+
+  // This is an array with metrics from all required endpoints.
+  let all_server_metrics = exports.getAllClusterMetrics(roles);
+  // Now we need to parse every element from this array and extract
+  // required metrics.
+  all_server_metrics.forEach(server_metrics => {
+    if (typeof name == "string") {
+      result.push(func(server_metrics, name));
+    } else if (typeof name == "object") {
+      let res = [];
+      name.forEach(curr_metric_name => {
+        res.push(func(server_metrics, curr_metric_name));
+      });
+      result.push(res);
+    } else {
+      throw Error(`Unsupported ${typeof name} type`);
+    }   
   });
-  return res;
+  return result;
 };
 
 exports.getEndpoints = function (role) {

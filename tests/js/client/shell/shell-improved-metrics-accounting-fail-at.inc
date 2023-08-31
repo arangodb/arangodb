@@ -26,6 +26,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Jan Steemann
 /// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 (function () {
@@ -141,27 +142,20 @@
             let metric0 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
             insertDocuments(collectionName);
 
-            print("6")
-
-      
             // must have more memory allocated for the documents
             let metric1 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
             assertTrue(metric1 >= metric0 + n * 8, { metric1, metric0 });
       
-            print("7")
-
             // Now check that metric value will go down
             internal.debugClearFailAt();
       
             let tries = 0;
             let metric2;
             while (tries < 120) {
-              print("in loop")
               metric2 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
               if (0 === metric2) {
                 break;
               }
-              print(metric2);
               require("internal").sleep(0.5);
               tries +=1;
             }

@@ -189,19 +189,19 @@
             let initial_metric = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
             assertTrue(initial_metric > 0);
     
-            // let metric_before = initial_metric;
-            // let metric_after;
-            // for(let i = 0; i < 2; i++) {
-            //   // create collection
-            //   let cn = `c${i}`;
-            //   db._create(cn, collectionCreationOptions);
-            //   metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
-            //   if(isCluster) {
-            //     assertTrue(metric_after > metric_before);
-            //   } else {
-            //     assertEqual(metric_before, initial_metric);
-            //     assertEqual(metric_after, initial_metric);
-            //   }
+            let metric_before = initial_metric;
+            let metric_after;
+            for(let i = 0; i < 2; i++) {
+              // create collection
+              let cn = `c${i}`;
+              db._create(cn, collectionCreationOptions);
+              metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
+              if(isCluster) {
+                assertTrue(metric_after > metric_before);
+              } else {
+                assertEqual(metric_before, initial_metric);
+                assertEqual(metric_after, initial_metric);
+              }
     
             //   metric_before = metric_after;
             //   insertDocuments(cn);
@@ -253,7 +253,7 @@
             //     assertEqual(metric_after, initial_metric);
             //   }
             //   metric_before = metric_after;
-            // }
+            }
           }
         }
     }

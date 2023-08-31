@@ -34,19 +34,27 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const base = require("fs").join(require('internal').pathForTesting('client'), 
     'shell', 'shell-improved-metrics-accounting.inc');
 
+const arangosearch_base = require("fs").join(require('internal').pathForTesting('client'), 
+    'shell', 'api', 'arangosearch-memory-metrics.inc');    
+
 const ImprovedMemoryAccounting = require("internal").load(base);
+const ImprovedMemoryAccountingArangoSearch = require("internal").load(arangosearch_base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 if (internal.debugCanUseFailAt()) {
-    jsunity.run(function ImprovedMemoryAccountingTestSuite_oneshard() {
+    const base_fail_at = require("fs").join(require('internal').pathForTesting('client'), 
+    'shell', 'shell-improved-metrics-accounting-fail-at.inc');
+    const ImprovedMemoryAccountingFailAt = require("internal").load(base_fail_at);
+
+    jsunity.run(function ImprovedMemoryAccountingFailAtTestSuite_oneshard() {
         let suite = {
         };
       
         deriveTestSuite(
-          ImprovedMemoryAccounting("InvertedIndexSearchAliasqlTestSuite_OneShard", {sharding: "single"}, {}),
+            ImprovedMemoryAccountingFailAt("InvertedIndexSearchAliasqlTestSuite_OneShard", {sharding: "single"}, {}),
             suite,
             "_OneShard"
         );
@@ -54,4 +62,27 @@ if (internal.debugCanUseFailAt()) {
     });
 }
 
+jsunity.run(function ImprovedMemoryAccountingTestSuite_oneshard() {
+    let suite = {
+    };
+  
+    deriveTestSuite(
+      ImprovedMemoryAccounting("ImprovedMemoryAccountingTestSuite_OneShard", {sharding: "single"}, {}),
+        suite,
+        "_OneShard"
+    );
+    return suite;
+});
+
+jsunity.run(function ImprovedMemoryAccountingArangoSearchTestSuite_oneshard() {
+    let suite = {
+    };
+  
+    deriveTestSuite(
+      ImprovedMemoryAccountingArangoSearch("ImprovedMemoryAccountingArangoSearch_OneShard", {sharding: "single"}, {}),
+        suite,
+        "_OneShard"
+    );
+    return suite;
+});
 return jsunity.done();

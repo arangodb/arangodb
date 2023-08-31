@@ -21,6 +21,7 @@
 ///
 /// @author Valery Mironov
 /// @author Andrei Lobov
+/// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 (function () {
 
@@ -68,7 +69,7 @@
         db._useDatabase(dbName);
 
         db._create(collectionName, collectionCreationOptions);
-        generateAndInsert(collectionName)
+        generateAndInsert(collectionName);
         db._createView(viewName, "arangosearch", {
         links: {[collectionName]: {
             includeAllFields: true,
@@ -81,7 +82,7 @@
         const writers = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
         assertTrue(writers > 0);
         const descriptors = getCompleteMetricsValues("arangodb_search_file_descriptors");
-        assertTrue(descriptors > 0);
+        assertTrue(descriptors > 0, descriptors);
       },
       
       tearDownAll: function () {
@@ -102,7 +103,7 @@
         let readers, consolidations, descriptors, mapped, scheduler_memory, num_worker_threads;
         for (let i = 0; i < 100; ++i) {
 
-          generateAndInsert(collectionName)
+          generateAndInsert(collectionName);
           db._query(`for d in ${viewName} SEARCH d.numericValue == 100 RETURN d`);
 
           [readers, consolidations, descriptors, mapped, scheduler_memory, num_worker_threads] = getCompleteMetricsValues([
