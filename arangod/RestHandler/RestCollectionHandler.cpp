@@ -291,12 +291,9 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                                /*showProperties*/ true, FiguresType::None,
                                CountType::None);
 
-      auto shardsMap = coll->shardIds();
       if (_request->parsedValue("details", false)) {
-        // with details
         coll->shardMapToVelocyPack(_builder);
       } else {
-        // without details
         coll->shardIDsToVelocyPack(_builder);
       }
     }
