@@ -603,7 +603,8 @@ void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
 }
 
 void RestHandler::compressResponse() {
-  if (!_isAsyncRequest && _response->isCompressionAllowed()) {
+  if (!_isAsyncRequest && _response->isCompressionAllowed() &&
+      !_response->headers().contains(StaticStrings::ContentEncoding)) {
     switch (_request->acceptEncoding()) {
       case rest::EncodingType::DEFLATE:
         _response->deflate();
