@@ -72,7 +72,7 @@ constexpr uint64_t MinChunkSize = 1024 * 128;
 constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 
 /// @brief generic error for if server returns bad/unexpected json
-const arangodb::Result ErrorMalformedJsonResponse = {
+arangodb::Result const ErrorMalformedJsonResponse = {
     TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
 
 /// @brief checks that a file pointer is valid and file status is ok
@@ -923,7 +923,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   } catch (...) {
     return ::ErrorMalformedJsonResponse;
   }
-  VPackSlice const body = parsedBody->slice();
+  VPackSlice body = parsedBody->slice();
   if (!body.isObject()) {
     return ::ErrorMalformedJsonResponse;
   }
@@ -961,7 +961,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   }
 
   // parse collections array
-  VPackSlice const collections = body.get("collections");
+  VPackSlice collections = body.get("collections");
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
@@ -987,12 +987,6 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   // create a lookup table for collections
   std::map<std::string, arangodb::velocypack::Slice> restrictList;
   for (auto const& name : _options.collections) {
-    if (!name.empty() && name[0] == '_') {
-      // if the user explictly asked for dumping certain collections, toggle the
-      // system collection flag automatically
-      _options.includeSystemCollections = true;
-    }
-
     restrictList.emplace(name, arangodb::velocypack::Slice::noneSlice());
   }
   // restrictList now contains all collections the user has requested (can be
@@ -1004,7 +998,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     if (!collection.isObject()) {
       return ::ErrorMalformedJsonResponse;
     }
-    VPackSlice const parameters = collection.get("parameters");
+    VPackSlice parameters = collection.get("parameters");
 
     if (!parameters.isObject()) {
       return ::ErrorMalformedJsonResponse;
@@ -1024,13 +1018,13 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     if (deleted) {
       continue;
     }
-    if (name[0] == '_' && !_options.includeSystemCollections) {
+    if (name.starts_with('_') && !_options.includeSystemCollections) {
+      // exclude system collections
       continue;
     }
 
     // filter by specified names
-    if (!_options.collections.empty() &&
-        restrictList.find(name) == restrictList.end()) {
+    if (!_options.collections.empty() && !restrictList.contains(name)) {
       // collection name not in list
       continue;
     }
@@ -1367,6 +1361,12 @@ void DumpFeature::start() {
       }
 
       try {
+        // if any of the specified collections is a system collection, we
+        // auto-enable --include-system-collections for the user
+        _options.includeSystemCollections |= std::any_of(
+            _options.collections.begin(), _options.collections.end(),
+            [&](auto const& name) { return name.starts_with('_'); });
+
         if (_options.clusterMode) {
           res = runClusterDump(*httpClient, db);
         } else {
@@ -1764,6 +1764,10 @@ DumpFeature::DumpFileProvider::DumpFileProvider(
     // to create a file for each collection, even if it is empty. Otherwise,
     // arangorestore complains.
     for (auto const& [name, info] : collectionInfo) {
+      if (info.isNone()) {
+        // collection name present in dump
+        continue;
+      }
       std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
 
       std::string filename = name + "_" + hexString + ".data.json";
