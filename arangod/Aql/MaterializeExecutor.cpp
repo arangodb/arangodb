@@ -173,7 +173,7 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
       return lhs->segment->snapshot < rhs->segment->snapshot;
     });
     StorageSnapshot const* lastSnapshot{};
-    auto fillKeys = [&](size_t& i) {
+    auto fillKeys = [&] {
       if (it == end) {
         return MultiGetState::kLast;
       }
@@ -192,9 +192,7 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
       }
 
       auto& logical = *(*doc)->segment->collection;
-      _getCtx.serialize(_trx, logical, storage);
-
-      (*doc)->executor = i++;
+      (*doc)->executor = _getCtx.serialize(_trx, logical, storage);
 
       return MultiGetState::kNext;
     };

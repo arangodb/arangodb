@@ -741,7 +741,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::materialize() {
     _context.snapshot = segment->snapshot;
   }
   StorageSnapshot const* lastSnapshot{};
-  auto fillKeys = [&](size_t& i) {
+  auto fillKeys = [&] {
     if (it == end) {
       return MultiGetState::kLast;
     }
@@ -761,9 +761,8 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::materialize() {
     TRI_ASSERT(storage.isSet());
 
     auto& logical = *segment->collection;
-    _context.serialize(_trx, logical, storage);
-
-    doc.translate(i++);
+    auto const i = _context.serialize(_trx, logical, storage);
+    doc.translate(i);
 
     return MultiGetState::kNext;
   };

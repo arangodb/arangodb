@@ -51,22 +51,39 @@ class MultiGetContext {
   template<typename Func>
   void multiGet(size_t expected, Func&& func);
 
-  void serialize(transaction::Methods& trx, LogicalCollection const& logical,
-                 LocalDocumentId id) {
-    auto& physical = static_cast<RocksDBCollection&>(*logical.getPhysical());
+  size_t serialize(transaction::Methods& trx, LogicalCollection const& logical,
+                   LocalDocumentId id) {
+    auto* base = logical.getPhysical();
+    TRI_ASSERT(base != nullptr);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    auto* physical = dynamic_cast<RocksDBMetaCollection*>(base);
+    if (ADB_UNLIKELY(physical == nullptr)) {
+      base->readFromSnapshot(
+          &trx, id,
+          [&](LocalDocumentId /*id*/, VPackSlice slice) {
+            const auto size = slice.byteSize();
+            values[_global] = ValueType{new uint8_t[size]};
+            memcpy(values[_global].get(), slice.start(), size);
+          },
+          ReadOwnWrites::no, *snapshot);
+      return _global++;
+    }
+#else
+    auto* physical = static_cast<RocksDBMetaCollection*>(base);
+#endif
     if (ADB_UNLIKELY(!methods)) {
       methods = RocksDBTransactionState::toMethods(&trx, logical.id());
     }
-    serialize(physical.objectId(), id);
+    return serialize(physical->objectId(), id);
   }
 
  private:
-  void serialize(uint64_t objectId, LocalDocumentId id) noexcept {
-    auto* start = _buffer.data() + _pos * kKeySize;
+  size_t serialize(uint64_t objectId, LocalDocumentId id) noexcept {
+    auto* start = _buffer.data() + _local * kKeySize;
     rocksutils::uint64ToPersistentRaw(start, objectId);
     rocksutils::uint64ToPersistentRaw(start + kKeySize / 2, id.id());
-    _keys[_pos] = {start, kKeySize};
-    ++_pos;
+    _keys[_local++] = {start, kKeySize};
+    return _global++;
   }
 
   rocksdb::Snapshot const* getSnapshot() const noexcept {
@@ -78,7 +95,8 @@ class MultiGetContext {
   }
 
   // TODO(MBkkt) Maybe move on stack multiGet?
-  size_t _pos;
+  size_t _global;
+  size_t _local;
   std::array<char, kBatchSize * kKeySize> _buffer;
   std::array<rocksdb::Slice, kBatchSize> _keys;
   std::array<rocksdb::Status, kBatchSize> _statuses;
@@ -96,31 +114,31 @@ void MultiGetContext::multiGet(size_t expected, Func&& func) {
   values.clear();
   values.resize(expected);
 
-  _pos = 0;
+  _global = 0;
+  _local = 0;
 
   auto& family = *RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
 
   bool running = true;
-  size_t i = 0;
   while (running) {
-    auto const state = func(i);
-    if (state == MultiGetState::kNext && _pos < kBatchSize) {
+    auto const state = func();
+    if (state == MultiGetState::kNext && _local < kBatchSize) {
       continue;
     }
     running = state != MultiGetState::kLast;
-    if (_pos == 0) {
+    if (_local == 0) {
       continue;
     }
     auto const* snapshot = getSnapshot();
-    if (_pos <= kThreshold) {
+    if (_local <= kThreshold) {
       _statuses[0] = methods->SingleGet(snapshot, family, _keys[0], _values[0]);
     } else {
-      methods->MultiGet(snapshot, family, _pos, &_keys[0], &_values[0],
+      methods->MultiGet(snapshot, family, _local, &_keys[0], &_values[0],
                         &_statuses[0]);
     }
-    auto end = values.begin() + i;
-    auto it = end - _pos;
+    auto end = values.begin() + _global;
+    auto it = end - _local;
     for (size_t c = 0; it != end; ++it, ++c) {
       TRI_ASSERT(*it == nullptr);
       if (!_statuses[c].ok()) {
@@ -133,7 +151,7 @@ void MultiGetContext::multiGet(size_t expected, Func&& func) {
       *it = ValueType{new uint8_t[size]};
       memcpy(it->get(), data, size);
     }
-    _pos = 0;
+    _local = 0;
   }
 }
 
