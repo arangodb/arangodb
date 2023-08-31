@@ -356,7 +356,7 @@ replication::Version LogicalCollection::replicationVersion() const noexcept {
   return vocbase().replicationVersion();
 }
 
-std::string const& LogicalCollection::distributeShardsLike() const noexcept {
+std::string LogicalCollection::distributeShardsLike() const noexcept {
   if (ServerState::instance()->isCoordinator() &&
       replicationVersion() == replication::Version::TWO) {
     auto& cf = vocbase().server().getFeature<ClusterFeature>();
@@ -377,6 +377,8 @@ std::string const& LogicalCollection::distributeShardsLike() const noexcept {
       // If i am the leader, return the empty string
       return StaticStrings::Empty;
     }
+    // Note that this string must be copied before the shared_ptr is dropped,
+    // so the return value cannot be a reference.
     return myGroup->groupLeader;
   } else {
     TRI_ASSERT(_sharding != nullptr);

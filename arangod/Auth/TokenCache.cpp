@@ -396,10 +396,11 @@ bool auth::TokenCache::validateJwtHMAC256Signature(
   absl::WebSafeBase64Unescape(signatureWebBase64, &signature);
 
   READ_LOCKER(guard, _jwtSecretLock);
-  return verifyHMAC(_jwtActiveSecret.data(), _jwtActiveSecret.size(),
-                    message.data(), message.size(), signature.data(),
-                    signature.size(),
-                    SslInterface::Algorithm::ALGORITHM_SHA256);
+  return verifyHMAC(
+      _jwtActiveSecret.data(), _jwtActiveSecret.size(),
+      message.data(),                    // cppcheck-suppress invalidLifetime
+      message.size(), signature.data(),  // cppcheck-suppress invalidLifetime
+      signature.size(), SslInterface::Algorithm::ALGORITHM_SHA256);
 }
 #endif
 

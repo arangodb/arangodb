@@ -531,9 +531,11 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
       _plannedDatabases(_resourceMonitor),
       _planVersion(0),
       _planIndex(0),
+      _planMemoryUsage(0),
+      _currentDatabases(_resourceMonitor),
       _currentVersion(0),
       _currentIndex(0),
-      _currentDatabases(_resourceMonitor),
+      _currentMemoryUsage(0),
       _plannedCollections(_resourceMonitor),
       _newPlannedCollections(_resourceMonitor),
       _shards(_resourceMonitor),
@@ -579,7 +581,12 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
 /// @brief destroys a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo::~ClusterInfo() = default;
+ClusterInfo::~ClusterInfo() {
+  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
+  _planMemoryUsage = 0;
+  _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
+  _currentMemoryUsage = 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
@@ -1743,7 +1750,7 @@ void ClusterInfo::loadPlan() {
         // the name as key:
         continue;
       }
-      auto const& groupLeader = std::invoke([&]() -> std::string const& {
+      auto const& groupLeader = std::invoke([&]() -> std::string {
         if (colPair.second.collection->replicationVersion() ==
             replication::Version::TWO) {
           // For Replication2 we cannot call distributeShardsLike() because it
@@ -1873,6 +1880,17 @@ void ClusterInfo::loadPlan() {
   _planVersion = changeSet.version;
   _planIndex = changeSet.ind;
   _plan.swap(newPlan);
+
+  // update memory usage
+  std::uint64_t memoryUsage = 0;
+  for (auto const& it : _plan) {
+    TRI_ASSERT(it.second != nullptr);
+    memoryUsage += it.second->slice().byteSize();
+  }
+  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
+  _resourceMonitor.increaseMemoryUsage(memoryUsage);
+  _planMemoryUsage = memoryUsage;
+
   LOG_TOPIC("54321", DEBUG, Logger::CLUSTER)
       << "Updating ClusterInfo plan: version=" << _planVersion
       << " index=" << _planIndex;
@@ -2148,6 +2166,15 @@ void ClusterInfo::loadCurrent() {
   WRITE_LOCKER(writeLocker, _currentProt.lock);
 
   _current.swap(newCurrent);
+  std::uint64_t memoryUsage = 0;
+  for (auto const& it : _current) {
+    TRI_ASSERT(it.second != nullptr);
+    memoryUsage += it.second->slice().byteSize();
+  }
+  _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
+  _resourceMonitor.increaseMemoryUsage(memoryUsage);
+  _currentMemoryUsage = memoryUsage;
+
   _currentVersion = changeSet.version;
   _currentIndex = changeSet.ind;
   LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
