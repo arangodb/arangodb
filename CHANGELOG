@@ -5,6 +5,8 @@ v3.11.4 (XXXX-XX-XX)
   "conflict, _rev values do not match" for non-local edges in Smart- and
   EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
 
+* Upgraded Swagger-UI to v5.4.1.
+
 * Fixed BTS-1590: Fixed potentially undefined behavior in NetworkFeature, when
   it was referring to an options object that could have been destroyed already.
 
