@@ -1,11 +1,24 @@
 devel
 -----
+
+* Fix a timeout discrepancy between HeartbeatThread and DBServerAgencySync
+  during shutdown.
+  The HeartbeatThread on DB servers waited for at most 65 seconds for the
+  DBServerAgencySync to complete, but DBServerAgencySync could make requests
+  to the agency with a timeout of 120 seconds.
+  The timeouts have now been unified, so that the request timeout is 60 seconds
+  and that the HeartbeatThread waits for at most 65 seconds (as before).
+
+* BTS-1598: fix race in agency
+
 * BTS-842: make the error message for edge document validation slightly
   clearer
->
+
 * ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
   "conflict, _rev values do not match" for non-local edges in Smart- and
   EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
+
+* Upgraded Swagger-UI to v5.4.1
 
 * FE-248: Improve collections list UI.
 
