@@ -77,12 +77,6 @@ auto computeEvenDistributionForServers(
     for (auto const& [p, h] : health._health) {
       allParticipants.push_back(p);
     }
-    {
-      // TODO reuse random device?
-      std::random_device rd;
-      std::mt19937 g(rd());
-      std::shuffle(allParticipants.begin(), allParticipants.end(), g);
-    }
     EvenDistribution distribution{
         numberOfShards, allParticipants.size(), {}, false};
     std::unordered_set<ParticipantId> plannedServers;
@@ -95,12 +89,6 @@ auto computeEvenDistributionForServers(
   }
 
   auto servers = getHealthyParticipants(health);
-  {
-    // TODO reuse random device?
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(servers.begin(), servers.end(), g);
-  }
   EvenDistribution distribution{numberOfShards, replicationFactor, {}, false};
   std::unordered_set<ParticipantId> plannedServers;
   auto res = distribution.planShardsOnServers(servers, plannedServers);
@@ -231,9 +219,6 @@ auto createCollectionGroupTarget(
                         return basics::StringUtils::concatT("s", uniqid.next());
                       });
 
-      ADB_PROD_ASSERT(group.targetCollections.contains(cid))
-          << "collection " << cid << " is listed in collection group "
-          << group.target.id << " but not in Target/Collections";
       for (size_t k = 0; k < shardList.size(); ++k) {
         ResponsibleServerList serverids{};
         auto const& log = replicatedLogs[spec.shardSheaves[k].replicatedLog];
@@ -301,13 +286,6 @@ auto pickBestServerToRemoveFromLog(
                      // then remove leaders that are not Target leaders
                      return compareTuple(left) < compareTuple(right);
                    });
-#if false
-  // TODO i think this assertion is not correct. It is possible that the leader
-  // is the only dead server, if we race with a server failure and
-  // decreasing of replicationFactor.
-  ADB_PROD_ASSERT(not log.target.leader or
-                  servers.front() != log.target.leader);
-#endif
   return servers.front();
 }
 
