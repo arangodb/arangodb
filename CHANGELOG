@@ -23,6 +23,19 @@ devel
     operations, such as background statistics, TTL index maintenance, 
     replication etc.
 
+* BTS-1598: fix race in agency.
+
+* BTS-842: make the error message for edge document validation slightly
+  clearer
+
+* ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
+  "conflict, _rev values do not match" for non-local edges in Smart- and
+  EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
+
+* Upgraded Swagger-UI to v5.4.1
+
+* FE-248: Improve collections list UI.
+
 * BTS-1124: wait for license to be applied locally before responding to the request.
 
 * BTS-1566: remove redundant responsibility for creating local databases on
