@@ -24,6 +24,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Agency/AgencyPaths.h"
+#include "Agency/TransactionBuilder.h"
 #include "Cluster/AgencyCache.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/AgencyCallback.h"
@@ -40,6 +42,7 @@
 #include "Cluster/Utils/TargetCollectionAgencyWriter.h"
 #include "Cluster/Utils/SatelliteDistribution.h"
 #include "Logger/LogMacros.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "Rest/GeneralResponse.h"
 #include "Sharding/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
@@ -50,8 +53,23 @@
 #include <velocypack/Collection.h>
 
 using namespace arangodb;
+namespace paths = arangodb::cluster::paths::aliases;
 
 namespace {
+
+inline auto pathCollectionInTarget(std::string_view databaseName) {
+  return paths::target()->collections()->database(std::string{databaseName});
+}
+
+inline auto pathCollectionGroupInTarget(std::string_view databaseName) {
+  return paths::target()->collectionGroups()->database(
+      std::string{databaseName});
+}
+
+inline auto pathDatabaseInTarget(std::string_view databaseName) {
+  // TODO: Make this target, as soon as databases are moved
+  return paths::plan()->databases()->database(std::string{databaseName});
+}
 
 auto reactToPreconditions(AsyncAgencyCommResult&& agencyRes)
     -> ResultT<uint64_t> {
@@ -798,19 +816,83 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   AsyncAgencyComm aac;
 
+  auto const& databaseName = vocbase.name();
+  auto const& collectionID = std::to_string(col.id().id());
+  auto const& server = vocbase.server();
+  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  auto& agencyCache = server.getFeature<ClusterFeature>().agencyCache();
+
   if (vocbase.replicationVersion() == replication::Version::TWO) {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
+    VPackBufferUInt8 data;
+    VPackBuilder builder(data);
+    auto envelope = arangodb::agency::envelope::into_builder(builder);
+    auto properties = col.getCollectionProperties();
+    // NOTE: We could do this better with partial updates.
+    // e.g. we do not need to update the group if only the schema of the collection
+    // is modified
+
+    replication2::agency::CollectionGroupTargetSpecification::Attributes::
+        MutableAttributes groupUpdate;
+    {
+      groupUpdate.writeConcern = col.writeConcern();
+      groupUpdate.replicationFactor = col.replicationFactor();
+      groupUpdate.waitForSync = col.waitForSync();
+    }
+
+    auto groupBase = pathCollectionGroupInTarget(databaseName)
+                         ->group(std::to_string(col.groupID().id()));
+    auto groupPath = groupBase->str();
+    auto groupMutablesPath = groupBase->attributes()->mutables()->str();
+    auto colBase = pathCollectionInTarget(databaseName)->collection(collectionID);
+    auto colPath = colBase->str();
+
+    auto writes = std::move(envelope).write();
+    // Update Mutable Properties of the collection
+    {
+      writes =
+          std::move(writes).emplace_object(colBase->schema()->str(), [&](VPackBuilder& builder) {
+            col.schemaToVelocyPack(builder);
+          });
+
+      writes =
+          std::move(writes).emplace_object(colBase->computedValues()->str(), [&](VPackBuilder& builder) {
+            col.computedValuesToVelocyPack(builder);
+          });
+    }
+
+    // Update Mutable Properties of the group
+    writes =
+        std::move(writes).emplace_object(groupMutablesPath, [&](VPackBuilder& builder) {
+          velocypack::serialize(builder, groupUpdate);
+        });
+    // Increment the Group Version
+    writes = std::move(writes).inc(groupBase->version()->str());
+
+    // Preconditions: Database exists, Collection exists. Group exists.
+    auto preconditions = std::move(writes).precs();
+    preconditions = std::move(preconditions)
+                        .isNotEmpty(pathDatabaseInTarget(databaseName)->str());
+    preconditions = std::move(preconditions)
+                        .isNotEmpty(colPath);
+    preconditions = std::move(preconditions)
+                        .isNotEmpty(groupPath);
+    std::move(preconditions).end().done();
+
+
+    // Now data contains the transaction;
+    using namespace std::chrono_literals;
+    auto future = aac.sendWriteTransaction(120s, std::move(data))
+                      .thenValue(::reactToPreconditions)
+                      .thenValue(waitForOperationRoundtrip(ci));
+    return future.get();
+
   } else {
-    auto const& databaseName = vocbase.name();
-    auto const& collectionID = std::to_string(col.id().id());
-    auto const& server = vocbase.server();
-    
     AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
                                       AgencyPrecondition::Type::EMPTY, false);
     AgencyOperation incrementVersion("Plan/Version",
                                      AgencySimpleOperationType::INCREMENT_OP);
 
-    auto& agencyCache = server.getFeature<ClusterFeature>().agencyCache();
+
     auto [acb, index] =
         agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
             "Plan/Collections/" + databaseName + "/" + collectionID)});
@@ -856,7 +938,6 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
 
     AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
 
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
     using namespace std::chrono_literals;
     auto future = aac.sendTransaction(120s, trans)
                   .thenValue(::reactToPreconditions)
