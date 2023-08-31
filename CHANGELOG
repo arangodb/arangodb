@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-300: Implement new Views list UI
+
 * Fix a timeout discrepancy between HeartbeatThread and DBServerAgencySync
   during shutdown.
   The HeartbeatThread on DB servers waited for at most 65 seconds for the
