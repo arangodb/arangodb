@@ -143,3 +143,7 @@ callgrind*
 
 cmake-build*/
 .cache/
+
+swagger-ui-es-bundle*
+swagger-ui.js
+swagger-ui.js.map
