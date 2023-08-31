@@ -1501,11 +1501,13 @@ limited number of edge collections/shards/indexes.)");
   options
       ->addOption(
           "--rocksdb.use-io_uring",
-          "By default enabled and use runtime check availaibility of io_uring. "
-          "So should be used with false only if some issues were detected.",
+          "Check for existence of io_uring at startup and use it if available. "
+          "Should be set to false only to opt out of using io_uring.",
           new BooleanParameter(&ioUringEnabled),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoOs,
+              arangodb::options::Flags::OsLinux,
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
