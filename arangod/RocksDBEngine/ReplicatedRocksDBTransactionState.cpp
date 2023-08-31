@@ -55,6 +55,7 @@ Result ReplicatedRocksDBTransactionState::beginTransaction(
     return res;
   }
 
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& col : _collections) {
     res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
               .beginTransaction();
@@ -72,6 +73,7 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
 
   if (!mustBeReplicated()) {
     Result res;
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
     for (auto& col : _collections) {
       res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
                 .commitTransaction();
@@ -178,6 +180,7 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
 
   if (!mustBeReplicated()) {
     Result res;
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
     for (auto& col : _collections) {
       auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
       res = rtc.abortTransaction();
@@ -196,6 +199,7 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   TRI_ASSERT(options.waitForCommit == false);
 
   std::unordered_set<replication2::LogId> logs;
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& col : _collections) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
 
@@ -247,6 +251,7 @@ RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(
 
 void ReplicatedRocksDBTransactionState::beginQuery(
     ResourceMonitor* resourceMonitor, bool isModificationQuery) {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& col : _collections) {
     static_cast<ReplicatedRocksDBTransactionCollection&>(*col).beginQuery(
         resourceMonitor, isModificationQuery);
@@ -255,6 +260,7 @@ void ReplicatedRocksDBTransactionState::beginQuery(
 
 void ReplicatedRocksDBTransactionState::endQuery(
     bool isModificationQuery) noexcept {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& col : _collections) {
     static_cast<ReplicatedRocksDBTransactionCollection&>(*col).endQuery(
         isModificationQuery);
@@ -263,6 +269,7 @@ void ReplicatedRocksDBTransactionState::endQuery(
 
 TRI_voc_tick_t ReplicatedRocksDBTransactionState::lastOperationTick()
     const noexcept {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   return std::accumulate(
       _collections.begin(), _collections.end(), (TRI_voc_tick_t)0,
       [](auto maxTick, auto& col) {
@@ -273,7 +280,7 @@ TRI_voc_tick_t ReplicatedRocksDBTransactionState::lastOperationTick()
 }
 
 uint64_t ReplicatedRocksDBTransactionState::numCommits() const noexcept {
-  // TODO
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   return std::accumulate(
       _collections.begin(), _collections.end(), (uint64_t)0,
       [](auto sum, auto& col) {
@@ -285,6 +292,7 @@ uint64_t ReplicatedRocksDBTransactionState::numCommits() const noexcept {
 
 uint64_t ReplicatedRocksDBTransactionState::numIntermediateCommits()
     const noexcept {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   return std::accumulate(
       _collections.begin(), _collections.end(), (uint64_t)0,
       [](auto sum, auto& col) {
@@ -317,6 +325,7 @@ ReplicatedRocksDBTransactionState::performIntermediateCommitIfRequired(
 }
 
 bool ReplicatedRocksDBTransactionState::hasOperations() const noexcept {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   return std::any_of(
       _collections.begin(), _collections.end(), [](auto const& col) {
         return static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
@@ -325,6 +334,7 @@ bool ReplicatedRocksDBTransactionState::hasOperations() const noexcept {
 }
 
 uint64_t ReplicatedRocksDBTransactionState::numOperations() const noexcept {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   return std::accumulate(
       _collections.begin(), _collections.end(), (uint64_t)0,
       [](auto ops, auto& col) {
@@ -341,6 +351,7 @@ uint64_t ReplicatedRocksDBTransactionState::numPrimitiveOperations()
 
 bool ReplicatedRocksDBTransactionState::ensureSnapshot() {
   bool result = false;
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& col : _collections) {
     result |= static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
                   .ensureSnapshot();
@@ -360,6 +371,7 @@ ReplicatedRocksDBTransactionState::createTransactionCollection(
 }
 
 rocksdb::SequenceNumber ReplicatedRocksDBTransactionState::beginSeq() const {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   auto seq = std::accumulate(
       _collections.begin(), _collections.end(),
       std::numeric_limits<rocksdb::SequenceNumber>::max(),

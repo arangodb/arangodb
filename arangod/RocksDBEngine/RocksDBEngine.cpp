@@ -1314,6 +1314,24 @@ void RocksDBEngine::start() {
   // metrics are correctly populated once the HTTP interface comes
   // up
   determineWalFilesInitial();
+
+  if (auto endianness = rocksutils::getRocksDBKeyFormatEndianness();
+      endianness == RocksDBEndianness::Little) {
+    LOG_TOPIC("31103", WARN, Logger::ENGINES)
+        << "detected outdated on-disk format with "
+        << rocksDBEndiannessString(endianness)
+        << " endianness from ArangoDB 3.2 or 3.3. Using this on-disk format "
+           "can have a severe impact on write performance. It is recommended "
+           "to move to the "
+        << rocksDBEndiannessString(RocksDBEndianness::Big)
+        << " endian format by performing a full logical dump of the deployment "
+           "using arangodump, and restoring it into a fresh deployment using "
+           "arangorestore. Taking a hot backup and restoring it is not "
+           "sufficient "
+           "to change the on-disk format, only a logical dump and restore into "
+           "a "
+           "fresh deployment will do.";
+  }
 }
 
 void RocksDBEngine::beginShutdown() {

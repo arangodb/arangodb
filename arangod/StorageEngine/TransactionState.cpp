@@ -52,6 +52,7 @@
 #include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
+#include <algorithm>
 #include <any>
 
 using namespace arangodb;
@@ -76,6 +77,7 @@ TransactionState::~TransactionState() {
   TRI_ASSERT(_status != transaction::Status::RUNNING);
 
   // process collections in reverse order, free all collections
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
     (*it)->releaseUsage();
     delete (*it);
@@ -88,9 +90,7 @@ TransactionCollection* TransactionState::collection(
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
-  std::lock_guard lock(_collectionsLock);
   auto collectionOrPos = findCollectionOrPos(cid);
-
   return std::visit(
       overload{
           [](CollectionNotFound const&) -> TransactionCollection* {
@@ -110,6 +110,7 @@ TransactionCollection* TransactionState::collection(
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   auto it = std::find_if(_collections.begin(), _collections.end(),
                          [&name](TransactionCollection const* trxColl) {
                            return trxColl->collectionName() == name;
@@ -212,7 +213,7 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
                                                bool lockUsage) {
   Result res;
 
-  std::lock_guard lock(_collectionsLock);
+  RECURSIVE_WRITE_LOCKER(_collectionsLock, _collectionsLockOwner);
 
   // check if we already got this collection in the _collections vector
   auto colOrPos = findCollectionOrPos(cid);
@@ -292,9 +293,9 @@ Result TransactionState::addCollectionInternal(DataSourceId cid,
 
 /// @brief use all participating collections of a transaction
 Result TransactionState::useCollections() {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   Result res;
   // process collections in forward order
-
   for (TransactionCollection* trxCollection : _collections) {
     res = trxCollection->lockUsage();
 
@@ -308,6 +309,7 @@ Result TransactionState::useCollections() {
 /// @brief find a collection in the transaction's list of collections
 TransactionCollection* TransactionState::findCollection(
     DataSourceId cid) const {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto* trxCollection : _collections) {
     if (cid == trxCollection->id()) {
       // found
@@ -332,27 +334,23 @@ TransactionCollection* TransactionState::findCollection(
 ///        have to use this position for insert.
 auto TransactionState::findCollectionOrPos(DataSourceId cid) const
     -> std::variant<CollectionNotFound, CollectionFound> {
-  size_t const n = _collections.size();
-  size_t i;
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
+  if (_collections.empty()) {
+    return CollectionNotFound{0};
+  }
 
-  // TODO We could do a binary search here.
-  for (i = 0; i < n; ++i) {
-    auto* trxCollection = _collections[i];
-
-    if (cid == trxCollection->id()) {
-      // found
-      return CollectionFound{trxCollection};
-    }
-
-    if (cid < trxCollection->id()) {
-      // collection not found
-      break;
-    }
-    // next
+  auto it = std::lower_bound(_collections.begin(), _collections.end(), cid,
+                             [](const auto* trxCollection, auto cid) {
+                               return trxCollection->id() < cid;
+                             });
+  if (it != _collections.end() && (*it)->id() == cid) {
+    // found
+    return CollectionFound{*it};
   }
 
   // return the insert position if required
-  return CollectionNotFound{i};
+  return CollectionNotFound{
+      static_cast<std::size_t>(std::distance(_collections.begin(), it))};
 }
 
 void TransactionState::setExclusiveAccessType() {
@@ -432,6 +430,7 @@ Result TransactionState::checkCollectionPermission(
 /// @brief clear the query cache for all collections that were modified by
 /// the transaction
 void TransactionState::clearQueryCache() const {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   if (_collections.empty()) {
     return;
   }
