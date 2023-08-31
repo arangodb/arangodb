@@ -56,8 +56,6 @@ class FileDescriptorsFeature : public ArangodFeature {
   void countOpenFilesIfNeeded();
 
  private:
-  void adjustFileDescriptors();
-
   uint64_t _descriptorsMinimum;
 
   uint64_t _countDescriptorsInterval;
