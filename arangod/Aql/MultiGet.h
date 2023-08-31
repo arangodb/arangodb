@@ -118,7 +118,7 @@ void MultiGetContext::multiGet(size_t expected, Func&& func) {
   _global = 0;
   _local = 0;
 
-  auto& family = *RocksDBColumnFamilyManager::get(
+  auto* family = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
 
   bool running = true;
@@ -132,10 +132,12 @@ void MultiGetContext::multiGet(size_t expected, Func&& func) {
       continue;
     }
     auto const* snapshot = getSnapshot();
+    TRI_ASSERT(family);
     if (_local <= kThreshold) {
-      _statuses[0] = methods->SingleGet(snapshot, family, _keys[0], _values[0]);
+      _statuses[0] =
+          methods->SingleGet(snapshot, *family, _keys[0], _values[0]);
     } else {
-      methods->MultiGet(snapshot, family, _local, &_keys[0], &_values[0],
+      methods->MultiGet(snapshot, *family, _local, &_keys[0], &_values[0],
                         &_statuses[0]);
     }
     auto end = values.begin() + _global;
