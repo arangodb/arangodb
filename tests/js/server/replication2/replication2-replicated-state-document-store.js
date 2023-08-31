@@ -64,9 +64,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     tearDownAll,
     setUp: setUpAnd(() => {
       collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
-      shards = collection.shards();
-      shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
-      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+      ({shards, shardsToLogs, logs} = dh.getCollectionShardsAndLogs(db, collection));
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
@@ -256,10 +254,8 @@ const replicatedStateIntermediateCommitsSuite = function() {
     setUp: setUpAnd(() => {
       const props = {numberOfShards: 1, writeConcern: rc, replicationFactor: rc};
       collection = db._create(collectionName, props);
-      shards = collection.shards();
+      ({shards, shardsToLogs, logs} = dh.getCollectionShardsAndLogs(db, collection));
       shardId = shards[0];
-      shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
-      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
@@ -514,9 +510,7 @@ const replicatedStateRecoverySuite = function () {
     tearDownAll,
     setUp: setUpAnd(() => {
       collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
-      shards = collection.shards();
-      shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
-      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+      ({shards, shardsToLogs, logs} = dh.getCollectionShardsAndLogs(db, collection));
       shardId = shards[0];
       logId = shardsToLogs[shardId];
     }),
@@ -664,9 +658,7 @@ const replicatedStateSnapshotTransferSuite = function () {
     setUp: setUpAnd(() => {
       collection = db._create(collectionName,
         {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3, "waitForSync": true});
-      shards = collection.shards();
-      shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
-      logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+      ({shards, shardsToLogs, logs} = dh.getCollectionShardsAndLogs(db, collection));
       shardId = shards[0];
       logId = shardsToLogs[shardId];
       log = db._replicatedLog(logId);
@@ -977,21 +969,26 @@ const replicatedStateDocumentShardsSuite = function () {
     }
   };
 
+  var collection = null;
+
   return {
     setUpAll, tearDownAll,
     setUp: setUpAnd(() => {
     }),
     tearDown: tearDownAnd(() => {
-      db._drop(collectionName);
+      if (collection !== null) {
+        db._drop(collectionName);
+        collection = null;
+      }
     }),
 
     testCreateSingleCollection: function () {
-      const collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
+      collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
       checkCollectionShards(collection);
     },
 
     testCreateMultipleCollections: function () {
-      const collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
+      collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
       checkCollectionShards(collection);
       try {
         const collection2 = db._create("other-collection", {
@@ -1005,7 +1002,7 @@ const replicatedStateDocumentShardsSuite = function () {
     },
 
     testModifyShard: function () {
-      const collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
+      collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
 
       // TODO currently we cannot modify collection.properties for replication2, because the API must write to `Target`.
       const cid = collection._id;
@@ -1045,7 +1042,8 @@ const replicatedStateDocumentShardsSuite = function () {
         }
         return entry.payload.operation.type === "ModifyShard";
       });
-      assertTrue(modifyShardEntryFound, `Log contents for ${shardId}: ${JSON.stringify(logContents)}`);
+      assertTrue(modifyShardEntryFound,
+        `Log contents for shard ${shardId} (log ${logId}): ${JSON.stringify(logContents)}`);
 
       // Trigger a fail-over, so that ModifyShard is executed during recovery.
       const participants = lhttp.listLogs(lh.coordinators[0], database).result[logId];
@@ -1066,7 +1064,32 @@ const replicatedStateDocumentShardsSuite = function () {
         let doc = collection.document(originalDoc._key);
         assertEqual(doc, originalDoc);
       }
-    }
+    },
+
+    testCreateIndex: function () {
+      collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 2, replicationFactor: 3});
+      let {logs} = dh.getCollectionShardsAndLogs(db, collection);
+
+      // Create an index.
+      let index = collection.ensureIndex({name: "hund", type: "persistent", fields: ["value"]}); // unique: true
+      assertEqual(index.name, "hund");
+      assertEqual(index.isNewlyCreated, true);
+
+      // Check if the CreateIndex operation appears in the log during the current term.
+
+      for (let log of logs) {
+        let logContents = log.head(1000);
+        let createIndexEntryFound = _.some(logContents, entry => {
+          if (entry.payload === undefined) {
+            return false;
+          }
+          return entry.payload.operation.type === "CreateIndex";
+        });
+        assertTrue(createIndexEntryFound,
+          `Log contents for log ${log.id()}: ${JSON.stringify(logContents)}`);
+      }
+
+    },
   };
 };
 
