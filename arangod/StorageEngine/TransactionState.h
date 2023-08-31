@@ -43,6 +43,7 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -226,14 +227,17 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     TRI_ASSERT(*callback != nullptr);
     _beforeCommitCallbacks.push_back(callback);
   }
+
   void addAfterCommitCallback(AfterCommitCallback const* callback) {
     TRI_ASSERT(callback != nullptr);
     TRI_ASSERT(*callback != nullptr);
     _afterCommitCallbacks.push_back(callback);
   }
+
   void applyBeforeCommitCallbacks() noexcept {
     return applyCallbackImpl(_beforeCommitCallbacks);
   }
+
   void applyAfterCommitCallbacks() noexcept {
     return applyCallbackImpl(_afterCommitCallbacks);
   }
@@ -362,16 +366,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) = 0;
 
-  /// @brief find a collection in the transaction's list of collections
-  struct CollectionNotFound {
-    std::size_t lowerBound;
-  };
-  struct CollectionFound {
-    TransactionCollection* collection;
-  };
-  [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
-      -> std::variant<CollectionNotFound, CollectionFound>;
-
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache() const;
@@ -411,6 +405,17 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// @brief helper function for addCollection
   Result addCollectionInternal(DataSourceId cid, std::string_view cname,
                                AccessMode::Type accessType, bool lockUsage);
+
+  /// @brief find a collection in the transaction's list of collections
+  struct CollectionNotFound {
+    std::size_t lowerBound;
+  };
+  struct CollectionFound {
+    TransactionCollection* collection;
+  };
+
+  [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
+      -> std::variant<CollectionNotFound, CollectionFound>;
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
