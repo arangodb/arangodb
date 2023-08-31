@@ -78,9 +78,9 @@ constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 
 std::string serverLabel(std::string const& server) {
   if (server.empty()) {
-    return "on server";
+    return " on server";
   }
-  return absl::StrCat("on server '", server, "'");
+  return absl::StrCat(" on server '", server, "'");
 }
 
 constexpr std::string_view getSuffix(bool useVPack) noexcept {
@@ -1961,11 +1961,12 @@ DumpFeature::DumpFileProvider::DumpFileProvider(
 
 std::shared_ptr<ManagedDirectory::File> DumpFeature::DumpFileProvider::getFile(
     std::string const& name) {
+  std::string hexString(arangodb::rest::SslInterface::sslMD5(name));
+
   std::unique_lock guard(_mutex);
 
   auto info = _collectionInfo.at(name);
 
-  std::string hexString(arangodb::rest::SslInterface::sslMD5(name));
   std::string escapedName = escapedCollectionName(name, info.get("parameters"));
 
   if (_splitFiles) {
