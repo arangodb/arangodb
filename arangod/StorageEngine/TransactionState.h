@@ -24,6 +24,8 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
@@ -174,6 +176,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// @brief run a callback on all collections of the transaction
   template<typename F>
   void allCollections(F&& cb) {
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
     for (auto& trxCollection : _collections) {
       TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
       if (!std::forward<F>(cb)(*trxCollection)) {  // abort early
@@ -183,7 +186,10 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   }
 
   /// @brief return the number of collections in the transaction
-  [[nodiscard]] size_t numCollections() const { return _collections.size(); }
+  [[nodiscard]] size_t numCollections() const {
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
+    return _collections.size();
+  }
 
   /// @brief whether or not a transaction consists of a single operation
   [[nodiscard]] bool isSingleOperation() const {
@@ -392,7 +398,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   // in case of read-only transactions collections can be added lazily.
   // this can happen concurrently, so for this we need to protect the list
-  mutable std::mutex _collectionsLock;
+  mutable basics::ReadWriteLock _collectionsLock;
+  mutable std::atomic<std::thread::id> _collectionsLockOwner;
   containers::SmallVector<TransactionCollection*, 8> _collections;
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0

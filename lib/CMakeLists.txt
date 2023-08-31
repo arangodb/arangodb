@@ -167,6 +167,7 @@ add_library(arango STATIC
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/FeatureFlags.cpp
+  Basics/FileDescriptors.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
   Basics/HybridLogicalClock.cpp
