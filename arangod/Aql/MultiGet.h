@@ -60,10 +60,11 @@ class MultiGetContext {
     if (ADB_UNLIKELY(physical == nullptr)) {
       base->readFromSnapshot(
           &trx, id,
-          [&](LocalDocumentId /*id*/, VPackSlice slice) {
+          [&](const LocalDocumentId& /*id*/, VPackSlice slice) {
             const auto size = slice.byteSize();
             values[_global] = ValueType{new uint8_t[size]};
             memcpy(values[_global].get(), slice.start(), size);
+            return true;
           },
           ReadOwnWrites::no, *snapshot);
       return _global++;
