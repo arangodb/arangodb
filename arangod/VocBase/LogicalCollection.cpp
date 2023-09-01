@@ -196,10 +196,34 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // update server's tick value
   TRI_UpdateTickServer(id().id());
 
+  if (replicationVersion() == replication::Version::TWO &&
+      info.hasKey("groupId")) {
+    _groupId = info.get("groupId").getNumericValue<uint64_t>();
+    if (auto stateId = info.get("replicatedStateId"); stateId.isNumber()) {
+      _replicatedStateId =
+          info.get("replicatedStateId").extract<replication2::LogId>();
+    }
+    // We are either a cluster collection, or we need to have a
+    // replicatedStateID.
+    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
+  }
   // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
   initializeSmartAttributesBefore(info);
 
-  _sharding = std::make_unique<ShardingInfo>(info, this);
+  if (replicationVersion() == replication::Version::TWO && ServerState::instance()->isCoordinator()) {
+    // TODO: This is temporary. Longterm plan is to hand in GroupSpec on Constructor
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    auto group = ci.getCollectionGroupById(groupID());
+    if (group == nullptr) {
+      // Emergency exit, just use default values.
+      // We actually expect this to happen for now on new Collections
+      _sharding = std::make_unique<ShardingInfo>(info, this);
+    } else {
+      _sharding = std::make_unique<ShardingInfo>(*group, info, this);
+    }
+  } else {
+    _sharding = std::make_unique<ShardingInfo>(info, this);
+  }
 
   // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
   initializeSmartAttributesAfter(info);
@@ -229,18 +253,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
         << " - disabling computed values for this collection. original value: "
         << info.get(StaticStrings::ComputedValues).toJson();
     TRI_ASSERT(_computedValues == nullptr);
-  }
-
-  if (replicationVersion() == replication::Version::TWO &&
-      info.hasKey("groupId")) {
-    _groupId = info.get("groupId").getNumericValue<uint64_t>();
-    if (auto stateId = info.get("replicatedStateId"); stateId.isNumber()) {
-      _replicatedStateId =
-          info.get("replicatedStateId").extract<replication2::LogId>();
-    }
-    // We are either a cluster collection, or we need to have a
-    // replicatedStateID.
-    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
   }
 }
 
