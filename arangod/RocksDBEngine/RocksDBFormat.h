@@ -29,6 +29,10 @@
 
 namespace arangodb::rocksutils {
 
+// TODO(MBkkt) I don't see the reason for runtime switch endianes
+//  So I think better to make this opton compile time
+//  and avoid function pointer calls
+
 extern RocksDBEndianness rocksDBEndianness;
 
 /* function pointers to serialization implementation */
@@ -40,6 +44,8 @@ extern void (*uint16ToPersistent)(std::string& p, uint16_t value);
 extern void (*uint32ToPersistent)(std::string& p, uint32_t value);
 extern void (*uint64ToPersistent)(std::string& p, uint64_t value);
 
+extern void (*uint64ToPersistentRaw)(char* p, uint64_t value);
+
 /// Enable litte endian or big-endian key formats
 void setRocksDBKeyFormatEndianess(RocksDBEndianness);
 
@@ -47,7 +53,7 @@ RocksDBEndianness getRocksDBKeyFormatEndianness() noexcept;
 
 template<typename T>
 inline T uintFromPersistentLittleEndian(char const* p) {
-  static_assert(std::is_unsigned<T>::value, "type must be unsigned");
+  static_assert(std::is_unsigned_v<T>, "type must be unsigned");
   T value;
   memcpy(&value, p, sizeof(T));
   return basics::littleToHost<T>(value);
@@ -55,7 +61,7 @@ inline T uintFromPersistentLittleEndian(char const* p) {
 
 template<typename T>
 inline T uintFromPersistentBigEndian(char const* p) {
-  static_assert(std::is_unsigned<T>::value, "type must be unsigned");
+  static_assert(std::is_unsigned_v<T>, "type must be unsigned");
   T value;
   memcpy(&value, p, sizeof(T));
   return basics::bigToHost<T>(value);
@@ -63,16 +69,30 @@ inline T uintFromPersistentBigEndian(char const* p) {
 
 template<typename T>
 inline void uintToPersistentLittleEndian(std::string& p, T value) {
-  static_assert(std::is_unsigned<T>::value, "type must be unsigned");
+  static_assert(std::is_unsigned_v<T>, "type must be unsigned");
   value = basics::hostToLittle(value);
   p.append(reinterpret_cast<char const*>(&value), sizeof(T));
 }
 
 template<typename T>
 inline void uintToPersistentBigEndian(std::string& p, T value) {
-  static_assert(std::is_unsigned<T>::value, "type must be unsigned");
+  static_assert(std::is_unsigned_v<T>, "type must be unsigned");
   value = basics::hostToBig(value);
   p.append(reinterpret_cast<char const*>(&value), sizeof(T));
+}
+
+template<typename T>
+inline void uintToPersistentRawLE(char* p, T value) {
+  static_assert(std::is_unsigned_v<T>, "type must be unsigned");
+  value = basics::hostToLittle(value);
+  memcpy(p, &value, sizeof(T));
+}
+
+template<typename T>
+inline void uintToPersistentRawBE(char* p, T value) {
+  static_assert(std::is_unsigned_v<T>, "type must be unsigned");
+  value = basics::hostToBig(value);
+  memcpy(p, &value, sizeof(T));
 }
 
 }  // namespace arangodb::rocksutils
