@@ -1,7 +1,7 @@
 FROM alpine:3.16
 MAINTAINER hackers@arangodb.com
 
-RUN apk --no-cache add bison flex make cmake g++ git linux-headers python3 curl clang lld bash gdb libexecinfo-dev libexecinfo libexecinfo-static openssh sccache groff nodejs npm liburing
+RUN apk --no-cache add bison flex make cmake g++ git linux-headers python3 curl clang lld bash gdb libexecinfo-dev libexecinfo libexecinfo-static openssh sccache groff nodejs npm liburing-dev
 
 # we need only need perl for openssl installation and can later removed them again
 RUN apk --no-cache add perl
