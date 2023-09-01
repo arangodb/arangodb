@@ -828,8 +828,8 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     auto envelope = arangodb::agency::envelope::into_builder(builder);
     auto properties = col.getCollectionProperties();
     // NOTE: We could do this better with partial updates.
-    // e.g. we do not need to update the group if only the schema of the collection
-    // is modified
+    // e.g. we do not need to update the group if only the schema of the
+    // collection is modified
 
     replication2::agency::CollectionGroupTargetSpecification::Attributes::
         MutableAttributes groupUpdate;
@@ -843,26 +843,26 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
                          ->group(std::to_string(col.groupID().id()));
     auto groupPath = groupBase->str();
     auto groupMutablesPath = groupBase->attributes()->mutables()->str();
-    auto colBase = pathCollectionInTarget(databaseName)->collection(collectionID);
+    auto colBase =
+        pathCollectionInTarget(databaseName)->collection(collectionID);
     auto colPath = colBase->str();
 
     auto writes = std::move(envelope).write();
     // Update Mutable Properties of the collection
     {
-      writes =
-          std::move(writes).emplace_object(colBase->schema()->str(), [&](VPackBuilder& builder) {
-            col.schemaToVelocyPack(builder);
-          });
+      writes = std::move(writes).emplace_object(
+          colBase->schema()->str(),
+          [&](VPackBuilder& builder) { col.schemaToVelocyPack(builder); });
 
-      writes =
-          std::move(writes).emplace_object(colBase->computedValues()->str(), [&](VPackBuilder& builder) {
+      writes = std::move(writes).emplace_object(
+          colBase->computedValues()->str(), [&](VPackBuilder& builder) {
             col.computedValuesToVelocyPack(builder);
           });
     }
 
     // Update Mutable Properties of the group
-    writes =
-        std::move(writes).emplace_object(groupMutablesPath, [&](VPackBuilder& builder) {
+    writes = std::move(writes).emplace_object(
+        groupMutablesPath, [&](VPackBuilder& builder) {
           velocypack::serialize(builder, groupUpdate);
         });
     // Increment the Group Version
@@ -872,12 +872,9 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     auto preconditions = std::move(writes).precs();
     preconditions = std::move(preconditions)
                         .isNotEmpty(pathDatabaseInTarget(databaseName)->str());
-    preconditions = std::move(preconditions)
-                        .isNotEmpty(colPath);
-    preconditions = std::move(preconditions)
-                        .isNotEmpty(groupPath);
+    preconditions = std::move(preconditions).isNotEmpty(colPath);
+    preconditions = std::move(preconditions).isNotEmpty(groupPath);
     std::move(preconditions).end().done();
-
 
     // Now data contains the transaction;
     using namespace std::chrono_literals;
@@ -891,7 +888,6 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
                                       AgencyPrecondition::Type::EMPTY, false);
     AgencyOperation incrementVersion("Plan/Version",
                                      AgencySimpleOperationType::INCREMENT_OP);
-
 
     auto [acb, index] =
         agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
@@ -940,8 +936,8 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
 
     using namespace std::chrono_literals;
     auto future = aac.sendTransaction(120s, trans)
-                  .thenValue(::reactToPreconditions)
-                  .thenValue(waitForOperationRoundtrip(ci));
+                      .thenValue(::reactToPreconditions)
+                      .thenValue(waitForOperationRoundtrip(ci));
     return future.get();
   }
 }

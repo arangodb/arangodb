@@ -2578,12 +2578,9 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               }
               using BaseType::StaticComponent;
 
-              class Mutable
-                  : public StaticComponent<Mutable, Attributes> {
+              class Mutable : public StaticComponent<Mutable, Attributes> {
                public:
-                static char const* component() noexcept {
-                  return "mutable";
-                }
+                static char const* component() noexcept { return "mutable"; }
 
                 using BaseType::StaticComponent;
               };
@@ -2634,8 +2631,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
             using BaseType::DynamicComponent;
 
-            class Schema
-                : public StaticComponent<Schema, Collection> {
+            class Schema : public StaticComponent<Schema, Collection> {
              public:
               constexpr char const* component() const noexcept {
                 return "schema";
@@ -2644,8 +2640,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               using BaseType::StaticComponent;
             };
 
-            std::shared_ptr<Schema const> schema()
-                const {
+            std::shared_ptr<Schema const> schema() const {
               return Schema::make_shared(shared_from_this());
             }
 
@@ -2659,11 +2654,9 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               using BaseType::StaticComponent;
             };
 
-            std::shared_ptr<ComputedValues const> computedValues()
-                const {
+            std::shared_ptr<ComputedValues const> computedValues() const {
               return ComputedValues::make_shared(shared_from_this());
             }
-
           };
 
           std::shared_ptr<Collection const> collection(
