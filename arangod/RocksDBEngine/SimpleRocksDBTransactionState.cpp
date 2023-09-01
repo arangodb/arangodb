@@ -94,22 +94,25 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
   // here, as it wouldn't be safe
   bool disableIndexing = true;
 
-  for (auto& trxCollection : _collections) {
-    if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
-      continue;
-    }
-    auto indexes = trxCollection->collection()->getIndexes();
-    for (auto const& idx : indexes) {
-      if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-        // primary index is unique, but we can ignore it here.
-        // we are only looking for secondary indexes
+  {
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
+    for (auto& trxCollection : _collections) {
+      if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
         continue;
       }
-      if (idx->unique()) {
-        // found secondary unique index. we need to turn off the
-        // NO_INDEXING optimization now
-        disableIndexing = false;
-        break;
+      auto indexes = trxCollection->collection()->getIndexes();
+      for (auto const& idx : indexes) {
+        if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          // primary index is unique, but we can ignore it here.
+          // we are only looking for secondary indexes
+          continue;
+        }
+        if (idx->unique()) {
+          // found secondary unique index. we need to turn off the
+          // NO_INDEXING optimization now
+          disableIndexing = false;
+          break;
+        }
       }
     }
   }
@@ -226,6 +229,7 @@ rocksdb::SequenceNumber SimpleRocksDBTransactionState::prepare() {
 
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
 
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
 
@@ -239,6 +243,7 @@ rocksdb::SequenceNumber SimpleRocksDBTransactionState::prepare() {
 void SimpleRocksDBTransactionState::commit(
     rocksdb::SequenceNumber lastWritten) {
   TRI_ASSERT(lastWritten > 0);
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
     // we need this in case of an intermediate commit. The number of
@@ -249,6 +254,7 @@ void SimpleRocksDBTransactionState::commit(
 }
 
 void SimpleRocksDBTransactionState::cleanup() {
+  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
     coll->abortCommit(id());

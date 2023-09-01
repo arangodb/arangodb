@@ -598,7 +598,7 @@ function InsertMultipleDocumentsSuite(params) {
           db._query(query);
           fail();
         } catch (err) {
-          assertTrue(err.errorMessage.includes("edge attribute missing"));
+          assertEqual(err.errorNum, 1233, "expecting error 1233 to be thrown, got ${err.errorNum}");
           assertEqual(db[edges].count(), edgesCount + 1);
           assertEqual(db["_from_" + edges].count(), db["_to_" + edges].count());
         }

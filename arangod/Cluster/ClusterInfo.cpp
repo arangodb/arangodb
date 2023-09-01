@@ -1750,7 +1750,7 @@ void ClusterInfo::loadPlan() {
         // the name as key:
         continue;
       }
-      auto const& groupLeader = std::invoke([&]() -> std::string const& {
+      auto const& groupLeader = std::invoke([&]() -> std::string {
         if (colPair.second.collection->replicationVersion() ==
             replication::Version::TWO) {
           // For Replication2 we cannot call distributeShardsLike() because it

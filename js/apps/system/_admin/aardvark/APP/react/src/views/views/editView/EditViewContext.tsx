@@ -9,7 +9,7 @@ import React, {
   useState
 } from "react";
 import { useIsAdminUser } from "../../../utils/usePermissions";
-import { ViewPropertiesType } from "../searchView.types";
+import { ViewPropertiesType } from "../View.types";
 import { useSyncSearchViewUpdates } from "./useSyncSearchViewUpdates";
 import { useDeleteView } from "./useDeleteView";
 
