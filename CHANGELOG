@@ -1,6 +1,40 @@
 devel
 -----
 
+* Renamed arangodump startup option `--use-experimental-dump` to
+       `--parallel-dump`.
+
+* Improved experimental dump functionality in arangodump to work in single
+       server mode and to support transport compression and dumping velocypack data.
+
+* Obsolete the following options of arangodump:
+       - `--envelope`: setting this option to true previously wrapped every dumped
+               document into a {data, type} envelope. This was useful for the MMFiles
+               storage engine, where dumps could also include document removals. With the
+               RocksDB storage engine, the envelope only caused overhead and increased the
+               size of the dumps. The default value of `--envelope` was changed to `false`
+               in ArangoDB 3.9 already, so by default all arangodump invocations since
+               then created non-envelope dumps. With the option being removed now, all
+               arangodump invocations will unconditionally create non-envelope dumps.
+       - `--tick-start`: setting this option allowed to restrict the dumped data
+               to some time range with the MMFiles storage engine. It had no effect for
+               the RocksDB storage engine and so it is removed now.
+       - `--tick-end`: setting this option allowed to restrict the dumped data
+               to some time range with the MMFiles storage engine. It had no effect for
+               the RocksDB storage engine and so it is removed now.
+
+* Added experimental options to arangodump:
+       - `--compress-transfer`: setting this option enables gzip-compression for the
+               server responses to dump requests. Enabling it can significantly reduce
+               traffic volume from the server back to arangodump, in exchange for some CPU
+               overhead for compression on the server and decompression in arangodump.
+               The default value for this option is false. Setting this option only
+               affects the transfer, but not the on-disk format of dumps.
+       - `--dump-vpack`: setting this option will dump data in raw velocypack
+               format. This will make arangodump operate faster and create smaller dumps.
+               The default value for this option is false, as enabling it would
+               incompatibly change the on-disk format of dumps.
+
 * FE-300: Implement new Views list UI
 
 * Fix a timeout discrepancy between HeartbeatThread and DBServerAgencySync

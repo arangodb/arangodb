@@ -43,6 +43,7 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Cluster/ServerState.h"
+#include "Containers/HashSet.h"
 #include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -80,12 +81,13 @@
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
-#include <Containers/HashSet.h>
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+#include <velocypack/Validator.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -233,8 +235,6 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
 
 }  // namespace
 
-uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
-uint64_t const RestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
 std::chrono::hours const RestReplicationHandler::_tombstoneTimeout =
     std::chrono::hours(24);
 
@@ -293,10 +293,10 @@ static Result restoreDataParser(char const* ptr, char const* pos,
     parser.parse(ptr, static_cast<size_t>(pos - ptr));
   } catch (std::exception const& ex) {
     // Could not even build the string
-    return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection '" +
-                      collectionName + "' on line " + std::to_string(line) +
-                      ": " + ex.what()};
+    return Result{
+        TRI_ERROR_HTTP_CORRUPTED_JSON,
+        absl::StrCat("received invalid JSON data for collection '",
+                     collectionName, "' on line ", line, ": ", ex.what())};
   } catch (...) {
     return Result{TRI_ERROR_INTERNAL};
   }
@@ -305,9 +305,9 @@ static Result restoreDataParser(char const* ptr, char const* pos,
 
   if (!slice.isObject()) {
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection '" +
-                      collectionName + "' on line " + std::to_string(line) +
-                      ": data is no object"};
+                  absl::StrCat("received invalid JSON data for collection '",
+                               collectionName, "' on line ", line,
+                               ": data is no object")};
   }
 
   type = REPLICATION_INVALID;
@@ -366,9 +366,9 @@ static Result restoreDataParser(char const* ptr, char const* pos,
     // we can only handle REPLICATION_MARKER_DOCUMENT and
     // REPLICATION_MARKER_REMOVE here
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection '" +
-                      collectionName + "' on line " + std::to_string(line) +
-                      ": got an invalid input document"};
+                  absl::StrCat("received invalid JSON data for collection '",
+                               collectionName, "' on line ", line,
+                               ": got an invalid input document")};
   }
 
   return {};
@@ -1277,24 +1277,20 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   }
 #endif
 
-  // always regenerate revision ids on restore, so that we cannot run into
-  // any trouble with non-conforming revision-id ranges
-  constexpr bool generateNewRevisionIds = true;
-
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
       (ExecContext::current().isAdminUser() && !ServerState::readOnly()));
 
   if (colName == StaticStrings::UsersCollection) {
     // We need to handle the _users in a special way
-    return processRestoreUsersBatch(generateNewRevisionIds);
+    return processRestoreUsersBatch();
   }
 
   if (colName == StaticStrings::AnalyzersCollection &&
       ServerState::instance()->isCoordinator() &&
       _vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
     // _analyzers should be inserted via analyzers API
-    return processRestoreCoordinatorAnalyzersBatch(generateNewRevisionIds);
+    return processRestoreCoordinatorAnalyzersBatch();
   }
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
@@ -1309,7 +1305,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
     return res;
   }
 
-  res = processRestoreDataBatch(trx, colName, generateNewRevisionIds);
+  res = processRestoreDataBatch(trx, colName);
   res = trx.finish(res);
 
   // for single-server we just trigger analyzers cache reload
@@ -1328,23 +1324,31 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 Result RestReplicationHandler::parseBatch(
     transaction::Methods& trx, std::string const& collectionName,
     VPackBuilder& documentsToInsert,
-    std::unordered_set<std::string>& documentsToRemove,
-    bool generateNewRevisionIds) {
-  // simon: originally VST was not allowed here, but in 3.7 the content-type
-  // is properly set, so we can use it
-  if (_request->transportType() != Endpoint::TransportType::HTTP &&
-      _request->contentType() != ContentType::DUMP) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
+    std::unordered_set<std::string>& documentsToRemove) {
+  if (_request->contentType() == ContentType::VPACK) {
+    return parseBatchVPack(trx, collectionName, documentsToInsert);
   }
 
-  LogicalCollection* collection = trx.documentCollection(collectionName);
-  if (!collection) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  if (_request->contentType() == ContentType::DUMP ||
+      _request->contentType() == ContentType::TEXT ||
+      _request->contentType() == ContentType::JSON) {
+    return parseBatchDump(trx, collectionName, documentsToInsert,
+                          documentsToRemove);
   }
-  PhysicalCollection* physical = collection->getPhysical();
-  if (!physical) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      absl::StrCat("invalid request type: ",
+                   contentTypeToString(_request->contentType())));
+}
+
+Result RestReplicationHandler::parseBatchDump(
+    transaction::Methods& trx, std::string const& collectionName,
+    VPackBuilder& documentsToInsert,
+    std::unordered_set<std::string>& documentsToRemove) {
+  TRI_ASSERT(_request->contentType() == ContentType::DUMP ||
+             _request->contentType() == ContentType::TEXT ||
+             _request->contentType() == ContentType::JSON);
 
   bool const isUsersCollection =
       collectionName == StaticStrings::UsersCollection;
@@ -1401,7 +1405,7 @@ Result RestReplicationHandler::parseBatch(
 
         TRI_ASSERT(doc.isObject());
         bool checkKey = true;
-        bool checkRev = generateNewRevisionIds;
+        bool checkRev = true;
         for (auto it : VPackObjectIterator(doc, true)) {
           // only check for "_key" attribute here if we still have to.
           // once we have seen it, it will not show up again in the same
@@ -1471,10 +1475,101 @@ Result RestReplicationHandler::parseBatch(
   return {};
 }
 
+Result RestReplicationHandler::parseBatchVPack(
+    transaction::Methods& trx, std::string const& collectionName,
+    VPackBuilder& documentsToInsert) {
+  TRI_ASSERT(_request->contentType() == ContentType::VPACK);
+
+  std::string_view payload = _request->rawPayload();
+  velocypack::Options options = VPackOptions::Defaults;
+  options.checkAttributeUniqueness = true;
+  options.validateUtf8Strings = true;
+  options.disallowExternals = true;
+  options.disallowCustom = false;
+  options.disallowTags = true;
+  options.disallowBCD = true;
+  options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
+
+  VPackValidator validator(&options);
+  validator.validate(payload.data(), payload.size());  // throws on error
+
+  VPackSlice data(reinterpret_cast<uint8_t const*>(payload.data()));
+  if (!data.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "expecting array of documents for restore request"};
+  }
+
+  bool const isUsersCollection =
+      collectionName == StaticStrings::UsersCollection;
+
+  // First parse and collect all markers, we assemble everything in one
+  // large builder holding an array
+  documentsToInsert.clear();
+  documentsToInsert.openArray();
+
+  VPackArrayIterator it(data);
+  while (it.valid()) {
+    VPackSlice doc = it.value();
+
+    documentsToInsert.openObject();
+
+    TRI_ASSERT(doc.isObject());
+    bool checkKey = true;
+    bool checkRev = true;
+    for (auto it : VPackObjectIterator(doc, true)) {
+      // only check for "_key" attribute here if we still have to.
+      // once we have seen it, it will not show up again in the same
+      // document
+      bool const isKey =
+          checkKey && (it.key.stringView() == StaticStrings::KeyString);
+
+      if (isKey) {
+        // _key attribute
+
+        // prevent checking for _key twice in the same document
+        checkKey = false;
+
+        if (!isUsersCollection) {
+          // ignore _key for _users
+          documentsToInsert.add(it.key);
+          documentsToInsert.add(it.value);
+        }
+      } else if (checkRev &&
+                 (it.key.stringView() == StaticStrings::RevString)) {
+        // _rev attribute
+
+        // prevent checking for _rev twice in the same document
+        checkRev = false;
+
+        // We simply get rid of the `_rev` attribute here on the
+        // coordinator. We need to create a new value but it has to be
+        // unique in the shard, therefore the shard leader must create the
+        // value. If multiple coordinators would create a timestamp based
+        // _rev value concurrently, we could get a duplicate, which would
+        // lead to a clash on the actual shard leader and can lead to
+        // RocksDB conflicts or even data corruption between primary index
+        // and data in the documents column family.
+      } else {
+        // copy key/value verbatim
+        documentsToInsert.add(it.key);
+        documentsToInsert.add(it.value);
+      }
+    }
+
+    documentsToInsert.close();
+
+    ++it;  // next line
+  }
+
+  // close array
+  documentsToInsert.close();
+
+  return {};
+}
+
 Result RestReplicationHandler::parseBatchForSystemCollection(
     std::string const& collectionName, VPackBuilder& documentsToInsert,
-    std::unordered_set<std::string>& documentsToRemove,
-    bool generateNewRevisionIds) {
+    std::unordered_set<std::string>& documentsToRemove) {
   TRI_ASSERT(documentsToInsert.isEmpty());
 
   // this "fake" transaction here is only needed to get access to the underlying
@@ -1484,20 +1579,17 @@ Result RestReplicationHandler::parseBatchForSystemCollection(
 
   Result res = trx.begin();
   if (res.ok()) {
-    res = parseBatch(trx, collectionName, documentsToInsert, documentsToRemove,
-                     generateNewRevisionIds);
+    res = parseBatch(trx, collectionName, documentsToInsert, documentsToRemove);
   }
   // transaction will end here, without anything written
   return res;
 }
 
-Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(
-    bool generateNewRevisionIds) {
+Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch() {
   VPackBuilder documentsToInsert;
   std::unordered_set<std::string> documentsToRemove;
   Result res = parseBatchForSystemCollection(
-      StaticStrings::AnalyzersCollection, documentsToInsert, documentsToRemove,
-      generateNewRevisionIds);
+      StaticStrings::AnalyzersCollection, documentsToInsert, documentsToRemove);
 
   if (res.ok() && !documentsToInsert.slice().isEmptyArray()) {
     auto& analyzersFeature =
@@ -1514,13 +1606,11 @@ Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(
 /// by key
 ////////////////////////////////////////////////////////////////////////////////
 
-Result RestReplicationHandler::processRestoreUsersBatch(
-    bool generateNewRevisionIds) {
+Result RestReplicationHandler::processRestoreUsersBatch() {
   VPackBuilder documentsToInsert;
   std::unordered_set<std::string> documentsToRemove;
   Result res = parseBatchForSystemCollection(
-      StaticStrings::UsersCollection, documentsToInsert, documentsToRemove,
-      generateNewRevisionIds);
+      StaticStrings::UsersCollection, documentsToInsert, documentsToRemove);
   if (res.fail()) {
     return res;
   }
@@ -1557,13 +1647,12 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 ////////////////////////////////////////////////////////////////////////////////
 
 Result RestReplicationHandler::processRestoreDataBatch(
-    transaction::Methods& trx, std::string const& collectionName,
-    bool generateNewRevisionIds) {
+    transaction::Methods& trx, std::string const& collectionName) {
   // we'll build all documents to insert in this builder
   VPackBuilder documentsToInsert;
   std::unordered_set<std::string> documentsToRemove;
-  Result res = parseBatch(trx, collectionName, documentsToInsert,
-                          documentsToRemove, generateNewRevisionIds);
+  Result res =
+      parseBatch(trx, collectionName, documentsToInsert, documentsToRemove);
   if (res.fail()) {
     return res;
   }
@@ -3309,7 +3398,7 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
 
 uint64_t RestReplicationHandler::determineChunkSize() const {
   // determine chunk size
-  uint64_t chunkSize = _defaultChunkSize;
+  uint64_t chunkSize = defaultChunkSize;
 
   bool found;
   std::string const& value = _request->value("chunkSize", found);
@@ -3319,8 +3408,8 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
     chunkSize = StringUtils::uint64(value);
 
     // don't allow overly big allocations
-    if (chunkSize > _maxChunkSize) {
-      chunkSize = _maxChunkSize;
+    if (chunkSize > maxChunkSize) {
+      chunkSize = maxChunkSize;
     }
   }
 
