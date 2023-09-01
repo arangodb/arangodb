@@ -36,7 +36,6 @@ const functionsDocumentation = {
   'dump_encrypted': 'encrypted dump tests',
   'dump_maskings': 'masked dump tests',
   'dump_multiple': 'restore multiple DBs at once',
-  'dump_no_envelope': 'dump without data envelopes',
   'dump_with_crashes': 'restore and crash the client multiple times',
   'dump_with_crashes_parallel': 'restore and crash the client multiple times - parallel version',
   'dump_parallel': 'use experimental parallel dump',
@@ -84,7 +83,6 @@ const testPaths = {
   'dump_encrypted': [tu.pathForTesting('server/dump')],
   'dump_maskings': [tu.pathForTesting('server/dump')],
   'dump_multiple': [tu.pathForTesting('server/dump')],
-  'dump_no_envelope': [tu.pathForTesting('server/dump')],
   'dump_with_crashes': [tu.pathForTesting('server/dump')],
   'dump_with_crashes_parallel': [tu.pathForTesting('server/dump')],
   'dump_parallel': [tu.pathForTesting('server/dump')],
@@ -195,7 +193,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.dumpConfig.setThreads(this.dumpOptions.threads);
     }
     if (this.dumpOptions.useParallelDump) {
-      this.dumpConfig.setUseExperimentalParallelDump();
+      this.dumpConfig.setUseParallelDump();
     }
     if (this.dumpOptions.splitFiles) {
       this.dumpConfig.setUseSplitFiles();
@@ -255,9 +253,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
     if (this.firstRunOptions.deactivateCompression) {
       this.dumpConfig.deactivateCompression();
-    }
-    if (this.firstRunOptions.deactivateEnvelopes) {
-      this.dumpConfig.deactivateEnvelopes();
     }
     if (this.restoreOptions.allDatabases) {
       this.restoreConfig.setAllDatabases();
@@ -624,7 +619,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
 
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
-  const checkDumpFiles = tstFiles.checkDumpFiles ? tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckDumpFiles)) : undefined;
+  const checkDumpFiles = tstFiles.dumpCheckDumpFiles ? tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckDumpFiles)) : undefined;
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
 
@@ -643,8 +638,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
         helper.destructor(true);
         return helper.extractResults();
       }
-    }
-    else {
+    } else {
       if (!helper.runSetupSuite(setupFile) ||
           !helper.dumpFrom('UnitTestsDumpSrc') ||
           (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
@@ -685,8 +679,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
         return helper.extractResults();
       }
     }
-  }
-  catch (ex) {
+  } catch (ex) {
     print("Caught exception during testrun: " + ex);
     helper.destructor(false);
   }
@@ -770,26 +763,6 @@ function dumpMultiple (options) {
   };
   _.defaults(dumpOptions, options);
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
-}
-
-function dumpNoEnvelope (options) {
-  let c = getClusterStrings(options);
-  let tstFiles = {
-    dumpSetup: 'dump-setup' + c.cluster + '.js',
-    dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed-no-envelopes.js',
-    dumpCleanup: 'cleanup-multiple.js',
-    dumpAgain: 'dump' + c.cluster + '.js',
-    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    dumpCheckGraph: 'check-graph-multiple.js'
-  };
-
-  let dumpOptions = {
-    allDatabases: true,
-    deactivateCompression: true,
-    deactivateEnvelopes: true
-  };
-  _.defaults(dumpOptions, options);
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_no_envelope', tstFiles, function(){});
 }
 
 function dumpWithCrashes (options) {
@@ -1106,7 +1079,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['dump_encrypted'] = dumpEncrypted;
   testFns['dump_maskings'] = dumpMaskings;
   testFns['dump_multiple'] = dumpMultiple;
-  testFns['dump_no_envelope'] = dumpNoEnvelope;
   testFns['dump_with_crashes'] = dumpWithCrashes;
   testFns['dump_with_crashes_parallel'] = dumpWithCrashesParallel;
   testFns['dump_parallel'] = dumpParallel;

@@ -44,7 +44,7 @@ RocksDBDumpManager::~RocksDBDumpManager() = default;
 
 std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
     RocksDBDumpContextOptions opts, std::string const& user,
-    std::string const& database) {
+    std::string const& database, bool useVPack) {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
 
@@ -60,7 +60,7 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   // no harm is done, and no resources will be leaked.
   auto context = std::make_shared<RocksDBDumpContext>(
       _engine, _engine.server().getFeature<DatabaseFeature>(), generateId(),
-      std::move(opts), user, database);
+      std::move(opts), user, database, useVPack);
 
   std::lock_guard mutexLocker{_lock};
 

@@ -38,11 +38,7 @@
 #include "Maskings/Collection.h"
 #include "Maskings/ParseResult.h"
 
-namespace arangodb {
-namespace basics {
-class StringBuffer;
-}
-namespace maskings {
+namespace arangodb::maskings {
 class Maskings;
 
 struct MaskingsResult {
@@ -69,8 +65,8 @@ class Maskings {
 
   bool shouldDumpStructure(std::string const& name);
   bool shouldDumpData(std::string const& name);
-  void mask(std::string const& name, basics::StringBuffer const& data,
-            basics::StringBuffer& result) const;
+  void mask(std::string const& name, velocypack::Slice data,
+            velocypack::Builder& builder) const;
 
   uint64_t randomSeed() const noexcept { return _randomSeed; }
 
@@ -89,8 +85,6 @@ class Maskings {
                        std::string& buffer) const;
   void addMasked(Collection const& collection, VPackBuilder& out,
                  velocypack::Slice data) const;
-  void addMasked(Collection const& collection, basics::StringBuffer& data,
-                 velocypack::Slice slice) const;
 
  private:
   std::map<std::string, Collection> _collections;
@@ -99,5 +93,4 @@ class Maskings {
   uint64_t _randomSeed = 0;
 };
 
-}  // namespace maskings
-}  // namespace arangodb
+}  // namespace arangodb::maskings

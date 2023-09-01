@@ -21,25 +21,22 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdint.h>
+#include <cstdint>
 #include <iostream>
 #include <string_view>
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
-#include <velocypack/Dumper.h>
 #include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-common.h>
 
 #include "Maskings.h"
 
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -57,20 +54,20 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
   try {
     definition = basics::FileUtils::slurp(filename);
   } catch (std::exception const& e) {
-    std::string msg =
-        "cannot read maskings file '" + filename + "': " + e.what();
+    auto msg =
+        absl::StrCat("cannot read maskings file '", filename, "': ", e.what());
     LOG_TOPIC("379fe", DEBUG, Logger::CONFIG) << msg;
 
-    return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
+    return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, std::move(msg));
   }
 
   LOG_TOPIC("fe73b", DEBUG, Logger::CONFIG)
       << "found maskings file '" << filename;
 
   if (definition.empty()) {
-    std::string msg = "maskings file '" + filename + "' is empty";
+    auto msg = absl::StrCat("maskings file '", filename, "' is empty");
     LOG_TOPIC("5018d", DEBUG, Logger::CONFIG) << msg;
-    return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
+    return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, std::move(msg));
   }
 
   auto maskings = std::make_unique<Maskings>();
@@ -89,12 +86,12 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
 
     return MaskingsResult(std::move(maskings));
   } catch (velocypack::Exception const& e) {
-    std::string msg =
-        "cannot parse maskings file '" + filename + "': " + e.what();
+    auto msg =
+        absl::StrCat("cannot parse maskings file '", filename, "': ", e.what());
     LOG_TOPIC("5cb4c", DEBUG, Logger::CONFIG)
         << msg << ". file content: " << definition;
 
-    return MaskingsResult(MaskingsResult::CANNOT_PARSE_FILE, msg);
+    return MaskingsResult(MaskingsResult::CANNOT_PARSE_FILE, std::move(msg));
   }
 }
 
@@ -291,64 +288,14 @@ void Maskings::addMasked(Collection const& collection, VPackBuilder& out,
 
   std::string buffer;
   std::vector<std::string_view> path;
-  std::string_view dataStr("data");
-  VPackObjectBuilder ob(&out, dataStr);
 
+  out.openObject();
   addMaskedObject(collection, path, data, out, buffer);
+  out.close();
 }
 
-void Maskings::addMasked(Collection const& collection,
-                         basics::StringBuffer& data,
-                         velocypack::Slice slice) const {
-  if (!slice.isObject()) {
-    return;
-  }
-
-  VPackBuilder builder;
-
-  if (slice.hasKey(StaticStrings::KeyString)) {
-    // non-enveloped format - the document is at the top level
-    {
-      VPackObjectBuilder ob(&builder);
-      addMasked(collection, builder, slice);
-    }
-
-    // the maskings will generate a result object that contains a "data"
-    // attribute at the top
-    slice = builder.slice().get("data");
-  } else {
-    // enveloped format -  the document is underneath the "data" attribute
-    std::string_view dataStr("data");
-
-    {
-      VPackObjectBuilder ob(&builder);
-
-      for (auto entry : VPackObjectIterator(slice, false)) {
-        auto key = entry.key.stringView();
-
-        if (key == dataStr) {
-          addMasked(collection, builder, entry.value);
-        } else {
-          builder.add(key, entry.value);
-        }
-      }
-    }
-
-    slice = builder.slice();
-  }
-
-  // directly emit JSON into result StringBuffer
-  basics::VPackStringBufferAdapter adapter(data.stringBuffer());
-  VPackDumper dumper(&adapter, &VPackOptions::Defaults);
-  dumper.dump(slice);
-
-  data.appendChar('\n');
-}
-
-void Maskings::mask(std::string const& name, basics::StringBuffer const& data,
-                    basics::StringBuffer& result) const {
-  result.clear();
-
+void Maskings::mask(std::string const& name, velocypack::Slice data,
+                    velocypack::Builder& builder) const {
   Collection const* collection;
   auto const itr = _collections.find(name);
 
@@ -356,7 +303,7 @@ void Maskings::mask(std::string const& name, basics::StringBuffer const& data,
     if (_hasDefaultCollection) {
       collection = &_defaultCollection;
     } else {
-      result.copy(data);
+      builder.add(data);
       return;
     }
   } else {
@@ -364,29 +311,9 @@ void Maskings::mask(std::string const& name, basics::StringBuffer const& data,
   }
 
   if (collection->selection() == CollectionSelection::FULL) {
-    result.copy(data);
+    builder.add(data);
     return;
   }
 
-  result.reserve(data.length());
-
-  char const* p = data.c_str();
-  char const* e = p + data.length();
-  char const* q = p;
-
-  while (p < e) {
-    while (p < e && (*p != '\n' && *p != '\r')) {
-      ++p;
-    }
-
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(q, p - q);
-
-    addMasked(*collection, result, builder->slice());
-
-    while (p < e && (*p == '\n' || *p == '\r')) {
-      ++p;
-    }
-
-    q = p;
-  }
+  addMasked(*collection, builder, data);
 }
