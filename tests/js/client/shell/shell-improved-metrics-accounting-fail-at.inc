@@ -153,16 +153,15 @@
       
             let tries = 0;
             let metric2;
-            while (tries < 120) {
+            while (tries++ < 120) {
               metric2 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
               if (0 === metric2) {
                 break;
               }
               require("internal").sleep(0.5);
-              tries +=1;
             }
       
-            assertTrue(metric2 === 0);
+            assertEqual(metric2, 0);
           },
           
           testRevisionTreeMemoryUsageShouldIncreaseAfterSingleInserts: function () {
@@ -199,17 +198,15 @@
       
             let tries = 0;
             let metric2;
-            while (tries < 120) {
-              // internal.debugClearFailAt();
+            while (tries++ < 120) {
               metric2 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
               if (0 === metric2) {
                 break;
               }
               require("internal").sleep(0.5);
-              tries += 1;
             }
       
-            assertTrue(metric2 === 0);
+            assertEqual(metric2, 0);
           },
       
           testRevisionTreeMemoryUsageShouldIncreaseAndDecreaseAfterAql: function () {               
