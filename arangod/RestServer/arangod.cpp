@@ -82,7 +82,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         []<typename T>(auto& server, TypeTag<T>) {
           return std::make_unique<T>(server);
         },
-        [&ret](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
+        [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
           return std::make_unique<BumpFileDescriptorsFeature>(
               server, "--server.descriptors-minimum");
         },

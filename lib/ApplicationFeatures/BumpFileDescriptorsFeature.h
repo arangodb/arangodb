@@ -30,6 +30,7 @@
 
 #ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
+class GreetingsFeature;
 class LoggerFeature;
 
 class BumpFileDescriptorsFeature
@@ -45,6 +46,7 @@ class BumpFileDescriptorsFeature
         _optionName(std::move(optionName)),
         _descriptorsMinimum(0) {
     setOptional(false);
+    startsAfter<GreetingsFeature, Server>();
     startsAfter<LoggerFeature, Server>();
   }
 
