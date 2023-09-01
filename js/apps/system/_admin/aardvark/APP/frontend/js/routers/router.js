@@ -58,8 +58,7 @@
       'logs': 'logger',
       'helpus': 'helpUs',
       'views': 'views',
-      'view/:name': 'viewSettings',
-      'view/:name/*link': 'viewSettings',
+      'view/:name': 'views',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -1206,18 +1205,11 @@
         document.getElementById('content-react')));
     },
 
-    viewSettings: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
-          document.getElementById('content-react')));
-    },
     views: function () {
       this.checkUser();
       
       this.init.then(
-       () => ReactDOM.render(React.createElement(window.ViewsListReactView),
+       () => ReactDOM.render(React.createElement(window.ViewsReactView),
          document.getElementById('content-react')));
     },
 

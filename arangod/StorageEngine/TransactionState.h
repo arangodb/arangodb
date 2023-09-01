@@ -41,6 +41,8 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
+#include <atomic>
+#include <string>
 #include <string_view>
 #include <variant>
 
@@ -213,14 +215,17 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     TRI_ASSERT(*callback != nullptr);
     _beforeCommitCallbacks.push_back(callback);
   }
+
   void addAfterCommitCallback(AfterCommitCallback const* callback) {
     TRI_ASSERT(callback != nullptr);
     TRI_ASSERT(*callback != nullptr);
     _afterCommitCallbacks.push_back(callback);
   }
+
   void applyBeforeCommitCallbacks() noexcept {
     return applyCallbackImpl(_beforeCommitCallbacks);
   }
+
   void applyAfterCommitCallbacks() noexcept {
     return applyCallbackImpl(_afterCommitCallbacks);
   }
@@ -286,8 +291,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     return _knownServers;
   }
 
-  [[nodiscard]] bool knowsServer(std::string_view uuid) const {
-    return _knownServers.find(uuid) != _knownServers.end();
+  [[nodiscard]] bool knowsServer(std::string_view uuid) const noexcept {
+    return _knownServers.contains(uuid);
   }
 
   /// @brief add a server to the known set
@@ -298,29 +303,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   void clearKnownServers() { _knownServers.clear(); }
 
-  /// @brief add the choice of replica for some more shards to the map
-  /// _chosenReplicas. Please note that the choice of replicas is not
-  /// arbitrary! If two collections have the same `distributeShardsLike`
-  /// (or one has the other as `distributeShardsLike`), then the choices for
-  /// corresponding shards must be made in a coherent fashion. Therefore:
-  /// Do not fill in this map yourself, always use this method for this.
-  /// The Nolock version does not acquire the _replicaMutex and is only
-  /// called from other, public methods in this class.
- private:
-  void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
-
-  template<typename Callbacks>
-  void applyCallbackImpl(Callbacks& callbacks) noexcept {
-    for (auto& callback : callbacks) {
-      try {
-        (*callback)(*this);
-      } catch (...) {
-      }
-    }
-    callbacks.clear();
-  }
-
- public:
   void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
 
   /// @brief lookup a replica choice for some shard, this basically looks
@@ -359,16 +341,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) = 0;
 
-  /// @brief find a collection in the transaction's list of collections
-  struct CollectionNotFound {
-    std::size_t lowerBound;
-  };
-  struct CollectionFound {
-    TransactionCollection* collection;
-  };
-  [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
-      -> std::variant<CollectionNotFound, CollectionFound>;
-
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache() const;
@@ -380,6 +352,27 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 #endif
 
  private:
+  /// @brief add the choice of replica for some more shards to the map
+  /// _chosenReplicas. Please note that the choice of replicas is not
+  /// arbitrary! If two collections have the same `distributeShardsLike`
+  /// (or one has the other as `distributeShardsLike`), then the choices for
+  /// corresponding shards must be made in a coherent fashion. Therefore:
+  /// Do not fill in this map yourself, always use this method for this.
+  /// The Nolock version does not acquire the _replicaMutex and is only
+  /// called from other, public methods in this class.
+  void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
+
+  template<typename Callbacks>
+  void applyCallbackImpl(Callbacks& callbacks) noexcept {
+    for (auto& callback : callbacks) {
+      try {
+        (*callback)(*this);
+      } catch (...) {
+      }
+    }
+    callbacks.clear();
+  }
+
   /// @brief check if current user can access this collection
   Result checkCollectionPermission(DataSourceId cid, std::string_view cname,
                                    AccessMode::Type);
@@ -387,6 +380,17 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// @brief helper function for addCollection
   Result addCollectionInternal(DataSourceId cid, std::string_view cname,
                                AccessMode::Type accessType, bool lockUsage);
+
+  /// @brief find a collection in the transaction's list of collections
+  struct CollectionNotFound {
+    std::size_t lowerBound;
+  };
+  struct CollectionFound {
+    TransactionCollection* collection;
+  };
+
+  [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
+      -> std::variant<CollectionNotFound, CollectionFound>;
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
