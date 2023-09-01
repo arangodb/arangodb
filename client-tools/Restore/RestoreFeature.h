@@ -203,7 +203,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
 
     Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& client,
                            MultiFileReadOffset readOffset, char const* buffer,
-                           size_t bufferSize);
+                           size_t bufferSize, bool useVPack);
 
     RestoreFeature& feature;
     RestoreProgressTracker& progressTracker;
@@ -217,7 +217,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
     RestoreMainJob(ManagedDirectory& directory, RestoreFeature& feature,
                    RestoreProgressTracker& progressTracker,
                    Options const& options, Stats& stats, VPackSlice parameters,
-                   bool useEnvelope);
+                   bool useEnvelope, bool useVPack);
 
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
@@ -225,7 +225,8 @@ class RestoreFeature final : public ArangoRestoreFeature {
                                MultiFileReadOffset readOffset, char const* data,
                                size_t length, bool forceDirect);
 
-    Result restoreData(arangodb::httpclient::SimpleHttpClient& client);
+    Result restoreData(arangodb::httpclient::SimpleHttpClient& client,
+                       bool useVPack);
 
     /// @brief Restore a collection's indexes given its description
     Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& client);
@@ -237,6 +238,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
     ManagedDirectory& directory;
     VPackSlice parameters;
     bool useEnvelope;
+    bool useVPack;
   };
 
   struct RestoreSendJob : public RestoreJob {
@@ -246,7 +248,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
                    std::string const& collectionName,
                    std::shared_ptr<SharedState> sharedState,
                    MultiFileReadOffset readOffset,
-                   std::unique_ptr<basics::StringBuffer> buffer);
+                   std::unique_ptr<basics::StringBuffer> buffer, bool useVPack);
 
     ~RestoreSendJob();
 
@@ -254,6 +256,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
 
     MultiFileReadOffset const readOffset;
     std::unique_ptr<basics::StringBuffer> buffer;
+    bool useVPack;
   };
 
   ClientTaskQueue<RestoreJob>& taskQueue();
@@ -283,6 +286,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
 
   std::mutex _buffersLock;
   std::vector<std::unique_ptr<basics::StringBuffer>> _buffers;
+  size_t _buffersCapacity = 0;
 };
 
 }  // namespace arangodb
