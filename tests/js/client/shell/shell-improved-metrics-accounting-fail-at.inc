@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertNotEqual, assertTrue */
+/*global arango, fail, assertEqual, assertNotEqual, assertTrue, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Copyright 2023 ArangoDB GmbH, Cologne, Germany
@@ -45,10 +45,10 @@
         const n = 10000;
       
         let generateAndInsert = (collName) => {
-          if( typeof generateAndInsert.counter == 'undefined' ) {
+          if( typeof generateAndInsert.counter === 'undefined' ) {
             generateAndInsert.counter = 0;
           }
-          if( typeof generateAndInsert.factor == 'undefined' ) {
+          if( typeof generateAndInsert.factor === 'undefined' ) {
             generateAndInsert.factor = 0;
           }
           generateAndInsert.factor++;
@@ -117,9 +117,7 @@
           },
 
           setUp: function () {
-            // wait until all pending estimates & revision tree buffers have been applied
-            let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
-            assertNull(res);
+            internal.debugClearFailAt();
           },
       
           tearDown: function () {
@@ -149,6 +147,9 @@
       
             // Now check that metric value will go down
             internal.debugClearFailAt();
+            // wait until all pending estimates & revision tree buffers have been applied
+            res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+            assertNull(res);
       
             let tries = 0;
             let metric2;
@@ -192,6 +193,9 @@
       
             // Now check that metric value will go down
             internal.debugClearFailAt();
+            // wait until all pending estimates & revision tree buffers have been applied
+            res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+            assertNull(res);
       
             let tries = 0;
             let metric2;
@@ -255,9 +259,6 @@
             // processed in the background while this test is running.
             let metric1 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
             assertTrue(metric1 <= metric0, { metric1, metric0 });
-
-            internal.debugClearFailAt();
-
           },
       
           testEstimatesShouldChangeWhenCreatingEdgeCollection: function () {
@@ -268,9 +269,6 @@
             // estimates should have changed because of edge index
             let metric1 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
             assertTrue(metric1 > metric0, { metric1, metric0 });
-
-            internal.debugClearFailAt();
-
           },
           
           testEstimatesShouldNotChangeWhenCreatingPersistentIndexWithoutEstimates: function () {
@@ -285,9 +283,6 @@
             // processed in the background while this test is running.
             let metric1 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
             assertTrue(metric1 <= metric0, { metric1, metric0 });
-
-            internal.debugClearFailAt();
-
           },
           
           testEstimatesShouldChangeWhenCreatingPersistentIndexWithEstimates: function () {
@@ -311,9 +306,6 @@
             // estimates should not have changed.
             let metric1 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
             assertTrue(metric1 <= metric0, { metric1, metric0 });
-
-            internal.debugClearFailAt();
-
           },
           
           testEstimatesShouldIncreaseWhenInsertingIntoPersistentIndex: function () {
@@ -347,16 +339,13 @@
             let metric3 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
             let timeout = 30;
             while (metric3 > metric2) {
-              if (timeout == 0) {
+              if (timeout === 0) {
                 throw "arangodb_index_estimates_memory_usage value is not decreased";
               }
               timeout -= 1;
               require("internal").sleep(1);
               metric3 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
             }
-
-            internal.debugClearFailAt();
-
           },
       
           testEstimatesShouldIncreaseWhenInsertingIntoEdgeIndex: function () {
@@ -385,16 +374,14 @@
             let metric3 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
             let timeout = 30;
             while (metric3 > metric2) {
-              if (timeout == 0) {
+              if (timeout === 0) {
                 throw "arangodb_index_estimates_memory_usage value is not decreased";
               }
               timeout -= 1;
               require("internal").sleep(0.5);
               metric3 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
             }
-
-            internal.debugClearFailAt();
           }
-        }
-      }
-  }())
+        };
+      };
+  }());

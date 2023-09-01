@@ -35,10 +35,10 @@
   const viewName = "testView";
 
   let generateAndInsert = (collName) => {
-    if( typeof generateAndInsert.counter == 'undefined' ) {
+    if( typeof generateAndInsert.counter === 'undefined' ) {
       generateAndInsert.counter = 0;
     }
-    if( typeof generateAndInsert.factor == 'undefined' ) {
+    if( typeof generateAndInsert.factor === 'undefined' ) {
       generateAndInsert.factor = 0;
     }
     generateAndInsert.factor++;
@@ -52,7 +52,7 @@
       };
       d[custom_field] = generateAndInsert.counter;
       docs.push(d);
-      generateAndInsert.counter++
+      generateAndInsert.counter++;
     }
     db._collection(collName).save(docs);
   };
@@ -94,7 +94,7 @@
 
         for (let i = 0; i < 5; i++) {
           let writersOldest = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
-          generateAndInsert(collectionName)
+          generateAndInsert(collectionName);
           db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
           let writersOlder = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
           assertNotEqual(writersOldest, writersOlder);
@@ -153,10 +153,10 @@
 
         assertEqual(scheduler_memory, num_worker_threads * 4 * 1000000, {scheduler_memory, num_worker_threads});
 
-        assertTrue(readers == 0);
-        assertTrue(consolidations == 0);
-        assertTrue(descriptors == 0);
-        assertTrue(mapped == 0);
+        assertTrue(readers === 0);
+        assertTrue(consolidations === 0);
+        assertTrue(descriptors === 0);
+        assertTrue(mapped === 0);
       }
     }
   };

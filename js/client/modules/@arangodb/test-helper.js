@@ -252,13 +252,16 @@ exports.getMetricSingle = function (name) {
 };
 
 exports.getCompleteMetricsValues = function (name, roles = "") {
+  function transpose(matrix) {
+    return matrix[0].map((col, i) => matrix.map(row => row[i]));
+  };
   // 'name' argument can be either string or array of strings.
   // If 'name' is string, we want to get the only one metric value with name 'name'
   // If 'name' is array of strings, we want to get values for every metric which is defined in this array 
 
   let metrics = exports.getMetricsByNameFromEndpoints(name, roles);
 
-  if (typeof name == "string") {
+  if (typeof name === "string") {
     // In case of "string", we will have 1d array with values of metrics from each dbserver
 
     // It may happen that some db servers will not have required metric. 
@@ -277,10 +280,6 @@ exports.getCompleteMetricsValues = function (name, roles = "") {
     assertFalse(Number.isNaN(res)); // res should not be NaN
     return res;
   } else {
-    function transpose(matrix) {
-      return matrix[0].map((col, i) => matrix.map(row => row[i]));
-    };
-
     let result_metrics = [];
     // We have a matrix. Every row represent metrics values from only one dbserver.
     // Number of rows equal to number of dbservers
@@ -657,9 +656,9 @@ exports.getMetricsByNameFromEndpoints = function (name, roles = "") {
   // Now we need to parse every element from this array and extract
   // required metrics.
   all_server_metrics.forEach(server_metrics => {
-    if (typeof name == "string") {
+    if (typeof name === "string") {
       result.push(func(server_metrics, name));
-    } else if (typeof name == "object") {
+    } else if (typeof name === "object") {
       let res = [];
       name.forEach(curr_metric_name => {
         res.push(func(server_metrics, curr_metric_name));

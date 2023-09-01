@@ -30,6 +30,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const internal = require("internal");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const base = require("fs").join(require('internal').pathForTesting('client'), 
     'shell', 'shell-improved-metrics-accounting.inc');

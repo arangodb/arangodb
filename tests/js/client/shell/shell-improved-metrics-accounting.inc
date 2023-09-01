@@ -255,6 +255,6 @@
             //   metric_before = metric_after;
             }
           }
-        }
-    }
-  }())
+        };
+    };
+  }());
