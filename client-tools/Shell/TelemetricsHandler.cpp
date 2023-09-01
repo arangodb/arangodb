@@ -99,7 +99,7 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
 
   std::unordered_map<std::string, std::string> headers = {
       {StaticStrings::UserAgent, std::string("arangosh/") + ARANGODB_VERSION},
-      {StaticStrings::AcceptEncoding, "gzip"}};
+      {StaticStrings::AcceptEncoding, StaticStrings::EncodingGzip}};
 
   uint32_t timeoutInSecs = 1;
   while (!_server.isStopping()) {

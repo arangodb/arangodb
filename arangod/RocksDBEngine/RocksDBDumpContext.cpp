@@ -38,14 +38,61 @@
 #include <rocksdb/snapshot.h>
 #include <rocksdb/utilities/transaction_db.h>
 
-#include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
-#include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 
 #include <utility>
 
 using namespace arangodb;
+
+RocksDBDumpContext::BatchVPackArray::BatchVPackArray(std::string_view shard)
+    : Batch(shard) {
+  _builder.openArray(/*unindexed*/ true);
+}
+
+RocksDBDumpContext::BatchVPackArray::~BatchVPackArray() = default;
+
+void RocksDBDumpContext::BatchVPackArray::add(velocypack::Slice data) {
+  _builder.add(data);
+}
+
+void RocksDBDumpContext::BatchVPackArray::close() { _builder.close(); }
+
+std::string_view RocksDBDumpContext::BatchVPackArray::content() const {
+  return {reinterpret_cast<char const*>(_builder.bufferRef().data()),
+          _builder.bufferRef().size()};
+}
+
+size_t RocksDBDumpContext::BatchVPackArray::byteSize() const {
+  return _builder.bufferRef().size();
+}
+
+RocksDBDumpContext::BatchJSONL::BatchJSONL(std::string_view shard,
+                                           velocypack::Options const* options)
+    : Batch(shard), _sink(&_content), _dumper(&_sink, options) {
+  // make sink point into the string of the current batch
+  // save at least a few small (re)allocations
+  _content.reserve(8 * 1024);
+}
+
+RocksDBDumpContext::BatchJSONL::~BatchJSONL() = default;
+
+void RocksDBDumpContext::BatchJSONL::add(velocypack::Slice data) {
+  _dumper.dump(data);
+  // always add a newline after each document, as we must produce
+  // JSONL output format
+  _content.push_back('\n');
+}
+
+void RocksDBDumpContext::BatchJSONL::close() {}
+
+std::string_view RocksDBDumpContext::BatchJSONL::content() const {
+  return _content;
+}
+
+size_t RocksDBDumpContext::BatchJSONL::byteSize() const {
+  return _content.size();
+}
 
 RocksDBDumpContext::CollectionInfo::CollectionInfo(TRI_vocbase_t& vocbase,
                                                    std::string const& name)
@@ -119,11 +166,13 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
                                        DatabaseFeature& databaseFeature,
                                        std::string id,
                                        RocksDBDumpContextOptions options,
-                                       std::string user, std::string database)
+                                       std::string user, std::string database,
+                                       bool useVPack)
     : _engine(engine),
       _id(std::move(id)),
       _user(std::move(user)),
       _database(std::move(database)),
+      _useVPack(useVPack),
       _options(std::move(options)),
       _expires(TRI_microtime() + _options.ttl),
       _workItems(_options.parallelism),
@@ -307,13 +356,10 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   velocypack::Options options;
   options.customTypeHandler = _customTypeHandler.get();
 
-  // create a StringSink that initially points to no buffer.
-  // don't use the sink until it points to an actual buffer!
-  velocypack::StringSink sink(nullptr);
-  velocypack::Dumper dumper(&sink, &options);
   auto it = buildIterator(ci);
   TRI_ASSERT(it != nullptr);
 
+  std::uint64_t docsInBatch = 0;
   std::uint64_t docsProduced = 0;
   std::uint64_t batchesProduced = 0;
 
@@ -328,22 +374,21 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
     ++docsProduced;
 
     if (batch == nullptr) {
-      batch = std::make_unique<Batch>();
-      batch->shard = ci.guard.collection()->name();
-      // save at least a few small (re)allocations
-      batch->content.reserve(64 * 1024);
-      // make sink point into the string of the current batch
-      sink.setBuffer(&batch->content);
+      if (_useVPack) {
+        batch =
+            std::make_unique<BatchVPackArray>(ci.guard.collection()->name());
+      } else {
+        batch = std::make_unique<BatchJSONL>(ci.guard.collection()->name(),
+                                             &options);
+      }
+      docsInBatch = 0;
     }
 
-    TRI_ASSERT(sink.getBuffer() != nullptr);
-    dumper.dump(velocypack::Slice(
+    batch->add(velocypack::Slice(
         reinterpret_cast<std::uint8_t const*>(it->value().data())));
-    // always add a newline after each document, as we must produce
-    // JSONL output format
-    sink.push_back('\n');
 
-    if (batch->content.size() >= _options.batchSize) {
+    if (batch->byteSize() >= _options.batchSize || ++docsInBatch >= 10'000) {
+      batch->close();
       auto [stopped, blocked] = _channel.push(std::move(batch));
       if (blocked) {
         _blockCounter.fetch_sub(1);
@@ -377,7 +422,8 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
 
   if (batch != nullptr) {
     // push remainder out
-    TRI_ASSERT(!batch->content.empty());
+    batch->close();
+    TRI_ASSERT(batch->byteSize() > 0);
     // we can ignore the last one. Going to exit anyway.
     std::ignore = _channel.push(std::move(batch));
     ++batchesProduced;

@@ -292,6 +292,9 @@ struct AqlValue final {
   // note: this is the default constructor and should be as cheap as possible
   AqlValue() noexcept;
 
+  // construct from owning pointer to slice data, move only
+  explicit AqlValue(std::unique_ptr<uint8_t[]> data) noexcept;
+
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer) noexcept;
 

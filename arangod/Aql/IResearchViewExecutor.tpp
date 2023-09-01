@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "Aql/MultiGet.h"
 #include "IResearchViewExecutor.h"
 
 #include "Aql/AqlCall.h"
@@ -63,20 +64,15 @@
 // refactoring than I currently find appropriate for this.
 #include "Aql/ExecutionPlan.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using namespace arangodb::basics;
-using namespace arangodb::iresearch;
+namespace arangodb::aql {
 
-namespace {
-
-[[maybe_unused]] size_t calculateSkipAllCount(CountApproximate approximation,
-                                              size_t currentPos,
-                                              irs::doc_iterator* docs) {
+inline size_t calculateSkipAllCount(iresearch::CountApproximate approximation,
+                                    size_t currentPos,
+                                    irs::doc_iterator* docs) {
   TRI_ASSERT(docs);
   size_t skipped{0};
   switch (approximation) {
-    case CountApproximate::Cost: {
+    case iresearch::CountApproximate::Cost: {
       auto* cost = irs::get<irs::cost>(*docs);
       if (ADB_LIKELY(cost)) {
         skipped = cost->estimate();
@@ -88,7 +84,7 @@ namespace {
     default:
       // check for unknown approximation or absence of the cost attribute.
       // fallback to exact anyway
-      TRI_ASSERT(CountApproximate::Exact == approximation);
+      TRI_ASSERT(iresearch::CountApproximate::Exact == approximation);
       while (docs->next()) {
         skipped++;
       }
@@ -97,17 +93,19 @@ namespace {
   return skipped;
 }
 
-[[maybe_unused]] inline void reset(ColumnIterator& column,
-                                   irs::doc_iterator::ptr&& itr) noexcept {
+inline void resetColumn(ColumnIterator& column,
+                        irs::doc_iterator::ptr&& itr) noexcept {
   TRI_ASSERT(itr);
   column.itr = std::move(itr);
   column.value = irs::get<irs::payload>(*column.itr);
   if (ADB_UNLIKELY(!column.value)) {
-    column.value = &NoPayload;
+    column.value = &iresearch::NoPayload;
   }
 }
 
-constexpr int kSortMultiplier[]{-1, 1};
+inline constexpr int kSortMultiplier[]{-1, 1};
+
+inline constexpr irs::bytes_view kNullSlice{VPackSlice::nullSliceData, 1};
 
 template<typename ValueType, typename HeapSortType>
 class BufferHeapSortContext {
@@ -178,8 +176,8 @@ class BufferHeapSortContext {
   std::span<HeapSortType const> _heapSort;
 };
 
-velocypack::Slice getStoredValue(irs::bytes_view storedValue,
-                                 HeapSortElement const& sort) {
+inline velocypack::Slice getStoredValue(
+    irs::bytes_view storedValue, iresearch::HeapSortElement const& sort) {
   TRI_ASSERT(!sort.isScore());
   TRI_ASSERT(!storedValue.empty());
   auto* start = storedValue.data();
@@ -201,26 +199,25 @@ velocypack::Slice getStoredValue(irs::bytes_view storedValue,
   return !value.isNone() ? value : velocypack::Slice::nullSlice();
 }
 
-}  // namespace
-
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
-    ViewSnapshotPtr reader, RegisterId outRegister,
+    iresearch::ViewSnapshotPtr reader, RegisterId outRegister,
     RegisterId searchDocRegister, std::vector<RegisterId> scoreRegisters,
-    arangodb::aql::QueryContext& query,
+    QueryContext& query,
 #ifdef USE_ENTERPRISE
     iresearch::IResearchOptimizeTopK const& optimizeTopK,
 #endif
-    std::vector<SearchFunc> const& scorers,
-    std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
-    IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
-    Variable const& outVariable, aql::AstNode const& filterCondition,
-    std::pair<bool, bool> volatility, aql::VarInfoMap const& varInfoMap,
-    int depth,
-    IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
+    std::vector<iresearch::SearchFunc> const& scorers,
+    std::pair<iresearch::IResearchSortBase const*, size_t> sort,
+    iresearch::IResearchViewStoredValues const& storedValues,
+    ExecutionPlan const& plan, Variable const& outVariable,
+    AstNode const& filterCondition, std::pair<bool, bool> volatility,
+    VarInfoMap const& varInfoMap, int depth,
+    iresearch::IResearchViewNode::ViewValuesRegisters&&
+        outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
-    std::vector<HeapSortElement> const& heapSort, size_t heapSortLimit,
-    iresearch::SearchMeta const* meta)
+    std::vector<iresearch::HeapSortElement> const& heapSort,
+    size_t heapSortLimit, iresearch::SearchMeta const* meta)
     : _searchDocOutReg{searchDocRegister},
       _documentOutReg{outRegister},
       _scoreRegisters{std::move(scoreRegisters)},
@@ -244,129 +241,40 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _heapSortLimit{heapSortLimit},
       _meta{meta},
       _depth{depth},
-      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition) &&
-                              !_reader->hasNestedFields()},
+      _filterConditionIsEmpty{
+          iresearch::isFilterConditionEmpty(&_filterCondition) &&
+          !_reader->hasNestedFields()},
       _volatileSort{volatility.second},
       // `_volatileSort` implies `_volatileFilter`
       _volatileFilter{_volatileSort || volatility.first} {
   TRI_ASSERT(_reader != nullptr);
 }
 
-IResearchViewNode::ViewValuesRegisters const&
-IResearchViewExecutorInfos::getOutNonMaterializedViewRegs() const noexcept {
-  return _outNonMaterializedViewRegs;
-}
-
-ViewSnapshotPtr IResearchViewExecutorInfos::getReader() const noexcept {
-  return _reader;
-}
-
-aql::QueryContext& IResearchViewExecutorInfos::getQuery() noexcept {
-  return _query;
-}
-
-std::vector<arangodb::iresearch::SearchFunc> const&
-IResearchViewExecutorInfos::scorers() const noexcept {
-  return _scorers;
-}
-
-std::vector<RegisterId> const& IResearchViewExecutorInfos::getScoreRegisters()
-    const noexcept {
-  return _scoreRegisters;
-}
-
-ExecutionPlan const& IResearchViewExecutorInfos::plan() const noexcept {
-  return _plan;
-}
-
-Variable const& IResearchViewExecutorInfos::outVariable() const noexcept {
-  return _outVariable;
-}
-
-aql::AstNode const& IResearchViewExecutorInfos::filterCondition()
-    const noexcept {
-  return _filterCondition;
-}
-
-aql::VarInfoMap const& IResearchViewExecutorInfos::varInfoMap() const noexcept {
-  return _varInfoMap;
-}
-
-int IResearchViewExecutorInfos::getDepth() const noexcept { return _depth; }
-
-bool IResearchViewExecutorInfos::volatileSort() const noexcept {
-  return _volatileSort;
-}
-
-bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
-  return _volatileFilter;
-}
-
-bool IResearchViewExecutorInfos::isOldMangling() const noexcept {
-  return _meta == nullptr;
-}
-
-std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> const&
-IResearchViewExecutorInfos::sort() const noexcept {
-  return _sort;
-}
-
-IResearchViewStoredValues const& IResearchViewExecutorInfos::storedValues()
-    const noexcept {
-  return _storedValues;
-}
-
-auto IResearchViewExecutorInfos::getDocumentRegister() const noexcept
-    -> RegisterId {
-  return _documentOutReg;
-}
-
-IResearchViewStats::IResearchViewStats() noexcept : _scannedIndex(0) {}
-void IResearchViewStats::incrScanned() noexcept { _scannedIndex++; }
-void IResearchViewStats::incrScanned(size_t value) noexcept {
-  _scannedIndex = _scannedIndex + value;
-}
-size_t IResearchViewStats::getScanned() const noexcept { return _scannedIndex; }
-ExecutionStats& aql::operator+=(
+inline ExecutionStats& operator+=(
     ExecutionStats& executionStats,
-    IResearchViewStats const& iResearchViewStats) noexcept {
-  executionStats.scannedIndex += iResearchViewStats.getScanned();
+    IResearchViewStats const& viewStats) noexcept {
+  executionStats.scannedIndex += viewStats.getScanned();
   return executionStats;
 }
 
 template<typename Impl, typename ExecutionTraits>
-template<arangodb::iresearch::MaterializeType, typename>
-IndexIterator::DocumentCallback IResearchViewExecutorBase<
-    Impl, ExecutionTraits>::ReadContext::copyDocumentCallback(ReadContext&
-                                                                  ctx) {
-  typedef std::function<IndexIterator::DocumentCallback(ReadContext&)>
-      CallbackFactory;
-
-  static CallbackFactory const callbackFactory{[](ReadContext& ctx) {
-    return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-      ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, doc);
-      return true;
-    };
-  }};
-
-  return callbackFactory(ctx);
-}
-template<typename Impl, typename ExecutionTraits>
 IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::ReadContext(
-    aql::RegisterId documentOutReg, InputAqlItemRow& inputRow,
+    RegisterId documentOutReg, InputAqlItemRow& inputRow,
     OutputAqlItemRow& outputRow)
-    : inputRow(inputRow), outputRow(outputRow), documentOutReg(documentOutReg) {
-  if constexpr (static_cast<unsigned int>(
-                    Traits::MaterializeType &
-                    iresearch::MaterializeType::Materialize) ==
-                static_cast<unsigned int>(
-                    iresearch::MaterializeType::Materialize)) {
-    callback = this->copyDocumentCallback(*this);
-  }
-}
+    : inputRow(inputRow),
+      outputRow(outputRow),
+      documentOutReg(documentOutReg) {}
 
-IndexReadBufferEntry::IndexReadBufferEntry(size_t keyIdx) noexcept
-    : _keyIdx(keyIdx) {}
+template<typename Impl, typename ExecutionTraits>
+void IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::moveInto(
+    std::unique_ptr<uint8_t[]> data) noexcept {
+  static_assert(isMaterialized);
+  AqlValue value{std::move(data)};
+  bool mustDestroy = true;
+  AqlValueGuard guard{value, mustDestroy};
+  // TODO(MBkkt) add moveValueInto overload for std::unique_ptr<uint8_t[]>
+  outputRow.moveValueInto(documentOutReg, inputRow, guard);
+}
 
 ScoreIterator::ScoreIterator(std::span<float_t> scoreBuffer, size_t keyIdx,
                              size_t numScores) noexcept
@@ -398,33 +306,17 @@ IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer(
 }
 
 template<typename ValueType, bool copyStored>
-ValueType const& IndexReadBuffer<ValueType, copyStored>::getValue(
-    const IndexReadBufferEntry bufferEntry) const noexcept {
-  assertSizeCoherence();
-  TRI_ASSERT(bufferEntry._keyIdx < _keyBuffer.size());
-  return _keyBuffer[bufferEntry._keyIdx].value;
-}
-
-template<typename ValueType, bool copyStored>
 ScoreIterator IndexReadBuffer<ValueType, copyStored>::getScores(
-    const IndexReadBufferEntry bufferEntry) noexcept {
+    size_t idx) noexcept {
   assertSizeCoherence();
-  return ScoreIterator{_scoreBuffer, bufferEntry._keyIdx, _numScoreRegisters};
-}
-
-template<typename ValueType, bool copySorted>
-template<typename... Args>
-void IndexReadBuffer<ValueType, copySorted>::pushValue(
-    StorageSnapshot const& snapshot, Args&&... args) {
-  _keyBuffer.emplace_back(snapshot, std::forward<Args>(args)...);
+  return ScoreIterator{_scoreBuffer, idx, _numScoreRegisters};
 }
 
 template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
-  std::sort(
-      _rows.begin(), _rows.end(),
-      BufferHeapSortContext<typename StoredValuesContainer::value_type,
-                            BufferHeapSortElement>{_heapSortValues, _heapSort});
+  std::sort(_rows.begin(), _rows.end(),
+            BufferHeapSortContext<StoredValue, BufferHeapSortElement>{
+                _heapSortValues, _heapSort});
   if (_heapSizeLeft) {
     // heap was not filled up to the limit. So fill buffer here.
     _storedValuesBuffer.resize(_keyBuffer.size() * _storedValuesCount);
@@ -434,7 +326,7 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
 template<typename ValueType, bool copySorted>
 template<typename ColumnReaderProvider>
 velocypack::Slice IndexReadBuffer<ValueType, copySorted>::readHeapSortColumn(
-    arangodb::iresearch::HeapSortElement const& cmp, irs::doc_id_t doc,
+    iresearch::HeapSortElement const& cmp, irs::doc_id_t doc,
     ColumnReaderProvider& readerProvider, size_t readerSlot) {
   TRI_ASSERT(_heapOnlyStoredValuesReaders.size() >= readerSlot);
   TRI_ASSERT(!cmp.isScore());
@@ -442,13 +334,11 @@ velocypack::Slice IndexReadBuffer<ValueType, copySorted>::readHeapSortColumn(
     _heapOnlyStoredValuesReaders.push_back(readerProvider(cmp.source));
   }
   auto& reader = _heapOnlyStoredValuesReaders[readerSlot];
-  irs::bytes_view val;
+  irs::bytes_view val = kNullSlice;
   TRI_ASSERT(!reader.itr || reader.itr->value() <= doc);
   if (reader.itr && doc == reader.itr->seek(doc) &&
       !reader.value->value.empty()) {
     val = reader.value->value;
-  } else {
-    val = ref<irs::byte_type>(VPackSlice::nullSlice());
   }
   TRI_ASSERT(_currentDocumentBuffer.capacity() > _currentDocumentBuffer.size());
   _currentDocumentBuffer.emplace_back(val);
@@ -502,12 +392,10 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
         }
         auto& reader = _heapOnlyStoredValuesReaders[storedSliceIdx];
         TRI_ASSERT(!reader.itr || reader.itr->value() <= doc);
-        irs::bytes_view val;
+        irs::bytes_view val = kNullSlice;
         if (reader.itr && doc == reader.itr->seek(doc) &&
             !reader.value->value.empty()) {
           val = reader.value->value;
-        } else {
-          val = ref<irs::byte_type>(VPackSlice::nullSlice());
         }
         valueSlot = val;
         slice = getStoredValue(valueSlot, cmp);
@@ -528,13 +416,12 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
 template<typename ValueType, bool copySorted>
 template<typename ColumnReaderProvider>
 void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
-    ColumnReaderProvider& columnReader, StorageSnapshot const& snapshot,
-    ValueType&& value, std::span<float_t const> scores, irs::score& score,
+    ColumnReaderProvider& columnReader, ValueType&& value,
+    std::span<float_t const> scores, irs::score& score,
     irs::score_t& threshold) {
   TRI_ASSERT(_maxSize);
   using HeapSortContext =
-      BufferHeapSortContext<typename StoredValuesContainer::value_type,
-                            BufferHeapSortElement>;
+      BufferHeapSortContext<StoredValue, BufferHeapSortElement>;
   if constexpr (!copySorted) {
     _currentDocumentSlices.clear();
   }
@@ -548,17 +435,17 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     size_t readerSlot{0};
     if (sortContext.compareInput(_rows.front(), scores.data(),
                                  [&](iresearch::HeapSortElement const& cmp) {
-                                   return readHeapSortColumn(
-                                       cmp, value.irsDocId(), columnReader,
-                                       readerSlot++);
+                                   return readHeapSortColumn(cmp, value.docId(),
+                                                             columnReader,
+                                                             readerSlot++);
                                  })) {
       return;  // not interested in this document
     }
     std::pop_heap(_rows.begin(), _rows.end(), sortContext);
     // now last contains "free" index in the buffer
-    finalizeHeapSortDocument<true>(_rows.back(), value.irsDocId(), scores,
+    finalizeHeapSortDocument<true>(_rows.back(), value.docId(), scores,
                                    columnReader);
-    _keyBuffer[_rows.back()] = BufferValueType{snapshot, std::move(value)};
+    _keyBuffer[_rows.back()] = std::move(value);
     auto const base = _rows.back() * _numScoreRegisters;
     size_t i{0};
     auto bufferIt = _scoreBuffer.begin() + base;
@@ -578,9 +465,9 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     threshold = _scoreBuffer[_rows.front() * _numScoreRegisters];
     score.Min(threshold);
   } else {
-    finalizeHeapSortDocument<false>(_rows.size(), value.irsDocId(), scores,
+    finalizeHeapSortDocument<false>(_rows.size(), value.docId(), scores,
                                     columnReader);
-    _keyBuffer.emplace_back(snapshot, std::move(value));
+    _keyBuffer.emplace_back(std::move(value));
     size_t i = 0;
     for (; i < scores.size(); ++i) {
       _scoreBuffer.emplace_back(scores[i]);
@@ -595,12 +482,6 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
       std::make_heap(_rows.begin(), _rows.end(), sortContext);
     }
   }
-}
-
-template<typename ValueType, bool copyStored>
-typename IndexReadBuffer<ValueType, copyStored>::StoredValuesContainer const&
-IndexReadBuffer<ValueType, copyStored>::getStoredValues() const noexcept {
-  return _storedValuesBuffer;
 }
 
 template<typename ValueType, bool copyStored>
@@ -638,8 +519,7 @@ bool IndexReadBuffer<ValueType, copyStored>::empty() const noexcept {
 }
 
 template<typename ValueType, bool copyStored>
-IndexReadBufferEntry
-IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
+size_t IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
   TRI_ASSERT(!empty());
   TRI_ASSERT(_keyBaseIdx < _keyBuffer.size());
   assertSizeCoherence();
@@ -648,9 +528,8 @@ IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
     TRI_ASSERT(!_heapSort.empty());
     key = _rows[_keyBaseIdx];
   }
-  IndexReadBufferEntry entry{key};
   ++_keyBaseIdx;
-  return entry;
+  return key;
 }
 
 template<typename ValueType, bool copyStored>
@@ -658,6 +537,24 @@ void IndexReadBuffer<ValueType, copyStored>::assertSizeCoherence()
     const noexcept {
   TRI_ASSERT((_numScoreRegisters == 0 && _scoreBuffer.size() == 1) ||
              (_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters));
+}
+
+template<typename ValueType, bool copyStored>
+std::vector<size_t> IndexReadBuffer<ValueType, copyStored>::getMaterializeRange(
+    size_t skip) const {
+  // TODO(MBkkt) avoid unnecessary copies and conditions here!
+  auto const size = _keyBuffer.size();
+  TRI_ASSERT(_keyBaseIdx <= size);
+  TRI_ASSERT(skip <= _rows.size());
+  TRI_ASSERT(_rows.size() <= size);
+  skip = skip == 0 ? _keyBaseIdx : skip;
+  std::vector<size_t> rows(size - skip);
+  if (!_rows.empty()) {
+    std::copy(_rows.begin() + skip, _rows.end(), rows.begin());
+  } else {
+    std::iota(rows.begin(), rows.end(), skip);
+  }
+  return rows;
 }
 
 template<typename Impl, typename ExecutionTraits>
@@ -671,26 +568,26 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
                        _infos.getQuery().resourceMonitor()),
       _ctx(_trx, infos.getQuery(), _aqlFunctionsInternalCache,
            infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
-      _filterCtx(_ctx),  // arangodb::iresearch::ExpressionExecutionContext
+      _filterCtx(_ctx),
       _reader(infos.getReader()),
-      _filter(irs::filter::prepared::empty()),
-      _isInitialized(false) {
+      _filter(irs::filter::prepared::empty()) {
   if constexpr (ExecutionTraits::EmitSearchDoc) {
     TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
     auto const* key = &infos.outVariable();
-    _filterCookie = &ensureFilterCookie(_trx, key).filter;
+    _filterCookie = &iresearch::ensureFilterCookie(_trx, key).filter;
   }
 
   if (auto const* meta = infos.meta(); meta != nullptr) {
     auto const& vocbase = _trx.vocbase();
     auto const& analyzerFeature =
-        vocbase.server().getFeature<IResearchAnalyzerFeature>();
+        vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>();
     TRI_ASSERT(_trx.state());
     auto const& revision = _trx.state()->analyzersRevision();
-    auto getAnalyzer = [&](std::string_view shortName) -> FieldMeta::Analyzer {
+    auto getAnalyzer =
+        [&](std::string_view shortName) -> iresearch::FieldMeta::Analyzer {
       auto analyzer = analyzerFeature.get(shortName, vocbase, revision);
       if (!analyzer) {
-        return makeEmptyAnalyzer();
+        return iresearch::makeEmptyAnalyzer();
       }
       return {std::move(analyzer), std::string{shortName}};
     };
@@ -790,7 +687,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
       call.didSkip(impl.skipAll(stats));
     }
     // only heapsort version could possibly fetch more than skip requested
-    TRI_ASSERT(_indexReadBuffer.empty() || !this->infos().heapSort().empty());
+    TRI_ASSERT(_indexReadBuffer.empty() || !infos().heapSort().empty());
 
     if (call.shouldSkip()) {
       // We still need to fetch more
@@ -825,6 +722,55 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
 }
 
 template<typename Impl, typename ExecutionTraits>
+void IResearchViewExecutorBase<Impl, ExecutionTraits>::materialize() {
+  // TODO(MBkkt) unify it more with MaterializeExecutor
+  auto pkReadingOrder = _indexReadBuffer.getMaterializeRange(0);
+  auto it = pkReadingOrder.begin();
+  auto end = pkReadingOrder.end();
+  iresearch::ViewSegment const* segment{};
+  if constexpr (Impl::kSorted) {
+    std::sort(it, end, [&](size_t lhs, size_t rhs) {
+      auto const& lhs_val = _indexReadBuffer.getValue(lhs);
+      auto const& rhs_val = _indexReadBuffer.getValue(rhs);
+      auto const* lhs_segment = lhs_val.segment();
+      auto const* rhs_segment = rhs_val.segment();
+      return lhs_segment->snapshot < rhs_segment->snapshot;
+    });
+  } else {
+    segment = static_cast<Impl&>(*this)._segment;
+    _context.snapshot = segment->snapshot;
+  }
+  StorageSnapshot const* lastSnapshot{};
+  auto fillKeys = [&] {
+    if (it == end) {
+      return MultiGetState::kLast;
+    }
+    auto& doc = _indexReadBuffer.getValue(*it);
+    if constexpr (Impl::kSorted) {
+      segment = doc.segment();
+      auto const* snapshot = segment->snapshot;
+      if (lastSnapshot != snapshot) {
+        lastSnapshot = snapshot;
+        return MultiGetState::kWork;
+      }
+      _context.snapshot = snapshot;
+    }
+
+    ++it;
+    auto const storage = doc.value().id;
+    TRI_ASSERT(storage.isSet());
+
+    auto& logical = *segment->collection;
+    auto const i = _context.serialize(_trx, logical, storage);
+    doc.translate(i);
+
+    return MultiGetState::kNext;
+  };
+  _context.multiGet(pkReadingOrder.size(), fillKeys);
+  _isMaterialized = true;
+}
+
+template<typename Impl, typename ExecutionTraits>
 bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
     ReadContext& ctx, IResearchViewStats& stats) {
   auto& impl = static_cast<Impl&>(*this);
@@ -835,17 +781,22 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
         return false;
       }
       if constexpr (Traits::ExplicitScanned) {
-        stats.incrScanned(static_cast<Impl&>(*this).getScanned());
+        stats.incrScanned(impl.getScanned());
       }
     }
-    IndexReadBufferEntry const bufferEntry = _indexReadBuffer.pop_front();
+    if constexpr (isMaterialized) {
+      if (ADB_UNLIKELY(!_isMaterialized)) {
+        materialize();
+      }
+    }
 
-    if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
+    auto const idx = _indexReadBuffer.pop_front();
+    if (ADB_LIKELY(impl.writeRow(ctx, idx))) {
       break;
     } else {
       // to get correct stats we should continue looking for
       // other documents inside this one call
-      LOG_TOPIC("550cd", TRACE, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("550cd", TRACE, iresearch::TOPIC)
           << "failed to write row in node executor";
     }
   }
@@ -865,37 +816,39 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
         .index = _reader.get(),
         .ref = &infos().outVariable(),
         .filterOptimization = infos().filterOptimization(),
-        .namePrefix = nestedRoot(_reader->hasNestedFields()),
+        .namePrefix = iresearch::nestedRoot(_reader->hasNestedFields()),
         .isSearchQuery = true,
-        .isOldMangling = infos().isOldMangling()};
+        .isOldMangling = infos().isOldMangling(),
+    };
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so can't be a temporary.
-    auto const emptyAnalyzer = makeEmptyAnalyzer();
-    AnalyzerProvider* fieldAnalyzerProvider = nullptr;
-    auto const* contextAnalyzer = &FieldMeta::identity();
+    auto const emptyAnalyzer = iresearch::makeEmptyAnalyzer();
+    iresearch::AnalyzerProvider* fieldAnalyzerProvider = nullptr;
+    auto const* contextAnalyzer = &iresearch::FieldMeta::identity();
     if (!infos().isOldMangling()) {
       fieldAnalyzerProvider = &_provider;
       contextAnalyzer = &emptyAnalyzer;
     }
 
-    FilterContext const filterCtx{
+    iresearch::FilterContext const filterCtx{
         .query = queryCtx,
         .contextAnalyzer = *contextAnalyzer,
-        .fieldAnalyzerProvider = fieldAnalyzerProvider};
+        .fieldAnalyzerProvider = fieldAnalyzerProvider,
+    };
 
     irs::Or root;
-    auto const rv =
-        FilterFactory::filter(&root, filterCtx, infos().filterCondition());
+    auto const rv = iresearch::FilterFactory::filter(&root, filterCtx,
+                                                     infos().filterCondition());
 
     if (rv.fail()) {
-      arangodb::velocypack::Builder builder;
+      velocypack::Builder builder;
       infos().filterCondition().toVelocyPack(builder, true);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           rv.errorNumber(),
-          StringUtils::concatT("failed to build filter while querying "
-                               "arangosearch view, query '",
-                               builder.toJson(), "': ", rv.errorMessage()));
+          absl::StrCat("failed to build filter while querying arangosearch "
+                       "view, query '",
+                       builder.toJson(), "': ", rv.errorMessage()));
     }
 
     if (infos().volatileSort() || !_isInitialized) {
@@ -907,7 +860,8 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
       for (irs::Scorer::ptr scorer; auto const& scorerNode : scorers) {
         TRI_ASSERT(scorerNode.node);
 
-        if (!order_factory::scorer(&scorer, *scorerNode.node, queryCtx)) {
+        if (!iresearch::order_factory::scorer(&scorer, *scorerNode.node,
+                                              queryCtx)) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
               "failed to build scorers while querying arangosearch view");
@@ -940,7 +894,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
 
 template<typename Impl, typename ExecutionTraits>
 void IResearchViewExecutorBase<Impl, ExecutionTraits>::writeSearchDoc(
-    ReadContext& ctx, SearchDoc const& doc, RegisterId reg) {
+    ReadContext& ctx, iresearch::SearchDoc const& doc, RegisterId reg) {
   TRI_ASSERT(doc.isValid());
   AqlValue value{doc.encode(_buf)};
   AqlValueGuard guard{value, true};
@@ -951,9 +905,8 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::writeSearchDoc(
 template<typename Impl, typename ExecutionTraits>
 inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
     ReadContext& ctx,
-    typename IResearchViewExecutorBase<Impl, ExecutionTraits>::
-        IndexReadBufferType::StoredValuesContainer const& storedValues,
-    size_t index, std::map<size_t, RegisterId> const& fieldsRegs) {
+    typename IndexReadBufferType::StoredValues const& storedValues,
+    size_t index, FieldRegisters const& fieldsRegs) {
   TRI_ASSERT(index < storedValues.size());
   auto const& storedValue = storedValues[index];
   return writeStoredValue(ctx, storedValue, fieldsRegs);
@@ -962,7 +915,7 @@ inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
 template<typename Impl, typename ExecutionTraits>
 inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
     ReadContext& ctx, irs::bytes_view storedValue,
-    std::map<size_t, RegisterId> const& fieldsRegs) {
+    FieldRegisters const& fieldsRegs) {
   TRI_ASSERT(!storedValue.empty());
   auto* start = storedValue.data();
   [[maybe_unused]] auto* end = start + storedValue.size();
@@ -983,39 +936,31 @@ inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
 }
 
 template<typename Impl, typename ExecutionTraits>
-template<typename DocumentValueType>
-bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
-    ReadContext& ctx, IndexReadBufferEntry bufferEntry,
-    DocumentValueType const& documentId, LogicalCollection const* collection) {
+template<typename Value>
+bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRowImpl(
+    ReadContext& ctx, size_t idx, Value const& value) {
   if constexpr (ExecutionTraits::EmitSearchDoc) {
     // FIXME: This could be avoided by using only late materialization register
-    auto reg = this->infos().searchDocIdRegId();
+    auto reg = infos().searchDocIdRegId();
     TRI_ASSERT(reg.isValid());
 
-    this->writeSearchDoc(
-        ctx, this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx()), reg);
+    writeSearchDoc(ctx, _indexReadBuffer.getSearchDoc(idx), reg);
   }
   if constexpr (isMaterialized) {
-    TRI_ASSERT(collection);
-    TRI_ASSERT(documentId.isSet());
-    // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(!collection->getPhysical()
-                          ->readFromSnapshot(&_trx, documentId, ctx.callback,
-                                             ReadOwnWrites::no,
-                                             this->_indexReadBuffer.getSnapshot(
-                                                 bufferEntry.getKeyIdx()))
-                          .ok())) {
+    auto& r = _context.values[value.result];
+    if (ADB_UNLIKELY(!r)) {
       return false;
     }
+    ctx.moveInto(std::move(r));
   }
   if constexpr (isLateMaterialized) {
-    this->writeSearchDoc(ctx, documentId, ctx.getDocumentIdReg());
+    writeSearchDoc(ctx, value, ctx.getDocumentIdReg());
   }
   if constexpr (usesStoredValues) {
     auto const& columnsFieldsRegs = infos().getOutNonMaterializedViewRegs();
     TRI_ASSERT(!columnsFieldsRegs.empty());
     auto const& storedValues = _indexReadBuffer.getStoredValues();
-    auto index = bufferEntry.getKeyIdx() * columnsFieldsRegs.size();
+    auto index = idx * columnsFieldsRegs.size();
     TRI_ASSERT(index < storedValues.size());
     for (auto it = columnsFieldsRegs.cbegin(); it != columnsFieldsRegs.cend();
          ++it) {
@@ -1025,7 +970,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
       }
     }
   } else if constexpr (Traits::MaterializeType ==
-                           MaterializeType::NotMaterialize &&
+                           iresearch::MaterializeType::NotMaterialize &&
                        !Traits::Ordered && !Traits::EmitSearchDoc) {
     ctx.outputRow.copyRow(ctx.inputRow);
   }
@@ -1033,9 +978,9 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
   // move to separate function that gets ScoresIterator
   if constexpr (Traits::Ordered) {
     // scorer register are placed right before the document output register
-    std::vector<RegisterId> const& scoreRegisters = infos().getScoreRegisters();
+    auto const& scoreRegisters = infos().getScoreRegisters();
     auto scoreRegIter = scoreRegisters.begin();
-    for (auto const& it : _indexReadBuffer.getScores(bufferEntry)) {
+    for (auto const& it : _indexReadBuffer.getScores(idx)) {
       TRI_ASSERT(scoreRegIter != scoreRegisters.end());
       auto const val = AqlValueHintDouble(it);
       ctx.outputRow.moveValueInto(*scoreRegIter, ctx.inputRow, val);
@@ -1044,8 +989,6 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
 
     // we should have written exactly all score registers by now
     TRI_ASSERT(scoreRegIter == scoreRegisters.end());
-  } else {
-    IRS_IGNORE(bufferEntry);
   }
   return true;
 }
@@ -1062,8 +1005,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::readStoredValues(
   if (found && !payload.empty()) {
     _indexReadBuffer.pushStoredValue(payload);
   } else {
-    _indexReadBuffer.pushStoredValue(
-        ref<irs::byte_type>(VPackSlice::nullSlice()));
+    _indexReadBuffer.pushStoredValue(kNullSlice);
   }
 }
 
@@ -1083,23 +1025,23 @@ template<typename Impl, typename ExecutionTraits>
 bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
     irs::SubReader const& segmentReader, size_t storedValuesIndex /*= 0*/) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
-  constexpr bool HeapSort =
+  static constexpr bool kHeapSort =
       std::is_same_v<HeapSortExecutorValue,
-                     typename arangodb::aql::IResearchViewExecutorBase<
-                         Impl, ExecutionTraits>::Traits::IndexBufferValueType>;
+                     typename Traits::IndexBufferValueType>;
   if (!columnsFieldsRegs.empty()) {
     auto columnFieldsRegs = columnsFieldsRegs.cbegin();
     auto index = storedValuesIndex * columnsFieldsRegs.size();
-    if (IResearchViewNode::kSortColumnNumber == columnFieldsRegs->first) {
-      if (!HeapSort || !_storedColumnsMask.contains(columnFieldsRegs->first)) {
-        auto sortReader = ::sortColumn(segmentReader);
+    if (iresearch::IResearchViewNode::kSortColumnNumber ==
+        columnFieldsRegs->first) {
+      if (!kHeapSort || !_storedColumnsMask.contains(columnFieldsRegs->first)) {
+        auto sortReader = iresearch::sortColumn(segmentReader);
         if (ADB_UNLIKELY(!sortReader)) {
-          LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
+          LOG_TOPIC("bc5bd", WARN, iresearch::TOPIC)
               << "encountered a sub-reader without a sort column while "
                  "executing a query, ignoring";
           return false;
         }
-        ::reset(_storedValuesReaders[index++], std::move(sortReader));
+        resetColumn(_storedValuesReaders[index++], std::move(sortReader));
       }
       ++columnFieldsRegs;
     }
@@ -1108,9 +1050,9 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
       auto const& columns = _infos.storedValues().columns();
       TRI_ASSERT(!columns.empty());
       for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-        TRI_ASSERT(IResearchViewNode::kSortColumnNumber <
+        TRI_ASSERT(iresearch::IResearchViewNode::kSortColumnNumber <
                    columnFieldsRegs->first);
-        if constexpr (HeapSort) {
+        if constexpr (kHeapSort) {
           if (_storedColumnsMask.contains(columnFieldsRegs->first)) {
             continue;
           }
@@ -1121,13 +1063,13 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
         auto const* storedValuesReader =
             segmentReader.column(columns[storedColumnNumber].name);
         if (ADB_UNLIKELY(!storedValuesReader)) {
-          LOG_TOPIC("af7ec", WARN, arangodb::iresearch::TOPIC)
+          LOG_TOPIC("af7ec", WARN, iresearch::TOPIC)
               << "encountered a sub-reader without a stored value column while "
                  "executing a query, ignoring";
           return false;
         }
-        ::reset(_storedValuesReaders[index++],
-                storedValuesReader->iterator(irs::ColumnHint::kNormal));
+        resetColumn(_storedValuesReaders[index++],
+                    storedValuesReader->iterator(irs::ColumnHint::kNormal));
       }
     }
   }
@@ -1148,36 +1090,38 @@ IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
   TRI_ASSERT(infos.heapSort().empty());
 }
 
+inline void commonReadPK(ColumnIterator& it, irs::doc_id_t docId,
+                         LocalDocumentId& documentId) {
+  TRI_ASSERT(it.itr);
+  TRI_ASSERT(it.value);
+  bool r = it.itr->seek(docId) == docId;
+  if (ADB_LIKELY(r)) {
+    r = iresearch::DocumentPrimaryKey::read(documentId, it.value->value);
+    TRI_ASSERT(r == documentId.isSet());
+  }
+  if (ADB_UNLIKELY(!r)) {
+    LOG_TOPIC("6442f", WARN, iresearch::TOPIC)
+        << "failed to read document primary key while reading document from "
+           "arangosearch view, doc_id: "
+        << docId;
+  }
+}
+
 template<typename ExecutionTraits>
 bool IResearchViewExecutor<ExecutionTraits>::readPK(
     LocalDocumentId& documentId) {
   TRI_ASSERT(!documentId.isSet());
   TRI_ASSERT(_itr);
-  TRI_ASSERT(_doc);
-  if (_itr->next()) {
-    ++_totalPos;
-    ++_currentSegmentPos;
-    if constexpr (Base::isMaterialized) {
-      TRI_ASSERT(_pkReader.itr);
-      TRI_ASSERT(_pkReader.value);
-      if (_doc->value == _pkReader.itr->seek(_doc->value)) {
-        bool const readSuccess =
-            DocumentPrimaryKey::read(documentId, _pkReader.value->value);
-
-        TRI_ASSERT(readSuccess == documentId.isSet());
-
-        if (ADB_UNLIKELY(!readSuccess)) {
-          LOG_TOPIC("6442f", WARN, arangodb::iresearch::TOPIC)
-              << "failed to read document primary key while reading document "
-                 "from arangosearch view, doc_id '"
-              << _doc->value << "'";
-        }
-      }
-    }
-    return true;
+  if (!_itr->next()) {
+    return false;
   }
-
-  return false;
+  ++_totalPos;
+  ++_currentSegmentPos;
+  if constexpr (Base::isMaterialized) {
+    TRI_ASSERT(_doc);
+    commonReadPK(_pkReader, _doc->value, documentId);
+  }
+  return true;
 }
 
 template<typename ExecutionTraits>
@@ -1229,6 +1173,7 @@ size_t IResearchViewHeapSortExecutor<ExecutionTraits>::skipAll(
 
   // seal the executor anyway
   _bufferFilled = true;
+  this->_isMaterialized = false;
   this->_indexReadBuffer.clear();
   _totalCount = 0;
   _bufferedCount = 0;
@@ -1241,18 +1186,13 @@ size_t IResearchViewHeapSortExecutor<ExecutionTraits>::skip(
   if (fillBufferInternal(limit)) {
     stats.incrScanned(getScanned());
   }
-  if (limit >= this->_indexReadBuffer.size()) {
-    auto const skipped = this->_indexReadBuffer.size();
-    this->_indexReadBuffer.clear();
-    return skipped;
-  } else {
-    size_t const toSkip = limit;
-    while (limit) {
-      this->_indexReadBuffer.pop_front();
-      --limit;
-    }
-    return toSkip;
+  auto const size = this->_indexReadBuffer.size();
+  if (limit < size) {
+    this->_indexReadBuffer.skip(limit);
+    return limit;
   }
+  this->_indexReadBuffer.clear();
+  return size;
 }
 
 template<typename ExecutionTraits>
@@ -1274,21 +1214,18 @@ void IResearchViewHeapSortExecutor<ExecutionTraits>::reset(
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewHeapSortExecutor<ExecutionTraits>::writeRow(
-    IResearchViewHeapSortExecutor::ReadContext& ctx,
-    IndexReadBufferEntry bufferEntry) {
+bool IResearchViewHeapSortExecutor<ExecutionTraits>::writeRow(ReadContext& ctx,
+                                                              size_t idx) {
   static_assert(!Base::isLateMaterialized,
                 "HeapSort superseeds LateMaterialization");
-  auto const& val = this->_indexReadBuffer.getValue(bufferEntry);
-  return Base::writeRow(ctx, bufferEntry, val.documentId(),
-                        val.collectionPtr());
+  auto const& value = this->_indexReadBuffer.getValue(idx);
+  return Base::writeRowImpl(ctx, idx, value.value());
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBuffer(
-    IResearchViewHeapSortExecutor::ReadContext&) {
+bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBuffer(ReadContext&) {
   fillBufferInternal(0);
-  // FIXME: Use additional flag from FillBufferInternal
+  // FIXME: Use additional flag from fillBufferInternal
   return !this->_indexReadBuffer.empty();
 }
 
@@ -1303,6 +1240,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
   TRI_ASSERT(this->_filter != nullptr);
   size_t const atMost = this->_infos.heapSortLimit();
   TRI_ASSERT(atMost);
+  this->_isMaterialized = false;
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
@@ -1362,139 +1300,126 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
     auto provider = [this, readerOffset](ptrdiff_t column) {
       auto& segmentReader = (*this->_reader)[readerOffset];
       ColumnIterator it;
-      if (IResearchViewNode::kSortColumnNumber == column) {
-        auto sortReader = ::sortColumn(segmentReader);
+      if (iresearch::IResearchViewNode::kSortColumnNumber == column) {
+        auto sortReader = iresearch::sortColumn(segmentReader);
         if (ADB_LIKELY(sortReader)) {
-          ::reset(it, std::move(sortReader));
+          resetColumn(it, std::move(sortReader));
         }
       } else {
         auto const& columns = this->_infos.storedValues().columns();
         auto const* storedValuesReader =
             segmentReader.column(columns[column].name);
         if (ADB_LIKELY(storedValuesReader)) {
-          ::reset(it, storedValuesReader->iterator(irs::ColumnHint::kNormal));
+          resetColumn(it,
+                      storedValuesReader->iterator(irs::ColumnHint::kNormal));
         }
       }
       return it;
     };
     this->_indexReadBuffer.pushSortedValue(
-        provider, this->_reader->snapshot(readerOffset),
-        typename decltype(this->_indexReadBuffer)::KeyValueType(doc->value,
-                                                                readerOffset),
+        provider, HeapSortExecutorValue{doc->value, readerOffset},
         std::span{scores.data(), numScores}, *scr, threshold);
   }
   this->_indexReadBuffer.finalizeHeapSort();
   _bufferedCount = this->_indexReadBuffer.size();
-  if (skip < _bufferedCount) {
-    auto pkReadingOrder = this->_indexReadBuffer.getMaterializeRange(skip);
-    std::sort(
-        pkReadingOrder.begin(), pkReadingOrder.end(),
-        [buffer = &this->_indexReadBuffer](size_t lhs, size_t rhs) -> bool {
-          auto const& lhs_val = buffer->getValue(lhs);
-          auto const& rhs_val = buffer->getValue(rhs);
-          auto const lhs_offset = lhs_val.readerOffset();
-          auto const rhs_offset = rhs_val.readerOffset();
-          if (lhs_offset != rhs_offset) {
-            return lhs_offset < rhs_offset;
-          }
-          return lhs_val.irsDocId() < rhs_val.irsDocId();
-        });
+  if (skip >= _bufferedCount) {
+    return true;
+  }
+  auto pkReadingOrder = this->_indexReadBuffer.getMaterializeRange(skip);
+  std::sort(pkReadingOrder.begin(), pkReadingOrder.end(),
+            [buffer = &this->_indexReadBuffer](size_t lhs, size_t rhs) {
+              auto const& lhs_val = buffer->getValue(lhs);
+              auto const& rhs_val = buffer->getValue(rhs);
+              auto const lhs_offset = lhs_val.readerOffset();
+              auto const rhs_offset = rhs_val.readerOffset();
+              if (lhs_offset != rhs_offset) {
+                return lhs_offset < rhs_offset;
+              }
+              return lhs_val.docId() < rhs_val.docId();
+            });
 
-    size_t lastSegmentIdx = count;
-    ColumnIterator pkReader;
-    LogicalCollection const* collection{};
-    auto orderIt = pkReadingOrder.begin();
-    while (orderIt != pkReadingOrder.end()) {
-      auto& value = this->_indexReadBuffer.getValue(*orderIt);
-      auto const irsDocId = value.irsDocId();
-      auto const segmentIdx = value.readerOffset();
-      if (lastSegmentIdx != segmentIdx) {
-        auto& segmentReader = (*this->_reader)[segmentIdx];
-        auto pkIt = ::pkColumn(segmentReader);
-        pkReader.itr.reset();
-        collection = &this->_reader->collection(segmentIdx);
-        TRI_ASSERT(collection);
-        if (ADB_UNLIKELY(!pkIt)) {
-          LOG_TOPIC("bd02b", WARN, arangodb::iresearch::TOPIC)
-              << "encountered a sub-reader without a primary key column "
+  size_t lastSegmentIdx = count;
+  ColumnIterator pkReader;
+  iresearch::ViewSegment const* segment{};
+  auto orderIt = pkReadingOrder.begin();
+  while (orderIt != pkReadingOrder.end()) {
+    auto& value = this->_indexReadBuffer.getValue(*orderIt);
+    auto const docId = value.docId();
+    auto const segmentIdx = value.readerOffset();
+    if (lastSegmentIdx != segmentIdx) {
+      auto& segmentReader = (*this->_reader)[segmentIdx];
+      auto pkIt = iresearch::pkColumn(segmentReader);
+      pkReader.itr.reset();
+      segment = &this->_reader->segment(segmentIdx);
+      if (ADB_UNLIKELY(!pkIt)) {
+        LOG_TOPIC("bd02b", WARN, iresearch::TOPIC)
+            << "encountered a sub-reader without a primary key column "
+               "while executing a query, ignoring";
+        continue;
+      }
+      resetColumn(pkReader, std::move(pkIt));
+      if constexpr (Base::contains(
+                        iresearch::MaterializeType::UseStoredValues)) {
+        if (ADB_UNLIKELY(
+                !this->getStoredValuesReaders(segmentReader, segmentIdx))) {
+          LOG_TOPIC("bd02c", WARN, iresearch::TOPIC)
+              << "encountered a sub-reader without stored values column "
                  "while executing a query, ignoring";
           continue;
         }
-        ::reset(pkReader, std::move(pkIt));
-        if constexpr ((ExecutionTraits::MaterializeType &
-                       MaterializeType::UseStoredValues) ==
-                      MaterializeType::UseStoredValues) {
-          if (ADB_UNLIKELY(
-                  !this->getStoredValuesReaders(segmentReader, segmentIdx))) {
-            LOG_TOPIC("bd02c", WARN, arangodb::iresearch::TOPIC)
-                << "encountered a sub-reader without stored values column "
-                   "while executing a query, ignoring";
-            continue;
-          }
-        }
-        lastSegmentIdx = segmentIdx;
       }
-
-      LocalDocumentId documentId;
-      if (irsDocId == pkReader.itr->seek(irsDocId)) {
-        bool const readSuccess =
-            DocumentPrimaryKey::read(documentId, pkReader.value->value);
-
-        TRI_ASSERT(readSuccess == documentId.isSet());
-
-        if (ADB_UNLIKELY(!readSuccess)) {
-          LOG_TOPIC("6424f", WARN, arangodb::iresearch::TOPIC)
-              << "failed to read document primary key while reading document "
-                 "from arangosearch view, doc_id '"
-              << value.irsDocId() << "'";
-        }
-      }
-      value.decode(documentId, collection);
-      if constexpr (Base::usesStoredValues) {
-        auto const& columnsFieldsRegs =
-            this->infos().getOutNonMaterializedViewRegs();
-        TRI_ASSERT(!columnsFieldsRegs.empty());
-        auto readerIndex = segmentIdx * columnsFieldsRegs.size();
-        size_t valueIndex = *orderIt * columnsFieldsRegs.size();
-        for (auto it = columnsFieldsRegs.cbegin();
-             it != columnsFieldsRegs.cend(); ++it) {
-          if (this->_storedColumnsMask.contains(it->first)) {
-            valueIndex++;
-            continue;
-          }
-          TRI_ASSERT(readerIndex < this->_storedValuesReaders.size());
-          auto const& reader = this->_storedValuesReaders[readerIndex++];
-          TRI_ASSERT(reader.itr);
-          TRI_ASSERT(reader.value);
-          auto const& payload = reader.value->value;
-          bool const found = (irsDocId == reader.itr->seek(irsDocId));
-          if (found && !payload.empty()) {
-            this->_indexReadBuffer.setStoredValue(valueIndex++, payload);
-          } else {
-            this->_indexReadBuffer.setStoredValue(
-                valueIndex++, ref<irs::byte_type>(VPackSlice::nullSlice()));
-          }
-        }
-      }
-
-      if constexpr (ExecutionTraits::EmitSearchDoc) {
-        TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
-        this->_indexReadBuffer.pushSearchDoc(this->_reader->segment(segmentIdx),
-                                             irsDocId);
-      }
-
-      this->_indexReadBuffer.assertSizeCoherence();
-      ++orderIt;
+      lastSegmentIdx = segmentIdx;
     }
+
+    LocalDocumentId documentId;
+    commonReadPK(pkReader, docId, documentId);
+
+    TRI_ASSERT(segment);
+    value.translate(documentId, *segment);
+
+    if constexpr (Base::usesStoredValues) {
+      auto const& columnsFieldsRegs =
+          this->infos().getOutNonMaterializedViewRegs();
+      TRI_ASSERT(!columnsFieldsRegs.empty());
+      auto readerIndex = segmentIdx * columnsFieldsRegs.size();
+      size_t valueIndex = *orderIt * columnsFieldsRegs.size();
+      for (auto it = columnsFieldsRegs.begin(), end = columnsFieldsRegs.end();
+           it != end; ++it) {
+        if (this->_storedColumnsMask.contains(it->first)) {
+          valueIndex++;
+          continue;
+        }
+        TRI_ASSERT(readerIndex < this->_storedValuesReaders.size());
+        auto const& reader = this->_storedValuesReaders[readerIndex++];
+        TRI_ASSERT(reader.itr);
+        TRI_ASSERT(reader.value);
+        auto const& payload = reader.value->value;
+        bool const found = (docId == reader.itr->seek(docId));
+        if (found && !payload.empty()) {
+          this->_indexReadBuffer.setStoredValue(valueIndex++, payload);
+        } else {
+          this->_indexReadBuffer.setStoredValue(valueIndex++, kNullSlice);
+        }
+      }
+    }
+
+    if constexpr (ExecutionTraits::EmitSearchDoc) {
+      TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
+      this->_indexReadBuffer.pushSearchDoc(docId, *segment);
+    }
+
+    this->_indexReadBuffer.assertSizeCoherence();
+    ++orderIt;
   }
   return true;
 }
+
 template<typename ExecutionTraits>
-bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
-    IResearchViewExecutor::ReadContext& ctx) {
+bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
   size_t const atMost = ctx.outputRow.numRowsLeft();
   TRI_ASSERT(this->_indexReadBuffer.empty());
+  this->_isMaterialized = false;
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
@@ -1521,12 +1446,12 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
         continue;
       }
 
-      // collection is constant until the next resetIterator().
+      // segment is constant until the next resetIterator().
       // save it to don't have to look it up every time.
       if constexpr (Base::isMaterialized) {
-        _collection = &this->_reader->collection(_readerOffset);
-        TRI_ASSERT(_collection);
+        _segment = &this->_reader->segment(_readerOffset);
       }
+      this->_isMaterialized = false;
       this->_indexReadBuffer.reset();
     }
 
@@ -1552,26 +1477,24 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
     }
     if constexpr (Base::isMaterialized) {
       // The collection must stay the same for all documents in the buffer
-      TRI_ASSERT(_collection == &this->_reader->collection(_readerOffset));
+      TRI_ASSERT(_segment == &this->_reader->segment(_readerOffset));
       if (!documentId.isSet()) {
         // No document read, we cannot write it.
         continue;
       }
     }
     if constexpr (Base::isLateMaterialized) {
-      this->_indexReadBuffer.pushValue(this->_reader->snapshot(_readerOffset),
-                                       this->_reader->segment(_readerOffset),
+      this->_indexReadBuffer.pushValue(this->_reader->segment(_readerOffset),
                                        _doc->value);
     } else {
-      this->_indexReadBuffer.pushValue(this->_reader->snapshot(_readerOffset),
-                                       documentId);
+      this->_indexReadBuffer.pushValue(documentId);
     }
     gotData = true;
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
       this->_indexReadBuffer.pushSearchDoc(
-          this->_reader->segment(_readerOffset), _doc->value);
+          _doc->value, this->_reader->segment(_readerOffset));
     }
 
     // in the ordered case we have to write scores as well as a document
@@ -1610,16 +1533,16 @@ bool IResearchViewExecutor<ExecutionTraits>::resetIterator() {
   auto& segmentReader = (*this->_reader)[_readerOffset];
 
   if constexpr (Base::isMaterialized) {
-    auto it = ::pkColumn(segmentReader);
+    auto it = iresearch::pkColumn(segmentReader);
 
     if (ADB_UNLIKELY(!it)) {
-      LOG_TOPIC("bd01b", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("bd01b", WARN, iresearch::TOPIC)
           << "encountered a sub-reader without a primary key column while "
              "executing a query, ignoring";
       return false;
     }
 
-    ::reset(_pkReader, std::move(it));
+    resetColumn(_pkReader, std::move(it));
   }
 
   if constexpr (Base::usesStoredValues) {
@@ -1737,16 +1660,17 @@ void IResearchViewExecutor<ExecutionTraits>::saveCollection() {
   if (_itr) {
     // collection is constant until the next resetIterator().
     // save it to don't have to look it up every time.
-    _collection = &this->_reader->collection(_readerOffset);
+    _segment = &this->_reader->segment(_readerOffset);
+    this->_isMaterialized = false;
     this->_indexReadBuffer.reset();
   }
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewExecutor<ExecutionTraits>::writeRow(
-    IResearchViewExecutor::ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
-  auto const& val = this->_indexReadBuffer.getValue(bufferEntry);
-  return Base::writeRow(ctx, bufferEntry, val, _collection);
+bool IResearchViewExecutor<ExecutionTraits>::writeRow(ReadContext& ctx,
+                                                      size_t idx) {
+  auto const& value = this->_indexReadBuffer.getValue(idx);
+  return Base::writeRowImpl(ctx, idx, value);
 }
 
 template<typename ExecutionTraits>
@@ -1764,15 +1688,13 @@ template<typename ExecutionTraits>
 IResearchViewMergeExecutor<ExecutionTraits>::Segment::Segment(
     irs::doc_iterator::ptr&& docs, irs::document const& doc,
     irs::score const& score, size_t numScores,
-    LogicalCollection const* collection, irs::doc_iterator::ptr&& pkReader,
-    size_t index, irs::doc_iterator* sortReaderRef,
-    irs::payload const* sortReaderValue,
+    irs::doc_iterator::ptr&& pkReader, size_t index,
+    irs::doc_iterator* sortReaderRef, irs::payload const* sortReaderValue,
     irs::doc_iterator::ptr&& sortReader) noexcept
     : docs(std::move(docs)),
       doc(&doc),
       score(&score),
       numScores(numScores),
-      collection(collection),
       segmentIndex(index),
       sortReaderRef(sortReaderRef),
       sortValue(sortReaderValue),
@@ -1783,7 +1705,7 @@ IResearchViewMergeExecutor<ExecutionTraits>::Segment::Segment(
   TRI_ASSERT(this->sortReaderRef);
   TRI_ASSERT(this->sortValue);
   if constexpr (Base::isMaterialized) {
-    ::reset(this->pkReader, std::move(pkReader));
+    resetColumn(this->pkReader, std::move(pkReader));
     TRI_ASSERT(this->pkReader.itr);
     TRI_ASSERT(this->pkReader.value);
   }
@@ -1791,7 +1713,7 @@ IResearchViewMergeExecutor<ExecutionTraits>::Segment::Segment(
 
 template<typename ExecutionTraits>
 IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::MinHeapContext(
-    IResearchSortBase const& sort, size_t sortBuckets) noexcept
+    iresearch::IResearchSortBase const& sort, size_t sortBuckets) noexcept
     : _less{sort, sortBuckets} {}
 
 template<typename ExecutionTraits>
@@ -1829,7 +1751,8 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
   this->_storedValuesReaders.resize(size * storedValuesCount);
   auto isSortReaderUsedInStoredValues =
       storedValuesCount > 0 &&
-      IResearchViewNode::kSortColumnNumber == columnsFieldsRegs.cbegin()->first;
+      iresearch::IResearchViewNode::kSortColumnNumber ==
+          columnsFieldsRegs.cbegin()->first;
 
   for (size_t i = 0; i < size; ++i) {
     auto& segment = (*this->_reader)[i];
@@ -1857,13 +1780,10 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
       }
     }
     irs::doc_iterator::ptr pkReader;
-    LogicalCollection const* collection{};
     if constexpr (Base::isMaterialized) {
-      collection = &this->_reader->collection(i);
-      TRI_ASSERT(collection);
-      pkReader = ::pkColumn(segment);
+      pkReader = iresearch::pkColumn(segment);
       if (ADB_UNLIKELY(!pkReader)) {
-        LOG_TOPIC("ee041", WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("ee041", WARN, iresearch::TOPIC)
             << "encountered a sub-reader without a primary key column while "
                "executing a query, ignoring";
         continue;
@@ -1882,14 +1802,14 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
       TRI_ASSERT(i * storedValuesCount < this->_storedValuesReaders.size());
       auto& sortReader = this->_storedValuesReaders[i * storedValuesCount];
 
-      _segments.emplace_back(std::move(it), *doc, *score, numScores, collection,
+      _segments.emplace_back(std::move(it), *doc, *score, numScores,
                              std::move(pkReader), i, sortReader.itr.get(),
                              sortReader.value, nullptr);
     } else {
-      auto itr = ::sortColumn(segment);
+      auto itr = iresearch::sortColumn(segment);
 
       if (ADB_UNLIKELY(!itr)) {
-        LOG_TOPIC("af4cd", WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("af4cd", WARN, iresearch::TOPIC)
             << "encountered a sub-reader without a sort column while "
                "executing a query, ignoring";
         continue;
@@ -1897,10 +1817,10 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
 
       irs::payload const* sortValue = irs::get<irs::payload>(*itr);
       if (ADB_UNLIKELY(!sortValue)) {
-        sortValue = &NoPayload;
+        sortValue = &iresearch::NoPayload;
       }
 
-      _segments.emplace_back(std::move(it), *doc, *score, numScores, collection,
+      _segments.emplace_back(std::move(it), *doc, *score, numScores,
                              std::move(pkReader), i, itr.get(), sortValue,
                              std::move(itr));
     }
@@ -1911,27 +1831,10 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset(
 
 template<typename ExecutionTraits>
 LocalDocumentId IResearchViewMergeExecutor<ExecutionTraits>::readPK(
-    IResearchViewMergeExecutor<ExecutionTraits>::Segment const& segment) {
-  TRI_ASSERT(segment.doc);
-  TRI_ASSERT(segment.pkReader.itr);
-  TRI_ASSERT(segment.pkReader.value);
-
+    Segment& segment) {
   LocalDocumentId documentId;
-
-  if (segment.doc->value == segment.pkReader.itr->seek(segment.doc->value)) {
-    bool const readSuccess =
-        DocumentPrimaryKey::read(documentId, segment.pkReader.value->value);
-
-    TRI_ASSERT(readSuccess == documentId.isSet());
-
-    if (ADB_UNLIKELY(!readSuccess)) {
-      LOG_TOPIC("6423f", WARN, arangodb::iresearch::TOPIC)
-          << "failed to read document primary key while reading document "
-             "from arangosearch view, doc_id '"
-          << segment.doc->value << "'";
-    }
-  }
-
+  TRI_ASSERT(segment.doc);
+  commonReadPK(segment.pkReader, segment.doc->value, documentId);
   return documentId;
 }
 
@@ -1942,11 +1845,12 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   size_t const atMost =
       Base::isLateMaterialized ? 1 : ctx.outputRow.numRowsLeft();
   TRI_ASSERT(this->_indexReadBuffer.empty());
+  this->_isMaterialized = false;
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
-  bool gotData{false};
+  bool gotData = false;
   while (_heap_it.Next()) {
     auto& segment = _heap_it.Lead();
     ++segment.segmentPos;
@@ -1957,24 +1861,17 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
     LocalDocumentId documentId;
 
     if constexpr (Base::isMaterialized) {
-      TRI_ASSERT(segment.collection);
-      TRI_ASSERT(segment.pkReader.itr);
-      TRI_ASSERT(segment.pkReader.value);
       documentId = readPK(segment);
-
       if (!documentId.isSet()) {
-        // No document read, we cannot write it.
-        continue;
+        continue;  // No document read, we cannot write it.
       }
     }
+    // TODO(MBkkt) cache viewSegment?
+    auto& viewSegment = this->_reader->segment(segment.segmentIndex);
     if constexpr (Base::isLateMaterialized) {
-      this->_indexReadBuffer.pushValue(
-          this->_reader->snapshot(segment.segmentIndex),
-          this->_reader->segment(segment.segmentIndex), segment.doc->value);
+      this->_indexReadBuffer.pushValue(viewSegment, segment.doc->value);
     } else {
-      this->_indexReadBuffer.pushValue(
-          this->_reader->snapshot(segment.segmentIndex), documentId,
-          segment.collection);
+      this->_indexReadBuffer.pushValue(documentId, viewSegment);
     }
     gotData = true;
     // in the ordered case we have to write scores as well as a document
@@ -1991,8 +1888,7 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(this->infos().searchDocIdRegId().isValid() ==
                  ExecutionTraits::EmitSearchDoc);
-      this->_indexReadBuffer.pushSearchDoc(
-          this->_reader->segment(segment.segmentIndex), segment.doc->value);
+      this->_indexReadBuffer.pushSearchDoc(segment.doc->value, viewSegment);
     }
 
     // doc and scores are both pushed, sizes must now be coherent
@@ -2011,7 +1907,7 @@ size_t IResearchViewMergeExecutor<ExecutionTraits>::skip(size_t limit,
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter != nullptr);
 
-  size_t const toSkip = limit;
+  auto const toSkip = limit;
 
   while (limit && _heap_it.Next()) {
     ++_heap_it.Lead().segmentPos;
@@ -2053,7 +1949,7 @@ size_t IResearchViewMergeExecutor<ExecutionTraits>::skipAll(
     // after heap.next. But we should adjust by the heap size only if the heap
     // was advanced at least once (heap is actually filled on first next) or we
     // have nothing consumed from doc iterators!
-    if (infos.countApproximate() == CountApproximate::Exact &&
+    if (infos.countApproximate() == iresearch::CountApproximate::Exact &&
         !infos.filterConditionIsEmpty() && _heap_it.Size() != 0) {
       skipped += (_heap_it.Size() - 1);
     }
@@ -2063,18 +1959,14 @@ size_t IResearchViewMergeExecutor<ExecutionTraits>::skipAll(
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewMergeExecutor<ExecutionTraits>::writeRow(
-    IResearchViewMergeExecutor::ReadContext& ctx,
-    IndexReadBufferEntry bufferEntry) {
-  auto const& id = this->_indexReadBuffer.getValue(bufferEntry);
+bool IResearchViewMergeExecutor<ExecutionTraits>::writeRow(ReadContext& ctx,
+                                                           size_t idx) {
+  auto const& value = this->_indexReadBuffer.getValue(idx);
   if constexpr (Base::isLateMaterialized) {
-    return Base::writeRow(ctx, bufferEntry, id, nullptr);
+    return Base::writeRowImpl(ctx, idx, value);
   } else {
-    auto const [documentId, collection] = id;
-    if constexpr (Base::isMaterialized) {
-      TRI_ASSERT(documentId.isSet());
-      TRI_ASSERT(collection);
-    }
-    return Base::writeRow(ctx, bufferEntry, documentId, collection);
+    return Base::writeRowImpl(ctx, idx, value.value());
   }
 }
+
+}  // namespace arangodb::aql
