@@ -103,8 +103,7 @@
           setUpAll: function () {
             if (databaseCreationOptions) {
               db._createDatabase(dbName, databaseCreationOptions);
-            }
-            else {
+            } else {
               db._createDatabase(dbName);
             }
             db._useDatabase(dbName);
@@ -218,31 +217,29 @@
       
             let tries = 0;
             let metric0;
-            while (++tries < 120) {
+            while (tries++ < 120) {
               metric0 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
               if (0 === metric0) {
                 break;
               }
               require("internal").sleep(0.5);
-              tries += 1;
             }
       
-            assertTrue(metric0 === 0);
+            assertEqual(metric0, 0);
       
             // Create collection and insert documents 
             db._create(collectionName, collectionCreationOptions);
             db._query(`for i in 1..${n} insert {value: i} into ${collectionName}`);
       
             let metric1;
-            while (tries < 120) {
+            while (tries++ < 120) {
               metric1 = getCompleteMetricsValues("arangodb_revision_tree_buffered_memory_usage");
               if (0 === metric1) {
                 break;
               }
               require("internal").sleep(0.5);
-              tries += 1;
             }
-            assertTrue(0 === metric1);
+            assertEqual(0, metric1);
           },
           
           testEstimatesShouldNotChangeWhenCreatingDocumentCollection: function () {

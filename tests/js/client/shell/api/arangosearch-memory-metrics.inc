@@ -153,10 +153,10 @@
 
         assertEqual(scheduler_memory, num_worker_threads * 4 * 1000000, {scheduler_memory, num_worker_threads});
 
-        assertTrue(readers === 0);
-        assertTrue(consolidations === 0);
-        assertTrue(descriptors === 0);
-        assertTrue(mapped === 0);
+        assertEqual(readers, 0);
+        assertEqual(consolidations, 0);
+        assertEqual(descriptors, 0);
+        assertEqual(mapped, 0);
       }
     };
   };
