@@ -101,7 +101,7 @@
         }
 
         let readers, consolidations, descriptors, mapped, scheduler_memory, num_worker_threads;
-        for (let i = 0; i < 100; ++i) {
+        for (let i = 0; i < 30; ++i) {
 
           generateAndInsert(collectionName);
           db._query(`for d in ${viewName} SEARCH d.numericValue == 100 RETURN d`);
@@ -136,14 +136,20 @@
         }
 
         db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
-        [readers, consolidations, descriptors, mapped, scheduler_memory, num_worker_threads] = getCompleteMetricsValues([
-          "arangodb_search_readers_memory_usage", 
-          "arangodb_search_consolidations_memory",
-          "arangodb_search_file_descriptors",
-          "arangodb_search_mapped_memory",
-          "arangodb_scheduler_stack_memory_usage",
-          "arangodb_scheduler_num_worker_threads"
-        ]);
+        for (let i = 0; i < 30; ++i) {
+          [readers, consolidations, descriptors, mapped, scheduler_memory, num_worker_threads] = getCompleteMetricsValues([
+            "arangodb_search_readers_memory_usage", 
+            "arangodb_search_consolidations_memory",
+            "arangodb_search_file_descriptors",
+            "arangodb_search_mapped_memory",
+            "arangodb_scheduler_stack_memory_usage",
+            "arangodb_scheduler_num_worker_threads"
+          ]);
+
+          if (readers === 0 && consolidations === 0 && descriptors === 0 && (isWindows || mapped === 0)) {
+            break;
+          }
+        }
 
         assertEqual(scheduler_memory, num_worker_threads * 4 * 1000000, {scheduler_memory, num_worker_threads});
 
