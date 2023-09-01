@@ -44,35 +44,35 @@ const ImprovedMemoryAccountingArangoSearch = require("internal").load(arangosear
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-// if (internal.debugCanUseFailAt()) {
-//     const base_fail_at = require("fs").join(require('internal').pathForTesting('client'), 
-//     'shell', 'shell-improved-metrics-accounting-fail-at.inc');
-//     const ImprovedMemoryAccountingFailAt = require("internal").load(base_fail_at);
+if (internal.debugCanUseFailAt()) {
+    const base_fail_at = require("fs").join(require('internal').pathForTesting('client'), 
+    'shell', 'shell-improved-metrics-accounting-fail-at.inc');
+    const ImprovedMemoryAccountingFailAt = require("internal").load(base_fail_at);
 
-//     jsunity.run(function ImprovedMemoryAccountingFailAtTestSuite_no_repl() {
-//         let suite = {
-//         };
+    jsunity.run(function ImprovedMemoryAccountingFailAtTestSuite_no_repl() {
+        let suite = {
+        };
       
-//         deriveTestSuite(
-//             ImprovedMemoryAccountingFailAt("ImprovedMemoryAccountingFailAtTestSuite_NoRepl",null, {}),
-//             suite,
-//             "_NoRepl"
-//         );
-//         return suite;
-//       });
-// }
+        deriveTestSuite(
+            ImprovedMemoryAccountingFailAt("ImprovedMemoryAccountingFailAtTestSuite_NoRepl",null, {}),
+            suite,
+            "_NoRepl"
+        );
+        return suite;
+      });
+}
 
-// jsunity.run(function ImprovedMemoryAccountingTestSuite_no_repl() {
-//     let suite = {
-//     };
+jsunity.run(function ImprovedMemoryAccountingTestSuite_no_repl() {
+    let suite = {
+    };
   
-//     deriveTestSuite(
-//       ImprovedMemoryAccounting("ImprovedMemoryAccountingTestSuite_NoRepl", null, {}),
-//         suite,
-//         "_NoRepl"
-//     );
-//     return suite;
-// });
+    deriveTestSuite(
+      ImprovedMemoryAccounting("ImprovedMemoryAccountingTestSuite_NoRepl", null, {}),
+        suite,
+        "_NoRepl"
+    );
+    return suite;
+});
 
 jsunity.run(function ImprovedMemoryAccountingArangoSearchTestSuite_no_repl() {
     let suite = {

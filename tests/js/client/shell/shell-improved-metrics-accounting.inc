@@ -35,7 +35,7 @@
     const analyzers = require('@arangodb/analyzers');
     const jsunity = require('jsunity');
     const internal = require("internal");
-    const { getClusterMetricsByName, getMetricSingle, getCompleteMetricsValues } = require('@arangodb/test-helper');
+    const { getAllMetricsFromEndpoints, getMetricSingle, getCompleteMetricsValues } = require('@arangodb/test-helper');
     const isCluster = require("internal").isCluster();
 
     return function (dbName, databaseCreationOptions, collectionCreationOptions, shardingEnabled = false) {
@@ -171,7 +171,7 @@
 
             let metrics;
             if (isCluster) {
-              metrics = getClusterMetricsByName("arangodb_requests_memory_usage", "all");
+              metrics = getAllMetricsFromEndpoints("arangodb_requests_memory_usage", "all");
               metrics.forEach(value => {
                 assertTrue(value > 0);
               });

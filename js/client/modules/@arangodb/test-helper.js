@@ -252,63 +252,58 @@ exports.getMetricSingle = function (name) {
 };
 
 exports.getCompleteMetricsValues = function (name, roles = "") {
-  const isCluster = require("internal").isCluster();
   // 'name' argument can be either string or array of strings.
   // If 'name' is string, we want to get the only one metric value with name 'name'
   // If 'name' is array of strings, we want to get values for every metric which is defined in this array 
 
-  if (isCluster) {
-    let metrics = exports.getClusterMetricsByName(name, roles);
-    if (typeof name == "string") {
-      // In case of "string", we will have 1d array with values of metrics from each dbserver
+  let metrics = exports.getMetricsByNameFromEndpoints(name, roles);
 
-      // It may happen that some db servers will not have required metric. 
-      // But if all of them don't have it - throw a error.
-      if (metrics.every( (val) => Number.isNaN(val) === true )) {
-        // If we got NaN from every endpoint - throw error
-        throw "Metric " + name + " not found";
+  if (typeof name == "string") {
+    // In case of "string", we will have 1d array with values of metrics from each dbserver
+
+    // It may happen that some db servers will not have required metric. 
+    // But if all of them don't have it - throw a error.
+    if (metrics.every( (val) => Number.isNaN(val) === true )) {
+      // If we got NaN from every endpoint - throw error
+      throw "Metric " + name + " not found";
+    }
+    let res = 0;
+    metrics.forEach( num => {
+      if(!Number.isNaN(num)) {
+        // avoid adding NaN
+        res += num;
       }
-      let res = 0;
-      metrics.forEach( num => {
-        if(!Number.isNaN(num)) {
-          // avoid adding NaN
-          res += num;
+    });
+    assertFalse(Number.isNaN(res)); // res should not be NaN
+    return res;
+  } else {
+    function transpose(matrix) {
+      return matrix[0].map((col, i) => matrix.map(row => row[i]));
+    };
+
+    let result_metrics = [];
+    // We have a matrix. Every row represent metrics values from only one dbserver.
+    // Number of rows equal to number of dbservers
+    // Number of columns equal to number of required metrics (name.length)
+    // We will transpose this matrix. After that in row 'i' we have values for metric 'i' from all dbservers.
+    let m = transpose(metrics);
+
+    for (let i = 0; i < m.length; i += 1) {
+      let row = m[i]; // Every row represents values for this metric from all db servers.
+      // Now assert that at least one dbserver returned real value. Throw otherwise
+      assertFalse(row.every((val) => Number.isNaN(val) === true), `Metric ${name[i]} not found`);
+      
+      let accumulated = 0;
+      row.forEach(v => {
+        if (!Number.isNaN(v)) {
+          accumulated += v;
         }
       });
-      assertFalse(Number.isNaN(res)); // res should not be NaN
-      return res;
-    } else {
-      function transpose(matrix) {
-        return matrix[0].map((col, i) => matrix.map(row => row[i]));
-      };
-
-      let result_metrics = [];
-      // We have a matrix. Every row represent metrics values from only one dbserver.
-      // Number of rows equal to number of dbservers
-      // Number of columns equal to number of required metrics (name.length)
-      // We will transpose this matrix. After that in row 'i' we have values for metric 'i' from all dbservers.
-      let m = transpose(metrics);
-
-
-      for (let i = 0; i < m.length; i += 1) {
-        let row = m[i]; // Every row represents values for this metric from all db servers.
-        // Now assert that at least one dbserver returned real value. Throw otherwise
-        assertFalse(row.every((val) => Number.isNaN(val) === true), `Metric ${name[i]} not found`);
-        
-        let accumulated = 0;
-        row.forEach(v => {
-          if (!Number.isNaN(v)) {
-            accumulated += v;
-          }
-        });
-        result_metrics.push(accumulated);
-      }
-      // Result array shouldn't contain NaN at all
-      assertTrue(result_metrics.every((val) => Number.isNaN(val) === false));
-      return result_metrics;
+      result_metrics.push(accumulated);
     }
-  } else {
-    return exports.getMetricSingle(name);
+    // Result array shouldn't contain NaN at all
+    assertTrue(result_metrics.every((val) => Number.isNaN(val) === false));
+    return result_metrics;
   }
 };
 
@@ -619,15 +614,24 @@ exports.triggerMetrics = function () {
   require("internal").sleep(2);
 };
 
-exports.getAllClusterMetrics = function (roles = "") {
-  exports.triggerMetrics();
+exports.getAllMetricsFromEndpoints = function (roles = "") {
+  
+  const isCluster = require("internal").isCluster();
+  
   let res = [];
   let endpoints = [];
-  if (roles === "" || roles === "dbservers" || roles === "all") {
-    endpoints = endpoints.concat(exports.getDBServerEndpoints());
-  }
-  if (roles === "coordinators" || roles === "all") {
-    endpoints = endpoints.concat(exports.getCoordinatorEndpoints());
+  
+  if (isCluster) {
+    exports.triggerMetrics();
+
+    if (roles === "" || roles === "dbservers" || roles === "all") {
+      endpoints = endpoints.concat(exports.getDBServerEndpoints());
+    }
+    if (roles === "coordinators" || roles === "all") {
+      endpoints = endpoints.concat(exports.getCoordinatorEndpoints());
+    }
+  } else {
+    endpoints = endpoints.concat(exports.getSingleServerEndpoint());
   }
 
   endpoints.forEach(e => {
@@ -636,7 +640,7 @@ exports.getAllClusterMetrics = function (roles = "") {
   return res;
 };
 
-exports.getClusterMetricsByName = function (name, roles = "") {
+exports.getMetricsByNameFromEndpoints = function (name, roles = "") {
   function func (text, name_str) {
     let value;
     try {
@@ -649,7 +653,7 @@ exports.getClusterMetricsByName = function (name, roles = "") {
   let result = [];
 
   // This is an array with metrics from all required endpoints.
-  let all_server_metrics = exports.getAllClusterMetrics(roles);
+  let all_server_metrics = exports.getAllMetricsFromEndpoints(roles);
   // Now we need to parse every element from this array and extract
   // required metrics.
   all_server_metrics.forEach(server_metrics => {
@@ -672,6 +676,9 @@ exports.getEndpoints = function (role) {
   return exports.getServers(role).map(instance => endpointToURL(instance.endpoint));
 };
 
+exports.getSingleServerEndpoint = function () {
+  return exports.getEndpoints(inst.instanceRole.single);
+};
 exports.getCoordinatorEndpoints = function () {
   return exports.getEndpoints(inst.instanceRole.coordinator);
 };
