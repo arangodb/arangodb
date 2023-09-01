@@ -808,17 +808,18 @@ when disk size is very constrained and no replication is used.)");
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options
-      ->addOption("--rocksdb.force-legacy-little-endian-keys",
-                  "Force usage of legacy little endian key encoding when creating "
-                  "a new RocksDB database directory. DO NOT USE IN PRODUCTION.",
-                  new BooleanParameter(&_forceLittleEndianKeys),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Experimental,
-                      arangodb::options::Flags::OnAgent,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
+      ->addOption(
+          "--rocksdb.force-legacy-little-endian-keys",
+          "Force usage of legacy little endian key encoding when creating "
+          "a new RocksDB database directory. DO NOT USE IN PRODUCTION.",
+          new BooleanParameter(&_forceLittleEndianKeys),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::Experimental,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31200)
       .setLongDescription(R"(If enabled and a new RocksDB database
 is generated, the legacy little endian key encoding is used.
