@@ -212,18 +212,14 @@
 
           },
       
-          testRevisionTreeMemoryUsageShouldIncreaseAndDecreaseAfterAql: function () {
+          testRevisionTreeMemoryUsageShouldIncreaseAndDecreaseAfterAql: function () {               
+            internal.debugClearFailAt();
+
             // wait until all pending estimates & revision tree buffers have been applied
             let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
             assertNull(res);
-                
-            // wait until all pending estimates & revision tree buffers have been applied
-            res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
-            assertNull(res);
             
             // Check that metric value is 0 before inserting documents
-      
-            internal.debugClearFailAt();
       
             let tries = 0;
             let metric0;
@@ -236,7 +232,7 @@
               tries += 1;
             }
       
-            // assertTrue(metric0 === 0);
+            assertTrue(metric0 === 0);
       
             // Create collection and insert documents 
             db._create(collectionName, collectionCreationOptions);
@@ -251,7 +247,7 @@
               require("internal").sleep(0.5);
               tries += 1;
             }
-            // assertTrue(0 === metric1);
+            assertTrue(0 === metric1);
 
             internal.debugClearFailAt();
           },
