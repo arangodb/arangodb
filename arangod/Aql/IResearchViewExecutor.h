@@ -51,6 +51,8 @@
 #include <utility>
 #include <variant>
 
+inline constexpr size_t kThreads = 16;
+
 namespace irs {
 struct score;
 }  // namespace irs
@@ -223,12 +225,11 @@ class IndexReadBuffer;
 class IndexReadBufferEntry {
  public:
   size_t getKeyIdx() const noexcept { return _keyIdx; };
+  explicit inline IndexReadBufferEntry(size_t keyIdx) noexcept;
 
  private:
   template<typename ValueType, bool>
   friend class IndexReadBuffer;
-
-  explicit inline IndexReadBufferEntry(size_t keyIdx) noexcept;
 
  protected:
   size_t _keyIdx;
@@ -317,9 +318,17 @@ class IndexReadBuffer {
   template<typename... Args>
   void pushValue(StorageSnapshot const& snapshot, Args&&... args);
 
+  template<typename... Args>
+  void setValue(size_t idx, StorageSnapshot const& snapshot, Args&&... args);
+
   void pushSearchDoc(iresearch::ViewSegment const& segment,
                      irs::doc_id_t docId) {
     _searchDocs.emplace_back(segment, docId);
+  }
+
+  void setSearchDoc(size_t idx, iresearch::ViewSegment const& segment,
+                    irs::doc_id_t docId) {
+    _searchDocs[idx] = iresearch::SearchDoc{segment, docId};
   }
 
   template<typename ColumnReaderProvider>
@@ -338,6 +347,8 @@ class IndexReadBuffer {
     TRI_ASSERT(empty());
     clear();
   }
+
+  void seal() noexcept { _keyBaseIdx = _keyBuffer.size(); }
 
   void clear() noexcept;
 
@@ -370,6 +381,16 @@ class IndexReadBuffer {
     }
     return res;
   }
+
+  void setForParallelAccess(size_t atMost, size_t scores, size_t stored) {
+    _keyBuffer.resize(atMost);
+    _searchDocs.resize(atMost);
+    _scoreBuffer.resize(atMost * scores,
+                        std::numeric_limits<float_t>::quiet_NaN());
+    _storedValuesBuffer.resize(atMost * stored);
+  }
+
+  irs::score_t* getScoreBuffer(size_t idx) { return _scoreBuffer.data() + idx; }
 
   void preAllocateStoredValuesBuffer(size_t atMost, size_t scores,
                                      size_t stored) {
@@ -442,6 +463,8 @@ class IndexReadBuffer {
   // .
 
   struct BufferValueType {
+    BufferValueType() : snapshot{nullptr} {}
+
     template<typename... Args>
     BufferValueType(StorageSnapshot const& s, Args&&... args)
         : snapshot(&s), value(std::forward<Args>(args)...) {}
@@ -678,6 +701,36 @@ class IResearchViewExecutorBase {
   iresearch::AnalyzerProvider _provider;
 };
 
+// while (atMost)
+//  empty (size == 0) && !_itr -> take new segment
+//  empty (size == 0) && _itr -> read new batch
+//  (size != 0) -> emit;
+//  full _read == _atMost -> emit;
+// All empty - > BufPack = atMost / min(threads, segments);
+// Not All empty -> use old buf windows. TODO: re-calculate if less threads
+// |***--|*----|****--|
+struct ReaderContext {
+  ColumnIterator _pkReader;  // current primary key reader
+  irs::doc_iterator::ptr _itr;
+  irs::document const* _doc{};
+  size_t _myReaderOffset;
+  size_t _currentSegmentPos;  // current document iterator position in segment
+  size_t _totalPos;           // total position for full snapshot
+  size_t _bufferOffset;
+  size_t _read;
+  size_t _count;
+  size_t _atMost;
+  LogicalCollection const* _collection{};
+  // case ordered only:
+  irs::score const* _scr;
+  size_t _numScores;
+
+  size_t size() const noexcept {
+    TRI_ASSERT(_count >= _read);
+    return _count - _read;
+  }
+};
+
 template<typename ExecutionTraits>
 class IResearchViewExecutor
     : public IResearchViewExecutorBase<IResearchViewExecutor<ExecutionTraits>,
@@ -699,13 +752,11 @@ class IResearchViewExecutor
   size_t skip(size_t toSkip, IResearchViewStats&);
   size_t skipAll(IResearchViewStats&);
 
-  void saveCollection();
-
   bool fillBuffer(ReadContext& ctx);
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
-  bool resetIterator();
+  bool resetIterator(ReaderContext& ctx);
 
   void reset(bool needFullCount);
 
@@ -713,19 +764,11 @@ class IResearchViewExecutor
   // Returns true unless the iterator is exhausted. documentId will always be
   // written. It will always be unset when readPK returns false, but may also be
   // unset if readPK returns true.
-  bool readPK(LocalDocumentId& documentId);
+  bool readPK(LocalDocumentId& documentId, ReaderContext& ctx);
 
-  ColumnIterator _pkReader;  // current primary key reader
-  irs::doc_iterator::ptr _itr;
-  irs::document const* _doc{};
   size_t _readerOffset;
-  size_t _currentSegmentPos;  // current document iterator position in segment
-  size_t _totalPos;           // total position for full snapshot
-  LogicalCollection const* _collection{};
-
-  // case ordered only:
-  irs::score const* _scr;
-  size_t _numScores;
+  size_t _currentReader;
+  std::array<ReaderContext, kThreads> _readers;
 };  // IResearchViewExecutor
 
 template<typename ExecutionTraits>
