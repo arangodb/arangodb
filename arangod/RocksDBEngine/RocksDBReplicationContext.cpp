@@ -528,7 +528,9 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
   basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
   velocypack::Dumper dumper(&adapter, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
-  while (cIter->hasMore() && buff.length() < chunkSize) {
+  constexpr size_t docsPerBatch = 10'000;
+  size_t i = 0;
+  while (cIter->hasMore() && buff.length() < chunkSize && ++i <= docsPerBatch) {
     if (useEnvelope) {
       buff.appendText("{\"type\":");
       buff.appendInteger(REPLICATION_MARKER_DOCUMENT);  // set type
@@ -605,7 +607,10 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     builder.openArray(true);
   }
   TRI_ASSERT(cIter->iter && !cIter->sorted());
-  while (cIter->hasMore() && buffer.length() < chunkSize) {
+  constexpr size_t docsPerBatch = 10'000;
+  size_t i = 0;
+  while (cIter->hasMore() && buffer.length() < chunkSize &&
+         ++i <= docsPerBatch) {
     if (useEnvelope) {
       builder.openObject();
       builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));

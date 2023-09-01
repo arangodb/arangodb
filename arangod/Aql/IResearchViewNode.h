@@ -54,6 +54,8 @@ template<typename T>
 struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct VarInfo;
+
+using FieldRegisters = std::map<size_t, RegisterId>;
 }  // namespace aql
 namespace iresearch {
 
@@ -295,8 +297,7 @@ class IResearchViewNode final : public aql::ExecutionNode,
   using ViewValuesVars =
       containers::FlatHashMap<ptrdiff_t, std::vector<ViewVariable>>;
 
-  using ViewValuesRegisters =
-      std::map<ptrdiff_t, std::map<size_t, aql::RegisterId>>;
+  using ViewValuesRegisters = std::map<ptrdiff_t, aql::FieldRegisters>;
 
   using ViewVarsInfo =
       containers::FlatHashMap<std::vector<basics::AttributeName> const*,
