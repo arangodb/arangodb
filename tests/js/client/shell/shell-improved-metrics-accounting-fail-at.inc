@@ -62,7 +62,7 @@
             };
             d[custom_field] = generateAndInsert.counter;
             docs.push(d);
-            generateAndInsert.counter++
+            generateAndInsert.counter++;
           }
           db._collection(collName).save(docs);
         };

@@ -158,6 +158,6 @@
         assertTrue(descriptors === 0);
         assertTrue(mapped === 0);
       }
-    }
+    };
   };
-}())
+}());
