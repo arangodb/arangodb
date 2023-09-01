@@ -806,6 +806,7 @@ when disk size is very constrained and no replication is used.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options
       ->addOption("--rocksdb.force-legacy-little-endian-keys",
                   "If enabled and a new RocksDB database is generated, "
@@ -824,6 +825,7 @@ when disk size is very constrained and no replication is used.)");
       .setIntroducedIn(31200)
       .setLongDescription(R"(If enabled and a new RocksDB database 
 is generated, the old legacy little endian key encoding will be used. This is bad for performance and disables a few features like parallel index generation and is thus only sensible for testing purposes. Don't use!)");
+#endif
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
