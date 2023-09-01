@@ -113,6 +113,7 @@
           tearDownAll: function () {
             db._useDatabase('_system');
             db._dropDatabase(dbName);
+            internal.debugClearFailAt();
           },
 
           setUp: function () {
@@ -161,8 +162,6 @@
             }
       
             assertTrue(metric2 === 0);
-
-            internal.debugClearFailAt();
           },
           
           testRevisionTreeMemoryUsageShouldIncreaseAfterSingleInserts: function () {
@@ -207,14 +206,9 @@
             }
       
             assertTrue(metric2 === 0);
-
-            internal.debugClearFailAt();
-
           },
       
           testRevisionTreeMemoryUsageShouldIncreaseAndDecreaseAfterAql: function () {               
-            internal.debugClearFailAt();
-
             // wait until all pending estimates & revision tree buffers have been applied
             let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
             assertNull(res);
@@ -248,8 +242,6 @@
               tries += 1;
             }
             assertTrue(0 === metric1);
-
-            internal.debugClearFailAt();
           },
           
           testEstimatesShouldNotChangeWhenCreatingDocumentCollection: function () {
