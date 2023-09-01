@@ -295,6 +295,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _runningCompactions(0),
       _autoFlushCheckInterval(60.0 * 30.0),
       _autoFlushMinWalFiles(20),
+      _forceLittleEndianKeys(false),
       _metricsIndexEstimatorMemoryUsage(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_index_estimates_memory_usage{})),
@@ -805,6 +806,25 @@ when disk size is very constrained and no replication is used.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
 
+  options
+      ->addOption("--rocksdb.force-legacy-little-endian-keys",
+                  "If enabled and a new RocksDB database is generated, "
+                  "the old legacy little endian key encoding will be "
+                  "used. This is bad for performance and disables a "
+                  "few features like parallel index generation and is "
+                  "thus only sensible for testing purposes. Don't use!",
+                  new BooleanParameter(&_forceLittleEndianKeys),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(If enabled and a new RocksDB database 
+is generated, the old legacy little endian key encoding will be used. This is bad for performance and disables a few features like parallel index generation and is thus only sensible for testing purposes. Don't use!)");
+
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
 #endif
@@ -1201,7 +1221,8 @@ void RocksDBEngine::start() {
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted);
+  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted,
+                                       _forceLittleEndianKeys);
 
   _dbExisted = dbExisted;
 
