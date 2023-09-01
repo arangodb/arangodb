@@ -181,7 +181,7 @@ jobs:
         type: string
         default: ""
     docker:
-      - image: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.2
+      - image: arangodb/build-alpine:latest-liburing
     resource_class: << parameters.resource-class >>
     environment:
       GIT_SSH_COMMAND: ssh
