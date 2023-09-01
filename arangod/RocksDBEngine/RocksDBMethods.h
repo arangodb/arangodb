@@ -51,11 +51,25 @@ class RocksDBMethods {
                               rocksdb::Slice const&, rocksdb::PinnableSlice*,
                               ReadOwnWrites) = 0;
 
-  virtual rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle*,
-                                          rocksdb::Slice const&,
-                                          rocksdb::PinnableSlice*,
-                                          ReadOwnWrites,
-                                          rocksdb::Snapshot const*) = 0;
+  virtual rocksdb::Status SingleGet(rocksdb::Snapshot const* snapshot,
+                                    rocksdb::ColumnFamilyHandle& family,
+                                    rocksdb::Slice const& key,
+                                    rocksdb::PinnableSlice& value) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "RocksDBMethods does not provide Get from snapshot");
+  }
+
+  // Read multiple keys from snapshot and return multiple values and statuses
+  virtual void MultiGet(rocksdb::Snapshot const* snapshot,
+                        rocksdb::ColumnFamilyHandle& family, size_t count,
+                        rocksdb::Slice const* keys,
+                        rocksdb::PinnableSlice* values,
+                        rocksdb::Status* status) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "RocksDBMethods does not provide MultiGet from snapshot");
+  }
 
   virtual rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
                                        rocksdb::Slice const&,
