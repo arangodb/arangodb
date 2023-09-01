@@ -74,10 +74,14 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
                                RocksDBKey const&) override;
 
-  rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle*,
-                                  rocksdb::Slice const&,
-                                  rocksdb::PinnableSlice*, ReadOwnWrites,
-                                  rocksdb::Snapshot const*) final;
+  rocksdb::Status SingleGet(rocksdb::Snapshot const* snapshot,
+                            rocksdb::ColumnFamilyHandle& family,
+                            rocksdb::Slice const& key,
+                            rocksdb::PinnableSlice& value) final;
+  void MultiGet(rocksdb::Snapshot const* snapshot,
+                rocksdb::ColumnFamilyHandle& family, size_t count,
+                rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
+                rocksdb::Status* statuses) final;
 
   void PutLogData(rocksdb::Slice const&) override;
 

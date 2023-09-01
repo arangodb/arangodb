@@ -49,7 +49,7 @@ class RocksDBDumpManager {
   // that were used when creating the context.
   std::shared_ptr<RocksDBDumpContext> createContext(
       RocksDBDumpContextOptions opts, std::string const& user,
-      std::string const& database);
+      std::string const& database, bool useVPack);
 
   // look up context by id. must provide the same database name and
   // user name as when creating the context. otherwise a "forbidden"
