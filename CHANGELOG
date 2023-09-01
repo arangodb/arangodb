@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fixed a loophole in COLLECT variable name validation: in COLLECT INTO 
+  expressions it was possible to refer to variables that the COLLECT just
+  introduced. This was undefined behavior and not caught by the previous
+  version of COLLECT's variable checking.
+
 * Renamed arangodump startup option `--use-experimental-dump` to
        `--parallel-dump`.
 
