@@ -809,11 +809,8 @@ when disk size is very constrained and no replication is used.)");
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options
       ->addOption("--rocksdb.force-legacy-little-endian-keys",
-                  "If enabled and a new RocksDB database is generated, "
-                  "the old legacy little endian key encoding will be "
-                  "used. This is bad for performance and disables a "
-                  "few features like parallel index generation and is "
-                  "thus only sensible for testing purposes. Don't use!",
+                  "Force usage of legacy little endian key encoding when creating "
+                  "a new RocksDB database directory. DO NOT USE IN PRODUCTION.",
                   new BooleanParameter(&_forceLittleEndianKeys),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -823,8 +820,11 @@ when disk size is very constrained and no replication is used.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31200)
-      .setLongDescription(R"(If enabled and a new RocksDB database 
-is generated, the old legacy little endian key encoding will be used. This is bad for performance and disables a few features like parallel index generation and is thus only sensible for testing purposes. Don't use!)");
+      .setLongDescription(R"(If enabled and a new RocksDB database
+is generated, the legacy little endian key encoding is used.
+
+Only use this option for testing purposes! It is bad for performance and
+disables a few features like parallel index generation!)");
 #endif
 
 #ifdef USE_ENTERPRISE

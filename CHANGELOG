@@ -2,8 +2,8 @@ devel
 -----
 
 * Fixed BTS-1541: Old legacy little endian key format for RocksDB database
-  (created in ArangoDB 3.2 and 3.3) showed wrong behaviour on newer
-  versions. This fixes a persistent index corruption bug with the Old
+  (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer
+  versions. This fixes a persistent index corruption bug with the old
   format.
 
 * FE-300: Implement new Views list UI
