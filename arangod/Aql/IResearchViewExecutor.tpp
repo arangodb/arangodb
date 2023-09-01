@@ -1762,7 +1762,7 @@ size_t IResearchViewExecutor<ExecutionTraits>::skipAll(IResearchViewStats&) {
     skipped -= std::min(skipped, totalPos);
     _readerOffset = count;
   } else {
-    auto const approximate = this->infos().countApproximate();
+    //auto const approximate = this->infos().countApproximate();
     // TODO fix me
     // for (; _readerOffset != count; ++_readerOffset, _currentSegmentPos = 0) {
     //  if (!_itr && !resetIterator()) {
