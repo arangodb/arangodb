@@ -38,6 +38,7 @@
 #include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
@@ -1829,6 +1830,7 @@ RestoreFeature::RestoreFeature(Server& server, int& exitCode)
 
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
+  startsAfter<BumpFileDescriptorsFeature>();
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;

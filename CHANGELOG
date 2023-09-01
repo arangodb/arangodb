@@ -1,6 +1,19 @@
 devel
 -----
 
+* arangodump and arangorestore will now try to bump up the limit for the number
+  of open file descriptors at startup, on Linux and macOS. This way the tools
+  are allowed to open more files concurrently, which can be useful when
+  dump/restore with many threads.
+
+* Added startup option `--descriptors-minimum` to arangodump and arangorestore.
+  This option can be used to set a lower bound value for the open file 
+  descriptors limit that is required to invoke arangodump/arangorestore.
+  Setting the option to a value of 0 makes arangodump/arangorestore start
+  regardless of the actual limit for the number of open file descriptors.
+
+  This option is available on Linux and macOS only.
+
 * Renamed arangodump startup option `--use-experimental-dump` to
        `--parallel-dump`.
 

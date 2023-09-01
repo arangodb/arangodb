@@ -18,28 +18,45 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
+#include "Basics/operating-system.h"
 
+#include <string>
+
+#ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
+class LoggerFeature;
 
-class BumpFileDescriptorsFeature;
-class DumpFeature;
-class EncryptionFeature;
+class BumpFileDescriptorsFeature
+    : public application_features::ApplicationFeature {
+ public:
+  static constexpr std::string_view name() noexcept {
+    return "BumpFileDescriptors";
+  }
 
-using ArangoDumpFeaturesList =
-    ArangoClientFeaturesList<BumpFileDescriptorsFeature,
-#ifdef USE_ENTERPRISE
-                             EncryptionFeature,
-#endif
-                             BasicFeaturePhaseClient, DumpFeature>;
-struct ArangoDumpFeatures : ArangoDumpFeaturesList {};
-using ArangoDumpServer = ApplicationServerT<ArangoDumpFeatures>;
-using ArangoDumpFeature = ApplicationFeatureT<ArangoDumpServer>;
+  template<typename Server>
+  explicit BumpFileDescriptorsFeature(Server& server, std::string optionName)
+      : application_features::ApplicationFeature{server, *this},
+        _optionName(std::move(optionName)),
+        _descriptorsMinimum(0) {
+    setOptional(false);
+    startsAfter<LoggerFeature, Server>();
+  }
+
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+
+ private:
+  std::string const _optionName;
+
+  uint64_t _descriptorsMinimum;
+};
 
 }  // namespace arangodb
+#endif
