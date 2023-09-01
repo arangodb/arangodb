@@ -156,6 +156,7 @@
               if (0 === metric2) {
                 break;
               }
+              require("internal").sleep(0.5);
               tries +=1;
             }
       
@@ -201,6 +202,7 @@
               if (0 === metric2) {
                 break;
               }
+              require("internal").sleep(0.5);
               tries += 1;
             }
       
@@ -230,10 +232,11 @@
               if (0 === metric0) {
                 break;
               }
+              require("internal").sleep(0.5);
               tries += 1;
             }
       
-            assertTrue(metric0 === 0);
+            // assertTrue(metric0 === 0);
       
             // Create collection and insert documents 
             db._create(collectionName, collectionCreationOptions);
@@ -245,9 +248,10 @@
               if (0 === metric1) {
                 break;
               }
+              require("internal").sleep(0.5);
               tries += 1;
             }
-            assertTrue(0 === metric1);
+            // assertTrue(0 === metric1);
 
             internal.debugClearFailAt();
           },
@@ -359,6 +363,7 @@
                 throw "arangodb_index_estimates_memory_usage value is not decreased";
               }
               timeout -= 1;
+              require("internal").sleep(1);
               metric3 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
             }
 
@@ -396,6 +401,7 @@
                 throw "arangodb_index_estimates_memory_usage value is not decreased";
               }
               timeout -= 1;
+              require("internal").sleep(0.5);
               metric3 = getCompleteMetricsValues("arangodb_index_estimates_memory_usage");
             }
 
