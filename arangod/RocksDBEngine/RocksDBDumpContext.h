@@ -40,6 +40,10 @@
 #include "Utils/CollectionNameResolver.h"
 
 #include <rocksdb/slice.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Sink.h>
+#include <velocypack/Slice.h>
 
 namespace rocksdb {
 class Iterator;
@@ -83,7 +87,7 @@ class RocksDBDumpContext {
 
   RocksDBDumpContext(RocksDBEngine& engine, DatabaseFeature& databaseFeature,
                      std::string id, RocksDBDumpContextOptions options,
-                     std::string user, std::string database);
+                     std::string user, std::string database, bool useVPack);
 
   ~RocksDBDumpContext();
 
@@ -116,8 +120,49 @@ class RocksDBDumpContext {
 
   // Contains the data for a batch
   struct Batch {
+    Batch(Batch const&) = delete;
+    Batch& operator=(Batch const&) = delete;
+
+    Batch(std::string_view shard) : shard(shard) {}
+    virtual ~Batch() = default;
+
+    virtual void add(velocypack::Slice) = 0;
+    virtual void close() = 0;
+    virtual std::string_view content() const = 0;
+    virtual size_t byteSize() const = 0;
+
     std::string_view shard;
-    std::string content;
+  };
+
+  class BatchVPackArray : public Batch {
+   public:
+    explicit BatchVPackArray(std::string_view shard);
+    ~BatchVPackArray();
+
+    void add(velocypack::Slice data) override;
+    void close() override;
+    std::string_view content() const override;
+    size_t byteSize() const override;
+
+   private:
+    velocypack::Builder _builder;
+  };
+
+  class BatchJSONL : public Batch {
+   public:
+    explicit BatchJSONL(std::string_view shard,
+                        velocypack::Options const* options);
+    ~BatchJSONL();
+
+    void add(velocypack::Slice data) override;
+    void close() override;
+    std::string_view content() const override;
+    size_t byteSize() const override;
+
+   private:
+    std::string _content;
+    velocypack::StringSink _sink;
+    velocypack::Dumper _dumper;
   };
 
   struct CollectionInfo {
@@ -150,7 +195,7 @@ class RocksDBDumpContext {
 
   class WorkItems {
    public:
-    explicit WorkItems(size_t numWorker);
+    explicit WorkItems(size_t numWorkers);
     void push(WorkItem item);
     WorkItem pop();
     void stop();
@@ -189,6 +234,7 @@ class RocksDBDumpContext {
   std::string const _id;
   std::string const _user;
   std::string const _database;
+  bool const _useVPack;
 
   RocksDBDumpContextOptions const _options;
 

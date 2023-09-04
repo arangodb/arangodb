@@ -32,10 +32,6 @@ class RocksDBBatchedMethods final : public RocksDBBatchedBaseMethods {
   explicit RocksDBBatchedMethods(rocksdb::WriteBatch*,
                                  RocksDBMethodsMemoryTracker& memoryTracker);
 
-  rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle*,
-                                  rocksdb::Slice const&,
-                                  rocksdb::PinnableSlice*, ReadOwnWrites,
-                                  rocksdb::Snapshot const*) override;
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,

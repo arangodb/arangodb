@@ -69,14 +69,26 @@ auto computeEvenDistributionForServers(
     std::size_t numberOfShards, std::size_t replicationFactor,
     replicated_log::ParticipantsHealth const& health)
     -> ResultT<EvenDistribution> {
-  auto servers = getHealthyParticipants(health);
-  {
-    // TODO reuse random device?
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(servers.begin(), servers.end(), g);
+  if (replicationFactor == 0) {
+    // Satellite collection case.
+    // Replicate everywhere
+    std::vector<ParticipantId> allParticipants;
+    allParticipants.reserve(health._health.size());
+    for (auto const& [p, h] : health._health) {
+      allParticipants.push_back(p);
+    }
+    EvenDistribution distribution{
+        numberOfShards, allParticipants.size(), {}, false};
+    std::unordered_set<ParticipantId> plannedServers;
+    auto res =
+        distribution.planShardsOnServers(allParticipants, plannedServers);
+    if (res.fail()) {
+      return res;
+    }
+    return distribution;
   }
 
+  auto servers = getHealthyParticipants(health);
   EvenDistribution distribution{numberOfShards, replicationFactor, {}, false};
   std::unordered_set<ParticipantId> plannedServers;
   auto res = distribution.planShardsOnServers(servers, plannedServers);
@@ -197,30 +209,31 @@ auto createCollectionGroupTarget(
   std::unordered_map<CollectionID, ag::CollectionPlanSpecification> collections;
   for (auto const& [cid, collection] : group.target.collections) {
     std::vector<ShardID> shardList;
-    std::generate_n(std::back_inserter(shardList),
-                    attributes.immutableAttributes.numberOfShards, [&] {
-                      return basics::StringUtils::concatT("s", uniqid.next());
-                    });
-
-    ADB_PROD_ASSERT(group.targetCollections.contains(cid))
-        << "collection " << cid << " is listed in collection group "
-        << group.target.id << " but not in Target/Collections";
     PlanShardToServerMapping mapping{};
-    for (size_t k = 0; k < shardList.size(); ++k) {
-      ResponsibleServerList serverids{};
-      auto const& log = replicatedLogs[spec.shardSheaves[k].replicatedLog];
-      serverids.servers.emplace_back(log.leader.value());
-      for (auto const& p : log.participants) {
-        if (p.first != log.leader) {
-          serverids.servers.emplace_back(p.first);
+    auto const& targetCollection = group.targetCollections.at(cid);
+
+    // If we have shadow collections we do not have any shards
+    if (!targetCollection.immutableProperties.shadowCollections.has_value()) {
+      std::generate_n(std::back_inserter(shardList),
+                      attributes.immutableAttributes.numberOfShards, [&] {
+                        return basics::StringUtils::concatT("s", uniqid.next());
+                      });
+
+      for (size_t k = 0; k < shardList.size(); ++k) {
+        ResponsibleServerList serverids{};
+        auto const& log = replicatedLogs[spec.shardSheaves[k].replicatedLog];
+        serverids.servers.emplace_back(log.leader.value());
+        for (auto const& p : log.participants) {
+          if (p.first != log.leader) {
+            serverids.servers.emplace_back(p.first);
+          }
         }
+        ADB_PROD_ASSERT(serverids.getLeader() == log.leader);
+        mapping.shards[shardList[k]] = std::move(serverids);
       }
-      ADB_PROD_ASSERT(serverids.getLeader() == log.leader);
-      mapping.shards[shardList[k]] = std::move(serverids);
     }
     collections[cid] = ag::CollectionPlanSpecification{
-        group.targetCollections.at(cid), std::move(shardList),
-        std::move(mapping)};
+        targetCollection, std::move(shardList), std::move(mapping)};
     spec.collections[cid];
   }
 
@@ -256,7 +269,7 @@ auto pickBestServerToRemoveFromLog(
   }
 
   auto const compareTuple = [&](auto const& server) {
-    bool const isHealthy = not health.notIsFailed(server);
+    bool const isHealthy = health.notIsFailed(server);
     bool const isPlanLeader = leader == server;
     bool const isTargetLeader = log.target.leader == server;
 
@@ -273,8 +286,6 @@ auto pickBestServerToRemoveFromLog(
                      // then remove leaders that are not Target leaders
                      return compareTuple(left) < compareTuple(right);
                    });
-  ADB_PROD_ASSERT(not log.target.leader or
-                  servers.front() != log.target.leader);
   return servers.front();
 }
 
@@ -296,16 +307,22 @@ auto checkAssociatedReplicatedLogs(
         << " is in plan, but the replicated log " << sheaf.replicatedLog
         << " is missing.";
     auto const& log = logs.at(sheaf.replicatedLog);
-    auto const& wantedConfig =
-        createLogConfigFromGroupAttributes(target.attributes);
+    auto wantedConfig = createLogConfigFromGroupAttributes(target.attributes);
+    auto expectedReplicationFactor =
+        target.attributes.mutableAttributes.replicationFactor;
+
+    if (expectedReplicationFactor == 0) {
+      // 0 is Satellite, replicate everywhere, even to non-healthy servers
+      expectedReplicationFactor = health._health.size();
+      wantedConfig.softWriteConcern = expectedReplicationFactor;
+      wantedConfig.writeConcern = expectedReplicationFactor / 2 + 1;
+    }
 
     if (log.target.config != wantedConfig) {
       // we have to update this replicated log
       return UpdateReplicatedLogConfig{sheaf.replicatedLog, wantedConfig};
     }
 
-    auto expectedReplicationFactor =
-        target.attributes.mutableAttributes.replicationFactor;
     auto currentReplicationFactor = log.target.participants.size();
     if (currentReplicationFactor < expectedReplicationFactor) {
       // add a new server to the replicated log

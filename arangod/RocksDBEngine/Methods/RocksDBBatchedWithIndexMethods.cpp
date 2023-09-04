@@ -117,12 +117,6 @@ void RocksDBBatchedWithIndexMethods::PutLogData(rocksdb::Slice const& blob) {
   _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
 }
 
-rocksdb::Status RocksDBBatchedWithIndexMethods::GetFromSnapshot(
-    rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
-    rocksdb::PinnableSlice*, ReadOwnWrites, rocksdb::Snapshot const*) {
-  return {};
-}
-
 size_t RocksDBBatchedWithIndexMethods::currentWriteBatchSize() const noexcept {
   return _wb->GetWriteBatch()->GetDataSize();
 }

@@ -43,13 +43,6 @@ rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                  "BatchedMethods does not provide Get");
 }
 
-rocksdb::Status RocksDBBatchedMethods::GetFromSnapshot(
-    rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
-    rocksdb::PinnableSlice*, ReadOwnWrites, rocksdb::Snapshot const*) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, "BatchedMethods does not provide GetFromSnapshot");
-}
-
 rocksdb::Status RocksDBBatchedMethods::GetForUpdate(
     rocksdb::ColumnFamilyHandle* cf, rocksdb::Slice const& key,
     rocksdb::PinnableSlice* val) {

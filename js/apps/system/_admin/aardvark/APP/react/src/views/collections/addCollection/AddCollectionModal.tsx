@@ -112,7 +112,7 @@ const validationSchema = Yup.object({
     ? extendedNameSchema
     : legacyNameSchema
   ).required("Collection name is required."),
-  ...(window.App.isCluster ? clusterFieldsSchema : {})
+  ...(window.App?.isCluster ? clusterFieldsSchema : {})
 });
 
 export const AddCollectionModal = ({

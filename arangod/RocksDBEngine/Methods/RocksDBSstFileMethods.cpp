@@ -172,13 +172,6 @@ void RocksDBSstFileMethods::cleanUpFiles() {
   _bytesWrittenToDir = 0;
 }
 
-rocksdb::Status RocksDBSstFileMethods::GetFromSnapshot(
-    rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
-    rocksdb::PinnableSlice*, ReadOwnWrites, rocksdb::Snapshot const*) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, "SstFileMethods does not provide GetFromSnapshot");
-}
-
 rocksdb::Status RocksDBSstFileMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
                                            rocksdb::PinnableSlice* val,

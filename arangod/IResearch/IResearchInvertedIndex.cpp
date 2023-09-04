@@ -498,6 +498,7 @@ class IResearchInvertedIndexIterator final
         [this, &cb](LocalDocumentId const& token) {
           // we use here just first snapshot as they are all the same here.
           // iterator operates only one iresearch datastore
+          // TODO(MBkkt) use MultiGet
           return _collection->getPhysical()
               ->readFromSnapshot(_trx, token, cb, canReadOwnWrites(),
                                  _snapshot.snapshot(0))

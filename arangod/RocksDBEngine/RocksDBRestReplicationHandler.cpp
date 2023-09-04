@@ -862,6 +862,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       _response->setGenerateBody(true);
     }
   }
+
+  _response->setAllowCompression(true);
 }
 
 //////////////////////////////////////////////////////////////////////////////

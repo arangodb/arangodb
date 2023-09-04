@@ -66,6 +66,7 @@
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -519,7 +520,7 @@ void Collections::enumerate(
         if (!ExecContext::current().canUseCollection(
                 vocbase.name(), coll->name(), auth::Level::RO)) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "No access to collection '" + name + "'");
+                        absl::StrCat("No access to collection '", name, "'"));
         }
 
         ret = std::move(coll);
@@ -548,7 +549,7 @@ void Collections::enumerate(
     if (!ExecContext::current().canUseCollection(vocbase.name(), coll->name(),
                                                  auth::Level::RO)) {
       return Result(TRI_ERROR_FORBIDDEN,
-                    "No access to collection '" + name + "'");
+                    absl::StrCat("No access to collection '", name, "'"));
     }
     try {
       ret = std::move(coll);
@@ -583,9 +584,10 @@ Collections::create(         // create collection
     for (auto const& col : collections) {
       events::CreateCollection(vocbase.name(), col.name, TRI_ERROR_FORBIDDEN);
     }
-    return arangodb::Result(                             // result
-        TRI_ERROR_FORBIDDEN,                             // code
-        "cannot create collection in " + vocbase.name()  // message
+    return arangodb::Result(  // result
+        TRI_ERROR_FORBIDDEN,  // code
+        absl::StrCat("cannot create collection in ", vocbase.name(), ": ",
+                     TRI_errno_string(TRI_ERROR_FORBIDDEN))  // message
     );
   }
 
@@ -965,7 +967,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
     return Result(
         TRI_ERROR_FORBIDDEN,
-        std::string("cannot access collection '") + coll->name() + "'");
+        absl::StrCat("cannot access collection '", coll->name(), "'"));
   }
 
   std::unordered_set<std::string> ignoreKeys{StaticStrings::AllowUserKeys,
@@ -1210,9 +1212,10 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
                              auth::Level::RW)) {  // collection modifiable
     events::DropCollection(coll.vocbase().name(), coll.name(),
                            TRI_ERROR_FORBIDDEN);
-    return arangodb::Result(                                     // result
-        TRI_ERROR_FORBIDDEN,                                     // code
-        "Insufficient rights to drop collection " + coll.name()  // message
+    return arangodb::Result(  // result
+        TRI_ERROR_FORBIDDEN,  // code
+        absl::StrCat("Insufficient rights to drop collection ",
+                     coll.name())  // message
     );
   }
 
