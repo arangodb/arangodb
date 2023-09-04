@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS-1380: Added traversal order (dfs, bfs, weighted) to explain output.
+
 * arangodump and arangorestore will now try to bump up the limit for the number
   of open file descriptors at startup, on Linux and macOS. This way the tools
   are allowed to open more files concurrently, which can be useful when
