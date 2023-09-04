@@ -735,6 +735,8 @@ class RocksDBEngine final : public StorageEngine {
   // an auto-flush
   uint64_t _autoFlushMinWalFiles;
 
+  bool _forceLittleEndianKeys;  // force new database to use old format
+
   metrics::Gauge<uint64_t>& _metricsIndexEstimatorMemoryUsage;
   metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
