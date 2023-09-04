@@ -1608,7 +1608,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
         velocypack::Validator validator;
         try {
           validator.validate(buffer->begin(), buffer->length(), true);
-        } catch (std::exception const& ex) {
+        } catch (std::exception const&) {
           // we do not have a complete velocypack array yet.
           // TODO: prevent endless loop here!
           continue;
