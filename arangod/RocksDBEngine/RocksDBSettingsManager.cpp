@@ -138,6 +138,9 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     auto minSeqNr = maxSeqNr;
     TRI_ASSERT(minSeqNr > 0);
 
+    rocksdb::TransactionOptions opts;
+    opts.lock_timeout = 50;  // do not wait for locking keys
+
     rocksdb::WriteOptions wo;
     rocksdb::WriteBatch batch;
     _tmpBuilder.clear();  // recycle our builder
@@ -243,7 +246,7 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
         << "about to store lastSync. previous value: " << lastSync
         << ", current value: " << minSeqNr;
 
-    if (minSeqNr < lastSync && !force) {
+    if (minSeqNr < lastSync) {
       if (minSeqNr != 0) {
         LOG_TOPIC("1038e", ERR, Logger::ENGINES)
             << "min tick is smaller than "
