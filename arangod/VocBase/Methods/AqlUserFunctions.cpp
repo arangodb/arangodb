@@ -56,6 +56,8 @@ using namespace arangodb;
 
 namespace {
 constexpr std::string_view moduleName = "AQL user functions administration";
+// origin=REST here because we are not executing AQL but are managing
+// AQL user-defined functions here.
 constexpr transaction::OperationOriginREST operationOrigin{moduleName};
 
 // Must not start with `_`, may contain alphanumerical characters, should have

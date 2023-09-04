@@ -771,7 +771,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     queryId = TRI_NewServerSpecificTick();
   }
 
-  auto origin = transaction::OperationOriginREST{"executing query from JSON"};
+  auto origin = transaction::OperationOriginAQL{"executing query from JSON"};
   auto query = arangodb::aql::ClusterQuery::create(
       queryId, transaction::V8Context::create(vocbase, origin, true),
       aql::QueryOptions(options.slice()));
