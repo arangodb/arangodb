@@ -1,6 +1,34 @@
 devel
 -----
 
+* Refuse server startup with outdated little-endian on-disk format.
+  The little-endian on-disk format was used for deployments that were created
+  with either ArangoDB 3.2 or 3.3 when using the RocksDB storage engine.
+  Since ArangoDB 3.4, a big-endian on-disk format was used for the RocksDB
+  storage engine, which is more performant.
+  Deployments that were set up with the RocksDB storage engine using ArangoDB
+  3.2 or 3.3 and that have been upgraded since then will still use the old
+  format. This should not affect many users, because the default storage
+  engine in ArangoDB 3.2 and 3.3 was the MMFiles storage engine. Furthermore,
+  deployments that have been recreated from an arangodump since ArangoDB 3.4
+  will not be affected, because restoring an arangodump into a fresh 
+  deployment will also make ArangoDB use the big-endian on-disk format.
+
+  When the outdated little-endian on-disk format is detected at startup, the
+  server will bail out with a descriptive error message. The recommend way to
+  migrate the database from the little-endian storage format to the big-endian
+  storage format is to
+
+  1. create a full logical backup of the database using arangodump
+  2. stop the database servers in the deployment
+  3. wipe the existing database directories
+  4. restart the servers in the deployment
+  5. restore the logical dump into the deployment
+
+  It will not be sufficient to take a hot backup of a little-endian dataset
+  and restore it, because when restoring a hot backup, the original database
+  format will be restored as it was at time of the backup.
+
 * Fixed BTS-1541: Old legacy little endian key format for RocksDB database
   (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer
   versions. This fixes a persistent index corruption bug with the old
