@@ -25,6 +25,7 @@
 #include "DumpFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/Exceptions.h"
@@ -746,6 +747,7 @@ DumpFeature::DumpFeature(Server& server, int& exitCode)
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
   setOptional(false);
+  startsAfter<BumpFileDescriptorsFeature>();
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
   using arangodb::basics::FileUtils::buildFilename;

@@ -28,15 +28,18 @@
 
 namespace arangodb {
 
+class BumpFileDescriptorsFeature;
 class TempFeature;
 class RestoreFeature;
 class EncryptionFeature;
 
-using ArangoRestoreFeaturesList = ArangoClientFeaturesList<
+using ArangoRestoreFeaturesList =
+    ArangoClientFeaturesList<BumpFileDescriptorsFeature,
 #ifdef USE_ENTERPRISE
-    EncryptionFeature,
+                             EncryptionFeature,
 #endif
-    BasicFeaturePhaseClient, TempFeature, RestoreFeature>;
+                             BasicFeaturePhaseClient, TempFeature,
+                             RestoreFeature>;
 struct ArangoRestoreFeatures : ArangoRestoreFeaturesList {};
 using ArangoRestoreServer = ApplicationServerT<ArangoRestoreFeatures>;
 using ArangoRestoreFeature = ApplicationFeatureT<ArangoRestoreServer>;
