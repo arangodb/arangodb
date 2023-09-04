@@ -223,8 +223,8 @@ class ClusterInfo final {
       FlatMapShared<pmr::CollectionID, CollectionInfoCurrent>;
 
   using DatabaseViews = FlatMapShared<pmr::ViewID, LogicalView>;
-  // TODO(MBkkt) Now on every loadPlan AllViews copied for every database.
-  //  We can avoid it.
+  // TODO(MBkkt) Now on every loadPlan all DatabaseViews
+  //  copied for every database, we can avoid it.
   using AllViews = FlatMap<pmr::DatabaseID, DatabaseViews>;
 
   class SyncerThread;
