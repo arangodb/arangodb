@@ -230,7 +230,7 @@ const isAllowed = (res, collname, input) => {
 
 const validatePropertiesDoNotExist = (colName, illegalProperties) => {
   const col = db._collection(colName);
-  const props = col.properties(true);
+  const props = col.properties();
   for (const key of illegalProperties) {
     assertFalse(props.hasOwnProperty(key), `Property ${key} should not exist`);
   }
