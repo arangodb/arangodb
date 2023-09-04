@@ -1506,9 +1506,7 @@ limited number of edge collections/shards/indexes.)");
           new BooleanParameter(&ioUringEnabled),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoOs,
               arangodb::options::Flags::OsLinux,
-              arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
