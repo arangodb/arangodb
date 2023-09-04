@@ -29,7 +29,11 @@
 
 #include <chrono>
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
+class LogicalCollection;
+
 namespace maintenance {
 
 class EnsureIndex : public ActionBase {
@@ -40,6 +44,13 @@ class EnsureIndex : public ActionBase {
 
   virtual arangodb::Result setProgress(double d) override final;
   virtual bool first() override final;
+
+ private:
+  auto ensureIndex(LogicalCollection& collection, VPackSlice indexInfo,
+                   VPackBuilder& output) -> Result;
+  auto ensureIndexReplication2(TRI_vocbase_t* vocbase, LogicalCollection& col,
+                               VPackSlice indexInfo, VPackBuilder& output)
+      -> Result;
 };
 
 }  // namespace maintenance

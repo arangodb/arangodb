@@ -30,6 +30,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Transaction/Manager.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <Futures/Future.h>
 #include <Logger/LogContextKeys.h>
@@ -542,6 +543,52 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
 
       if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
         LOG_CTX("6856b", ERR, self->loggerContext)
+            << "Failed to call release: " << releaseRes;
+      }
+      return {};
+    });
+  });
+}
+
+auto DocumentLeaderState::createIndex(LogicalCollection& col,
+                                      VPackSlice indexInfo)
+    -> futures::Future<Result> {
+  ReplicatedOperation op = ReplicatedOperation::buildCreateIndexOperation(
+      std::to_string(col.id().id()), std::make_shared<VPackBuilder>(indexInfo));
+
+  auto fut = _guardedData.doUnderLock([&](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+
+    return replicateOperation(
+        op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
+  });
+
+  return std::move(fut).thenValue([self = shared_from_this(),
+                                   op = std::move(op)](auto&& result) mutable {
+    if (result.fail()) {
+      return result.result();
+    }
+    auto logIndex = result.get();
+
+    return self->_guardedData.doUnderLock([self, logIndex, op = std::move(op)](
+                                              auto& data) mutable -> Result {
+      if (data.didResign()) {
+        return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+      }
+      auto&& applyEntryRes = data.transactionHandler->applyEntry(std::move(op));
+      if (applyEntryRes.fail()) {
+        LOG_CTX("60b17", FATAL, self->loggerContext)
+            << "CreateIndex operation failed on the leader, after being "
+               "replicated to followers: "
+            << applyEntryRes;
+        FATAL_ERROR_EXIT();
+      }
+
+      if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
+        LOG_CTX("cfb6d", ERR, self->loggerContext)
             << "Failed to call release: " << releaseRes;
       }
       return {};

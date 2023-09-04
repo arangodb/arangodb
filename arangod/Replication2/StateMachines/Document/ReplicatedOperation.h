@@ -117,6 +117,14 @@ struct ReplicatedOperation {
         -> bool = default;
   };
 
+  struct CreateIndex {
+    ShardID shard;
+    std::shared_ptr<VPackBuilder> properties;
+
+    friend auto operator==(CreateIndex const&, CreateIndex const&)
+        -> bool = default;
+  };
+
   struct Insert : DocumentOperation {};
 
   struct Update : DocumentOperation {};
@@ -128,8 +136,8 @@ struct ReplicatedOperation {
  public:
   using OperationType =
       std::variant<AbortAllOngoingTrx, Commit, IntermediateCommit, Abort,
-                   Truncate, CreateShard, ModifyShard, DropShard, Insert,
-                   Update, Replace, Remove>;
+                   Truncate, CreateShard, ModifyShard, DropShard, CreateIndex,
+                   Insert, Update, Replace, Remove>;
   OperationType operation;
 
   static auto fromOperationType(OperationType op) noexcept
@@ -153,6 +161,9 @@ struct ReplicatedOperation {
       std::string followersToDrop) noexcept -> ReplicatedOperation;
   static auto buildDropShardOperation(ShardID shard,
                                       CollectionID collection) noexcept
+      -> ReplicatedOperation;
+  static auto buildCreateIndexOperation(
+      ShardID shard, std::shared_ptr<VPackBuilder> properties) noexcept
       -> ReplicatedOperation;
   static auto buildDocumentOperation(TRI_voc_document_operation_e const& op,
                                      TransactionId tid, ShardID shard,
@@ -184,7 +195,8 @@ concept FinishesUserTransaction =
     std::is_same_v<T, ReplicatedOperation::Abort>;
 
 template<class T>
-concept FinishesUserTransactionOrIntermediate = FinishesUserTransaction<T> ||
+concept FinishesUserTransactionOrIntermediate =
+    FinishesUserTransaction<T> ||
     std::is_same_v<T, ReplicatedOperation::IntermediateCommit>;
 
 template<class T>

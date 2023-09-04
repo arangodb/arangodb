@@ -590,6 +590,14 @@ auto DocumentFollowerState::GuardedData::applyEntry(
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
+    ReplicatedOperation::CreateIndex const& op, LogIndex index)
+    -> ResultT<std::optional<LogIndex>> {
+  LOG_DEVEL << "create index follower";
+  return ResultT<std::optional<LogIndex>>::success(
+      activeTransactions.getReleaseIndex().value_or(index));
+}
+
+auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::ModifyShard const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
   if (auto res = transactionHandler->applyEntry(op); res.fail()) {

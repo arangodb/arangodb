@@ -34,9 +34,12 @@
 #include <atomic>
 #include <memory>
 
-namespace arangodb::transaction {
+namespace arangodb {
+class LogicalCollection;
+namespace transaction {
 struct IManager;
 }
+}  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -72,6 +75,9 @@ struct DocumentLeaderState
                    std::shared_ptr<VPackBuilder> properties,
                    std::string followersToDrop) -> futures::Future<Result>;
   auto dropShard(ShardID shard, CollectionID collectionId)
+      -> futures::Future<Result>;
+
+  auto createIndex(LogicalCollection& col, VPackSlice indexInfo)
       -> futures::Future<Result>;
 
   auto getActiveTransactionsCount() const noexcept -> std::size_t {
