@@ -6,12 +6,7 @@ manifest=arangodb/build-alpine
 
 echo "Creating docker multiarch manifest \"${manifest}:${IMAGE_TAG}\" and \"${manifest}:latest\":"
 docker manifest rm ${manifest}:${IMAGE_TAG}
-docker manifest rm ${manifest}:latest
-
-docker manifest create ${manifest}:latest \
-  --amend ${manifest}-latest-amd64 \
-  --amend ${manifest}:latest-arm64 \
-&& docker manifest create ${manifest}:${IMAGE_TAG} \
+docker manifest create ${manifest}:${IMAGE_TAG} \
   --amend ${manifest}:${IMAGE_TAG}-amd64 \
   --amend ${manifest}:${IMAGE_TAG}-arm64 \
 || echo "Error during docker multiarch manifest creation!" && exit 1
