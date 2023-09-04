@@ -121,7 +121,7 @@ function makeDataWrapper (options) {
         }
         let logFile = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
         require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
-        let rc = pu.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv, []);
+        let rc = pu.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
         if (!rc.status) {
           let rx = new RegExp(/\\n/g);
           res.message += file + ':\n' + fs.read(logFile).replace(rx, '\n');

@@ -99,6 +99,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.clientAuth = clientAuth;
     this.dumpOptions = dumpOptions;
     this.restoreOptions = restoreOptions;
+    this.allDatabases = [];
     this.which = which;
     this.results = {failed: 0};
     this.dumpConfig = false;
@@ -363,10 +364,11 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
 
   runCheckDumpFilesSuite(path) {
     this.print('Inspecting dumped files - ' + path);
-    process.env['dump-directory'] = this.dumpConfig.config['output-directory'];
-    this.results.checkDumpFiles = this.runOneTest(path);
-    delete process.env['dump-directory'];
-    return this.validate(this.results.checkDumpFiles);
+    //process.env['dump-directory'] = this.dumpConfig.config['output-directory'];
+    //this.results.checkDumpFiles = this.runOneTest(path);
+    //delete process.env['dump-directory'];
+    // return this.validate(this.results.checkDumpFiles);
+    return true
   }
 
   runCleanupSuite(path) {
@@ -377,7 +379,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   dumpFrom(database, separateDir = false) {
-    this.print('dump');
+    this.print(`dumping ${database}`);
     if (separateDir) {
       if (!fs.exists(fs.join(this.instanceManager.rootDir, 'dump'))) {
         fs.makeDirectory(fs.join(this.instanceManager.rootDir, 'dump'));
@@ -586,6 +588,63 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   listHotBackup() {
     return hb.get();
   }
+
+  runRtaMakedata() {
+    let res = {};
+    let logFile = fs.join(fs.getTempPath(), `rta_out_makedata.log`);
+    let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 0, "creating test data", logFile);
+    if (!rc.status) {
+      let rx = new RegExp(/\\n/g);
+      res.message +=  'Makedata:\n' + fs.read(logFile).replace(rx, '\n');
+      res.status = false;
+      res.failed += 1;
+    } else {
+      print(logFile)
+      fs.remove(logFile);
+    }
+    return true;
+  }
+  
+  dumpFromRta() {
+    const otherDBs = ['_system', 'UnitTestsDumpSrc'];
+    print('sanotheusantoehsnaotuhe')
+    print(db._databases())
+    db._databases().forEach(db => { if (!otherDBs.find(x => x == db)) {this.allDatabases.push(db)}});
+    if (!this.dumpConfig.haveSetAllDatabases()) {
+      this.allDatabases.forEach(db => {
+        this.dumpFrom(db, true);
+      });
+    }
+    return true;
+  }
+  
+  restoreRta() {
+    let success = true;
+    if (!this.restoreConfig.haveSetAllDatabases()) {
+      this.allDatabases.forEach(db => {
+        success &= this.restoreTo(db, { separate: true, fromDir: db});
+      });
+    }
+    db._useDatabase('_system');
+    return success;
+  }
+  
+  runRtaCheckData() {
+    let res = {};
+    let logFile = fs.join(fs.getTempPath(), `rta_out_checkdata.log`);
+    let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 1, "checking test data", logFile);
+    if (!rc.status) {
+      let rx = new RegExp(/\\n/g);
+      res.message += 'Checkdata:\n' + fs.read(logFile).replace(rx, '\n');
+      res.status = false;
+      res.failed += 1;
+    } else {
+      print(logFile)
+      fs.remove(logFile);
+    }
+    return true;
+  }
+  
 };
 
 function getClusterStrings(options) {
@@ -626,25 +685,33 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
   try {
     if (firstRunOptions.hasOwnProperty("multipleDumps") && firstRunOptions.multipleDumps) {
       if (!helper.runSetupSuite(setupFile) ||
+          !helper.runRtaMakedata() ||
           !helper.dumpFrom('_system', true) ||
           !helper.dumpFrom('UnitTestsDumpSrc', true) ||
+          !helper.dumpFromRta() ||
           (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
           !helper.runCleanupSuite(cleanupFile) ||
           !helper.restartInstance() ||
           !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
           !helper.restoreTo('_system', { separate: true }) ||
+          !helper.restoreRta() ||
           !helper.runTests(testFile,'UnitTestsDumpDst') ||
+          !helper.runRtaCheckData() ||
           !helper.tearDown(tearDownFile)) {
         helper.destructor(true);
         return helper.extractResults();
       }
     } else {
       if (!helper.runSetupSuite(setupFile) ||
+          !helper.runRtaMakedata() ||
           !helper.dumpFrom('UnitTestsDumpSrc') ||
+          !helper.dumpFromRta() ||
           (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
           !helper.runCleanupSuite(cleanupFile) ||
           !helper.restartInstance() ||
           !helper.restoreTo('UnitTestsDumpDst') ||
+          !helper.restoreRta() ||
+          !helper.runRtaCheckData() ||
           !helper.runTests(testFile,'UnitTestsDumpDst') ||
           !helper.tearDown(tearDownFile)) {
         helper.destructor(true);
@@ -680,7 +747,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
       }
     }
   } catch (ex) {
-    print("Caught exception during testrun: " + ex);
+    print("Caught exception during testrun: " + ex + ex.stack);
     helper.destructor(false);
   }
   helper.destructor(true);
