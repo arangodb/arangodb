@@ -26,13 +26,15 @@ namespace arangodb::replication2::test {
 
 DelayedLogFollower::DelayedLogFollower(
     std::shared_ptr<replicated_log::ILogFollower> follower)
-    : _follower(std::move(follower)) {
+    : _participantId(follower->getParticipantId()),
+      _follower(std::move(follower)) {
   // Let's not accidentally wrap a DelayedLogFollower in another
   ADB_PROD_ASSERT(std::dynamic_pointer_cast<DelayedLogFollower>(follower) ==
                   nullptr);
 }
 
-DelayedLogFollower::DelayedLogFollower(std::nullptr_t) : _follower(nullptr) {}
+DelayedLogFollower::DelayedLogFollower(ParticipantId participantId)
+    : _participantId(std::move(participantId)), _follower(nullptr) {}
 
 void DelayedLogFollower::replaceFollowerWith(
     std::shared_ptr<replicated_log::ILogFollower> follower) {
@@ -40,6 +42,9 @@ void DelayedLogFollower::replaceFollowerWith(
       << "You should empty the DelayedFollower's scheduler before replacing "
          "its follower.";
   _follower = std::move(follower);
+  TRI_ASSERT(_follower->getParticipantId() == _participantId)
+      << "Trying to replace the follower " << _participantId
+      << " with an instance of " << _follower->getParticipantId();
 }
 
 void DelayedLogFollower::swapFollowerAndQueueWith(DelayedLogFollower& other) {

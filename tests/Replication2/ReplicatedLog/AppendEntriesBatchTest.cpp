@@ -96,7 +96,8 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
 
   auto followerLogContainer = createParticipant({});
 
-  auto config = addNewTerm(*leaderLogContainer, {*followerLogContainer},
+  auto config = addNewTerm(leaderLogContainer->serverId(),
+                           {followerLogContainer->serverId()},
                            {.term = 5_T, .writeConcern = 2});
   config->installConfig(false);
   EXPECT_CALL(*followerLogContainer->stateHandleMock, updateCommitIndex)
@@ -112,18 +113,18 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
                 TermIndexPair(LogTerm{5}, LogIndex{_payloads.size() + 1}));
       EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
 
-      EXPECT_EQ(stats.follower.at(followerLogContainer->serverInstance.serverId)
-                    .nextPrevLogIndex,
-                LogIndex{_payloads.size()});
+      EXPECT_EQ(
+          stats.follower.at(followerLogContainer->serverId()).nextPrevLogIndex,
+          LogIndex{_payloads.size()});
     } else {
       auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant());
       EXPECT_EQ(stats.local.spearHead,
                 TermIndexPair(LogTerm{5}, LogIndex{_payloads.size() + 1}));
       EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
 
-      EXPECT_EQ(stats.follower.at(followerLogContainer->serverInstance.serverId)
-                    .nextPrevLogIndex,
-                LogIndex{_payloads.size()});
+      EXPECT_EQ(
+          stats.follower.at(followerLogContainer->serverId()).nextPrevLogIndex,
+          LogIndex{_payloads.size()});
     }
   }
   {

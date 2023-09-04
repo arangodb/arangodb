@@ -35,7 +35,7 @@ struct MultiTermTest : ReplicatedLogTest {};
 TEST_F(MultiTermTest, add_follower_test) {
   auto leaderLogContainer = createParticipant({});
   auto leaderLog = leaderLogContainer->log;
-  auto config = addNewTerm(*leaderLogContainer, {}, {.term = 1_T});
+  auto config = addNewTerm(leaderLogContainer->serverId(), {}, {.term = 1_T});
 
   config->installConfig(true);
   {
@@ -49,9 +49,8 @@ TEST_F(MultiTermTest, add_follower_test) {
     {
       ASSERT_TRUE(f.isReady());
       auto const& result = f.get();
-      EXPECT_THAT(
-          result.quorum->quorum,
-          testing::ElementsAre(leaderLogContainer->serverInstance.serverId));
+      EXPECT_THAT(result.quorum->quorum,
+                  testing::ElementsAre(leaderLogContainer->serverId()));
     }
     {
       auto stats = leaderLog->getQuickStatus().local.value();
@@ -65,7 +64,8 @@ TEST_F(MultiTermTest, add_follower_test) {
   EXPECT_CALL(*followerLogContainer->stateHandleMock, updateCommitIndex)
       .Times(testing::AtLeast(1));
 
-  config = addUpdatedTerm({.addParticipants = {*followerLogContainer}});
+  auto& x = wholeLog.logs.at(followerLogContainer->serverId());
+  config = addUpdatedTerm({.addParticipants = {x}});
   config->installConfig(false);
   {
     {
@@ -101,7 +101,8 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
   auto leaderLog = leaderLogContainer->log;
   auto followerLogContainer = createParticipant({});
   auto followerLog = followerLogContainer->log;
-  auto config = addNewTerm(*leaderLogContainer, {*followerLogContainer},
+  auto config = addNewTerm(leaderLogContainer->serverId(),
+                           {followerLogContainer->serverId()},
                            {.term = 1_T, .writeConcern = 2});
 
   config->installConfig(true);
@@ -133,7 +134,8 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
   auto followerLogContainer = createParticipant({});
   auto leaderLog = leaderLogContainer->log;
   auto followerLog = followerLogContainer->log;
-  auto config = addNewTerm(*leaderLogContainer, {*followerLogContainer},
+  auto config = addNewTerm(leaderLogContainer->serverId(),
+                           {followerLogContainer->serverId()},
                            {.term = 1_T, .writeConcern = 2});
   config->installConfig(true);
   {
@@ -223,7 +225,8 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
   auto followerLogContainer = createParticipant({});
   auto leaderLog = leaderLogContainer->log;
   auto followerLog = followerLogContainer->log;
-  auto config = addNewTerm(*leaderLogContainer, {*followerLogContainer},
+  auto config = addNewTerm(leaderLogContainer->serverId(),
+                           {followerLogContainer->serverId()},
                            {.term = 1_T, .writeConcern = 2});
   config->installConfig(true);
   {
@@ -261,7 +264,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
         followerLogContainer->delayedLogFollower->hasPendingAppendEntries());
     // TODO this swapping here should be replaced by something in the test
     //      framework (i.e. LogContainer, LogConfig etc.)
-    auto oldFollower = DelayedLogFollower(nullptr);
+    auto oldFollower = DelayedLogFollower(followerLogContainer->serverId());
     auto oldScheduler = DelayedScheduler();
     followerLogContainer->delayedLogFollower->swapFollowerAndQueueWith(
         oldFollower);

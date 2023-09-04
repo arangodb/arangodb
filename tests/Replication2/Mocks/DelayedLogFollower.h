@@ -30,6 +30,7 @@
 #include "Replication2/Storage/IStorageEngineMethods.h"
 
 #include "Replication2/Mocks/SchedulerMocks.h"
+#include "Basics/SourceLocation.h"
 
 namespace arangodb::replication2::test {
 
@@ -44,9 +45,10 @@ namespace arangodb::replication2::test {
 struct DelayedLogFollower : replicated_log::ILogFollower {
   explicit DelayedLogFollower(
       std::shared_ptr<replicated_log::ILogFollower> follower);
-  // Just here to point out that we may instantiate this without a follower.
-  // Just don't do anything with it except calling appendEntries.
-  explicit DelayedLogFollower(std::nullptr_t);
+  // Instantiate this without a follower.
+  // Just don't do anything with it except calling appendEntries and
+  // getParticipantId().
+  explicit DelayedLogFollower(ParticipantId _participantId);
 
   void replaceFollowerWith(
       std::shared_ptr<replicated_log::ILogFollower> follower);
@@ -57,7 +59,7 @@ struct DelayedLogFollower : replicated_log::ILogFollower {
       -> arangodb::futures::Future<
           replicated_log::AppendEntriesResult> override;
 
-  // TODO rename to deliver-sth
+  // TODO rename to sth like deliver-delayed-append-entries-requests or so
   auto runAsyncAppendEntries() -> std::size_t;
 
   void runAllAsyncAppendEntries();
@@ -81,15 +83,18 @@ struct DelayedLogFollower : replicated_log::ILogFollower {
   }
 
   auto getParticipantId() const noexcept -> ParticipantId const& override {
-    return _follower->getParticipantId();
+    if (_follower != nullptr) {
+      TRI_ASSERT(follower().getParticipantId() == _participantId);
+    }
+    return _participantId;
   }
 
   auto getStatus() const -> replicated_log::LogStatus override {
-    return _follower->getStatus();
+    return follower().getStatus();
   }
 
   auto getQuickStatus() const -> replicated_log::QuickLogStatus override {
-    return _follower->getQuickStatus();
+    return follower().getQuickStatus();
   }
 
   [[nodiscard]] auto resign() && -> std::tuple<
@@ -100,27 +105,39 @@ struct DelayedLogFollower : replicated_log::ILogFollower {
   }
 
   auto waitFor(LogIndex index) -> WaitForFuture override {
-    return _follower->waitFor(index);
+    return follower().waitFor(index);
   }
 
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
-    return _follower->waitForIterator(index);
+    return follower().waitForIterator(index);
   }
   auto release(LogIndex doneWithIdx) -> Result override {
-    return _follower->release(doneWithIdx);
+    return follower().release(doneWithIdx);
   }
   auto compact() -> ResultT<replicated_log::CompactionResult> override {
-    return _follower->compact();
+    return follower().compact();
   }
 
   auto getInternalLogIterator(std::optional<LogRange> bounds) const
       -> std::unique_ptr<LogIterator> override {
-    return _follower->getInternalLogIterator(bounds);
+    return follower().getInternalLogIterator(bounds);
   }
 
   DelayedScheduler scheduler;
 
  private:
+  auto follower() -> replicated_log::ILogFollower& {
+    TRI_ASSERT(_follower != nullptr)
+        << "Accessing follower before it has been installed.";
+    return *_follower;
+  }
+  auto follower() const -> replicated_log::ILogFollower const& {
+    TRI_ASSERT(_follower != nullptr)
+        << "Accessing follower before it has been installed.";
+    return *_follower;
+  }
+
+  ParticipantId const _participantId;
   std::list<std::shared_ptr<AsyncRequest>> _asyncQueue;
   std::shared_ptr<replicated_log::ILogFollower> _follower;
 };

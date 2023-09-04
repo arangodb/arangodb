@@ -37,7 +37,7 @@ auto LogConfig::makeConfig(
                                          configArguments.waitForSync};
   auto participants = agency::ParticipantsFlagsMap{};
   auto const logToParticipant = [&](LogContainer& f) {
-    return std::pair(f.serverInstance.serverId, ParticipantFlags{});
+    return std::pair(f.serverId(), ParticipantFlags{});
   };
   if (leader) {
     participants.emplace(logToParticipant(*leader));
@@ -49,7 +49,7 @@ auto LogConfig::makeConfig(
       .participants = participants, .config = logConfig};
   auto logSpec = agency::LogPlanTermSpecification{
       configArguments.term,
-      leader ? std::optional{leader->get().serverInstance} : std::nullopt};
+      leader ? std::optional{leader->get().serverInstance()} : std::nullopt};
   return LogConfig{.leader = leader,
                    .followers = std::move(follower),
                    .termSpec = std::move(logSpec),
@@ -73,22 +73,56 @@ void LogConfig::installConfig(bool establishLeadership) {
 
     EXPECT_TRUE(future.isReady());
     EXPECT_TRUE(future.hasValue());
-    auto leaderStatus = leader->get().log->getQuickStatus();
+    TRI_ASSERT(leader->get().contains<ParticipantWithFakes>());
+    auto& leaderParticipantWithFakes =
+        leader->get().getAs<ParticipantWithFakes>();
+    auto leaderStatus = leaderParticipantWithFakes.log->getQuickStatus();
     EXPECT_EQ(leaderStatus.role, replicated_log::ParticipantRole::kLeader);
     EXPECT_TRUE(leaderStatus.leadershipEstablished);
     for (auto& follower : followers) {
-      if (follower.get().abstractFollowerType ==
-          LogArguments::AbstractFollowerType::DelayedLogFollower) {
-        auto followerStatus = follower.get().log->getQuickStatus();
+      if (follower.get().contains<ParticipantWithFakes>()) {
+        auto followerStatus =
+            follower.get().getAs<ParticipantWithFakes>().log->getQuickStatus();
         EXPECT_EQ(followerStatus.role,
                   replicated_log::ParticipantRole::kFollower);
         EXPECT_TRUE(followerStatus.leadershipEstablished);
       } else {
+        TRI_ASSERT(follower.get().contains<ParticipantFakeFollower>());
         // The fake abstract follower doesn't have a status, and doesn't keep
         // track of the commit index. So no checks here.
-        TRI_ASSERT(follower.get().fakeAbstractFollower != nullptr);
+        TRI_ASSERT(follower.get()
+                       .getAs<ParticipantFakeFollower>()
+                       .fakeAbstractFollower != nullptr);
       }
     }
+  }
+}
+
+auto ParticipantWithFakes::updateConfig(LogConfig const* conf)
+    -> futures::Future<futures::Unit> {
+  bool const isLeader = conf->leader && conf->leader->get() == *this;
+  if (isLeader) {
+    stateHandleMock->expectLeader();
+    for (auto const it : conf->followers) {
+      auto& followerContainer = it.get();
+      fakeFollowerFactory->followerThunks.try_emplace(
+          followerContainer.serverId(), [&followerContainer]() {
+            return followerContainer.getAbstractFollower();
+          });
+    }
+  } else {
+    stateHandleMock->expectFollower();
+  }
+  auto fut =
+      log->updateConfig(std::move(conf->termSpec),
+                        std::move(conf->participantsConfig), _serverInstance);
+  if (!isLeader) {
+    return std::move(fut).thenValue([&](futures::Unit&&) {
+      delayedLogFollower->scheduler.dropWork();
+      delayedLogFollower->replaceFollowerWith(getAsFollower());
+    });
+  } else {
+    return fut;
   }
 }
 
@@ -124,6 +158,23 @@ void PrintTo(PartialLogEntry const& point, std::ostream* os) {
              point.payload);
   *os << ")";
 }
+
+auto LogContainer::createWithParticipantWithFakes(
+    LogId logId, agency::ServerInstanceReference serverId,
+    LoggerContext loggerContext,
+    std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetrics,
+    LogArguments fakeArguments) -> LogContainer {
+  return LogContainer(static_cast<ParticipantWithFakes*>(nullptr), logId,
+                      serverId, loggerContext, logMetrics,
+                      std::move(fakeArguments));
+}
+
+auto LogContainer::createWithFakeFollower(
+    agency::ServerInstanceReference serverId) -> LogContainer {
+  return LogContainer(static_cast<ParticipantFakeFollower*>(nullptr),
+                      std::move(serverId));
+}
+
 }  // namespace arangodb::replication2::test
 
 namespace arangodb::replication2 {

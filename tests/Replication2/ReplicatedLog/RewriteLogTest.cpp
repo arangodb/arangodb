@@ -47,7 +47,8 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   auto leaderLogContainer = createParticipant(
       {.initialLogRange = LogRange{LogIndex{1}, LogIndex{2}}});
 
-  auto config = addNewTerm(*leaderLogContainer, {*followerLogContainer},
+  auto config = addNewTerm(leaderLogContainer->serverId(),
+                           {followerLogContainer->serverId()},
                            {.term = LogTerm{3}, .writeConcern = 2});
   config->installConfig(false);
 

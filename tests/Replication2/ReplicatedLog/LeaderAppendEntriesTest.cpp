@@ -40,14 +40,11 @@ struct LeaderAppendEntriesTest : ReplicatedLogTest {};
 TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
   auto leaderLogContainer = createParticipant({});
   auto leaderLog = leaderLogContainer->log;
-  auto followerLogContainer = wholeLog.createParticipant(
-      {.abstractFollowerType =
-           LogArguments::AbstractFollowerType::FakeAbstractFollower});
-  // auto follower = std::make_shared<FakeAbstractFollower>("follower");
-  // auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
-  auto config =
-      wholeLog.addNewTerm(*leaderLogContainer, {*followerLogContainer},
-                          {.term = 4_T, .writeConcern = 2});
+  auto followerLogContainer = wholeLog.createFakeFollower();
+
+  auto config = wholeLog.addNewTerm(leaderLogContainer->serverId(),
+                                    {followerLogContainer->serverId()},
+                                    {.term = 4_T, .writeConcern = 2});
   config->installConfig(true);
   auto leader = leaderLogContainer->getAsLeader();
 
@@ -67,7 +64,7 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
     // leadership, and sent another message to update the commit index etc.
     EXPECT_EQ(req.messageId, MessageId{3});
     EXPECT_EQ(req.entries.size(), 1U);
-    EXPECT_EQ(req.leaderId, leaderLogContainer->serverInstance.serverId);
+    EXPECT_EQ(req.leaderId, leaderLogContainer->serverId());
     EXPECT_EQ(req.prevLogEntry.term, 4_T);
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
@@ -88,7 +85,7 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
     auto req = follower->currentRequest();
     EXPECT_EQ(req.messageId, MessageId{4});
     EXPECT_EQ(req.entries.size(), 0U);
-    EXPECT_EQ(req.leaderId, leaderLogContainer->serverInstance.serverId);
+    EXPECT_EQ(req.leaderId, leaderLogContainer->serverId());
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
     EXPECT_EQ(req.prevLogEntry.index, firstIdx);
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
