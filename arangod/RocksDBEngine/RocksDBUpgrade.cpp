@@ -53,7 +53,8 @@ using namespace arangodb;
 
 void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
                                           rocksdb::TransactionDB* db,
-                                          bool dbExisted) {
+                                          bool dbExisted,
+                                          bool forceLittleEndianKeys) {
   static_assert(
       std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
       "RocksDBEndianness has wrong type");
@@ -119,8 +120,10 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
       }
     }
   } else {
-    // new DBs are always created with Big endian data-format
-    endianess = RocksDBEndianness::Big;
+    // new DBs are always created with Big endian data-format, Unless
+    // forced by a command line option:
+    endianess = forceLittleEndianKeys ? RocksDBEndianness::Little
+                                      : RocksDBEndianness::Big;
   }
 
   // enable correct key format
@@ -130,7 +133,7 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
 
   if (!dbExisted) {
     // store endianess forever
-    TRI_ASSERT(endianess == RocksDBEndianness::Big);
+    TRI_ASSERT(forceLittleEndianKeys || endianess == RocksDBEndianness::Big);
 
     char const endVal = static_cast<char>(endianess);
     static_assert(sizeof(endVal) == 1);
