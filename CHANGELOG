@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.17.1-preview-1.
+
 * Renamed arangodump startup option `--use-experimental-dump` to
        `--parallel-dump`.
 
