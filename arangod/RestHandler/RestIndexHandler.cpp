@@ -40,8 +40,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
-#include <absl/strings/str_cat.h>
-
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -294,10 +292,11 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     if (idx->inProgress() || idx->isHidden()) {
       continue;
     }
+    std::string name = coll->name();
+    name.push_back(TRI_INDEX_HANDLE_SEPARATOR_CHR);
+    name.append(std::to_string(idx->id().id()));
     if (idx->hasSelectivityEstimate() || idx->unique()) {
-      builder.add(absl::StrCat(coll->name(), TRI_INDEX_HANDLE_SEPARATOR_STR,
-                               idx->id().id()),
-                  VPackValue(idx->selectivityEstimate()));
+      builder.add(name, VPackValue(idx->selectivityEstimate()));
     }
   }
   builder.close();
@@ -318,8 +317,8 @@ RestStatus RestIndexHandler::createIndex() {
     events::CreateIndexEnd(_vocbase.name(), "(unknown)", body,
                            TRI_ERROR_BAD_PARAMETER);
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  absl::StrCat("expecting POST ", _request->requestPath(),
-                               "?collection=<collection-name>"));
+                  "expecting POST " + _request->requestPath() +
+                      "?collection=<collection-name>");
     return RestStatus::DONE;
   }
 
@@ -434,8 +433,7 @@ RestStatus RestIndexHandler::dropIndex() {
   if (iid.starts_with(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR)) {
     idBuilder.add(VPackValue(iid));
   } else {
-    idBuilder.add(
-        VPackValue(absl::StrCat(cName, TRI_INDEX_HANDLE_SEPARATOR_STR, iid)));
+    idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
   }
 
   Result res = methods::Indexes::drop(*coll, idBuilder.slice());

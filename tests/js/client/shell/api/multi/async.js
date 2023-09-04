@@ -302,7 +302,6 @@ function dealing_with_async_requestsSuite () {
       cmd = "/_api/job/" + id;
       doc = wait_for_put(cmd, 410, 20);
       assertEqual(doc.code, 410);
-      assertEqual(doc.parsedBody.errorMessage, "canceled request");
     },
 
     test_checks_whether_we_can_cancel_a_transaction: function() {
@@ -327,7 +326,6 @@ function dealing_with_async_requestsSuite () {
       cmd = "/_api/job/" + id;
       doc = wait_for_put(cmd, 410, 20);
       assertEqual(doc.code, 410);
-      assertEqual(doc.parsedBody.errorMessage, "canceled request");
     },
   };
 }
