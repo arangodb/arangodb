@@ -40,5 +40,5 @@ BlackHoleStateMachineFeature::BlackHoleStateMachineFeature(Server& server)
 
 void BlackHoleStateMachineFeature::prepare() {
   auto& feature = server().getFeature<ReplicatedStateAppFeature>();
-  feature.registerStateType<BlackHoleState>("black-hole");
+  feature.registerStateType<BlackHoleState>(BlackHoleState::NAME);
 }

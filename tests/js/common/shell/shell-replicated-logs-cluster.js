@@ -254,14 +254,19 @@ function ReplicatedLogsWriteSuite() {
     },
 
     testRelease: function () {
-      for (let i = 0; i < 2000; i++) {
-        log.insert({foo: i});
+      const payloads = [...Array(2000).keys()].map(i => ({foo: i}));
+      for (const batch of _.chunk(payloads, 1000)) {
+        log.multiInsert(batch);
       }
-      let s1 = getLeaderStatus(log);
+      const s1 = getLeaderStatus(log);
       assertEqual(s1.local.firstIndex, 1);
+      assertEqual(s1.local.spearhead.index, 2001);
+      assertEqual(s1.local.commitIndex, 2001);
+
       log.release(1500);
-      let s2 = getLeaderStatus(log);
-      // Compaction runs asynchronous, so we can not expect the firstIndex to be 1500
+
+      const s2 = getLeaderStatus(log);
+      // Compaction runs asynchronously, so we can not expect the firstIndex to be 1500 as well (yet)
       assertEqual(s2.local.releaseIndex, 1500);
     },
 
