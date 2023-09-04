@@ -169,9 +169,9 @@ Result ClusterInfo::checkCollectionPreconditions(
       // check against planned views as well
       auto it = _plannedViews.find(databaseName);
       if (it != _plannedViews.end()) {
-        auto it2 = it->second->find(info.name);
+        auto it2 = it->second.find(info.name);
 
-        if (it2 != it->second->end()) {
+        if (it2 != it->second.end()) {
           // view already exists!
           events::CreateCollection(databaseName, info.name,
                                    TRI_ERROR_ARANGO_DUPLICATE_NAME);
