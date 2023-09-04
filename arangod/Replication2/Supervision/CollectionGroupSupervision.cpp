@@ -320,7 +320,7 @@ auto checkAssociatedReplicatedLogs(
       // 0 is Satellite, replicate everywhere, even to non-healthy servers
       expectedReplicationFactor = health._health.size();
       wantedConfig.softWriteConcern = expectedReplicationFactor;
-      wantedConfig.writeConcern = std::floor(expectedReplicationFactor / 2) + 1;
+      wantedConfig.writeConcern = expectedReplicationFactor / 2 + 1;
     }
 
     if (log.target.config != wantedConfig) {
