@@ -1291,14 +1291,10 @@ void ClusterInfo::loadPlan() {
             continue;
           }
 
-          auto& views =
-              *_newPlannedViews
-                   .lazy_emplace(databaseName,
-                                 [&](const auto& ctor) {
-                                   ctor(databaseName,
-                                        allocateShared<DatabaseViews>());
-                                 })
-                   ->second;
+          auto f = [&](const auto& ctor) {
+            ctor(databaseName, allocateShared<DatabaseViews>());
+          };
+          auto& views = *_newPlannedViews.lazy_emplace(databaseName, f)->second;
 
           // register with guid/id/name
           // TODO Maybe assert view.id == view.planId == viewId?
@@ -1691,8 +1687,8 @@ void ClusterInfo::loadPlan() {
         for (auto const& p : *shardIDs) {
           TRI_ASSERT(p.first.size() >= 2);
           shards->push_back(p.first);
-          auto v = ClusterInfo::ManagedVector<pmr::ServerID>{_resourceMonitor};
-          v.assign(p.second.begin(), p.second.end());
+          auto v = allocateShared<ManagedVector<pmr::ServerID>>(
+              p.second.begin(), p.second.end());
           newShardsToPlanServers.insert_or_assign(
               pmr::ShardID{p.first, _resourceMonitor}, std::move(v));
           newShardToName.insert_or_assign(p.first, newCollection->name());
@@ -2044,11 +2040,12 @@ void ClusterInfo::loadCurrent() {
     }
     databaseSlice = databaseSlice.get(dbPath);
 
-    FlatMap<pmr::ServerID, velocypack::Slice> serverList{_resourceMonitor};
+    auto serverList =
+        allocateShared<FlatMap<pmr::ServerID, velocypack::Slice>>();
     if (databaseSlice.isObject()) {
       for (auto const& serverSlicePair : VPackObjectIterator(databaseSlice)) {
-        serverList.try_emplace(serverSlicePair.key.copyString(),
-                               serverSlicePair.value);
+        serverList->try_emplace(serverSlicePair.key.copyString(),
+                                serverSlicePair.value);
       }
     }
 
@@ -5493,8 +5490,7 @@ ClusterInfo::getResponsibleServer(std::string_view shardID) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
-  return std::make_shared<ClusterInfo::ManagedVector<pmr::ServerID>>(
-      _resourceMonitor);
+  return std::make_shared<ManagedVector<pmr::ServerID>>(_resourceMonitor);
 }
 
 ClusterInfo::ShardLeadership ClusterInfo::getShardLeadership(
