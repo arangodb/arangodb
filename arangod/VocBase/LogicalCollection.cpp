@@ -210,20 +210,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
   initializeSmartAttributesBefore(info);
 
-  if (replicationVersion() == replication::Version::TWO && ServerState::instance()->isCoordinator()) {
-    // TODO: This is temporary. Longterm plan is to hand in GroupSpec on Constructor
-    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-    auto group = ci.getCollectionGroupById(groupID());
-    if (group == nullptr) {
-      // Emergency exit, just use default values.
-      // We actually expect this to happen for now on new Collections
-      _sharding = std::make_unique<ShardingInfo>(info, this);
-    } else {
-      _sharding = std::make_unique<ShardingInfo>(*group, info, this);
-    }
-  } else {
-    _sharding = std::make_unique<ShardingInfo>(info, this);
-  }
+  _sharding = std::make_unique<ShardingInfo>(info, this);
 
   // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
   initializeSmartAttributesAfter(info);
@@ -370,33 +357,8 @@ replication::Version LogicalCollection::replicationVersion() const noexcept {
 }
 
 std::string LogicalCollection::distributeShardsLike() const noexcept {
-  if (ServerState::instance()->isCoordinator() &&
-      replicationVersion() == replication::Version::TWO) {
-    auto& cf = vocbase().server().getFeature<ClusterFeature>();
-    auto& ci = cf.clusterInfo();
-
-    auto myGroup = ci.getCollectionGroupById(groupID());
-    if (myGroup == nullptr) {
-      // Protect against the race: Collection is in use and dropped
-      // at the same time. We have no option to get the real
-      // distributeShardsLike back, but the collection is
-      // to be erased anyhow, so nothing too bad can happen
-      return StaticStrings::Empty;
-    }
-    TRI_ASSERT(myGroup != nullptr)
-        << "Collection part of a Group that does not exist";
-    auto const& leader = myGroup->groupLeader;
-    if (leader == std::to_string(id().id())) {
-      // If i am the leader, return the empty string
-      return StaticStrings::Empty;
-    }
-    // Note that this string must be copied before the shared_ptr is dropped,
-    // so the return value cannot be a reference.
-    return myGroup->groupLeader;
-  } else {
-    TRI_ASSERT(_sharding != nullptr);
-    return _sharding->distributeShardsLike();
-  }
+  TRI_ASSERT(_sharding != nullptr);
+  return _sharding->distributeShardsLike();
 }
 
 bool LogicalCollection::isSatellite() const noexcept {

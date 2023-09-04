@@ -1628,6 +1628,17 @@ void ClusterInfo::loadPlan() {
          velocypack::ObjectIterator(collectionsSlice)) {
       auto collectionSlice = collectionPairSlice.value;
 
+      if (!collectionSlice.isObject()) {
+        LOG_TOPIC("0f689", WARN, Logger::AGENCY)
+            << "Collection entry is not a valid json object."
+            << " The collection will be ignored for now and the invalid "
+            << "information will be repaired. VelocyPack: "
+            << collectionSlice.toJson();
+
+        continue;
+      }
+      auto const collectionId = collectionPairSlice.key.copyString();
+
       VPackBuilder newSliceBuilder;
       if (auto gid = collectionSlice.get("groupId"); !gid.isNone()) {
         auto group = newCollectionGroups.at(
@@ -1645,26 +1656,20 @@ void ClusterInfo::loadPlan() {
           newSliceBuilder.add(
               StaticStrings::ReplicationFactor,
               group->attributes.mutableAttributes.replicationFactor);
+          if (collectionId != group->groupLeader) {
+            newSliceBuilder.add(
+               StaticStrings::DistributeShardsLike,
+                group->groupLeader
+            );
+          }
         }
         collectionSlice = newSliceBuilder.slice();
-      }
-
-      if (!collectionSlice.isObject()) {
-        LOG_TOPIC("0f689", WARN, Logger::AGENCY)
-            << "Collection entry is not a valid json object."
-            << " The collection will be ignored for now and the invalid "
-            << "information will be repaired. VelocyPack: "
-            << collectionSlice.toJson();
-
-        continue;
       }
 
       bool const isBuilding =
           isCoordinator &&
           arangodb::basics::VelocyPackHelper::getBooleanValue(
               collectionSlice, StaticStrings::AttrIsBuilding, false);
-
-      auto const collectionId = collectionPairSlice.key.copyString();
 
       // check if we already know this collection (i.e. have it in our local
       // cache). we do this to avoid rebuilding LogicalCollection objects from
