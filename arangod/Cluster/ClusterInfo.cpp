@@ -933,7 +933,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
               auto const& viewId = coordLink.getViewId();
               auto vocbaseViews = _newPlannedViews.find(vocbase.name());
               if (vocbaseViews == _newPlannedViews.end() ||
-                  !vocbaseViews->second->contains(viewId)) {
+                  !vocbaseViews->second.contains(viewId)) {
                 if (!_pendingCleanups.contains(idx->id().id())) {
                   doQueueLinkDrop(idx->id(), collection->name(), vocbase.name(),
                                   const_cast<ClusterInfo&>(*this));
@@ -1125,7 +1125,7 @@ void ClusterInfo::loadPlan() {
 
     // Dropped from Plan?
     if (!dbSlice.hasKey(dbPath)) {
-      std::shared_ptr<VPackBuilder> plan = nullptr;
+      std::shared_ptr<VPackBuilder const> plan;
       {
         READ_LOCKER(guard, _planProt.lock);
         auto it = _plan.find(name);
@@ -1291,10 +1291,7 @@ void ClusterInfo::loadPlan() {
             continue;
           }
 
-          auto f = [&](const auto& ctor) {
-            ctor(databaseName, allocateShared<DatabaseViews>());
-          };
-          auto& views = *_newPlannedViews.lazy_emplace(databaseName, f)->second;
+          auto& views = _newPlannedViews[databaseName];
 
           // register with guid/id/name
           // TODO Maybe assert view.id == view.planId == viewId?
@@ -1531,8 +1528,8 @@ void ClusterInfo::loadPlan() {
       if (it != _newPlannedCollections.end()) {
         for (auto const& collection : *(it->second)) {
           auto& collectionId = collection.first;
-          newShards.erase(
-              collectionId);  // delete from maps with shardID as key
+          // delete from maps with shardID as key
+          newShards.erase(collectionId);
           newShardToName.erase(collectionId);
         }
         _newPlannedCollections.erase(it);
@@ -1687,8 +1684,8 @@ void ClusterInfo::loadPlan() {
         for (auto const& p : *shardIDs) {
           TRI_ASSERT(p.first.size() >= 2);
           shards->push_back(p.first);
-          auto v = allocateShared<ManagedVector<pmr::ServerID>>(
-              p.second.begin(), p.second.end());
+          auto v = allocateShared<ManagedVector<pmr::ServerID>>();
+          v->assign(p.second.begin(), p.second.end());
           newShardsToPlanServers.insert_or_assign(
               pmr::ShardID{p.first, _resourceMonitor}, std::move(v));
           newShardToName.insert_or_assign(p.first, newCollection->name());
@@ -2010,7 +2007,7 @@ void ClusterInfo::loadCurrent() {
     // Database missing in Current
     if (!databaseSlice.hasKey(dbPath)) {
       // newShardIds
-      std::shared_ptr<VPackBuilder> db = nullptr;
+      std::shared_ptr<VPackBuilder const> db;
       {
         READ_LOCKER(guard, _currentProt.lock);
         auto const it = _current.find(databaseName);
@@ -2084,7 +2081,7 @@ void ClusterInfo::loadCurrent() {
           auto const& cid = ec.first;
           path.emplace_back(cid);
           if (ncs.hasKey(path)) {
-            std::shared_ptr<VPackBuilder> cur;
+            std::shared_ptr<VPackBuilder const> cur;
             {
               READ_LOCKER(guard, _currentProt.lock);
               cur = _current.find(databaseName)->second;
@@ -2125,8 +2122,8 @@ void ClusterInfo::loadCurrent() {
 
         // Now take note of this shard and its responsible server:
         auto const& xx = collectionDataCurrent->servers(shardID);
-        auto servers =
-            allocateShared<ManagedVector<pmr::ServerID>>(xx.begin(), xx.end());
+        auto servers = allocateShared<ManagedVector<pmr::ServerID>>();
+        servers->assign(xx.begin(), xx.end());
         newShardsToCurrentServers.insert_or_assign(std::move(shardID),
                                                    std::move(servers));
       }
@@ -2272,9 +2269,9 @@ std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(
 
       if (it != views.end()) {
         // look up collection by id (or by name)
-        auto it2 = it->second->find(name);
+        auto it2 = it->second.find(name);
 
-        if (it2 != it->second->end()) {
+        if (it2 != it->second.end()) {
           return it2->second;
         }
       }
@@ -2421,7 +2418,7 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
   auto const& viewList = _plannedViews.find(databaseName);
   for (auto const& name : names) {
     if (colList->second->contains(name) ||
-        (viewList != _plannedViews.end() && viewList->second->contains(name))) {
+        (viewList != _plannedViews.end() && viewList->second.contains(name))) {
       // Either a Collection or a view is known with this name. Disallow it.
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                     absl::StrCat("duplicate collection name '", name, "'"));
@@ -2450,9 +2447,9 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(std::string_view databaseID,
     if (db != dbs.end()) {
       // look up view by id (or by name)
       auto& views = db->second;
-      auto const view = views->find(viewID);
+      auto const view = views.find(viewID);
 
-      if (view != views->end()) {
+      if (view != views.end()) {
         return view->second;
       }
     }
@@ -2513,7 +2510,7 @@ std::vector<std::shared_ptr<LogicalView>> ClusterInfo::getViews(
   }
 
   // iterate over all collections
-  for (auto& e : *it->second) {
+  for (auto& e : it->second) {
     char c = e.first[0];
     if (c >= '0' && c <= '9') {
       // skip views indexed by name
@@ -3593,7 +3590,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
     {
       auto it = _plannedViews.find(databaseName);
       if (it != _plannedViews.end()) {
-        if (it->second->contains(name)) {
+        if (it->second.contains(name)) {
           // view already exists!
           events::CreateView(databaseName, name,
                              TRI_ERROR_ARANGO_DUPLICATE_NAME);
@@ -5596,11 +5593,11 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 /// @brief find the shard list of a collection, sorted numerically
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
+std::shared_ptr<std::vector<ShardID> const> ClusterInfo::getShardList(
     std::string_view collectionID) {
   TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
     // Simulate no results
-    return std::make_shared<std::vector<ShardID>>();
+    return std::make_shared<std::vector<ShardID> const>();
   }
 
   {
@@ -5613,7 +5610,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
       return it->second;
     }
   }
-  return std::make_shared<std::vector<ShardID>>();
+  return std::make_shared<std::vector<ShardID> const>();
 }
 
 std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
@@ -5809,7 +5806,8 @@ void ClusterInfo::setShardGroups(
   WRITE_LOCKER(writeLocker, _planProt.lock);
   _shardGroups.clear();
   for (auto const& [k, v] : shardGroups) {
-    auto vv = allocateShared<ManagedVector<pmr::ShardID>>(v->begin(), v->end());
+    auto vv = allocateShared<ManagedVector<pmr::ShardID>>();
+    vv->assign(v->begin(), v->end());
     _shardGroups.emplace(k, std::move(vv));
   }
 }
@@ -5821,7 +5819,8 @@ void ClusterInfo::setShardIds(
   WRITE_LOCKER(writeLocker, _currentProt.lock);
   _shardsToCurrentServers.clear();
   for (auto const& [k, v] : shardIds) {
-    auto vv = allocateShared<ManagedVector<pmr::ShardID>>(v->begin(), v->end());
+    auto vv = allocateShared<ManagedVector<pmr::ShardID>>();
+    vv->assign(v->begin(), v->end());
     _shardsToCurrentServers.emplace(k, std::move(vv));
   }
 }
