@@ -1225,7 +1225,7 @@ class ClusterInfo final {
       _shardsToCurrentServers;  // from Current/Collections/
 
   struct NewStuffByDatabase;
-  FlatMapShared<pmr::DatabaseID, NewStuffByDatabase> _newStuffByDatabase;
+  FlatMapShared<pmr::DatabaseID, NewStuffByDatabase const> _newStuffByDatabase;
 
   using ReplicatedLogsMap =
       FlatMapShared<replication2::LogId,
