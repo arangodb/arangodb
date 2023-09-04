@@ -5,7 +5,7 @@ manifest=arangodb/test-ubuntu
 [ -z "$IMAGE_TAG" ] && ( echo "IMAGE_TAG env variable is not set!"; exit 1 )
 
 echo "Creating docker multiarch manifest \"${manifest}:${IMAGE_TAG}\":"
-docker manifest rm ${manifest}:${IMAGE_TAG}
+set +e; docker manifest rm -f ${manifest}:${IMAGE_TAG} 2>/dev/null; set -e
 docker manifest create ${manifest}:${IMAGE_TAG} \
   --amend ${manifest}:${IMAGE_TAG}-amd64 \
   --amend ${manifest}:${IMAGE_TAG}-arm64 \
