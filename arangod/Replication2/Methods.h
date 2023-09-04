@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/LogEntry.h"
 #include "Replication2/ReplicatedLog/LogPayload.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/StateMachines/BlackHole/BlackHoleStateMachine.h"
 #include "VocBase/vocbase.h"
 
 #include <string>
@@ -172,8 +173,11 @@ auto inspect(Inspector& f, ReplicatedLogMethods::CreateOptions& x) {
       f.field("waitForReady", x.waitForReady).fallback(true),
       f.field("id", x.id), f.field("config", x.config),
       f.field("spec", x.spec)
-          .fallback(agency::ImplementationSpec{.type = "black-hole",
-                                               .parameters = {}}),
+          .fallback(agency::ImplementationSpec{
+              .type =
+                  std::string{
+                      replicated_state::black_hole::BlackHoleState::NAME},
+              .parameters = {}}),
       f.field("leader", x.leader),
       f.field("numberOfServers", x.numberOfServers),
       f.field("servers", x.servers).fallback(std::vector<ParticipantId>{}));
