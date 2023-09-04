@@ -1,11 +1,6 @@
 devel
 -----
 
-* Fixed BTS-1541: Old legacy little endian key format for RocksDB database
-  (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer
-  versions. This fixes a persistent index corruption bug with the old
-  format.
-
 * Fixed BTS-1543:
   - client tools (e.g. arangoexport) don't refuse to start up with the error
     `output directory ... is not empty, use --overwrite true to overwrite the
@@ -23,6 +18,11 @@ devel
     and `http://` than our `ssl://` or `tcp://` endpoints.
     Internally, `https://` will be converted to `ssl://`, and `http://` will
     be converted to `tcp://`.
+
+* Fixed BTS-1541: Old legacy little endian key format for RocksDB database
+  (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer
+  versions. This fixes a persistent index corruption bug with the old
+  format.
 
 * Updated ArangoDB Starter to 0.17.1-preview-1.
 
