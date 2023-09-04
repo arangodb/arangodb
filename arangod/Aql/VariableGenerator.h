@@ -26,6 +26,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 
 #include <functional>
 #include <memory>
@@ -52,7 +53,6 @@ class VariableGenerator {
   /// @brief destroy the generator
   ~VariableGenerator() = default;
 
- public:
   /// @brief visit all variables
   void visit(std::function<void(Variable*)> const&);
 
@@ -101,9 +101,8 @@ class VariableGenerator {
   /// @brief returns the next variable id
   VariableId nextId() noexcept;
 
- private:
   /// @brief all variables created
-  std::unordered_map<VariableId, std::unique_ptr<Variable>> _variables;
+  containers::FlatHashMap<VariableId, std::unique_ptr<Variable>> _variables;
 
   /// @brief the next assigned variable id
   VariableId _id;
