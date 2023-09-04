@@ -1,5 +1,10 @@
 devel
 -----
+    
+* Fixed BTS-1531: Async cancel Job returns different error messages.
+  Unify error messages for canceled jobs (error code 21) to "request canceled".
+  Previously, the server could return different messages, either "request
+  canceled", "request has been canceled by user" or "handler canceled".
 
 * Fixed BTS-1541: Old legacy little endian key format for RocksDB database
   (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer
