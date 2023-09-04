@@ -30,6 +30,7 @@
 #include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Containers/HashSet.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif
@@ -212,7 +213,8 @@ Result fillIndexSingleThreaded(
 }  // namespace arangodb
 
 RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex> wp,
-                                         uint64_t numDocsHint, size_t numTheads)
+                                         uint64_t numDocsHint,
+                                         size_t numThreads)
     : RocksDBIndex{wp->id(), wp->collection(), wp->name(), wp->fields(),
                    wp->unique(), wp->sparse(), wp->columnFamily(),
                    wp->objectId(), /*useCache*/ false,
@@ -228,7 +230,7 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex> wp,
       _numDocsHint{numDocsHint},
       _numThreads{
           numDocsHint > kSingleThreadThreshold
-              ? std::clamp(numTheads, size_t{1}, IndexFactory::kMaxParallelism)
+              ? std::clamp(numThreads, size_t{1}, IndexFactory::kMaxParallelism)
               : size_t{1}} {
   TRI_ASSERT(_wrapped);
 }
@@ -321,6 +323,15 @@ static Result fillIndex(
 
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 #ifdef USE_ENTERPRISE
+  if (arangodb::rocksutils::rocksDBEndianness == RocksDBEndianness::Little &&
+      numThreads > 1) {
+    LOG_TOPIC("e3241", WARN, Logger::ENGINES)
+        << "Number of threads for index generation forced from " << numThreads
+        << " down to 1 since the RocksDB internal data format is still "
+        << "little endian keys!";
+    numThreads = 1;
+  }
+
   IndexFiller indexFiller(isUnique, foreground, numThreads, batched,
                           threadBatchSize, dbOptions, batch, docsProcessed, trx,
                           ridx, snap, rootDB, std::move(it), idxPath,
