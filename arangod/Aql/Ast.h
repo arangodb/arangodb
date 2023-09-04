@@ -42,6 +42,7 @@
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/HashSet.h"
 #include "Graph/PathType.h"
 #include "VocBase/AccessMode.h"
@@ -275,7 +276,8 @@ class Ast {
   AstNode* createNodeReference(Variable const* variable);
 
   /// @brief create an AST subquery reference node
-  AstNode* createNodeSubqueryReference(std::string_view variableName);
+  AstNode* createNodeSubqueryReference(std::string_view variableName,
+                                       AstNode const*);
 
   /// @brief create an AST parameter node for a value literal
   AstNode* createNodeParameter(std::string_view name);
@@ -524,6 +526,8 @@ class Ast {
   /// of the operation is a constant number
   AstNode* optimizeUnaryOperatorArithmetic(AstNode*);
 
+  AstNode const* getSubqueryForVariable(Variable const* variable) const;
+
  private:
   /// @brief make condition from example
   AstNode* makeConditionFromExample(AstNode const*);
@@ -656,8 +660,13 @@ class Ast {
   /// @brief root node of the AST
   AstNode* _root;
 
-  /// @brief root nodes of queries and subqueries
+  /// @brief root nodes of queries and subqueries. this container is added
+  /// to whenever we enter a subquery, but it is removed from when a subquery
+  /// is left
   std::vector<AstNode*> _queries;
+
+  /// @brief all subqueries used in the query
+  containers::FlatHashMap<VariableId, AstNode const*> _subqueries;
 
   /// @brief which collection is going to be modified in the query
   /// maps from NODE_TYPE_COLLECTION/NODE_TYPE_PARAMETER_DATASOURCE to
