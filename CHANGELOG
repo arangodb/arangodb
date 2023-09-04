@@ -6,6 +6,8 @@ devel
   versions. This fixes a persistent index corruption bug with the old
   format.
 
+* Updated ArangoDB Starter to 0.17.1-preview-1.
+
 * Renamed arangodump startup option `--use-experimental-dump` to
        `--parallel-dump`.
 
