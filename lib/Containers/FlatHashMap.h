@@ -53,7 +53,7 @@ template<class K, class V,
          class Allocator =
              typename absl::flat_hash_map<K, V, Hash, Eq>::allocator_type,
          // TODO(MBkkt) After additional benchmarks change Sizeof
-         class = std::enable_if_t<detail::MapSizeofChecker<40, 80, K, V>()>>
+         class = std::enable_if_t<detail::MapSizeofChecker<40, 88, K, V>()>>
 using FlatHashMap = absl::flat_hash_map<K, V, Hash, Eq, Allocator>;
 
 }  // namespace arangodb::containers

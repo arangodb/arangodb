@@ -202,28 +202,30 @@ class ClusterInfo final {
   template<typename K, typename V>
   using FlatMap = containers::FlatHashMap<
       K, V, Hasher, KeyEqual,
-      ClusterInfoResourceAllocator<std::pair<const K, V>>>;
+      ClusterInfoResourceAllocator<std::pair<K const, V>>>;
   template<typename K, typename V>
   using FlatMapShared = containers::FlatHashMap<
       K, std::shared_ptr<V>, Hasher, KeyEqual,
-      ClusterInfoResourceAllocator<std::pair<const K, std::shared_ptr<V>>>>;
-
+      ClusterInfoResourceAllocator<std::pair<K const, std::shared_ptr<V>>>>;
   template<typename K, typename V>
   using AssocMultiMap =
       std::multimap<K, V, KeyEqual,
-                    ClusterInfoResourceAllocator<std::pair<const K, V>>>;
+                    ClusterInfoResourceAllocator<std::pair<K const, V>>>;
 
   template<typename T>
   using ManagedVector = std::vector<T, ClusterInfoResourceAllocator<T>>;
 
   using DatabaseCollections = FlatMap<pmr::CollectionID, CollectionWithHash>;
-  using AllCollections = FlatMapShared<pmr::DatabaseID, DatabaseCollections>;
+  using AllCollections =
+      FlatMapShared<pmr::DatabaseID, DatabaseCollections const>;
 
   using DatabaseCollectionsCurrent =
       FlatMapShared<pmr::CollectionID, CollectionInfoCurrent>;
 
   using DatabaseViews = FlatMapShared<pmr::ViewID, LogicalView>;
-  using AllViews = FlatMapShared<pmr::DatabaseID, DatabaseViews>;
+  // TODO(MBkkt) Now on every loadPlan AllViews copied for every database.
+  //  We can avoid it.
+  using AllViews = FlatMap<pmr::DatabaseID, DatabaseViews>;
 
   class SyncerThread;
 
@@ -825,7 +827,7 @@ class ClusterInfo final {
   /// @brief find the shard list of a collection, sorted numerically
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::vector<ShardID>> getShardList(
+  std::shared_ptr<std::vector<ShardID> const> getShardList(
       std::string_view collectionID);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1137,7 +1139,7 @@ class ClusterInfo final {
                           // above plan version
   uint64_t _planMemoryUsage;  // memory usage of VPack objects inside _plan
 
-  FlatMapShared<pmr::DatabaseID, FlatMap<pmr::ServerID, VPackSlice>>
+  FlatMapShared<pmr::DatabaseID, FlatMap<pmr::ServerID, VPackSlice> const>
       _currentDatabases;  // from Current/Databases
   ProtectionData _currentProt;
   uint64_t _currentVersion;  // This is the version in Current which underlies
@@ -1160,11 +1162,11 @@ class ClusterInfo final {
   AllCollections _plannedCollections;     // from Plan/Collections/
   AllCollections _newPlannedCollections;  // TODO
   // TODO is it ok to don't account value for _shards?
-  FlatMapShared<pmr::CollectionID, std::vector<std::string>>
+  FlatMapShared<pmr::CollectionID, std::vector<std::string> const>
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
   // planned shard => servers map
-  FlatMapShared<pmr::ShardID, ManagedVector<pmr::ServerID>>
+  FlatMapShared<pmr::ShardID, ManagedVector<pmr::ServerID> const>
       _shardsToPlanServers;
   // planned shard ID => collection name
   FlatMap<pmr::ShardID, pmr::CollectionID> _shardToName;
@@ -1211,13 +1213,13 @@ class ClusterInfo final {
                               // execution
 
   // database ID => analyzers revision
-  FlatMap<pmr::DatabaseID, AnalyzersRevision::Ptr>
+  FlatMapShared<pmr::DatabaseID, AnalyzersRevision const>
       _dbAnalyzersRevision;  // from Plan/Analyzers
 
   std::atomic<std::thread::id> _planLoader;  // thread id that is loading plan
 
   // The Current state:
-  FlatMapShared<pmr::DatabaseID, DatabaseCollectionsCurrent>
+  FlatMapShared<pmr::DatabaseID, DatabaseCollectionsCurrent const>
       _currentCollections;  // from Current/Collections/
   FlatMapShared<pmr::ShardID, ManagedVector<pmr::ServerID> const>
       _shardsToCurrentServers;  // from Current/Collections/
