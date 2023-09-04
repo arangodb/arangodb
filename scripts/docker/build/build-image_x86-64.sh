@@ -11,7 +11,7 @@ OPENSSL_VERSION=$(docker run --rm -it $image:latest-$arch sh -c "cat \${OPENSSL_
 
 OS_VERSION=$(docker run --rm -it $image:latest-$arch cat /etc/alpine-release | grep -Po "\d+\.\d+")
 
-IMAGE_TAG=${OS_VERSION}-gcc${GCC_VERSION}-openssl${OPENSSL_VERSION}-$arch
+IMAGE_TAG=${OS_VERSION}-gcc${GCC_VERSION}-openssl${OPENSSL_VERSION}-$(git rev-parse --short HEAD)-$arch
 
 echo "Taging image as \"${IMAGE_TAG}\""
 docker tag $image:latest-$arch $image:${IMAGE_TAG}
