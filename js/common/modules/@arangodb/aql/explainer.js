@@ -1597,7 +1597,7 @@ function processQuery(query, explain, planIndex) {
           if (node.options.order === 'weighted') {
             order += ', weight attribute: ' + node.options.weightAttribute;
           }
-          rc += annotation(' /* order: ' + order + ' /*');
+          rc += annotation(' /* order: ' + order + ' */');
         }
 
         return rc;
