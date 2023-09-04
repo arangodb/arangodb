@@ -94,7 +94,6 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto getInternalLogIterator(
       std::optional<LogRange> bounds = std::nullopt) const
       -> std::unique_ptr<LogIterator> = 0;
-  [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
   [[nodiscard]] virtual auto compact() -> ResultT<CompactionResult> = 0;
 };
 
