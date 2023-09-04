@@ -2,10 +2,10 @@ set -e
 
 manifest=arangodb/build-alpine
 # IMAGE_TAG is set within build-image_*.sh and expected to be equal there
-[ -z "$IMAGE_TAG" ] && echo "IMAGE_TAG env variable is not set!" && exit 1
+[ -z "$IMAGE_TAG" ] && ( echo "IMAGE_TAG env variable is not set!"; exit 1 )
 
 echo "Creating docker multiarch manifest \"${manifest}:${IMAGE_TAG}\":"
-#docker manifest rm ${manifest}:${IMAGE_TAG}
+docker manifest rm ${manifest}:${IMAGE_TAG}
 docker manifest create ${manifest}:${IMAGE_TAG} \
   --amend ${manifest}:${IMAGE_TAG}-amd64 \
   --amend ${manifest}:${IMAGE_TAG}-arm64 \
