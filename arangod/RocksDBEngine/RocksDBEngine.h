@@ -345,10 +345,12 @@ class RocksDBEngine final : public StorageEngine {
   void removeIndexMapping(uint64_t);
 
   // Identifies a collection
-  typedef std::pair<TRI_voc_tick_t, DataSourceId> CollectionPair;
-  typedef std::tuple<TRI_voc_tick_t, DataSourceId, IndexId> IndexTriple;
-  CollectionPair mapObjectToCollection(uint64_t) const;
-  IndexTriple mapObjectToIndex(uint64_t) const;
+  using CollectionPair = std::pair<TRI_voc_tick_t, DataSourceId>;
+  using IndexTriple = std::tuple<TRI_voc_tick_t, DataSourceId, IndexId>;
+  void removeEntriesForDatabase(TRI_voc_tick_t dbid);
+  CollectionPair mapObjectToCollection(uint64_t objectId) const;
+  IndexTriple mapObjectToIndex(uint64_t objectId) const;
+  void removeCollectionMapping(uint64_t objectId);
 
   /// @brief determine how many archived WAL files are available. this is called
   /// during the first few minutes after the instance start, when we don't want
@@ -586,6 +588,7 @@ class RocksDBEngine final : public StorageEngine {
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
 
   mutable basics::ReadWriteLock _mapLock;
+  // object id (of collection) => { database id, data source id }
   std::unordered_map<uint64_t, CollectionPair> _collectionMap;
   std::unordered_map<uint64_t, IndexTriple> _indexMap;
 

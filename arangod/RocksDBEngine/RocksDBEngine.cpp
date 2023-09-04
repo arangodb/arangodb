@@ -2139,10 +2139,7 @@ Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   }
 
   // remove from map
-  {
-    WRITE_LOCKER(guard, _mapLock);
-    _collectionMap.erase(rcoll->objectId());
-  }
+  removeCollectionMapping(rcoll->objectId());
 
   // delete indexes, RocksDBIndex::drop() has its own check
   auto indexes = rcoll->getIndexes();
@@ -2387,10 +2384,45 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
   }
 }
 
+void RocksDBEngine::removeEntriesForDatabase(TRI_voc_tick_t dbid) {
+  WRITE_LOCKER(guard, _mapLock);
+
+  {
+    // scan collections map
+    auto it = _collectionMap.begin();
+    while (it != _collectionMap.end()) {
+      if (it->second.first == dbid) {
+        it = _collectionMap.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  {
+    // scan indexes map
+    auto it = _indexMap.begin();
+    while (it != _indexMap.end()) {
+      if (std::get<0>(it->second) == dbid) {
+        it = _indexMap.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+}
+
+void RocksDBEngine::removeCollectionMapping(uint64_t objectId) {
+  WRITE_LOCKER(guard, _mapLock);
+  _collectionMap.erase(objectId);
+}
+
 std::vector<std::pair<TRI_voc_tick_t, DataSourceId>>
 RocksDBEngine::collectionMappings() const {
   std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> res;
+
   READ_LOCKER(guard, _mapLock);
+  res.reserve(_collectionMap.size());
   for (auto const& it : _collectionMap) {
     res.emplace_back(it.second.first, it.second.second);
   }
@@ -2911,7 +2943,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         }
 
         TRI_ASSERT(it.get(StaticStrings::IndexType).isString());
-        auto type = Index::type(it.get(StaticStrings::IndexType).copyString());
+        auto type = Index::type(it.get(StaticStrings::IndexType).stringView());
         bool unique = basics::VelocyPackHelper::getBooleanValue(
             it, StaticStrings::IndexUnique, false);
 
@@ -2992,13 +3024,16 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (numDocsLeft > 0) {
-    std::string errorMsg(
-        "deletion check in drop database failed - not all documents have been "
-        "deleted. remaining: ");
-    errorMsg.append(std::to_string(numDocsLeft));
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, absl::StrCat("deletion check in drop database "
+                                         "failed - not all documents have been "
+                                         "deleted. remaining: ",
+                                         numDocsLeft));
   }
 #endif
+
+  // delete all entries for database from _collectionMap and _indexMap
+  removeEntriesForDatabase(id);
 
   return res;
 }
