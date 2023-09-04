@@ -502,11 +502,9 @@ RAM than this threshold value are aborted automatically with error 32
                      "transaction, and a new transaction is started.",
                      new UInt64Parameter(&_intermediateCommitCount));
 
-  options
-      ->addOption("--rocksdb.max-parallel-compactions",
-                  "The maximum number of parallel compactions jobs.",
-                  new UInt64Parameter(&_maxParallelCompactions))
-      .setIntroducedIn(30711);
+  options->addOption("--rocksdb.max-parallel-compactions",
+                     "The maximum number of parallel compactions jobs.",
+                     new UInt64Parameter(&_maxParallelCompactions));
 
   options
       ->addOption(
@@ -523,20 +521,17 @@ write-ahead logs to disk is only performed for not-yet synchronized data, and
 only for operations that have been executed without the `waitForSync`
 attribute.)");
 
-  options
-      ->addOption(
-          "--rocksdb.sync-delay-threshold",
-          "The threshold for self-observation of WAL disk syncs "
-          "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
-          "than this threshold triggers a warning ",
-          new UInt64Parameter(&_syncDelayThreshold),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30608)
-      .setIntroducedIn(30705);
+  options->addOption(
+      "--rocksdb.sync-delay-threshold",
+      "The threshold for self-observation of WAL disk syncs "
+      "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
+      "than this threshold triggers a warning ",
+      new UInt64Parameter(&_syncDelayThreshold),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle,
+          arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--rocksdb.wal-file-timeout",
@@ -731,7 +726,6 @@ RocksDB internals and performance.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30604)
       .setDeprecatedIn(31000);
 
   options
@@ -1267,7 +1261,7 @@ void RocksDBEngine::start() {
   _logPersistor = logPersistor;
 
   if (auto* syncer = syncThread(); syncer != nullptr) {
-    syncer->registerSyncListener(logPersistor);
+    syncer->registerSyncListener(std::move(logPersistor));
   } else {
     LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
         << "In replication2 databases, setting waitForSync to false will not "
@@ -1305,6 +1299,24 @@ void RocksDBEngine::start() {
   // metrics are correctly populated once the HTTP interface comes
   // up
   determineWalFilesInitial();
+
+  if (auto endianness = rocksutils::getRocksDBKeyFormatEndianness();
+      endianness == RocksDBEndianness::Little) {
+    LOG_TOPIC("31103", WARN, Logger::ENGINES)
+        << "detected outdated on-disk format with "
+        << rocksDBEndiannessString(endianness)
+        << " endianness from ArangoDB 3.2 or 3.3. Using this on-disk format "
+           "can have a severe impact on write performance. It is recommended "
+           "to move to the "
+        << rocksDBEndiannessString(RocksDBEndianness::Big)
+        << " endian format by performing a full logical dump of the deployment "
+           "using arangodump, and restoring it into a fresh deployment using "
+           "arangorestore. Taking a hot backup and restoring it is not "
+           "sufficient "
+           "to change the on-disk format, only a logical dump and restore into "
+           "a "
+           "fresh deployment will do.";
+  }
 }
 
 void RocksDBEngine::beginShutdown() {

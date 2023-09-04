@@ -931,8 +931,11 @@ bool State::loadPersisted() {
       LOG_TOPIC("1a476", INFO, Logger::AGENCY)
           << "Non matching compaction and log indexes. Dropping both "
              "collections";
-      _log.clear();
-      _cur = 0;
+      {
+        std::lock_guard logLock{_logLock};
+        _log.clear();
+        _cur = 0;
+      }
       dropCollection("log");
       dropCollection("compact");
     }

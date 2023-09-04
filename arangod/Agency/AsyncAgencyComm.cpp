@@ -35,8 +35,8 @@
 #include <chrono>
 #include <string_view>
 
+#include <absl/strings/str_cat.h>
 #include <fuerte/helper.h>
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 
@@ -48,6 +48,11 @@ using namespace std::chrono_literals;
 
 using clock = std::chrono::steady_clock;
 using RequestType = arangodb::AsyncAgencyComm::RequestType;
+
+constexpr std::string_view AGENCY_URL_READ = "/_api/agency/read";
+constexpr std::string_view AGENCY_URL_WRITE = "/_api/agency/write";
+constexpr std::string_view AGENCY_URL_POLL = "/_api/agency/poll";
+constexpr std::string_view AGENCY_URL_TRANSIENT = "/_api/agency/transient";
 
 struct RequestMeta {
   network::Timeout timeout;
@@ -98,15 +103,15 @@ auto agencyAsyncWaitTime(RequestMeta const& meta) {
                       clock::now());
 }
 
-std::string extractEndpointFromUrl(std::string const& location) {
+std::string extractEndpointFromUrl(std::string_view location) {
   std::string specification;
   size_t delim = std::string::npos;
 
   if (location.starts_with("http://")) {
-    specification = "http+tcp://" + location.substr(7);
+    specification = absl::StrCat("http+tcp://", location.substr(7));
     delim = specification.find('/', 12);
   } else if (location.starts_with("https://")) {
-    specification = "http+ssl://" + location.substr(8);
+    specification = absl::StrCat("http+ssl://", location.substr(8));
     delim = specification.find('/', 13);
   }
 
@@ -296,6 +301,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
         network::RequestOptions opts;
         opts.timeout = meta.timeout;
         opts.skipScheduler = meta.skipScheduler;
+        opts.handleContentEncoding = true;
         opts.parameters = meta.params;
 
         auto requestId = meta.requestId;
@@ -447,36 +453,33 @@ futures::Future<consensus::index_t> AsyncAgencyComm::getCurrentCommitIndex()
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& url,
+    arangodb::fuerte::RestVerb method, std::string_view url,
     network::Timeout timeout, RequestType type, uint64_t index) const {
-  std::vector<ClientId> clientIds;
-  return sendWithFailover(method, url + "?index=" + std::to_string(index),
-                          timeout, type, std::move(clientIds),
-                          VPackBuffer<uint8_t>{});
+  return sendWithFailover(method, absl::StrCat(url, "?index=", index), timeout,
+                          type, /*clientIds*/ {}, VPackBuffer<uint8_t>{});
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& url,
+    arangodb::fuerte::RestVerb method, std::string_view url,
     network::Timeout timeout, RequestType type,
     velocypack::Buffer<uint8_t>&& body) const {
-  std::vector<ClientId> clientIds;
-  return sendWithFailover(method, url, timeout, type, std::move(clientIds),
+  return sendWithFailover(method, url, timeout, type, /*clientIds*/ {},
                           std::move(body));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& urlIn,
+    arangodb::fuerte::RestVerb method, std::string_view urlIn,
     network::Timeout timeout, RequestType type, std::vector<ClientId> clientIds,
     velocypack::Buffer<uint8_t>&& body) const {
   uint64_t requestId = _manager.nextRequestId();
 
+  network::Headers headers;
   fuerte::StringMap params;
   std::string url = fuerte::extractPathParameters(urlIn, params);
   return agencyAsyncSend(
              _manager,
              RequestMeta({timeout, method, type, url, std::move(clientIds),
-                          network::Headers{}, std::move(params), clock::now(),
-                          requestId,
+                          headers, std::move(params), clock::now(), requestId,
                           _skipScheduler || _manager.getSkipScheduler(), 0}),
              std::move(body))
       .then([requestId](futures::Try<AsyncAgencyCommResult>&& e) {
@@ -486,7 +489,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
               << "] had exception during request";
           try {
             e.throwIfFailed();
-          } catch (const std::exception& e) {
+          } catch (std::exception const& e) {
             LOG_TOPIC("aac8c", DEBUG, Logger::AGENCYCOMM)
                 << "sendWithFailover [" << requestId
                 << "] message: " << e.what();
@@ -499,7 +502,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& url,
+    arangodb::fuerte::RestVerb method, std::string_view url,
     network::Timeout timeout, RequestType type, std::vector<ClientId> clientIds,
     AgencyTransaction const& trx) const {
   VPackBuffer<uint8_t> body;
@@ -569,11 +572,6 @@ ArangodServer& AsyncAgencyCommManager::server() { return _server; }
 
 AsyncAgencyCommManager::AsyncAgencyCommManager(ArangodServer& server)
     : _server(server) {}
-
-const char* AGENCY_URL_READ = "/_api/agency/read";
-const char* AGENCY_URL_WRITE = "/_api/agency/write";
-const char* AGENCY_URL_POLL = "/_api/agency/poll";
-const char* AGENCY_URL_TRANSIENT = "/_api/agency/transient";
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(
     std::string const& path, std::optional<network::Timeout> timeout) const {

@@ -134,7 +134,7 @@ size_t Collection::responsibleServers(
   return n;
 }
 
-std::string const& Collection::distributeShardsLike() const {
+std::string Collection::distributeShardsLike() const {
   return getCollection()->distributeShardsLike();
 }
 

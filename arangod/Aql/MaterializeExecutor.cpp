@@ -24,170 +24,127 @@
 #include "MaterializeExecutor.h"
 
 #include "Aql/QueryContext.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionCollection.h"
-#include "StorageEngine/TransactionState.h"
 #include "IResearch/IResearchReadUtils.h"
 #include <formats/formats.hpp>
 #include <index/index_reader.hpp>
 #include <search/boolean_filter.hpp>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 template<typename T, bool localDocumentId>
-arangodb::IndexIterator::DocumentCallback
-MaterializeExecutor<T, localDocumentId>::ReadContext::copyDocumentCallback(
-    ReadContext& ctx) {
-  typedef std::function<arangodb::IndexIterator::DocumentCallback(ReadContext&)>
-      CallbackFactory;
-  static CallbackFactory const callbackFactory{[](ReadContext& ctx) {
-    return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-      TRI_ASSERT(ctx._outputRow);
-      TRI_ASSERT(ctx._inputRow);
-      TRI_ASSERT(ctx._inputRow->isInitialized());
-      TRI_ASSERT(ctx._infos);
-      AqlValue a{AqlValueHintSliceCopy(doc)};
-      bool mustDestroy = true;
-      AqlValueGuard guard{a, mustDestroy};
-      ctx._outputRow->moveValueInto(
-          ctx._infos->outputMaterializedDocumentRegId(), *ctx._inputRow, guard);
+MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext(Infos& infos)
+    : infos{&infos} {
+  if constexpr (localDocumentId) {
+    callback = [this](LocalDocumentId /*id*/, VPackSlice doc) {
+      TRI_ASSERT(this->infos);
+      TRI_ASSERT(outputRow);
+      TRI_ASSERT(inputRow);
+      TRI_ASSERT(inputRow->isInitialized());
+      outputRow->moveValueInto(this->infos->outputMaterializedDocumentRegId(),
+                               *inputRow, doc);
       return true;
     };
-  }};
+  }
+}
 
-  return callbackFactory(ctx);
+template<typename T, bool localDocumentId>
+void MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext::
+    moveInto(std::unique_ptr<uint8_t[]> data) {
+  TRI_ASSERT(infos);
+  TRI_ASSERT(outputRow);
+  TRI_ASSERT(inputRow);
+  TRI_ASSERT(inputRow->isInitialized());
+  AqlValue value{std::move(data)};
+  bool mustDestroy = true;
+  AqlValueGuard guard{value, mustDestroy};
+  // TODO(MBkkt) add moveValueInto overload for std::unique_ptr<uint8_t[]>
+  outputRow->moveValueInto(infos->outputMaterializedDocumentRegId(), *inputRow,
+                           guard);
 }
 
 template<typename T, bool localDocumentId>
 MaterializeExecutor<T, localDocumentId>::MaterializeExecutor(
     MaterializeExecutor<T, localDocumentId>::Fetcher& /*fetcher*/, Infos& infos)
-    : _trx(infos.query().newTrxContext()),
-      _readDocumentContext(infos),
-      _infos(infos),
-      _memoryTracker(_infos.query().resourceMonitor()) {
-  if constexpr (isSingleCollection) {
-    _collection = nullptr;
-  }
-}
+    : _buffer{infos.query().resourceMonitor()},
+      _trx{infos.query().newTrxContext()},
+      _readCtx{infos} {}
 
 template<typename T, bool localDocumentId>
-void MaterializeExecutor<T, localDocumentId>::fillBuffer(
-    AqlItemBlockInputRange& inputRange) {
+void MaterializeExecutor<T, localDocumentId>::Buffer::fill(
+    AqlItemBlockInputRange& inputRange, ReadContext& ctx) {
   TRI_ASSERT(!localDocumentId);
-  _bufferedDocs.clear();
+  docs.clear();
+
   auto const block = inputRange.getBlock();
-  if (block == nullptr) {
+  if (ADB_UNLIKELY(block == nullptr)) {
     return;
   }
+
   auto const numRows = block->numRows();
   auto const numDataRows = numRows - block->numShadowRows();
   if (ADB_UNLIKELY(!numDataRows)) {
     return;
   }
-  auto const tracked = _memoryTracker.tracked();
-  auto const required =
-      numDataRows * sizeof(typename decltype(_bufferedDocs)::value_type);
+
+  auto const tracked = scope.tracked();
+  auto const required = numDataRows * (sizeof(Record) + sizeof(void*));
   if (required > tracked) {
-    _memoryTracker.increase(required - tracked);
+    scope.increase(required - tracked);
   }
-  _bufferedDocs.reserve(numDataRows);
-  auto readInputDocs = [numRows, this, &block]<bool HasShadowRows>() {
-    auto searchDocRegId =
-        _readDocumentContext._infos->inputNonMaterializedDocRegId();
-    LogicalCollection const* lastCollection{nullptr};
-    if constexpr (isSingleCollection) {
-      lastCollection = _collection;
-    }
-    auto lastSourceId = DataSourceId::none();
-    for (size_t i = 0; i < numRows; ++i) {
+
+  docs.reserve(numDataRows);
+  irs::ResolveBool(numRows != numDataRows, [&]<bool HasShadowRows>() {
+    auto searchDocRegId = ctx.infos->inputNonMaterializedDocRegId();
+    for (size_t i = 0; i != numRows; ++i) {
       if constexpr (HasShadowRows) {
         if (block->isShadowRow(i)) {
           continue;
         }
       }
-      auto const buf =
-          block->getValueReference(i, searchDocRegId).slice().stringView();
-      auto searchDoc = iresearch::SearchDoc::decode(buf);
-      if constexpr (!isSingleCollection) {
-        auto docSourceId = std::get<0>(*searchDoc.segment());
-        if (docSourceId != lastSourceId) {
-          lastSourceId = docSourceId;
-          auto cachedCollection = _collection.find(docSourceId);
-          if (cachedCollection == _collection.end()) {
-            auto transactionCollection =
-                _trx.state()->collection(std::get<0>(*searchDoc.segment()),
-                                         arangodb::AccessMode::Type::READ);
-            if (ADB_LIKELY(transactionCollection)) {
-              lastCollection =
-                  _collection
-                      .emplace(docSourceId,
-                               transactionCollection->collection().get())
-                      .first->second;
-            } else {
-              lastCollection = nullptr;
-            }
-
-          } else {
-            lastCollection = cachedCollection->second;
-          }
-        }
-      }
-      if (ADB_LIKELY(lastCollection)) {
-        _bufferedDocs.push_back(
-            std::make_tuple(searchDoc, LocalDocumentId{}, lastCollection));
-      }
+      auto const buf = block->getValueReference(i, searchDocRegId).slice();
+      docs.emplace_back(iresearch::SearchDoc::decode(buf.stringView()));
     }
-  };
+  });
 
-  if (block->hasShadowRows()) {
-    readInputDocs.template operator()<true>();
-  } else {
-    readInputDocs.template operator()<false>();
+  order.resize(numDataRows);
+  for (auto* data = order.data(); auto& doc : docs) {
+    *data++ = &doc;
   }
-  std::vector<size_t> readOrder(_bufferedDocs.size(), 0);
-  std::iota(readOrder.begin(), readOrder.end(), 0);
-  std::sort(std::begin(readOrder), std::end(readOrder),
-            [&](auto& lhs, auto& rhs) {
-              return std::get<0>(_bufferedDocs[lhs]) <
-                     std::get<0>(_bufferedDocs[rhs]);
-            });
-  iresearch::ViewSegment const* lastSegment{nullptr};
-  irs::doc_iterator::ptr pkReader;
-  irs::payload const* docValue{nullptr};
-  LocalDocumentId documentId;
-  auto doc = readOrder.begin();
-  auto end = readOrder.end();
-  while (doc != end) {
-    TRI_ASSERT(*doc < _bufferedDocs.size());
-    auto& document = _bufferedDocs[*doc];
-    auto& searchDoc = std::get<0>(document);
-    TRI_ASSERT(searchDoc.isValid());
-    if (lastSegment != searchDoc.segment()) {
-      lastSegment = searchDoc.segment();
-      pkReader = iresearch::pkColumn(*std::get<1>(*lastSegment));
-      if (ADB_LIKELY(pkReader)) {
-        docValue = irs::get<irs::payload>(*pkReader);
-      } else {
-        // skip segment without PK column
-        do {
-          ++doc;
-        } while (doc != end &&
-                 lastSegment == std::get<0>(_bufferedDocs[*doc]).segment());
-        continue;
+  std::sort(order.begin(), order.end(), [](const auto* lhs, const auto* rhs) {
+    auto* lhs_segment = lhs->segment;
+    auto* rhs_segment = rhs->segment;
+    if (lhs_segment != rhs_segment) {
+      return lhs_segment < rhs_segment;
+    }
+    return lhs->search < rhs->search;
+  });
+
+  iresearch::ViewSegment const* lastSegment{};
+  irs::doc_iterator::ptr pkColumn;
+  irs::payload const* pkPayload{};
+  for (auto* doc : order) {
+    auto const search = doc->search;
+    doc->storage = {};
+    if (lastSegment != doc->segment) {
+      pkColumn = iresearch::pkColumn(*doc->segment->segment);
+      if (ADB_UNLIKELY(!pkColumn)) {
+        continue;  // TODO(MBkkt) assert?
       }
+      pkPayload = irs::get<irs::payload>(*pkColumn);
+      TRI_ASSERT(pkPayload);
+      lastSegment = doc->segment;
     }
-    TRI_ASSERT(docValue);
-    if (const auto doc = std::get<0>(document).doc();
-        doc == pkReader->seek(doc)) {
-      arangodb::iresearch::DocumentPrimaryKey::read(documentId,
-                                                    docValue->value);
-      std::get<1>(document) = documentId;
+    if (ADB_UNLIKELY(pkColumn->seek(search) != search)) {
+      continue;  // TODO(MBkkt) assert?
     }
-    ++doc;
+    TRI_ASSERT(pkPayload);
+    iresearch::DocumentPrimaryKey::read(doc->storage, pkPayload->value);
   }
 }
 
@@ -199,37 +156,72 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
 
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
-
-  if constexpr (isSingleCollection) {
-    if (_collection == nullptr) {
-      _collection = _trx.documentCollection(
-          _readDocumentContext._infos->collectionSource());
+  if constexpr (localDocumentId) {
+    if (!_collection) {
+      _collection = _trx.documentCollection(_readCtx.infos->collectionSource())
+                        ->getPhysical();
+      TRI_ASSERT(_collection);
     }
-    TRI_ASSERT(_collection != nullptr);
-  }
-
-  if constexpr (!localDocumentId) {
+  } else {
     // buffering all LocalDocumentIds to avoid memory ping-pong
     // between iresearch and storage engine
-    fillBuffer(inputRange);
+    _buffer.fill(inputRange, _readCtx);
+    auto it = _buffer.order.begin();
+    auto end = _buffer.order.end();
+    // We cannot call MultiGet from different snapshots
+    std::sort(it, end, [](const auto& lhs, const auto& rhs) {
+      return lhs->segment->snapshot < rhs->segment->snapshot;
+    });
+    StorageSnapshot const* lastSnapshot{};
+    auto fillKeys = [&] {
+      if (it == end) {
+        return MultiGetState::kLast;
+      }
+      auto const* snapshot = (*it)->segment->snapshot;
+      if (lastSnapshot != snapshot) {
+        lastSnapshot = snapshot;
+        return MultiGetState::kWork;
+      }
+      _getCtx.snapshot = snapshot;
+
+      auto doc = it++;
+      auto const storage = (*doc)->storage;
+      if (ADB_UNLIKELY(!storage.isSet())) {
+        (*doc)->executor = std::numeric_limits<size_t>::max();
+        return MultiGetState::kNext;
+      }
+
+      auto& logical = *(*doc)->segment->collection;
+      (*doc)->executor = _getCtx.serialize(_trx, logical, storage);
+
+      return MultiGetState::kNext;
+    };
+    _getCtx.multiGet(_buffer.order.size(), fillKeys);
   }
-  auto doc = _bufferedDocs.begin();
-  auto end = _bufferedDocs.end();
-  auto& callback = _readDocumentContext._callback;
-  auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
+  auto [it, end] = [&] {
+    if constexpr (localDocumentId) {
+      return std::pair{nullptr, nullptr};
+    } else {
+      return std::pair{_buffer.docs.begin(), _buffer.docs.end()};
+    }
+  }();
+  auto& callback = _readCtx.callback;
+  auto docRegId = _readCtx.infos->inputNonMaterializedDocRegId();
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool written = false;
     auto const [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    _readDocumentContext._inputRow = &input;
-    _readDocumentContext._outputRow = &output;
+    _readCtx.inputRow = &input;
+    _readCtx.outputRow = &output;
 
     TRI_IF_FAILURE("MaterializeExecutor::all_fail_and_count") {
       stats.incrFiltered();
       continue;
     }
 
-    TRI_IF_FAILURE("MaterializeExecutor::all_fail") { continue; }
+    TRI_IF_FAILURE("MaterializeExecutor::all_fail") {
+      continue;  //
+    }
 
     TRI_IF_FAILURE("MaterializeExecutor::only_one") {
       if (output.numRowsWritten() > 0) {
@@ -238,39 +230,23 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
     }
 
     if constexpr (localDocumentId) {
-      // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
-      TRI_ASSERT(isSingleCollection);
-      if constexpr (isSingleCollection) {
-        written =
-            _collection->getPhysical()
-                ->read(
-                    &_trx,
-                    LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
-                    callback, ReadOwnWrites::no)
-                .ok();
-      }
-    } else {
-      if (doc != end) {
-        auto const& documentId = std::get<1>(*doc);
-        if (documentId.isSet()) {
-          auto collection = std::get<2>(*doc);
-          TRI_ASSERT(collection);
-          // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
-          written = collection->getPhysical()
-                        ->readFromSnapshot(
-                            &_trx, documentId, callback, ReadOwnWrites::no,
-                            std::get<2>(*std::get<0>(*doc).segment()))
-                        .ok();
+      static_assert(isSingleCollection);
+      LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
+      written = _collection->read(&_trx, id, callback, ReadOwnWrites::no).ok();
+    } else if (it != end) {
+      if (it->executor != kInvalidRecord) {
+        if (auto& value = _getCtx.values[it->executor]; value) {
+          _readCtx.moveInto(std::move(value));
+          written = true;
         }
-        ++doc;
       }
+      ++it;
     }
+
     if (written) {
-      // document found
-      output.advanceRow();
+      output.advanceRow();  // document found
     } else {
-      // document not found
-      stats.incrFiltered();
+      stats.incrFiltered();  // document not found
     }
   }
 
@@ -299,9 +275,11 @@ MaterializeExecutor<T, localDocumentId>::skipRowsRange(
   return {inputRange.upstreamState(), MaterializeStats{}, skipped, call};
 }
 
-template class arangodb::aql::MaterializeExecutor<void, false>;
-template class arangodb::aql::MaterializeExecutor<std::string const&, true>;
-template class arangodb::aql::MaterializeExecutor<std::string const&, false>;
+template class MaterializeExecutor<void, false>;
+template class MaterializeExecutor<std::string const&, false>;
+template class MaterializeExecutor<std::string const&, true>;
 
-template class arangodb::aql::MaterializerExecutorInfos<void>;
-template class arangodb::aql::MaterializerExecutorInfos<std::string const&>;
+template class MaterializerExecutorInfos<void>;
+template class MaterializerExecutorInfos<std::string const&>;
+
+}  // namespace arangodb::aql

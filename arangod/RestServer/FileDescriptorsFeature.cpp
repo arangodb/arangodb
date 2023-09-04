@@ -24,6 +24,7 @@
 #include "FileDescriptorsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileDescriptors.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
@@ -40,6 +41,8 @@
 #ifdef TRI_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
+
+#include <absl/strings/str_cat.h>
 
 #include <algorithm>
 #include <cstdlib>
@@ -60,68 +63,6 @@ DECLARE_GAUGE(
     "Limit for the number of open file descriptors for the arangod process");
 
 namespace arangodb {
-
-struct FileDescriptors {
-  static constexpr rlim_t requiredMinimum = 1024;
-
-  rlim_t hard;
-  rlim_t soft;
-
-  static FileDescriptors load() {
-    struct rlimit rlim;
-    int res = getrlimit(RLIMIT_NOFILE, &rlim);
-
-    if (res != 0) {
-      LOG_TOPIC("17d7b", FATAL, Logger::SYSCALL)
-          << "cannot get the file descriptors limit value: " << strerror(errno);
-      FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
-    }
-
-    return {rlim.rlim_max, rlim.rlim_cur};
-  }
-
-  int store() {
-    struct rlimit rlim;
-    rlim.rlim_max = hard;
-    rlim.rlim_cur = soft;
-
-    return setrlimit(RLIMIT_NOFILE, &rlim);
-  }
-
-  static rlim_t recommendedMinimum() {
-    // check if we are running under Valgrind...
-    char const* v = getenv("LD_PRELOAD");
-    if (v != nullptr && (strstr(v, "/valgrind/") != nullptr ||
-                         strstr(v, "/vgpreload") != nullptr)) {
-      // valgrind will somehow reset the ulimit values to some very low values.
-      return requiredMinimum;
-    }
-
-#ifdef __APPLE__
-    // some MacOS versions disallow raising file descriptor limits higher than
-    // this 🙄
-    return 8192;
-#else
-    // on Linux, we will also use 8192 for now. this should be low enough so
-    // that it doesn't cause too much trouble when upgrading. however, this is
-    // not a high enough value to operate with larger amounts of data! it is a
-    // MINIMUM!
-    return 8192;
-#endif
-  }
-
-  static bool isUnlimited(rlim_t value) {
-    auto max = std::numeric_limits<decltype(value)>::max();
-    return (value == max || value == max / 2);
-  }
-
-  static std::string stringify(rlim_t value) {
-    if (isUnlimited(value)) {
-      return "unlimited";
-    }
-    return std::to_string(value);
-  }
-};
 
 FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
     : ArangodFeature{server, *this},
@@ -166,11 +107,11 @@ void FileDescriptorsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> /*options*/) {
   if (_descriptorsMinimum > 0 &&
       (_descriptorsMinimum < FileDescriptors::requiredMinimum ||
-       _descriptorsMinimum > std::numeric_limits<rlim_t>::max())) {
+       _descriptorsMinimum > FileDescriptors::maximumValue)) {
     LOG_TOPIC("7e15c", FATAL, Logger::STARTUP)
         << "invalid value for --server.descriptors-minimum. must be between "
         << FileDescriptors::requiredMinimum << " and "
-        << std::numeric_limits<rlim_t>::max();
+        << FileDescriptors::maximumValue;
     FATAL_ERROR_EXIT();
   }
 
@@ -185,9 +126,19 @@ void FileDescriptorsFeature::validateOptions(
 }
 
 void FileDescriptorsFeature::prepare() {
-  adjustFileDescriptors();
+  if (Result res = FileDescriptors::adjustTo(
+          static_cast<FileDescriptors::ValueType>(_descriptorsMinimum));
+      res.fail()) {
+    LOG_TOPIC("97831", FATAL, Logger::SYSCALL) << res;
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
+  }
 
-  FileDescriptors current = FileDescriptors::load();
+  FileDescriptors current;
+  if (Result res = FileDescriptors::load(current); res.fail()) {
+    LOG_TOPIC("17d7b", FATAL, Logger::SYSCALL)
+        << "cannot get the file descriptors limit value: " << res;
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
+  }
 
   _fileDescriptorsLimit.store(current.soft, std::memory_order_relaxed);
 
@@ -196,21 +147,21 @@ void FileDescriptorsFeature::prepare() {
       << FileDescriptors::stringify(current.hard) << ", soft limit is "
       << FileDescriptors::stringify(current.soft);
 
-  rlim_t const required =
-      std::max<rlim_t>(static_cast<rlim_t>(_descriptorsMinimum),
-                       FileDescriptors::requiredMinimum);
+  auto required =
+      std::max(static_cast<FileDescriptors::ValueType>(_descriptorsMinimum),
+               FileDescriptors::requiredMinimum);
 
   if (current.soft < required) {
-    std::stringstream s;
-    s << "file-descriptors (nofiles) soft limit is too low, currently "
-      << FileDescriptors::stringify(current.soft)
-      << ". please raise to at least " << required << " (e.g. via ulimit -n "
-      << required << ") or"
-      << " adjust the value of the startup option --server.descriptors-minimum";
+    auto message = absl::StrCat(
+        "file-descriptors (nofiles) soft limit is too low, currently ",
+        FileDescriptors::stringify(current.soft), ". please raise to at least ",
+        required, " (e.g. via ulimit -n ", required,
+        ") or adjust the value of the startup option "
+        "--server.descriptors-minimum");
     if (_descriptorsMinimum == 0) {
-      LOG_TOPIC("a33ba", WARN, Logger::SYSCALL) << s.str();
+      LOG_TOPIC("a33ba", WARN, Logger::SYSCALL) << message;
     } else {
-      LOG_TOPIC("8c771", FATAL, Logger::SYSCALL) << s.str();
+      LOG_TOPIC("8c771", FATAL, Logger::SYSCALL) << message;
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
     }
   }
@@ -249,70 +200,6 @@ void FileDescriptorsFeature::countOpenFilesIfNeeded() {
     _lastCountStamp = now;
   }
 }
-
-void FileDescriptorsFeature::adjustFileDescriptors() {
-  auto doAdjust = [](rlim_t recommended) {
-    FileDescriptors current = FileDescriptors::load();
-
-    LOG_TOPIC("6762c", DEBUG, Logger::SYSCALL)
-        << "file-descriptors (nofiles) hard limit is "
-        << FileDescriptors::stringify(current.hard) << ", soft limit is "
-        << FileDescriptors::stringify(current.soft);
-
-    if (recommended > 0) {
-      if (current.hard < recommended) {
-        LOG_TOPIC("0835c", DEBUG, Logger::SYSCALL)
-            << "hard limit " << current.hard
-            << " is too small, trying to raise";
-
-        FileDescriptors copy = current;
-        copy.hard = recommended;
-        if (copy.store() == 0) {
-          // value adjusted successfully
-          current.hard = recommended;
-        }
-      } else {
-        TRI_ASSERT(current.hard >= recommended);
-        recommended = current.hard;
-      }
-
-#ifdef __APPLE__
-      // For MacOs there is an upper bound on open file-handles
-      // in addition to the user defined hard limit.
-      // The bad news is that the user-defined hard limit can be larger
-      // than the upper bound, in this case the below setting of soft limit
-      // to hard limit will always fail. With the below line we only set
-      // to at most the upper bound given by the System (OPEN_MAX).
-      recommended = std::min((rlim_t)OPEN_MAX, recommended);
-#endif
-      if (current.soft < recommended) {
-        LOG_TOPIC("2940e", DEBUG, Logger::SYSCALL)
-            << "soft limit " << current.soft
-            << " is too small, trying to raise";
-
-        FileDescriptors copy = current;
-        copy.soft = recommended;
-        if (copy.store() != 0) {
-          LOG_TOPIC("ba733", WARN, Logger::SYSCALL)
-              << "cannot raise the file descriptors limit to " << recommended
-              << ": " << strerror(errno);
-        }
-      }
-    }
-  };
-
-  // first try to raise file descriptors to at least the recommended minimum
-  // value. as the recommended minimum value is pretty low, there is a high
-  // chance that this actually succeeds and does not violate any hard limits
-  doAdjust(std::max<rlim_t>(static_cast<rlim_t>(_descriptorsMinimum),
-                            FileDescriptors::recommendedMinimum()));
-
-  // still, we are not satisfied and will now try to raise the file descriptors
-  // limit even further. if that fails, then it is at least likely that the
-  // small raise in step 1 has worked.
-  doAdjust(65535);
-}
-
 }  // namespace arangodb
 
 #endif

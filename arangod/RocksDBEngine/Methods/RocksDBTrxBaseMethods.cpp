@@ -574,15 +574,29 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
   return {};
 }
 
-rocksdb::Status RocksDBTrxBaseMethods::GetFromSnapshot(
-    rocksdb::ColumnFamilyHandle* family, rocksdb::Slice const& slice,
-    rocksdb::PinnableSlice* pinnable, ReadOwnWrites rw,
-    rocksdb::Snapshot const* snapshot) {
-  auto oldSnapshot = _readOptions.snapshot;
-  auto restoreSnapshot = absl::Cleanup{
-      [oldSnapshot, this]() { _readOptions.snapshot = oldSnapshot; }};
+rocksdb::Status RocksDBTrxBaseMethods::SingleGet(
+    rocksdb::Snapshot const* snapshot, rocksdb::ColumnFamilyHandle& family,
+    rocksdb::Slice const& key, rocksdb::PinnableSlice& value) {
+  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
+    _readOptions.snapshot = was;
+  };
   _readOptions.snapshot = snapshot;
-  return Get(family, slice, pinnable, rw);
+
+  return _db->Get(_readOptions, &family, key, &value);
+}
+
+void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
+                                     rocksdb::ColumnFamilyHandle& family,
+                                     size_t count, rocksdb::Slice const* keys,
+                                     rocksdb::PinnableSlice* values,
+                                     rocksdb::Status* statuses) {
+  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
+    _readOptions.snapshot = was;
+  };
+  _readOptions.snapshot = snapshot;
+
+  // Timestamps and multiple ColumnFamilies are not necessary for us
+  _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
 }
 
 size_t RocksDBTrxBaseMethods::indexingOverhead(size_t keySize) const noexcept {

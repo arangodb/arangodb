@@ -685,8 +685,6 @@ server statistics at `/_admin/statistics` returns HTTP 404.)");
                   new BooleanParameter(&_statisticsHistory),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Dynamic))
-      .setIntroducedIn(30409)
-      .setIntroducedIn(30501)
       .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
 statistics gathering is turned off. Statistics gathering causes regular
 background CPU activity, memory usage, and writes to the storage engine, so
