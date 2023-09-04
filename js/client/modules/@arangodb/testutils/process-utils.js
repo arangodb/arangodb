@@ -522,6 +522,58 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false
   return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
 }
 
+function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
+  let args = Object.assign(makeArgsArangosh(options), {
+    'server.endpoint': instanceManager.findEndpoint(),
+    'log.file': logFile,
+    'log.level': ['warning', 'httpclient=debug', 'V8=debug'],
+    'javascript.execute': [
+        fs.join(options.rtasource, 'test_data', 'makedata.js'),
+        fs.join(options.rtasource, 'test_data', 'checkdata.js'),
+        fs.join(options.rtasource, 'test_data', 'cleardata.js')
+    ][writeReadClean],
+    'server.force-json': options.forceJson,
+  });
+  if (addArgs !== undefined) {
+    args = Object.assign(args, addArgs);
+  }
+  let argv = toArgv(args);
+  argv = argv.concat(['--',
+                      '--minReplicationFactor', '2',
+                      '--progress', 'true',
+                      '--oldVersion', require('internal').db._version()
+                     ], moreargv);
+  if (options.hasOwnProperty('makedata_args')) {
+    argv = argv.concat(toArgv(options['makedata_args']));
+  }
+  print('\n' + (new Date()).toISOString() + GREEN + " [============] Makedata : Trying " +
+        args['javascript.execute'] + '\n ' + msg + ' ... ', RESET);
+  if (options.extremeVerbosity !== 'silence') {
+    print(argv);
+  }
+  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck);
+}
+function rtaWaitShardsInSync(options, instanceManager) {
+  let args = Object.assign(makeArgsArangosh(options), {
+    'server.endpoint': instanceManager.findEndpoint(),
+    'log.file': fs.join(fs.getTempPath(), `rta_wait_for_shards_in_sync.log`),
+    'log.level': ['warning', 'httpclient=debug', 'V8=debug'],
+    'server.force-json': options.forceJson,
+    'javascript.execute': fs.join(options.rtasource, 'test_data','run_in_arangosh.js'),
+  });
+  let myargs = toArgv(args).concat([
+    '--javascript.module-directory',
+    fs.join(options.rtasource, 'test_data'),
+    '--',
+    fs.join(options.rtasource, 'test_data', 'tests', 'js', 'server', 'cluster', 'wait_for_shards_in_sync.js'),
+    '--args',
+    'true'
+  ]);
+  if (options.extremeVerbosity !== 'silence') {
+    print(myargs);
+  }
+  let rc = executeAndWait(ARANGOSH_BIN, myargs, options, 'arangosh', instanceManager.rootDir, options.coreCheck);
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangoimport
 // //////////////////////////////////////////////////////////////////////////////
@@ -910,7 +962,9 @@ exports.run = {
   arangoDumpRestore: runArangoDumpRestore,
   arangoDumpRestoreWithConfig: runArangoDumpRestoreCfg,
   arangoBenchmark: runArangoBenchmark,
-  arangoBackup: runArangoBackup
+  arangoBackup: runArangoBackup,
+  rtaWaitShardsInSync: rtaWaitShardsInSync,
+  rtaMakedata: rtaMakedata
 };
 
 exports.executableExt = executableExt;
