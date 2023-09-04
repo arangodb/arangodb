@@ -380,7 +380,7 @@ auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
         // as we are iterating over the target collections.
         // Nevertheless, handle this gratefully here
         if (ADB_LIKELY(it != group.targetCollections.end())) {
-          if(it->second.immutableProperties.shadowCollections.has_value()) {
+          if (it->second.immutableProperties.shadowCollections.has_value()) {
             // This Collection is virtual and does not need to be in current
             // Go to next collection.
             continue;

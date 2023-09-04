@@ -170,8 +170,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
 ShardingInfo::ShardingInfo(
     arangodb::replication2::agency::CollectionGroupPlanSpecification const&
         spec,
-    arangodb::velocypack::Slice info,
-    LogicalCollection* collection)
+    arangodb::velocypack::Slice info, LogicalCollection* collection)
     : _collection(collection),
       _numberOfShards(spec.attributes.immutableAttributes.numberOfShards),
       _replicationFactor(spec.attributes.mutableAttributes.replicationFactor),

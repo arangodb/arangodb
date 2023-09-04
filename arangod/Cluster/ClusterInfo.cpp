@@ -1657,10 +1657,8 @@ void ClusterInfo::loadPlan() {
               StaticStrings::ReplicationFactor,
               group->attributes.mutableAttributes.replicationFactor);
           if (collectionId != group->groupLeader) {
-            newSliceBuilder.add(
-               StaticStrings::DistributeShardsLike,
-                group->groupLeader
-            );
+            newSliceBuilder.add(StaticStrings::DistributeShardsLike,
+                                group->groupLeader);
           }
         }
         collectionSlice = newSliceBuilder.slice();
