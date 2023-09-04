@@ -83,7 +83,7 @@ TraverserEngineShardLists::TraverserEngineShardLists(
 std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
     containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
     ServerID const& server,
-    std::shared_ptr<std::vector<std::string>> const& shardIds,
+    std::shared_ptr<std::vector<std::string> const> const& shardIds,
     bool allowReadFromFollower) {
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {
