@@ -603,10 +603,6 @@ function RestoreCollectionsSuite() {
     },
 
     testShadowCollections: function () {
-      if (db._properties().replicationVersion == "2") {
-        assertTrue(false, `This test triggers a known deadlock in Replication2. This is under investigation.`);
-      }
-
       const res = tryRestore({name: collname, shadowCollections: ["123", "456", "789"]});
       try {
         assertTrue(res.result, `Result: ${JSON.stringify(res)}`);

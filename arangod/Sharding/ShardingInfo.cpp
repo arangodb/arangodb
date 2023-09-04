@@ -167,54 +167,6 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
-ShardingInfo::ShardingInfo(
-    arangodb::replication2::agency::CollectionGroupPlanSpecification const&
-        spec,
-    arangodb::velocypack::Slice info, LogicalCollection* collection)
-    : _collection(collection),
-      _numberOfShards(spec.attributes.immutableAttributes.numberOfShards),
-      _replicationFactor(spec.attributes.mutableAttributes.replicationFactor),
-      _writeConcern(spec.attributes.mutableAttributes.writeConcern),
-      _distributeShardsLike(spec.groupLeader),
-      _shardIds(std::make_shared<ShardMap>()) {
-  auto res = extractShardKeys(info, _replicationFactor, _shardKeys);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  auto shardsSlice = info.get("shards");
-  if (shardsSlice.isObject()) {
-    for (auto const& shardSlice : VPackObjectIterator(shardsSlice)) {
-      if (shardSlice.key.isString() && shardSlice.value.isArray()) {
-        ShardID shard = shardSlice.key.copyString();
-
-        std::vector<ServerID> servers;
-        for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
-          servers.push_back(serverSlice.copyString());
-        }
-        _shardIds->try_emplace(shard, servers);
-      }
-    }
-  }
-
-  // set the sharding strategy
-
-  auto& server = _collection->vocbase().server();
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  auto const& engineSelection =
-      server.getFeature<arangodb::EngineSelectorFeature>();
-  if (!ServerState::instance()->isRunningInCluster() &&
-      engineSelection.engineName() == "Mock") {
-    // shortcut, so we do not need to set up the whole application
-    // server for testing
-    _shardingStrategy = std::make_unique<ShardingStrategyNone>();
-    return;
-  }
-#endif
-  _shardingStrategy =
-      server.getFeature<ShardingFeature>().fromVelocyPack(info, this);
-  TRI_ASSERT(_shardingStrategy != nullptr);
-}
-
 ShardingInfo::ShardingInfo(ShardingInfo const& other,
                            LogicalCollection* collection)
     : _collection(collection),

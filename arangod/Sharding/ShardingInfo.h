@@ -44,10 +44,6 @@ namespace application_features {
 class ApplicationServer;
 }
 
-namespace replication2::agency {
-struct CollectionGroupPlanSpecification;
-}
-
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
@@ -56,11 +52,6 @@ class ShardingInfo {
  public:
   ShardingInfo() = delete;
   ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection);
-  ShardingInfo(
-      arangodb::replication2::agency::CollectionGroupPlanSpecification const&
-          spec,
-      arangodb::velocypack::Slice collectionInfo,
-      LogicalCollection* collection);
   ShardingInfo(ShardingInfo const& other, LogicalCollection* collection);
   ShardingInfo& operator=(ShardingInfo const& other) = delete;
   ~ShardingInfo();
