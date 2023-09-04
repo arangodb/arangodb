@@ -7,7 +7,7 @@ docker build --platform linux/$arch -t $image:latest-$arch --file arangodb-build
 
 GCC_VERSION=$(docker run --rm -it $image:latest-$arch g++ "--version" | grep -Po " \K\d+\.\d+(?=\.\d+ )")
 
-OPENSSL_VERSION=$(docker run --rm -it $image:latest-$arch sh -c "cat \${OPENSSL_ROOT_DIR}/lib64/pkgconfig/openssl.pc" | grep -Po "Version: \K\d+\.\d+\.\d+")
+OPENSSL_VERSION=$(docker run --rm -it $image:latest-$arch sh -c "cat \${OPENSSL_ROOT_DIR}/lib/pkgconfig/openssl.pc" | grep -Po "Version: \K\d+\.\d+\.\d+")
 
 OS_VERSION=$(docker run --rm -it $image:latest-$arch cat /etc/alpine-release | grep -Po "\d+\.\d+")
 
