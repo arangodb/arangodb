@@ -25,6 +25,7 @@
 #include "DumpFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/Exceptions.h"
@@ -55,6 +56,7 @@
 
 #include <chrono>
 #include <thread>
+#include <unordered_map>
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Collection.h>
@@ -83,7 +85,7 @@ std::string serverLabel(std::string const& server) {
   return absl::StrCat(" on server '", server, "'");
 }
 
-constexpr std::string_view getSuffix(bool useVPack) noexcept {
+constexpr std::string_view getDatafileSuffix(bool useVPack) noexcept {
   std::string_view suffix("json");
   if (useVPack) {
     suffix = "vpack";
@@ -647,7 +649,7 @@ Result DumpFeature::DumpCollectionJob::run(
     // always create the file so that arangorestore does not complain
     auto file = directory.writableFile(
         absl::StrCat(escapedName, "_", hexString, ".data.",
-                     ::getSuffix(options.useVPack)),
+                     ::getDatafileSuffix(options.useVPack)),
         true /*overwrite*/, 0, true /*gzipOk*/);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
@@ -724,8 +726,8 @@ Result DumpFeature::DumpShardJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
   if (options.progress) {
     LOG_TOPIC("a27be", INFO, arangodb::Logger::DUMP)
-        << "# Dumping shard '" << shardName << "' from DBserver '" << server
-        << "' ...";
+        << "# Dumping shard '" << shardName << "' of collection '"
+        << collectionName << "' from DBserver '" << server << "'...";
   }
 
   // make sure we have a batch on this dbserver
@@ -746,6 +748,7 @@ DumpFeature::DumpFeature(Server& server, int& exitCode)
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
   setOptional(false);
+  startsAfter<BumpFileDescriptorsFeature>();
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
   using arangodb::basics::FileUtils::buildFilename;
@@ -1658,13 +1661,27 @@ void DumpFeature::ParallelDumpServer::finishDumpContext(
 Result DumpFeature::ParallelDumpServer::run(
     httpclient::SimpleHttpClient& client) {
   LOG_TOPIC("23f92", INFO, Logger::DUMP)
-      << "preparing data stream" << serverLabel(server);
+      << "preparing data stream" << serverLabel(server) << ", using "
+      << options.dbserverWorkerThreads << " DBServer worker thread(s), "
+      << options.localNetworkThreads << " network thread(s), "
+      << options.localWriterThreads
+      << " local writer thread(s), number of prefetch batches: "
+      << options.dbserverPrefetchBatches;
 
   // create context on dbserver
   createDumpContext(client);
 
-  // start n network threads
   std::vector<std::thread> threads;
+
+  auto threadGuard = scopeGuard([&threads]() noexcept {
+    // on our way out, we wait for all threads to join
+    for (auto& thrd : threads) {
+      thrd.join();
+    }
+    threads.clear();
+  });
+
+  // start n network threads
   for (size_t i = 0; i < options.localNetworkThreads; i++) {
     threads.emplace_back([&, i, guard = BoundedChannelProducerGuard{queue}] {
       runNetworkThread(i);
@@ -1676,11 +1693,7 @@ Result DumpFeature::ParallelDumpServer::run(
     threads.emplace_back(&ParallelDumpServer::runWriterThread, this);
   }
 
-  // on our way out, we wait for all threads to join
-  for (auto& thrd : threads) {
-    thrd.join();
-  }
-  threads.clear();
+  threadGuard.fire();
 
   // remove dump context from server - get a new client because the old might
   // already be disconnected.
@@ -1690,7 +1703,7 @@ Result DumpFeature::ParallelDumpServer::run(
 
   LOG_TOPIC("1b7fe", INFO, Logger::DUMP) << "all data received for " << server;
 
-  return Result{};
+  return {};
 }
 
 void DumpFeature::ParallelDumpServer::ParallelDumpServer::printBlockStats() {
@@ -1840,10 +1853,12 @@ void DumpFeature::ParallelDumpServer::runNetworkThread(
 }
 
 void DumpFeature::ParallelDumpServer::runWriterThread() {
-  std::unordered_map<std::string, std::shared_ptr<ManagedDirectory::File>>
+  std::unordered_map<
+      std::string,
+      std::pair<std::shared_ptr<ManagedDirectory::File>, std::string>>
       filesByShard;
 
-  auto const getFileForShard = [&](std::string const& shardId) {
+  auto const getDataForShard = [&](std::string const& shardId) {
     if (auto it = filesByShard.find(shardId); it != filesByShard.end()) {
       return it->second;
     } else {
@@ -1854,9 +1869,10 @@ void DumpFeature::ParallelDumpServer::runWriterThread() {
         FATAL_ERROR_EXIT();
       }
 
-      auto file = fileProvider->getFile(it2->second.collectionName);
-      filesByShard.emplace(shardId, file);
-      return file;
+      std::string collectionName = it2->second.collectionName;
+      auto file = fileProvider->getFile(collectionName);
+      filesByShard.emplace(shardId, std::make_pair(file, collectionName));
+      return std::make_pair(std::move(file), std::move(collectionName));
     }
   };
 
@@ -1908,10 +1924,13 @@ void DumpFeature::ParallelDumpServer::runWriterThread() {
       body = uncompressed;
     }
 
-    auto file = getFileForShard(shardId);
-    arangodb::Result result =
-        dumpData(stats, maskings, *file, body,
-                 shards.at(shardId).collectionName, options.useVPack);
+    auto [file, collectionName] = getDataForShard(shardId);
+    arangodb::Result result = dumpData(stats, maskings, *file, body,
+                                       collectionName, options.useVPack);
+
+    LOG_TOPIC("ab681", TRACE, Logger::DUMP)
+        << "writing data for shard '" << shardId << "' of collection '"
+        << collectionName << "' into file '" << file->path() << "'";
 
     if (result.fail()) {
       LOG_TOPIC("77881", FATAL, Logger::DUMP)
@@ -1944,7 +1963,7 @@ DumpFeature::DumpFileProvider::DumpFileProvider(
           escapedCollectionName(name, info.get("parameters"));
 
       std::string filename = absl::StrCat(escapedName, "_", hexString, ".data.",
-                                          ::getSuffix(_useVPack));
+                                          ::getDatafileSuffix(_useVPack));
       auto file = _directory.writableFile(filename, true /*overwrite*/, 0,
                                           true /*gzipOk*/);
       if (file == nullptr || file->status().fail()) {
@@ -1971,14 +1990,15 @@ std::shared_ptr<ManagedDirectory::File> DumpFeature::DumpFileProvider::getFile(
 
   if (_splitFiles) {
     auto cnt = _filesByCollection[name].count++;
-    std::string filename = absl::StrCat(escapedName, "_", hexString, ".", cnt,
-                                        ".data.", ::getSuffix(_useVPack));
+    std::string filename =
+        absl::StrCat(escapedName, "_", hexString, ".", cnt, ".data.",
+                     ::getDatafileSuffix(_useVPack));
     auto file = _directory.writableFile(filename, true /*overwrite*/, 0,
                                         true /*gzipOk*/);
     if (file == nullptr || file->status().fail()) {
       LOG_TOPIC("43543", FATAL, Logger::DUMP)
           << "Failed to open file " << filename
-          << " for writing: " << file->status().errorMessage();
+          << " for writing: " << file->status();
       FATAL_ERROR_EXIT();
     }
 

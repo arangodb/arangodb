@@ -3,6 +3,24 @@ devel
 
 * BTS-1380: Added traversal order (dfs, bfs, weighted) to explain output.
 
+* arangodump and arangorestore will now try to bump up the limit for the number
+  of open file descriptors at startup, on Linux and macOS. This way the tools
+  are allowed to open more files concurrently, which can be useful when
+  dump/restore with many threads.
+
+* Added startup option `--descriptors-minimum` to arangodump and arangorestore.
+  This option can be used to set a lower bound value for the open file 
+  descriptors limit that is required to invoke arangodump/arangorestore.
+  Setting the option to a value of 0 makes arangodump/arangorestore start
+  regardless of the actual limit for the number of open file descriptors.
+
+  This option is available on Linux and macOS only.
+
+* Fixed a loophole in COLLECT variable name validation: in COLLECT INTO 
+  expressions it was possible to refer to variables that the COLLECT just
+  introduced. This was undefined behavior and not caught by the previous
+  version of COLLECT's variable checking.
+
 * Fixed BTS-1541: Old legacy little endian key format for RocksDB database
   (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer
   versions. This fixes a persistent index corruption bug with the old

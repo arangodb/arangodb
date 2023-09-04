@@ -28,6 +28,7 @@
 #include "Basics/directories.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/FileSystemFeature.h"
@@ -79,6 +80,10 @@ int main(int argc, char* argv[]) {
     server.addFeatures(Visitor{
         []<typename T>(auto& server, TypeTag<T>) {
           return std::make_unique<T>(server);
+        },
+        [](ArangoDumpServer& server, TypeTag<BumpFileDescriptorsFeature>) {
+          return std::make_unique<BumpFileDescriptorsFeature>(
+              server, "--descriptors-minimum");
         },
         [](ArangoDumpServer& server, TypeTag<GreetingsFeaturePhase>) {
           return std::make_unique<GreetingsFeaturePhase>(server,
