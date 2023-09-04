@@ -1,6 +1,11 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-1541: Old legacy little endian key format for RocksDB database
+  (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer
+  versions. This fixes a persistent index corruption bug with the old
+  format.
+
 * BTS-1598: fix race in agency.
 
 * ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
