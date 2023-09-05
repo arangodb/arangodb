@@ -2,9 +2,13 @@ v3.11.4 (XXXX-XX-XX)
 --------------------
 
 * Fixed BTS-1541: Old legacy little endian key format for RocksDB database
-  (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer
-  versions. This fixes a persistent index corruption bug with the old
-  format.
+  (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer versions.
+  This fixes a persistent index corruption bug with the old format.
+
+* Fixed a loophole in COLLECT variable name validation: in COLLECT INTO
+  expressions it was possible to refer to variables that the COLLECT just
+  introduced. This was undefined behavior and not caught by the previous version
+  of COLLECT's variable checking.
 
 * BTS-1598: fix race in agency.
 
