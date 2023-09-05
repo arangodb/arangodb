@@ -44,7 +44,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
-#include "Transaction/Hints.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
@@ -65,13 +65,13 @@
 #include <string>
 #include <string_view>
 
-#include <absl/strings/str_cat.h>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
 
 namespace {
+constexpr std::string_view moduleName("index administration");
+
 /// @brief checks if argument is an index name
 Result extractIndexName(velocypack::Slice arg, bool extendedNames,
                         std::string& collectionName, std::string& name) {
@@ -263,8 +263,9 @@ arangodb::Result Indexes::getAll(
       trx = std::shared_ptr<transaction::Methods>(inputTrx,
                                                   [](transaction::Methods*) {});
     } else {
+      auto origin = transaction::OperationOriginREST{::moduleName};
       trx = std::make_shared<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(collection.vocbase()),
+          transaction::StandaloneContext::create(collection.vocbase(), origin),
           collection, AccessMode::Type::READ);
 
       Result res = trx->begin();
@@ -755,13 +756,15 @@ Result Indexes::drop(LogicalCollection& collection,
 #endif
     return res;
   } else {
+    auto origin = transaction::OperationOriginREST{::moduleName};
     READ_LOCKER(readLocker, collection.vocbase()._inventoryLock);
 
     transaction::Options trxOpts;
     trxOpts.requiresReplication = false;
-    SingleCollectionTransaction trx(
-        transaction::V8Context::CreateWhenRequired(collection.vocbase(), false),
-        collection, AccessMode::Type::EXCLUSIVE, trxOpts);
+    SingleCollectionTransaction trx(transaction::V8Context::createWhenRequired(
+                                        collection.vocbase(), origin, false),
+                                    collection, AccessMode::Type::EXCLUSIVE,
+                                    trxOpts);
     Result res = trx.begin();
 
     if (!res.ok()) {

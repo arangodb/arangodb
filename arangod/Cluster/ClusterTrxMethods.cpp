@@ -200,8 +200,7 @@ Result checkTransactionResult(TransactionId desiredTid,
     TransactionId tid{StringUtils::uint64(idRef.data(), idRef.size())};
     std::string_view statusRef = statusSlice.stringView();
     if (tid == desiredTid &&
-        transaction::statusFromString(statusRef.data(), statusRef.size()) ==
-            desStatus) {
+        transaction::statusFromString(statusRef) == desStatus) {
       // all good
       return r.reset();
     }
@@ -553,7 +552,7 @@ void addTransactionHeader(transaction::Methods const& trx,
   TRI_ASSERT(!tidPlus.isLegacyTransactionId());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
-  bool const addBegin = !state.knowsServer(server);
+  bool addBegin = !state.knowsServer(server);
   if (addBegin) {
     if (state.isCoordinator() &&
         state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
@@ -562,7 +561,7 @@ void addTransactionHeader(transaction::Methods const& trx,
     TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
                state.id().isLeaderTransactionId());
     transaction::BuilderLeaser builder(trx.transactionContextPtr());
-    ::buildTransactionBody(state, server, *builder.get());
+    ::buildTransactionBody(state, server, *builder);
     headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
     headers.try_emplace(arangodb::StaticStrings::TransactionId,
                         std::to_string(tidPlus.id()).append(" begin"));
@@ -599,7 +598,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
       value.append(" aql");  // This is a single AQL query
     } else if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
       transaction::BuilderLeaser builder(trx.transactionContextPtr());
-      ::buildTransactionBody(state, server, *builder.get());
+      ::buildTransactionBody(state, server, *builder);
       headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
       value.append(" begin");  // part of a managed transaction
     } else {
@@ -619,6 +618,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
   }
   headers.try_emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
+
 template void addAQLTransactionHeader<std::map<std::string, std::string>>(
     transaction::Methods const&, ServerID const&,
     std::map<std::string, std::string>&);

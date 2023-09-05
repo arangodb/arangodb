@@ -42,6 +42,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
@@ -675,9 +676,11 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
 
   if (col != nullptr) {
     if (col->system()) {
+      auto operationOrigin = transaction::OperationOriginInternal{
+          "truncating collection for replication"};
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(vocbase), *col,
-          AccessMode::Type::WRITE);
+          transaction::StandaloneContext::create(vocbase, operationOrigin),
+          *col, AccessMode::Type::WRITE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
       Result res = trx.begin();

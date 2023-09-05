@@ -147,8 +147,9 @@ class IResearchInvertedIndexIteratorTestBase
     auto doc = _docs.begin();
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          collections, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, collections, EMPTY, arangodb::transaction::Options());
       trx.begin();
       for (size_t i = 0; i < _docs.size() / 2; ++i) {
         // MSVC fails to compile if EXPECT_TRUE  is called directly
@@ -167,8 +168,9 @@ class IResearchInvertedIndexIteratorTestBase
     }
     // second transaction to have more than one segment in the index
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     trx.begin();
     while (doc != _docs.end()) {
       // MSVC fails to compile if EXPECT_TRUE  is called directly
@@ -202,12 +204,10 @@ class IResearchInvertedIndexIteratorTestBase
       int mutableConditionIdx = -1, bool forLateMaterialization = false) {
     SCOPED_TRACE(testing::Message("ExecuteIteratorTest failed for query ")
                  << queryString);
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase(), arangodb::transaction::OperationOriginTestCase{});
     auto query = arangodb::aql::Query::create(
-        ctx,
-        arangodb::aql::QueryString(queryString.data(), queryString.length()),
-        bindVars);
+        ctx, arangodb::aql::QueryString(queryString), bindVars);
     ASSERT_NE(query.get(), nullptr);
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());

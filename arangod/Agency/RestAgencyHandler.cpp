@@ -766,7 +766,8 @@ RestStatus RestAgencyHandler::handleState() {
     _agent->readDB(body);
   }
 
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginInternal{"returning agency state"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
   generateResult(rest::ResponseCode::OK, body.slice(), ctx.getVPackOptions());
   return RestStatus::DONE;
 }

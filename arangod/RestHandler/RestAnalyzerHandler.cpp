@@ -37,7 +37,12 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Transaction/Hints.h"
 #include "Utilities/NameValidator.h"
+
+namespace {
+constexpr std::string_view moduleName("analyzers management");
+}
 
 namespace arangodb {
 namespace iresearch {
@@ -169,7 +174,9 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   }
 
   IResearchAnalyzerFeature::EmplaceResult result;
-  auto res = analyzers.emplace(result, name, type, properties, features);
+  auto res = analyzers.emplace(result, name, type, properties,
+                               transaction::OperationOriginREST{::moduleName},
+                               features);
 
   if (res.fail()) {
     generateError(res);
@@ -284,7 +291,8 @@ void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
   }
 
   auto pool =
-      analyzers.get(normalizedName, QueryAnalyzerRevisions::QUERY_LATEST);
+      analyzers.get(normalizedName, QueryAnalyzerRevisions::QUERY_LATEST,
+                    transaction::OperationOriginREST{::moduleName});
   if (!pool) {
     generateError(arangodb::Result(
         TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
@@ -318,10 +326,13 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
   };
 
   builder.openArray();
-  analyzers.visit(visitor, nullptr);  // include static analyzers
+  analyzers.visit(visitor, nullptr,
+                  transaction::OperationOriginREST{
+                      ::moduleName});  // include static analyzers
 
   if (IResearchAnalyzerFeature::canUse(_vocbase, auth::Level::RO)) {
-    analyzers.visit(visitor, &_vocbase);
+    analyzers.visit(visitor, &_vocbase,
+                    transaction::OperationOriginREST{::moduleName});
   }
 
   // include analyzers from the system vocbase if possible
@@ -332,7 +343,8 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
     if (sysVocbase                                // have system vocbase
         && sysVocbase->name() != _vocbase.name()  // not same vocbase as current
         && IResearchAnalyzerFeature::canUse(*sysVocbase, auth::Level::RO)) {
-      analyzers.visit(visitor, sysVocbase.get());
+      analyzers.visit(visitor, sysVocbase.get(),
+                      transaction::OperationOriginREST{::moduleName});
     }
   }
 
@@ -379,7 +391,8 @@ void RestAnalyzerHandler::removeAnalyzer(IResearchAnalyzerFeature& analyzers,
     return;
   }
 
-  auto res = analyzers.remove(normalizedName, force);
+  auto res = analyzers.remove(
+      normalizedName, transaction::OperationOriginREST{::moduleName}, force);
   if (!res.ok()) {
     generateError(res);
     return;

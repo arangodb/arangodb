@@ -53,9 +53,10 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
   EXPECT_TRUE(tm.holdTransactions(500));
   tm.releaseTransactions();
 
-  tm.registerTransaction(static_cast<TransactionId>(1), false, false);
+  auto guard =
+      tm.registerTransaction(static_cast<TransactionId>(1), false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction(static_cast<TransactionId>(1), false, false);
+  guard.reset();
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 
   EXPECT_TRUE(tm.holdTransactions(500));
@@ -75,7 +76,7 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
   EXPECT_TRUE(tm.holdTransactions(500));
 
-  tm.registerTransaction(trxId, false, false);
+  auto guard = tm.registerTransaction(trxId, false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
 
   std::atomic<bool> done;
@@ -96,6 +97,6 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   reader.join();
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction(trxId, false, false);
+  guard.reset();
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 }

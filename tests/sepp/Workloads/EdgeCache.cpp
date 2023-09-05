@@ -95,7 +95,9 @@ void EdgeCache::Thread::run() {
 
 void EdgeCache::Thread::executeWriteTransaction() {
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(*_server.vocbase()),
+      transaction::StandaloneContext::create(
+          *_server.vocbase(),
+          transaction::OperationOriginREST{"inserting edge(s)"}),
       _options.collection, AccessMode::Type::WRITE);
 
   auto res = trx.begin();
@@ -227,7 +229,9 @@ void EdgeCache::Thread::executeReadTransaction(std::uint64_t startDocument) {
   // but also queried from the cache
   for (std::uint32_t i = 0; i < _options.readsPerEdge; ++i) {
     auto query = aql::Query::create(
-        transaction::StandaloneContext::Create(*_server.vocbase()),
+        transaction::StandaloneContext::create(
+            *_server.vocbase(),
+            transaction::OperationOriginREST{"inserting edge(s)"}),
         arangodb::aql::QueryString(qs), bindVars, aql::QueryOptions(opts));
 
     auto result = query->executeSync();

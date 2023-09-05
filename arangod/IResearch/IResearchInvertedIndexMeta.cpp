@@ -675,8 +675,10 @@ bool InvertedIndexField::init(
           // for cluster only check cache to avoid ClusterInfo locking
           // issues analyzer should have been populated via
           // 'analyzerDefinitions' above
-          analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST,
-                                   ServerState::instance()->isClusterRole());
+          analyzer = analyzers.get(
+              name, QueryAnalyzerRevisions::QUERY_LATEST,
+              transaction::OperationOriginInternal{"fetching analyzer"},
+              ServerState::instance()->isClusterRole());
           if (analyzer) {
             // Remap analyzer features to match version.
             AnalyzerPool::ptr remappedAnalyzer;

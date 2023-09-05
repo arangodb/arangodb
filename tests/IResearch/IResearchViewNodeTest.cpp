@@ -144,8 +144,10 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
   ASSERT_TRUE(logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.prepareQuery();
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
@@ -294,8 +296,10 @@ TEST_F(IResearchViewNodeTest, construct) {
   ASSERT_FALSE(!logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.prepareQuery();
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
@@ -903,10 +907,12 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   ASSERT_FALSE(!logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(
-                      std::string_view("LET variable = 42 LET scoreVariable1 = "
-                                       "1 LET scoreVariable2 = 2 RETURN 1")));
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(
+          std::string_view("LET variable = 42 LET scoreVariable1 = "
+                           "1 LET scoreVariable2 = 2 RETURN 1")));
   query.prepareQuery();
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
@@ -1969,8 +1975,10 @@ TEST_F(IResearchViewNodeTest, clone) {
   ASSERT_FALSE(!logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.prepareQuery();
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
@@ -2013,7 +2021,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2042,7 +2051,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2115,7 +2125,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2144,7 +2155,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2214,7 +2226,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2246,7 +2259,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2321,7 +2335,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2353,7 +2368,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2428,7 +2444,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2463,7 +2480,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2529,7 +2547,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2549,7 +2568,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
       otherQuery.prepareQuery();
 
@@ -2577,10 +2597,12 @@ TEST_F(IResearchViewNodeTest, serialize) {
   ASSERT_FALSE(!logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(
-                      std::string_view("let variable = 1 let variable100 = 3 "
-                                       "let variable101 = 2 RETURN 1")));
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(
+          std::string_view("let variable = 1 let variable100 = 3 "
+                           "let variable101 = 2 RETURN 1")));
   query.prepareQuery();
 
   arangodb::aql::Variable const outVariable("variable", 0, false,
@@ -3075,7 +3097,8 @@ TEST_F(IResearchViewNodeTest, serialize) {
   // with scorers sort
   {
     MockQuery queryScores(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(
             std::string_view("LET variable = 42 LET scoreVariable1 = 1 LET "
                              "scoreVariable2 = 2 RETURN 1")));
@@ -3165,10 +3188,12 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
   EXPECT_FALSE(viewImpl.primarySort().empty());
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(
-                      std::string_view("let variable = 1 let variable100 = 3 "
-                                       "let variable101 = 2 RETURN 1")));
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(
+          std::string_view("let variable = 1 let variable100 = 3 "
+                           "let variable101 = 2 RETURN 1")));
   query.prepareQuery();
 
   arangodb::aql::Variable const outVariable("variable", 0, false,
@@ -3473,8 +3498,10 @@ TEST_F(IResearchViewNodeTest, collections) {
   EXPECT_TRUE(logicalView->properties(updateJson->slice(), true, true).ok());
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
 
   // register collections with the query
   query.collections().add(std::to_string(collection0->id().id()),
@@ -3548,8 +3575,9 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {collection0->name()}, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {collection0->name()}, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -3565,7 +3593,8 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   }
 
   // dummy query
-  auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
+  auto ctx = arangodb::transaction::StandaloneContext::create(
+      vocbase, arangodb::transaction::OperationOriginTestCase{});
   MockQuery query(ctx,
                   arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.initForTests();
@@ -3667,8 +3696,10 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   ASSERT_FALSE(!logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.initForTests();
   //  query.prepareQuery();
 
@@ -3722,8 +3753,10 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   ASSERT_TRUE((false == !logicalView));
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.prepareQuery();
 
   // dummy engine
@@ -3833,7 +3866,8 @@ class IResearchViewVolatitlityTest
 
     std::vector<std::string> EMPTY_VECTOR;
     auto trx = std::make_shared<arangodb::transaction::Methods>(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY_VECTOR,
         std::vector<std::string>{collection0->name(), collection1->name()},
         EMPTY_VECTOR, arangodb::transaction::Options());
@@ -4223,7 +4257,8 @@ class IResearchViewBlockTest
     EXPECT_TRUE(logicalView->properties(updateJson->slice(), true, true).ok());
     std::vector<std::string> EMPTY_VECTOR;
     auto trx = std::make_shared<arangodb::transaction::Methods>(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY_VECTOR, std::vector<std::string>{collection0->name()},
         EMPTY_VECTOR, arangodb::transaction::Options());
 

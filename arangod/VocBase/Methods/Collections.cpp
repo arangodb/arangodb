@@ -71,6 +71,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
+#include <string>
+#include <string_view>
 #include <unordered_set>
 
 using namespace arangodb;
@@ -79,6 +81,7 @@ using namespace arangodb::methods;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
+constexpr std::string_view moduleName("collections management");
 
 bool checkIfDefinedAsSatellite(VPackSlice const& properties) {
   if (properties.hasKey(StaticStrings::ReplicationFactor)) {
@@ -160,7 +163,8 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
 
   // validate computed values
   auto result = ComputedValues::buildInstance(
-      vocbase, shardKeys, info.properties.get(StaticStrings::ComputedValues));
+      vocbase, shardKeys, info.properties.get(StaticStrings::ComputedValues),
+      transaction::OperationOriginInternal{ComputedValues::moduleName});
   if (result.fail()) {
     return result.result();
   }
@@ -392,9 +396,12 @@ Collections::Context::~Context() {
 transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
                                                 bool embeddable) {
   if (_responsibleForTrx && _trx == nullptr) {
-    auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(),
-                                                          embeddable);
-    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, *_coll, type);
+    auto origin = transaction::OperationOriginREST{::moduleName};
+
+    auto ctx = transaction::V8Context::createWhenRequired(_coll->vocbase(),
+                                                          origin, embeddable);
+    auto trx = std::make_unique<SingleCollectionTransaction>(std::move(ctx),
+                                                             *_coll, type);
 
     Result res = trx->begin();
 
@@ -604,7 +611,8 @@ Collections::create(         // create collection
       // But also to include optional properties as default values.
       TRI_ASSERT(col.shardKeys.has_value());
       auto result = ComputedValues::buildInstance(
-          vocbase, col.shardKeys.value(), col.computedValues.slice());
+          vocbase, col.shardKeys.value(), col.computedValues.slice(),
+          transaction::OperationOriginInternal{ComputedValues::moduleName});
       if (result.fail()) {
         return result.result();
       }
@@ -1063,17 +1071,19 @@ Result Collections::updateProperties(LogicalCollection& collection,
     return rv;
 
   } else {
-    auto ctx =
-        transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
+    auto origin =
+        transaction::OperationOriginREST{"collection properties update"};
+    auto ctx = transaction::V8Context::createWhenRequired(collection.vocbase(),
+                                                          origin, false);
 
     // We must not replicate this transaction for replication2, because
     // the following code is executed on both leader and followers.
     transaction::Options replication2Options;
     replication2Options.requiresReplication = false;
 
-    SingleCollectionTransaction trx(
-        ctx, collection, AccessMode::Type::EXCLUSIVE, replication2Options);
-
+    SingleCollectionTransaction trx(std::move(ctx), collection,
+                                    AccessMode::Type::EXCLUSIVE,
+                                    replication2Options);
     Result res = trx.begin();
 
     if (res.ok()) {
@@ -1100,7 +1110,8 @@ static ErrorCode RenameGraphCollections(TRI_vocbase_t& vocbase,
                                         std::string const& newName) {
   ExecContextSuperuserScope exscope;
 
-  graph::GraphManager gmngr{vocbase};
+  graph::GraphManager gmngr{vocbase, transaction::OperationOriginInternal{
+                                         "renaming graph collections"}};
   bool r = gmngr.renameGraphCollection(oldName, newName);
   if (!r) {
     return TRI_ERROR_FAILED;
@@ -1317,9 +1328,11 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
 
-  auto ctx =
-      transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
-  SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
+  auto origin = transaction::OperationOriginREST{"checksumming collection"};
+  auto ctx = transaction::V8Context::createWhenRequired(collection.vocbase(),
+                                                        origin, true);
+  SingleCollectionTransaction trx(std::move(ctx), collection,
+                                  AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (res.fail()) {
