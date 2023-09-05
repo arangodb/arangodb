@@ -136,7 +136,7 @@
         }
 
         db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
-        for (let i = 0; i < 30; ++i) {
+        for (let i = 0; i < 60; ++i) {
           [readers, consolidations, descriptors, mapped, scheduler_memory, num_worker_threads] = getCompleteMetricsValues([
             "arangodb_search_readers_memory_usage", 
             "arangodb_search_consolidations_memory",
