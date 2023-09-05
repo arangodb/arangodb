@@ -28,15 +28,14 @@
 
 namespace arangodb::replication2::storage::wal {
 
-FileReaderImpl::FileReaderImpl(std::string const& path) {
+FileReaderImpl::FileReaderImpl(std::string const& path) : _path(path) {
   _file = std::fopen(path.c_str(), "rb");
   if (_file == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "failed to open replicated log file");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "failed to open replicated log file " + path + " for reading");
   }
-  if (setvbuf(_file, NULL, _IOFBF, 1024 * 1024) != 0) {
-    LOG_DEVEL << "failed to set buffer size for log file " << path;
-  }
+  setvbuf(_file, NULL, _IOFBF, 1024 * 1024);
 }
 
 FileReaderImpl::~FileReaderImpl() {
@@ -50,19 +49,21 @@ auto FileReaderImpl::read(void* buffer, std::size_t n) -> std::size_t {
 }
 
 void FileReaderImpl::seek(std::uint64_t pos) {
-  TRI_ASSERT(pos <= size()) << "position " << pos << " size " << size();
-  std::fseek(_file, pos, SEEK_SET);
+  ADB_PROD_ASSERT(pos <= size()) << "position " << pos << "; size " << size();
+  ADB_PROD_ASSERT(std::fseek(_file, pos, SEEK_SET) == 0);
 }
 
 auto FileReaderImpl::position() const -> std::uint64_t {
-  return std::ftell(_file);
+  auto res = std::ftell(_file);
+  ADB_PROD_ASSERT(res >= 0);
+  return res;
 }
 
 auto FileReaderImpl::size() const -> std::uint64_t {
   auto const pos = std::ftell(_file);
-  std::fseek(_file, 0, SEEK_END);
+  ADB_PROD_ASSERT(std::fseek(_file, 0, SEEK_END) == 0);
   auto const size = std::ftell(_file);
-  std::fseek(_file, pos, SEEK_SET);
+  ADB_PROD_ASSERT(std::fseek(_file, pos, SEEK_SET) == 0);
   return size;
 }
 

@@ -347,8 +347,6 @@ TEST_F(LogPersistorTest, removeBack_fails_if_log_file_corrupt) {
 }
 
 TEST_F(LogPersistorTest, removeBack_fails_if_start_index_too_small) {
-  auto normalPayload = LogPayload::createFromString("dummyPayload");
-
   {
     auto log = InMemoryLog{}.append({
         makeNormalLogEntry(1, 4, "blubb"),

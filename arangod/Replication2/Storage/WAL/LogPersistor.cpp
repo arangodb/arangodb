@@ -32,6 +32,7 @@
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
 #include "Futures/Future.h"
+#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Replication2/Storage/IteratorPosition.h"
 #include "Replication2/Storage/WAL/Buffer.h"
@@ -144,16 +145,16 @@ LogPersistor::LogPersistor(LogId logId,
   auto filename = std::to_string(logId.id()) + ".log";
   _fileSet.emplace(LogFile{.filename = filename});
   _activeFile = _fileManager->createWriter(filename);
-  if (_activeFile->getReader()->size() == 0) {
+  auto fileReader = _activeFile->getReader();
+  if (fileReader->size() == 0) {
     FileHeader header = {.magic = wMagicFileType, .version = wCurrentVersion};
     auto res = _activeFile->append(header);
-    if (res.fail())
+    if (res.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
-  }
-
-  LogReader reader(_activeFile->getReader());
-  if (reader.size() > sizeof(FileHeader)) {
-    auto res = reader.getLastRecordHeader();
+    }
+  } else if (fileReader->size() > sizeof(FileHeader)) {
+    LogReader logReader(std::move(fileReader));
+    auto res = logReader.getLastRecordHeader();
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
@@ -177,21 +178,20 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
   auto lastWrittenEntry = _lastWrittenEntry;
   while (auto e = iter->next()) {
     auto& entry = e.value();
-    if (lastWrittenEntry) {
-      if (entry.logIndex() != lastWrittenEntry->index + 1) {
-        LOG_DEVEL << "attempting to write log entry with idx "
-                  << entry.logIndex() << " after " << lastWrittenEntry->index;
+    if (lastWrittenEntry.has_value()) {
+      if (entry.logIndex() != lastWrittenEntry->index + 1 ||
+          entry.logTerm() < lastWrittenEntry->term) {
+        LOG_TOPIC("5b761", ERR, Logger::REPLICATED_WAL)
+            << "attempting to write log entry " << entry.logTermIndexPair()
+            << " after " << lastWrittenEntry.value();
         return ResultT<SequenceNumber>::error(
             TRI_ERROR_INTERNAL, "Log entries must be written in order");
       }
-      TRI_ASSERT(entry.logTerm() >= lastWrittenEntry->term);
-      // TODO - can we make a similar check for the term?
     }
-
-    seq = entry.logIndex().value;
 
     bufferWriter.appendEntry(entry);
 
+    seq = entry.logIndex().value;
     lastWrittenEntry = entry.logTermIndexPair();
   }
 

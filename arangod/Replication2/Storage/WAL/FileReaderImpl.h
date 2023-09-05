@@ -34,6 +34,8 @@ struct FileReaderImpl final : IFileReader {
   FileReaderImpl(std::string const& path);
   ~FileReaderImpl();
 
+  auto path() const -> std::string const& override { return _path; }
+
   auto read(void* buffer, std::size_t n) -> std::size_t override;
 
   void seek(std::uint64_t pos) override;
@@ -43,6 +45,7 @@ struct FileReaderImpl final : IFileReader {
   auto size() const -> std::uint64_t override;
 
  private:
+  std::string _path;
   std::FILE* _file = nullptr;
 };
 

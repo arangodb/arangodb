@@ -47,7 +47,7 @@ struct Record {
 
     std::uint64_t index = 0;
     std::uint64_t term = 0;
-    std::uint16_t tag = 0;
+    std::uint16_t tag = 0;  // reserved for future use
     RecordType type;
     std::uint64_t payloadSize = 0;
   };
@@ -89,7 +89,7 @@ struct Record {
 
   struct Footer {
     std::uint32_t crc32 = 0;
-    std::uint32_t padding = 0;
+    std::uint32_t padding = 0;  // reserved for future use
     std::uint64_t size = 0;
   };
 };

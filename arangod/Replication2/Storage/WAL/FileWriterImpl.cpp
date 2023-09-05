@@ -24,7 +24,9 @@
 #include "FileWriterImpl.h"
 
 #include <fcntl.h>
+#include <cstring>
 
+#include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
@@ -34,10 +36,8 @@ namespace arangodb::replication2::storage::wal {
 
 FileWriterImpl::FileWriterImpl(std::string path) : _path(std::move(path)) {
   _file = ::open(_path.c_str(), O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
-  if (_file < 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "failed to open replicated log file");
-  }
+  ADB_PROD_ASSERT(_file >= 0) << "failed to open replicated log file" << path
+                              << " for writing with error " << strerror(errno);
 }
 
 FileWriterImpl::~FileWriterImpl() {
@@ -49,7 +49,8 @@ FileWriterImpl::~FileWriterImpl() {
 auto FileWriterImpl::append(std::string_view data) -> Result {
   auto n = ::write(_file, data.data(), data.size());
   if (n < 0) {
-    return Result(TRI_ERROR_INTERNAL, "failed to write to log file");
+    return Result(TRI_ERROR_INTERNAL, "failed to write to log file " + _path +
+                                          ": " + strerror(errno));
   }
   if (static_cast<std::size_t>(n) != data.size()) {
     return Result(TRI_ERROR_INTERNAL, "write to log file was incomplete");
@@ -59,14 +60,14 @@ auto FileWriterImpl::append(std::string_view data) -> Result {
 }
 
 void FileWriterImpl::truncate(std::uint64_t size) {
-  if (::ftruncate(_file, size) != 0) {
-    // TODO - error handling
-  }
+  ADB_PROD_ASSERT(::ftruncate(_file, size) == 0)
+      << "failed to truncate file" << _path << " to size " << size << ": "
+      << strerror(errno);
 }
 
 void FileWriterImpl::sync() {
   ADB_PROD_ASSERT(fdatasync(_file) == 0)
-      << "failed to flush: " << strerror(errno);
+      << "failed to flush file " << _path << ": " << strerror(errno);
 }
 
 auto FileWriterImpl::getReader() const -> std::unique_ptr<IFileReader> {

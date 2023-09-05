@@ -34,6 +34,8 @@ namespace arangodb::replication2::storage::wal::test {
 struct InMemoryFileReader : IFileReader {
   InMemoryFileReader(std::string& buffer) : _buffer(buffer) {}
 
+  auto path() const -> std::string const& override { return _path; }
+
   auto read(void* buffer, std::size_t n) -> std::size_t override {
     n = std::min(n, _buffer.size() - _position);
     memcpy(buffer, _buffer.data() + _position, n);
@@ -52,6 +54,7 @@ struct InMemoryFileReader : IFileReader {
 
   std::string& _buffer;
   std::uint64_t _position = 0;
+  std::string _path{"in-memory file"};
 };
 
 struct InMemoryFileWriter : IFileWriter {
