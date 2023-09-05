@@ -32,9 +32,6 @@
 
     'use strict';
     const db = require('@arangodb').db;
-    const analyzers = require('@arangodb/analyzers');
-    const jsunity = require('jsunity');
-    const internal = require("internal");
     const { getAllMetricsFromEndpoints, getMetricSingle, getCompleteMetricsValues } = require('@arangodb/test-helper');
     const isCluster = require("internal").isCluster();
 

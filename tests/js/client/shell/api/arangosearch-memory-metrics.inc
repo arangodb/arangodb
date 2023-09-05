@@ -92,12 +92,14 @@
 
       testArangoSearchMetrics: function () {
 
+        let writers_prev = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
+        let writers_curr = writers_prev;
         for (let i = 0; i < 5; i++) {
-          let writersOldest = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
           generateAndInsert(collectionName);
           db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
-          let writersOlder = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
-          assertNotEqual(writersOldest, writersOlder);
+          writers_curr = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
+          assertTrue(writers_prev < writers_curr);
+          writers_prev = writers_curr;
         }
 
         let readers, consolidations, descriptors, mapped, scheduler_memory, num_worker_threads;
@@ -124,6 +126,7 @@
 
         assertTrue(readers > 0);
         assertTrue(consolidations > 0);
+        assertTrue(descriptors > 0);
         if (!isWindows) {
           assertTrue(mapped > 0);
         }

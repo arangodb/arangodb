@@ -49,7 +49,6 @@ const jsunity = require('jsunity');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
-const isCluster = require("@arangodb").isCluster;
 
 exports.runWithRetry = runWithRetry;
 exports.isEnterprise = isEnterprise;
@@ -231,7 +230,7 @@ function getMetricName(text, name) {
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  let res = 0;
+  let res = 0; // Sum up values from all matches
   for(let i = 0; i < matches.length; i+= 1) {
     res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
   }
@@ -251,23 +250,32 @@ exports.getMetricSingle = function (name) {
   return getMetricName(res.body, name);
 };
 
+// Function for getting metric/metrics from either cluster or single server deployments.
+// - 'name' - can be either string or array of strings.
+//    If 'name' is string, we want to get the only one metric value with name 'name'
+//    If 'name' is array of strings, we want to get values for every metric which is defined in this array 
+// - 'roles' - string
+//    Specify which roles of arangod should be queried for particular metric/metrics.
+//    This argument will be used in function getAllMetricsFromEndpoints.
+//    Possible values are:
+//      "coordinators" - get metric/metrics only from coordinators.
+//      "dbservers" - get metric/metrics only from dbservers.
+//      "all" - get metric/metrics from dbservers and from coordinators.
+//    In case of single server deployment, this argument is ommited.
 exports.getCompleteMetricsValues = function (name, roles = "") {
   function transpose(matrix) {
     return matrix[0].map((col, i) => matrix.map(row => row[i]));
   };
-  // 'name' argument can be either string or array of strings.
-  // If 'name' is string, we want to get the only one metric value with name 'name'
-  // If 'name' is array of strings, we want to get values for every metric which is defined in this array 
 
   let metrics = exports.getMetricsByNameFromEndpoints(name, roles);
 
   if (typeof name === "string") {
-    // In case of "string", we will have 1d array with values of metrics from each dbserver
+    // In case of "string", 'metrics' variable is an array with values of metric from each server
 
     // It may happen that some db servers will not have required metric. 
     // But if all of them don't have it - throw a error.
     if (metrics.every( (val) => Number.isNaN(val) === true )) {
-      // If we got NaN from every endpoint - throw error
+      // If we have got NaN from every endpoint - throw error
       throw "Metric " + name + " not found";
     }
     let res = 0;
@@ -281,15 +289,15 @@ exports.getCompleteMetricsValues = function (name, roles = "") {
     return res;
   } else {
     let result_metrics = [];
-    // We have a matrix. Every row represent metrics values from only one dbserver.
+    // 'metrics' variable is a matrix. Every row represent metrics values from only one dbserver.
     // Number of rows equal to number of dbservers
     // Number of columns equal to number of required metrics (name.length)
-    // We will transpose this matrix. After that in row 'i' we have values for metric 'i' from all dbservers.
+    // We will transpose this matrix. After that in row 'i' we have values for metric 'i' from all servers.
     let m = transpose(metrics);
 
     for (let i = 0; i < m.length; i += 1) {
-      let row = m[i]; // Every row represents values for this metric from all db servers.
-      // Now assert that at least one dbserver returned real value. Throw otherwise
+      let row = m[i]; // Every row represents values for this metric from all servers.
+      // Now assert that at least one dbserver returned real value. Throw exception otherwise
       assertFalse(row.every((val) => Number.isNaN(val) === true), `Metric ${name[i]} not found`);
       
       let accumulated = 0;

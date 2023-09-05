@@ -35,7 +35,6 @@
   const db = require('@arangodb').db;
   const internal = require("internal");
   const { getCompleteMetricsValues } = require('@arangodb/test-helper');
-  const isCluster = require("internal").isCluster();
 
   const bufferedMemoryMetric = "arangodb_revision_tree_buffered_memory_usage";
   const estimatesMetric = "arangodb_index_estimates_memory_usage";
