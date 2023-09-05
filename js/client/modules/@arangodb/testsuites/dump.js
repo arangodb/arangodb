@@ -479,16 +479,36 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   restoreFoxxComplete(database) {
-    this.print('Foxx Apps with full restore');
+    this.print('Foxx Apps with full restore to ' + database);
     this.restoreConfig.setDatabase(database);
     this.restoreConfig.setIncludeSystem(true);
+    this.restoreConfig.setInputDirectory('dump', true);
     this.results.restoreFoxxComplete = this.arangorestore();
     return this.validate(this.results.restoreFoxxComplete);
   }
 
+  testFoxxRoutingReady() {
+    for (let i = 0; i < 200; i++) {
+      try {
+        let reply = arango.GET_RAW('/this_route_is_not_here', true);
+        if (reply.code === 404) {
+          print("selfHeal was already executed - Foxx is ready!");
+          return 0;
+        }
+        print(" Not yet ready, retrying: " + reply.parsedBody);
+      } catch (e) {
+        print(e)
+        print(" Caught - need to retry. " + JSON.stringify(e));
+      }
+      internal.sleep(3);
+    }
+    throw new Error("020: foxx routeing not ready on time!");
+  };
+
   testFoxxComplete(file, database) {
     this.print('Test Foxx Apps after full restore - ' + file);
     db._useDatabase(database);
+    this.testFoxxRoutingReady();
     this.addArgs = {'server.database': database};
     this.results.testFoxxComplete = this.runOneTest(file);
     this.addArgs = undefined;
@@ -606,9 +626,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
   
   dumpFromRta() {
-    const otherDBs = ['_system', 'UnitTestsDumpSrc'];
-    print('sanotheusantoehsnaotuhe')
-    print(db._databases())
+    const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst', 'UnitTestsDumpFoxxComplete'];
     db._databases().forEach(db => { if (!otherDBs.find(x => x == db)) {this.allDatabases.push(db)}});
     if (!this.dumpConfig.haveSetAllDatabases()) {
       this.allDatabases.forEach(db => {
