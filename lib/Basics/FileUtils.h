@@ -110,6 +110,9 @@ std::vector<std::string> listFiles(std::string const& directory);
 // case the directory cannot be opened for iteration.
 size_t countFiles(std::string const& directory);
 
+// returns the number of lines in a file
+size_t countLines(std::string const& path);
+
 // checks if path is a directory
 bool isDirectory(std::string const& path);
 

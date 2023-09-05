@@ -62,6 +62,7 @@ class MetricsFeature final : public ArangodFeature {
         doAdd(builder));
   }
   Metric* get(MetricKeyView const& key);
+  Metric const* get(MetricKeyView const& key) const;
   bool remove(Builder const& builder);
 
   void toPrometheus(std::string& result, CollectMode mode) const;

@@ -225,6 +225,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/EncryptionProviderTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
+  RocksDBEngine/ThrottleTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/HttpResponseCheckerTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp

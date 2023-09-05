@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <functional>
+#include <fstream>
 #include <memory>
 #include <utility>
 
@@ -626,6 +627,19 @@ size_t countFiles(std::string const& directory) {
   ::processFiles(directory,
                  [&result](std::string const& filename) { ++result; });
 
+  return result;
+}
+
+size_t countLines(std::string const& path) {
+  size_t result = 0;
+  std::ifstream f(path);
+  std::string line;
+  if (f.is_open()) {
+    while (f.good()) {
+      getline(f, line);
+      result++;
+    }
+  }
   return result;
 }
 

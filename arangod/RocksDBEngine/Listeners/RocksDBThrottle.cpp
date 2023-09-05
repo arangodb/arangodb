@@ -48,8 +48,10 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace rocksdb;
+using namespace arangodb::metrics;
 
 namespace arangodb {
 
@@ -59,10 +61,12 @@ thread_local std::chrono::steady_clock::time_point flushStart =
     std::chrono::steady_clock::time_point{};
 
 // Setup the object, clearing variables, but do no real work
-RocksDBThrottle::RocksDBThrottle(uint64_t numSlots, uint64_t frequency,
-                                 uint64_t scalingFactor, uint64_t maxWriteRate,
-                                 uint64_t slowdownWritesTrigger,
-                                 uint64_t lowerBoundBps)
+RocksDBThrottle::RocksDBThrottle(
+    uint64_t numSlots, uint64_t frequency, uint64_t scalingFactor,
+    uint64_t maxWriteRate, uint64_t slowdownWritesTrigger,
+    double fileDescriptorsSlowdownTrigger, double fileDescriptorsStopTrigger,
+    double memoryMapsSlowdownTrigger, double memoryMapsStopTrigger,
+    uint64_t lowerBoundBps, MetricsFeature& metricsFeature)
     : _internalRocksDB(nullptr),
       _throttleState(ThrottleState::NotStarted),
       _throttleData(std::make_unique<std::vector<ThrottleData_t>>(numSlots)),
@@ -75,8 +79,27 @@ RocksDBThrottle::RocksDBThrottle(uint64_t numSlots, uint64_t frequency,
       _maxWriteRate(maxWriteRate == 0 ? std::numeric_limits<uint64_t>::max()
                                       : maxWriteRate),
       _slowdownWritesTrigger(slowdownWritesTrigger),
-      _lowerBoundThrottleBps(lowerBoundBps) {
+      _fileDescriptorsSlowdownTrigger(fileDescriptorsSlowdownTrigger),
+      _fileDescriptorsStopTrigger(fileDescriptorsStopTrigger),
+      _memoryMapsSlowdownTrigger(memoryMapsSlowdownTrigger),
+      _memoryMapsStopTrigger(memoryMapsStopTrigger),
+      _lowerBoundThrottleBps(lowerBoundBps),
+      _fileDescriptorsCurrent(static_cast<Gauge<uint64_t> const*>(
+          metricsFeature.get({"arangodb_file_descriptors_current", ""}))),
+      _fileDescriptorsLimit(static_cast<Gauge<uint64_t> const*>(
+          metricsFeature.get({"arangodb_file_descriptors_limit", ""}))),
+      _memoryMapsCurrent(static_cast<Gauge<uint64_t> const*>(
+          metricsFeature.get({"arangodb_memory_maps_current", ""}))),
+      _memoryMapsLimit(static_cast<Gauge<uint64_t> const*>(
+          metricsFeature.get({"arangodb_memory_maps_limit", ""}))) {
   TRI_ASSERT(_scalingFactor != 0);
+
+  LOG_TOPIC("373fb", TRACE, arangodb::Logger::ENGINES)
+      << " RocksDB throttle configure: with slots: " << numSlots
+      << ", frequency: " << frequency << ", scaling factor: " << scalingFactor
+      << " max write rate: " << maxWriteRate
+      << "fd stop trigger: " << _fileDescriptorsStopTrigger
+      << " mapped memory stop trigger: " << _memoryMapsStopTrigger;
 }
 
 // Shutdown the background thread only if it was ever started
@@ -185,18 +208,19 @@ void RocksDBThrottle::setThrottleWriteRate(std::chrono::microseconds micros,
   TRI_ASSERT(micros.count() >= 0);
   // throw out anything smaller than 32Mbytes ... be better if this
   //  was calculated against write_buffer_size, but that varies by column family
+
   if ((64 << 19) < bytes) {
     // lock _threadMutex while we update _throttleData
     std::lock_guard mutexLocker{_threadMutex};
     // index 0 for level 0 compactions, index 1 for all others
     unsigned target_idx = (isLevel0 ? 0 : 1);
 
-    auto& throttleData = *_throttleData;
+    auto& throttleData = (*_throttleData)[target_idx];
 
-    throttleData[target_idx]._micros += micros;
-    throttleData[target_idx]._keys += keys;
-    throttleData[target_idx]._bytes += bytes;
-    throttleData[target_idx]._compactions += 1;
+    throttleData._micros += micros;
+    throttleData._keys += keys;
+    throttleData._bytes += bytes;
+    throttleData._compactions += 1;
 
     // attempt to override throttle changes by rocksdb ... hammer this often
     //  (note that _threadMutex IS HELD)
@@ -257,7 +281,9 @@ void RocksDBThrottle::threadLoop() {
 void RocksDBThrottle::recalculateThrottle() {
   std::chrono::microseconds totalMicros{0};
 
-  auto [compactionBacklog, pendingCompactionBytes] = computeBacklog();
+  auto [compactionBacklog, pendingCompactionBytes] =
+      _internalRocksDB ? computeBacklog() : std::pair<int64_t, int64_t>{};
+
   TRI_ASSERT(_throttleData != nullptr);
   auto& throttleData = *_throttleData;
 
@@ -291,7 +317,12 @@ void RocksDBThrottle::recalculateThrottle() {
   uint64_t adjustmentBytes = (totalBytes * compactionBacklog) / 10;
 
   uint64_t compactionHardLimit =
-      _internalRocksDB->GetOptions().hard_pending_compaction_bytes_limit;
+      _internalRocksDB
+          ? _internalRocksDB->GetOptions().hard_pending_compaction_bytes_limit
+          : 0;
+
+  uint64_t adjustmentBytesCor = 0;
+
   if (compactionHardLimit > 0) {
     // if we are above 25% of the pending compaction bytes stop trigger, take
     // everything into account that is above this threshold, and use it to slow
@@ -301,10 +332,64 @@ void RocksDBThrottle::recalculateThrottle() {
       double percentReached =
           static_cast<double>(pendingCompactionBytes - threshold) /
           static_cast<double>(compactionHardLimit - threshold);
-      adjustmentBytes +=
+      adjustmentBytesCor =
           static_cast<uint64_t>((totalBytes * percentReached) / 2);
+      std::cout << "compactionHardLimit percentReached: " << percentReached
+      << " adjustmentBytesCor: " << adjustmentBytesCor << std::endl;
     }
   }
+
+  auto fileDescriptorsLimit = _fileDescriptorsLimit->load();
+  auto fileDescriptorsCurrent = _fileDescriptorsCurrent->load();
+  uint64_t threshold = static_cast<int64_t>(fileDescriptorsLimit *
+                                            _fileDescriptorsSlowdownTrigger);
+  std::cout << "fd cur: " << fileDescriptorsCurrent
+            << " threshold: " << threshold << std::endl;
+
+  /*auto fileDescriptorsLimit = _fileDescriptorsLimit->load();
+auto fileDescriptorsCurrent = _fileDescriptorsCurrent->load();
+if (fileDescriptorsLimit > 0) {
+  uint64_t threshold = static_cast<int64_t>(fileDescriptorsLimit *
+                                            _fileDescriptorsSlowdownTrigger);
+  //std::cout << "cur: " << fileDescriptorsCurrent << " threshold: " <<
+threshold << std::endl; fflush(stdout);
+
+  if (fileDescriptorsCurrent > threshold) {
+    double percentReached =
+        static_cast<double>(fileDescriptorsCurrent - threshold) /
+        static_cast<double>(fileDescriptorsLimit - threshold);
+    adjustmentBytesCor =
+        std::max(adjustmentBytesCor,
+                 static_cast<uint64_t>((totalBytes * percentReached) / 2));
+    //std::cout << "fileDeasctiptors percentReached: " << percentReached << "
+adjustmentBytesCor: " << adjustmentBytesCor << std::endl; fflush(stdout);
+  }
+  }*/
+
+  auto memoryMapsLimit = _memoryMapsLimit->load();
+  auto memoryMapsCurrent = _fileDescriptorsCurrent->load();
+  threshold =
+      static_cast<int64_t>(memoryMapsLimit * _memoryMapsSlowdownTrigger);
+  std::cout << "mm cur: " << memoryMapsCurrent << " threshold: " << threshold
+            << std::endl;
+
+  /*
+    auto memoryMapsLimit = _memoryMapsLimit->load();
+    auto memoryMapsCurrent = _memoryMapsCurrent->load();
+    if (memoryMapsLimit > 0) {
+      uint64_t threshold =
+          static_cast<int64_t>(memoryMapsLimit * _memoryMapsSlowdownTrigger);
+      if (memoryMapsCurrent > threshold) {
+        double percentReached =
+            static_cast<double>(memoryMapsCurrent - threshold) /
+            static_cast<double>(memoryMapsLimit - threshold);
+        adjustmentBytesCor =
+            std::max(adjustmentBytesCor,
+                     static_cast<uint64_t>((totalBytes * percentReached) / 2));
+      }
+    }
+    */
+  adjustmentBytes += adjustmentBytesCor;
 
   if (adjustmentBytes < totalBytes) {
     totalBytes -= adjustmentBytes;

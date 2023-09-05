@@ -73,8 +73,10 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/MaxMapCountFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SharedPRNGFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
@@ -130,6 +132,8 @@ static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<metrics::MetricsFeature>(false);
   server.addFeature<SharedPRNGFeature>(false);
   server.addFeature<SoftShutdownFeature>(false);
+  server.addFeature<FileDescriptorsFeature>(false);
+  server.addFeature<MaxMapCountFeature>(false);
   // We do not need any further features from this phase
 }
 
@@ -263,6 +267,11 @@ void MockServer::startFeatures() {
     // Needed to set nrMaximalThreads
     sched.validateOptions(
         std::make_shared<options::ProgramOptions>("", "", "", nullptr));
+  }
+
+  if (_server.hasFeature<FileDescriptorsFeature>()) {
+    auto& fdFeature = _server.getFeature<FileDescriptorsFeature>();
+    fdFeature.prepare();
   }
 
   for (ApplicationFeature& f : orderedFeatures) {
