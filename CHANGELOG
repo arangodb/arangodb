@@ -1,5 +1,7 @@
 devel
 -----
+
+* Fixed BTS-1489: Race condition in AsioSocket shutdown when using SSL.
     
 * Fixed BTS-1531: Async cancel Job returns different error messages.
   Unify error messages for canceled jobs (error code 21) to "request canceled".
