@@ -101,8 +101,6 @@ devel
   introduced. This was undefined behavior and not caught by the previous
   version of COLLECT's variable checking.
 
-* BTS-1598: fix race in agency.
-
 * Fixed BTS-1541: Old legacy little endian key format for RocksDB database
   (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer
   versions. This fixes a persistent index corruption bug with the old
@@ -153,6 +151,8 @@ devel
   to the agency with a timeout of 120 seconds.
   The timeouts have now been unified, so that the request timeout is 60 seconds
   and that the HeartbeatThread waits for at most 65 seconds (as before).
+
+* BTS-1598: fix race in agency.
 
 * BTS-842: make the error message for edge document validation slightly
   clearer
