@@ -3,7 +3,7 @@ We want images to be tagged based on the version of the base image as well as th
 For example `arangodb/build-alpine:3.16-gcc11.2-openssl3.1.1-<RAND>-amd64`
 That image is based on Alpine 3.16 and has gcc 11.2 and OpenSSL 3.1.1 installed built for x86-64 architecture.
 
-To automate and simplify this, for each dockerfile there are build-image_*.sh scripts that creates an image with the `latest-<ARCH>` tag and afterwards automatically determines the relevant version numbers, tags the image accordingly, and prints the command to push the image.
+To automate and simplify this, for each dockerfile there are build-image_*.sh scripts that create an image with the `latest-<ARCH>` tag and afterwards automatically determine the relevant version numbers, tags the image accordingly, and print the command to push the image.
 
 Each supported architecture (x86-64 and arm64) has own build-image_*.sh script.
 
