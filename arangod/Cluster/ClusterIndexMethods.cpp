@@ -87,9 +87,7 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
   }
 
   TRI_ASSERT(VPackObjectIterator(collection).size() > 0);
-  size_t const numberOfShards =
-      basics::VelocyPackHelper::getNumericValue<size_t>(
-          collection, StaticStrings::NumberOfShards, 1);
+  size_t const numberOfShards = col.numberOfShards();
 
   VPackSlice indexes = collection.get("indexes");
   if (!indexes.isArray()) {
