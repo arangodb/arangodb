@@ -120,8 +120,10 @@ std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
 
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options) {
-  return std::make_shared<ClusterTransactionState>(vocbase, tid, options);
+    transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin) {
+  return std::make_shared<ClusterTransactionState>(vocbase, tid, options,
+                                                   operationOrigin);
 }
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,

@@ -68,6 +68,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
@@ -153,7 +154,9 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
           // data.
           auto res = vocbase.server()
                          .getFeature<iresearch::IResearchAnalyzerFeature>()
-                         .removeAllAnalyzers(vocbase);
+                         .removeAllAnalyzers(
+                             vocbase, transaction::OperationOriginInternal{
+                                          "removing analyzers"});
           if (res.ok()) {
             // Analyzers are only truncated, never dropped, so collection still
             // exists.
@@ -169,8 +172,10 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
                   TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
             // If we are not allowed to drop the collection.
             // Try to truncate.
-            auto ctx = transaction::StandaloneContext::Create(vocbase);
-            SingleCollectionTransaction trx(ctx, *col,
+            auto origin = transaction::OperationOriginInternal{
+                "truncating collection for restore"};
+            auto ctx = transaction::StandaloneContext::create(vocbase, origin);
+            SingleCollectionTransaction trx(std::move(ctx), *col,
                                             AccessMode::Type::EXCLUSIVE);
 
             trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
@@ -1293,8 +1298,10 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
     return processRestoreCoordinatorAnalyzersBatch();
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
+  auto origin = transaction::OperationOriginREST{"restoring data"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), colName,
+                                  AccessMode::Type::WRITE);
 
   Result res = trx.begin();
 
@@ -1314,9 +1321,10 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   if (res.ok() && colName == StaticStrings::AnalyzersCollection &&
       ServerState::instance()->isSingleServer() &&
       _vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
-    _vocbase.server()
-        .getFeature<iresearch::IResearchAnalyzerFeature>()
-        .invalidate(_vocbase);
+    server()
+        .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+        .invalidate(_vocbase,
+                    transaction::OperationOriginREST{"restoring analyzers"});
   }
   return res;
 }
@@ -1574,8 +1582,10 @@ Result RestReplicationHandler::parseBatchForSystemCollection(
 
   // this "fake" transaction here is only needed to get access to the underlying
   // system collection. we will not write anything into the collection here
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
+  auto origin = transaction::OperationOriginREST{"restoring documents"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collectionName,
+                                  AccessMode::Type::READ);
 
   Result res = trx.begin();
   if (res.ok()) {
@@ -1594,7 +1604,9 @@ Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch() {
   if (res.ok() && !documentsToInsert.slice().isEmptyArray()) {
     auto& analyzersFeature =
         _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>();
-    return analyzersFeature.bulkEmplace(_vocbase, documentsToInsert.slice());
+    return analyzersFeature.bulkEmplace(
+        _vocbase, documentsToInsert.slice(),
+        transaction::OperationOriginREST{"restoring analyzers"});
   }
   return res;
 }
@@ -1627,8 +1639,9 @@ Result RestReplicationHandler::processRestoreUsersBatch() {
   bindVars->add(documentsToInsert.slice());
   bindVars->close();  // bindVars
 
+  auto origin = transaction::OperationOriginREST{"restoring users"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
+      transaction::StandaloneContext::create(_vocbase, origin),
       arangodb::aql::QueryString(aql), std::move(bindVars));
   aql::QueryResult queryResult = query->executeSync();
 
@@ -2395,8 +2408,10 @@ void RestReplicationHandler::handleCommandAddFollower() {
   if (readLockIdSlice.isNone()) {
     LOG_TOPIC("aaff2", DEBUG, Logger::REPLICATION)
         << "Try add follower fast-path (no documents)";
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
+    auto origin = transaction::OperationOriginInternal{"adding follower"};
+    auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+    SingleCollectionTransaction trx(std::move(ctx), *col,
+                                    AccessMode::Type::EXCLUSIVE);
     auto res = trx.begin();
 
     if (res.ok()) {
@@ -2498,21 +2513,21 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   LOG_TOPIC("40b17", DEBUG, Logger::REPLICATION)
       << "Compare Leader: " << referenceChecksum.get()
-      << " == Follower: " << checksumSlice.copyString();
+      << " == Follower: " << checksumSlice.stringView();
   if (!checksumSlice.isEqualString(referenceChecksum.get())) {
     LOG_TOPIC("94ebe", DEBUG, Logger::REPLICATION)
         << followerId << " is not yet in sync with " << _vocbase.name() << "/"
         << col->name();
-    std::string const checksum = checksumSlice.copyString();
     LOG_TOPIC("592ef", WARN, Logger::REPLICATION)
         << "Cannot add follower " << followerId << " for shard "
         << _vocbase.name() << "/" << col->name() << ", mismatching checksums. "
         << "Expected (leader): " << referenceChecksum.get()
-        << ", actual (follower): " << checksum;
+        << ", actual (follower): " << checksumSlice.stringView();
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-        "'checksum' is wrong. Expected (leader): " + referenceChecksum.get() +
-            ". actual (follower): " + checksum);
+        absl::StrCat(
+            "'checksum' is wrong. Expected (leader): ", referenceChecksum.get(),
+            ". actual (follower): ", checksumSlice.stringView()));
     return;
   }
 
@@ -2523,8 +2538,10 @@ void RestReplicationHandler::handleCommandAddFollower() {
   // it is not safe to activate it in general, because revision trees on the
   // leader can advance when there are further writes into the shard.
   if (body.get("treeHash").isString() && body.get("treeCount").isString()) {
-    auto context = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(context, *col, AccessMode::Type::READ, {});
+    auto origin =
+        transaction::OperationOriginInternal{"validating revision tree"};
+    auto context = transaction::StandaloneContext::create(_vocbase, origin);
+    SingleCollectionTransaction trx(context, *col, AccessMode::Type::READ);
 
     auto res = trx.begin();
     if (res.ok()) {
@@ -2533,18 +2550,20 @@ void RestReplicationHandler::handleCommandAddFollower() {
           body.get("treeHash").stringView()) {
         generateError(
             rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-            "revision tree hashes are different. Expected (leader): " +
-                std::to_string(tree->rootValue()) +
-                ". actual (follower): " + body.get("treeHash").copyString());
+            absl::StrCat(
+                "revision tree hashes are different. Expected (leader): ",
+                tree->rootValue(),
+                ". actual (follower): ", body.get("treeHash").stringView()));
         return;
       }
 
       if (std::to_string(tree->count()) != body.get("treeCount").stringView()) {
         generateError(
             rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-            "revision tree counts are different. Expected (leader): " +
-                std::to_string(tree->count()) +
-                ". actual (follower): " + body.get("treeCount").copyString());
+            absl::StrCat(
+                "revision tree counts are different. Expected (leader): ",
+                tree->count(),
+                ". actual (follower): ", body.get("treeCount").stringView()));
         return;
       }
     }
@@ -3388,7 +3407,9 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     }
   }
 
-  auto ctxt = transaction::StandaloneContext::Create(_vocbase);
+  auto origin = transaction::OperationOriginInternal{
+      "retrieving document revisions for replication"};
+  auto ctxt = transaction::StandaloneContext::create(_vocbase, origin);
   generateResult(rest::ResponseCode::OK, std::move(buffer), ctxt);
 }
 
@@ -3478,7 +3499,11 @@ Result RestReplicationHandler::createBlockingTransaction(
 
   transaction::Options opts;
   opts.lockTimeout = ttl;  // not sure if appropriate ?
-  Result res = mgr->ensureManagedTrx(_vocbase, id, read, {}, exc, opts, ttl);
+  Result res = mgr->ensureManagedTrx(
+      _vocbase, id, read, {}, exc, opts,
+      transaction::OperationOriginInternal{
+          "creating blocking transaction for follower catchup"},
+      ttl);
 
   if (res.fail()) {
     return res;
@@ -3519,7 +3544,6 @@ Result RestReplicationHandler::createBlockingTransaction(
       }
 
       transaction::Methods trx{ctx};
-
       void* key = this;  // simon: not important to get it again
       trx.state()->cookie(key, std::move(rGuard));
     }

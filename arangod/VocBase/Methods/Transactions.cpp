@@ -388,7 +388,8 @@ Result executeTransactionJS(v8::Isolate* isolate,
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  transaction::V8Context ctx(vocbase, embed);
+  auto origin = transaction::OperationOriginREST{"JavaScript transaction"};
+  transaction::V8Context ctx(vocbase, origin, embed);
   if (writeCollections.empty() && exclusiveCollections.empty()) {
     ctx.setReadOnly();
   }

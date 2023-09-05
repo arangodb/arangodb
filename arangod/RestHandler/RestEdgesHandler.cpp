@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -116,14 +117,15 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
   bindParameters->add("vertex", VPackValue(vertexId));
   bindParameters->close();
 
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto origin = transaction::OperationOriginREST{"querying connected edges"};
+  auto ctx = transaction::StandaloneContext::create(vocbase, origin);
   aql::QueryOptions options;
   if (allowDirtyReads) {
     options.transactionOptions.allowDirtyReads = true;
   }
   auto query = arangodb::aql::Query::create(
-      ctx, aql::QueryString(queryString(dir)), std::move(bindParameters),
-      std::move(options));
+      std::move(ctx), aql::QueryString(queryString(dir)),
+      std::move(bindParameters), std::move(options));
   return query->executeSync();
 }
 }  // namespace

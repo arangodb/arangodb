@@ -49,6 +49,7 @@
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -631,14 +632,16 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
           result.add("n_shards", VPackValue(numShards));
           result.add("rep_factor", VPackValue(coll->replicationFactor()));
 
-          auto ctx = transaction::StandaloneContext::Create(*vocbase);
-
           auto& collName = coll->name();
           result.add("name", VPackValue(collName));
           size_t planId = coll->planId().id();
           result.add("plan_id", VPackValue(planId));
 
-          SingleCollectionTransaction trx(ctx, collName,
+          auto origin =
+              transaction::OperationOriginInternal{"counting document(s)"};
+          auto ctx = transaction::StandaloneContext::create(*vocbase, origin);
+
+          SingleCollectionTransaction trx(std::move(ctx), collName,
                                           AccessMode::Type::READ);
 
           Result res = trx.begin();

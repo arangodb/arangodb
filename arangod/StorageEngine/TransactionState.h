@@ -27,6 +27,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
@@ -34,6 +35,7 @@
 #include "Containers/SmallVector.h"
 #include "Futures/Future.h"
 #include "Transaction/Hints.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
@@ -42,6 +44,8 @@
 #include "VocBase/voc-types.h"
 
 #include <atomic>
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -62,8 +66,17 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+struct ResourceMonitor;
+
+namespace aql {
+class QueryContext;
+}
 
 namespace transaction {
+class CounterGuard;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class HistoryEntry;
+#endif
 class Methods;
 struct Options;
 }  // namespace transaction
@@ -92,7 +105,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   TransactionState& operator=(TransactionState const&) = delete;
 
   TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                   transaction::Options const& options);
+                   transaction::Options const& options,
+                   transaction::OperationOrigin operationOrigin);
   virtual ~TransactionState();
 
   /// @return a cookie associated with the specified key, nullptr if none
@@ -125,23 +139,20 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] bool isRunning() const noexcept {
     return _status == transaction::Status::RUNNING;
   }
-  void setRegistered() noexcept { _registeredTransaction = true; }
-  [[nodiscard]] bool wasRegistered() const noexcept {
-    return _registeredTransaction;
-  }
-
   /// @brief returns the name of the actor the transaction runs on:
   /// - leader
   /// - follower
   /// - coordinator
   /// - single
-  [[nodiscard]] char const* actorName() const noexcept;
+  [[nodiscard]] std::string_view actorName() const noexcept;
 
   /// @brief return a reference to the global transaction statistics/counters
   TransactionStatistics& statistics() const noexcept;
 
-  [[nodiscard]] double lockTimeout() const { return _options.lockTimeout; }
-  void lockTimeout(double value) {
+  [[nodiscard]] double lockTimeout() const noexcept {
+    return _options.lockTimeout;
+  }
+  void lockTimeout(double value) noexcept {
     if (value > 0.0) {
       _options.lockTimeout = value;
     }
@@ -188,13 +199,13 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   }
 
   /// @brief return the number of collections in the transaction
-  [[nodiscard]] size_t numCollections() const {
+  [[nodiscard]] size_t numCollections() const noexcept {
     RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
     return _collections.size();
   }
 
   /// @brief whether or not a transaction consists of a single operation
-  [[nodiscard]] bool isSingleOperation() const {
+  [[nodiscard]] bool isSingleOperation() const noexcept {
     return hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
@@ -202,7 +213,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void updateStatus(transaction::Status status) noexcept;
 
   /// @brief whether or not a specific hint is set for the transaction
-  [[nodiscard]] bool hasHint(transaction::Hints::Hint hint) const {
+  [[nodiscard]] bool hasHint(transaction::Hints::Hint hint) const noexcept {
     return _hints.has(hint);
   }
 
@@ -229,6 +240,13 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void applyAfterCommitCallbacks() noexcept {
     return applyCallbackImpl(_afterCommitCallbacks);
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // only used in maintainer mode for testing
+  void setHistoryEntry(std::shared_ptr<transaction::HistoryEntry> const& entry);
+  void clearHistoryEntry() noexcept;
+  void adjustMemoryUsage(std::int64_t value) noexcept;
+#endif
 
   /// @brief acquire a database snapshot if we do not yet have one.
   /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
@@ -268,7 +286,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   virtual bool hasFailedOperations() const noexcept = 0;
 
-  virtual void beginQuery(bool /*isModificationQuery*/) {}
+  virtual void beginQuery(ResourceMonitor* resourceMonitor,
+                          bool /*isModificationQuery*/) {}
   virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
 
   [[nodiscard]] TransactionCollection* findCollection(DataSourceId cid) const;
@@ -282,12 +301,13 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   }
 
   /// @brief whether or not a transaction is a follower transaction
-  [[nodiscard]] bool isFollowerTransaction() const {
+  [[nodiscard]] bool isFollowerTransaction() const noexcept {
     return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   /// @brief servers already contacted
-  [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers() const {
+  [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers()
+      const noexcept {
     return _knownServers;
   }
 
@@ -320,6 +340,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void acceptAnalyzersRevision(
       QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
+  [[nodiscard]] transaction::OperationOrigin operationOrigin() const noexcept;
+
   [[nodiscard]] QueryAnalyzerRevisions const& analyzersRevision()
       const noexcept {
     return _analyzersRevision;
@@ -336,6 +358,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// fashion after a fast-path locking detected a dead-lock situation.
   /// Only allowed on coordinators.
   void coordinatorRerollTransactionId();
+
+  std::shared_ptr<transaction::CounterGuard> counterGuard();
 
  protected:
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
@@ -415,6 +439,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   std::vector<BeforeCommitCallback const*> _beforeCommitCallbacks;
   std::vector<AfterCommitCallback const*> _afterCommitCallbacks;
 
+  std::shared_ptr<transaction::CounterGuard> _counterGuard;
+
  private:
   TransactionId _id;  /// @brief local trx id
 
@@ -447,7 +473,12 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   std::unique_ptr<containers::FlatHashMap<ShardID, ServerID>> _chosenReplicas;
 
   QueryAnalyzerRevisions _analyzersRevision;
-  bool _registeredTransaction = false;
+
+  transaction::OperationOrigin const _operationOrigin;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::shared_ptr<transaction::HistoryEntry> _historyEntry;
+#endif
 };
 
 }  // namespace arangodb

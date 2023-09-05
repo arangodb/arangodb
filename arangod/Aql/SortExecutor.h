@@ -54,6 +54,7 @@ class AqlItemBlockManager;
 class RegisterInfos;
 class NoStats;
 class OutputAqlItemRow;
+class QueryContext;
 template<BlockPassthrough>
 class SingleRowFetcher;
 struct SortRegister;
@@ -65,7 +66,7 @@ class SortExecutorInfos {
                     RegisterCount nrOutputRegisters,
                     RegIdFlatSet const& registersToClear,
                     std::vector<SortRegister> sortRegisters, std::size_t limit,
-                    AqlItemBlockManager& manager,
+                    AqlItemBlockManager& manager, QueryContext& query,
                     TemporaryStorageFeature& tempStorage,
                     velocypack::Options const* options,
                     ResourceMonitor& resourceMonitor,
@@ -101,6 +102,8 @@ class SortExecutorInfos {
 
   [[nodiscard]] TemporaryStorageFeature& getTemporaryStorageFeature() noexcept;
 
+  QueryContext& getQuery() const noexcept;
+
  private:
   RegisterCount _numInRegs;
   RegisterCount _numOutRegs;
@@ -108,6 +111,7 @@ class SortExecutorInfos {
   std::size_t _limit;
   AqlItemBlockManager& _manager;
   TemporaryStorageFeature& _tempStorage;
+  QueryContext& _query;
   velocypack::Options const* _vpackOptions;
   ResourceMonitor& _resourceMonitor;
   std::vector<SortRegister> _sortRegisters;
