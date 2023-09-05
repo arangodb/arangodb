@@ -1,5 +1,32 @@
 devel
 -----
+          
+* Added startup option `--transaction.streaming-max-transaction-size` to make
+  the maximum size of streaming transactions configurable.
+  Previously the maximum size of streaming transactions was hard-coded to
+  128 MiB. This value is also used as default value for the option now.
+
+* Track memory usage for write operations in AQL queries. The memory usage of
+  write operations in AQL queries was previously not tracked and not accounted
+  for in AQL queries' own memory usage. The memory used for write operations
+  also was not accounted for when setting a memory limit for the query. The
+  memory used for write operations is now properly tracked, including in-memory
+  write batches and locked keys in RocksDB (for conflict checking).
+  With that change, the memory usage reported for AQL queries that perform
+  write operations will be significantly higher than before, but the values
+  now will reflect the reality a lot better. This has the consequence that
+  previously working AQL write queries can now fail because their actual memory
+  hits the configured per-query or global memory limit threshold.
+  In these cases it is useful to either revisit the per-query and/or global
+  memory limit settings, turn on intermediate commits for the query, or adjust
+  the query so that it uses less memory.
+
+* Added metrics for tracking the memory usage of write operations outside AQL:
+  * `arangodb_transactions_rest_memory_usage`: memory of user-initiated write
+    operations.
+  * `arangodb_transactions_internal_memory_usage`: memory usage of internal
+    operations, such as background statistics, TTL index maintenance, 
+    replication etc.
     
 * Fixed BTS-1531: Async cancel Job returns different error messages.
   Unify error messages for canceled jobs (error code 21) to "request canceled".
@@ -125,7 +152,7 @@ devel
   The timeouts have now been unified, so that the request timeout is 60 seconds
   and that the HeartbeatThread waits for at most 65 seconds (as before).
 
-* BTS-1598: fix race in agency
+* BTS-1598: fix race in agency.
 
 * BTS-842: make the error message for edge document validation slightly
   clearer

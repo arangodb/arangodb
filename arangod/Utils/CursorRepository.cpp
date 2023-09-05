@@ -26,7 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+#include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -35,7 +37,6 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-#include <Basics/ScopeGuard.h>
 #include <velocypack/Builder.h>
 
 namespace {
@@ -49,8 +50,6 @@ bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {
 }  // namespace
 
 using namespace arangodb;
-
-size_t const CursorRepository::MaxCollectCount = 32;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor repository
@@ -174,7 +173,7 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result,
 
 Cursor* CursorRepository::createQueryStream(
     std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
-    bool isRetriable) {
+    bool isRetriable, transaction::OperationOrigin operationOrigin) {
   if (_softShutdownOngoing != nullptr &&
       _softShutdownOngoing->load(std::memory_order_relaxed)) {
     // Refuse to create the cursor:
@@ -183,7 +182,7 @@ Cursor* CursorRepository::createQueryStream(
   }
 
   auto cursor = std::make_unique<aql::QueryStreamCursor>(
-      std::move(q), batchSize, ttl, isRetriable);
+      std::move(q), batchSize, ttl, isRetriable, operationOrigin);
   cursor->use();
 
   return addCursor(std::move(cursor));
@@ -315,11 +314,9 @@ bool CursorRepository::containsUsedCursor() {
 
 bool CursorRepository::garbageCollect(bool force) {
   auto const now = TRI_microtime();
-  std::vector<arangodb::Cursor*> found;
+  containers::SmallVector<arangodb::Cursor*, 8> found;
 
   try {
-    found.reserve(MaxCollectCount);
-
     std::lock_guard mutexLocker{_lock};
 
     for (auto it = _cursors.begin(); it != _cursors.end(); /* no hoisting */) {
@@ -345,7 +342,7 @@ bool CursorRepository::garbageCollect(bool force) {
           break;
         }
 
-        if (!force && found.size() >= MaxCollectCount) {
+        if (!force && found.size() >= maxCollectCount) {
           break;
         }
       } else {

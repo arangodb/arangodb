@@ -121,8 +121,9 @@ auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
       currentShard = vertex.shard();
       shard = graphSerdeConfig.shardID(currentShard);
 
-      auto ctx =
-          transaction::StandaloneContext::Create(vocbaseGuard.database());
+      auto origin = transaction::OperationOriginREST{"storing Pregel results"};
+      auto ctx = transaction::StandaloneContext::create(vocbaseGuard.database(),
+                                                        origin);
       trx = std::make_unique<SingleCollectionTransaction>(
           ctx, shard, AccessMode::Type::WRITE);
       trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);

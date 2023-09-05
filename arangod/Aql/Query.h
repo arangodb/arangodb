@@ -251,11 +251,12 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
-  /// to be able to only prepare a query from VelocyPack and then store it in
-  /// the QueryRegistry.
+  /// to be able to only prepare a query from VelocyPack and then store it
+  /// in the QueryRegistry.
   std::unique_ptr<ExecutionPlan> preparePlan();
 
-  /// @brief calculate a hash value for the query string and bind parameters
+  /// @brief calculate a hash value for the query string and bind
+  /// parameters
   uint64_t calculateHash() const;
 
   /// @brief whether or not the query cache can be used for the query
@@ -274,8 +275,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   // @brief injects vertex collections into all types of graph nodes:
   // ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH and
-  // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not contain
-  // a vertex collection yet. This can happen e.g. during anonymous traversal.
+  // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not
+  // contain a vertex collection yet. This can happen e.g. during
+  // anonymous traversal.
   void injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan);
 
   // log the start of a query (trace mode only)

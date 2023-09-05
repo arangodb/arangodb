@@ -23,22 +23,45 @@
 
 #include "Transaction/Status.h"
 
+#include "Basics/debugging.h"
+
 #include <iostream>
 #include <cstring>
 
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
-Status statusFromString(char const* str, size_t len) {
-  if (len == 9 && memcmp(str, "undefined", len) == 0) {
+std::string_view statusString(Status status) {
+  switch (status) {
+    case transaction::Status::UNDEFINED:
+      return "undefined";
+    case transaction::Status::CREATED:
+      return "created";
+    case transaction::Status::RUNNING:
+      return "running";
+    case transaction::Status::COMMITTED:
+      return "committed";
+    case transaction::Status::ABORTED:
+      return "aborted";
+  }
+
+  TRI_ASSERT(false);
+  return "unknown";
+}
+
+Status statusFromString(std::string_view value) {
+  if (value == "undefined") {
     return Status::UNDEFINED;
-  } else if (len == 7 && memcmp(str, "created", len) == 0) {
+  }
+  if (value == "created") {
     return Status::CREATED;
-  } else if (len == 7 && memcmp(str, "running", len) == 0) {
+  }
+  if (value == "running") {
     return Status::RUNNING;
-  } else if (len == 9 && memcmp(str, "committed", len) == 0) {
+  }
+  if (value == "committed") {
     return Status::COMMITTED;
-  } else if (len == 7 && memcmp(str, "aborted", len) == 0) {
+  }
+  if (value == "aborted") {
     return Status::ABORTED;
   }
 
@@ -52,5 +75,4 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
-}  // namespace transaction
-}  // namespace arangodb
+}  // namespace arangodb::transaction

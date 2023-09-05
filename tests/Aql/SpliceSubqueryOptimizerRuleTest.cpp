@@ -137,10 +137,10 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
         << "query string: " << querystring;
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
-        server.getSystemDatabase());
+        server.getSystemDatabase(), transaction::OperationOriginTestCase{});
     auto const bindParamVpack = VPackParser::fromJson(bindParameters);
     auto splicedQuery = arangodb::aql::Query::create(
-        ctx, arangodb::aql::QueryString(querystring), bindParamVpack,
+        std::move(ctx), arangodb::aql::QueryString(querystring), bindParamVpack,
         arangodb::aql::QueryOptions(ruleOptions(additionalOptions)->slice()));
     splicedQuery->prepareQuery();
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0)
@@ -496,9 +496,11 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   auto const noCollections = std::vector<std::string>{};
   auto const readCollection = std::vector<std::string>{"UnitTestCollection"};
   transaction::Options opts;
-  auto ctx = transaction::StandaloneContext::Create(server.getSystemDatabase());
+  auto ctx = transaction::StandaloneContext::create(
+      server.getSystemDatabase(),
+      arangodb::transaction::OperationOriginTestCase{});
   auto trx = std::make_unique<arangodb::transaction::Methods>(
-      ctx, readCollection, noCollections, noCollections, opts);
+      std::move(ctx), readCollection, noCollections, noCollections, opts);
   ASSERT_EQ(1, collection->getPhysical()->numberDocuments(trx.get()));
   bool called = false;
   auto result = collection->getPhysical()->read(
