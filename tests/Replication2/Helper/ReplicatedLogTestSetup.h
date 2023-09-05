@@ -443,6 +443,7 @@ struct WholeLog {
   }
 
   struct ConfigUpdates {
+    // TODO Use participant IDs instead of references
     std::optional<std::reference_wrapper<LogContainer>> setLeader;
     std::vector<std::reference_wrapper<LogContainer>> addParticipants;
     std::vector<std::reference_wrapper<LogContainer>> removeParticipants;
@@ -523,6 +524,7 @@ struct ReplicatedLogTest : ::testing::Test {
   auto createParticipant(LogArguments fakeArguments) {
     return wholeLog.createParticipant(fakeArguments);
   }
+  auto createFakeFollower() { return wholeLog.createFakeFollower(); }
 
   // TODO Maybe take `LogContainer*` instead of
   //      `std::reference_wrapper<LogContainer>`? It should match what

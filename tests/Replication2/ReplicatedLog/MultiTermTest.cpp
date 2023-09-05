@@ -64,6 +64,9 @@ TEST_F(MultiTermTest, add_follower_test) {
   EXPECT_CALL(*followerLogContainer->stateHandleMock, updateCommitIndex)
       .Times(testing::AtLeast(1));
 
+  // TODO Don't look at wholeLog.logs directly; rather change
+  //      WholeLog::ConfigUpdates::addParticipants so that we can work with an
+  //      ID directly.
   auto& x = wholeLog.logs.at(followerLogContainer->serverId());
   config = addUpdatedTerm({.addParticipants = {x}});
   config->installConfig(false);
