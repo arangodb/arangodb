@@ -198,6 +198,7 @@ struct LogStatistics {
   LogIndex firstIndex{};
   LogIndex releaseIndex{};
   LogIndex syncIndex{};
+  LogIndex lowestIndexToKeep{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice)

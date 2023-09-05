@@ -67,8 +67,7 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
 
   follower->resolveWithOk();
 
-  EXPECT_EQ(leaderLogContainer->getQuickStatus().local.value().commitIndex,
-            firstIdx);
+  EXPECT_EQ(leaderLogContainer->getQuickStatus().local.commitIndex, firstIdx);
 
   leaderLogContainer->runAll();
 
@@ -97,7 +96,7 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
 
   // Note that the leader inserts an empty log entry when establishing
   // leadership
-  EXPECT_EQ(leaderLogContainer->getQuickStatus().local.value().commitIndex,
+  EXPECT_EQ(leaderLogContainer->getQuickStatus().local.commitIndex,
             LogIndex{1});
 
   auto const firstIdx =
@@ -126,7 +125,7 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
 
   // We expect the leader to retry, but not commit anything
   leaderLogContainer->runAll();
-  EXPECT_EQ(leaderLogContainer->getQuickStatus().local.value().commitIndex,
+  EXPECT_EQ(leaderLogContainer->getQuickStatus().local.commitIndex,
             LogIndex{1});
   ASSERT_TRUE(fakeFollower->hasPendingRequests());
 
@@ -258,105 +257,105 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
   }
 }
 
-// TODO convert the rest
-//      continue here!
-#if 0
 TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower1 = std::make_shared<FakeAbstractFollower>("follower1");
-  auto follower2 = std::make_shared<FakeAbstractFollower>("follower2");
-  auto leader =
-      leaderLog->becomeLeader("leader", LogTerm{4}, {follower1, follower2}, 2);
+  auto leaderLogContainer = createParticipant({});
+  auto followerLogContainer1 = createFakeFollower();
+  auto followerLogContainer2 = createFakeFollower();
+  auto fakeFollower1 = followerLogContainer1->fakeAbstractFollower;
+  auto fakeFollower2 = followerLogContainer2->fakeAbstractFollower;
+
+  auto config = addNewTerm(
+      leaderLogContainer->serverId(),
+      {followerLogContainer1->serverId(), followerLogContainer2->serverId()},
+      {.term = 4_T, .writeConcern = 2});
+  config->installConfig(false);
 
   /*
    * Three participants with writeConcern two. The commitIndex is updated as
-   * soon as two servers have acknowledged the index, the lci is updated as soon
-   * as all the servers have acknowledged the new commit index.
+   * soon as two servers have acknowledged the index, the litk is updated as
+   * soon as the servers acknowledged the new sync index.
    */
-  leader->triggerAsyncReplication();
+  leaderLogContainer->runAll();
   // the leader has written one entry
-  ASSERT_TRUE(follower1->hasPendingRequests());
-  ASSERT_TRUE(follower2->hasPendingRequests());
+  ASSERT_TRUE(fakeFollower1->hasPendingRequests());
+  ASSERT_TRUE(fakeFollower2->hasPendingRequests());
 
   {
-    auto status = leader->getStatus();
-    ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
-    auto value = std::get<LeaderStatus>(status.getVariant());
-    EXPECT_EQ(value.local.commitIndex, LogIndex{0});
-    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{0});
+    auto stats = leaderLogContainer->getQuickStatus();
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
+    EXPECT_EQ(stats.local.lowestIndexToKeep, LogIndex{0});
   }
 
   {
-    auto const& request = follower1->requests.front().request;
+    auto const& request = fakeFollower1->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{0});
     EXPECT_EQ(request.lowestIndexToKeep, LogIndex{0});
   }
   // let follower1 run and raise the commit index
-  follower1->resolveWithOk();
+  fakeFollower1->setSyncIndex(LogIndex{1});
+  fakeFollower1->resolveWithOk();
+  leaderLogContainer->runAll();
 
   {
-    auto status = leader->getStatus();
-    ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
-    auto value = std::get<LeaderStatus>(status.getVariant());
-    EXPECT_EQ(value.local.commitIndex, LogIndex{1});
-    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{0});
+    auto stats = leaderLogContainer->getQuickStatus();
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{1});
+    EXPECT_EQ(stats.local.lowestIndexToKeep, LogIndex{0});
   }
 
   // follower1 received a message with that commitIndex is now 1
-  ASSERT_TRUE(follower1->hasPendingRequests());
+  ASSERT_TRUE(fakeFollower1->hasPendingRequests());
   {
-    auto const& request = follower1->requests.front().request;
+    auto const& request = fakeFollower1->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
     EXPECT_EQ(request.lowestIndexToKeep, LogIndex{0});
   }
-  follower1->resolveWithOk();
+  fakeFollower1->resolveWithOk();
+  leaderLogContainer->runAll();
   // there are now no more requests pending for follower1
-  ASSERT_FALSE(follower1->hasPendingRequests());
+  ASSERT_FALSE(fakeFollower1->hasPendingRequests());
 
-  // let follower2 run - this does not raise the lci because follower2 does not
-  // yet know that index 1 is committed.
-  follower2->resolveWithOk();
+  // let follower2 run - this does not raise the litk because follower2 still
+  // responds with syncIndex=0
+  fakeFollower2->resolveWithOk();
+  leaderLogContainer->runAll();
 
   {
-    auto status = leader->getStatus();
-    ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
-    auto value = std::get<LeaderStatus>(status.getVariant());
-    EXPECT_EQ(value.local.commitIndex, LogIndex{1});
-    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{0});
+    auto stats = leaderLogContainer->getQuickStatus();
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{1});
+    EXPECT_EQ(stats.local.lowestIndexToKeep, LogIndex{0});
   }
 
   // follower2 is now updated with the commit index
-  ASSERT_TRUE(follower2->hasPendingRequests());
+  ASSERT_TRUE(fakeFollower2->hasPendingRequests());
   {
-    auto const& request = follower2->requests.front().request;
+    auto const& request = fakeFollower2->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
     EXPECT_EQ(request.lowestIndexToKeep, LogIndex{0});
   }
-  // let follower2 run again - this will raise the lci
-  follower2->resolveWithOk();
+  // now "sync" the log entry and respond on follower2
+  fakeFollower2->setSyncIndex(LogIndex{1});
+  fakeFollower2->resolveWithOk();
+  leaderLogContainer->runAll();
 
   {
-    auto status = leader->getStatus();
-    ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
-    auto value = std::get<LeaderStatus>(status.getVariant());
-    EXPECT_EQ(value.local.commitIndex, LogIndex{1});
-    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{1});
+    auto stats = leaderLogContainer->getQuickStatus();
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{1});
+    EXPECT_EQ(stats.local.lowestIndexToKeep, LogIndex{1});
   }
 
-  // now follower2 received an update with lci = 1
-  ASSERT_TRUE(follower2->hasPendingRequests());
+  // now follower2 received an update with litk = 1
+  ASSERT_TRUE(fakeFollower2->hasPendingRequests());
   {
-    auto const& request = follower2->requests.front().request;
+    auto const& request = fakeFollower2->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
     EXPECT_EQ(request.lowestIndexToKeep, LogIndex{1});
   }
 
-  // now follower1 received an update with lci = 1
-  ASSERT_TRUE(follower1->hasPendingRequests());
+  // now follower1 received an update with litk = 1
+  ASSERT_TRUE(fakeFollower1->hasPendingRequests());
   {
-    auto const& request = follower1->requests.front().request;
+    auto const& request = fakeFollower1->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
     EXPECT_EQ(request.lowestIndexToKeep, LogIndex{1});
   }
 }
-#endif

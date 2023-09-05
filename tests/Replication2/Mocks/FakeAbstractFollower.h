@@ -76,6 +76,11 @@ struct FakeAbstractFollower : replicated_log::AbstractFollower, IHasScheduler {
                                             syncIndex});
   }
 
+  void setSyncIndex(LogIndex index) {
+    TRI_ASSERT(index >= syncIndex);
+    syncIndex = index;
+  }
+
   template<typename E>
   void resolveRequestWithException(E&& e) {
     requests.front().promise.setException(std::forward<E>(e));

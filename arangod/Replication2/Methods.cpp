@@ -139,7 +139,7 @@ struct ReplicatedLogMethodsDBServer final
       -> futures::Future<std::unique_ptr<LogIterator>> override {
     auto participant = vocbase.getReplicatedLogById(id)->getParticipant();
     auto status = participant->getQuickStatus();
-    auto logStats = status.local.value();
+    auto logStats = status.local;
     auto stop = logStats.spearHead.index + 1;
     auto start = stop.saturatedDecrement(limit);
     return participant->getInternalLogIterator(LogRange(start, stop));
@@ -149,7 +149,7 @@ struct ReplicatedLogMethodsDBServer final
       -> futures::Future<std::unique_ptr<LogIterator>> override {
     auto participant = vocbase.getReplicatedLogById(id)->getParticipant();
     auto status = participant->getQuickStatus();
-    auto logStats = status.local.value();
+    auto logStats = status.local;
     auto start = logStats.firstIndex;
     auto bounds = LogRange(start, start + limit);
     return participant->getInternalLogIterator(bounds);

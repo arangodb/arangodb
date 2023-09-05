@@ -115,6 +115,7 @@ auto FollowerManager::getStatus() const -> LogStatus {
                   mapping.getFirstIndex().value_or(TermIndexPair{}).index,
               .releaseIndex = releaseIndex,
               .syncIndex = syncIndex,
+              .lowestIndexToKeep = lowestIndexToKeep,
           },
       .leader = termInfo->leader,
       .term = termInfo->term,
@@ -197,7 +198,9 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
               .firstIndex =
                   mapping.getFirstIndex().value_or(TermIndexPair{}).index,
               .releaseIndex = releaseIndex,
-              .syncIndex = syncIndex},
+              .syncIndex = syncIndex,
+              .lowestIndexToKeep = lowestIndexToKeep,
+          },
       .leadershipEstablished = commitIndex.value > 0,
       .snapshotAvailable = snapshotAvailable,
   };

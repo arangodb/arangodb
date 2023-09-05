@@ -1218,6 +1218,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
   result.spearHead = _self._inMemoryLogManager->getSpearheadTermIndexPair();
   result.releaseIndex = releaseIndex;
   result.syncIndex = _self._storageManager->getSyncIndex();
+  result.lowestIndexToKeep = lowestIndexToKeep;
   return result;
 }
 

@@ -53,7 +53,7 @@ TEST_F(MultiTermTest, add_follower_test) {
                   testing::ElementsAre(leaderLogContainer->serverId()));
     }
     {
-      auto stats = leaderLog->getQuickStatus().local.value();
+      auto stats = leaderLog->getQuickStatus().local;
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{2}));
       EXPECT_EQ(stats.commitIndex, LogIndex{2});
     }
@@ -72,7 +72,7 @@ TEST_F(MultiTermTest, add_follower_test) {
   config->installConfig(false);
   {
     {
-      auto stats = leaderLog->getQuickStatus().local.value();
+      auto stats = leaderLog->getQuickStatus().local;
       // Note that the leader inserts an empty log entry in becomeLeader, which
       // happened twice already.
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
@@ -84,7 +84,7 @@ TEST_F(MultiTermTest, add_follower_test) {
     IHasScheduler::runAll(leaderLogContainer, followerLogContainer);
     EXPECT_TRUE(f.isReady());
     {
-      auto stats = followerLog->getQuickStatus().local.value();
+      auto stats = followerLog->getQuickStatus().local;
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
       EXPECT_EQ(stats.commitIndex, LogIndex{3});
     }
@@ -122,7 +122,7 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
     ASSERT_TRUE(f.isReady());
     EXPECT_ANY_THROW({ std::ignore = f.get(); });
     EXPECT_ANY_THROW({ std::ignore = oldLeader->getStatus(); });
-    EXPECT_EQ(leaderLog->getQuickStatus().local.value().spearHead,
+    EXPECT_EQ(leaderLog->getQuickStatus().local.spearHead,
               TermIndexPair(LogTerm{2}, LogIndex{3}));
   }
   // TODO Implement dropWork on IHasScheduler, use it here and drop the
@@ -149,7 +149,7 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     leaderLogContainer->runAll();
 
     {
-      auto stats = leaderLog->getQuickStatus().local.value();
+      auto stats = leaderLog->getQuickStatus().local;
       // Note that the leader inserts an empty log entry in becomeLeader
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{2}));
       EXPECT_EQ(stats.commitIndex, LogIndex{1});
@@ -188,14 +188,14 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
                           oldFollower->scheduler, oldScheduler);
 
     {
-      auto stats = leaderLog->getQuickStatus().local.value();
+      auto stats = leaderLog->getQuickStatus().local;
       // Note that the leader inserts an empty log entry in becomeLeader, which
       // happened twice already.
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
       EXPECT_EQ(stats.commitIndex, LogIndex{3});
     }
     {
-      auto stats = followerLog->getQuickStatus().local.value();
+      auto stats = followerLog->getQuickStatus().local;
       // Note that the leader inserts an empty log entry in becomeLeader, which
       // happened twice already.
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
@@ -241,7 +241,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     EXPECT_FALSE(f.isReady());
 
     {
-      auto stats = leaderLog->getQuickStatus().local.value();
+      auto stats = leaderLog->getQuickStatus().local;
       // Note that the leader inserts an empty log entry in becomeLeader
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{2}));
       EXPECT_EQ(stats.commitIndex, LogIndex{1});
@@ -287,7 +287,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     EXPECT_FALSE(oldScheduler.hasWork());
 
     {
-      auto stats = followerLogContainer->log->getQuickStatus().local.value();
+      auto stats = followerLogContainer->log->getQuickStatus().local;
       // Note that the leader inserts an empty log entry in becomeLeader, which
       // happened twice already.
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
