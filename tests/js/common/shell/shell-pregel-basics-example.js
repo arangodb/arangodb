@@ -202,7 +202,7 @@ function basicTestSuite() {
       // after cancelling the pregel run, PREGEL_RESULT is empty
 
       pregel.cancel(pid);
-      pregelTestHelpers.waitForResultsBeeingGarbageCollected(pid, 0);
+      pregelTestHelpers.waitForResultsBeingGarbageCollected(pid, 0);
     },
 
     test_AQL_pregel_result_is_empty_after_ttl_expires: function () {
@@ -212,7 +212,7 @@ function basicTestSuite() {
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
 
-      pregelTestHelpers.waitForResultsBeeingGarbageCollected(pid, ttl);
+      pregelTestHelpers.waitForResultsBeingGarbageCollected(pid, ttl);
     },
 
     test_AQL_pregel_result_is_empty_when_pregel_results_are_stored_in_database: function () {

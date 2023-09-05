@@ -1,5 +1,30 @@
 devel
 -----
+    
+* Fixed BTS-1531: Async cancel Job returns different error messages.
+  Unify error messages for canceled jobs (error code 21) to "request canceled".
+  Previously, the server could return different messages, either "request
+  canceled", "request has been canceled by user" or "handler canceled".
+
+* Fixed BTS-1543:
+  - client tools (e.g. arangoexport) don't refuse to start up with the error
+    `output directory ... is not empty, use --overwrite true to overwrite the
+    data in it if the output directory *only* contains the `ENCRYPTION` file.
+    This is a special case, which can easily occur when invoking any of the
+    client tools with wrong arguments. In this case no harm is done when 
+    allowing the tool to run anyway, even without the `--overwrite true` flag.
+    This will potentially clobber the `ENCRYPTION` file, but it is safe to do
+    because we restrict this to the situation when the directory *only*
+    contains the `ENCRYPTION` file.
+  - allow invoking client tools and arangod with `https://`- and `http://`-
+    prefixed endpoints. 
+    This is more user-friendly than the previously supported `ssl://`- and
+    `tcp://`-prefixed endpoints. End users are familiar with using `https://`
+    and `http://` than our `ssl://` or `tcp://` endpoints.
+    Internally, `https://` will be converted to `ssl://`, and `http://` will
+    be converted to `tcp://`.
+
+* Improve Pregel garbage collection for dropped databases.
 
 * Refuse server startup with outdated little-endian on-disk format.
   The little-endian on-disk format was used for deployments that were created
