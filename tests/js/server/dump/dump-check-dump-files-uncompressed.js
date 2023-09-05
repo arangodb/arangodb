@@ -38,7 +38,7 @@ function dumpIntegrationSuite () {
   return {
     testDumpUncompressed: function () {
       let tree = fs.listTree(dumpDir);
-      assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
+      assertNotEqual(-1, tree.indexOf("ENCRYPTION"), dumpDir);
       let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION"));
       assertEqual("none", data.toString());
       
@@ -59,7 +59,7 @@ function dumpIntegrationSuite () {
       assertNotEqual(0, files.length, files);
       files.forEach((file) => {
         data = fs.readFileSync(fs.join(dumpDir, file)).toString().trim().split('\n');
-        assertEqual(10, data.length);
+        assertEqual(10, data.length, fs.join(dumpDir, file));
         data.forEach(function(line) {
           line = JSON.parse(line);
           assertTrue(line.hasOwnProperty('_key'));
