@@ -603,20 +603,22 @@ function printTraversalDetails(traversals) {
 
 
   var optify = function (options, colorize) {
-    var opts = {
+    let opts = {
       bfs: options.bfs || undefined, /* only print if set to true to save room */
       neighbors: options.neighbors || undefined, /* only print if set to true to save room */
       uniqueVertices: options.uniqueVertices,
-      uniqueEdges: options.uniqueEdges
+      uniqueEdges: options.uniqueEdges,
+      order: options.order || 'dfs',
+      weightAttribute: options.order === 'weighted' && options.weightAttribute || undefined,
     };
 
     var result = '';
     for (var att in opts) {
-      if (result.length > 0) {
-        result += ', ';
-      }
       if (opts[att] === undefined) {
         continue;
+      }
+      if (result.length > 0) {
+        result += ', ';
       }
       if (colorize) {
         result += keyword(att) + ': ';
@@ -1423,7 +1425,7 @@ function processQuery(query, explain, planIndex) {
           `   ${annotation(`/* ${types.join(', ')}${projections(node, 'filterProjections', 'filter projections')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
           '   ' + annotation(indexAnnotation);
 
-      case 'TraversalNode':
+      case 'TraversalNode': {
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
         } else if (node.hasOwnProperty("traversalFlags")) {
@@ -1590,8 +1592,16 @@ function processQuery(query, explain, planIndex) {
         if (node.options && node.options.hasOwnProperty('parallelism') && node.options.parallelism > 1) {
           rc += annotation(' /* parallelism: ' + node.options.parallelism + ' */');
         }
+        if (node.options && node.options.order) {
+          let order = node.options.order;
+          if (node.options.order === 'weighted') {
+            order += ', weight attribute: ' + node.options.weightAttribute;
+          }
+          rc += annotation(' /* order: ' + order + ' */');
+        }
 
         return rc;
+      }
       case 'ShortestPathNode': {
         if (node.hasOwnProperty('vertexOutVariable')) {
           parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));

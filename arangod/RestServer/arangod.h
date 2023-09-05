@@ -57,6 +57,7 @@ class AgencyFeature;
 class ActionFeature;
 class AuthenticationFeature;
 class BootstrapFeature;
+class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
 class CacheOptionsFeature;
 class CheckVersionFeature;
@@ -198,6 +199,7 @@ using ArangodFeaturesList = TypeList<
     AqlFeature,
     AuthenticationFeature,
     BootstrapFeature,
+    BumpFileDescriptorsFeature,
     CacheOptionsFeature,
     CacheManagerFeature,
     CheckVersionFeature,

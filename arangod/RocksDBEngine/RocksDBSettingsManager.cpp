@@ -138,9 +138,6 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     auto minSeqNr = maxSeqNr;
     TRI_ASSERT(minSeqNr > 0);
 
-    rocksdb::TransactionOptions opts;
-    opts.lock_timeout = 50;  // do not wait for locking keys
-
     rocksdb::WriteOptions wo;
     rocksdb::WriteBatch batch;
     _tmpBuilder.clear();  // recycle our builder
