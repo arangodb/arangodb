@@ -141,6 +141,9 @@ struct BufferWriter {
 LogPersistor::LogPersistor(LogId logId,
                            std::shared_ptr<IFileManager> fileManager)
     : _logId(logId), _fileManager(std::move(fileManager)) {
+  LOG_TOPIC("a5ceb", TRACE, Logger::REPLICATED_WAL)
+      << "Creating LogPersistor for log " << logId;
+
   // TODO - implement segmented logs
   auto filename = std::to_string(logId.id()) + ".log";
   _fileSet.emplace(LogFile{.filename = filename});
@@ -150,12 +153,16 @@ LogPersistor::LogPersistor(LogId logId,
     FileHeader header = {.magic = wMagicFileType, .version = wCurrentVersion};
     auto res = _activeFile->append(header);
     if (res.fail()) {
+      LOG_TOPIC("f219e", ERR, Logger::REPLICATED_WAL)
+          << "Failed to write file header to " << _activeFile->path();
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
   } else if (fileReader->size() > sizeof(FileHeader)) {
     LogReader logReader(std::move(fileReader));
     auto res = logReader.getLastRecordHeader();
     if (res.fail()) {
+      LOG_TOPIC("940c2", ERR, Logger::REPLICATED_WAL)
+          << "Failed to read last record from " << fileReader->path();
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
     auto header = res.get();
@@ -166,6 +173,9 @@ LogPersistor::LogPersistor(LogId logId,
 
 auto LogPersistor::getIterator(IteratorPosition position)
     -> std::unique_ptr<PersistedLogIterator> {
+  LOG_TOPIC("a6986", TRACE, Logger::REPLICATED_WAL)
+      << "Creating iterator for index " << position.index() << " at offset "
+      << position.fileOffset() << " in file " << _activeFile->path();
   return std::make_unique<FileIterator>(position, _activeFile->getReader());
 }
 
@@ -176,6 +186,7 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
 
   SequenceNumber seq = 0;  // TODO - what if iterator is empty?
   auto lastWrittenEntry = _lastWrittenEntry;
+  unsigned cnt = 0;
   while (auto e = iter->next()) {
     auto& entry = e.value();
     if (lastWrittenEntry.has_value()) {
@@ -185,6 +196,7 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
           << " after " << lastWrittenEntry.value();
     }
 
+    ++cnt;
     bufferWriter.appendEntry(entry);
 
     seq = entry.logIndex().value;
@@ -195,8 +207,21 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
   auto res = _activeFile->append(
       {reinterpret_cast<char const*>(buffer.data()), buffer.size()});
   if (res.fail()) {
+    LOG_TOPIC("89261", ERR, Logger::REPLICATED_WAL)
+        << "Failed to write " << cnt << " entries ("
+        << bufferWriter.buffer().size() << " bytes) to file "
+        << _activeFile->path() << "; last written entry is "
+        << (_lastWrittenEntry.has_value() ? to_string(_lastWrittenEntry.value())
+                                          : "<na>");
+
     return res;
   }
+  LOG_TOPIC("6fbfd", TRACE, Logger::REPLICATED_WAL)
+      << "Wrote " << cnt << " entries (" << bufferWriter.buffer().size()
+      << " bytes) to file " << _activeFile->path() << "; last written entry is "
+      << (lastWrittenEntry.has_value() ? to_string(lastWrittenEntry.value())
+                                       : "<na>");
+
   _lastWrittenEntry = lastWrittenEntry;
 
   if (writeOptions.waitForSync) {
@@ -215,26 +240,38 @@ auto LogPersistor::removeFront(LogIndex stop, WriteOptions const&)
 
 auto LogPersistor::removeBack(LogIndex start, WriteOptions const&)
     -> futures::Future<ResultT<SequenceNumber>> try {
+  LOG_TOPIC("2545c", INFO, Logger::REPLICATED_WAL)
+      << "Removing entries from back starting at " << start << " from log "
+      << _logId;
   ADB_PROD_ASSERT(start.value > 0);
 
   LogReader reader(_activeFile->getReader());
   reader.seek(reader.size());
 
   // we seek the predecessor of start, because we want to get its term
-  auto res = reader.seekLogIndexBackward(start.saturatedDecrement());
+  auto lookupIndex = start.saturatedDecrement();
+  auto res = reader.seekLogIndexBackward(lookupIndex);
   if (res.fail()) {
+    LOG_TOPIC("93e92", ERR, Logger::REPLICATED_WAL)
+        << "Failed to located entry with index " << lookupIndex << " in log "
+        << _logId << ": " << res.errorMessage();
     return res.result();
   }
 
   auto header = res.get();
-  reader.skipEntry();
-
   TRI_ASSERT(header.index + 1 == start.value);
+  // we located the predecessor, now we skip over it so we find the offset at
+  // which we need to truncate
+  reader.skipEntry();
 
   _lastWrittenEntry =
       TermIndexPair(LogTerm{header.term()}, LogIndex{header.index});
 
-  _activeFile->truncate(reader.position());
+  auto newSize = reader.position();
+  LOG_TOPIC("a1db0", INFO, Logger::REPLICATED_WAL)
+      << "Truncating file " << _activeFile->path() << " at " << newSize;
+
+  _activeFile->truncate(newSize);
   return ResultT<SequenceNumber>::success(start.value);
 } catch (basics::Exception& ex) {
   LOG_TOPIC("7741d", ERR, Logger::REPLICATED_WAL)
@@ -267,6 +304,8 @@ auto LogPersistor::compact() -> Result {
 }
 
 auto LogPersistor::drop() -> Result {
+  LOG_TOPIC("8fb77", INFO, Logger::REPLICATED_WAL)
+      << "Droping LogPersistor for log " << _logId;
   // TODO - error handling
   _activeFile.reset();
   _fileManager->removeAll();

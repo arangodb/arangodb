@@ -22,10 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FileManager.h"
+
 #include <filesystem>
 #include <vector>
 
 #include "Assertions/Assert.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Replication2/Storage/WAL/FileReaderImpl.h"
 #include "Replication2/Storage/WAL/FileWriterImpl.h"
 
@@ -47,14 +50,24 @@ auto FileManager::listFiles() -> std::vector<std::string> {
 
 auto FileManager::createReader(std::string const& filename)
     -> std::unique_ptr<IFileReader> {
-  return std::make_unique<FileReaderImpl>(_folderPath / filename);
+  auto path = _folderPath / filename;
+  LOG_TOPIC("43baa", TRACE, Logger::REPLICATED_WAL)
+      << "Creating file reader for " << path.string();
+  return std::make_unique<FileReaderImpl>(path);
 }
 
 auto FileManager::createWriter(std::string const& filename)
     -> std::unique_ptr<IFileWriter> {
-  return std::make_unique<FileWriterImpl>(_folderPath / filename);
+  auto path = _folderPath / filename;
+  LOG_TOPIC("453d9", TRACE, Logger::REPLICATED_WAL)
+      << "Creating file writer for " << path.string();
+  return std::make_unique<FileWriterImpl>(path);
 }
 
-void FileManager::removeAll() { std::filesystem::remove_all(_folderPath); }
+void FileManager::removeAll() {
+  LOG_TOPIC("dae4e", INFO, Logger::REPLICATED_WAL)
+      << "Removing all files in " << _folderPath.string();
+  std::filesystem::remove_all(_folderPath);
+}
 
 }  // namespace arangodb::replication2::storage::wal
