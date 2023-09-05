@@ -615,25 +615,32 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 0, "creating test data", logFile);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
-      res.message +=  'Makedata:\n' + fs.read(logFile).replace(rx, '\n');
-      res.status = false;
-      res.failed += 1;
+      this.results.RtaMakedata = {
+        message:  'Makedata:\n' + fs.read(logFile).replace(rx, '\n'),
+        status: false
+      };
+      this.results.failed += 1;
+      return false;
     } else {
       print(logFile)
       fs.remove(logFile);
+      this.results.RtaMakedata = {
+        status: true
+      };
+      return true;
     }
-    return true;
   }
   
   dumpFromRta() {
     const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst', 'UnitTestsDumpFoxxComplete'];
     db._databases().forEach(db => { if (!otherDBs.find(x => x == db)) {this.allDatabases.push(db)}});
+    let success = true;
     if (!this.dumpConfig.haveSetAllDatabases()) {
       this.allDatabases.forEach(db => {
-        this.dumpFrom(db, true);
+        success &= this.dumpFrom(db, true);
       });
     }
-    return true;
+    return success;
   }
   
   restoreRta() {
@@ -653,14 +660,19 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 1, "checking test data", logFile);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
-      res.message += 'Checkdata:\n' + fs.read(logFile).replace(rx, '\n');
-      res.status = false;
-      res.failed += 1;
+      this.results.RtaCheckdata = {
+        message: 'Checkdata:\n' + fs.read(logFile).replace(rx, '\n'),
+        status: false
+      }
+      this.results.failed += 1;
+      return false;
     } else {
-      print(logFile)
       fs.remove(logFile);
+      this.results.RtaCheckdata = {
+        status: true
+      };
+      return false;
     }
-    return true;
   }
   
 };
