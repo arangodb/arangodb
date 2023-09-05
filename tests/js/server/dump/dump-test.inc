@@ -1024,8 +1024,6 @@
         };
 
         assertNotEqual(null, getCollection("_analyzers"));
-        print(db._analyzers.toArray())
-        print(db)
         assertEqual((isEnterprise) ?
             7 : // plus 1 for a SmartGraph in Enterprise
             6,  // only 1 stored custom analyzers

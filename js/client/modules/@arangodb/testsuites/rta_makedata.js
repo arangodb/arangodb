@@ -128,7 +128,6 @@ function makeDataWrapper (options) {
           res.status = false;
           res.failed += 1;
         } else {
-          print(logFile)
           fs.remove(logFile);
         }
         res.total++;

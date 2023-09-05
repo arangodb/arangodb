@@ -37,9 +37,6 @@ function dumpIntegrationSuite () {
   return {
     testDumpCompressed: function () {
       let tree = fs.listTree(dumpDir);
-      print('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
-      print(tree)
-      print(dumpDir)
       assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
       let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION")).toString();
       assertEqual("none", data);
