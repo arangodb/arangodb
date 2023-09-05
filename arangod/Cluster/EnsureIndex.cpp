@@ -167,6 +167,7 @@ bool EnsureIndex::first() {
       res = ensureIndexReplication2(vocbase, *col, body.slice(), index);
       if (res.fail()) {
         LOG_DEVEL << "was erlaube";
+        return false;
       }
     }
 
@@ -244,12 +245,11 @@ auto EnsureIndex::ensureIndexReplication2(TRI_vocbase_t* vocbase,
         replication2::replicated_state::document::DocumentLeaderState>(
         state.get()->getLeader());
     if (leaderState != nullptr) {
-      leaderState->createIndex(col, indexInfo);
+      return leaderState->createIndex(col, indexInfo).get();
     } else {
-      // TODO prevent busy loop and wait for log to become ready.
+      // TODO prevent busy loop and wait for log to become ready (CINFRA-831)
       std::this_thread::sleep_for(std::chrono::milliseconds{50});
     }
   }
-
-  return {};
+  return {TRI_ERROR_INTERNAL};
 }
