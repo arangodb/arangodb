@@ -31,6 +31,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utilities/NameValidator.h"
@@ -208,10 +209,11 @@ void RestViewHandler::createView() {
   }
 
   try {
+    auto& analyzers =
+        server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     // First refresh our analyzers cache to see all latest changes in analyzers
-    auto res = server()
-                   .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-                   .loadAvailableAnalyzers(_vocbase.name());
+    auto res = analyzers.loadAvailableAnalyzers(
+        _vocbase.name(), transaction::OperationOriginREST{"creating view"});
 
     if (res.fail()) {
       generateError(res);
@@ -304,11 +306,11 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     return;
   }
 
+  auto& analyzers =
+      server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   // First refresh our analyzers cache to see all latest changes in analyzers
-  auto const analyzersRes =
-      server()
-          .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-          .loadAvailableAnalyzers(_vocbase.name());
+  auto const analyzersRes = analyzers.loadAvailableAnalyzers(
+      _vocbase.name(), transaction::OperationOriginREST{"modifiying view"});
   if (analyzersRes.fail()) {
     generateError(analyzersRes);
     return;

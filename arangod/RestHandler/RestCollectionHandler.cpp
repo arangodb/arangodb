@@ -38,6 +38,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
@@ -50,9 +51,15 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace {
+constexpr std::string_view moduleName("collection management");
+}
 
 RestCollectionHandler::RestCollectionHandler(ArangodServer& server,
                                              GeneralRequest* request,
@@ -494,8 +501,9 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         _request->value(StaticStrings::IsSynchronousReplicationString);
     opts.truncateCompact = _request->parsedValue(StaticStrings::Compact, true);
 
-    _activeTrx =
-        createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE, opts);
+    _activeTrx = createTransaction(
+        coll->name(), AccessMode::Type::EXCLUSIVE, opts,
+        transaction::OperationOriginREST{"truncating collection"});
     _activeTrx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     _activeTrx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     res = _activeTrx->begin();
@@ -811,16 +819,18 @@ RestStatus RestCollectionHandler::standardResponse() {
 
 void RestCollectionHandler::initializeTransaction(LogicalCollection& coll) {
   try {
-    _activeTrx = createTransaction(coll.name(), AccessMode::Type::READ,
-                                   OperationOptions());
+    _activeTrx = createTransaction(
+        coll.name(), AccessMode::Type::READ, OperationOptions(),
+        transaction::OperationOriginREST{::moduleName});
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,
       // but the transaction hasn't yet started on the DB server. in
       // this case, we create an ad-hoc transaction on the underlying
       // collection
+      auto origin = transaction::OperationOriginREST{::moduleName};
       _activeTrx = std::make_unique<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(_vocbase), coll.name(),
+          transaction::StandaloneContext::create(_vocbase, origin), coll.name(),
           AccessMode::Type::READ);
     } else {
       throw;

@@ -27,8 +27,9 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
-#include "StorageEngine/HealthData.h"
 #include "RestServer/arangod.h"
+#include "StorageEngine/HealthData.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -111,7 +112,8 @@ class StorageEngine : public ArangodFeature {
       transaction::ManagerFeature&) = 0;
   virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
-      transaction::Options const& options) = 0;
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin) = 0;
 
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information

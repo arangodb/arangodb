@@ -31,6 +31,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "velocypack/Builder.h"
@@ -96,7 +97,9 @@ InsertDocuments::Thread::~Thread() = default;
 
 void InsertDocuments::Thread::run() {
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(*_server.vocbase()),
+      transaction::StandaloneContext::create(
+          *_server.vocbase(),
+          transaction::OperationOriginREST{"inserting document(s)"}),
       _options.collection, AccessMode::Type::WRITE);
 
   auto res = trx.begin();

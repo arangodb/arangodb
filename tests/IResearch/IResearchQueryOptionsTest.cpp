@@ -92,9 +92,10 @@ class QueryOptions : public QueryTest {
       arangodb::OperationOptions opt;
 
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-          {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+          kEmpty, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -150,9 +151,10 @@ class QueryOptions : public QueryTest {
       arangodb::OperationOptions opt;
 
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-          {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+          kEmpty, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -196,9 +198,10 @@ class QueryOptions : public QueryTest {
       arangodb::OperationOptions opt;
       static std::vector<std::string> const kEmpty;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-          {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+          kEmpty, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -1056,7 +1059,8 @@ class QueryOptions : public QueryTest {
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
       auto const res = query->explain();
       ASSERT_TRUE(res.data);
@@ -1098,7 +1102,8 @@ class QueryOptions : public QueryTest {
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
       auto const res = query->explain();
       ASSERT_TRUE(res.data);

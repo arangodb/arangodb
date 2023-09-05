@@ -30,18 +30,16 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalDataSource.h"
 
-#include "Logger/Logger.h"
-
 #include <absl/strings/str_cat.h>
 
 namespace arangodb {
 
 /// @brief create the transaction, using a data-source
 SingleCollectionTransaction::SingleCollectionTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
+    std::shared_ptr<transaction::Context> ctx,
     LogicalDataSource const& dataSource, AccessMode::Type accessType,
     transaction::Options const& options)
-    : transaction::Methods(transactionContext, options),
+    : transaction::Methods(std::move(ctx), options),
       _cid(dataSource.id()),
       _trxCollection(nullptr),
       _documentCollection(nullptr),
@@ -51,15 +49,13 @@ SingleCollectionTransaction::SingleCollectionTransaction(
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  addHint(transaction::Hints::Hint::NO_DLD);
 }
 
 /// @brief create the transaction, using a collection name
 SingleCollectionTransaction::SingleCollectionTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
-    std::string const& name, AccessMode::Type accessType,
-    transaction::Options const& options)
-    : transaction::Methods(transactionContext, options),
+    std::shared_ptr<transaction::Context> ctx, std::string const& name,
+    AccessMode::Type accessType, transaction::Options const& options)
+    : transaction::Methods(std::move(ctx), options),
       _cid(0),
       _trxCollection(nullptr),
       _documentCollection(nullptr),
@@ -70,7 +66,6 @@ SingleCollectionTransaction::SingleCollectionTransaction(
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  addHint(transaction::Hints::Hint::NO_DLD);
 }
 
 /// @brief get the underlying transaction collection

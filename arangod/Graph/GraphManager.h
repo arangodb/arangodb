@@ -46,11 +46,14 @@ namespace graph {
 class GraphManager {
  private:
   TRI_vocbase_t& _vocbase;
+  transaction::OperationOrigin _operationOrigin;
 
   std::shared_ptr<transaction::Context> ctx() const;
 
  public:
-  explicit GraphManager(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {}
+  explicit GraphManager(TRI_vocbase_t& vocbase,
+                        transaction::OperationOrigin operationOrigin)
+      : _vocbase(vocbase), _operationOrigin(operationOrigin) {}
 
   Result readGraphs(velocypack::Builder& builder) const;
 
