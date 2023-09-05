@@ -100,6 +100,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.dumpOptions = dumpOptions;
     this.restoreOptions = restoreOptions;
     this.allDatabases = [];
+    this.allDumps = [];
     this.which = which;
     this.results = {failed: 0};
     this.dumpConfig = false;
@@ -364,11 +365,10 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
 
   runCheckDumpFilesSuite(path) {
     this.print('Inspecting dumped files - ' + path);
-    //process.env['dump-directory'] = this.dumpConfig.config['output-directory'];
-    //this.results.checkDumpFiles = this.runOneTest(path);
-    //delete process.env['dump-directory'];
-    // return this.validate(this.results.checkDumpFiles);
-    return true
+    process.env['dump-directory'] = this.allDumps[0];
+    this.results.checkDumpFiles = this.runOneTest(path);
+    delete process.env['dump-directory'];
+    return this.validate(this.results.checkDumpFiles);
   }
 
   runCleanupSuite(path) {
@@ -384,9 +384,12 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       if (!fs.exists(fs.join(this.instanceManager.rootDir, 'dump'))) {
         fs.makeDirectory(fs.join(this.instanceManager.rootDir, 'dump'));
       }
-      this.dumpConfig.setOutputDirectory('dump' + fs.pathSeparator + database);
+      let dumpDir = 'dump' + fs.pathSeparator + database;
+      this.dumpConfig.setOutputDirectory(dumpDir);
+      this.allDumps.push(dumpDir);
     }
     if (!this.dumpConfig.haveSetAllDatabases()) {
+      this.allDumps.push(this.dumpConfig.config['output-directory']);
       this.dumpConfig.setDatabase(database);
     }
     this.results.dump = this.arangodump();
@@ -500,7 +503,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
         print(e)
         print(" Caught - need to retry. " + JSON.stringify(e));
       }
-      internal.sleep(3);
+      sleep(3);
     }
     throw new Error("020: foxx routeing not ready on time!");
   };
@@ -622,7 +625,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.results.failed += 1;
       return false;
     } else {
-      print(logFile)
       fs.remove(logFile);
       this.results.RtaMakedata = {
         status: true
@@ -632,12 +634,19 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
   
   dumpFromRta() {
-    const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst', 'UnitTestsDumpFoxxComplete'];
-    db._databases().forEach(db => { if (!otherDBs.find(x => x == db)) {this.allDatabases.push(db)}});
     let success = true;
+    const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst', 'UnitTestsDumpFoxxComplete'];
+    db._databases().forEach(db => { if (!otherDBs.find(x => x === db)) {this.allDatabases.push(db)}});
     if (!this.dumpConfig.haveSetAllDatabases()) {
       this.allDatabases.forEach(db => {
-        success &= this.dumpFrom(db, true);
+        if (!this.dumpFrom(db, true)) {
+          this.results.RtaDump = {
+            message:  `RtaDump: failed for ${db}`,
+            status: false
+          };
+          success = false;
+          return false;
+        }
       });
     }
     return success;
@@ -647,7 +656,15 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     let success = true;
     if (!this.restoreConfig.haveSetAllDatabases()) {
       this.allDatabases.forEach(db => {
-        success &= this.restoreTo(db, { separate: true, fromDir: db});
+        if (!this.restoreTo(db, { separate: true, fromDir: db})) {
+          this.results.RtaRestore = {
+            message:  `RtaRestore: failed for ${db}`,
+            status: false
+          };
+          // throw new Error('sanoteuhsnatoehu')
+          success = false;
+          return false;
+        }
       });
     }
     db._useDatabase('_system');
