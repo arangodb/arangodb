@@ -40,16 +40,17 @@ SortExecutorInfos::SortExecutorInfos(
     RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
     RegIdFlatSet const& registersToClear,
     std::vector<SortRegister> sortRegisters, std::size_t limit,
-    AqlItemBlockManager& manager, TemporaryStorageFeature& tempStorage,
-    velocypack::Options const* options, ResourceMonitor& resourceMonitor,
-    size_t spillOverThresholdNumRows, size_t spillOverThresholdMemoryUsage,
-    bool stable)
+    AqlItemBlockManager& manager, QueryContext& query,
+    TemporaryStorageFeature& tempStorage, velocypack::Options const* options,
+    ResourceMonitor& resourceMonitor, size_t spillOverThresholdNumRows,
+    size_t spillOverThresholdMemoryUsage, bool stable)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToClear(registersToClear.begin(), registersToClear.end()),
       _limit(limit),
       _manager(manager),
       _tempStorage(tempStorage),
+      _query(query),
       _vpackOptions(options),
       _resourceMonitor(resourceMonitor),
       _sortRegisters(std::move(sortRegisters)),
@@ -94,6 +95,8 @@ TemporaryStorageFeature&
 SortExecutorInfos::getTemporaryStorageFeature() noexcept {
   return _tempStorage;
 }
+
+QueryContext& SortExecutorInfos::getQuery() const noexcept { return _query; }
 
 size_t SortExecutorInfos::spillOverThresholdNumRows() const noexcept {
   return _spillOverThresholdNumRows;

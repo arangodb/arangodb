@@ -46,6 +46,9 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Transaction/History.h"
+#endif
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -62,8 +65,8 @@ using namespace arangodb;
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : TransactionState(vocbase, tid, options),
+    transaction::Options const& options, transaction::OperationOrigin trxType)
+    : TransactionState(vocbase, tid, options, trxType),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _users(0),
 #endif
@@ -117,10 +120,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     return res;
   }
 
-  // register with manager
-  transaction::ManagerFeature::manager()->registerTransaction(
-      id(), isReadOnlyTransaction(),
-      hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
   updateStatus(transaction::Status::RUNNING);
   if (isReadOnlyTransaction()) {
     ++stats._readTransactions;
@@ -128,7 +127,19 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsStarted;
   }
 
-  setRegistered();
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // track currently ongoing transactions in history.
+  // we only do this in maintainer mode and not in production.
+  // the reason we insert into the history is only for testing
+  // purposes.
+  mgr->history().insert(*this);
+#endif
+
+  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
+                                           isFollowerTransaction());
 
   TRI_ASSERT(_cacheTx == nullptr);
 

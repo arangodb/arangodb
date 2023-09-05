@@ -41,6 +41,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/IndexesSnapshot.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -63,8 +64,9 @@ Result removeKeysOutsideRange(
     return Result();
   }
 
+  auto origin = transaction::OperationOriginInternal{"replication"};
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(coll->vocbase()), *coll,
+      transaction::StandaloneContext::create(coll->vocbase(), origin), *coll,
       AccessMode::Type::EXCLUSIVE);
 
   trx.addHint(transaction::Hints::Hint::NO_INDEXING);
@@ -786,9 +788,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     std::unique_ptr<SingleCollectionTransaction> trx;
 
     auto startTrx = [&]() -> Result {
+      auto origin = transaction::OperationOriginInternal{"replication"};
       trx = std::make_unique<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(syncer.vocbase()), *col,
-          AccessMode::Type::EXCLUSIVE);
+          transaction::StandaloneContext::create(syncer.vocbase(), origin),
+          *col, AccessMode::Type::EXCLUSIVE);
       trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       return trx->begin();
     };

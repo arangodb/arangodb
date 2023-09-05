@@ -77,7 +77,8 @@ class QueryTraversal : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -108,7 +109,8 @@ class QueryTraversal : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -135,7 +137,8 @@ class QueryTraversal : public QueryTest {
       EXPECT_TRUE(created);
 
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 

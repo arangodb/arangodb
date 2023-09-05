@@ -29,6 +29,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -143,7 +144,8 @@ void RocksDBIndexCacheRefillThread::waitForCatchup() {
 void RocksDBIndexCacheRefillThread::refill(TRI_vocbase_t& vocbase,
                                            DataSourceId cid,
                                            IndexValues const& data) {
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto origin = transaction::OperationOriginInternal{"refilling index caches"};
+  auto ctx = transaction::StandaloneContext::create(vocbase, origin);
   SingleCollectionTransaction trx(ctx, std::to_string(cid.id()),
                                   AccessMode::Type::READ);
   Result res = trx.begin();

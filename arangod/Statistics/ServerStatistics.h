@@ -42,6 +42,9 @@ struct TransactionStatistics {
 
   metrics::MetricsFeature& _metrics;
 
+  metrics::Gauge<uint64_t>& _restTransactionsMemoryUsage;
+  metrics::Gauge<uint64_t>& _internalTransactionsMemoryUsage;
+
   metrics::Counter& _transactionsStarted;
   metrics::Counter& _transactionsAborted;
   metrics::Counter& _transactionsCommitted;

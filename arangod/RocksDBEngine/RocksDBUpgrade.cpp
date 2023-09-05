@@ -113,6 +113,25 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
         TRI_ASSERT(endianSlice.data()[0] == 'L' ||
                    endianSlice.data()[0] == 'B');
         endianess = static_cast<RocksDBEndianness>(endianSlice.data()[0]);
+
+        if (endianess == RocksDBEndianness::Little) {
+          LOG_TOPIC("31103", FATAL, Logger::ENGINES)
+              << "detected outdated on-disk format with "
+              << rocksDBEndiannessString(endianess)
+              << " endianness from ArangoDB 3.2 or 3.3. Using this on-disk "
+                 "format "
+                 "has a severe negative impact on write performance and is not "
+                 "compatible with several newer ArangoDB features. Please move "
+                 "to the "
+              << rocksDBEndiannessString(RocksDBEndianness::Big)
+              << " endian format by performing a full logical dump of the "
+                 "deployment using arangodump, and restoring it into a fresh "
+                 "deployment using arangorestore. It is not sufficient to take "
+                 "a hot backup and restore it into a fresh deployment, because "
+                 "in a hot backup, the existing on-disk format will be "
+                 "preseved.";
+          FATAL_ERROR_EXIT();
+        }
       } else {
         LOG_TOPIC("b0083", FATAL, Logger::ENGINES)
             << "Error reading key-format, your db directory is invalid";
