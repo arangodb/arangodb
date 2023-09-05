@@ -22,6 +22,79 @@ devel
   * `arangodb_transactions_internal_memory_usage`: memory usage of internal
     operations, such as background statistics, TTL index maintenance, 
     replication etc.
+    
+* Fixed BTS-1531: Async cancel Job returns different error messages.
+  Unify error messages for canceled jobs (error code 21) to "request canceled".
+  Previously, the server could return different messages, either "request
+  canceled", "request has been canceled by user" or "handler canceled".
+
+* Fixed BTS-1543:
+  - client tools (e.g. arangoexport) don't refuse to start up with the error
+    `output directory ... is not empty, use --overwrite true to overwrite the
+    data in it if the output directory *only* contains the `ENCRYPTION` file.
+    This is a special case, which can easily occur when invoking any of the
+    client tools with wrong arguments. In this case no harm is done when 
+    allowing the tool to run anyway, even without the `--overwrite true` flag.
+    This will potentially clobber the `ENCRYPTION` file, but it is safe to do
+    because we restrict this to the situation when the directory *only*
+    contains the `ENCRYPTION` file.
+  - allow invoking client tools and arangod with `https://`- and `http://`-
+    prefixed endpoints. 
+    This is more user-friendly than the previously supported `ssl://`- and
+    `tcp://`-prefixed endpoints. End users are familiar with using `https://`
+    and `http://` than our `ssl://` or `tcp://` endpoints.
+    Internally, `https://` will be converted to `ssl://`, and `http://` will
+    be converted to `tcp://`.
+
+* Improve Pregel garbage collection for dropped databases.
+
+* Refuse server startup with outdated little-endian on-disk format.
+  The little-endian on-disk format was used for deployments that were created
+  with either ArangoDB 3.2 or 3.3 when using the RocksDB storage engine.
+  Since ArangoDB 3.4, a big-endian on-disk format was used for the RocksDB
+  storage engine, which is more performant.
+  Deployments that were set up with the RocksDB storage engine using ArangoDB
+  3.2 or 3.3 and that have been upgraded since then will still use the old
+  format. This should not affect many users, because the default storage
+  engine in ArangoDB 3.2 and 3.3 was the MMFiles storage engine. Furthermore,
+  deployments that have been recreated from an arangodump since ArangoDB 3.4
+  will not be affected, because restoring an arangodump into a fresh 
+  deployment will also make ArangoDB use the big-endian on-disk format.
+
+  When the outdated little-endian on-disk format is detected at startup, the
+  server will bail out with a descriptive error message. The recommend way to
+  migrate the database from the little-endian storage format to the big-endian
+  storage format is to
+
+  1. create a full logical backup of the database using arangodump
+  2. stop the database servers in the deployment
+  3. wipe the existing database directories
+  4. restart the servers in the deployment
+  5. restore the logical dump into the deployment
+
+  It will not be sufficient to take a hot backup of a little-endian dataset
+  and restore it, because when restoring a hot backup, the original database
+  format will be restored as it was at time of the backup.
+
+* BTS-1380: Added traversal order (dfs, bfs, weighted) to explain output.
+
+* arangodump and arangorestore will now try to bump up the limit for the number
+  of open file descriptors at startup, on Linux and macOS. This way the tools
+  are allowed to open more files concurrently, which can be useful when
+  dump/restore with many threads.
+
+* Added startup option `--descriptors-minimum` to arangodump and arangorestore.
+  This option can be used to set a lower bound value for the open file 
+  descriptors limit that is required to invoke arangodump/arangorestore.
+  Setting the option to a value of 0 makes arangodump/arangorestore start
+  regardless of the actual limit for the number of open file descriptors.
+
+  This option is available on Linux and macOS only.
+
+* Fixed a loophole in COLLECT variable name validation: in COLLECT INTO 
+  expressions it was possible to refer to variables that the COLLECT just
+  introduced. This was undefined behavior and not caught by the previous
+  version of COLLECT's variable checking.
 
 * BTS-1598: fix race in agency.
 
