@@ -24,6 +24,8 @@ devel
     Internally, `https://` will be converted to `ssl://`, and `http://` will
     be converted to `tcp://`.
 
+* Improve Pregel garbage collection for dropped databases.
+
 * Refuse server startup with outdated little-endian on-disk format.
   The little-endian on-disk format was used for deployments that were created
   with either ArangoDB 3.2 or 3.3 when using the RocksDB storage engine.
