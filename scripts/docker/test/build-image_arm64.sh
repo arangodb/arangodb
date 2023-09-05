@@ -9,7 +9,7 @@ OS_VERSION=$(docker run --rm -it $image:latest-$arch cat etc/os-release | grep -
 
 IMAGE_TAG=${OS_VERSION}-$(git rev-parse --short HEAD)-$arch
 
-echo "Taging image as \"${IMAGE_TAG}\""
+echo "Tagging image as \"${IMAGE_TAG}\""
 docker tag $image:latest-$arch $image:${IMAGE_TAG}
 
 echo "To push the image please run:"
