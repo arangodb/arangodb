@@ -13,7 +13,7 @@ OS_VERSION=$(docker run --rm -it $image:latest-$arch cat /etc/alpine-release | g
 
 IMAGE_TAG=${OS_VERSION}-gcc${GCC_VERSION}-openssl${OPENSSL_VERSION}-$(git rev-parse --short HEAD)-$arch
 
-echo "Taging image as \"${IMAGE_TAG}\""
+echo "Tagging image as \"${IMAGE_TAG}\""
 docker tag $image:latest-$arch $image:${IMAGE_TAG}
 
 echo "To push the image please run:"
