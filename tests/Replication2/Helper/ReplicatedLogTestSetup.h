@@ -144,6 +144,9 @@ struct ParticipantWithFakes : ITestParticipant {
     return stateHandleMock->logLeaderMethods->insert(std::move(payload),
                                                      waitForSync);
   }
+  [[nodiscard]] auto getQuickStatus() {
+    return log->getParticipant()->getQuickStatus();
+  }
 
   auto runAll() noexcept -> std::size_t override {
     if (delayedLogFollower != nullptr) {
