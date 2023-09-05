@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/operating-system.h"
 #include "Utils/ArangoClient.h"
 
 namespace arangodb {
@@ -33,7 +34,9 @@ class DumpFeature;
 class EncryptionFeature;
 
 using ArangoDumpFeaturesList =
+#ifdef TRI_HAVE_GETRLIMIT
     ArangoClientFeaturesList<BumpFileDescriptorsFeature,
+#endif
 #ifdef USE_ENTERPRISE
                              EncryptionFeature,
 #endif
