@@ -115,7 +115,7 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
 
   leaderLogContainer->runAll();
 
-  ASSERT_TRUE(followerLogContainer->hasWork());
+  ASSERT_TRUE(fakeFollower->hasPendingRequests());
   {
     auto req = fakeFollower->currentRequest();
     // Note that the leader inserted an empty log entry while establishing
@@ -150,37 +150,45 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
   }
 }
 
-// TODO convert the rest
-//      continue here!
-#if 0
 TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeAbstractFollower>("follower");
-  auto leader =
-      leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2, true);
+  auto leaderLogContainer = createParticipant({});
+  auto leaderLog = leaderLogContainer->log;
+  auto followerLogContainer = createFakeFollower();
+  auto fakeFollower = followerLogContainer->fakeAbstractFollower;
 
-  auto const firstIdx =
-      leader->insert(LogPayload::createFromString("first entry"), false,
-                     LogLeader::doNotTriggerAsyncReplication);
-  // Note that the leader inserts an empty log entry in becomeLeader already
+  // waitForSync=true in the config
+  auto config = addNewTerm(
+      leaderLogContainer->serverId(), {followerLogContainer->serverId()},
+      {.term = 4_T, .writeConcern = 2, .waitForSync = true});
+  config->installConfig(true);
+  auto leader = leaderLogContainer->getAsLeader();
+
+  // waitForSync=false in the request
+  auto const firstIdx = leaderLogContainer->insert(
+      LogPayload::createFromString("first entry"), false);
+  // Note that the leader inserts an empty log entry when establishing
+  // leadership
   ASSERT_EQ(firstIdx, LogIndex{2});
 
-  leader->triggerAsyncReplication();
-  ASSERT_TRUE(follower->hasPendingRequests());
+  leaderLogContainer->runAll();
+  ASSERT_TRUE(fakeFollower->hasPendingRequests());
   {
-    auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{1});
+    auto req = fakeFollower->currentRequest();
+    EXPECT_EQ(req.messageId, MessageId{3});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2U);
-    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
-    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
-    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
+    EXPECT_EQ(req.entries.size(), 1U);
+    EXPECT_EQ(req.leaderId, leaderLogContainer->serverId());
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
-    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_EQ(req.leaderCommit, LogIndex{1});
     EXPECT_TRUE(req.waitForSync);
   }
 }
 
+// TODO convert the rest
+//      continue here!
+#if 0
 // TODO Enable this test, it's currently known to fail, as it's not yet
 // implemented.
 TEST_F(LeaderAppendEntriesTest, DISABLED_test_wait_for_sync_flag_set_by_param) {
