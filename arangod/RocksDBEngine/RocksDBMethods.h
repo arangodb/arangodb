@@ -25,6 +25,8 @@
 
 #include "RocksDBEngine/RocksDBCommon.h"
 
+#include <cstddef>
+
 namespace rocksdb {
 class Slice;
 }  // namespace rocksdb
@@ -36,7 +38,7 @@ class RocksDBMethods {
  public:
   virtual ~RocksDBMethods() = default;
 
-  virtual bool isIndexingDisabled() const { return false; }
+  virtual bool isIndexingDisabled() const noexcept { return false; }
 
   /// @brief returns true if indexing was disabled by this call
   /// the default implementation is to do nothing
@@ -89,6 +91,38 @@ class RocksDBMethods {
                                        RocksDBKey const&) = 0;
 
   virtual void PutLogData(rocksdb::Slice const&) = 0;
+
+  /// @brief function to calculate overhead of a WriteBatchWithIndex entry,
+  /// depending on keySize. will return 0 if indexing is disabled in the current
+  /// transaction.
+  static size_t indexingOverhead(bool indexingEnabled, size_t keySize) noexcept;
+  static size_t indexingOverhead(size_t keySize) noexcept;
+
+  /// @brief function to calculate overhead of a lock entry, depending on
+  /// keySize. will return 0 if no locks are used by the current transaction
+  /// (e.g. if the transaction is using an exclusive lock)
+  static size_t lockOverhead(bool lockingEnabled, size_t keySize) noexcept;
+
+  /// @brief assumed additional indexing overhead for each entry in a
+  /// WriteBatchWithIndex. this is in addition to the actual WriteBuffer entry.
+  /// the WriteBatchWithIndex keeps all entries (which are pointers) in a
+  /// skiplist. it is unclear from the outside how much memory the skiplist
+  /// will use per entry, so this value here is just a guess.
+  static constexpr size_t fixedIndexingEntryOverhead = 32;
+
+  /// @brief assumed additional overhead for each lock that is held by the
+  /// transaction. the overhead is computed as follows:
+  /// locks are stored in rocksdb in a hash table, which maps from the locked
+  /// key to a LockInfo struct. The LockInfo struct is 120 bytes big.
+  /// we also assume some more overhead for the hash table entries and some
+  /// general overhead because the hash table is never assumed to be completely
+  /// full (load factor < 1). thus we assume 64 bytes of overhead for each
+  /// entry. this is an arbitrary value.
+  static constexpr size_t fixedLockEntryOverhead = 120 + 64;
+
+  /// @brief assumed additional overhead for making a dynamic memory allocation
+  /// for an std::string value that exceeds the string's internal SSO buffer.
+  static constexpr size_t memoryAllocationOverhead = 8;
 };
 
 }  // namespace arangodb
