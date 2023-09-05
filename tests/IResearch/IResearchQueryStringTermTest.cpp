@@ -79,9 +79,10 @@ class QueryStringTerm : public QueryTest {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-        {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-        arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+        kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -222,8 +223,9 @@ class QueryStringTerm : public QueryTest {
     // _id attribute
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-          kEmpty, kEmpty, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty, kEmpty, kEmpty, arangodb::transaction::Options());
 
       auto const id =
           trx.extractIdString(VPackSlice(_insertedDocs.front()->data()));

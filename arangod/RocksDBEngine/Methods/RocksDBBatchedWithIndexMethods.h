@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 
@@ -34,10 +34,11 @@ class WriteBatchWithIndex;
 namespace arangodb {
 
 /// wraps a writebatch with index - non transactional
-class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
+class RocksDBBatchedWithIndexMethods final : public RocksDBBatchedBaseMethods {
  public:
   RocksDBBatchedWithIndexMethods(rocksdb::TransactionDB* db,
-                                 rocksdb::WriteBatchWithIndex*);
+                                 rocksdb::WriteBatchWithIndex*,
+                                 RocksDBMethodsMemoryTracker& memoryTracker);
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
@@ -56,6 +57,19 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
   void PutLogData(rocksdb::Slice const&) override;
 
  private:
+  size_t currentWriteBatchSize() const noexcept override;
+
+  /// @brief assumed additional indexing overhead for each entry in a
+  /// WriteBatchWithIndex. this is in addition to the actual WriteBuffer entry.
+  /// the WriteBatchWithIndex keeps all entries (which are pointers) in a
+  /// skiplist. it is unclear from the outside how much memory the skiplist
+  /// will use per entry, so this value here is just a guess.
+  static constexpr size_t fixedIndexingEntryOverhead = 32;
+
+  /// @brief function to calculate overhead of a WriteBatchWithIndex entry,
+  /// depending on keySize.
+  size_t indexingOverhead(size_t keySize) const noexcept;
+
   rocksdb::TransactionDB* _db;
   rocksdb::WriteBatchWithIndex* _wb;
 };

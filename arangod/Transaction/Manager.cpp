@@ -38,6 +38,8 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -46,6 +48,9 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Transaction/History.h"
+#endif
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
@@ -77,14 +82,13 @@ std::string currentUser() { return arangodb::ExecContext::current().user(); }
 
 }  // namespace
 
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
-  MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
+  MGMethods(std::shared_ptr<arangodb::transaction::Context> ctx,
             arangodb::transaction::Options const& opts)
-      : Methods(ctx, opts) {}
+      : Methods(std::move(ctx)) {}
 };
 }  // namespace
 
@@ -94,26 +98,24 @@ Manager::Manager(ManagerFeature& feature)
       _disallowInserts(false),
       _hotbackupCommitLockHeld(false),
       _streamingLockTimeout(feature.streamingLockTimeout()),
-      _softShutdownOngoing(false) {}
+      _softShutdownOngoing(false) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _history = std::make_unique<transaction::History>(/*maxSize*/ 256);
+#endif
+}
 
-void Manager::registerTransaction(TransactionId transactionId,
-                                  bool isReadOnlyTransaction,
-                                  bool isFollowerTransaction) {
+Manager::~Manager() = default;
+
+std::shared_ptr<CounterGuard> Manager::registerTransaction(
+    TransactionId transactionId, bool isReadOnlyTransaction,
+    bool isFollowerTransaction) {
   // If isFollowerTransaction is set then either the transactionId should be
   // an isFollowerTransactionId or it should be a legacy transactionId:
   TRI_ASSERT(!isFollowerTransaction ||
              transactionId.isFollowerTransactionId() ||
              transactionId.isLegacyTransactionId());
-  _nrRunning.fetch_add(1, std::memory_order_relaxed);
-}
 
-// unregisters a transaction
-void Manager::unregisterTransaction(TransactionId transactionId,
-                                    bool isReadOnlyTransaction,
-                                    bool isFollowerTransaction) noexcept {
-  // always perform an unlock when we leave this function
-  uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
-  TRI_ASSERT(r > 0);
+  return std::make_shared<CounterGuard>(*this);
 }
 
 uint64_t Manager::getActiveTransactionCount() {
@@ -329,9 +331,9 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
   buck._managed.erase(it);  // unlocking not necessary
 }
 
-ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase,
-                                                 VPackSlice trxOpts,
-                                                 bool allowDirtyReads) {
+ResultT<TransactionId> Manager::createManagedTrx(
+    TRI_vocbase_t& vocbase, velocypack::Slice trxOpts,
+    OperationOrigin operationOrigin, bool allowDirtyReads) {
   if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
@@ -356,11 +358,12 @@ ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase,
   }
 
   return createManagedTrx(vocbase, reads, writes, exclusives,
-                          std::move(options));
+                          std::move(options), operationOrigin);
 }
 
 Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
-                                 VPackSlice trxOpts,
+                                 velocypack::Slice trxOpts,
+                                 OperationOrigin operationOrigin,
                                  bool isFollowerTransaction) {
   TRI_ASSERT(
       (ServerState::instance()->isSingleServer() && !isFollowerTransaction) ||
@@ -374,7 +377,7 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
 
   return ensureManagedTrx(vocbase, tid, reads, writes, exclusives,
-                          std::move(options));
+                          std::move(options), operationOrigin, /*ttl*/ 0.0);
 }
 
 transaction::Hints Manager::ensureHints(transaction::Options& options) const {
@@ -393,11 +396,15 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
 
 Result Manager::beginTransaction(transaction::Hints hints,
                                  std::shared_ptr<TransactionState>& state) {
+  TRI_ASSERT(state != nullptr);
   Result res;
+
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {
     res.reset(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    res.reset(TRI_ERROR_INTERNAL, ex.what());
   }
 
   TRI_ASSERT(res.ok() || !state->isRunning());
@@ -454,8 +461,8 @@ Result Manager::prepareOptions(transaction::Options& options) {
     }
   } else {
     // for all other transactions, apply a size limitation
-    options.maxTransactionSize = std::min<size_t>(options.maxTransactionSize,
-                                                  Manager::maxTransactionSize);
+    options.maxTransactionSize = std::min<size_t>(
+        options.maxTransactionSize, _feature.streamingMaxTransactionSize());
   }
 
   return res;
@@ -560,8 +567,8 @@ bool Manager::isFollowerTransactionOnDBServer(
 ResultT<TransactionId> Manager::createManagedTrx(
     TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
-    std::vector<std::string> const& exclusiveCollections,
-    transaction::Options options, double ttl) {
+    std::vector<std::string> const& exclusiveCollections, Options options,
+    OperationOrigin operationOrigin) {
   // We cannot run this on FollowerTransactions.
   // They need to get injected the TransactionIds.
   TRI_ASSERT(!isFollowerTransactionOnDBServer(options));
@@ -586,7 +593,8 @@ ResultT<TransactionId> Manager::createManagedTrx(
     StorageEngine& engine =
         vocbase.server().getFeature<EngineSelectorFeature>().engine();
     // now start our own transaction
-    return engine.createTransactionState(vocbase, tid, options);
+    return engine.createTransactionState(vocbase, tid, options,
+                                         operationOrigin);
   });
   if (!maybeState.ok()) {
     return std::move(maybeState).result();
@@ -637,11 +645,11 @@ ResultT<TransactionId> Manager::createManagedTrx(
   // During beginTransaction we may reroll the Transaction ID.
   tid = state->id();
 
-  bool stored = storeManagedState(tid, std::move(state), ttl);
+  bool stored = storeManagedState(tid, std::move(state), /*ttl*/ 0.0);
   if (!stored) {
     return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                     std::string("transaction id ") + std::to_string(tid.id()) +
-                         " already used (while creating)");
+                     absl::StrCat("transaction id ", tid.id(),
+                                  " already used (while creating)"));
   }
 
   LOG_TOPIC("d6807", DEBUG, Logger::TRANSACTIONS)
@@ -655,8 +663,8 @@ Result Manager::ensureManagedTrx(
     TRI_vocbase_t& vocbase, TransactionId tid,
     std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
-    std::vector<std::string> const& exclusiveCollections,
-    transaction::Options options, double ttl) {
+    std::vector<std::string> const& exclusiveCollections, Options options,
+    OperationOrigin operationOrigin, double ttl) {
   Result res;
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -708,7 +716,8 @@ Result Manager::ensureManagedTrx(
     StorageEngine& engine =
         vocbase.server().getFeature<EngineSelectorFeature>().engine();
     // now start our own transaction
-    return engine.createTransactionState(vocbase, tid, options);
+    return engine.createTransactionState(vocbase, tid, options,
+                                         operationOrigin);
   });
   if (!maybeState.ok()) {
     return std::move(maybeState).result();
@@ -1168,11 +1177,10 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
   bool isCoordinator = state->isCoordinator();
   bool intermediateCommits = state->numCommits() > 0;
 
-  transaction::Options trxOpts;
   MGMethods trx(std::make_shared<ManagedContext>(tid, std::move(state),
                                                  /*responsibleForCommit*/ true,
                                                  /*cloned*/ false),
-                trxOpts);
+                transaction::Options{});
   TRI_ASSERT(trx.state()->isRunning());
   TRI_ASSERT(trx.isMainTransaction());
   if (clearServers && !isCoordinator) {
@@ -1228,6 +1236,13 @@ void Manager::iterateManagedTrx(
 
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // clear transaction history as well
+  if (_history != nullptr) {
+    _history->garbageCollect();
+  }
+#endif
+
   bool didWork = false;
   containers::SmallVector<TransactionId, 8> toAbort;
   containers::SmallVector<TransactionId, 8> toErase;
@@ -1439,6 +1454,13 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
   });
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+History& Manager::history() noexcept {
+  TRI_ASSERT(_history != nullptr);
+  return *_history;
+}
+#endif
+
 Result Manager::abortAllManagedWriteTrx(std::string const& username,
                                         bool fanout) {
   LOG_TOPIC("bba16", INFO, Logger::QUERIES)
@@ -1567,5 +1589,14 @@ Manager::TransactionCommitGuard Manager::getTransactionCommitGuard() {
   return guard;
 }
 
-}  // namespace transaction
-}  // namespace arangodb
+CounterGuard::CounterGuard(Manager& manager) : _manager(manager) {
+  _manager._nrRunning.fetch_add(1, std::memory_order_relaxed);
+}
+
+CounterGuard::~CounterGuard() {
+  [[maybe_unused]] uint64_t r =
+      _manager._nrRunning.fetch_sub(1, std::memory_order_relaxed);
+  TRI_ASSERT(r > 0);
+}
+
+}  // namespace arangodb::transaction

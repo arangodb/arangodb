@@ -28,6 +28,7 @@
 
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
+#include "Transaction/Hints.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
@@ -42,7 +43,7 @@ namespace methods {
 struct Indexes {
   static arangodb::Result getIndex(LogicalCollection const& collection,
                                    velocypack::Slice indexId,
-                                   velocypack::Builder&,
+                                   velocypack::Builder& out,
                                    transaction::Methods* trx = nullptr);
 
   /// @brief get all indexes, skips view links

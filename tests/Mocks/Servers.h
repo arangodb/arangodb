@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "Logger/LogMacros.h"
+#include "Transaction/Hints.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 struct TRI_vocbase_t;
@@ -49,7 +50,7 @@ class ConnectionPool;
 
 namespace transaction {
 class Methods;
-}
+}  // namespace transaction
 
 namespace aql {
 class Query;

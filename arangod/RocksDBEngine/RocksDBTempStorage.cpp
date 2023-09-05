@@ -272,9 +272,11 @@ void RocksDBTempStorage::close() {
 }
 
 std::unique_ptr<RocksDBSortedRowsStorageContext>
-RocksDBTempStorage::getSortedRowsStorageContext() {
+RocksDBTempStorage::getSortedRowsStorageContext(
+    RocksDBMethodsMemoryTracker& memoryTracker) {
   return std::make_unique<RocksDBSortedRowsStorageContext>(
-      _db, _cfHandles[0], _tempFilesPath, nextId(), _usageTracker);
+      _db, _cfHandles[0], _tempFilesPath, nextId(), _usageTracker,
+      memoryTracker);
 }
 
 uint64_t RocksDBTempStorage::nextId() noexcept {

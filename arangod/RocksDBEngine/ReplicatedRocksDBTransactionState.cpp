@@ -41,8 +41,9 @@ using namespace arangodb;
 
 ReplicatedRocksDBTransactionState::ReplicatedRocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : RocksDBTransactionState(vocbase, tid, options) {}
+    transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin)
+    : RocksDBTransactionState(vocbase, tid, options, operationOrigin) {}
 
 ReplicatedRocksDBTransactionState::~ReplicatedRocksDBTransactionState() {}
 
@@ -248,11 +249,12 @@ RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(
   return result;
 }
 
-void ReplicatedRocksDBTransactionState::beginQuery(bool isModificationQuery) {
+void ReplicatedRocksDBTransactionState::beginQuery(
+    ResourceMonitor* resourceMonitor, bool isModificationQuery) {
   RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& col : _collections) {
     static_cast<ReplicatedRocksDBTransactionCollection&>(*col).beginQuery(
-        isModificationQuery);
+        resourceMonitor, isModificationQuery);
   }
 }
 
