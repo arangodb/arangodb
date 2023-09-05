@@ -45,6 +45,8 @@
 #include "Replication2/Storage/WAL/Record.h"
 #include "velocypack/Builder.h"
 
+using namespace std::string_literals;
+
 namespace arangodb::replication2::storage::wal {
 
 namespace {
@@ -212,7 +214,7 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
         << bufferWriter.buffer().size() << " bytes) to file "
         << _activeFile->path() << "; last written entry is "
         << (_lastWrittenEntry.has_value() ? to_string(_lastWrittenEntry.value())
-                                          : "<na>");
+                                          : "<na>"s);
 
     return res;
   }
@@ -220,7 +222,7 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
       << "Wrote " << cnt << " entries (" << bufferWriter.buffer().size()
       << " bytes) to file " << _activeFile->path() << "; last written entry is "
       << (lastWrittenEntry.has_value() ? to_string(lastWrittenEntry.value())
-                                       : "<na>");
+                                       : "<na>"s);
 
   _lastWrittenEntry = lastWrittenEntry;
 
