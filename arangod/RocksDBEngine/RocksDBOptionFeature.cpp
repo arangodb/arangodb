@@ -57,7 +57,7 @@
 #include <rocksdb/utilities/transaction_db.h>
 
 // It's not atomic because it shouldn't change after initilization.
-// And initilization should happens before rocksdb initilization.
+// And initialization should happen before rocksdb initialization.
 static bool ioUringEnabled = true;
 
 // weak symbol from rocksdb
