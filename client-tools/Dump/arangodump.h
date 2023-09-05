@@ -33,14 +33,14 @@ class BumpFileDescriptorsFeature;
 class DumpFeature;
 class EncryptionFeature;
 
-using ArangoDumpFeaturesList =
+using ArangoDumpFeaturesList = ArangoClientFeaturesList<
 #ifdef TRI_HAVE_GETRLIMIT
-    ArangoClientFeaturesList<BumpFileDescriptorsFeature,
+    BumpFileDescriptorsFeature,
 #endif
 #ifdef USE_ENTERPRISE
-                             EncryptionFeature,
+    EncryptionFeature,
 #endif
-                             BasicFeaturePhaseClient, DumpFeature>;
+    BasicFeaturePhaseClient, DumpFeature>;
 struct ArangoDumpFeatures : ArangoDumpFeaturesList {};
 using ArangoDumpServer = ApplicationServerT<ArangoDumpFeatures>;
 using ArangoDumpFeature = ApplicationFeatureT<ArangoDumpServer>;

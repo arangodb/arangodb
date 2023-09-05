@@ -33,15 +33,14 @@ class TempFeature;
 class RestoreFeature;
 class EncryptionFeature;
 
-using ArangoRestoreFeaturesList =
+using ArangoRestoreFeaturesList = ArangoClientFeaturesList<
 #ifdef TRI_HAVE_GETRLIMIT
-    ArangoClientFeaturesList<BumpFileDescriptorsFeature,
+    BumpFileDescriptorsFeature,
 #endif
 #ifdef USE_ENTERPRISE
-                             EncryptionFeature,
+    EncryptionFeature,
 #endif
-                             BasicFeaturePhaseClient, TempFeature,
-                             RestoreFeature>;
+    BasicFeaturePhaseClient, TempFeature, RestoreFeature>;
 struct ArangoRestoreFeatures : ArangoRestoreFeaturesList {};
 using ArangoRestoreServer = ApplicationServerT<ArangoRestoreFeatures>;
 using ArangoRestoreFeature = ApplicationFeatureT<ArangoRestoreServer>;
