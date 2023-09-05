@@ -19,6 +19,7 @@ add_library(arango_rocksdb STATIC
   RocksDBIndexCacheRefillFeature.cpp
   RocksDBIndexCacheRefillThread.cpp
   RocksDBIndexFactory.cpp
+  RocksDBIndexingDisabler.cpp
   RocksDBIterators.cpp
   RocksDBKey.cpp
   RocksDBKeyBounds.cpp
