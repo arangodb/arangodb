@@ -32,7 +32,7 @@ FileReaderImpl::FileReaderImpl(std::string const& path) : _path(path) {
   _file = std::fopen(path.c_str(), "rb");
   if (_file == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
         "failed to open replicated log file " + path + " for reading");
   }
   setvbuf(_file, NULL, _IOFBF, 1024 * 1024);

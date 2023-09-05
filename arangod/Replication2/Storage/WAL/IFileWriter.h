@@ -39,6 +39,8 @@ struct IFileReader;
 struct IFileWriter {
   virtual ~IFileWriter() = default;
 
+  virtual auto path() const -> std::string const& = 0;
+
   template<typename T>
   [[nodiscard]] Result append(T const& v) {
     static_assert(std::is_trivially_copyable_v<T>);

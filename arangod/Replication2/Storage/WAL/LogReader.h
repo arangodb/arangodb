@@ -54,6 +54,7 @@ struct LogReader {
 
   // read the next entry, starting from the current position of the reader
   auto readNextLogEntry() -> ResultT<PersistedLogEntry>;
+  void skipEntry();
 
   // TODO - remove this
   auto file() -> IFileReader& { return *_reader; }

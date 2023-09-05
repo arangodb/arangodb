@@ -179,14 +179,10 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
   while (auto e = iter->next()) {
     auto& entry = e.value();
     if (lastWrittenEntry.has_value()) {
-      if (entry.logIndex() != lastWrittenEntry->index + 1 ||
-          entry.logTerm() < lastWrittenEntry->term) {
-        LOG_TOPIC("5b761", ERR, Logger::REPLICATED_WAL)
-            << "attempting to write log entry " << entry.logTermIndexPair()
-            << " after " << lastWrittenEntry.value();
-        return ResultT<SequenceNumber>::error(
-            TRI_ERROR_INTERNAL, "Log entries must be written in order");
-      }
+      ADB_PROD_ASSERT(entry.logIndex() == lastWrittenEntry->index + 1 &&
+                      entry.logTerm() >= lastWrittenEntry->term)
+          << "attempting to write log entry " << entry.logTermIndexPair()
+          << " after " << lastWrittenEntry.value();
     }
 
     bufferWriter.appendEntry(entry);
@@ -218,32 +214,39 @@ auto LogPersistor::removeFront(LogIndex stop, WriteOptions const&)
 }
 
 auto LogPersistor::removeBack(LogIndex start, WriteOptions const&)
-    -> futures::Future<ResultT<SequenceNumber>> {
+    -> futures::Future<ResultT<SequenceNumber>> try {
+  ADB_PROD_ASSERT(start.value > 0);
+
   LogReader reader(_activeFile->getReader());
   reader.seek(reader.size());
 
-  auto res = reader.seekLogIndexBackward(start);
+  // we seek the predecessor of start, because we want to get its term
+  auto res = reader.seekLogIndexBackward(start.saturatedDecrement());
   if (res.fail()) {
     return res.result();
   }
 
-  TRI_ASSERT(res.get().index == start.value);
+  auto header = res.get();
+  reader.skipEntry();
 
-  auto pos = reader.position();
-  // TODO - refactor and check that we actually have one more entry to read!
-  Record::Footer footer;
-  reader.seek(pos - sizeof(Record::Footer));
-  ADB_PROD_ASSERT(reader.file().read(footer));
-  reader.seek(pos - footer.size);
-
-  Record::CompressedHeader header;
-  ADB_PROD_ASSERT(reader.file().read(header));
+  TRI_ASSERT(header.index + 1 == start.value);
 
   _lastWrittenEntry =
       TermIndexPair(LogTerm{header.term()}, LogIndex{header.index});
 
-  _activeFile->truncate(pos);
+  _activeFile->truncate(reader.position());
   return ResultT<SequenceNumber>::success(start.value);
+} catch (basics::Exception& ex) {
+  LOG_TOPIC("7741d", ERR, Logger::REPLICATED_WAL)
+      << "Failed to remove entries from back of file " << _activeFile->path()
+      << ": " << ex.message();
+  return ResultT<SequenceNumber>::error(ex.code(), ex.message());
+} catch (std::exception& ex) {
+  LOG_TOPIC("08da6", FATAL, Logger::REPLICATED_WAL)
+      << "Failed to remove entries from back of file " << _activeFile->path()
+      << ": " << ex.what();
+  return ResultT<SequenceNumber>::error(
+      TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, ex.what());
 }
 
 auto LogPersistor::getLogId() -> LogId { return _logId; }

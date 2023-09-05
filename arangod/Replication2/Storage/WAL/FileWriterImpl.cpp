@@ -49,11 +49,13 @@ FileWriterImpl::~FileWriterImpl() {
 auto FileWriterImpl::append(std::string_view data) -> Result {
   auto n = ::write(_file, data.data(), data.size());
   if (n < 0) {
-    return Result(TRI_ERROR_INTERNAL, "failed to write to log file " + _path +
-                                          ": " + strerror(errno));
+    return Result(
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+        "failed to write to log file " + _path + ": " + strerror(errno));
   }
   if (static_cast<std::size_t>(n) != data.size()) {
-    return Result(TRI_ERROR_INTERNAL, "write to log file was incomplete");
+    return Result(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+                  "write to log file was incomplete");
   }
 
   return Result{};

@@ -30,6 +30,7 @@
 #include "Replication2/Storage/WAL/FileHeader.h"
 #include "Replication2/Storage/WAL/Record.h"
 
+#include <absl/crc/crc32c.h>
 #include <string>
 
 namespace arangodb::replication2::storage::wal {
@@ -44,16 +45,18 @@ LogReader::LogReader(std::unique_ptr<IFileReader> reader)
   FileHeader header;
   if (!_reader->read(header)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
         "failed to read header from log file " + reader->path());
   }
   if (header.magic != wMagicFileType) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "invalid file type in log file " + reader->path());
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_INVALID_FILE,
+        "invalid file type in log file " + reader->path());
   }
   if (header.version != wCurrentVersion) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "invalid file version in file " + reader->path());
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_INVALID_FILE,
+        "invalid file version in file " + reader->path());
   }
   _firstEntry = _reader->position();
 }
@@ -85,8 +88,8 @@ auto LogReader::seekLogIndexForward(LogIndex index)
     _reader->seek(pos);
   }
   // TODO - use proper error code
-  return ResultT<Record::CompressedHeader>::error(TRI_ERROR_INTERNAL,
-                                                  "log index not found");
+  return ResultT<Record::CompressedHeader>::error(
+      TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, "log index not found");
 }
 
 auto LogReader::seekLogIndexBackward(LogIndex index)
@@ -94,7 +97,8 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
   using RT = ResultT<Record::CompressedHeader>;
 
   if (_reader->size() <= minFileSize) {
-    return RT::error(TRI_ERROR_INTERNAL, "log is empty");
+    return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,
+                     "log is empty");
   }
 
   Record::Footer footer;
@@ -104,22 +108,22 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
       << "file " << _reader->path() << " - pos: " << pos;
   if (pos < sizeof(Record::Footer)) {
     // TODO - file is corrupt - write log message
-    return RT::error(TRI_ERROR_INTERNAL, "log is corrupt");
+    return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,
+                     "log is corrupt");
   }
   _reader->seek(pos - sizeof(Record::Footer));
 
   while (_reader->read(footer)) {
     // calculate the max entry size based on our current position
     auto maxEntrySize = pos - sizeof(FileHeader) - sizeof(Record::Header);
-    ADB_PROD_ASSERT(footer.size % 8 != 0 || footer.size > maxEntrySize)
+    ADB_PROD_ASSERT(footer.size % 8 == 0 && footer.size <= maxEntrySize)
         << "file " << _reader->path() << " - pos: " << pos
         << "; footer.size: " << footer.size
         << "; maxEntrySize: " << maxEntrySize;
     pos -= footer.size;
     // seek to beginning of entry
     _reader->seek(pos);
-    auto res = _reader->read(compressedHeader);
-    TRI_ASSERT(res);
+    ADB_PROD_ASSERT(_reader->read(compressedHeader));
 
     auto idx = compressedHeader.index;
     if (idx == index.value) {
@@ -133,23 +137,25 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
       return RT::success(compressedHeader);
     } else if (idx < index.value) {
       return RT::error(
-          TRI_ERROR_INTERNAL,
+          TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,
           "found index lower than start index while searching backwards");
     } else if (pos <= minFileSize) {
       // TODO - file is corrupt - write log message
-      return RT::error(TRI_ERROR_INTERNAL, "log is corrupt");
+      return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,
+                       "log is corrupt");
     }
     _reader->seek(pos - sizeof(Record::Footer));
   }
-  return RT::error(TRI_ERROR_INTERNAL, "log index not found");
+  return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+                   "log index not found");
 }
 
 auto LogReader::getFirstRecordHeader() -> ResultT<Record::CompressedHeader> {
   _reader->seek(_firstEntry);
   Record::CompressedHeader header;
   if (!_reader->read(header)) {
-    return ResultT<Record::CompressedHeader>::error(TRI_ERROR_INTERNAL,
-                                                    "failed to read header");
+    return ResultT<Record::CompressedHeader>::error(
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, "failed to read header");
   }
   return ResultT<Record::CompressedHeader>::success(header);
 }
@@ -157,14 +163,14 @@ auto LogReader::getFirstRecordHeader() -> ResultT<Record::CompressedHeader> {
 auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
   auto fileSize = _reader->size();
   if (fileSize <= minFileSize) {
-    return ResultT<Record::CompressedHeader>::error(TRI_ERROR_INTERNAL,
-                                                    "log is too small");
+    return ResultT<Record::CompressedHeader>::error(
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT, "log is too small");
   }
   _reader->seek(fileSize - sizeof(Record::Footer));
   Record::Footer footer;
   if (!_reader->read(footer)) {
-    return ResultT<Record::CompressedHeader>::error(TRI_ERROR_INTERNAL,
-                                                    "failed to read footer");
+    return ResultT<Record::CompressedHeader>::error(
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, "failed to read footer");
   }
   ADB_PROD_ASSERT(footer.size % 8 != 0 || footer.size > fileSize - minFileSize)
       << "file " << _reader->path() << " - footer.size: " << footer.size
@@ -172,8 +178,8 @@ auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
   _reader->seek(fileSize - footer.size);
   Record::CompressedHeader header;
   if (!_reader->read(header)) {
-    return ResultT<Record::CompressedHeader>::error(TRI_ERROR_INTERNAL,
-                                                    "failed to read header");
+    return ResultT<Record::CompressedHeader>::error(
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, "failed to read header");
   }
   return ResultT<Record::CompressedHeader>::success(header);
 }
@@ -187,7 +193,8 @@ auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
 
   Record::CompressedHeader compressedHeader;
   if (!_reader->read(compressedHeader)) {
-    return RT::error(TRI_ERROR_INTERNAL, "failed to read header");
+    return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+                     "failed to read header");
   }
 
   auto header = Record::Header{compressedHeader};
@@ -195,9 +202,16 @@ auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
   auto paddedSize = Record::paddedPayloadSize(header.payloadSize);
   velocypack::UInt8Buffer buffer(paddedSize);
   if (_reader->read(buffer.data(), paddedSize) != paddedSize) {
-    return RT::error(TRI_ERROR_INTERNAL, "failed to read payload");
+    return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+                     "failed to read payload");
   }
   buffer.resetTo(header.payloadSize);
+
+  auto payloadCrc =
+      absl::ComputeCrc32c({reinterpret_cast<char const*>(&compressedHeader),
+                           sizeof(compressedHeader)});
+  payloadCrc = absl::ExtendCrc32c(
+      payloadCrc, {reinterpret_cast<char const*>(buffer.data()), paddedSize});
 
   auto entry = [&]() -> LogEntry {
     if (header.type == RecordType::wMeta) {
@@ -214,9 +228,15 @@ auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
 
   Record::Footer footer;
   if (!_reader->read(footer)) {
-    return RT::error(TRI_ERROR_INTERNAL, "failed to read footer");
+    return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+                     "failed to read footer");
   }
-  // TODO - verify crc32
+
+  ADB_PROD_ASSERT(static_cast<std::uint32_t>(payloadCrc) == footer.crc32)
+      << "crc mismatch for log index " << header.index << " at offset "
+      << startPos << " - file: " << _reader->path()
+      << "; calculated crc: " << payloadCrc << "; stored crc: " << footer.crc32;
+
   ADB_PROD_ASSERT(footer.size % 8 == 0 &&
                   footer.size == _reader->position() - startPos)
       << "file " << _reader->path() << " - footer.size: " << footer.size
@@ -225,6 +245,15 @@ auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
   auto pos = IteratorPosition::withFileOffset(entry.logIndex(), startPos);
 
   return PersistedLogEntry(std::move(entry), pos);
+}
+
+void LogReader::skipEntry() {
+  auto pos = _reader->position();
+  Record::CompressedHeader header;
+  ADB_PROD_ASSERT(_reader->read(header));
+  pos += sizeof(Record::CompressedHeader) +
+         Record::paddedPayloadSize(header.payloadSize) + sizeof(Record::Footer);
+  _reader->seek(pos);
 }
 
 }  // namespace arangodb::replication2::storage::wal

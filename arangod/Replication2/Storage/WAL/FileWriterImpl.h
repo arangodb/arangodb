@@ -34,6 +34,8 @@ struct FileWriterImpl final : IFileWriter {
   FileWriterImpl(std::string path);
   ~FileWriterImpl();
 
+  auto path() const -> std::string const& override { return _path; }
+
   auto append(std::string_view data) -> Result override;
 
   void truncate(std::uint64_t size) override;

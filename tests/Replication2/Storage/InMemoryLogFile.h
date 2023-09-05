@@ -60,6 +60,8 @@ struct InMemoryFileReader : IFileReader {
 struct InMemoryFileWriter : IFileWriter {
   InMemoryFileWriter(std::string& buffer) : buffer(buffer) {}
 
+  auto path() const -> std::string const& override { return _path; }
+
   Result append(std::string_view data) override {
     buffer.append(data);
     return {};
@@ -73,6 +75,7 @@ struct InMemoryFileWriter : IFileWriter {
     return std::make_unique<InMemoryFileReader>(buffer);
   }
 
+  std::string _path{"in-memory file"};
   std::string& buffer;
 };
 
