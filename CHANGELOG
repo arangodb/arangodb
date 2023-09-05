@@ -5,6 +5,12 @@ v3.10.11 (XXXX-XX-XX)
   which causes the query to fail, the DBServers will now all directly kill
   their potentially ongoing parts of the query and not wait for garbage collection.
 
+* BTS-1598: fix race in agency.
+
+* ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
+  "conflict, _rev values do not match" for non-local edges in Smart- and
+  EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
+
 * Upgraded Swagger-UI to v5.4.1.
 
 * Fixed BTS-1590: Fixed potentially undefined behavior in NetworkFeature, when
