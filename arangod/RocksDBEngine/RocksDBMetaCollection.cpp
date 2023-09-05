@@ -116,7 +116,12 @@ void RocksDBMetaCollection::freeMemory() noexcept {
   _revisionsBufferedMemoryUsage = 0;
   _revisionRemovalBuffers.clear();
   _revisionInsertBuffers.clear();
+}
 
+void RocksDBMetaCollection::deferDropCollection(
+    std::function<bool(LogicalCollection&)> const&) {
+  TRI_ASSERT(!_logicalCollection.syncByRevision());
+  std::unique_lock<std::mutex> guard(_revisionTreeLock);
   _revisionTree.reset();
 }
 

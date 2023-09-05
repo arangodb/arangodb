@@ -348,6 +348,7 @@ RocksDBCollection::~RocksDBCollection() {
 
 void RocksDBCollection::deferDropCollection(
     std::function<bool(LogicalCollection&)> const& cb) {
+  RocksDBMetaCollection::deferDropCollection(cb);
   freeMemory();
 }
 

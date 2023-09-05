@@ -50,6 +50,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
                                  velocypack::Slice info);
   virtual ~RocksDBMetaCollection();
 
+  void deferDropCollection(
+      std::function<bool(LogicalCollection&)> const&) override;
+
   uint64_t objectId() const noexcept { return _objectId; }
 
   RocksDBMetadata& meta() { return _meta; }
