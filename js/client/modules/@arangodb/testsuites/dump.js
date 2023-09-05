@@ -500,7 +500,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
         }
         print(" Not yet ready, retrying: " + reply.parsedBody);
       } catch (e) {
-        print(e)
         print(" Caught - need to retry. " + JSON.stringify(e));
       }
       sleep(3);
@@ -636,7 +635,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   dumpFromRta() {
     let success = true;
     const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst', 'UnitTestsDumpFoxxComplete'];
-    db._databases().forEach(db => { if (!otherDBs.find(x => x === db)) {this.allDatabases.push(db)}});
+    db._databases().forEach(db => { if (!otherDBs.find(x => x === db)) {this.allDatabases.push(db);}});
     if (!this.dumpConfig.haveSetAllDatabases()) {
       this.allDatabases.forEach(db => {
         if (!this.dumpFrom(db, true)) {
@@ -680,7 +679,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.results.RtaCheckdata = {
         message: 'Checkdata:\n' + fs.read(logFile).replace(rx, '\n'),
         status: false
-      }
+      };
       this.results.failed += 1;
       return false;
     } else {
