@@ -24,22 +24,23 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/operating-system.h"
 #include "Utils/ArangoClient.h"
 
 namespace arangodb {
-
 class BumpFileDescriptorsFeature;
 class TempFeature;
 class RestoreFeature;
 class EncryptionFeature;
 
-using ArangoRestoreFeaturesList =
-    ArangoClientFeaturesList<BumpFileDescriptorsFeature,
-#ifdef USE_ENTERPRISE
-                             EncryptionFeature,
+using ArangoRestoreFeaturesList = ArangoClientFeaturesList<
+#ifdef TRI_HAVE_GETRLIMIT
+    BumpFileDescriptorsFeature,
 #endif
-                             BasicFeaturePhaseClient, TempFeature,
-                             RestoreFeature>;
+#ifdef USE_ENTERPRISE
+    EncryptionFeature,
+#endif
+    BasicFeaturePhaseClient, TempFeature, RestoreFeature>;
 struct ArangoRestoreFeatures : ArangoRestoreFeaturesList {};
 using ArangoRestoreServer = ApplicationServerT<ArangoRestoreFeatures>;
 using ArangoRestoreFeature = ApplicationFeatureT<ArangoRestoreServer>;
