@@ -50,6 +50,7 @@ std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(Server& server)
     : ArangodFeature{server, *this},
+      _streamingMaxTransactionSize(defaultStreamingMaxTransactionSize),
       _streamingLockTimeout(8.0),
       _streamingIdleTimeout(defaultStreamingIdleTimeout),
       _numExpiredTransactions(server.getFeature<metrics::MetricsFeature>().add(
@@ -104,6 +105,18 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 this period when no further operations are posted into them. Posting an
 operation into a non-expired Stream Transaction resets the transaction's
 timeout to the configured idle timeout.)");
+
+  options
+      ->addOption(
+          "--transaction.streaming-max-transaction-size",
+          "The maximum transaction size (in bytes) for Stream Transactions.",
+          new SizeTParameter(&_streamingMaxTransactionSize),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200);
 }
 
 void ManagerFeature::prepare() {
@@ -167,6 +180,10 @@ void ManagerFeature::stop() {
 }
 
 void ManagerFeature::unprepare() { MANAGER.reset(); }
+
+size_t ManagerFeature::streamingMaxTransactionSize() const noexcept {
+  return _streamingMaxTransactionSize;
+}
 
 double ManagerFeature::streamingLockTimeout() const noexcept {
   return _streamingLockTimeout;

@@ -76,8 +76,7 @@ class Manager final : public IManager {
   friend class CounterGuard;
 
   static constexpr size_t numBuckets = 16;
-  static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
-  static constexpr size_t maxTransactionSize = 128 * 1024 * 1024;  // 128 MiB
+  static constexpr double tombstoneTTL = 10.0 * 60.0;  // 10 minutes
 
   enum class MetaType : uint8_t {
     Managed = 1,        /// global single shard db transaction

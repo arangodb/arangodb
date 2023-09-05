@@ -398,6 +398,7 @@ Result Manager::beginTransaction(transaction::Hints hints,
                                  std::shared_ptr<TransactionState>& state) {
   TRI_ASSERT(state != nullptr);
   Result res;
+
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {
@@ -460,8 +461,8 @@ Result Manager::prepareOptions(transaction::Options& options) {
     }
   } else {
     // for all other transactions, apply a size limitation
-    options.maxTransactionSize = std::min<size_t>(options.maxTransactionSize,
-                                                  Manager::maxTransactionSize);
+    options.maxTransactionSize = std::min<size_t>(
+        options.maxTransactionSize, _feature.streamingMaxTransactionSize());
   }
 
   return res;

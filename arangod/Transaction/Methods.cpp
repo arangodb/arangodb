@@ -671,14 +671,41 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         _replicationType != Methods::ReplicationType::FOLLOWER;
 
     if (this->_value.isArray()) {
+      // we are processing an array of input values here.
       this->_resultBuilder.openArray();
 
+      // this result will initially be ok(), but it can be changed
+      // to TRI_ERROR_RESOURCE_LIMIT. once it is set to
+      // TRI_ERROR_RESOURCE_LIMIT, it won't change.
+      // the rationale for this is to abort all following operations
+      // in the batch quickly once we hit a resource limit (e.g.
+      // we exceed the maximum transaction size).
+      // this is safe as executing even more operations in a
+      // transaction that has already reached its resource limits
+      // won't make it better.
+      // on the plus side, quickly making all following operations
+      // fail will save us from repeatedly rolling back the following
+      // operations, which can be painfully slow for large write
+      // batches in RocksDB.
+      Result resourceRes;
+
       for (VPackSlice s : VPackArrayIterator(this->_value)) {
-        res = this->self().processValue(s, true);
+        if (resourceRes.fail()) {
+          res.reset(resourceRes);
+        } else {
+          res = this->self().processValue(s, true);
+        }
         if (res.fail()) {
+          if (res.is(TRI_ERROR_RESOURCE_LIMIT) && resourceRes.ok()) {
+            // change resourceRes from ok() to TRI_ERROR_RESOURCE_LIMIT
+            resourceRes.reset(res);
+          }
           createBabiesError(
               reportAllBabiesErrors ? &this->_resultBuilder : nullptr,
               errorCounter, res);
+          // unconditionally reset to global res(), as the API for
+          // batch operations always returns success even when individual
+          // operations fail
           res.reset();
         }
       }

@@ -1,5 +1,10 @@
 devel
 -----
+          
+* Added startup option `--transaction.streaming-max-transaction-size` to make
+  the maximum size of streaming transactions configurable.
+  Previously the maximum size of streaming transactions was hard-coded to
+  128 MiB. This value is also used as default value for the option now.
 
 * Track memory usage for write operations in AQL queries. The memory usage of
   write operations in AQL queries was previously not tracked and not accounted
