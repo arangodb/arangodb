@@ -31,6 +31,7 @@
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterIndexMethods.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -719,8 +720,7 @@ Result Indexes::drop(LogicalCollection& collection,
       }
 
       VPackSlice idSlice = builder.slice().get(StaticStrings::IndexId);
-      Result res =
-          Indexes::extractHandle(collection, resolver, idSlice, iid, name);
+      res = Indexes::extractHandle(collection, resolver, idSlice, iid, name);
 
       if (!res.ok()) {
         events::DropIndex(collection.vocbase().name(), collection.name(), "",
@@ -744,14 +744,7 @@ Result Indexes::drop(LogicalCollection& collection,
 #ifdef USE_ENTERPRISE
     res = Indexes::dropCoordinatorEE(collection, iid);
 #else
-    auto& ci = collection.vocbase()
-                   .server()
-                   .getFeature<ClusterFeature>()
-                   .clusterInfo();
-    res = ci.dropIndexCoordinator(  // drop index
-        collection.vocbase().name(), std::to_string(collection.id().id()), iid,
-        0.0  // args
-    );
+    res = ClusterIndexMethods::dropIndexCoordinator(collection, iid, 0.0);
 #endif
     return res;
   } else {
