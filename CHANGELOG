@@ -65,6 +65,19 @@ v3.11.4 (XXXX-XX-XX)
   option can be used to cap the memory used by spare tables. It can be set to
   a value of 0 to not use any memory except for active hash tables. 
 
+* Fixed a loophole in COLLECT variable name validation: in COLLECT INTO
+  expressions it was possible to refer to variables that the COLLECT just
+  introduced. This was undefined behavior and not caught by the previous version
+  of COLLECT's variable checking.
+
+* BTS-1598: fix race in agency.
+
+* ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
+  "conflict, _rev values do not match" for non-local edges in Smart- and
+  EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
+
+* Upgraded Swagger-UI to v5.4.1.
+
 * Fixed BTS-1590: Fixed potentially undefined behavior in NetworkFeature, when
   it was referring to an options object that could have been destroyed already.
 
