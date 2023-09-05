@@ -3,7 +3,7 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   #Mocks/AsyncFollower.cpp Mocks/AsyncFollower.h
   #Mocks/AsyncLeader.cpp
   Mocks/DelayedLogFollower.h
-  #Mocks/FakeAbstractFollower.h
+  Mocks/FakeAbstractFollower.h
   Mocks/FakeFollower.cpp
   Mocks/FakeFollower.h
   #Mocks/FakeLeader.cpp
