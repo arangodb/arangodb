@@ -365,7 +365,11 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
 
   runCheckDumpFilesSuite(path) {
     this.print('Inspecting dumped files - ' + path);
-    process.env['dump-directory'] = this.allDumps[0];
+    if (this.allDumps.length > 0) {
+      process.env['dump-directory'] = this.allDumps[0];
+    } else {
+      process.env['dump-directory'] = this.dumpConfig.config['output-directory'];
+    }
     this.results.checkDumpFiles = this.runOneTest(path);
     delete process.env['dump-directory'];
     return this.validate(this.results.checkDumpFiles);
