@@ -1,5 +1,10 @@
 devel
 -----
+    
+* Fixed BTS-1531: Async cancel Job returns different error messages.
+  Unify error messages for canceled jobs (error code 21) to "request canceled".
+  Previously, the server could return different messages, either "request
+  canceled", "request has been canceled by user" or "handler canceled".
 
 * Fixed BTS-1543:
   - client tools (e.g. arangoexport) don't refuse to start up with the error
