@@ -571,9 +571,9 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_hash_index) {
 
   // prefix is just object id
   auto cmp = std::make_unique<RocksDBVPackComparator>();
-  EXPECT_LT(cmp->Compare(prefixBegin, prefixEnd), 0);
+  EXPECT_EQ(cmp->Compare(prefixBegin, prefixEnd), 0);
   EXPECT_LT(cmp->Compare(prefixBegin, key1.string()), 0);
-  EXPECT_GT(cmp->Compare(prefixEnd, key1.string()), 0);
+  EXPECT_GT(cmp->Compare(bounds.end(), key1.string()), 0);
 
   EXPECT_LT(cmp->Compare(key1.string(), key2.string()), 0);
   EXPECT_LT(cmp->Compare(key2.string(), key3.string()), 0);

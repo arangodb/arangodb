@@ -301,6 +301,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _runningCompactions(0),
       _autoFlushCheckInterval(60.0 * 30.0),
       _autoFlushMinWalFiles(20),
+      _forceLittleEndianKeys(false),
       _metricsIndexEstimatorMemoryUsage(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_index_estimates_memory_usage{})),
@@ -811,6 +812,28 @@ when disk size is very constrained and no replication is used.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  options
+      ->addOption(
+          "--rocksdb.force-legacy-little-endian-keys",
+          "Force usage of legacy little endian key encoding when creating "
+          "a new RocksDB database directory. DO NOT USE IN PRODUCTION.",
+          new BooleanParameter(&_forceLittleEndianKeys),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::Experimental,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(If enabled and a new RocksDB database
+is generated, the legacy little endian key encoding is used.
+
+Only use this option for testing purposes! It is bad for performance and
+disables a few features like parallel index generation!)");
+#endif
+
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
 #endif
@@ -1187,7 +1210,8 @@ void RocksDBEngine::start() {
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted);
+  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted,
+                                       _forceLittleEndianKeys);
 
   _dbExisted = dbExisted;
 
@@ -1299,24 +1323,6 @@ void RocksDBEngine::start() {
   // metrics are correctly populated once the HTTP interface comes
   // up
   determineWalFilesInitial();
-
-  if (auto endianness = rocksutils::getRocksDBKeyFormatEndianness();
-      endianness == RocksDBEndianness::Little) {
-    LOG_TOPIC("31103", WARN, Logger::ENGINES)
-        << "detected outdated on-disk format with "
-        << rocksDBEndiannessString(endianness)
-        << " endianness from ArangoDB 3.2 or 3.3. Using this on-disk format "
-           "can have a severe impact on write performance. It is recommended "
-           "to move to the "
-        << rocksDBEndiannessString(RocksDBEndianness::Big)
-        << " endian format by performing a full logical dump of the deployment "
-           "using arangodump, and restoring it into a fresh deployment using "
-           "arangorestore. Taking a hot backup and restoring it is not "
-           "sufficient "
-           "to change the on-disk format, only a logical dump and restore into "
-           "a "
-           "fresh deployment will do.";
-  }
 }
 
 void RocksDBEngine::beginShutdown() {

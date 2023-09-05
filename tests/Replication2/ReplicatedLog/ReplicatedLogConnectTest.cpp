@@ -112,7 +112,6 @@ struct LogLeaderMock : replicated_log::ILogLeader {
   MOCK_METHOD(WaitForIteratorFuture, waitForIterator, (LogIndex), (override));
   MOCK_METHOD(std::unique_ptr<LogIterator>, getInternalLogIterator,
               (std::optional<LogRange> bounds), (const, override));
-  MOCK_METHOD(Result, release, (LogIndex), (override));
   MOCK_METHOD(ResultT<arangodb::replication2::replicated_log::CompactionResult>,
               compact, (), (override));
   MOCK_METHOD(LogIndex, ping, (std::optional<std::string>), (override));
@@ -134,7 +133,6 @@ struct LogFollowerMock : replicated_log::ILogFollower {
   MOCK_METHOD(WaitForIteratorFuture, waitForIterator, (LogIndex), (override));
   MOCK_METHOD(std::unique_ptr<LogIterator>, getInternalLogIterator,
               (std::optional<LogRange> bounds), (const, override));
-  MOCK_METHOD(Result, release, (LogIndex), (override));
   MOCK_METHOD(ResultT<arangodb::replication2::replicated_log::CompactionResult>,
               compact, (), (override));
 

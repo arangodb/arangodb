@@ -31,7 +31,8 @@
 #include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
 
-#include <sstream>
+#include <absl/strings/str_cat.h>
+
 #include <string_view>
 
 using namespace arangodb::aql;
@@ -142,7 +143,7 @@ void Parser::registerParseError(ErrorCode errorCode, char const* format,
 
   snprintf(buffer, sizeof(buffer) - 1, format, data.data());
 
-  return registerParseError(errorCode, buffer, line, column);
+  registerParseError(errorCode, buffer, line, column);
 }
 
 /// @brief register a parse error, position is specified as line / column
@@ -151,16 +152,12 @@ void Parser::registerParseError(ErrorCode errorCode, std::string_view data,
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
   TRI_ASSERT(data.data() != nullptr);
 
-  // extract the query string part where the error happened
-  std::string const region(queryString().extractRegion(line, column));
-
   // note: line numbers reported by bison/flex start at 1, columns start at 0
-  std::stringstream errorMessage;
-  errorMessage << data << std::string(" near '") << region
-               << std::string("' at position ") << line << std::string(":")
-               << (column + 1);
+  auto errorMessage =
+      absl::StrCat(data, " near '", queryString().extractRegion(line, column),
+                   "' at position ", line, ":", (column + 1));
 
-  _query.warnings().registerError(errorCode, errorMessage.str());
+  _query.warnings().registerError(errorCode, errorMessage);
 }
 
 /// @brief register a warning

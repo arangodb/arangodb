@@ -28,14 +28,16 @@
 
 namespace arangodb {
 
+class BumpFileDescriptorsFeature;
 class DumpFeature;
 class EncryptionFeature;
 
-using ArangoDumpFeaturesList = ArangoClientFeaturesList<
+using ArangoDumpFeaturesList =
+    ArangoClientFeaturesList<BumpFileDescriptorsFeature,
 #ifdef USE_ENTERPRISE
-    EncryptionFeature,
+                             EncryptionFeature,
 #endif
-    BasicFeaturePhaseClient, DumpFeature>;
+                             BasicFeaturePhaseClient, DumpFeature>;
 struct ArangoDumpFeatures : ArangoDumpFeaturesList {};
 using ArangoDumpServer = ApplicationServerT<ArangoDumpFeatures>;
 using ArangoDumpFeature = ApplicationFeatureT<ArangoDumpServer>;

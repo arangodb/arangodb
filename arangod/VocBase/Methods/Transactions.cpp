@@ -78,7 +78,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
 
   READ_LOCKER(readLock, lock);
   if (canceled) {
-    return rv.reset(TRI_ERROR_REQUEST_CANCELED, "handler canceled");
+    return rv.reset(TRI_ERROR_REQUEST_CANCELED);
   }
 
   v8::HandleScope scope(isolate);
@@ -110,13 +110,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   READ_LOCKER(readLock2, lock);
 
   if (canceled) {  // if it was ok we would already have committed
-    if (rv.ok()) {
-      rv.reset(TRI_ERROR_REQUEST_CANCELED,
-               "handler canceled - result already committed");
-    } else {
-      rv.reset(TRI_ERROR_REQUEST_CANCELED, "handler canceled");
-    }
-    return rv;
+    return rv.reset(TRI_ERROR_REQUEST_CANCELED);
   }
 
   if (rv.fail()) {

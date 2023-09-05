@@ -36,6 +36,8 @@
 #include "Basics/files.h"
 #include "Basics/voc-errors.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 
 /// @brief size of char buffer to use for file slurping
@@ -103,14 +105,15 @@ inline void closeFile(int& fd, arangodb::Result& status) {
 bool isWritable(int fd, int flags, std::string const& path,
                 arangodb::Result& status) {
   if (::flagNotSet(flags, O_WRONLY)) {
-    status = {
-        TRI_ERROR_CANNOT_WRITE_FILE,
-        "attempted to write to file " + path + " opened in read-only mode!"};
+    status = {TRI_ERROR_CANNOT_WRITE_FILE,
+              absl::StrCat("attempted to write to file ", path,
+                           " opened in read-only mode!")};
     return false;
   }
   if (fd < 0) {
     status = {TRI_ERROR_CANNOT_WRITE_FILE,
-              "attempted to write to file " + path + " which is not open"};
+              absl::StrCat("attempted to write to file ", path,
+                           " which is not open")};
     return false;
   }
   return status.ok();
@@ -120,14 +123,15 @@ bool isWritable(int fd, int flags, std::string const& path,
 bool isReadable(int fd, int flags, std::string const& path,
                 arangodb::Result& status) {
   if (::flagIsSet(flags, O_WRONLY)) {
-    status = {
-        TRI_ERROR_CANNOT_READ_FILE,
-        "attempted to read from file " + path + " opened in write-only mode!"};
+    status = {TRI_ERROR_CANNOT_READ_FILE,
+              absl::StrCat("attempted to read from file ", path,
+                           " opened in write-only mode!")};
     return false;
   }
   if (fd < 0) {
     status = {TRI_ERROR_CANNOT_READ_FILE,
-              "attempted to read from file " + path + " which is not open"};
+              absl::StrCat("attempted to read from file ", path,
+                           " which is not open")};
     return false;
   }
   return status.ok();
@@ -216,9 +220,10 @@ arangodb::Result readEncryptionFile(
 
   if (type != newType) {
     return {TRI_ERROR_BAD_PARAMETER,
-            std::string("encryption type in existing ENCRYPTION file '") +
-                filename + "' (" + type +
-                ") does not match requested encryption type (" + newType + ")"};
+            absl::StrCat("encryption type in existing ENCRYPTION file '",
+                         filename, "' (", type,
+                         ") does not match requested encryption type (",
+                         newType, ")")};
   }
   return {};
 }
@@ -263,18 +268,36 @@ ManagedDirectory::ManagedDirectory(EncryptionFeature* encryption,
     // path exists, but is a file, not a directory
     if (!isDirectory) {
       _status.reset(TRI_ERROR_FILE_EXISTS,
-                    std::string("the specified path '") + _path +
-                        "' already exists as a non-directory file");
+                    absl::StrCat("the specified path '", _path,
+                                 "' already exists as a non-directory file"));
       return;
     }
 
     std::vector<std::string> files(TRI_FilesDirectory(_path.c_str()));
     if (!files.empty()) {
+      if (files.size() == 1 && files[0] == EncryptionFilename) {
+        // ignore ENCRYPTION File here.
+        // The ENCRYPTION file is created directly after we create the
+        // directory. Only afterwards the tools are creating their specific
+        // output files.
+        // Now when invoking a command such as
+        //   arangoexport --collection test --output-directory export
+        // this will first create the output directory `export`, and then
+        // write the ENCRYPTION file into it. Then arangoexport will try
+        // to export data for collection "test".
+        // if collection "test" does not exist, it will error out and we
+        // will be left with the directory and the ENCRYPTION file only.
+        // invoking the same arangoexport command again will then fail
+        // because the directory is not empty (because of the ENCRYPTION
+        // file). thus we are ignoring it here on purpose if the directory
+        // ONLY contains the ENCRYPTION file.
+        files.pop_back();
+      }
       // directory exists, has files, and we aren't allowed to overwrite
-      if (requireEmpty) {
+      if (requireEmpty && !files.empty()) {
         _status.reset(TRI_ERROR_CANNOT_OVERWRITE_FILE,
-                      std::string("the specified path '") + _path +
-                          "' is a non-empty directory");
+                      absl::StrCat("the specified path '", _path,
+                                   "' is a non-empty directory"));
         return;
       }
 
@@ -296,8 +319,8 @@ ManagedDirectory::ManagedDirectory(EncryptionFeature* encryption,
         if (res == TRI_ERROR_SYS_ERROR) {
           res = TRI_ERROR_CANNOT_CREATE_DIRECTORY;
         }
-        _status.reset(res, "unable to create output directory '" + _path +
-                               "': " + errorMessage);
+        _status.reset(res, absl::StrCat("unable to create output directory '",
+                                        _path, "': ", errorMessage));
         return;
       }
       // fall through to write encryption file
@@ -351,15 +374,14 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(
 
   if (!_status.fail()) {  // directory is in a bad state?
     try {
-      bool gzFlag = filename.size() > 3 &&
-                    (0 == filename.substr(filename.size() - 3).compare(".gz"));
+      bool gzFlag = filename.ends_with(".gz");
       file = std::make_unique<File>(
           *this, filename, (ManagedDirectory::DefaultReadFlags ^ flags),
           gzFlag);
     } catch (...) {
-      _status.reset(
-          TRI_ERROR_CANNOT_READ_FILE,
-          "error opening file " + ::filePath(*this, filename) + " for reading");
+      _status.reset(TRI_ERROR_CANNOT_READ_FILE,
+                    absl::StrCat("error opening file ",
+                                 ::filePath(*this, filename), " for reading"));
       file.reset();
     }
   }
@@ -409,7 +431,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
         TRI_UnlinkFile(path.c_str());
       } else {
         _status.reset(TRI_ERROR_CANNOT_WRITE_FILE,
-                      "file " + path + " already exists");
+                      absl::StrCat("file ", path, " already exists"));
         return {nullptr};
       }
     }
