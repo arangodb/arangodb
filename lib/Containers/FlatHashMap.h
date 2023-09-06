@@ -27,15 +27,16 @@
 namespace arangodb::containers {
 namespace detail {
 
-template<typename... T>
-char isCompleteHelper(char (*)[sizeof...(T)]);
+template<typename T>
+char isCompleteHelper(char (*)[sizeof(T)]);
 
-template<typename... T>
+template<typename T>
 int isCompleteHelper(...);
 
 template<size_t SizeofK, size_t SizeofT, typename K, typename V>
 constexpr bool MapSizeofChecker() noexcept {
-  if constexpr (sizeof(isCompleteHelper<K, V>(nullptr)) == sizeof(char)) {
+  if constexpr (sizeof(isCompleteHelper<K>(nullptr)) == sizeof(char) &&
+                sizeof(isCompleteHelper<V>(nullptr)) == sizeof(char)) {
     static_assert(sizeof(K) <= SizeofK && sizeof(K) + sizeof(V) <= SizeofT,
                   "For large K better to use NodeHashMap. "
                   "For large V better to use FlatHashMap<K, some_ptr<V>>. "

@@ -27,10 +27,10 @@
 namespace arangodb::containers {
 namespace detail {
 
-template<typename... T>
-char isCompleteHelper(char (*)[sizeof...(T)]);
+template<typename T>
+char isCompleteHelper(char (*)[sizeof(T)]);
 
-template<typename... T>
+template<typename T>
 int isCompleteHelper(...);
 
 template<size_t Sizeof, typename T>
