@@ -5225,16 +5225,16 @@ void arangodb::aql::restrictToSingleShardRule(
     auto s1 = ::getCollection(current)->shardIds();
     auto s2 = ::getCollection(setter)->shardIds();
 
-    if (s1->size() != s2->size()) {
+    if (s1.size() != s2.size()) {
       // different number of shard ids... should not happen if we have a
       // prototype
       return;
     }
 
     // find matching shard key
-    for (size_t i = 0; i < s1->size(); ++i) {
-      if ((*s1)[i] == shardId) {
-        ::restrictToShard(setter, (*s2)[i]);
+    for (size_t i = 0; i < s1.size(); ++i) {
+      if (s1[i] == shardId) {
+        ::restrictToShard(setter, s2[i]);
         break;
       }
     }

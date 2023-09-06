@@ -819,8 +819,7 @@ class ClusterInfo final {
   /// @brief find the shard list of a collection, sorted numerically
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::vector<ShardID> const> getShardList(
-      std::string_view collectionID);
+  std::vector<ShardID> getShardList(std::string_view collectionID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the current list of (in-sync, for replication 1) servers of a
@@ -1153,8 +1152,7 @@ class ClusterInfo final {
   // The Plan state:
   AllCollections _plannedCollections;     // from Plan/Collections/
   AllCollections _newPlannedCollections;  // TODO
-  // TODO is it ok to don't account value for _shards?
-  FlatMapShared<pmr::CollectionID, std::vector<std::string> const>
+  FlatMapShared<pmr::CollectionID, std::vector<pmr::ShardID> const>
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
   // planned shard => servers map

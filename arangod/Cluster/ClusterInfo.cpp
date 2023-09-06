@@ -282,8 +282,8 @@ constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
         if (serverKey.isObject()) {
           auto statusString = serverKey.get("Status");
           if (statusString.isString()) {
-            auto decoded = kHealthStatusMap.find(statusString.stringView());
-            if (decoded != kHealthStatusMap.end()) {
+            if (auto decoded = kHealthStatusMap.find(statusString.stringView());
+                decoded != kHealthStatusMap.end()) {
               status = decoded->second;
             }
           }
@@ -767,19 +767,16 @@ bool ClusterInfo::doesDatabaseExist(std::string_view databaseID) {
 
     READ_LOCKER(readLocker, _planProt.lock);
     // _plannedDatabases is a map-type<DatabaseID, VPackSlice>
-    auto it = _plannedDatabases.find(databaseID);
 
-    if (it != _plannedDatabases.end()) {
+    if (_plannedDatabases.contains(databaseID)) {
       // found the database in Plan
       READ_LOCKER(readLocker, _currentProt.lock);
       // _currentDatabases is
       //     a map-type<DatabaseID, a map-type<ServerID, VPackSlice>>
-      auto it2 = _currentDatabases.find(databaseID);
-
-      if (it2 != _currentDatabases.end()) {
+      if (auto it = _currentDatabases.find(databaseID);
+          it != _currentDatabases.end()) {
         // found the database in Current
-
-        return it2->second->size() >= expectedSize;
+        return it->second->size() >= expectedSize;
       }
     }
   }
@@ -831,22 +828,18 @@ std::vector<DatabaseID> ClusterInfo::databases() {
     READ_LOCKER(readLockerPlanned, _planProt.lock);
     READ_LOCKER(readLockerCurrent, _currentProt.lock);
     // _plannedDatabases is a map-type<DatabaseID, VPackSlice>
-    auto it = _plannedDatabases.begin();
-
-    while (it != _plannedDatabases.end()) {
+    for (auto const& it : _plannedDatabases) {
       // _currentDatabases is:
       //   a map-type<DatabaseID, a map-type<ServerID, VPackSlice>>
-      auto it2 = _currentDatabases.find(it->first);
-
-      if (it2 != _currentDatabases.end()) {
+      if (auto it2 = _currentDatabases.find(it.first);
+          it2 != _currentDatabases.end()) {
         if (it2->second->size() >= expectedSize) {
-          result.emplace_back(it->first);
+          result.emplace_back(it.first);
         }
       }
-
-      ++it;
     }
   }
+
   return result;
 }
 
@@ -875,8 +868,8 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
 
   if (!isBuilding && existingCollections != _plannedCollections.end()) {
     // check if we already know this collection from a previous run...
-    auto existing = existingCollections->second->find(collectionId);
-    if (existing != existingCollections->second->end()) {
+    if (auto existing = existingCollections->second->find(collectionId);
+        existing != existingCollections->second->end()) {
       CollectionWithHash const& previous = existing->second;
       // compare the hash values of what is in the cache with the hash of the
       // collection a hash value of 0 means that the collection must not be read
@@ -931,8 +924,8 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
                   basics::downCast<iresearch::IResearchLinkCoordinator const>(
                       *idx);
               auto const& viewId = coordLink.getViewId();
-              auto vocbaseViews = _newPlannedViews.find(vocbase.name());
-              if (vocbaseViews == _newPlannedViews.end() ||
+              if (auto vocbaseViews = _newPlannedViews.find(vocbase.name());
+                  vocbaseViews == _newPlannedViews.end() ||
                   !vocbaseViews->second.contains(viewId)) {
                 if (!_pendingCleanups.contains(idx->id().id())) {
                   doQueueLinkDrop(idx->id(), collection->name(), vocbase.name(),
@@ -1128,8 +1121,7 @@ void ClusterInfo::loadPlan() {
       std::shared_ptr<VPackBuilder const> plan;
       {
         READ_LOCKER(guard, _planProt.lock);
-        auto it = _plan.find(name);
-        if (it != _plan.end()) {
+        if (auto it = _plan.find(name); it != _plan.end()) {
           plan = it->second;
         }
       }
@@ -1137,11 +1129,9 @@ void ClusterInfo::loadPlan() {
         std::initializer_list<std::string_view> const colPath{
             AgencyCommHelper::path(), "Plan", "Collections", name};
         if (plan->slice()[0].hasKey(colPath)) {
-          for (auto const& col :
-               VPackObjectIterator(plan->slice()[0].get(colPath))) {
+          for (auto col : VPackObjectIterator(plan->slice()[0].get(colPath))) {
             if (col.value.hasKey("shards")) {
-              for (auto const& shard :
-                   VPackObjectIterator(col.value.get("shards"))) {
+              for (auto shard : VPackObjectIterator(col.value.get("shards"))) {
                 auto const& shardName = shard.key.copyString();
                 newShards.erase(shardName);
                 newShardsToPlanServers.erase(shardName);
@@ -1524,8 +1514,8 @@ void ClusterInfo::loadPlan() {
     std::vector<std::string_view> collectionsPath{
         AgencyCommHelper::path(), "Plan", "Collections", databaseName};
     if (!collectionsSlice.hasKey(collectionsPath)) {
-      auto it = _newPlannedCollections.find(databaseName);
-      if (it != _newPlannedCollections.end()) {
+      if (auto it = _newPlannedCollections.find(databaseName);
+          it != _newPlannedCollections.end()) {
         for (auto const& collection : *(it->second)) {
           auto& collectionId = collection.first;
           // delete from maps with shardID as key
@@ -1567,16 +1557,16 @@ void ClusterInfo::loadPlan() {
     // read-lock on _planProt here. reusing the lookup positions helps avoiding
     // redundant lookups into _plannedCollections for the same database
 
-    AllCollections::const_iterator existingCollections,
-        stillExistingCollections = _newPlannedCollections.find(databaseName);
+    AllCollections::const_iterator existingCollections;
     {
       READ_LOCKER(guard, _planProt.lock);
       existingCollections = _plannedCollections.find(databaseName);
     }
 
-    if (stillExistingCollections != _newPlannedCollections.end()) {
-      auto const& np = newPlan.find(databaseName);
-      if (np != newPlan.end()) {
+    if (auto stillExistingCollections =
+            _newPlannedCollections.find(databaseName);
+        stillExistingCollections != _newPlannedCollections.end()) {
+      if (auto np = newPlan.find(databaseName); np != newPlan.end()) {
         auto nps = np->second->slice()[0];
         for (auto const& ec : *(stillExistingCollections->second)) {
           auto const& cid = ec.first;
@@ -1587,10 +1577,10 @@ void ClusterInfo::loadPlan() {
           if (!nps.hasKey(collectionsPath)) {  // collection gone
             collectionsPath.emplace_back("shards");
             READ_LOCKER(guard, _planProt.lock);
-            for (auto const& sh :
-                 VPackObjectIterator(_plan.find(databaseName)
-                                         ->second->slice()[0]
-                                         .get(collectionsPath))) {
+            TRI_ASSERT(_plan.contains(databaseName));
+            for (auto sh : VPackObjectIterator(_plan.find(databaseName)
+                                                   ->second->slice()[0]
+                                                   .get(collectionsPath))) {
               auto const& shardId = sh.key.copyString();
               newShards.erase(shardId);
               newShardsToPlanServers.erase(shardId);
@@ -1607,7 +1597,7 @@ void ClusterInfo::loadPlan() {
       }
     }
 
-    for (auto const& collectionPairSlice :
+    for (auto collectionPairSlice :
          velocypack::ObjectIterator(collectionsSlice)) {
       auto collectionSlice = collectionPairSlice.value;
 
@@ -1680,13 +1670,13 @@ void ClusterInfo::loadPlan() {
         }
 
         auto shardIDs = newCollection->shardIds();
-        auto shards = std::make_shared<std::vector<ServerID>>();
+        auto shards = std::make_shared<std::vector<pmr::ShardID>>();
         shards->reserve(shardIDs->size());
         newShardToName.reserve(shardIDs->size());
 
         for (auto const& p : *shardIDs) {
           TRI_ASSERT(p.first.size() >= 2);
-          shards->push_back(p.first);
+          shards->push_back(pmr::ShardID{p.first, _resourceMonitor});
           auto v = allocateShared<ManagedVector<pmr::ServerID>>();
           v->assign(p.second.begin(), p.second.end());
           newShardsToPlanServers.insert_or_assign(
@@ -1758,11 +1748,11 @@ void ClusterInfo::loadPlan() {
         }
       });
       if (!groupLeader.empty()) {
-        auto groupLeaderCol = newShards.find(groupLeader);
-        if (groupLeaderCol != newShards.end()) {
-          auto col = newShards.find(
-              std::to_string(colPair.second.collection->id().id()));
-          if (col != newShards.end()) {
+        if (auto groupLeaderCol = newShards.find(groupLeader);
+            groupLeaderCol != newShards.end()) {
+          if (auto col = newShards.find(
+                  std::to_string(colPair.second.collection->id().id()));
+              col != newShards.end()) {
             auto logicalColToBeCreated = colPair.second.collection;
             if (col->second->size() == 0 ||
                 (logicalColToBeCreated->isSmart() &&
@@ -1775,8 +1765,8 @@ void ClusterInfo::loadPlan() {
             for (size_t i = 0; i < col->second->size(); ++i) {
               newShardToShardGroupLeader.try_emplace(
                   col->second->at(i), groupLeaderCol->second->at(i));
-              auto it = newShardGroups.find(groupLeaderCol->second->at(i));
-              if (it == newShardGroups.end()) {
+              if (auto it = newShardGroups.find(groupLeaderCol->second->at(i));
+                  it == newShardGroups.end()) {
                 // Need to create a new list:
                 auto list = allocateShared<ManagedVector<pmr::ShardID>>();
                 list->reserve(2);
@@ -1819,15 +1809,15 @@ void ClusterInfo::loadPlan() {
       // system database does not have a shardingPrototype set...
       // sharding prototype of _system database defaults to _users nowadays
       systemDB->setShardingPrototype(ShardingPrototype::Users);
-      auto it = _newPlannedCollections.find(StaticStrings::SystemDatabase);
-      if (it != _newPlannedCollections.end()) {
+      if (auto it = _newPlannedCollections.find(StaticStrings::SystemDatabase);
+          it != _newPlannedCollections.end()) {
         // but for "old" databases it may still be "_graphs". we need to find
         // out! find _system database in Plan. Replication TWO databases cannot
         // be old.
         if (systemDB->replicationVersion() == replication::Version::ONE) {
           // find _graphs collection in Plan
-          auto it2 = it->second->find(StaticStrings::GraphCollection);
-          if (it2 != it->second->end()) {
+          if (auto it2 = it->second->find(StaticStrings::GraphCollection);
+              it2 != it->second->end()) {
             // found!
             if (it2->second.collection->distributeShardsLike().empty()) {
               // _graphs collection has no distributeShardsLike, so it is
@@ -2013,8 +2003,7 @@ void ClusterInfo::loadCurrent() {
       std::shared_ptr<VPackBuilder const> db;
       {
         READ_LOCKER(guard, _currentProt.lock);
-        auto const it = _current.find(databaseName);
-        if (it != _current.end()) {
+        if (auto it = _current.find(databaseName); it != _current.end()) {
           db = it->second;
         }
       }
@@ -2025,10 +2014,10 @@ void ClusterInfo::loadCurrent() {
         if (db->slice()[0].hasKey(colPath)) {
           auto const colsSlice = db->slice()[0].get(colPath);
           if (colsSlice.isObject()) {
-            for (auto const cc : VPackObjectIterator(colsSlice)) {
+            for (auto cc : VPackObjectIterator(colsSlice)) {
               if (cc.value.isObject()) {
-                for (auto const cs : VPackObjectIterator(cc.value)) {
-                  newShardsToCurrentServers.erase(cs.key.copyString());
+                for (auto cs : VPackObjectIterator(cc.value)) {
+                  newShardsToCurrentServers.erase(cs.key.stringView());
                 }
               }
             }
@@ -2073,10 +2062,9 @@ void ClusterInfo::loadCurrent() {
 
     auto databaseCollections = allocateShared<DatabaseCollectionsCurrent>();
 
-    auto const existingCollections = newCollections.find(databaseName);
-    if (existingCollections != newCollections.end()) {
-      auto const& nc = newCurrent.find(databaseName);
-      if (nc != newCurrent.end()) {
+    if (auto existingCollections = newCollections.find(databaseName);
+        existingCollections != newCollections.end()) {
+      if (auto nc = newCurrent.find(databaseName); nc != newCurrent.end()) {
         auto ncs = nc->second->slice()[0];
         std::vector<std::string> path{AgencyCommHelper::path(), "Current",
                                       "Collections", databaseName};
@@ -2087,6 +2075,7 @@ void ClusterInfo::loadCurrent() {
             std::shared_ptr<VPackBuilder const> cur;
             {
               READ_LOCKER(guard, _currentProt.lock);
+              TRI_ASSERT(_current.contains(databaseName));
               cur = _current.find(databaseName)->second;
             }
             auto const cc = cur->slice()[0].get(path);
@@ -2215,13 +2204,9 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(
   auto lookupCollection =
       [&](auto const& collections) -> std::shared_ptr<LogicalCollection> {
     // look up database by id
-    auto it = collections.find(databaseID);
-
-    if (it != collections.end()) {
+    if (auto it = collections.find(databaseID); it != collections.end()) {
       // look up collection by id (or by name)
-      auto it2 = it->second->find(collectionID);
-
-      if (it2 != it->second->end()) {
+      if (auto it2 = it->second->find(collectionID); it2 != it->second->end()) {
         return it2->second.collection;
       }
     }
@@ -2253,13 +2238,9 @@ std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(
     // look up collection first
     {
       // look up database by id
-      auto it = collections.find(databaseID);
-
-      if (it != collections.end()) {
+      if (auto it = collections.find(databaseID); it != collections.end()) {
         // look up collection by id (or by name)
-        auto it2 = it->second->find(name);
-
-        if (it2 != it->second->end()) {
+        if (auto it2 = it->second->find(name); it2 != it->second->end()) {
           return it2->second.collection;
         }
       }
@@ -2268,13 +2249,9 @@ std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(
     // look up views next
     {
       // look up database by id
-      auto it = views.find(databaseID);
-
-      if (it != views.end()) {
+      if (auto it = views.find(databaseID); it != views.end()) {
         // look up collection by id (or by name)
-        auto it2 = it->second.find(name);
-
-        if (it2 != it->second.end()) {
+        if (auto it2 = it->second.find(name); it2 != it->second.end()) {
           return it2->second;
         }
       }
@@ -2301,11 +2278,8 @@ std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(
 
 std::string ClusterInfo::getCollectionNotFoundMsg(
     std::string_view databaseID, std::string_view collectionID) {
-  std::string result = "Collection not found: ";
-  result += collectionID;
-  result += " in database ";
-  result += databaseID;
-  return result;
+  return absl::StrCat("Collection not found: ", collectionID, " in database ",
+                      databaseID);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2318,18 +2292,15 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterInfo::getCollections(
 
   READ_LOCKER(readLocker, _planProt.lock);
   // look up database by id
-  auto it = _plannedCollections.find(databaseID);
-
-  if (it == _plannedCollections.end()) {
-    return result;
-  }
-
-  // iterate over all collections
-  for (auto& e : *it->second) {
-    char c = e.first[0];
-    if (c < '0' || c > '9') {
-      // skip collections indexed by id
-      result.push_back(e.second.collection);
+  if (auto it = _plannedCollections.find(databaseID);
+      it != _plannedCollections.end()) {
+    // iterate over all collections
+    for (auto& e : *it->second) {
+      char c = e.first[0];
+      if (c < '0' || c > '9') {
+        // skip collections indexed by id
+        result.push_back(e.second.collection);
+      }
     }
   }
 
@@ -2381,13 +2352,10 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
 
   READ_LOCKER(readLocker, _currentProt.lock);
   // look up database by id
-  auto it = _currentCollections.find(databaseID);
-
-  if (it != _currentCollections.end()) {
+  if (auto it = _currentCollections.find(databaseID);
+      it != _currentCollections.end()) {
     // look up collection by id
-    auto it2 = it->second->find(collectionID);
-
-    if (it2 != it->second->end()) {
+    if (auto it2 = it->second->find(collectionID); it2 != it->second->end()) {
       return it2->second;
     }
   }
@@ -2410,7 +2378,7 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
     std::string_view databaseName, std::vector<std::string> const& names) {
   READ_LOCKER(readLocker, _planProt.lock);
   // Load all collections of the Database
-  auto const& colList = _plannedCollections.find(databaseName);
+  auto colList = _plannedCollections.find(databaseName);
   if (colList == _plannedCollections.end()) {
     // If there are no collections in the Database, it is not there.
     // So we are in the create New database case.
@@ -2418,7 +2386,7 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
     return {_planVersion};
   }
 
-  auto const& viewList = _plannedViews.find(databaseName);
+  auto viewList = _plannedViews.find(databaseName);
   for (auto const& name : names) {
     if (colList->second->contains(name) ||
         (viewList != _plannedViews.end() && viewList->second.contains(name))) {
@@ -2445,14 +2413,10 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(std::string_view databaseID,
   auto lookupView =
       [&](AllViews const& dbs) noexcept -> std::shared_ptr<LogicalView> {
     // look up database by id
-    auto const db = dbs.find(databaseID);
-
-    if (db != dbs.end()) {
+    if (auto db = dbs.find(databaseID); db != dbs.end()) {
       // look up view by id (or by name)
       auto& views = db->second;
-      auto const view = views.find(viewID);
-
-      if (view != views.end()) {
+      if (auto view = views.find(viewID); view != views.end()) {
         return view->second;
       }
     }
@@ -2506,18 +2470,14 @@ std::vector<std::shared_ptr<LogicalView>> ClusterInfo::getViews(
 
   READ_LOCKER(readLocker, _planProt.lock);
   // look up database by id
-  auto it = _plannedViews.find(databaseID);
-
-  if (it == _plannedViews.end()) {
-    return result;
-  }
-
-  // iterate over all collections
-  for (auto& e : it->second) {
-    char c = e.first[0];
-    if (c >= '0' && c <= '9') {
-      // skip views indexed by name
-      result.emplace_back(e.second);
+  if (auto it = _plannedViews.find(databaseID); it != _plannedViews.end()) {
+    // iterate over all collections
+    for (auto& e : it->second) {
+      char c = e.first[0];
+      if (c >= '0' && c <= '9') {
+        // skip views indexed by name
+        result.emplace_back(e.second);
+      }
     }
   }
 
@@ -2532,9 +2492,8 @@ AnalyzersRevision::Ptr ClusterInfo::getAnalyzersRevision(
     std::string_view databaseID, bool forceLoadPlan /* = false */) {
   READ_LOCKER(readLocker, _planProt.lock);
   // look up database by id
-  auto it = _dbAnalyzersRevision.find(databaseID);
-
-  if (it != _dbAnalyzersRevision.cend()) {
+  if (auto it = _dbAnalyzersRevision.find(databaseID);
+      it != _dbAnalyzersRevision.cend()) {
     return it->second;
   }
   return nullptr;
@@ -2555,17 +2514,17 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
   {
     READ_LOCKER(readLocker, _planProt.lock);
     // look up database by id
-    auto it = _dbAnalyzersRevision.find(databaseID);
-    if (it != _dbAnalyzersRevision.cend()) {
+    if (auto it = _dbAnalyzersRevision.find(databaseID);
+        it != _dbAnalyzersRevision.cend()) {
       currentDbRevision = it->second->getRevision();
     }
     // analyzers from system also available
     // so grab revision for system database as well
     if (databaseID != StaticStrings::SystemDatabase) {
-      auto sysIt = _dbAnalyzersRevision.find(StaticStrings::SystemDatabase);
       // if we have non-system database in plan system should be here for sure!
       // but for freshly updated cluster this is not true so, check is necessary
-      if (sysIt != _dbAnalyzersRevision.cend()) {
+      if (auto sysIt = _dbAnalyzersRevision.find(StaticStrings::SystemDatabase);
+          sysIt != _dbAnalyzersRevision.cend()) {
         systemDbRevision = sysIt->second->getRevision();
       }
     } else {
@@ -3516,8 +3475,8 @@ Result ClusterInfo::createViewCoordinator(  // create view
     // check if a view with the same name is already planned
     READ_LOCKER(readLocker, _planProt.lock);
     {
-      auto it = _plannedViews.find(databaseName);
-      if (it != _plannedViews.end()) {
+      if (auto it = _plannedViews.find(databaseName);
+          it != _plannedViews.end()) {
         if (it->second.contains(name)) {
           // view already exists!
           events::CreateView(databaseName, name,
@@ -3529,8 +3488,8 @@ Result ClusterInfo::createViewCoordinator(  // create view
     }
     {
       // check against planned collections as well
-      auto it = _plannedCollections.find(databaseName);
-      if (it != _plannedCollections.end()) {
+      if (auto it = _plannedCollections.find(databaseName);
+          it != _plannedCollections.end()) {
         if (it->second->contains(name)) {
           // collection already exists!
           events::CreateCollection(databaseName, name,
@@ -3733,8 +3692,10 @@ ClusterInfo::startModifyingAnalyzerCoordinator(std::string_view databaseID) {
     {
       // Get current revision for precondition
       READ_LOCKER(readLocker, _planProt.lock);
-      auto const it = _dbAnalyzersRevision.find(databaseID);
-      if (it == _dbAnalyzersRevision.cend()) {
+      if (auto it = _dbAnalyzersRevision.find(databaseID);
+          it != _dbAnalyzersRevision.cend()) {
+        revision = it->second->getRevision();
+      } else {
         if (TRI_microtime() > endTime) {
           return std::pair{
               Result{TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
@@ -3768,7 +3729,6 @@ ClusterInfo::startModifyingAnalyzerCoordinator(std::string_view databaseID) {
         }
         continue;
       }
-      revision = it->second->getRevision();
     }
 
     VPackBuilder revisionBuilder;
@@ -3866,13 +3826,15 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(
     {
       // Get current revision for precondition
       READ_LOCKER(readLocker, _planProt.lock);
-      auto const it = _dbAnalyzersRevision.find(databaseID);
-      if (it == _dbAnalyzersRevision.cend()) {
-        return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-                      "finish modifying analyzer: unknown database name '" +
-                          std::string{databaseID} + "'");
+      if (auto it = _dbAnalyzersRevision.find(databaseID);
+          it != _dbAnalyzersRevision.cend()) {
+        revision = it->second->getRevision();
+      } else {
+        return Result(
+            TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+            absl::StrCat("finish modifying analyzer: unknown database name '",
+                         databaseID, "'"));
       }
-      revision = it->second->getRevision();
     }
 
     VPackBuilder revisionBuilder;
@@ -4943,8 +4905,8 @@ void ClusterInfo::loadServers() {
     // Our own RebootId might have changed if we have been FAILED at least once
     // since our last actual reboot, let's update it:
     auto* serverState = ServerState::instance();
-    auto it = _serversKnown.find(serverState->getId());
-    if (it != _serversKnown.end()) {
+    if (auto it = _serversKnown.find(serverState->getId());
+        it != _serversKnown.end()) {
       // should always be ok
       if (serverState->getRebootId() != it->second.rebootId) {
         serverState->setRebootId(it->second.rebootId);
@@ -4998,16 +4960,13 @@ std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
       READ_LOCKER(readLocker, _serversProt.lock);
 
       // _serversAliases is a map-type <Alias, ServerID>
-      auto ita = _serverAliases.find(serverID_);
-
-      if (ita != _serverAliases.end()) {
+      if (auto ita = _serverAliases.find(serverID_);
+          ita != _serverAliases.end()) {
         serverID_ = ita->second;
       }
 
       // _servers is a map-type <ServerId, pmr::ManagedString>
-      auto it = _servers.find(serverID_);
-
-      if (it != _servers.end()) {
+      if (auto it = _servers.find(serverID_); it != _servers.end()) {
         return std::string{it->second};
       }
     }
@@ -5050,15 +5009,14 @@ std::string ClusterInfo::getServerAdvertisedEndpoint(
       READ_LOCKER(readLocker, _serversProt.lock);
 
       // _serversAliases is a map-type <Alias, ServerID>
-      auto ita = _serverAliases.find(serverID_);
-
-      if (ita != _serverAliases.end()) {
+      if (auto ita = _serverAliases.find(serverID_);
+          ita != _serverAliases.end()) {
         serverID_ = ita->second;
       }
 
       // _serversAliases is a map-type <ServerID, std::string>
-      auto it = _serverAdvertisedEndpoints.find(serverID_);
-      if (it != _serverAdvertisedEndpoints.end()) {
+      if (auto it = _serverAdvertisedEndpoints.find(serverID_);
+          it != _serverAdvertisedEndpoints.end()) {
         return std::string{it->second};
       }
     }
@@ -5388,14 +5346,13 @@ ClusterInfo::getResponsibleServer(std::string_view shardID) {
       READ_LOCKER(readLocker, _currentProt.lock);
       // _shardsToCurrentServers is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
-      auto it = _shardsToCurrentServers.find(shardID);
-
-      // TODO throw an exception if we don't find the shard or the server list
-      // is null or empty?
-      if (it != _shardsToCurrentServers.end()) {
+      if (auto it = _shardsToCurrentServers.find(shardID);
+          it != _shardsToCurrentServers.end()) {
+        // TODO throw an exception if we don't find the shard or the server list
+        // is null or empty?
         auto serverList = it->second;
         if (serverList != nullptr && !serverList->empty() &&
-            !(*serverList)[0].empty() && (*serverList)[0][0] == '_') {
+            (*serverList)[0].starts_with('_')) {
           // This is a temporary situation in which the leader has already
           // resigned, let's wait half a second and try again.
           --tries;
@@ -5484,7 +5441,7 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
           break;  // replication 2 not yet ready
         }
 
-        if (!(*serverList)[0].empty() && (*serverList)[0][0] == '_') {
+        if ((*serverList)[0].starts_with('_')) {
           // This is a temporary situation in which the leader has already
           // resigned, let's wait half a second and try again.
           --tries;
@@ -5521,24 +5478,27 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 /// @brief find the shard list of a collection, sorted numerically
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<std::vector<ShardID> const> ClusterInfo::getShardList(
-    std::string_view collectionID) {
+std::vector<ShardID> ClusterInfo::getShardList(std::string_view collectionID) {
+  std::vector<ShardID> result;
+
   TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
     // Simulate no results
-    return std::make_shared<std::vector<ShardID> const>();
+    return result;
   }
 
   {
     // Get the sharding keys and the number of shards:
     READ_LOCKER(readLocker, _planProt.lock);
-    // _shards is a map-type <DataSourceId, shared_ptr<vector<string>>>
-    auto it = _shards.find(collectionID);
-
-    if (it != _shards.end()) {
-      return it->second;
+    // _shards is a map-type <DataSourceId,
+    // shared_ptr<vector<pmr::ManagedString>>>
+    if (auto it = _shards.find(collectionID); it != _shards.end()) {
+      result.reserve(it->second->size());
+      for (auto const& s : *(it->second)) {
+        result.emplace_back(s);
+      }
     }
   }
-  return std::make_shared<std::vector<ShardID> const>();
+  return result;
 }
 
 std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
@@ -5548,9 +5508,8 @@ ClusterInfo::getCurrentServersForShard(std::string_view shardId) {
   if (auto it = _shardsToCurrentServers.find(shardId);
       it != _shardsToCurrentServers.end()) {
     return it->second;
-  } else {
-    return nullptr;
   }
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5592,8 +5551,8 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
       // return a consistent state of servers
       READ_LOCKER(readLocker, _mappingsProt.lock);
 
-      auto it = _coordinatorIdMap.find(shortId);
-      if (it != _coordinatorIdMap.end()) {
+      if (auto it = _coordinatorIdMap.find(shortId);
+          it != _coordinatorIdMap.end()) {
         return ServerID{it->second};
       }
     }
@@ -5635,11 +5594,9 @@ ClusterInfo::getPlan(uint64_t& index,
   READ_LOCKER(readLocker, _planProt.lock);
   index = _planIndex;
   for (auto const& i : dirty) {
-    auto it = _plan.find(i);
-    if (it == _plan.end()) {
-      continue;
+    if (auto it = _plan.find(i); it != _plan.end()) {
+      ret.try_emplace(it->first, it->second);
     }
-    ret.try_emplace(it->first, it->second);
   }
   return ret;
 }
@@ -5662,11 +5619,9 @@ ClusterInfo::getCurrent(uint64_t& index,
   READ_LOCKER(readLocker, _currentProt.lock);
   index = _currentIndex;
   for (auto const& i : dirty) {
-    auto it = _current.find(i);
-    if (it == _current.end()) {
-      continue;
+    if (auto it = _current.find(i); it != _current.end()) {
+      ret.try_emplace(it->first, it->second);
     }
-    ret.try_emplace(it->first, it->second);
   }
   return ret;
 }
@@ -5792,8 +5747,8 @@ Result ClusterInfo::getShardServers(std::string_view shardId,
                                     std::vector<ServerID>& servers) {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  auto it = _shardsToPlanServers.find(shardId);
-  if (it != _shardsToPlanServers.end()) {
+  if (auto it = _shardsToPlanServers.find(shardId);
+      it != _shardsToPlanServers.end()) {
     servers.assign(it->second->begin(), it->second->end());
     return {};
   }
@@ -5806,8 +5761,7 @@ Result ClusterInfo::getShardServers(std::string_view shardId,
 CollectionID ClusterInfo::getCollectionNameForShard(std::string_view shardId) {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  auto it = _shardToName.find(shardId);
-  if (it != _shardToName.end()) {
+  if (auto it = _shardToName.find(shardId); it != _shardToName.end()) {
     return CollectionID{it->second};
   }
   return StaticStrings::Empty;
@@ -6272,10 +6226,8 @@ void ClusterInfo::startSyncers() {
 void ClusterInfo::drainSyncers() {
   auto clearWaitForMaps = [&](auto& mutex, auto& map) {
     std::lock_guard g(mutex);
-    auto pit = map.begin();
-    while (pit != map.end()) {
-      pit->second.setValue(Result(_syncerShutdownCode));
-      ++pit;
+    for (auto& pit : map) {
+      pit.second.setValue(Result(_syncerShutdownCode));
     }
     map.clear();
   };

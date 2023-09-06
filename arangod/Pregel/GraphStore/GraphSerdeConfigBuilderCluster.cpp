@@ -150,13 +150,12 @@ GraphSerdeConfigBuilderCluster::GraphSerdeConfigBuilderCluster(
   if (logicalCollection->isSmart()) {
     for (auto&& l : logicalCollection->realNamesForRead()) {
       auto lc2 = clusterInfo.getCollection(vocbase.name(), l);
-      auto shardIDs = clusterInfo.getShardList(std::to_string(lc2->id().id()));
-      result.content.push_back(*shardIDs);
+      result.content.push_back(
+          clusterInfo.getShardList(std::to_string(lc2->id().id())));
     }
   } else {
-    auto shardIDs =
-        clusterInfo.getShardList(std::to_string(logicalCollection->id().id()));
-    result.content.push_back(*shardIDs);
+    result.content.push_back(
+        clusterInfo.getShardList(std::to_string(logicalCollection->id().id())));
   }
   return result;
 }
