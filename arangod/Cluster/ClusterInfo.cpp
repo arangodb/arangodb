@@ -1670,8 +1670,7 @@ void ClusterInfo::loadPlan() {
         }
 
         auto shardIDs = newCollection->shardIds();
-        auto shards =
-            std::make_shared<ManagedVector<pmr::ShardID>>(_resourceMonitor);
+        auto shards = allocateShared<ManagedVector<pmr::ShardID>>();
         shards->reserve(shardIDs->size());
         newShardToName.reserve(shardIDs->size());
 
