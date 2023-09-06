@@ -28,16 +28,22 @@
 
 namespace arangodb {
 namespace {
-// create an empty string. we use this string to determine
-// the size of the string's internal SSO buffer. only strings
+// size of std::string's internal SSO buffer.. only strings
 // that exceed this buffer require a dynamic memory allocation.
-constexpr std::string empty;
-constexpr size_t stringInlineBufferSize = empty.capacity() - 1;
+// note: the size of the SSO buffer is implementation-defined
+// and is not guaranteed to be 15. we checked the SSO buffer
+// size for all current relevant implementation though:
+// - g++-11: 15
+// - g++-12: 15
+// - MSVC: 15
+// - clang++-14: 15
+// TODO: replace this constant with the expression
+//   std::string{}.capacity();
+// once all compilers provide constexpr std::string::capacity
+// implementations (clang 14 does, gcc 12 does, but gcc 11 doesn't).
+constexpr size_t stringInlineBufferSize = 15;
 static_assert(stringInlineBufferSize > 0);
-// subtract one byte for the NUL terminator that std::string
-// values are required to have
-constexpr size_t usableInlineBufferSize = stringInlineBufferSize - 1;
-static_assert(usableInlineBufferSize < sizeof(std::string));
+static_assert(stringInlineBufferSize < sizeof(std::string));
 }  // namespace
 
 size_t RocksDBMethods::indexingOverhead(bool indexingEnabled,
@@ -72,7 +78,7 @@ size_t RocksDBMethods::lockOverhead(bool lockingEnabled,
   // size of the key, whatever is larger. as locked keys are stored in a
   // hash table, we also need to assume overhead (as the hash table will
   // always have a load factor < 100%).
-  if (keySize > usableInlineBufferSize) {
+  if (keySize > stringInlineBufferSize) {
     // std::string will make a dynamic memory allocation, so we will have
     // - the size of an std::string
     // - the memory required to hold the key
