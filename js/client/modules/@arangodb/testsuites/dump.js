@@ -618,7 +618,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   runRtaMakedata() {
     let res = {};
     let logFile = fs.join(fs.getTempPath(), `rta_out_makedata.log`);
-    let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 0, "creating test data", logFile);
+    let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 0, "creating test data", logFile, [
+      'DUMPDB', '--numberOfDBs', '2']);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
       this.results.RtaMakedata = {
@@ -683,7 +684,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   runRtaCheckData() {
     let res = {};
     let logFile = fs.join(fs.getTempPath(), `rta_out_checkdata.log`);
-    let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 1, "checking test data", logFile);
+    let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 1, "checking test data", logFile, [
+      'DUMPDB', '--numberOfDBs', '2']);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
       this.results.RtaCheckdata = {

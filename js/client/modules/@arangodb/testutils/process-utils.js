@@ -538,11 +538,12 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     args = Object.assign(args, addArgs);
   }
   let argv = toArgv(args);
-  argv = argv.concat(['--',
-                      '--minReplicationFactor', '2',
-                      '--progress', 'true',
-                      '--oldVersion', require('internal').db._version()
-                     ], moreargv);
+  argv = argv.concat(['--'],
+                     moreargv, [
+                       '--minReplicationFactor', '2',
+                       '--progress', 'true',
+                       '--oldVersion', require('internal').db._version()
+                     ]);
   if (options.hasOwnProperty('makedata_args')) {
     argv = argv.concat(toArgv(options['makedata_args']));
   }
