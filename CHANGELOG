@@ -1,6 +1,10 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* Whenever there is a query request timeout in AQL (e.g., a server died) which
+  causes the query to fail, the DBServers will now all directly kill their
+  potentially ongoing parts of the query and not wait for garbage collection.
+
 * Fixed BTS-1541: Old legacy little endian key format for RocksDB database
   (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer versions.
   This fixes a persistent index corruption bug with the old format.
