@@ -1152,7 +1152,7 @@ class ClusterInfo final {
   // The Plan state:
   AllCollections _plannedCollections;     // from Plan/Collections/
   AllCollections _newPlannedCollections;  // TODO
-  FlatMapShared<pmr::CollectionID, std::vector<pmr::ShardID> const>
+  FlatMapShared<pmr::CollectionID, ManagedVector<pmr::ShardID> const>
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
   // planned shard => servers map

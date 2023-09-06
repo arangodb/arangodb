@@ -1670,7 +1670,8 @@ void ClusterInfo::loadPlan() {
         }
 
         auto shardIDs = newCollection->shardIds();
-        auto shards = std::make_shared<std::vector<pmr::ShardID>>();
+        auto shards =
+            std::make_shared<ManagedVector<pmr::ShardID>>(_resourceMonitor);
         shards->reserve(shardIDs->size());
         newShardToName.reserve(shardIDs->size());
 
@@ -5492,8 +5493,11 @@ std::vector<ShardID> ClusterInfo::getShardList(std::string_view collectionID) {
     // _shards is a map-type <DataSourceId,
     // shared_ptr<vector<pmr::ManagedString>>>
     if (auto it = _shards.find(collectionID); it != _shards.end()) {
-      result.reserve(it->second->size());
-      for (auto const& s : *(it->second)) {
+      auto copy = it->second;
+      readLocker.unlock();
+
+      result.reserve(copy->size());
+      for (auto const& s : *copy) {
         result.emplace_back(s);
       }
     }

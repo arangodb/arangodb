@@ -626,9 +626,9 @@ void ShardingInfo::sortShardNamesNumerically(T& list) {
 template void ShardingInfo::sortShardNamesNumerically<std::vector<ShardID>>(
     std::vector<ShardID>& list);
 
-template void
-ShardingInfo::sortShardNamesNumerically<std::vector<ClusterInfo::pmr::ShardID>>(
-    std::vector<ClusterInfo::pmr::ShardID>& list);
+template void ShardingInfo::sortShardNamesNumerically<
+    ClusterInfo::ManagedVector<ClusterInfo::pmr::ShardID>>(
+    ClusterInfo::ManagedVector<ClusterInfo::pmr::ShardID>& list);
 
 template void ShardingInfo::sortShardNamesNumerically<
     containers::SmallVector<std::string_view, 8>>(
