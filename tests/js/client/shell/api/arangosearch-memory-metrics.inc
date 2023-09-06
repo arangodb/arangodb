@@ -103,7 +103,7 @@
         }
 
         let readers, consolidations, descriptors, mapped, scheduler_memory, num_worker_threads;
-        for (let i = 0; i < 30; ++i) {
+        for (let i = 0; i < 45; ++i) {
 
           generateAndInsert(collectionName);
           db._query(`for d in ${viewName} SEARCH d.numericValue == 100 RETURN d`);
@@ -122,6 +122,7 @@
           if (readers > 0 && consolidations > 0 && descriptors > 0 && (isWindows || mapped > 0)) {
             break;
           }
+          require("internal").sleep(0.25);
         }
 
         assertTrue(readers > 0);
@@ -139,7 +140,7 @@
         }
 
         db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
-        for (let i = 0; i < 60; ++i) {
+        for (let i = 0; i < 45; ++i) {
           [readers, consolidations, descriptors, mapped, scheduler_memory, num_worker_threads] = getCompleteMetricsValues([
             "arangodb_search_readers_memory_usage", 
             "arangodb_search_consolidations_memory",
@@ -152,6 +153,7 @@
           if (readers === 0 && consolidations === 0 && descriptors === 0 && (isWindows || mapped === 0)) {
             break;
           }
+          require("internal").sleep(0.25);
         }
 
         assertEqual(scheduler_memory, num_worker_threads * 4 * 1000000, {scheduler_memory, num_worker_threads});
