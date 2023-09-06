@@ -407,7 +407,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     return;
   }
 
-  view = resolver.getView(view->id());  // ensure have the latest definition
+  view = resolver.getView(view->name());  // ensure have the latest definition
 
   if (!view) {
     generateError(arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
