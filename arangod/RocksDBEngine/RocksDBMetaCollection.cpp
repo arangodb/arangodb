@@ -111,7 +111,7 @@ void RocksDBMetaCollection::freeMemory() noexcept {
         bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
   }
 
-  memoryUsage += _revisionTruncateBuffer.size();
+  memoryUsage += _revisionTruncateBuffer.size() * bufferedEntrySize();
 
   TRI_ASSERT(memoryUsage == _revisionsBufferedMemoryUsage);
 #endif
