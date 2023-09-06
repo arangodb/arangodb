@@ -1620,6 +1620,9 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
         }
       }
     }
+    LOG_TOPIC("!!!!!", WARN, arangodb::iresearch::TOPIC)
+        << " Thread for segment:" << ctx->_myReaderOffset
+        << " BATCH finished. Processed so far:" << ctx->_totalPos;
   };
 
   for (auto toRun : run) {
