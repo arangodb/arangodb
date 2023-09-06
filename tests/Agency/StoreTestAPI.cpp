@@ -925,6 +925,38 @@ TEST_F(StoreTestAPI, transaction_insert_remove_same_key) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Transaction update operation
+////////////////////////////////////////////////////////////////////////////////
+
+TEST_F(StoreTestAPI, transaction_update) {
+  writeAndCheck(R"([[{"a":{"op":"update", "val":{"b":12}}}]])");
+  assertEqual(read(R"([["/"]])"), R"( [{"a":{"b":12}}])");
+  writeAndCheck(
+      R"([[{"a":{"op":"update", "keepNull": true, "val":{"b":null}}}]])");
+  assertEqual(read(R"([["/"]])"), R"( [{"a":{"b":null}}])");
+  writeAndCheck(
+      R"([[{"a":{"op":"update", "keepNull": false, "val":{"b":null}}}]])");
+  assertEqual(read(R"([["/"]])"), R"( [{"a":{}}])");
+  writeAndCheck(R"([[{"a":{"op":"update", "val":{"b":1, "c":2}}}]])");
+  assertEqual(read(R"([["/"]])"), R"( [{"a":{"b":1, "c":2}}])");
+  writeAndCheck(R"([[{"a":{"op":"update", "val":{"b":3}}}]])");
+  assertEqual(read(R"([["/"]])"), R"( [{"a":{"b":3, "c":2}}])");
+
+  writeAndCheck(R"([[{"a":{"op":"update", "val":{"b":1, "c":{}}}}]])");
+  assertEqual(read(R"([["/"]])"), R"( [{"a":{"b":1, "c":{}}}])");
+  writeAndCheck(R"([[{"a":{"op":"update", "val":{"c":{"d":4}}}}]])");
+  assertEqual(read(R"([["/"]])"), R"( [{"a":{"b":1, "c":{"d":4}}}])");
+
+  writeAndCheck(
+      R"([[{"a":{"op":"update", "mergeObjects": false, "val":{"c":{"e":4}}}}]])");
+  assertEqual(read(R"([["/"]])"), R"( [{"a":{"b":1, "c":{"e":4}}}])");
+
+  writeAndCheck(
+      R"([[{"a":{"op":"update", "mergeObjects": true, "val":{"c":{"d":4}}}}]])");
+  assertEqual(read(R"([["/"]])"), R"( [{"a":{"b":1, "c":{"d": 4, "e":4}}}])");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package, all different keys
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -62,6 +62,7 @@ namespace arangodb::consensus {
 
 enum Operation {
   SET,
+  UPDATE,
   INCREMENT,
   DECREMENT,
   PUSH,

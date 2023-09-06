@@ -463,6 +463,89 @@ ResultT<NodePtr> Node::handle<WRITE_UNLOCK>(Node const* target,
   return Result{TRI_ERROR_FAILED, "Write unlock failed"};
 }
 
+namespace {
+
+Node::Children::transient_type buildChildrenFromSliceTransient(
+    VPackSlice slice) {
+  TRI_ASSERT(slice.isObject());
+  Node::Children::transient_type trans;
+  for (auto const& [key, sub] : VPackObjectIterator(slice)) {
+    auto keyStr = key.copyString();
+    if (keyStr.find("/") != std::string::npos) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
+                                    "invalid object key detected: `%s`",
+                                    keyStr.c_str());
+    }
+
+    trans.set(std::move(keyStr), Node::create(sub));
+  }
+  return trans;
+}
+
+Node::Children buildChildrenFromSlice(VPackSlice slice) {
+  return buildChildrenFromSliceTransient(slice).persistent();
+}
+
+ResultT<NodePtr> mergeChildren(Node const* target, VPackSlice value,
+                               bool isMergeObjects, bool isKeepNull) {
+  Node::Children::transient_type children;
+  if (target && target->isObject()) {
+    children = target->children().transient();
+  }
+
+  for (auto const& [key, sub] : VPackObjectIterator(value)) {
+    auto keyString = key.copyString();
+    if (keyString.find("/") != std::string::npos) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
+                                    "invalid object key detected: `%s`",
+                                    keyString.c_str());
+    }
+
+    if (sub.isObject()) {
+      auto other = children.find(keyString);
+      if (other && (*other)->isObject() && isMergeObjects) {
+        auto result =
+            mergeChildren(other->get(), sub, isMergeObjects, isKeepNull);
+        if (result.fail()) {
+          return result;
+        }
+        children.set(keyString, std::move(result).get());
+      } else {
+        children.set(keyString, Node::create(sub));
+      }
+
+    } else if (sub.isNull()) {
+      if (isKeepNull) {
+        children.set(keyString, Node::nullValue());
+      } else {
+        children.erase(keyString);
+      }
+    } else {
+      children.set(keyString, Node::create(sub));
+    }
+  }
+
+  return Node::create(children.persistent());
+}
+
+}  // namespace
+
+template<>
+ResultT<NodePtr> Node::handle<UPDATE>(Node const* target,
+                                      VPackSlice const& slice) {
+  // default is true
+  bool const isMergeObjects = !slice.get("mergeObjects").isFalse();
+  // default is false
+  bool const isKeepNull = slice.get("keepNull").isTrue();
+  Slice value = slice.get("val");
+  if (!value.isObject()) {
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  "`val` must be an object for update operation"};
+  }
+
+  return mergeChildren(target, value, isMergeObjects, isKeepNull);
+}
+
 arangodb::ResultT<NodePtr> Node::applyOp(Node const* target, VPackSlice slice) {
   std::string_view oper = slice.get("op").stringView();
 
@@ -488,6 +571,8 @@ arangodb::ResultT<NodePtr> Node::applyOp(Node const* target, VPackSlice slice) {
     return handle<ERASE>(target, slice);
   } else if (oper == "replace") {  // "op":"replace"
     return handle<REPLACE>(target, slice);
+  } else if (oper == "update") {  // "op":"update"
+    return handle<UPDATE>(target, slice);
   } else if (oper == OP_READ_LOCK) {
     return handle<READ_LOCK>(target, slice);
   } else if (oper == OP_READ_UNLOCK) {
@@ -903,18 +988,8 @@ NodePtr Node::create(VPackSlice slice) {
     if (slice.isEmptyObject()) {
       return emptyObjectValue();
     }
-    Node::Children::transient_type trans;
-    for (auto const& [key, sub] : VPackObjectIterator(slice)) {
-      auto keyStr = key.copyString();
-      if (keyStr.find("/") != std::string::npos) {
-        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
-                                      "invalid object key detected: `%s`",
-                                      keyStr.c_str());
-      }
 
-      trans.set(std::move(keyStr), Node::create(sub));
-    }
-    return allocateNode(trans.persistent());
+    return allocateNode(buildChildrenFromSlice(slice));
   } else if (slice.isArray()) {
     if (slice.isEmptyArray()) {
       return emptyArrayValue();
