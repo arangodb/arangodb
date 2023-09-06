@@ -40,7 +40,7 @@ template<SocketType T>
 class VstCommTask final : public GeneralCommTask<T> {
  public:
   VstCommTask(GeneralServer& server, ConnectionInfo,
-              std::unique_ptr<AsioSocket<T>> socket, fuerte::vst::VSTVersion v);
+              std::shared_ptr<AsioSocket<T>> socket, fuerte::vst::VSTVersion v);
   ~VstCommTask();
 
  protected:
