@@ -139,23 +139,18 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
   // explicit here.
   std::function<bool(VPackSlice result)> dbServerChanged =
       [dbServerResult, idString, numberOfShards](VPackSlice current) {
-        LOG_DEVEL << "Got callback on " << idString;
         if (numberOfShards == 0) {
-          LOG_DEVEL << "No Shards";
           return false;
         }
 
         if (!current.isObject()) {
-          LOG_DEVEL << "No Object";
           return true;
         }
 
         VPackObjectIterator shards(current);
-        LOG_DEVEL << current.toJson() << " and we expect shards "
-                  << numberOfShards;
 
         if (shards.size() == numberOfShards) {
-          LOG_DEVEL << "Lets check";
+
           bool found = false;
           for (auto const& shard : shards) {
             VPackSlice const indexes = shard.value.get("indexes");
@@ -166,8 +161,6 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
                   VPackSlice const k = v.get(StaticStrings::IndexId);
                   if (k.isString() && k.isEqualString(idString)) {
                     // still found the index in some shard
-                    LOG_DEVEL << "Found the index in "
-                              << shard.key.copyString();
                     found = true;
                     break;
                   }
@@ -181,7 +174,6 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
           }
 
           if (!found) {
-            LOG_DEVEL << "We are good";
             dbServerResult->store(TRI_ERROR_NO_ERROR,
                                   std::memory_order_release);
           }
