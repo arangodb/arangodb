@@ -21,22 +21,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TargetCollectionAgencyWriter.h"
-#include "Agency/AgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "Agency/TransactionBuilder.h"
 #include "Basics/Guarded.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/Utils/CurrentWatcher.h"
-#include "Cluster/Utils/CurrentCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionEntryReplication2.h"
 #include "Inspection/VPack.h"
 #include "Replication2/AgencyCollectionSpecification.h"
-#include "Replication2/AgencyCollectionSpecificationInspectors.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
-#include "VocBase/LogicalCollection.h"
 
 #include "Logger/LogMacros.h"
 
