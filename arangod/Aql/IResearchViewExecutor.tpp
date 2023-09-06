@@ -835,7 +835,6 @@ template<typename Impl, typename ExecutionTraits>
 bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
     ReadContext& ctx, IResearchViewStats& stats) {
   auto& impl = static_cast<Impl&>(*this);
-
   while (true) {
     if (_indexReadBuffer.empty()) {
       if (!impl.fillBuffer(ctx)) {
@@ -1497,7 +1496,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
     IResearchViewExecutor::ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
 
-  size_t const atMost = ctx.outputRow.numRowsLeft() * kThreads;
+  size_t const atMost = 1000 * kThreads;
   TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
@@ -1529,11 +1528,9 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
     return false;
   }
   size_t const windowSize = atMost / run.size();
-  if (windowSize < 100) {
-    LOG_TOPIC("!!!!!", WARN, arangodb::iresearch::TOPIC)
-        << " WindowSize " << windowSize << " AtMost " << atMost
-        << " run:" << run.size();
-  }
+  LOG_TOPIC("!!!!!", WARN, arangodb::iresearch::TOPIC)
+      << " WindowSize " << windowSize << " AtMost " << atMost
+      << " run:" << run.size();
   std::vector<std::thread> runners;
   runners.reserve(run.size());
   size_t offset{0};
