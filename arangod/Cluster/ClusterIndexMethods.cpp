@@ -70,7 +70,8 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
 
   auto& agencyCache = server.getFeature<ClusterFeature>().agencyCache();
   auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
-  AgencyCallbackRegistry& callbackRegistry = clusterInfo.agencyCallbackRegistry();
+  AgencyCallbackRegistry& callbackRegistry =
+      clusterInfo.agencyCallbackRegistry();
   auto [acb, index] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path(planCollKey)});
   auto previous = acb->slice();
@@ -232,7 +233,8 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
   }
   if (VPackSlice resultSlice = result.slice().get("results");
       resultSlice.length() > 0) {
-    Result r = clusterInfo.waitForPlan(resultSlice[0].getNumber<uint64_t>()).get();
+    Result r =
+        clusterInfo.waitForPlan(resultSlice[0].getNumber<uint64_t>()).get();
     if (r.fail()) {
       return r;
     }
@@ -269,14 +271,15 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
     }
   }
 }
-}
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop an index in coordinator.
 ////////////////////////////////////////////////////////////////////////////////
 
-auto ClusterIndexMethods::dropIndexCoordinator(
-    LogicalCollection const& col, IndexId iid, double timeout) -> Result {
+auto ClusterIndexMethods::dropIndexCoordinator(LogicalCollection const& col,
+                                               IndexId iid, double timeout)
+    -> Result {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   double const endTime = TRI_microtime() + getTimeout(timeout);
   std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());

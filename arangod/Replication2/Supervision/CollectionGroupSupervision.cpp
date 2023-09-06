@@ -609,8 +609,9 @@ struct TransactionBuilder {
     ADB_PROD_ASSERT(allProps.isObject());
     for (auto const& it : VPackObjectIterator(allProps.slice())) {
       tmp = std::move(tmp).emplace_object(
-          basics::StringUtils::concatT("/arango/Plan/Collections/",
-                                       database, "/", action.cid, "/", it.key.stringView()),
+          basics::StringUtils::concatT("/arango/Plan/Collections/", database,
+                                       "/", action.cid, "/",
+                                       it.key.stringView()),
           [&](VPackBuilder& builder) {
             velocypack::serialize(builder, it.value);
           });

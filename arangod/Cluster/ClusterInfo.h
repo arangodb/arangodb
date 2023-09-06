@@ -959,7 +959,6 @@ class ClusterInfo final {
   static double getPollInterval() { return 5.0; }
 
  private:
-
   /// @brief create a new collection object from the data, using the cache if
   /// possible
   CollectionWithHash buildCollection(
