@@ -115,7 +115,7 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
 
   while (_reader->read(footer)) {
     // calculate the max entry size based on our current position
-    auto maxEntrySize = pos - sizeof(FileHeader) - sizeof(Record::Header);
+    auto maxEntrySize = pos - sizeof(FileHeader);
     ADB_PROD_ASSERT(footer.size % 8 == 0 && footer.size <= maxEntrySize)
         << "file " << _reader->path() << " - pos: " << pos
         << "; footer.size: " << footer.size
@@ -172,7 +172,8 @@ auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
     return ResultT<Record::CompressedHeader>::error(
         TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, "failed to read footer");
   }
-  ADB_PROD_ASSERT(footer.size % 8 != 0 || footer.size > fileSize - minFileSize)
+  ADB_PROD_ASSERT(footer.size % 8 == 0 &&
+                  footer.size <= fileSize - sizeof(FileHeader))
       << "file " << _reader->path() << " - footer.size: " << footer.size
       << "; fileSize: " << fileSize;
   _reader->seek(fileSize - footer.size);
