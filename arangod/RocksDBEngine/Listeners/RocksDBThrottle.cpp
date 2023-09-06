@@ -335,7 +335,7 @@ void RocksDBThrottle::recalculateThrottle() {
       adjustmentBytesCor =
           static_cast<uint64_t>((totalBytes * percentReached) / 2);
       std::cout << "compactionHardLimit percentReached: " << percentReached
-      << " adjustmentBytesCor: " << adjustmentBytesCor << std::endl;
+                << " adjustmentBytesCor: " << adjustmentBytesCor << std::endl;
     }
   }
 
@@ -478,7 +478,7 @@ void RocksDBThrottle::setThrottle() {
   // this routine can get called before _internalRocksDB is set
   if (nullptr != _internalRocksDB && _throttleBps > 100) {
     // execute this under RocksDB's DB mutex
-    rocksdb::InstrumentedMutexLock db_mutex(_internalRocksDB->mutex());
+    // rocksdb::InstrumentedMutexLock db_mutex(_internalRocksDB->mutex());
 
     // inform write_controller_ of our new rate
     //  (column_family.cc RecalculateWriteStallConditions() makes assumptions
