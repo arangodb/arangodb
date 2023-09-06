@@ -1496,6 +1496,7 @@ template<typename ExecutionTraits>
 bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
     IResearchViewExecutor::ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
+
   size_t const atMost = ctx.outputRow.numRowsLeft() * kThreads;
   TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_indexReadBuffer.reset();
@@ -1529,8 +1530,9 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
   }
   size_t const windowSize = atMost / run.size();
   if (windowSize < 100) {
-    LOG_DEVEL << " WindowSize " << windowSize << " AtMost " << atMost
-              << " run:" << run.size();
+    LOG_TOPIC("!!!!!", WARN, arangodb::iresearch::TOPIC)
+        << " WindowSize " << windowSize << " AtMost " << atMost
+        << " run:" << run.size();
   }
   std::vector<std::thread> runners;
   runners.reserve(run.size());
@@ -1556,8 +1558,9 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
         // The iterator is exhausted, we need to continue with the next
         // reader.
         ctx->_itr.reset();
-        LOG_DEVEL << " Thread for segment:" << ctx->_myReaderOffset
-                  << " finished. Processed so far:" << ctx->_totalPos;
+        LOG_TOPIC("!!!!!", WARN, arangodb::iresearch::TOPIC)
+            << " Thread for segment:" << ctx->_myReaderOffset
+            << " finished. Processed so far:" << ctx->_totalPos;
         return;
       }
       if constexpr (Base::isMaterialized) {
@@ -1632,10 +1635,11 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
   for (auto& t : runners) {
     t.join();
   }
-  for (auto runner : run) {
-    if (runner->size()) {
+  while (_currentReader < kThreads) {
+    if (_readers[_currentReader].size() > 0) {
       return true;
     }
+    ++_currentReader;
   }
   return false;
 }
@@ -1762,7 +1766,7 @@ size_t IResearchViewExecutor<ExecutionTraits>::skipAll(IResearchViewStats&) {
     skipped -= std::min(skipped, totalPos);
     _readerOffset = count;
   } else {
-    //auto const approximate = this->infos().countApproximate();
+    // auto const approximate = this->infos().countApproximate();
     // TODO fix me
     // for (; _readerOffset != count; ++_readerOffset, _currentSegmentPos = 0) {
     //  if (!_itr && !resetIterator()) {
