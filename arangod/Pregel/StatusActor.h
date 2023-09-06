@@ -31,11 +31,11 @@
 #include "Inspection/VPackWithErrorT.h"
 #include "Pregel/DatabaseTypes.h"
 #include "Pregel/StatusMessages.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 #include "fmt/core.h"
 #include "fmt/chrono.h"
-#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 
 namespace arangodb::pregel {
 

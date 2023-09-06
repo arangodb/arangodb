@@ -269,7 +269,7 @@ function basicTestSuite() {
       });
 
       pregel.cancel(pid); // delete contents
-      pregelTestHelpers.waitForResultsBeeingGarbageCollected(pid, 0);
+      pregelTestHelpers.waitForResultsBeingGarbageCollected(pid, 0);
     }
   };
 };

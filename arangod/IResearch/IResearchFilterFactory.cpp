@@ -2167,13 +2167,14 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
                            funcName, "' function")};
     }
     auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-    analyzer._pool = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
-                                         ctx.trx->state()->analyzersRevision());
+    analyzer._pool = analyzerFeature.get(
+        analyzerId, ctx.trx->vocbase(), ctx.trx->state()->analyzersRevision(),
+        transaction::OperationOriginInternal{"fetching analyzer"});
     if (!analyzer) {
       return {TRI_ERROR_BAD_PARAMETER,
-              absl::StrCat(
-                  "'", funcName, "' AQL function: Unable to lookup analyzer '",
-                  std::string_view{analyzerId.data(), analyzerId.size()}, "'")};
+              absl::StrCat("'", funcName,
+                           "' AQL function: Unable to look up analyzer '",
+                           analyzerId, "'")};
     }
     analyzer._shortName =
         IResearchAnalyzerFeature::normalize(analyzerId, vocbase.name(), false);

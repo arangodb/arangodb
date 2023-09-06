@@ -39,7 +39,7 @@ namespace arangodb::aql {
 MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
     Fetcher& fetcher, Infos& info)
     : _ctx(std::make_shared<transaction::StandaloneContext>(
-          info._query.vocbase())),
+          info._query.vocbase(), info._query.operationOrigin())),
       _trx(createTransaction(_ctx, info)),
       _info(info),
       _upstreamState(ExecutionState::HASMORE) {
@@ -53,7 +53,9 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
   opts.waitForSync = info._options.waitForSync;
   if (info._isExclusive) {
     // exclusive transaction
-    return {std::move(ctx), /*read*/ {}, /*write*/ {},
+    return {std::move(ctx),
+            /*read*/ {},
+            /*write*/ {},
             /*exclusive*/ {info._aqlCollection->name()}, opts};
   }
   // write transaction

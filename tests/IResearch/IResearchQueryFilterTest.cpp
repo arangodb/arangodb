@@ -63,9 +63,10 @@ class QueryFilter : public QueryTest {
       OperationOptions opt;
 
       transaction::Methods trx(
-          transaction::StandaloneContext::Create(_vocbase), EMPTY,
-          {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
-          transaction::Options());
+          transaction::StandaloneContext::create(
+              _vocbase, transaction::OperationOriginTestCase{}),
+          EMPTY, {logicalCollection1->name(), logicalCollection2->name()},
+          EMPTY, transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections

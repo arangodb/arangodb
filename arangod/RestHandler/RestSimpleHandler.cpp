@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -159,7 +160,8 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice());
+  return registerQueryOrCursor(data.slice(), transaction::OperationOriginREST{
+                                                 "removing documents by keys"});
 }
 
 RestStatus RestSimpleHandler::handleQueryResult() {
@@ -303,5 +305,7 @@ RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice());
+  return registerQueryOrCursor(
+      data.slice(),
+      transaction::OperationOriginREST{"looking up documents by keys"});
 }

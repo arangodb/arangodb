@@ -30,8 +30,10 @@ class RocksDBTransactionMethods;
 
 class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
  public:
-  ReplicatedRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                    transaction::Options const& options);
+  ReplicatedRocksDBTransactionState(
+      TRI_vocbase_t& vocbase, TransactionId tid,
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin);
 
   ~ReplicatedRocksDBTransactionState() override;
 
@@ -41,7 +43,8 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
   RocksDBTransactionMethods* rocksdbMethods(
       DataSourceId collectionId) const override;
 
-  void beginQuery(bool isModificationQuery) override;
+  void beginQuery(ResourceMonitor* resourceMonitor,
+                  bool isModificationQuery) override;
   void endQuery(bool isModificationQuery) noexcept override;
 
   /// @returns tick of last operation in a transaction

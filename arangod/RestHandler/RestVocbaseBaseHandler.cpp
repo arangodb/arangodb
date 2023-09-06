@@ -43,6 +43,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -376,8 +377,8 @@ void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
     }
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-
+  auto origin = transaction::OperationOriginInternal{"writing result"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
   writeResult(builder.slice(), *(ctx->getVPackOptions()));
 }
 
@@ -560,9 +561,11 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type,
-    OperationOptions const& opOptions, transaction::Options&& trxOpts) const {
-  bool const isFollower = !opOptions.isSynchronousReplicationFrom.empty() &&
-                          ServerState::instance()->isDBServer();
+    OperationOptions const& opOptions,
+    transaction::OperationOrigin operationOrigin,
+    transaction::Options&& trxOpts) const {
+  bool isFollower = !opOptions.isSynchronousReplicationFrom.empty() &&
+                    ServerState::instance()->isDBServer();
 
   bool found = false;
   std::string const& value =
@@ -572,8 +575,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
       trxOpts.allowDirtyReads = true;
     }
     auto tmp = std::make_unique<SingleCollectionTransaction>(
-        transaction::StandaloneContext::Create(_vocbase), collectionName, type,
-        std::move(trxOpts));
+        transaction::StandaloneContext::create(_vocbase, operationOrigin),
+        collectionName, type, std::move(trxOpts));
     if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
@@ -595,20 +598,27 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  if (pos > 0 && pos < value.size() &&
-      value.compare(pos, std::string::npos, " begin") == 0) {
-    if (!ServerState::instance()->isDBServer()) {
+  if (pos > 0 && pos < value.size()) {
+    if (value.compare(pos, std::string::npos, " aql") == 0) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                                     "cannot start a managed transaction here");
+                                     "cannot start an AQL transaction here");
     }
-    std::string const& trxDef =
-        _request->header(StaticStrings::TransactionBody, found);
-    if (found) {
-      auto trxOpts = VPackParser::fromJson(trxDef);
-      Result res =
-          mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), isFollower);
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
+
+    if (value.compare(pos, std::string::npos, " begin") == 0) {
+      if (!ServerState::instance()->isDBServer()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+            "cannot start a managed transaction here");
+      }
+      std::string const& trxDef =
+          _request->header(StaticStrings::TransactionBody, found);
+      if (found) {
+        auto trxOpts = VPackParser::fromJson(trxDef);
+        Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
+                                           operationOrigin, isFollower);
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
       }
     }
   }
@@ -620,7 +630,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   // lock on the context for the entire duration of the query. if this is the
   // case, then the query already has the lock, and it is ok if we lease the
   // context here without acquiring it again.
-  bool const isSideUser =
+  bool isSideUser =
       (ServerState::instance()->isDBServer() && AccessMode::isRead(type) &&
        !_request->header(StaticStrings::AqlDocumentCall).empty());
 
@@ -658,12 +668,14 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
 
 /// @brief create proper transaction context, including the proper IDs
 std::shared_ptr<transaction::Context>
-RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
+RestVocbaseBaseHandler::createTransactionContext(
+    AccessMode::Type mode, transaction::OperationOrigin operationOrigin) const {
   bool found = false;
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    return std::make_shared<transaction::StandaloneContext>(_vocbase);
+    return std::make_shared<transaction::StandaloneContext>(_vocbase,
+                                                            operationOrigin);
   }
 
   TransactionId tid = TransactionId::none();
@@ -689,18 +701,25 @@ RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
           "illegal to start a managed transaction here");
     }
     if (value.compare(pos, std::string::npos, " aql") == 0) {
-      auto aqlStandaloneContext =
-          std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
-      aqlStandaloneContext->setStreaming();
-      return aqlStandaloneContext;
-    } else if (value.compare(pos, std::string::npos, " begin") == 0) {
+      // standalone AQL query on DB server
+      auto ctx = std::make_shared<transaction::AQLStandaloneContext>(
+          _vocbase, tid, operationOrigin);
+      return ctx;
+    }
+
+    if (value.compare(pos, std::string::npos, " begin") == 0) {
       // this means we lazily start a transaction
       std::string const& trxDef =
           _request->header(StaticStrings::TransactionBody, found);
       if (found) {
         auto trxOpts = VPackParser::fromJson(trxDef);
-        Result res =
-            mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), false);
+        // this is the first time we see this transaction on this
+        // DB server. override origin, because we are inside a streaming
+        // transaction when we get here.
+        auto origin = transaction::OperationOriginREST{
+            "streaming transaction on DB server"};
+        Result res = mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(),
+                                           origin, false);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
         }

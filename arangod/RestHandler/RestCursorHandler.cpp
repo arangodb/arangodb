@@ -36,6 +36,7 @@
 #include "Cluster/ServerState.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
+#include "Transaction/OperationOrigin.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
@@ -100,10 +101,9 @@ RestStatus RestCursorHandler::continueExecute() {
       if (_request->suffixes().size() == 0) {
         // POST /_api/cursor
         return generateCursorResult(rest::ResponseCode::CREATED);
-      } else {
-        // POST /_api/cursor/cursor-id
-        return generateCursorResult(ResponseCode::OK);
       }
+      // POST /_api/cursor/cursor-id
+      return generateCursorResult(ResponseCode::OK);
     } else if (type == rest::RequestType::PUT) {
       if (_request->requestPath() == SIMPLE_QUERY_ALL_PATH) {
         // RestSimpleQueryHandler::allDocuments uses PUT for cursor creation
@@ -152,20 +152,21 @@ void RestCursorHandler::cancel() {
 ///
 /// return If true, we need to continue processing,
 ///        If false we are done (error or stream)
-RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
+RestStatus RestCursorHandler::registerQueryOrCursor(
+    velocypack::Slice slice, transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return RestStatus::DONE;
   }
-  VPackSlice const querySlice = slice.get("query");
+  VPackSlice querySlice = slice.get("query");
   if (!querySlice.isString() || querySlice.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return RestStatus::DONE;
   }
 
-  VPackSlice const bindVars = slice.get("bindVars");
+  VPackSlice bindVars = slice.get("bindVars");
   if (!bindVars.isNone()) {
     if (!bindVars.isObject() && !bindVars.isNull()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
@@ -196,10 +197,11 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   bool retriable = VelocyPackHelper::getBooleanValue(opts, "allowRetry", false);
 
   // simon: access mode can always be write on the coordinator
-  const AccessMode::Type mode = AccessMode::Type::WRITE;
+  AccessMode::Type mode = AccessMode::Type::WRITE;
+
   auto query =
-      aql::Query::create(createTransactionContext(mode),
-                         arangodb::aql::QueryString(querySlice.stringView()),
+      aql::Query::create(createTransactionContext(mode, operationOrigin),
+                         aql::QueryString(querySlice.stringView()),
                          std::move(bindVarsBuilder), aql::QueryOptions(opts));
 
   if (stream) {
@@ -212,8 +214,8 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
-    _cursor =
-        cursors->createQueryStream(std::move(query), batchSize, ttl, retriable);
+    _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl,
+                                         retriable, operationOrigin);
     // Throws if soft shutdown is ongoing!
     _cursor->setWakeupHandler(withLogContext(
         [self = shared_from_this()]() { return self->wakeupHandler(); }));
@@ -296,7 +298,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
   bool retriable = VelocyPackHelper::getBooleanValue(opts, "allowRetry", false);
 
   _response->setContentType(rest::ContentType::JSON);
-  size_t const n = static_cast<size_t>(qResult.length());
+  size_t n = static_cast<size_t>(qResult.length());
   if (n <= batchSize) {
     // result is smaller than batchSize and will be returned directly. no need
     // to create a cursor
@@ -381,7 +383,7 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
     return base;
   }
 
-  rest::RequestType const type = _request->requestType();
+  rest::RequestType type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT &&
       type != rest::RequestType::DELETE_REQ) {
     // request forwarding only exists for
@@ -639,7 +641,8 @@ RestStatus RestCursorHandler::createQueryCursor() {
   }
 
   TRI_ASSERT(_query == nullptr);
-  return registerQueryOrCursor(body);
+  return registerQueryOrCursor(
+      body, transaction::OperationOriginAQL{"running AQL query"});
 }
 
 /// @brief shows the batch given by <batch-id> if it's the last cached batch

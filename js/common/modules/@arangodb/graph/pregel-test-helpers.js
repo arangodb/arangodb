@@ -107,7 +107,7 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
   return status;
 };
 
-const waitForResultsBeeingGarbageCollected = function (pid, ttl) {
+const waitForResultsBeingGarbageCollected = function (pid, ttl) {
   // garbage collection runs every 20s, therefore we should wait at least that long plus the ttl given
 	const maxWaitSeconds = ttl + 100;
 	const sleepIntervalSeconds = 0.2;
@@ -1830,5 +1830,5 @@ exports.runFinished = runFinished;
 exports.runCanceled = runCanceled;
 exports.runFinishedSuccessfully = runFinishedSuccessfully;
 exports.waitUntilRunFinishedSuccessfully = waitUntilRunFinishedSuccessfully;
-exports.waitForResultsBeeingGarbageCollected = waitForResultsBeeingGarbageCollected;
+exports.waitForResultsBeingGarbageCollected = waitForResultsBeingGarbageCollected;
 exports.uniquePregelResults = uniquePregelResults;

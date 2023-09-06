@@ -262,6 +262,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                   std::move(sortRegisters),
                                   0,
                                   fakedQuery->itemBlockManager(),
+                                  *fakedQuery,
                                   tempStorage,
                                   nullptr,
                                   monitor,
