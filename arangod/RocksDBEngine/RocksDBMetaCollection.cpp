@@ -110,6 +110,9 @@ void RocksDBMetaCollection::freeMemory() noexcept {
     memoryUsage +=
         bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
   }
+
+  memoryUsage += _revisionTruncateBuffer.size();
+
   TRI_ASSERT(memoryUsage == _revisionsBufferedMemoryUsage);
 #endif
 
@@ -117,6 +120,7 @@ void RocksDBMetaCollection::freeMemory() noexcept {
   _revisionsBufferedMemoryUsage = 0;
   _revisionRemovalBuffers.clear();
   _revisionInsertBuffers.clear();
+  _revisionTruncateBuffer.clear();
 }
 
 void RocksDBMetaCollection::deferDropCollection(
@@ -907,10 +911,13 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     // requires the buffer lock to be held!
     auto removeBufferedUpdatesUpTo = [this](rocksdb::SequenceNumber seq) {
       {
+        uint64_t memoryUsage = 0;
         auto it = _revisionTruncateBuffer.begin();
         while (it != _revisionTruncateBuffer.end() && *it <= seq) {
+          memoryUsage += bufferedEntrySize();
           it = _revisionTruncateBuffer.erase(it);
         }
+        decreaseBufferedMemoryUsage(memoryUsage);
       }
 
       {
@@ -1306,7 +1313,11 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
     if (_revisionTreeApplied >= seq) {
       return;
     }
-    _revisionTruncateBuffer.emplace(seq);
+    auto [it, inserted] = _revisionTruncateBuffer.emplace(seq);
+    TRI_ASSERT(inserted);
+    if (inserted) {
+      increaseBufferedMemoryUsage(bufferedEntrySize());
+    }
   });
   return res;
 }
@@ -1376,12 +1387,17 @@ void RocksDBMetaCollection::applyUpdates(
           0;  // truncate will increase this sequence
       bool foundTruncate = false;
 
-      while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
-        ignoreSeq = *it;
-        TRI_ASSERT(ignoreSeq > _revisionTreeApplied);
-        TRI_ASSERT(ignoreSeq != 0);
-        foundTruncate = true;
-        it = _revisionTruncateBuffer.erase(it);
+      {
+        uint64_t memoryUsage = 0;
+        while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
+          ignoreSeq = *it;
+          TRI_ASSERT(ignoreSeq > _revisionTreeApplied);
+          TRI_ASSERT(ignoreSeq != 0);
+          foundTruncate = true;
+          memoryUsage += bufferedEntrySize();
+          it = _revisionTruncateBuffer.erase(it);
+        }
+        decreaseBufferedMemoryUsage(memoryUsage);
       }
 
       if (foundTruncate) {
