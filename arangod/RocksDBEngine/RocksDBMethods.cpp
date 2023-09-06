@@ -36,12 +36,14 @@ namespace {
 // - g++-11: 15
 // - g++-12: 15
 // - MSVC: 15
-// - clang++-14: 15
+// - clang++-14 (libstdc++): 15
+// - clang++-14 (libc++): 22
 // TODO: replace this constant with the expression
 //   std::string{}.capacity();
 // once all compilers provide constexpr std::string::capacity
 // implementations (clang 14 does, gcc 12 does, but gcc 11 doesn't).
-constexpr size_t stringInlineBufferSize = 15;
+constexpr size_t sizeOfString = sizeof(std::string);
+constexpr size_t stringInlineBufferSize = (sizeOfString == 24 ? 22 : 15);
 static_assert(stringInlineBufferSize > 0);
 static_assert(stringInlineBufferSize < sizeof(std::string));
 }  // namespace
