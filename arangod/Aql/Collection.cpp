@@ -165,11 +165,9 @@ std::vector<std::string> Collection::shardIds(
   auto result = shardIds();
 
   if (!includedShards.empty()) {
-    result.erase(std::remove_if(result.begin(), result.end(),
-                                [&includedShards](auto const& s) {
-                                  return !includedShards.contains(s);
-                                }),
-                 result.end());
+    std::erase_if(result, [&includedShards](auto const& s) {
+      return !includedShards.contains(s);
+    });
   }
 
   return result;
