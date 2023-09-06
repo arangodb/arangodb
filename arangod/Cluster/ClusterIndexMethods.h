@@ -24,18 +24,30 @@
 
 namespace arangodb {
 
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
+
 class IndexId;
 class LogicalCollection;
 class Result;
 struct ClusterIndexMethods {
+  // static only class, never initialize
+  ClusterIndexMethods() = delete;
+  ~ClusterIndexMethods() = delete;
 
-// static only class, never initialize
-ClusterIndexMethods() = delete;
-~ClusterIndexMethods() = delete;
+  [[nodiscard]] static auto dropIndexCoordinator(LogicalCollection const& col,
+                                                 IndexId iid, double endTime)
+      -> Result;
 
-[[nodiscard]] static auto dropIndexCoordinator(
-    LogicalCollection const& col, IndexId iid, double endTime) -> Result;
-
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ensure an index in coordinator.
+  //////////////////////////////////////////////////////////////////////////////
+  [[nodiscard]] static auto ensureIndexCoordinator(  // create index
+      LogicalCollection const& collection, arangodb::velocypack::Slice slice,
+      bool create, arangodb::velocypack::Builder& resultBuilder, double timeout)
+      -> Result;
 };
 
-}
+}  // namespace arangodb

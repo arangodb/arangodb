@@ -687,14 +687,6 @@ class ClusterInfo final {
   AnalyzerModificationTransaction::Ptr createAnalyzersCleanupTrans();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-  Result ensureIndexCoordinator(  // create index
-      LogicalCollection const& collection, arangodb::velocypack::Slice slice,
-      bool create, arangodb::velocypack::Builder& resultBuilder,
-      double timeout);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about servers from the agency
   /// Usually one does not have to call this directly.
   //////////////////////////////////////////////////////////////////////////////
@@ -999,16 +991,6 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   static double getReloadServerListTimeout() { return 60.0; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-  Result ensureIndexCoordinatorInner(  // create index
-      LogicalCollection const& collection, std::string_view idString,
-      arangodb::velocypack::Slice slice, bool create,
-      arangodb::velocypack::Builder& resultBuilder,
-      double timeout  // request timeout
-  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief triggers a new background thread to obtain the next batch of ids

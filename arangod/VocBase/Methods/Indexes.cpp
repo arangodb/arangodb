@@ -430,7 +430,7 @@ Result Indexes::ensureIndexCoordinator(
     bool create, velocypack::Builder& resultBuilder) {
   auto& cluster = collection.vocbase().server().getFeature<ClusterFeature>();
 
-  return cluster.clusterInfo().ensureIndexCoordinator(  // create index
+  return ClusterIndexMethods::ensureIndexCoordinator(  // create index
       collection, indexDef, create, resultBuilder,
       cluster.indexCreationTimeout());
 }
