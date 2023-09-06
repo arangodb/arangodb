@@ -362,7 +362,7 @@ function ahuacatlMemoryLimitSkipTestSuite () {
       const payload = Array(1024).join("x");
 
       let docs = [];
-      for (let i = 0; i < 100 * 1000; ++i) {
+      for (let i = 0; i < 80 * 1000; ++i) {
         docs.push({ payload });
         if (docs.length === 100) {
           c.insert(docs);

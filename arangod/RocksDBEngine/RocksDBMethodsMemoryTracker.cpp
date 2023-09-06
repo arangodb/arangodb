@@ -107,6 +107,12 @@ void RocksDBMethodsMemoryTracker::decreaseMemoryUsage(
 }
 
 void RocksDBMethodsMemoryTracker::setSavePoint() {
+  // we must publish here, as our local memory usage may
+  // exceed the maximum memory usage the ResourceMonitor
+  // allows us to use.
+  // so publish here first, which can throw with
+  // TRI_ERROR_RESOURCE_LIMIT.
+  publish(true);
   _savePoints.push_back(_memoryUsage);
 }
 
@@ -115,7 +121,12 @@ void RocksDBMethodsMemoryTracker::rollbackToSavePoint() {
   TRI_ASSERT(!_savePoints.empty());
   _memoryUsage = _savePoints.back();
   _savePoints.pop_back();
-  publish(true);
+  try {
+    publish(true);
+  } catch (...) {
+    // we should never get here.
+    TRI_ASSERT(false);
+  }
 }
 
 void RocksDBMethodsMemoryTracker::popSavePoint() noexcept {
