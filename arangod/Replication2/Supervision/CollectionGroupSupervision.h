@@ -71,6 +71,10 @@ struct RemoveParticipantFromLog {
   LogId logId;
   ParticipantId participant;
 };
+struct UpdateCollectionPlan {
+  CollectionID cid;
+  agency::Collection::MutableProperties spec;
+};
 struct NoActionRequired {};
 struct NoActionPossible {
   std::string reason;
@@ -82,7 +86,7 @@ using Action =
                  UpdateConvergedVersion, DropCollectionPlan,
                  DropCollectionGroup, AddCollectionToPlan,
                  AddCollectionGroupToPlan, UpdateCollectionShardMap,
-                 AddParticipantToLog, RemoveParticipantFromLog>;
+                 AddParticipantToLog, RemoveParticipantFromLog, UpdateCollectionPlan>;
 
 struct CollectionGroup {
   agency::CollectionGroupTargetSpecification target;
