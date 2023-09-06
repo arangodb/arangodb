@@ -109,10 +109,6 @@ void RocksDBSettingsManager::retrieveInitialValues() {
 
 // Thread-Safe force sync.
 ResultT<bool> RocksDBSettingsManager::sync(bool force) {
-  TRI_IF_FAILURE("RocksDBSettingsManagerSync") {
-    return ResultT<bool>::success(false);
-  }
-
   std::unique_lock lock{_syncingMutex, std::defer_lock};
 
   if (force) {
@@ -125,6 +121,10 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
   }
 
   TRI_ASSERT(lock.owns_lock());
+
+  TRI_IF_FAILURE("RocksDBSettingsManagerSync") {
+    return ResultT<bool>::success(false);
+  }
 
   try {
     // need superuser scope to ensure we can sync all collections and keep seq
