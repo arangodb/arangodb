@@ -137,7 +137,8 @@ void PhysicalCollection::close() {
     }
   }
 
-  freeMemory();
+  // TODO: does this cause problems?
+  // freeMemory();
 }
 
 void PhysicalCollection::drop() {
