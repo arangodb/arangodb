@@ -29,6 +29,7 @@
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBDumpContext.h"
 #include "VocBase/ticks.h"
 
@@ -46,6 +47,14 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
     std::string const& database) {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
+
+  // If the local RocksDB database still uses little endian key encoding,
+  // then the whole new dump method does not work, since ranges in _revs
+  // do not correspond to ranges in RocksDB keys in the documents column
+  // family. Therefore, we block the creation of a dump context right away.
+  if (rocksutils::rocksDBEndianness == RocksDBEndianness::Little) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_OLD_ROCKSDB_FORMAT);
+  }
 
   // generating the dump context can throw exceptions. if it does, then
   // no harm is done, and no resources will be leaked.
