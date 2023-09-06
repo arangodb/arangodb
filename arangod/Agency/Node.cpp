@@ -1021,7 +1021,7 @@ NodePtr consensus::Node::allocateNode(Args&&... args) {
 // AccountingAllocator
 using AllocatorType =
     typename arangodb::consensus::Node::allocator_type::rebind<uint8_t>::type;
-template struct arangodb::velocypack::BasicString<AllocatorType>;
-template struct arangodb::velocypack::SliceBase<
-    arangodb::velocypack::BasicString<AllocatorType>,
-    arangodb::velocypack::Slice>;
+
+namespace arangodb::velocypack {
+INSTANTIATE_TYPE(BasicString<AllocatorType>, Slice)
+}
