@@ -31,14 +31,19 @@
 #include "Basics/ResultT.h"
 #include "Cluster/CallbackGuard.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Fwd.h"
 #include "Transaction/ManagedContext.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
+
 #include <absl/hash/hash.h>
+
 #include <atomic>
 #include <functional>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -52,8 +57,12 @@ class Slice;
 
 namespace transaction {
 class Context;
+class CounterGuard;
 class ManagerFeature;
 class Hints;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class History;
+#endif
 struct Options;
 
 struct IManager {
@@ -64,9 +73,10 @@ struct IManager {
 
 /// @brief Tracks TransactionState instances
 class Manager final : public IManager {
+  friend class CounterGuard;
+
   static constexpr size_t numBuckets = 16;
-  static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
-  static constexpr size_t maxTransactionSize = 128 * 1024 * 1024;  // 128 MiB
+  static constexpr double tombstoneTTL = 10.0 * 60.0;  // 10 minutes
 
   enum class MetaType : uint8_t {
     Managed = 1,        /// global single shard db transaction
@@ -117,18 +127,14 @@ class Manager final : public IManager {
   Manager& operator=(Manager const&) = delete;
 
   explicit Manager(ManagerFeature& feature);
+  ~Manager();
 
   static constexpr double idleTTLDBServer = 5 * 60.0;  //  5 minutes
 
   // register a transaction
-  void registerTransaction(TransactionId transactionId,
-                           bool isReadOnlyTransaction,
-                           bool isFollowerTransaction);
-
-  // unregister a transaction
-  void unregisterTransaction(TransactionId transactionId,
-                             bool isReadOnlyTransaction,
-                             bool isFollowerTransaction) noexcept;
+  std::shared_ptr<CounterGuard> registerTransaction(TransactionId transactionId,
+                                                    bool isReadOnlyTransaction,
+                                                    bool isFollowerTransaction);
 
   uint64_t getActiveTransactionCount();
 
@@ -146,19 +152,14 @@ class Manager final : public IManager {
   /// @brief create managed transaction, also generate a tranactionId
   ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase,
                                           velocypack::Slice trxOpts,
+                                          OperationOrigin operationOrigin,
                                           bool allowDirtyReads);
-
-  /// @brief create managed transaction, also generate a tranactionId
-  ResultT<TransactionId> createManagedTrx(
-      TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
-      std::vector<std::string> const& writeCollections,
-      std::vector<std::string> const& exclusiveCollections,
-      transaction::Options options, double ttl = 0.0);
 
   /// @brief ensure managed transaction, either use the one on the given tid
   ///        or create a new one with the given tid
   Result ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                           velocypack::Slice trxOpts,
+                          OperationOrigin operationOrigin,
                           bool isFollowerTransaction);
 
   /// @brief ensure managed transaction, either use the one on the given tid
@@ -167,7 +168,8 @@ class Manager final : public IManager {
                           std::vector<std::string> const& readCollections,
                           std::vector<std::string> const& writeCollections,
                           std::vector<std::string> const& exclusiveCollections,
-                          transaction::Options options, double ttl = 0.0);
+                          Options options, OperationOrigin operationOrigin,
+                          double ttl);
 
   Result beginTransaction(transaction::Hints hints,
                           std::shared_ptr<TransactionState>& state);
@@ -202,6 +204,13 @@ class Manager final : public IManager {
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     std::string const& database, std::string const& username,
                     bool fanout) const;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// @brief a history of currently ongoing and recently finished
+  /// transactions. currently only used for testing. NOT AVAILABLE
+  /// IN PRODUCTION!
+  History& history() noexcept;
+#endif
 
   // ---------------------------------------------------------------------------
   // Hotbackup Stuff
@@ -248,6 +257,13 @@ class Manager final : public IManager {
   }
 
  private:
+  /// @brief create managed transaction, also generate a tranactionId
+  ResultT<TransactionId> createManagedTrx(
+      TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
+      std::vector<std::string> const& writeCollections,
+      std::vector<std::string> const& exclusiveCollections, Options options,
+      OperationOrigin operationOrigin);
+
   Result prepareOptions(transaction::Options& options);
   bool isFollowerTransactionOnDBServer(
       transaction::Options const& options) const;
@@ -312,6 +328,29 @@ class Manager final : public IManager {
   double _streamingLockTimeout;
 
   std::atomic<bool> _softShutdownOngoing;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// @brief a history of currently ongoing and recently finished
+  /// transactions. currently only used for testing. NOT AVAILABLE
+  /// IN PRODUCTION!
+  std::unique_ptr<History> _history;
+#endif
 };
+
+// this RAII object is responsible for increasing and decreasing the
+// number of running transactions in the manager safely, so that it can't
+// be forgotten.
+class CounterGuard {
+  CounterGuard(CounterGuard const&) = delete;
+  CounterGuard& operator=(CounterGuard const&) = delete;
+
+ public:
+  explicit CounterGuard(Manager& manager);
+  ~CounterGuard();
+
+ private:
+  Manager& _manager;
+};
+
 }  // namespace transaction
 }  // namespace arangodb

@@ -150,6 +150,7 @@ add_library(arango STATIC
   ${LIB_ARANGO_DATE}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeaturePhase.cpp
+  ApplicationFeatures/BumpFileDescriptorsFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/FileSystemFeature.cpp

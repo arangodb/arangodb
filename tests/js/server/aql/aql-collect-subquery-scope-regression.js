@@ -28,10 +28,10 @@
 /// @author Copyright 2020, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("@arangodb").db;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const errors = internal.errors;
+const db = require("@arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -48,26 +48,47 @@ function subqueryCollectScopeSuite() {
     testSubqueryCollectScopeOk : function () {
       const query = `LET t = (COLLECT foo = undefined RETURN true) RETURN true`;
       try {
-        var actual = db._query(query);
+        db._query(query);
         fail();
-      } catch(e) {
+      } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
       }
     },
 
     testSubqueryCollectScopeOk2 : function () {
       const query = `LET t = (COLLECT foo = 5 RETURN true) RETURN true`;
-      var actual = db._query(query);
+      let actual = db._query(query);
       assertEqual(actual.toArray(), [ true ]);
     },
+
+    testCollectUsingItsOwnVariablesInIntoExpression : function () {
+      const queries = [
+        "FOR x IN [] COLLECT c = x INTO g = c RETURN g",
+        "FOR x IN [] COLLECT c = x INTO g = 1 + c RETURN g",
+        "FOR x IN [] COLLECT c = x INTO g = (RETURN c) RETURN g",
+        "FOR x IN [] COLLECT c = x INTO g = (FOR j IN [] RETURN c) RETURN g",
+        "FOR x IN [] COLLECT c = x INTO g = (FOR j IN [] FOR k IN [] RETURN c) RETURN g",
+        "FOR x IN [] COLLECT c = x INTO g = (LET a = c RETURN a) RETURN g",
+        "FOR x IN [] COLLECT c = x INTO g = (LET a = c LET b = a RETURN b) RETURN g",
+        "FOR x IN [] COLLECT c = x INTO g = (FOR j IN [] RETURN (FOR k IN [] RETURN c + 1)) RETURN g",
+        "FOR x IN [] COLLECT c = x, d = x + 1 INTO g = d RETURN g",
+        "FOR x IN [] COLLECT AGGREGATE c = LENGTH(x) INTO g = c RETURN g",
+        "FOR x IN [] COLLECT AGGREGATE c = LENGTH(x) INTO g = (FOR j IN [] RETURN (FOR k IN [] RETURN c + 1)) RETURN g",
+      ];
+
+      queries.forEach((query) => {
+        try {
+          db._query(query);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code, query);
+        }
+      });
+    },
+
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(subqueryCollectScopeSuite);
 
 return jsunity.done();
-

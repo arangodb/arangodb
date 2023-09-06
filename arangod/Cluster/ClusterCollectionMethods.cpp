@@ -931,8 +931,12 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     AgencyOperation setColl(
         "Plan/Collections/" + databaseName + "/" + collectionID,
         AgencyValueOperationType::SET, builder.slice());
+    AgencyPrecondition oldValue(
+        "Plan/Collections/" + databaseName + "/" + collectionID,
+        AgencyPrecondition::Type::VALUE, collection);
 
-    AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
+    AgencyWriteTransaction trans({setColl, incrementVersion},
+                                 {databaseExists, oldValue});
 
     using namespace std::chrono_literals;
     auto future = aac.sendTransaction(120s, trans)
