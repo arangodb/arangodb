@@ -591,5 +591,5 @@ void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
 
 size_t RocksDBTrxBaseMethods::currentWriteBatchSize() const noexcept {
   TRI_ASSERT(_rocksTransaction);
-  return _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
+  return _rocksTransaction->GetWriteBatch()->GetWriteBatch()->Data().capacity();
 }
