@@ -2541,28 +2541,23 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool flushColumnFamilies) {
 }
 
 void RocksDBEngine::waitForEstimatorSync(
-    std::chrono::milliseconds maxWaitTime) {
-  auto start = std::chrono::high_resolution_clock::now();
-  auto beginSeq = _db->GetLatestSequenceNumber();
+    std::chrono::milliseconds /*maxWaitTime*/) {
+  // release all unused ticks from flush feature
+  server().getFeature<FlushFeature>().releaseUnusedTicks();
 
-  while (std::chrono::high_resolution_clock::now() - start < maxWaitTime) {
-    if (_settingsManager->earliestSeqNeeded() >= beginSeq) {
-      // all synced up!
-      break;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  }
+  // force-flush
+  _settingsManager->sync(/*force*/ true);
 }
 
 Result RocksDBEngine::registerRecoveryHelper(
     std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
-    _recoveryHelpers.emplace_back(helper);
+    _recoveryHelpers.emplace_back(std::move(helper));
   } catch (std::bad_alloc const&) {
     return {TRI_ERROR_OUT_OF_MEMORY};
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&

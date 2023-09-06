@@ -243,7 +243,7 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
         << "about to store lastSync. previous value: " << lastSync
         << ", current value: " << minSeqNr;
 
-    if (minSeqNr < lastSync) {
+    if (minSeqNr < lastSync && !force) {
       if (minSeqNr != 0) {
         LOG_TOPIC("1038e", ERR, Logger::ENGINES)
             << "min tick is smaller than "
