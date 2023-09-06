@@ -51,6 +51,7 @@ auto transform(UserInputCollectionProperties col)
                               col.isSmart,
                               col.isDisjoint,
                               col.cacheEnabled,
+                              col.shardingStrategy.value(),
                               col.shardKeys.value(),
                               col.smartJoinAttribute,
                               col.smartGraphAttribute,

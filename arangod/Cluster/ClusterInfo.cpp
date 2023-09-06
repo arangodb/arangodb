@@ -1628,6 +1628,17 @@ void ClusterInfo::loadPlan() {
          velocypack::ObjectIterator(collectionsSlice)) {
       auto collectionSlice = collectionPairSlice.value;
 
+      if (!collectionSlice.isObject()) {
+        LOG_TOPIC("0f689", WARN, Logger::AGENCY)
+            << "Collection entry is not a valid json object."
+            << " The collection will be ignored for now and the invalid "
+            << "information will be repaired. VelocyPack: "
+            << collectionSlice.toJson();
+
+        continue;
+      }
+      auto const collectionId = collectionPairSlice.key.copyString();
+
       VPackBuilder newSliceBuilder;
       if (auto gid = collectionSlice.get("groupId"); !gid.isNone()) {
         auto group = newCollectionGroups.at(
@@ -1645,26 +1656,18 @@ void ClusterInfo::loadPlan() {
           newSliceBuilder.add(
               StaticStrings::ReplicationFactor,
               group->attributes.mutableAttributes.replicationFactor);
+          if (collectionId != group->groupLeader) {
+            newSliceBuilder.add(StaticStrings::DistributeShardsLike,
+                                group->groupLeader);
+          }
         }
         collectionSlice = newSliceBuilder.slice();
-      }
-
-      if (!collectionSlice.isObject()) {
-        LOG_TOPIC("0f689", WARN, Logger::AGENCY)
-            << "Collection entry is not a valid json object."
-            << " The collection will be ignored for now and the invalid "
-            << "information will be repaired. VelocyPack: "
-            << collectionSlice.toJson();
-
-        continue;
       }
 
       bool const isBuilding =
           isCoordinator &&
           arangodb::basics::VelocyPackHelper::getBooleanValue(
               collectionSlice, StaticStrings::AttrIsBuilding, false);
-
-      auto const collectionId = collectionPairSlice.key.copyString();
 
       // check if we already know this collection (i.e. have it in our local
       // cache). we do this to avoid rebuilding LogicalCollection objects from
@@ -3512,81 +3515,6 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set collection properties in coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-Result ClusterInfo::setCollectionPropertiesCoordinator(
-    std::string const& databaseName, std::string const& collectionID,
-    LogicalCollection const* info) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-  AgencyComm ac(_server);
-
-  AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
-                                    AgencyPrecondition::Type::EMPTY, false);
-  AgencyOperation incrementVersion("Plan/Version",
-                                   AgencySimpleOperationType::INCREMENT_OP);
-
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] =
-      agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
-          "Plan/Collections/" + databaseName + "/" + collectionID)});
-
-  velocypack::Slice collection =
-      acb->slice()[0].get(std::initializer_list<std::string_view>{
-          AgencyCommHelper::path(), "Plan", "Collections", databaseName,
-          collectionID});
-
-  if (!collection.isObject()) {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  }
-
-  VPackBuilder temp;
-  temp.openObject();
-  temp.add(StaticStrings::WaitForSyncString, VPackValue(info->waitForSync()));
-  if (info->isSatellite()) {
-    temp.add(StaticStrings::ReplicationFactor,
-             VPackValue(StaticStrings::Satellite));
-  } else {
-    temp.add(StaticStrings::ReplicationFactor,
-             VPackValue(info->replicationFactor()));
-  }
-  temp.add(StaticStrings::MinReplicationFactor,
-           VPackValue(info->writeConcern()));  // deprecated in 3.6
-  temp.add(StaticStrings::WriteConcern, VPackValue(info->writeConcern()));
-  temp.add(StaticStrings::UsesRevisionsAsDocumentIds,
-           VPackValue(info->usesRevisionsAsDocumentIds()));
-  temp.add(StaticStrings::SyncByRevision, VPackValue(info->syncByRevision()));
-  temp.add(VPackValue(StaticStrings::ComputedValues));
-  info->computedValuesToVelocyPack(temp);
-  temp.add(VPackValue(StaticStrings::Schema));
-  info->schemaToVelocyPack(temp);
-  info->getPhysical()->getPropertiesVPack(temp);
-  temp.close();
-
-  VPackBuilder builder =
-      VPackCollection::merge(collection, temp.slice(), false);
-
-  AgencyOperation setColl(
-      "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyValueOperationType::SET, builder.slice());
-
-  AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
-  AgencyCommResult res = ac.sendTransactionWithFailover(trans);
-
-  if (res.successful()) {
-    Result r;
-    if (VPackSlice resultsSlice = res.slice().get("results");
-        resultsSlice.length() > 0) {
-      r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
-    }
-    return r;
-  }
-
-  return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
-                res.errorMessage());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
