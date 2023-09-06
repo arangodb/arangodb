@@ -1089,7 +1089,7 @@ constexpr size_t getExecutorIndex(bool sorted, bool ordered, bool heapsort,
   auto const index = size_t{ordered} + 2 * size_t{sorted} +
                      4 * size_t{heapsort} + 6 * size_t{emitSearchDoc};
   TRI_ASSERT(index <
-             std::size((kExecutors<false, MaterializeType::Materialize>)));
+             std::size((kExecutors<true, MaterializeType::Materialize>)));
   return index;
 }
 
@@ -2074,13 +2074,13 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   switch (materializeType) {
     case MaterializeType::NotMaterialize:
-      return kExecutors<false, MaterializeType::NotMaterialize>[executorIdx](
+      return kExecutors<true, MaterializeType::NotMaterialize>[executorIdx](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::LateMaterialize:
-      return kExecutors<false, MaterializeType::LateMaterialize>[executorIdx](
+      return kExecutors<true, MaterializeType::LateMaterialize>[executorIdx](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::Materialize:
-      return kExecutors<false, MaterializeType::Materialize>[executorIdx](
+      return kExecutors<true, MaterializeType::Materialize>[executorIdx](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
@@ -2091,7 +2091,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       }
 #endif
-      return kExecutors<false,
+      return kExecutors<true,
                         MaterializeType::NotMaterialize |
                             MaterializeType::UseStoredValues>[executorIdx](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -2104,7 +2104,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       }
 #endif
-      return kExecutors<false,
+      return kExecutors<true,
                         MaterializeType::LateMaterialize |
                             MaterializeType::UseStoredValues>[executorIdx](
           &engine, this, std::move(registerInfos), std::move(executorInfos));
