@@ -401,7 +401,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   restoreTo(database, options = { separate: false, fromDir: '' }) {
-    this.print('restore');
+    this.print(`restore ${database} ${JSON.stringify(options)}`);
 
     if (options.hasOwnProperty('separate') && options.separate === true) {
       if (!options.hasOwnProperty('fromDir') || typeof options.fromDir !== 'string') {
@@ -658,6 +658,12 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   restoreRta() {
     let success = true;
     if (!this.restoreConfig.haveSetAllDatabases()) {
+      // Since we restore afterwards, any dumped passwords
+      // are in action again.
+      this.restoreConfig.setAuth(
+        this.dumpConfig.username,
+        this.dumpConfig.password
+      );
       this.allDatabases.forEach(db => {
         if (!this.restoreTo(db, { separate: true, fromDir: db})) {
           this.results.RtaRestore = {
@@ -809,7 +815,11 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
 }
 
 function dump (options) {
-  let c = getClusterStrings(options);
+  let opts = _.clone(options);
+  if (opts.cluster) {
+    opts.dbServers = 3;
+  }
+  let c = getClusterStrings(opts);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
@@ -820,12 +830,13 @@ function dump (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, {}, {}, options, options, 'dump', tstFiles, function(){});
+  return dump_backend(opts, {}, {}, opts, opts, 'dump', tstFiles, function(){});
 }
 
 function dumpMixedClusterSingle (options) {
   let clusterOptions = _.clone(options);
   clusterOptions.cluster = true;
+  clusterOptions.dbServers = 3;
   let singleOptions = _.clone(options);
   singleOptions.cluster = false;
   let clusterStrings = getClusterStrings(clusterOptions);
@@ -846,6 +857,7 @@ function dumpMixedClusterSingle (options) {
 function dumpMixedSingleCluster (options) {
   let clusterOptions = _.clone(options);
   clusterOptions.cluster = true;
+  clusterOptions.dbServers = 3;
   let singleOptions = _.clone(options);
   singleOptions.cluster = false;
   let clusterStrings = getClusterStrings(clusterOptions);
@@ -864,26 +876,13 @@ function dumpMixedSingleCluster (options) {
 }
 
 function dumpMultiple (options) {
-  let c = getClusterStrings(options);
-  let tstFiles = {
-    dumpSetup: 'dump-setup' + c.cluster + '.js',
-    dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
-    dumpCleanup: 'cleanup-multiple.js',
-    dumpAgain: 'dump' + c.cluster + '.js',
-    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    dumpCheckGraph: 'check-graph-multiple.js'
-  };
-
   let dumpOptions = {
+    dbServers: 3,
     allDatabases: true,
     deactivateCompression: true
   };
   _.defaults(dumpOptions, options);
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
-}
-
-function dumpWithCrashes (options) {
-  let c = getClusterStrings(options);
+  let c = getClusterStrings(dumpOptions);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
@@ -893,18 +892,19 @@ function dumpWithCrashes (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
+}
+
+function dumpWithCrashes (options) {
   let dumpOptions = {
+    dbServers: 3,
     allDatabases: true,
     deactivateCompression: true,
     activateFailurePoint: true,
     threads: 1,
   };
   _.defaults(dumpOptions, options);
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){});
-}
-
-function dumpWithCrashesParallel (options) {
-  let c = getClusterStrings(options);
+  let c = getClusterStrings(dumpOptions);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
@@ -914,7 +914,12 @@ function dumpWithCrashesParallel (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){});
+}
+
+function dumpWithCrashesParallel (options) {
   let dumpOptions = {
+    dbServers: 3,
     allDatabases: true,
     deactivateCompression: true,
     activateFailurePoint: true,
@@ -923,6 +928,16 @@ function dumpWithCrashesParallel (options) {
     splitFiles: true,
   };
   _.defaults(dumpOptions, options);
+  let c = getClusterStrings(dumpOptions);
+  let tstFiles = {
+    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
+    dumpCleanup: 'cleanup-multiple.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
+    dumpCheckGraph: 'check-graph-multiple.js'
+  };
+
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){});
 }
 
@@ -933,17 +948,18 @@ function dumpAuthentication (options) {
 
   let dumpAuthOpts = {
     username: 'foobaruser',
-    password: 'foobarpasswd'
+    password: 'foobarpasswd',
   };
 
   let restoreAuthOpts = {
     username: 'foobaruser',
-    password: 'pinus'
+    password: 'pinus',
   };
 
   _.defaults(dumpAuthOpts, options);
   _.defaults(restoreAuthOpts, options);
-
+  dumpAuthOpts.dbServers = 3;
+  restoreAuthOpts.dbServers = 3;
   let tstFiles = {
     dumpSetup: 'dump-authentication-setup.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
@@ -954,7 +970,8 @@ function dumpAuthentication (options) {
   };
 
   let opts = Object.assign({}, options, tu.testServerAuthInfo, {
-    multipleDumps: true
+    multipleDumps: true,
+    dbServers: 3
   });
 
   let ret= dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
@@ -980,7 +997,8 @@ function dumpJwt (options) {
   };
 
   let opts = Object.assign({}, options, tu.testServerAuthInfo, {
-    multipleDumps: true
+    multipleDumps: true,
+    dbServers: 3
   });
 
   let ret = dump_backend(opts, tu.testServerAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_jwt', tstFiles, function(){});
@@ -1011,6 +1029,7 @@ function dumpEncrypted (options) {
   let dumpOptions = _.clone(options);
   dumpOptions.encrypted = true;
   dumpOptions.compressed = true; // Should be overruled by 'encrypted'
+  dumpOptions.dbServers = 3;
 
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
@@ -1021,7 +1040,7 @@ function dumpEncrypted (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
 }
 
 function dumpParallel (options) {
@@ -1030,6 +1049,7 @@ function dumpParallel (options) {
   let dumpOptions = _.clone(options);
   dumpOptions.useParallelDump = true;
   dumpOptions.splitFiles = true;
+  dumpOptions.dbServers = 3;
 
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
@@ -1041,7 +1061,7 @@ function dumpParallel (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){});
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){});
 }
 
 function dumpMaskings (options) {
@@ -1065,12 +1085,13 @@ function dumpMaskings (options) {
   };
 
   let dumpMaskingsOpts = {
-    maskings: 'maskings1.json'
+    maskings: 'maskings1.json',
+    dbServers: 3
   };
 
   _.defaults(dumpMaskingsOpts, options);
 
-  return dump_backend(options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
+  return dump_backend(dumpMaskingsOpts, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
 }
 
 function hotBackup (options) {
