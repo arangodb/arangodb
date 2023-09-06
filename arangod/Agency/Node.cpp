@@ -1022,5 +1022,3 @@ NodePtr consensus::Node::allocateNode(Args&&... args) {
 using AllocatorType =
     typename arangodb::consensus::Node::allocator_type::rebind<uint8_t>::type;
 template struct arangodb::velocypack::BasicString<AllocatorType>;
-template Slice arangodb::velocypack::BasicString<AllocatorType>::get(
-    std::string_view attribute) const;
