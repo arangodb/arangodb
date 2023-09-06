@@ -23,35 +23,35 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBMethods.h"
-
-#include "ApplicationFeatures/TempFeature.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 #include <rocksdb/sst_file_writer.h>
 #include <rocksdb/status.h>
 
 namespace arangodb {
+class RocksDBMemoryUsageTracker;
 class StorageUsageTracker;
 
 /// wraps an sst file writer - non transactional
-class RocksDBSstFileMethods final : public RocksDBMethods {
+class RocksDBSstFileMethods final : public RocksDBBatchedBaseMethods {
  public:
   explicit RocksDBSstFileMethods(bool isForeground, rocksdb::DB* rootDB,
                                  RocksDBTransactionCollection* trxColl,
                                  RocksDBIndex& ridx,
                                  rocksdb::Options const& dbOptions,
                                  std::string const& idxPath,
-                                 StorageUsageTracker& usageTracker);
+                                 StorageUsageTracker& usageTracker,
+                                 RocksDBMethodsMemoryTracker& memoryTracker);
 
   explicit RocksDBSstFileMethods(rocksdb::DB* rootDB,
                                  rocksdb::ColumnFamilyHandle* cf,
                                  rocksdb::Options const& dbOptions,
                                  std::string const& idxPath,
-                                 StorageUsageTracker& usageTracker);
+                                 StorageUsageTracker& usageTracker,
+                                 RocksDBMethodsMemoryTracker& memoryTracker);
 
   ~RocksDBSstFileMethods();
 
@@ -78,6 +78,8 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
   static void cleanUpFiles(std::vector<std::string> const& fileNames);
 
  private:
+  size_t currentWriteBatchSize() const noexcept override;
+
   void cleanUpFiles();
 
   rocksdb::Status writeToFile();

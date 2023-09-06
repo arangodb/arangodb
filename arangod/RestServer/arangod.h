@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/TypeList.h"
+#include "Basics/operating-system.h"
 
 namespace arangodb {
 namespace application_features {
@@ -199,7 +200,9 @@ using ArangodFeaturesList = TypeList<
     AqlFeature,
     AuthenticationFeature,
     BootstrapFeature,
+#ifdef TRI_HAVE_GETRLIMIT
     BumpFileDescriptorsFeature,
+#endif
     CacheOptionsFeature,
     CacheManagerFeature,
     CheckVersionFeature,

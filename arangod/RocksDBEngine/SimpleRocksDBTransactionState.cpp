@@ -38,8 +38,9 @@ using namespace arangodb;
 
 SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : RocksDBTransactionState(vocbase, tid, options) {}
+    transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin)
+    : RocksDBTransactionState(vocbase, tid, options, operationOrigin) {}
 
 SimpleRocksDBTransactionState::~SimpleRocksDBTransactionState() {}
 
@@ -53,6 +54,8 @@ Result SimpleRocksDBTransactionState::beginTransaction(
   auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
+
+  TRI_ASSERT(_rocksMethods == nullptr);
 
   if (isReadOnlyTransaction()) {
     if (isSingleOperation()) {
@@ -69,6 +72,8 @@ Result SimpleRocksDBTransactionState::beginTransaction(
       _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, *this, db);
     }
   }
+
+  TRI_ASSERT(_rocksMethods != nullptr);
 
   res = _rocksMethods->beginTransaction();
   if (res.ok()) {
@@ -133,10 +138,11 @@ Result SimpleRocksDBTransactionState::doAbort() {
   return _rocksMethods->abortTransaction();
 }
 
-void SimpleRocksDBTransactionState::beginQuery(bool isModificationQuery) {
+void SimpleRocksDBTransactionState::beginQuery(ResourceMonitor* resourceMonitor,
+                                               bool isModificationQuery) {
   auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
   if (trxMethods) {
-    trxMethods->beginQuery(isModificationQuery);
+    trxMethods->beginQuery(resourceMonitor, isModificationQuery);
   }
 }
 

@@ -34,6 +34,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterCollectionMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -195,6 +196,17 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // update server's tick value
   TRI_UpdateTickServer(id().id());
 
+  if (replicationVersion() == replication::Version::TWO &&
+      info.hasKey("groupId")) {
+    _groupId = info.get("groupId").getNumericValue<uint64_t>();
+    if (auto stateId = info.get("replicatedStateId"); stateId.isNumber()) {
+      _replicatedStateId =
+          info.get("replicatedStateId").extract<replication2::LogId>();
+    }
+    // We are either a cluster collection, or we need to have a
+    // replicatedStateID.
+    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
+  }
   // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
   initializeSmartAttributesBefore(info);
 
@@ -228,18 +240,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
         << " - disabling computed values for this collection. original value: "
         << info.get(StaticStrings::ComputedValues).toJson();
     TRI_ASSERT(_computedValues == nullptr);
-  }
-
-  if (replicationVersion() == replication::Version::TWO &&
-      info.hasKey("groupId")) {
-    _groupId = info.get("groupId").getNumericValue<uint64_t>();
-    if (auto stateId = info.get("replicatedStateId"); stateId.isNumber()) {
-      _replicatedStateId =
-          info.get("replicatedStateId").extract<replication2::LogId>();
-    }
-    // We are either a cluster collection, or we need to have a
-    // replicatedStateID.
-    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
   }
 }
 
@@ -287,8 +287,9 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 
 Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
   if (!computedValues.isNone()) {
-    auto result =
-        ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
+    auto result = ComputedValues::buildInstance(
+        vocbase(), shardKeys(), computedValues,
+        transaction::OperationOriginInternal{ComputedValues::moduleName});
 
     if (result.fail()) {
       return result.result();
@@ -357,33 +358,8 @@ replication::Version LogicalCollection::replicationVersion() const noexcept {
 }
 
 std::string LogicalCollection::distributeShardsLike() const noexcept {
-  if (ServerState::instance()->isCoordinator() &&
-      replicationVersion() == replication::Version::TWO) {
-    auto& cf = vocbase().server().getFeature<ClusterFeature>();
-    auto& ci = cf.clusterInfo();
-
-    auto myGroup = ci.getCollectionGroupById(groupID());
-    if (myGroup == nullptr) {
-      // Protect against the race: Collection is in use and dropped
-      // at the same time. We have no option to get the real
-      // distributeShardsLike back, but the collection is
-      // to be erased anyhow, so nothing too bad can happen
-      return StaticStrings::Empty;
-    }
-    TRI_ASSERT(myGroup != nullptr)
-        << "Collection part of a Group that does not exist";
-    auto const& leader = myGroup->groupLeader;
-    if (leader == std::to_string(id().id())) {
-      // If i am the leader, return the empty string
-      return StaticStrings::Empty;
-    }
-    // Note that this string must be copied before the shared_ptr is dropped,
-    // so the return value cannot be a reference.
-    return myGroup->groupLeader;
-  } else {
-    TRI_ASSERT(_sharding != nullptr);
-    return _sharding->distributeShardsLike();
-  }
+  TRI_ASSERT(_sharding != nullptr);
+  return _sharding->distributeShardsLike();
 }
 
 bool LogicalCollection::isSatellite() const noexcept {
@@ -1073,9 +1049,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
 
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
-    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-    return ci.setCollectionPropertiesCoordinator(
-        vocbase().name(), std::to_string(id().id()), this);
+    return ClusterCollectionMethods::updateCollectionProperties(vocbase(),
+                                                                *this);
   }
 
   engine.changeCollection(vocbase(), *this);

@@ -1830,7 +1830,9 @@ RestoreFeature::RestoreFeature(Server& server, int& exitCode)
 
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-  startsAfter<BumpFileDescriptorsFeature>();
+  if constexpr (Server::contains<BumpFileDescriptorsFeature>()) {
+    startsAfter<BumpFileDescriptorsFeature>();
+  }
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;

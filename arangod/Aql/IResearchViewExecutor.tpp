@@ -585,7 +585,8 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
     auto const& revision = _trx.state()->analyzersRevision();
     auto getAnalyzer =
         [&](std::string_view shortName) -> iresearch::FieldMeta::Analyzer {
-      auto analyzer = analyzerFeature.get(shortName, vocbase, revision);
+      auto analyzer = analyzerFeature.get(shortName, vocbase, revision,
+                                          _trx.state()->operationOrigin());
       if (!analyzer) {
         return iresearch::makeEmptyAnalyzer();
       }

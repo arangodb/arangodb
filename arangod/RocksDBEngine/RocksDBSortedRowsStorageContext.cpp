@@ -32,6 +32,7 @@
 #include "RocksDBEngine/Methods/RocksDBSstFileMethods.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 
 #include <velocypack/Slice.h>
 
@@ -40,13 +41,12 @@
 #include <rocksdb/iterator.h>
 #include <rocksdb/slice.h>
 
-#include "Logger/LogMacros.h"
-
 namespace arangodb {
 
 RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
     rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf, std::string const& path,
-    uint64_t keyPrefix, StorageUsageTracker& usageTracker)
+    uint64_t keyPrefix, StorageUsageTracker& usageTracker,
+    RocksDBMethodsMemoryTracker& memoryTracker)
     : _db(db),
       _cf(cf),
       _path(path),
@@ -66,8 +66,8 @@ RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
 
   // create SstFileMethods instance that we will use for file ingestion
   rocksdb::Options options = _db->GetOptions();
-  _methods = std::make_unique<RocksDBSstFileMethods>(_db, _cf, options, _path,
-                                                     usageTracker);
+  _methods = std::make_unique<RocksDBSstFileMethods>(
+      _db, _cf, options, _path, usageTracker, memoryTracker);
 }
 
 RocksDBSortedRowsStorageContext::~RocksDBSortedRowsStorageContext() {

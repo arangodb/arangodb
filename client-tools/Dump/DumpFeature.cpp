@@ -748,8 +748,10 @@ DumpFeature::DumpFeature(Server& server, int& exitCode)
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
   setOptional(false);
-  startsAfter<BumpFileDescriptorsFeature>();
   startsAfter<application_features::BasicFeaturePhaseClient>();
+  if constexpr (Server::contains<BumpFileDescriptorsFeature>()) {
+    startsAfter<BumpFileDescriptorsFeature>();
+  }
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;

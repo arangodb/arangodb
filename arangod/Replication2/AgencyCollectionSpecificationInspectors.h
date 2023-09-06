@@ -95,6 +95,7 @@ auto inspect(Inspector& f, Collection::ImmutableProperties& props) {
       f.field(StaticStrings::IsSmart, props.isSmart),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint),
       f.field(StaticStrings::CacheEnabled, props.cacheEnabled),
+      f.field(StaticStrings::ShardingStrategy, props.shardingStrategy),
       f.field(StaticStrings::ShardKeys, props.shardKeys),
       f.field(StaticStrings::GraphSmartGraphAttribute,
               props.smartGraphAttribute)

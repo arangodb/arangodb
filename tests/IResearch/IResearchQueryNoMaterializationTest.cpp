@@ -83,6 +83,7 @@ class QueryTestMulti
     auto res = analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         VPackParser::fromJson("\"abc\"")->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features(
             {}, irs::IndexFeatures::FREQ |
                     irs::IndexFeatures::POS));  // required for PHRASE
@@ -90,7 +91,8 @@ class QueryTestMulti
 
     res = analyzers.emplace(
         result, "testVocbase::test_csv_analyzer", "TestDelimAnalyzer",
-        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+        VPackParser::fromJson("\",\"")->slice(),
+        arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -98,6 +100,7 @@ class QueryTestMulti
         VPackParser::fromJson(
             "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
             ->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features{
             arangodb::iresearch::FieldFeatures::NORM,
             irs::IndexFeatures::FREQ |
@@ -114,6 +117,7 @@ class QueryTestMulti
     res =
         analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                           VPackParser::fromJson("\"abc\"")->slice(),
+                          arangodb::transaction::OperationOriginTestCase{},
                           arangodb::iresearch::Features{
                               irs::IndexFeatures::FREQ |
                               irs::IndexFeatures::POS});  // required for PHRASE
@@ -123,6 +127,7 @@ class QueryTestMulti
         VPackParser::fromJson("{\"min\":1, \"max\":3, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features{
             irs::IndexFeatures::FREQ |
             irs::IndexFeatures::POS});  // required for PHRASE
@@ -132,6 +137,7 @@ class QueryTestMulti
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features{
             irs::IndexFeatures::FREQ |
             irs::IndexFeatures::POS});  // required for PHRASE
@@ -140,7 +146,8 @@ class QueryTestMulti
 
     res = analyzers.emplace(
         result, "_system::test_csv_analyzer", "TestDelimAnalyzer",
-        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+        VPackParser::fromJson("\",\"")->slice(),
+        arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
@@ -357,9 +364,10 @@ class QueryNoMaterialization : public QueryTestMulti {
       arangodb::OperationOptions opt;
       static std::vector<std::string> const EMPTY;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, {logicalCollection1->name(), logicalCollection2->name()},
+          EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -431,7 +439,8 @@ class QueryNoMaterialization : public QueryTestMulti {
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase()),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase(), arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
     auto const res = query->explain();
     ASSERT_TRUE(res.data);
@@ -674,8 +683,10 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
   {
     arangodb::OperationOptions opt;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        {logicalCollection->name()}, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {logicalCollection->name()}, EMPTY,
+        arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     auto const res = trx.insert(logicalCollection->name(), doc->slice(), opt);
     EXPECT_TRUE(res.ok());
@@ -689,8 +700,9 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
 
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        EMPTY, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *logicalCollection, *view);
@@ -835,8 +847,10 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
   {
     arangodb::OperationOptions opt;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        {logicalCollection->name()}, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {logicalCollection->name()}, EMPTY,
+        arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     auto const res = trx.insert(logicalCollection->name(), doc->slice(), opt);
     EXPECT_TRUE(res.ok());
@@ -850,8 +864,9 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
 
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        EMPTY, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *logicalCollection, *view);
@@ -964,7 +979,8 @@ TEST_P(QueryNoMaterialization, matchSortButNotEnoughAttributes) {
       {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
   auto query = arangodb::aql::Query::create(
-      arangodb::transaction::StandaloneContext::Create(vocbase()),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase(), arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), nullptr);
   auto const res = query->explain();  // this should not crash!
   ASSERT_TRUE(res.data);
