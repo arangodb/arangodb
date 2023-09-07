@@ -56,6 +56,7 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "V8Server/V8DealerFeature.h"
@@ -685,8 +686,6 @@ server statistics at `/_admin/statistics` returns HTTP 404.)");
                   new BooleanParameter(&_statisticsHistory),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Dynamic))
-      .setIntroducedIn(30409)
-      .setIntroducedIn(30501)
       .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
 statistics gathering is turned off. Statistics gathering causes regular
 background CPU activity, memory usage, and writes to the storage engine, so
@@ -1099,6 +1098,9 @@ Result StatisticsFeature::getClusterSystemStatistics(
     bindVars->close();
   };
 
+  auto origin =
+      transaction::OperationOriginInternal{"retrieving cluster statistics"};
+
   auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDbFeature.use();
 
@@ -1106,7 +1108,7 @@ Result StatisticsFeature::getClusterSystemStatistics(
   {
     buildBindVars(StaticStrings::Statistics15Collection);
     auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(*sysVocbase),
+        transaction::StandaloneContext::create(*sysVocbase, origin),
         arangodb::aql::QueryString(stats15Query), bindVars);
 
     query->queryOptions().cache = false;
@@ -1124,7 +1126,7 @@ Result StatisticsFeature::getClusterSystemStatistics(
   {
     buildBindVars(StaticStrings::StatisticsCollection);
     auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(*sysVocbase),
+        transaction::StandaloneContext::create(*sysVocbase, origin),
         arangodb::aql::QueryString(statsSamplesQuery), bindVars);
 
     query->queryOptions().cache = false;

@@ -831,7 +831,7 @@ class instance {
     this.pid = null;
     this.upAndRunning = false;
 
-    print(CYAN + Date()  + " relaunching: " + this.name + RESET);
+    print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs);
     while(true) {
       const reply = download(this.url + '/_api/version', '');
@@ -852,7 +852,7 @@ class instance {
         throw new Error("restart failed! " + this.name);
       }
     }
-    print(CYAN + Date() + this.name + " running again with PID " + this.pid + RESET);
+    print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief periodic checks whether spawned arangod processes are still alive
@@ -994,7 +994,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownArangod (forceTerminate) {
-    print(CYAN + Date() +' stopping ' + this.name + ' force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
+    print(CYAN + Date() +' stopping ' + this.name + ', url: ' + this.url + ', force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
@@ -1196,7 +1196,7 @@ class instance {
       print(CYAN + Date() + ' NOT suspending "' + this.name + " again!" + RESET);
       return;
     }
-    print(CYAN + Date() + ' suspending ' + this.name + RESET);
+    print(CYAN + Date() + ' suspending ' + this.name + ', url: ' + this.url + RESET);
     if (this.options.enableAliveMonitor) {
       internal.removePidFromMonitor(this.pid);
     }
@@ -1212,7 +1212,7 @@ class instance {
       print(CYAN + Date() + ' NOT resuming "' + this.name + " again!" + RESET);
       return;
     }
-    print(CYAN + Date() + ' resuming ' + this.name + RESET);
+    print(CYAN + Date() + ' resuming ' + this.name + ', url: ' + this.url + RESET);
     if (!continueExternal(this.pid)) {
       throw new Error("Failed to resume " + this.name);
     }

@@ -23,13 +23,15 @@
 
 #pragma once
 
+#include "Aql/QueryContext.h"
+#include "Containers/SmallVector.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 
 #include <cstdint>
-#include <memory>
 
 namespace arangodb {
-struct RocksDBMethodsMemoryTracker;
+struct ResourceMonitor;
 
 struct IRocksDBTransactionCallback {
   virtual ~IRocksDBTransactionCallback() = default;
@@ -47,9 +49,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   ~RocksDBTrxBaseMethods() override;
 
-  virtual bool isIndexingDisabled() const final override {
-    return _indexingDisabled;
-  }
+  bool isIndexingDisabled() const final override { return _indexingDisabled; }
 
   /// @brief returns true if indexing was disabled by this call
   bool DisableIndexing() final override;
@@ -89,11 +89,15 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   /// @brief add an operation for a transaction
   Result addOperation(TRI_voc_document_operation_e opType) override;
 
-  rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle* family,
-                                  rocksdb::Slice const& slice,
-                                  rocksdb::PinnableSlice* pinnable,
-                                  ReadOwnWrites rw,
-                                  rocksdb::Snapshot const* snapshot) override;
+  rocksdb::Status SingleGet(rocksdb::Snapshot const* snapshot,
+                            rocksdb::ColumnFamilyHandle& family,
+                            rocksdb::Slice const& key,
+                            rocksdb::PinnableSlice& value) final;
+  void MultiGet(rocksdb::Snapshot const* snapshot,
+                rocksdb::ColumnFamilyHandle& family, size_t count,
+                rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
+                rocksdb::Status* statuses) final;
+
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
@@ -115,6 +119,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   rocksdb::Status RollbackToSavePoint() final override;
   rocksdb::Status RollbackToWriteBatchSavePoint() final override;
   void PopSavePoint() final override;
+
+  virtual void beginQuery(ResourceMonitor* resourceMonitor,
+                          bool isModificationQuery);
+  virtual void endQuery(bool isModificationQuery) noexcept;
 
  protected:
   virtual void cleanupTransaction();
@@ -185,7 +193,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   TRI_voc_tick_t _lastWrittenOperationTick{0};
 
   /// @brief object used for tracking memory usage
-  std::unique_ptr<RocksDBMethodsMemoryTracker> _memoryTracker;
+  RocksDBMethodsMemoryTracker _memoryTracker;
 
   bool _indexingDisabled{false};
 };

@@ -46,7 +46,10 @@ using namespace arangodb::basics;
 
 HttpResponse::HttpResponse(ResponseCode code, uint64_t mid,
                            std::unique_ptr<basics::StringBuffer> buffer)
-    : GeneralResponse(code, mid), _body(std::move(buffer)), _bodySize(0) {
+    : GeneralResponse(code, mid),
+      _body(std::move(buffer)),
+      _bodySize(0),
+      _allowCompression(false) {
   _contentType = ContentType::TEXT;
 
   if (!_body) {

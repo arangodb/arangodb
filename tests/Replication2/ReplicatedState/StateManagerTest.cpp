@@ -59,6 +59,8 @@ using namespace arangodb::replication2::replicated_state;
 
 namespace {
 struct EmptyState {
+  static constexpr std::string_view NAME = "empty-state";
+
   using LeaderType = test::EmptyLeaderType<EmptyState>;
   using FollowerType = test::EmptyFollowerType<EmptyState>;
   using EntryType = test::DefaultEntryType;
@@ -68,6 +70,8 @@ struct EmptyState {
   using CleanupHandlerType = void;
 };
 struct FakeState {
+  static constexpr std::string_view NAME = "fake-state";
+
   using LeaderType = test::FakeLeaderType<FakeState>;
   using FollowerType = test::FakeFollowerType<FakeState>;
   using EntryType = test::DefaultEntryType;

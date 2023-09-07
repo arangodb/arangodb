@@ -111,9 +111,7 @@ struct DelayedLogFollower : replicated_log::ILogFollower {
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
     return follower().waitForIterator(index);
   }
-  auto release(LogIndex doneWithIdx) -> Result override {
-    return follower().release(doneWithIdx);
-  }
+
   auto compact() -> ResultT<replicated_log::CompactionResult> override {
     return follower().compact();
   }

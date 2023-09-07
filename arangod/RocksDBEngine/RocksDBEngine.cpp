@@ -295,6 +295,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _runningCompactions(0),
       _autoFlushCheckInterval(60.0 * 30.0),
       _autoFlushMinWalFiles(20),
+      _forceLittleEndianKeys(false),
       _metricsIndexEstimatorMemoryUsage(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_index_estimates_memory_usage{})),
@@ -348,8 +349,8 @@ RocksDBEngine::RocksDBEngine(Server& server,
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_cache_edge_empty_inserts_total{})) {
   startsAfter<BasicFeaturePhaseServer>();
-  // inherits order from StorageEngine but requires "RocksDBOption" that is used
-  // to configure this engine
+  // inherits order from StorageEngine but requires "RocksDBOption" that is
+  // used to configure this engine
   startsAfter<RocksDBOptionFeature>();
   startsAfter<LanguageFeature>();
   startsAfter<LanguageCheckFeature>();
@@ -442,9 +443,10 @@ void RocksDBEngine::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("rocksdb", "RocksDB engine");
 
-  /// @brief minimum required percentage of free disk space for considering the
-  /// server "healthy". this is expressed as a floating point value between 0
-  /// and 1! if set to 0.0, the % amount of free disk is ignored in checks.
+  /// @brief minimum required percentage of free disk space for considering
+  /// the server "healthy". this is expressed as a floating point value
+  /// between 0 and 1! if set to 0.0, the % amount of free disk is ignored in
+  /// checks.
   options
       ->addOption(
           "--rocksdb.minimum-disk-free-percent",
@@ -496,11 +498,9 @@ RAM than this threshold value are aborted automatically with error 32
                      "transaction, and a new transaction is started.",
                      new UInt64Parameter(&_intermediateCommitCount));
 
-  options
-      ->addOption("--rocksdb.max-parallel-compactions",
-                  "The maximum number of parallel compactions jobs.",
-                  new UInt64Parameter(&_maxParallelCompactions))
-      .setIntroducedIn(30711);
+  options->addOption("--rocksdb.max-parallel-compactions",
+                     "The maximum number of parallel compactions jobs.",
+                     new UInt64Parameter(&_maxParallelCompactions));
 
   options
       ->addOption(
@@ -517,20 +517,17 @@ write-ahead logs to disk is only performed for not-yet synchronized data, and
 only for operations that have been executed without the `waitForSync`
 attribute.)");
 
-  options
-      ->addOption(
-          "--rocksdb.sync-delay-threshold",
-          "The threshold for self-observation of WAL disk syncs "
-          "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
-          "than this threshold triggers a warning ",
-          new UInt64Parameter(&_syncDelayThreshold),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30608)
-      .setIntroducedIn(30705);
+  options->addOption(
+      "--rocksdb.sync-delay-threshold",
+      "The threshold for self-observation of WAL disk syncs "
+      "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
+      "than this threshold triggers a warning ",
+      new UInt64Parameter(&_syncDelayThreshold),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle,
+          arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--rocksdb.wal-file-timeout",
@@ -681,7 +678,8 @@ on the write rate.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30903)
-      .setLongDescription(R"(Controls whether the collection truncate operation
+      .setLongDescription(
+          R"(Controls whether the collection truncate operation
 in the cluster can use RangeDelete operations in RocksDB. Using RangeDeletes is
 fast and reduces the algorithmic complexity of the truncate operation to O(1),
 compared to O(n) for when this option is turned off (with n being the number of
@@ -725,7 +723,6 @@ RocksDB internals and performance.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30604)
       .setDeprecatedIn(31000);
 
   options
@@ -810,6 +807,28 @@ when disk size is very constrained and no replication is used.)");
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  options
+      ->addOption(
+          "--rocksdb.force-legacy-little-endian-keys",
+          "Force usage of legacy little endian key encoding when creating "
+          "a new RocksDB database directory. DO NOT USE IN PRODUCTION.",
+          new BooleanParameter(&_forceLittleEndianKeys),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::Experimental,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(If enabled and a new RocksDB database
+is generated, the legacy little endian key encoding is used.
+
+Only use this option for testing purposes! It is bad for performance and
+disables a few features like parallel index generation!)");
+#endif
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -1035,7 +1054,8 @@ void RocksDBEngine::start() {
   rocksdb::TransactionDBOptions transactionOptions =
       _optionsProvider.getTransactionDBOptions();
 
-  // we only want to modify DBOptions here, no ColumnFamily options or the like
+  // we only want to modify DBOptions here, no ColumnFamily options or the
+  // like
   _dbOptions = _optionsProvider.getOptions();
   if (_dbOptions.wal_dir.empty()) {
     _dbOptions.wal_dir = basics::FileUtils::buildFilename(_path, "journals");
@@ -1067,9 +1087,9 @@ void RocksDBEngine::start() {
                                    // configureEnterpriseRocksDBOptions() is
                                    // called when there's encryption, because
                                    // checkMissingShafiles() only looks for
-                                   // existing sst files without their sha files
-                                   // in the directory and writes the missing
-                                   // sha files.
+                                   // existing sst files without their sha
+                                   // files in the directory and writes the
+                                   // missing sha files.
   } else {
     _dbOptions.env = rocksdb::Env::Default();
   }
@@ -1207,7 +1227,8 @@ void RocksDBEngine::start() {
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted);
+  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted,
+                                       _forceLittleEndianKeys);
 
   _dbExisted = dbExisted;
 
@@ -1279,7 +1300,7 @@ void RocksDBEngine::start() {
   _logPersistor = logPersistor;
 
   if (auto* syncer = syncThread(); syncer != nullptr) {
-    syncer->registerSyncListener(logPersistor);
+    syncer->registerSyncListener(std::move(logPersistor));
   } else {
     LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
         << "In replication2 databases, setting waitForSync to false will not "
@@ -1426,15 +1447,16 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
 
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options) {
+    transaction::Options const& options, transaction::OperationOrigin trxType) {
   if (vocbase.replicationVersion() == replication::Version::TWO &&
       (tid.isLeaderTransactionId() || tid.isLegacyTransactionId()) &&
       ServerState::instance()->isRunningInCluster() &&
       !options.allowDirtyReads && options.requiresReplication) {
-    return std::make_shared<ReplicatedRocksDBTransactionState>(vocbase, tid,
-                                                               options);
+    return std::make_shared<ReplicatedRocksDBTransactionState>(
+        vocbase, tid, options, trxType);
   }
-  return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
+  return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options,
+                                                         trxType);
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
@@ -2022,8 +2044,8 @@ void RocksDBEngine::processCompactions() {
               << "compaction for range " << bounds
               << " failed with error: " << ex.what();
         } catch (...) {
-          // whatever happens, we need to count down _runningCompactions in all
-          // cases
+          // whatever happens, we need to count down _runningCompactions in
+          // all cases
         }
 
         LOG_TOPIC("79591", TRACE, Logger::ENGINES)
@@ -2082,11 +2104,11 @@ Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   //   * if this fails the collection will remain!
   //   * if this succeeds the collection is gone from user point
   // 2. Drop all Documents
-  //   * If this fails we give up => We have data-garbage in RocksDB, Collection
-  //   is gone.
+  //   * If this fails we give up => We have data-garbage in RocksDB,
+  //   Collection is gone.
   // 3. Drop all Indexes
-  //   * If this fails we give up => We have data-garbage in RocksDB, Collection
-  //   is gone.
+  //   * If this fails we give up => We have data-garbage in RocksDB,
+  //   Collection is gone.
   // 4. If all succeeds we do not have data-garbage, all is gone.
   //
   // (NOTE: The above fails can only occur on full HDD or Machine dying. No
@@ -2454,11 +2476,11 @@ std::vector<std::string> RocksDBEngine::currentWalFiles() const {
 /// the optional parameter "waitForSync" is currently only used when the
 /// "flushColumnFamilies" parameter is also set to true. If
 /// "flushColumnFamilies" is true, all the RocksDB column family memtables are
-/// flushed, and, if "waitForSync" is set, additionally synced to disk. The only
-/// call site that uses "flushColumnFamilies" currently is hot backup. The
-/// function parameter name are a remainder from MMFiles times, when they made
-/// more sense. This can be refactored at any point, so that flushing column
-/// families becomes a separate API.
+/// flushed, and, if "waitForSync" is set, additionally synced to disk. The
+/// only call site that uses "flushColumnFamilies" currently is hot backup.
+/// The function parameter name are a remainder from MMFiles times, when they
+/// made more sense. This can be refactored at any point, so that flushing
+/// column families becomes a separate API.
 Result RocksDBEngine::flushWal(bool waitForSync, bool flushColumnFamilies) {
   Result res;
 
@@ -2613,8 +2635,8 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     // There should be at least one live WAL file after it, however, let's be
     // paranoid and do a proper check. If there is at least one WAL file
     // following, we need to take its start tick into account as well, because
-    // the following file's start tick can be assumed to be the end tick of the
-    // current file!
+    // the following file's start tick can be assumed to be the end tick of
+    // the current file!
     bool eligibleStep1 = false;
     bool eligibleStep2 = false;
     if (f->StartSequence() < minTickToKeep && current < files.size() - 1) {
@@ -2641,7 +2663,8 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
               << "unable to add WAL file #" << current << "/" << files.size()
               << ", filename: '" << f->PathName()
               << "', start sequence: " << f->StartSequence()
-              << " to list of prunable WAL files. file already present in list "
+              << " to list of prunable WAL files. file already present in "
+                 "list "
                  "with expire stamp "
               << it->second;
         }
@@ -2672,7 +2695,8 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
         << "total size of the RocksDB WAL file archive: " << archivedFilesSize
         << ", limit: " << _maxWalArchiveSizeLimit;
 
-    // we got more archived files than configured. time for purging some files!
+    // we got more archived files than configured. time for purging some
+    // files!
     for (size_t current = 0; current < files.size(); current++) {
       auto const& f = files[current].get();
 
@@ -2755,8 +2779,8 @@ void RocksDBEngine::pruneWalFiles() {
   // used for logging later
   size_t const initialSize = _prunableWalFiles.size();
 
-  // go through the map of WAL files that we have already and check if they are
-  // "expired"
+  // go through the map of WAL files that we have already and check if they
+  // are "expired"
   for (auto it = _prunableWalFiles.begin(); it != _prunableWalFiles.end();
        /* no hoisting */) {
     // check if WAL file is expired
@@ -2764,6 +2788,7 @@ void RocksDBEngine::pruneWalFiles() {
     LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
         << "pruneWalFiles checking file '" << (*it).first
         << "', canPurge: " << deleteFile;
+
     if (deleteFile) {
       LOG_TOPIC("68e4a", DEBUG, Logger::ENGINES)
           << "deleting RocksDB WAL file '" << (*it).first << "'";
@@ -2771,8 +2796,8 @@ void RocksDBEngine::pruneWalFiles() {
       if (basics::FileUtils::exists(basics::FileUtils::buildFilename(
               _dbOptions.wal_dir, (*it).first))) {
         // only attempt file deletion if the file actually exists.
-        // otherwise RocksDB may complain about non-existing files and log a big
-        // error message
+        // otherwise RocksDB may complain about non-existing files and log a
+        // big error message
         s = _db->DeleteFile((*it).first);
         LOG_TOPIC("5b1ae", DEBUG, Logger::ENGINES)
             << "calling RocksDB DeleteFile for WAL file '" << (*it).first
@@ -2842,7 +2867,8 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
     if (rv.ok() && res.fail()) {
       rv = res;
     }
-    // TODO Should we do this here and now, or defer it, or don't do it at all?
+    // TODO Should we do this here and now, or defer it, or don't do it at
+    // all?
     //      To answer that, check whether and how compaction is usually done
     //      after dropping a collection or database.
     std::ignore = methods->compact();
@@ -2981,7 +3007,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (numDocsLeft > 0) {
     std::string errorMsg(
-        "deletion check in drop database failed - not all documents have been "
+        "deletion check in drop database failed - not all documents have "
+        "been "
         "deleted. remaining: ");
     errorMsg.append(std::to_string(numDocsLeft));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
@@ -3457,11 +3484,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
     // estimate size on disk and in memtables
     uint64_t out = 0;
-    rocksdb::Range r(
-        rocksdb::Slice("\x00\x00\x00\x00\x00\x00\x00\x00", 8),
-        rocksdb::Slice(
-            "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
-            16));
+    rocksdb::Range r(rocksdb::Slice("\x00\x00\x00\x00\x00\x00\x00\x00", 8),
+                     rocksdb::Slice("\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
+                                    "\xff\xff\xff\xff\xff\xff",
+                                    16));
 
     rocksdb::SizeApproximationOptions options{.include_memtables = true,
                                               .include_files = true};

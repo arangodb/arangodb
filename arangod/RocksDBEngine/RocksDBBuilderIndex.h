@@ -28,10 +28,12 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "Transaction/OperationOrigin.h"
 
 #include <atomic>
 
 namespace arangodb {
+class RocksDBBatchedBaseMethods;
 
 namespace trx {
 struct BuilderTrx : public transaction::Methods {
@@ -42,7 +44,6 @@ struct BuilderTrx : public transaction::Methods {
         _cid(collection.id()) {
     // add the (sole) data-source
     addCollection(collection.id(), collection.name(), type);
-    addHint(transaction::Hints::Hint::NO_DLD);
   }
 
   /// @brief get the underlying transaction collection
@@ -55,17 +56,19 @@ struct BuilderTrx : public transaction::Methods {
 };
 }  // namespace trx
 
-Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
+Result partiallyCommitInsertions(RocksDBBatchedBaseMethods& batched,
+                                 rocksdb::WriteBatchBase& batch,
                                  rocksdb::DB* rootDB,
                                  RocksDBTransactionCollection* trxColl,
                                  std::atomic<uint64_t>& docsProcessed,
                                  RocksDBIndex& ridx, bool isForeground);
 
 Result fillIndexSingleThreaded(
-    bool foreground, RocksDBMethods& batched, rocksdb::Options const& dbOptions,
-    rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
-    trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
-    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it,
+    bool foreground, RocksDBBatchedBaseMethods& batched,
+    rocksdb::Options const& dbOptions, rocksdb::WriteBatchBase& batch,
+    std::atomic<std::uint64_t>& docsProcessed, trx::BuilderTrx& trx,
+    RocksDBIndex& ridx, rocksdb::Snapshot const* snap, rocksdb::DB* rootDB,
+    std::unique_ptr<rocksdb::Iterator> it,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress =
         nullptr);
 

@@ -94,13 +94,7 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto getInternalLogIterator(
       std::optional<LogRange> bounds = std::nullopt) const
       -> std::unique_ptr<LogIterator> = 0;
-  // TODO I think release() must not be part of this interface anymore: Only the
-  //      state machine may call it, via
-  //      IReplicatedLogMethodsBase::releaseIndex. Having this here is plain
-  //      dangerous.
-  [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
-  [[nodiscard]] virtual auto compact()
-      -> ResultT<replicated_log::CompactionResult> = 0;
+  [[nodiscard]] virtual auto compact() -> ResultT<CompactionResult> = 0;
 };
 
 /**

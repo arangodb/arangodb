@@ -34,12 +34,6 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::test;
 
-auto FakeFollower::release(arangodb::replication2::LogIndex doneWithIdx)
-    -> arangodb::Result {
-  guarded.getLockedGuard()->doneWithIdx = doneWithIdx;
-  return {};  // return ok
-}
-
 auto FakeFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return id;
 }

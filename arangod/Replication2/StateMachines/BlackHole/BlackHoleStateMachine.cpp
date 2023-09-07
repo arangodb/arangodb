@@ -20,6 +20,8 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
+#include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
 
@@ -46,6 +48,15 @@ BlackHoleLeaderState::BlackHoleLeaderState(std::unique_ptr<BlackHoleCore> core)
 auto BlackHoleLeaderState::resign() && noexcept
     -> std::unique_ptr<BlackHoleCore> {
   return std::move(_core);
+}
+
+auto BlackHoleLeaderState::release(LogIndex idx) const
+    -> futures::Future<Result> {
+  auto const& stream = getStream();
+  return basics::catchToResult([&]() -> Result {
+    stream->release(idx);
+    return {TRI_ERROR_NO_ERROR};
+  });
 }
 
 auto BlackHoleFollowerState::acquireSnapshot(

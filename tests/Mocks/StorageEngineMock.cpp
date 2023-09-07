@@ -48,6 +48,7 @@
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Hints.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -272,8 +273,10 @@ StorageEngineMock::createTransactionManager(
 std::shared_ptr<arangodb::TransactionState>
 StorageEngineMock::createTransactionState(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
-    arangodb::transaction::Options const& options) {
-  return std::make_shared<TransactionStateMock>(vocbase, tid, options, *this);
+    arangodb::transaction::Options const& options,
+    arangodb::transaction::OperationOrigin operationOrigin) {
+  return std::make_shared<TransactionStateMock>(vocbase, tid, options,
+                                                operationOrigin, *this);
 }
 
 arangodb::Result StorageEngineMock::createView(
@@ -617,8 +620,11 @@ std::atomic_size_t TransactionStateMock::commitTransactionCount{0};
 // ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
-    arangodb::transaction::Options const& options, StorageEngineMock& engine)
-    : TransactionState(vocbase, tid, options), _engine{engine} {}
+    arangodb::transaction::Options const& options,
+    arangodb::transaction::OperationOrigin operationOrigin,
+    StorageEngineMock& engine)
+    : TransactionState(vocbase, tid, options, operationOrigin),
+      _engine{engine} {}
 
 arangodb::Result TransactionStateMock::abortTransaction(
     arangodb::transaction::Methods* trx) {

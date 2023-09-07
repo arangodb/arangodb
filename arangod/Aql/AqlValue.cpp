@@ -1356,6 +1356,13 @@ AqlValue::AqlValue() noexcept {
                 "invalid value for VPACK_INLINE");
 }
 
+AqlValue::AqlValue(std::unique_ptr<uint8_t[]> data) noexcept {
+  TRI_ASSERT(data);
+  velocypack::Slice slice{data.get()};
+  setManagedSliceData(MemoryOriginType::New, slice.byteSize());
+  _data.managedSliceMeta.managedPointer = data.release();
+}
+
 AqlValue::AqlValue(uint8_t const* pointer) noexcept {
   // we must get rid of Externals first here, because all
   // methods that use VPACK_SLICE_POINTER expect its contents

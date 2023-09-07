@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "Basics/Common.h"
 #include "Basics/DownCast.h"
 
@@ -364,7 +365,10 @@ Result modifyLinks(containers::FlatHashSet<DataSourceId>& modified,
     linkDefinitions.emplace_back(std::move(namedJson), std::move(linkMeta));
   }
 
-  auto trxCtx = transaction::StandaloneContext::Create(view.vocbase());
+  auto operationOrigin =
+      transaction::OperationOriginInternal{"resolving collection names"};
+  auto trxCtx =
+      transaction::StandaloneContext::create(view.vocbase(), operationOrigin);
 
   // add removals for any 'stale' links not found in the 'links' definition
   for (auto& id : stale) {

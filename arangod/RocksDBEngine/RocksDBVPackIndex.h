@@ -214,7 +214,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
       ResourceMonitor& monitor, transaction::Methods* trx, bool reverse,
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       RocksDBKeyBounds&& bounds, RocksDBVPackIndexSearchValueFormat format,
-      bool useCache) const;
+      bool withCache) const;
 
   /// @brief returns whether the document can be inserted into the index
   /// (or if there will be a conflict)
@@ -273,7 +273,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   void warmupInternal(transaction::Methods* trx);
 
-  void handleCacheInvalidation(transaction::Methods& trx,
+  void handleCacheInvalidation(cache::Cache& cache, transaction::Methods& trx,
                                OperationOptions const& options,
                                rocksdb::Slice key);
 

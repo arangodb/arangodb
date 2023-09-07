@@ -5,7 +5,7 @@ import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
 import { useEditViewContext } from "../editView/EditViewContext";
-import { SearchAliasViewPropertiesType } from "../searchView.types";
+import { SearchAliasViewPropertiesType } from "../View.types";
 import { useAliasViewSchema } from "./SearchAliasJsonHelper";
 
 const ajv = new Ajv({

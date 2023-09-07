@@ -27,10 +27,12 @@
 #include "Scheduler/Scheduler.h"
 #include "RestServer/arangod.h"
 
+#include <cstdint>
+#include <functional>
+#include <memory>
 #include <mutex>
 
 namespace arangodb::transaction {
-
 class Manager;
 
 class ManagerFeature final : public ArangodFeature {
@@ -40,6 +42,7 @@ class ManagerFeature final : public ArangodFeature {
   }
 
   explicit ManagerFeature(Server& server);
+  ~ManagerFeature();
 
   void collectOptions(
       std::shared_ptr<arangodb::options::ProgramOptions> options) override;
@@ -50,11 +53,10 @@ class ManagerFeature final : public ArangodFeature {
   void beginShutdown() override;
   void unprepare() override;
 
-  double streamingLockTimeout() const noexcept { return _streamingLockTimeout; }
-
-  double streamingIdleTimeout() const noexcept { return _streamingIdleTimeout; }
-
-  static transaction::Manager* manager() noexcept { return MANAGER.get(); }
+  size_t streamingMaxTransactionSize() const noexcept;
+  double streamingLockTimeout() const noexcept;
+  double streamingIdleTimeout() const noexcept;
+  static transaction::Manager* manager() noexcept;
 
   /// @brief track number of aborted managed transactions
   void trackExpired(uint64_t numExpired) noexcept;
@@ -62,6 +64,8 @@ class ManagerFeature final : public ArangodFeature {
  private:
   void queueGarbageCollection();
 
+  static constexpr size_t defaultStreamingMaxTransactionSize =
+      128 * 1024 * 1024;  // 128 MiB
   static constexpr double defaultStreamingIdleTimeout = 60.0;
   static constexpr double maxStreamingIdleTimeout = 120.0;
 
@@ -70,8 +74,12 @@ class ManagerFeature final : public ArangodFeature {
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
 
-  // where rhythm is life, and life is rhythm :)
+  // garbage collection function, scheduled regularly in the
+  // scheduler
   std::function<void(bool)> _gcfunc;
+
+  // max size (in bytes) of streaming transactions
+  size_t _streamingMaxTransactionSize;
 
   // lock time in seconds
   double _streamingLockTimeout;

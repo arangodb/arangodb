@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CalculationExecutor.h"
-#include <Logger/LogMacros.h>
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
