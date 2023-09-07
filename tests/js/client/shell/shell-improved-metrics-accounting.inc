@@ -69,34 +69,46 @@
         db._dropDatabase(dbName);
       },
 
-      testInternalClusterInfo: function () {
-        let initial_metric = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+      testAgencyNodeAndInternalClusterInfoMemoryUsage: function () {
+        let [initial_cluster_info_metric, initial_agency_metric] = getCompleteMetricsValues([
+          "arangodb_internal_cluster_info_memory_usage",
+          "arangodb_agency_node_memory_usage"]
+        );
         if (isCluster) {
-          assertTrue(initial_metric > 0, initial_metric);
+          assertTrue(initial_cluster_info_metric > 0, initial_cluster_info_metric);
+          assertTrue(initial_agency_metric > 0, initial_agency_metric);
         } else {
           // on some platforms, the empty containers used in ClusterInfo
           // can make an initial allocation even though no data is contained
           // in them.
-          assertTrue(initial_metric <= 1000, initial_metric);
+          assertTrue(initial_cluster_info_metric <= 1000, initial_cluster_info_metric);
+          assertTrue(initial_agency_metric <= 1000, initial_agency_metric);
         }
 
-        let metric_before = initial_metric;
-        let metric_after;
+        let cluster_info_metric_before = initial_cluster_info_metric;
+        let agency_metric_before = initial_agency_metric;
+
+        let cluster_info_metric_after;
+        let agency_metric_metric_after;
+
         for(let i = 0; i < 2; i++) {
           let cn = `c${i}`;
           db._create(cn, collectionCreationOptions);
-          metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          [cluster_info_metric_after, agency_metric_metric_after] = getCompleteMetricsValues([
+            "arangodb_internal_cluster_info_memory_usage",
+            "arangodb_agency_node_memory_usage"]
+          );
           if (isCluster) {
-            assertTrue(metric_after > metric_before);
+            assertTrue(cluster_info_metric_after > cluster_info_metric_before, {cluster_info_metric_after, cluster_info_metric_before});
+            assertTrue(agency_metric_metric_after > agency_metric_before, {agency_metric_metric_after, agency_metric_before});
           } else {
-            // on some platforms, the empty containers used in ClusterInfo
-            // can make an initial allocation even though no data is contained
-            // in them.
-            assertTrue(metric_before <= 1000, metric_before);
-            assertTrue(metric_after <= 1000, metric_after);
+            assertEqual(cluster_info_metric_before, cluster_info_metric_after);
+            assertEqual(agency_metric_before, agency_metric_metric_after);
           }
 
-          metric_before = metric_after;
+          cluster_info_metric_before = cluster_info_metric_after;
+          agency_metric_before = agency_metric_metric_after;
+
           insertDocuments(cn);
 
           // create few indexes
@@ -110,67 +122,82 @@
           coll.ensureIndex({ type: "persistent", fields: ["value1"], estimates: true });
           coll.ensureIndex({ type: "persistent", fields: ["value2"], estimates: true });
 
-          metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          [cluster_info_metric_after, agency_metric_metric_after] = getCompleteMetricsValues([
+            "arangodb_internal_cluster_info_memory_usage",
+            "arangodb_agency_node_memory_usage"]
+          );
           if (isCluster) {
-            assertTrue(metric_after > metric_before);
+            assertTrue(cluster_info_metric_after > cluster_info_metric_before, {cluster_info_metric_after, cluster_info_metric_before});
+            assertTrue(agency_metric_metric_after > agency_metric_before, {agency_metric_metric_after, agency_metric_before});
           } else {
-            assertEqual(metric_before, initial_metric);
-            assertEqual(metric_after, initial_metric);
+            assertEqual(cluster_info_metric_before, cluster_info_metric_after);
+            assertEqual(agency_metric_before, agency_metric_metric_after);
           }
-          metric_before = metric_after;
+          cluster_info_metric_before = cluster_info_metric_after;
+          agency_metric_before = agency_metric_metric_after;
 
           // create few arangosearch views
           db._createView(`view0${i}`, 'arangosearch', { links: { [cn]: {value: {}} } });
           db._createView(`view1${i}`, 'arangosearch', { links: { [cn]: {value1: {}} } });
           db._createView(`view2${i}`, 'arangosearch', { links: { [cn]: {value2: {}} } });
 
-          metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          [cluster_info_metric_after, agency_metric_metric_after] = getCompleteMetricsValues([
+            "arangodb_internal_cluster_info_memory_usage",
+            "arangodb_agency_node_memory_usage"]
+          );
           if (isCluster) {
-            assertTrue(metric_after > metric_before);
+            assertTrue(cluster_info_metric_after > cluster_info_metric_before, {cluster_info_metric_after, cluster_info_metric_before});
+            assertTrue(agency_metric_metric_after > agency_metric_before, {agency_metric_metric_after, agency_metric_before});
           } else {
-            assertEqual(metric_before, initial_metric);
-            assertEqual(metric_after, initial_metric);
+            assertEqual(cluster_info_metric_before, cluster_info_metric_after);
+            assertEqual(agency_metric_before, agency_metric_metric_after);
           }
-          metric_before = metric_after;
+          cluster_info_metric_before = cluster_info_metric_after;
+          agency_metric_before = agency_metric_metric_after;
 
           // create few search-alias views
           db._createView(`viewSa0${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted"}]} );
           db._createView(`viewSa1${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted1"}]});
           db._createView(`viewSa2${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted2"}]});
 
-          metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          [cluster_info_metric_after, agency_metric_metric_after] = getCompleteMetricsValues([
+            "arangodb_internal_cluster_info_memory_usage",
+            "arangodb_agency_node_memory_usage"]
+          );
           if (isCluster) {
-            assertTrue(metric_after > metric_before);
+            assertTrue(cluster_info_metric_after > cluster_info_metric_before, {cluster_info_metric_after, cluster_info_metric_before});
+            assertTrue(agency_metric_metric_after > agency_metric_before, {agency_metric_metric_after, agency_metric_before});
           } else {
-            assertEqual(metric_before, initial_metric);
-            assertEqual(metric_after, initial_metric);
+            assertEqual(cluster_info_metric_before, cluster_info_metric_after);
+            assertEqual(agency_metric_before, agency_metric_metric_after);
           }
-          metric_before = metric_after;
+          cluster_info_metric_before = cluster_info_metric_after;
+          agency_metric_before = agency_metric_metric_after;
         }
 
         for (let i = 0; i < 2; i++) {
-          let metric_before = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          let [cluster_info_metric_before, agency_metric_before] = getCompleteMetricsValues([
+            "arangodb_internal_cluster_info_memory_usage",
+            "arangodb_agency_node_memory_usage"]
+          );
           db._drop(`c${i}`);
-          let metric_after = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
+          let [cluster_info_metric_after, agency_metric_after] = getCompleteMetricsValues([
+            "arangodb_internal_cluster_info_memory_usage",
+            "arangodb_agency_node_memory_usage"]
+          );
           if (isCluster) {
-            assertTrue(metric_after < metric_before);
+            assertTrue(cluster_info_metric_after < cluster_info_metric_before);
+            assertTrue(agency_metric_after < agency_metric_before);
+
           } else {
             // on some platforms, the empty containers used in ClusterInfo
             // can make an initial allocation even though no data is contained
             // in them.
-            assertTrue(metric_before <= 1000, metric_before);
-            assertTrue(metric_after <= 1000, metric_after);
+            assertTrue(cluster_info_metric_before <= 1000, cluster_info_metric_before);
+            assertTrue(cluster_info_metric_after <= 1000, cluster_info_metric_after);
+            assertTrue(agency_metric_before <= 1000, agency_metric_before);
+            assertTrue(agency_metric_after <= 1000, agency_metric_after);
           }
-        }
-
-        let final_metric = getCompleteMetricsValues("arangodb_internal_cluster_info_memory_usage");
-        if (isCluster) {
-          assertTrue(final_metric >= initial_metric);
-        } else {
-          // on some platforms, the empty containers used in ClusterInfo
-          // can make an initial allocation even though no data is contained
-          // in them.
-          assertTrue(final_metric <= 1000, final_metric);
         }
       },
 
@@ -185,79 +212,6 @@
           metrics = getMetricSingle("arangodb_requests_memory_usage");
           assertTrue(metrics > 0);
         }    
-      },
-
-      testAgencyNodeMemoryUsage: function () {
-        let initial_metric = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
-        assertTrue(initial_metric > 0);
-
-        let metric_before = initial_metric;
-        let metric_after;
-        for(let i = 0; i < 2; i++) {
-          // create collection
-          let cn = `c${i}`;
-          db._create(cn, collectionCreationOptions);
-          metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
-          if(isCluster) {
-            assertTrue(metric_after > metric_before);
-          } else {
-            assertEqual(metric_before, initial_metric);
-            assertEqual(metric_after, initial_metric);
-          }
-        
-          // UNCOMMENT AFTER FIXING BTS 1584
-
-          //   metric_before = metric_after;
-          //   insertDocuments(cn);
-
-          //   // create few indexes
-          //   let coll = db._collection(cn);
-
-          //   coll.ensureIndex({type: "inverted", name: "inverted", fields: ["value"]});
-          //   coll.ensureIndex({type: "inverted", name: "inverted1", fields: ["value1"]});
-          //   coll.ensureIndex({type: "inverted", name: "inverted2", fields: ["value2"]});
-
-          //   coll.ensureIndex({ type: "persistent", fields: ["value"], estimates: true });
-          //   coll.ensureIndex({ type: "persistent", fields: ["value1"], estimates: true });
-          //   coll.ensureIndex({ type: "persistent", fields: ["value2"], estimates: true });
-
-          //   metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
-          //   if(isCluster) {
-          //     assertTrue(metric_after > metric_before);
-          //   } else {
-          //     assertEqual(metric_before, initial_metric);
-          //     assertEqual(metric_after, initial_metric);
-          //   }
-          //   metric_before = metric_after;
-
-          //   // create few arangosearch views
-          //   db._createView(`view0${i}`, 'arangosearch', { links: { [cn]: {value: {}} } });
-          //   db._createView(`view1${i}`, 'arangosearch', { links: { [cn]: {value1: {}} } });
-          //   db._createView(`view2${i}`, 'arangosearch', { links: { [cn]: {value2: {}} } });
-
-          //   metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
-          //   if(isCluster) {
-          //     assertTrue(metric_after > metric_before);
-          //   } else {
-          //     assertEqual(metric_before, initial_metric);
-          //     assertEqual(metric_after, initial_metric);
-          //   }
-          //   metric_before = metric_after;
-
-          //   // create few search-alias views
-          //   db._createView(`viewSa0${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted"}]} );
-          //   db._createView(`viewSa1${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted1"}]});
-          //   db._createView(`viewSa2${i}`, 'search-alias', { indexes: [ {collection: `${cn}`, index: "inverted2"}]});
-
-          //   metric_after = getCompleteMetricsValues("arangodb_agency_node_memory_usage");
-          //   if(isCluster) {
-          //     assertTrue(metric_after > metric_before);
-          //   } else {
-          //     assertEqual(metric_before, initial_metric);
-          //     assertEqual(metric_after, initial_metric);
-          //   }
-          //   metric_before = metric_after;
-        }
       }
     };
   };
