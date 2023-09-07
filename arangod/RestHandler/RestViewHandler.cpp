@@ -337,6 +337,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   // ensure have the latest definition, by id because name is cached
+  // Search-alias views are modified in place so we can avoid re-reading.
   if (view->type() != ViewType::kSearchAlias) {
     auto newView = resolver.getView(view->id());
     if (!newView) {
