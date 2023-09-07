@@ -14,7 +14,7 @@
     enterpriseGraphName: "EnterpriseGraph",
     currentGraphCreationType: (frontendConfig.isEnterprise ? 'enterprise' : 'community'),
     currentGraphEditType: null,
-
+    searchOptions: {},
     dropdownVisible: false,
 
     initialize: function (options) {
@@ -25,8 +25,8 @@
       'click #deleteGraph': 'deleteGraph',
       'click .icon_arangodb_settings2.editGraph': 'editGraph',
       'click #createGraph': 'addNewGraph',
-      'keyup #graphManagementSearchInput': 'search',
-      'click #graphManagementSearchSubmit': 'search',
+      'keydown #graphManagementSearchInput': 'searchKeyDown',
+      'change #graphManagementSearchInput': 'search',
       'click .tile-graph': 'redirectToGraphViewer',
       'click #graphManagementToggle': 'toggleGraphDropdown',
       'click .css-label': 'checkBoxes',
@@ -840,13 +840,45 @@
       var index = str.lastIndexOf(substr);
       return str.substring(0, index);
     },
+    searchKeyDown: function (event) {
+      if (
+        event && event.originalEvent && (
+          (
+            event.originalEvent.key &&
+            (
+              event.originalEvent.key === 'Control' || 
+              event.originalEvent.key === 'Alt' || 
+              event.originalEvent.key === 'Shift'
+            )
+          ) || 
+          event.originalEvent.ctrlKey || 
+          event.originalEvent.altKey ||
+          event.originalEvent.metaKey
+        )
+      ) {
+        return;
+      }
+      this.resetSearch();
+      var self = this;
+      self.searchTimeout = setTimeout(function () {
+        self.search();
+      }, 200);
+    },
+    resetSearch: function () {
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+        this.searchTimeout = null;
+      }
 
+      var searchOptions = this.searchOptions;
+      searchOptions.searchPhrase = null;
+    },
     search: function () {
       var searchInput,
-        searchString,
-        strLength,
-        reducedCollection;
-
+      searchString,
+      strLength,
+      reducedCollection;
+      
       searchInput = $('#graphManagementSearchInput');
       searchString = arangoHelper.escapeHtml($('#graphManagementSearchInput').val());
       reducedCollection = this.collection.filter(
