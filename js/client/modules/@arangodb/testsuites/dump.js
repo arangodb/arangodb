@@ -675,7 +675,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
             message:  `RtaRestore: failed for ${db}`,
             status: false
           };
-          // throw new Error('sanoteuhsnatoehu')
           success = false;
           return false;
         }
@@ -688,7 +687,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   runRtaCheckData() {
     let res = {};
     let logFile = fs.join(fs.getTempPath(), `rta_out_checkdata.log`);
-    let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 1, "checking test data", logFile, [
+    let rc = pu.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 1, "checking test data", logFile, [
       'DUMPDB', '--numberOfDBs', '2']);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
@@ -768,10 +767,12 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
           !helper.runRtaMakedata() ||
           !helper.dumpFrom('UnitTestsDumpSrc', true) ||
           !helper.dumpFromRta() ||
+          !helper.dumpFrom('_system', true) ||
           (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
           !helper.runCleanupSuite(cleanupFile) ||
           !helper.restartInstance() ||
           !helper.restoreTo('UnitTestsDumpDst') ||
+          !helper.restoreTo('_system', { separate: true }) ||
           !helper.restoreRta() ||
           !helper.runRtaCheckData() ||
           !helper.runTests(testFile,'UnitTestsDumpDst') ||
@@ -847,6 +848,7 @@ function dumpMixedClusterSingle (options) {
   singleOptions.cluster = false;
   let clusterStrings = getClusterStrings(clusterOptions);
   let singleStrings = getClusterStrings(singleOptions);
+  clusterOptions.rtaNegFilter = '550,900,960';
   let tstFiles = {
     dumpSetup: 'dump-setup' + clusterStrings.cluster + '.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
@@ -864,6 +866,7 @@ function dumpMixedSingleCluster (options) {
   let clusterOptions = _.clone(options);
   clusterOptions.cluster = true;
   clusterOptions.dbServers = 3;
+  clusterOptions.rtaNegFilter = '550,900,960';
   let singleOptions = _.clone(options);
   singleOptions.cluster = false;
   let clusterStrings = getClusterStrings(clusterOptions);
@@ -908,6 +911,7 @@ function dumpWithCrashes (options) {
     deactivateCompression: true,
     activateFailurePoint: true,
     threads: 1,
+    extremeVerbosity: true
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -931,6 +935,7 @@ function dumpWithCrashesParallel (options) {
     threads: 1,
     useParallelDump: true,
     splitFiles: true,
+    extremeVerbosity: true
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -975,6 +980,7 @@ function dumpAuthentication (options) {
   };
 
   let opts = Object.assign({}, options, tu.testServerAuthInfo, {
+    extremeVerbosity: true,
     multipleDumps: true,
     dbServers: 3
   });

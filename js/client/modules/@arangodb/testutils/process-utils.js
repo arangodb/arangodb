@@ -547,6 +547,9 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
                        '--progress', 'true',
                        '--oldVersion', require('internal').db._version()
                      ]);
+  if (options.rtaNegFilter !== '') {
+    argv = argv.concat(['--skip', options.rtaNegFilter]);
+  }
   if (options.hasOwnProperty('makedata_args')) {
     argv = argv.concat(toArgv(options['makedata_args']));
   }
