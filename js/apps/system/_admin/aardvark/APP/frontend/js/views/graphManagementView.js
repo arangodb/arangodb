@@ -27,6 +27,7 @@
       'click #createGraph': 'addNewGraph',
       'keydown #graphManagementSearchInput': 'searchKeyDown',
       'change #graphManagementSearchInput': 'search',
+      'click #graphManagementSearchSubmit': 'search',
       'click .tile-graph': 'redirectToGraphViewer',
       'click #graphManagementToggle': 'toggleGraphDropdown',
       'click .css-label': 'checkBoxes',
