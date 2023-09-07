@@ -43,6 +43,8 @@ extern void (*uint64ToPersistent)(std::string& p, uint64_t value);
 /// Enable litte endian or big-endian key formats
 void setRocksDBKeyFormatEndianess(RocksDBEndianness);
 
+RocksDBEndianness getRocksDBKeyFormatEndianness() noexcept;
+
 inline uint64_t doubleToInt(double d) {
   uint64_t i;
   std::memcpy(&i, &d, sizeof(i));
