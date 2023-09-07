@@ -338,9 +338,9 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     if (!newView) {
       LOG_TOPIC("f58dc", WARN, Logger::CLUSTER)
           << "Load plan for some strange reason doesn't contain this view";
-    } else {
-      view = std::move(newView);
+      return generateResult(rest::ResponseCode::OK, builder.close().slice());
     }
+    view = std::move(newView);
   }
 
   // return updated definition
