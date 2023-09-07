@@ -51,18 +51,144 @@ static arangodb::ServerID const DBSERVER_ID;
 
 using namespace rocksdb;
 
-class CocksDB : public DB {
+class MockFileSystem : public FileSystem {
+ public:
+  explicit MockFileSystem(const std::shared_ptr<SystemClock>& clock,
+                          bool supports_direct_io = true);
+  ~MockFileSystem() override;
+
+  static const char* kClassName() { return "MemoryFileSystem"; }
+  const char* Name() const override { return kClassName(); }
+  IOStatus NewSequentialFile(const std::string& f, const FileOptions& file_opts,
+                             std::unique_ptr<FSSequentialFile>* r,
+                             IODebugContext* dbg) override;
+  IOStatus NewRandomAccessFile(const std::string& f,
+                               const FileOptions& file_opts,
+                               std::unique_ptr<FSRandomAccessFile>* r,
+                               IODebugContext* dbg) override;
+
+  IOStatus NewRandomRWFile(const std::string& fname,
+                           const FileOptions& file_opts,
+                           std::unique_ptr<FSRandomRWFile>* result,
+                           IODebugContext* dbg) override;
+  IOStatus ReuseWritableFile(const std::string& fname,
+                             const std::string& old_fname,
+                             const FileOptions& file_opts,
+                             std::unique_ptr<FSWritableFile>* result,
+                             IODebugContext* dbg) override;
+  IOStatus NewWritableFile(const std::string& fname,
+                           const FileOptions& file_opts,
+                           std::unique_ptr<FSWritableFile>* result,
+                           IODebugContext* dbg) override;
+  IOStatus ReopenWritableFile(const std::string& fname,
+                              const FileOptions& options,
+                              std::unique_ptr<FSWritableFile>* result,
+                              IODebugContext* dbg) override;
+  IOStatus NewDirectory(const std::string& /*name*/, const IOOptions& io_opts,
+                        std::unique_ptr<FSDirectory>* result,
+                        IODebugContext* dbg) override;
+  IOStatus FileExists(const std::string& fname, const IOOptions& /*io_opts*/,
+                      IODebugContext* /*dbg*/) override;
+  IOStatus GetChildren(const std::string& dir, const IOOptions& options,
+                       std::vector<std::string>* result,
+                       IODebugContext* dbg) override;
+  IOStatus DeleteFile(const std::string& fname, const IOOptions& options,
+                      IODebugContext* dbg) override;
+  IOStatus Truncate(const std::string& fname, size_t size,
+                    const IOOptions& options, IODebugContext* dbg) override;
+  IOStatus CreateDir(const std::string& dirname, const IOOptions& options,
+                     IODebugContext* dbg) override;
+  IOStatus CreateDirIfMissing(const std::string& dirname,
+                              const IOOptions& options,
+                              IODebugContext* dbg) override;
+  IOStatus DeleteDir(const std::string& dirname, const IOOptions& options,
+                     IODebugContext* dbg) override;
+
+  IOStatus GetFileSize(const std::string& fname, const IOOptions& options,
+                       uint64_t* file_size, IODebugContext* dbg) override;
+
+  IOStatus GetFileModificationTime(const std::string& fname,
+                                   const IOOptions& options,
+                                   uint64_t* file_mtime,
+                                   IODebugContext* dbg) override;
+  IOStatus RenameFile(const std::string& src, const std::string& target,
+                      const IOOptions& options, IODebugContext* dbg) override;
+  IOStatus LinkFile(const std::string& /*src*/, const std::string& /*target*/,
+                    const IOOptions& /*options*/,
+                    IODebugContext* /*dbg*/) override;
+  IOStatus LockFile(const std::string& fname, const IOOptions& options,
+                    FileLock** lock, IODebugContext* dbg) override;
+  IOStatus UnlockFile(FileLock* lock, const IOOptions& options,
+                      IODebugContext* dbg) override;
+  IOStatus GetTestDirectory(const IOOptions& options, std::string* path,
+                            IODebugContext* dbg) override;
+  IOStatus NewLogger(const std::string& fname, const IOOptions& io_opts,
+                     std::shared_ptr<rocksdb::Logger>* result,
+                     IODebugContext* dbg) override;
+  // Get full directory name for this db.
+  IOStatus GetAbsolutePath(const std::string& db_path,
+                           const IOOptions& /*options*/,
+                           std::string* output_path,
+                           IODebugContext* /*dbg*/) override;
+  IOStatus IsDirectory(const std::string& /*path*/,
+                       const IOOptions& /*options*/, bool* /*is_dir*/,
+                       IODebugContext* /*dgb*/) override {
+    return IOStatus::NotSupported("IsDirectory");
+  }
+
+  Status CorruptBuffer(const std::string& fname);
+  Status PrepareOptions(const ConfigOptions& options) override;
+
+ private:
+  bool RenameFileInternal(const std::string& src, const std::string& dest);
+  void DeleteFileInternal(const std::string& fname);
+  bool GetChildrenInternal(const std::string& fname,
+                           std::vector<std::string>* results);
+
+  std::string NormalizeMockPath(const std::string& path);
+
+ private:
+  // Map from filenames to MemFile objects, representing a simple file system.
+  port::Mutex mutex_;
+  //  std::map<std::string, MemFile*> file_map_;  // Protected by mutex_.
+  std::shared_ptr<SystemClock> system_clock_;
+  SystemClock* clock_;
+  bool supports_direct_io_;
+};
+
+static Options makeOptions() {
+  Options options;
+  options.write_buffer_size = 4090 * 4096;
+  options.target_file_size_base = 2 * 1024 * 1024;
+  options.max_bytes_for_level_base = 10 * 1024 * 1024;
+  options.max_open_files = 5000;
+  options.wal_recovery_mode = WALRecoveryMode::kTolerateCorruptedTailRecords;
+  options.compaction_pri = CompactionPri::kByCompensatedSize;
+  options.env = Env::Default();
+  options.num_levels = 7;
+  options.hard_pending_compaction_bytes_limit = 10 * 1024 * 1024;
+  return options;
+}
+
+auto STATS = CreateDBStatistics();
+auto CLOCK = SystemClock::Default();
+
+class CocksDB : public DBImpl {
  public:
   CocksDB(const DBOptions& options, const std::string& dbname,
           const bool seq_per_batch = false, const bool batch_per_txn = true,
           bool read_only = false)
-      : _name(dbname),
+      : DBImpl(options, dbname, seq_per_batch, batch_per_txn, read_only),
+        _options(makeOptions()),
+        _name(dbname),
+        _immutable_db_options(makeOptions()),
+        _stats(STATS.get()),
+        _mutex(STATS.get(), CLOCK.get(), DB_MUTEX_WAIT_MICROS,
+               _immutable_db_options.use_adaptive_mutex),
         _seq_per_batch{seq_per_batch},
         _batch_per_txn{batch_per_txn},
-        _read_only{read_only} {
-    _options.num_levels = 7;
-    _options.hard_pending_compaction_bytes_limit = 10 * 1024 * 1024;
-  }
+        _read_only{read_only} {}
+
   virtual ~CocksDB();
 
   Status Put(const WriteOptions& options, ColumnFamilyHandle* column_family,
@@ -247,7 +373,10 @@ class CocksDB : public DB {
   virtual Status EnableFileDeletions(bool force) override { return Status{}; }
 
   virtual Options GetOptions(ColumnFamilyHandle* column_family) const override {
-    return Options{};
+    return _options;
+  }
+  virtual Options GetOptions() const override {
+    return _options;
   }
 
   Status IncreaseFullHistoryTsLowImpl(rocksdb::ColumnFamilyData* cfd,
@@ -317,30 +446,33 @@ class CocksDB : public DB {
 
   virtual Status VerifyChecksum(const ReadOptions& /*read_options*/) override {
     return Status{};
-  };
+  }
   virtual Status GetDbIdentity(std::string& identity) const override {
     return Status{};
-  };
+  }
   virtual Status GetDbSessionId(std::string& session_id) const override {
     return Status{};
-  };
-  ColumnFamilyHandle* DefaultColumnFamily() const override { return nullptr; };
+  }
+  ColumnFamilyHandle* DefaultColumnFamily() const override { return nullptr; }
   virtual Status GetPropertiesOfAllTables(
       ColumnFamilyHandle* column_family,
       TablePropertiesCollection* props) override {
     return Status{};
-  };
+  }
   virtual Status GetPropertiesOfTablesInRange(
       ColumnFamilyHandle* column_family, const Range* range, std::size_t n,
       TablePropertiesCollection* props) override {
     return Status{};
-  };
+  }
   virtual DBOptions GetDBOptions() const override { return _options; }
-  InstrumentedMutex* mutex() { return &_mutex; }
+  InstrumentedMutex* mutex() const { return &_mutex; }
   // InstrumentedMutex& mutex() { return _mutex; }
   Options _options;
-  InstrumentedMutex _mutex;
   std::string _name;
+  ImmutableDBOptions _immutable_db_options;
+  Statistics* _stats;
+  mutable InstrumentedMutex _mutex;
+  const DBOptions _initial_db_options;
   bool _seq_per_batch, _batch_per_txn, _read_only;
 };
 
@@ -359,7 +491,7 @@ class ThrottleTestDBServer
 
   ThrottleTestDBServer()
       : server(DBSERVER_ID, false),
-        _db(new CocksDB(_options, "foo")),
+        _db(makeOptions(), "foo"),
         _mf(server.getFeature<metrics::MetricsFeature>()),
         _fileDescriptorsCurrent(*static_cast<Gauge<uint64_t>*>(
             _mf.get({"arangodb_file_descriptors_current", ""}))),
@@ -369,6 +501,7 @@ class ThrottleTestDBServer
             _mf.get({"arangodb_memory_maps_current", ""}))),
         _memoryMapsLimit(*static_cast<Gauge<uint64_t>*>(
             _mf.get({"arangodb_memory_maps_limit", ""}))) {
+    fflush(stdout);
     server.startFeatures();
   }
 
@@ -382,11 +515,11 @@ class ThrottleTestDBServer
     _memoryMapsCurrent.store(m, std::memory_order_relaxed);
   }
   uint64_t memoryMapsCurrent() const { return _memoryMapsCurrent.load(); }
-  rocksdb::DB* db() { return (rocksdb::DB*)_db; }
-  rocksdb::DB const* db() const { return (rocksdb::DB const*)_db; }
+  rocksdb::DB* db() { return (rocksdb::DB*)&_db; }
+  rocksdb::DB const* db() const { return (rocksdb::DB const*)&_db; }
 
   DBOptions _options;
-  CocksDB* _db;
+  CocksDB _db;
   MetricsFeature& _mf;
   metrics::Gauge<uint64_t>& _fileDescriptorsCurrent;
   metrics::Gauge<uint64_t>& _fileDescriptorsLimit;
@@ -428,18 +561,18 @@ TEST_F(ThrottleTestDBServer, test_database_data_size) {
 
   // throttle should not start yet
   j.table_properties.data_size = triggerSize - 1;
-  throttle.OnFlushBegin(db(), j);
+  throttle.OnFlushBegin(&_db, j);
   std::this_thread::sleep_for(std::chrono::milliseconds{100});
-  throttle.OnFlushCompleted(db(), j);
+  throttle.OnFlushCompleted(&_db, j);
   for (size_t i = 0; i < 20; ++i) {
     std::this_thread::sleep_for(std::chrono::milliseconds{100});
     ASSERT_DOUBLE_EQ(throttle.getThrottle(), 0.);
   }
 
   ++j.table_properties.data_size;
-  throttle.OnFlushBegin(db(), j);
+  throttle.OnFlushBegin(&_db, j);
   std::this_thread::sleep_for(std::chrono::milliseconds{100});
-  throttle.OnFlushCompleted(db(), j);
+  throttle.OnFlushCompleted(&_db, j);
   ASSERT_DOUBLE_EQ(throttle.getThrottle(), 0.);
 
   uint64_t cur, last = 0;
@@ -447,7 +580,7 @@ TEST_F(ThrottleTestDBServer, test_database_data_size) {
   for (size_t i = 0; i < 100; ++i) {
     std::this_thread::sleep_for(std::chrono::milliseconds{100});
     j.table_properties.data_size += 1000;
-    throttle.OnFlushCompleted(db(), j);
+    throttle.OnFlushCompleted(&_db, j);
     cur = throttle.getThrottle();
     ASSERT_TRUE(last >= cur || last == 0);
     last = cur;
@@ -474,13 +607,13 @@ TEST_F(ThrottleTestDBServer, test_database_data_size_variable) {
 
   // throttle should not start yet
   j.table_properties.data_size = triggerSize - 1;
-  throttle.OnFlushBegin(db(), j);
+  throttle.OnFlushBegin(&_db, j);
   std::this_thread::sleep_for(std::chrono::milliseconds{100});
   throttle.OnFlushCompleted(nullptr, j);
   ASSERT_DOUBLE_EQ(throttle.getThrottle(), 0.);
 
   ++j.table_properties.data_size;
-  throttle.OnFlushBegin(db(), j);
+  throttle.OnFlushBegin(&_db, j);
   std::this_thread::sleep_for(std::chrono::milliseconds{100});
   throttle.OnFlushCompleted(nullptr, j);
   ASSERT_DOUBLE_EQ(throttle.getThrottle(), 0.);
@@ -489,7 +622,7 @@ TEST_F(ThrottleTestDBServer, test_database_data_size_variable) {
 
   for (size_t i = 0; i < 100; ++i) {
     if (i > 0 && i % 10 == 0) {
-      throttle.OnFlushBegin(db(), j);  // Briefly reset target speed
+      throttle.OnFlushBegin(&_db, j);  // Briefly reset target speed
     }
     std::this_thread::sleep_for(std::chrono::milliseconds{100});
     throttle.OnFlushCompleted(nullptr, j);
@@ -520,13 +653,13 @@ TEST_F(ThrottleTestDBServer, test_file_desciptors) {
   fileDescriptorsCurrent(1000);
 
   j.table_properties.data_size = (64 << 19);
-  throttle.OnFlushBegin(db(), j);
+  throttle.OnFlushBegin(&_db, j);
   std::this_thread::sleep_for(std::chrono::milliseconds{100});
   throttle.OnFlushCompleted(nullptr, j);
   ASSERT_DOUBLE_EQ(throttle.getThrottle(), 0.);
 
   j.table_properties.data_size = (64 << 19) + 1;
-  throttle.OnFlushBegin(db(), j);
+  throttle.OnFlushBegin(&_db, j);
   std::this_thread::sleep_for(std::chrono::milliseconds{100});
   throttle.OnFlushCompleted(nullptr, j);
 
