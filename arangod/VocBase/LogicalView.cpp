@@ -207,9 +207,11 @@ Result LogicalView::rename(std::string&& newName) {
   auto oldName = name();
   absl::Cleanup revert = [&] { name(std::move(oldName)); };
   name(std::move(newName));
-  if (auto r = renameImpl(oldName); r.ok()) {
+  auto r = renameImpl(oldName);
+  if (r.ok()) {
     std::move(revert).Cancel();
   }
+  return r;
 }
 
 namespace cluster_helper {
