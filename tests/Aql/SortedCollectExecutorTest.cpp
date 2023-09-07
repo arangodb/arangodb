@@ -84,7 +84,7 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestNoRowsUpstream()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor),
         server(),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
@@ -170,7 +170,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestRowsUpstream()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor),
         server(),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
@@ -397,8 +397,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
 TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor,
-                                       SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor};
 
   mocks::MockAqlServer server{};
   std::shared_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -488,8 +487,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor,
-                                       SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor};
 
   mocks::MockAqlServer server{};
   std::shared_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
@@ -626,7 +624,7 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   NoStats stats;
 
   SortedCollectExecutorTestSkip()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         collectRegister(2),

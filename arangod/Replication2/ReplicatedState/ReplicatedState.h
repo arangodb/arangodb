@@ -77,6 +77,8 @@ struct ReplicatedStateBase {
       std::optional<velocypack::SharedSlice> const& coreParameters)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> = 0;
 
+  [[nodiscard]] virtual auto type() const noexcept -> std::string_view = 0;
+
  private:
   [[nodiscard]] virtual auto getLeaderBase()
       -> std::shared_ptr<IReplicatedLeaderStateBase> = 0;
@@ -119,6 +121,8 @@ struct ReplicatedState final
       TRI_vocbase_t& vocbase,
       std::optional<velocypack::SharedSlice> const& coreParameter)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> override;
+
+  auto type() const noexcept -> std::string_view override { return S::NAME; }
 
  private:
   auto buildCore(TRI_vocbase_t& vocbase,

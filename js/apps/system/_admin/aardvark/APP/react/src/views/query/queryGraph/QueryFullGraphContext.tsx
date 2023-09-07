@@ -1,6 +1,10 @@
 import React, { createContext, ReactNode, useContext } from "react";
 import { DataSet, Network } from "vis-network";
-import { EdgeDataType, NodeDataType } from "../../graphV2/GraphData.types";
+import {
+  EdgeDataType,
+  NodeDataType
+} from "../../graphV2/viewGraph/GraphData.types";
+
 import {
   getLayout,
   SettingsType,

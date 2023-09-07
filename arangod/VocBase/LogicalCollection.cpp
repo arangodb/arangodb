@@ -34,6 +34,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterCollectionMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -195,6 +196,17 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // update server's tick value
   TRI_UpdateTickServer(id().id());
 
+  if (replicationVersion() == replication::Version::TWO &&
+      info.hasKey("groupId")) {
+    _groupId = info.get("groupId").getNumericValue<uint64_t>();
+    if (auto stateId = info.get("replicatedStateId"); stateId.isNumber()) {
+      _replicatedStateId =
+          info.get("replicatedStateId").extract<replication2::LogId>();
+    }
+    // We are either a cluster collection, or we need to have a
+    // replicatedStateID.
+    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
+  }
   // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
   initializeSmartAttributesBefore(info);
 
@@ -228,18 +240,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
         << " - disabling computed values for this collection. original value: "
         << info.get(StaticStrings::ComputedValues).toJson();
     TRI_ASSERT(_computedValues == nullptr);
-  }
-
-  if (replicationVersion() == replication::Version::TWO &&
-      info.hasKey("groupId")) {
-    _groupId = info.get("groupId").getNumericValue<uint64_t>();
-    if (auto stateId = info.get("replicatedStateId"); stateId.isNumber()) {
-      _replicatedStateId =
-          info.get("replicatedStateId").extract<replication2::LogId>();
-    }
-    // We are either a cluster collection, or we need to have a
-    // replicatedStateID.
-    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
   }
 }
 
@@ -287,8 +287,9 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 
 Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
   if (!computedValues.isNone()) {
-    auto result =
-        ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
+    auto result = ComputedValues::buildInstance(
+        vocbase(), shardKeys(), computedValues,
+        transaction::OperationOriginInternal{ComputedValues::moduleName});
 
     if (result.fail()) {
       return result.result();
@@ -356,21 +357,9 @@ replication::Version LogicalCollection::replicationVersion() const noexcept {
   return vocbase().replicationVersion();
 }
 
-std::string const& LogicalCollection::distributeShardsLike() const noexcept {
+std::string LogicalCollection::distributeShardsLike() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->distributeShardsLike();
-}
-
-void LogicalCollection::distributeShardsLike(std::string const& cid,
-                                             ShardingInfo const* other) {
-  TRI_ASSERT(_sharding != nullptr);
-  _sharding->distributeShardsLike(cid, other);
-}
-
-std::vector<std::string> const& LogicalCollection::avoidServers()
-    const noexcept {
-  TRI_ASSERT(_sharding != nullptr);
-  return _sharding->avoidServers();
 }
 
 bool LogicalCollection::isSatellite() const noexcept {
@@ -1060,9 +1049,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
 
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
-    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-    return ci.setCollectionPropertiesCoordinator(
-        vocbase().name(), std::to_string(id().id()), this);
+    return ClusterCollectionMethods::updateCollectionProperties(vocbase(),
+                                                                *this);
   }
 
   engine.changeCollection(vocbase(), *this);

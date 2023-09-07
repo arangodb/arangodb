@@ -531,9 +531,11 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
       _plannedDatabases(_resourceMonitor),
       _planVersion(0),
       _planIndex(0),
+      _planMemoryUsage(0),
+      _currentDatabases(_resourceMonitor),
       _currentVersion(0),
       _currentIndex(0),
-      _currentDatabases(_resourceMonitor),
+      _currentMemoryUsage(0),
       _plannedCollections(_resourceMonitor),
       _newPlannedCollections(_resourceMonitor),
       _shards(_resourceMonitor),
@@ -579,7 +581,12 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
 /// @brief destroys a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo::~ClusterInfo() = default;
+ClusterInfo::~ClusterInfo() {
+  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
+  _planMemoryUsage = 0;
+  _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
+  _currentMemoryUsage = 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
@@ -1067,7 +1074,7 @@ void ClusterInfo::loadPlan() {
     return;
   }
 
-  std::set<std::string> buildingDatabases;
+  containers::FlatHashSet<std::string> buildingDatabases;
   decltype(_plannedDatabases) newDatabases{_resourceMonitor};
   decltype(_shards) newShards{_resourceMonitor};
   decltype(_shardsToPlanServers) newShardsToPlanServers{_resourceMonitor};
@@ -1539,14 +1546,13 @@ void ClusterInfo::loadPlan() {
               collectionId);  // delete from maps with shardID as key
           newShardToName.erase(collectionId);
         }
-        auto copy_it = it++;
-        _newPlannedCollections.erase(copy_it);
+        _newPlannedCollections.erase(it);
       }
       continue;
     }
 
     // Skip databases that are still building.
-    if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
+    if (buildingDatabases.contains(databaseName)) {
       continue;
     }
 
@@ -1622,6 +1628,17 @@ void ClusterInfo::loadPlan() {
          velocypack::ObjectIterator(collectionsSlice)) {
       auto collectionSlice = collectionPairSlice.value;
 
+      if (!collectionSlice.isObject()) {
+        LOG_TOPIC("0f689", WARN, Logger::AGENCY)
+            << "Collection entry is not a valid json object."
+            << " The collection will be ignored for now and the invalid "
+            << "information will be repaired. VelocyPack: "
+            << collectionSlice.toJson();
+
+        continue;
+      }
+      auto const collectionId = collectionPairSlice.key.copyString();
+
       VPackBuilder newSliceBuilder;
       if (auto gid = collectionSlice.get("groupId"); !gid.isNone()) {
         auto group = newCollectionGroups.at(
@@ -1639,26 +1656,18 @@ void ClusterInfo::loadPlan() {
           newSliceBuilder.add(
               StaticStrings::ReplicationFactor,
               group->attributes.mutableAttributes.replicationFactor);
+          if (collectionId != group->groupLeader) {
+            newSliceBuilder.add(StaticStrings::DistributeShardsLike,
+                                group->groupLeader);
+          }
         }
         collectionSlice = newSliceBuilder.slice();
-      }
-
-      if (!collectionSlice.isObject()) {
-        LOG_TOPIC("0f689", WARN, Logger::AGENCY)
-            << "Collection entry is not a valid json object."
-            << " The collection will be ignored for now and the invalid "
-            << "information will be repaired. VelocyPack: "
-            << collectionSlice.toJson();
-
-        continue;
       }
 
       bool const isBuilding =
           isCoordinator &&
           arangodb::basics::VelocyPackHelper::getBooleanValue(
               collectionSlice, StaticStrings::AttrIsBuilding, false);
-
-      auto const collectionId = collectionPairSlice.key.copyString();
 
       // check if we already know this collection (i.e. have it in our local
       // cache). we do this to avoid rebuilding LogicalCollection objects from
@@ -1744,8 +1753,27 @@ void ClusterInfo::loadPlan() {
         // the name as key:
         continue;
       }
-      auto const& groupLeader =
-          colPair.second.collection->distributeShardsLike();
+      auto const& groupLeader = std::invoke([&]() -> std::string {
+        if (colPair.second.collection->replicationVersion() ==
+            replication::Version::TWO) {
+          // For Replication2 we cannot call distributeShardsLike() because it
+          // will look into the objects we are just building here.
+          if (auto it = newCollectionGroups.find(
+                  colPair.second.collection->groupID());
+              it != newCollectionGroups.end()) {
+            auto const& leader = it->second->groupLeader;
+            if (leader == colPair.second.collection->name()) {
+              return StaticStrings::Empty;
+            }
+            return leader;
+          }
+          TRI_ASSERT(false) << "newCollectionGroups is required to contain the "
+                               "collection we investigate.";
+          return StaticStrings::Empty;
+        } else {
+          return colPair.second.collection->distributeShardsLike();
+        }
+      });
       if (!groupLeader.empty()) {
         auto groupLeaderCol = newShards.find(groupLeader);
         if (groupLeaderCol != newShards.end()) {
@@ -1812,18 +1840,38 @@ void ClusterInfo::loadPlan() {
       // system database does not have a shardingPrototype set...
       // sharding prototype of _system database defaults to _users nowadays
       systemDB->setShardingPrototype(ShardingPrototype::Users);
-      // but for "old" databases it may still be "_graphs". we need to find out!
-      // find _system database in Plan
       auto it = _newPlannedCollections.find(StaticStrings::SystemDatabase);
       if (it != _newPlannedCollections.end()) {
-        // find _graphs collection in Plan
-        auto it2 = (*it).second->find(StaticStrings::GraphCollection);
-        if (it2 != (*it).second->end()) {
-          // found!
-          if ((*it2).second.collection->distributeShardsLike().empty()) {
-            // _graphs collection has no distributeShardsLike, so it is
-            // the prototype!
-            systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+        // but for "old" databases it may still be "_graphs". we need to find
+        // out! find _system database in Plan. Replication TWO databases cannot
+        // be old.
+        if (systemDB->replicationVersion() == replication::Version::ONE) {
+          // find _graphs collection in Plan
+          auto it2 = (*it).second->find(StaticStrings::GraphCollection);
+          if (it2 != (*it).second->end()) {
+            // found!
+            if ((*it2).second.collection->distributeShardsLike().empty()) {
+              // _graphs collection has no distributeShardsLike, so it is
+              // the prototype!
+              systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+            }
+          }
+        }
+
+        // The systemDB does initially set the sharding attribute. Therefore,
+        // we need to set it here.
+        if (newPlan.contains(StaticStrings::SystemDatabase)) {
+          auto planSlice = newPlan[StaticStrings::SystemDatabase]->slice();
+          if (planSlice.isArray() && planSlice.length() == 1) {
+            if (planSlice.at(0).isObject()) {
+              auto entrySlice = planSlice.at(0);
+              auto path = std::vector<std::string>{
+                  "arango", "Plan", "Databases", StaticStrings::SystemDatabase,
+                  StaticStrings::Sharding};
+              if (entrySlice.hasKey(path) && entrySlice.get(path).isString()) {
+                systemDB->setSharding(entrySlice.get(path).copyString());
+              }
+            }
           }
         }
       }
@@ -1835,6 +1883,17 @@ void ClusterInfo::loadPlan() {
   _planVersion = changeSet.version;
   _planIndex = changeSet.ind;
   _plan.swap(newPlan);
+
+  // update memory usage
+  std::uint64_t memoryUsage = 0;
+  for (auto const& it : _plan) {
+    TRI_ASSERT(it.second != nullptr);
+    memoryUsage += it.second->slice().byteSize();
+  }
+  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
+  _resourceMonitor.increaseMemoryUsage(memoryUsage);
+  _planMemoryUsage = memoryUsage;
+
   LOG_TOPIC("54321", DEBUG, Logger::CLUSTER)
       << "Updating ClusterInfo plan: version=" << _planVersion
       << " index=" << _planIndex;
@@ -2110,6 +2169,15 @@ void ClusterInfo::loadCurrent() {
   WRITE_LOCKER(writeLocker, _currentProt.lock);
 
   _current.swap(newCurrent);
+  std::uint64_t memoryUsage = 0;
+  for (auto const& it : _current) {
+    TRI_ASSERT(it.second != nullptr);
+    memoryUsage += it.second->slice().byteSize();
+  }
+  _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
+  _resourceMonitor.increaseMemoryUsage(memoryUsage);
+  _currentMemoryUsage = memoryUsage;
+
   _currentVersion = changeSet.version;
   _currentIndex = changeSet.ind;
   LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
@@ -3447,81 +3515,6 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set collection properties in coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-Result ClusterInfo::setCollectionPropertiesCoordinator(
-    std::string const& databaseName, std::string const& collectionID,
-    LogicalCollection const* info) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-  AgencyComm ac(_server);
-
-  AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
-                                    AgencyPrecondition::Type::EMPTY, false);
-  AgencyOperation incrementVersion("Plan/Version",
-                                   AgencySimpleOperationType::INCREMENT_OP);
-
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] =
-      agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
-          "Plan/Collections/" + databaseName + "/" + collectionID)});
-
-  velocypack::Slice collection =
-      acb->slice()[0].get(std::initializer_list<std::string_view>{
-          AgencyCommHelper::path(), "Plan", "Collections", databaseName,
-          collectionID});
-
-  if (!collection.isObject()) {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  }
-
-  VPackBuilder temp;
-  temp.openObject();
-  temp.add(StaticStrings::WaitForSyncString, VPackValue(info->waitForSync()));
-  if (info->isSatellite()) {
-    temp.add(StaticStrings::ReplicationFactor,
-             VPackValue(StaticStrings::Satellite));
-  } else {
-    temp.add(StaticStrings::ReplicationFactor,
-             VPackValue(info->replicationFactor()));
-  }
-  temp.add(StaticStrings::MinReplicationFactor,
-           VPackValue(info->writeConcern()));  // deprecated in 3.6
-  temp.add(StaticStrings::WriteConcern, VPackValue(info->writeConcern()));
-  temp.add(StaticStrings::UsesRevisionsAsDocumentIds,
-           VPackValue(info->usesRevisionsAsDocumentIds()));
-  temp.add(StaticStrings::SyncByRevision, VPackValue(info->syncByRevision()));
-  temp.add(VPackValue(StaticStrings::ComputedValues));
-  info->computedValuesToVelocyPack(temp);
-  temp.add(VPackValue(StaticStrings::Schema));
-  info->schemaToVelocyPack(temp);
-  info->getPhysical()->getPropertiesVPack(temp);
-  temp.close();
-
-  VPackBuilder builder =
-      VPackCollection::merge(collection, temp.slice(), false);
-
-  AgencyOperation setColl(
-      "Plan/Collections/" + databaseName + "/" + collectionID,
-      AgencyValueOperationType::SET, builder.slice());
-
-  AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
-  AgencyCommResult res = ac.sendTransactionWithFailover(trans);
-
-  if (res.successful()) {
-    Result r;
-    if (VPackSlice resultsSlice = res.slice().get("results");
-        resultsSlice.length() > 0) {
-      r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
-    }
-    return r;
-  }
-
-  return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
-                res.errorMessage());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5036,11 +5029,6 @@ ServersKnown ClusterInfo::rebootIds() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  if (serverID == "debug-follower") {
-    return "tcp://127.0.0.1:3000";
-  }
-#endif
   int tries = 0;
 
   if (!_serversProt.isValid) {
@@ -5061,7 +5049,7 @@ std::string ClusterInfo::getServerEndpoint(std::string_view serverID) {
         serverID_ = (*ita).second;
       }
 
-      // _servers is a map-type <ServerId, std::string>
+      // _servers is a map-type <ServerId, pmr::ManagedString>
       auto it = _servers.find(serverID_);
 
       if (it != _servers.end()) {
@@ -6438,8 +6426,9 @@ ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 bool ClusterInfo::SyncerThread::notify() {
   std::lock_guard<std::mutex> lck(_m);
   _news = true;
+  // TODO: can we move the notify_one() call outside of the mutex?
   _cv.notify_one();
-  return _news;
+  return true;
 }
 
 void ClusterInfo::SyncerThread::beginShutdown() {
@@ -6457,10 +6446,11 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 bool ClusterInfo::SyncerThread::start() {
   ThreadNameFetcher nameFetcher;
   std::string_view name = nameFetcher.get();
+  if (name.empty()) {
+    name = "unknown syncer thread";
+  }
 
-  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER)
-      << "Starting "
-      << (name.empty() ? std::string_view("by unknown thread") : name);
+  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER) << "Starting " << name;
   return Thread::start();
 }
 

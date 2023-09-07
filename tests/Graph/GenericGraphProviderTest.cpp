@@ -154,14 +154,14 @@ class GraphProviderTest : public ::testing::Test {
             arangodb::aql::QueryString(std::string_view("RETURN 1"));
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
-            server.getSystemDatabase());
+            server.getSystemDatabase(), transaction::OperationOriginTestCase{});
         auto fakeQuery = std::make_shared<MockQuery>(ctx, queryString);
         try {
           fakeQuery->collections().add("s9880", AccessMode::Type::READ,
                                        arangodb::aql::Collection::Hint::Shard);
         } catch (...) {
         }
-        fakeQuery->prepareQuery(SerializationFormat::SHADOWROWS);
+        fakeQuery->prepareQuery();
         auto ast = fakeQuery->ast();
         auto tmpVar = ast->variables()->createTemporaryVariable();
         auto tmpVarRef = ast->createNodeReference(tmpVar);
@@ -220,7 +220,8 @@ class GraphProviderTest : public ::testing::Test {
             arangodb::aql::QueryString(std::string_view("RETURN 1"));
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
-            server->getSystemDatabase());
+            server->getSystemDatabase(),
+            transaction::OperationOriginTestCase{});
         query = arangodb::aql::Query::create(ctx, queryString, nullptr);
 
         query->collections().add("v", AccessMode::Type::READ,
@@ -228,7 +229,7 @@ class GraphProviderTest : public ::testing::Test {
         query->collections().add("e", AccessMode::Type::READ,
                                  arangodb::aql::Collection::Hint::Collection);
 
-        query->prepareQuery(SerializationFormat::SHADOWROWS);
+        query->prepareQuery();
       }
 
       clusterEngines =

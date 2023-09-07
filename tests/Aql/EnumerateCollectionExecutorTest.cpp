@@ -96,7 +96,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
 
   EnumerateCollectionExecutorTest()
       : AqlExecutorTestCase(),
-        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+        itemBlockManager(monitor),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.lookupCollection("UnitTestCollection")
@@ -283,7 +283,7 @@ class EnumerateCollectionExecutorTestProduce
   EnumerateCollectionExecutorInfos executorInfos;
 
   EnumerateCollectionExecutorTestProduce()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.lookupCollection("UnitTestCollection")

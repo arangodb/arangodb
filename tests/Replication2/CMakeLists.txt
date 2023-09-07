@@ -48,11 +48,6 @@ add_library(arango_tests_replication2 OBJECT
   ${ARANGODB_REPLICATION2_TEST_HELPER_SOURCES}
   )
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    # turn off annoying warning in test files
-    target_compile_options(arango_tests_replication2 PRIVATE -Wno-missing-field-initializers)
-endif ()
-
 target_include_directories(arango_tests_replication2 PUBLIC
   ${PROJECT_SOURCE_DIR}/arangod
   ${PROJECT_SOURCE_DIR}/lib

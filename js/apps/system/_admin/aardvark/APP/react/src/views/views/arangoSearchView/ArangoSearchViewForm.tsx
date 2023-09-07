@@ -16,7 +16,7 @@ import { FieldsGrid } from "../../../components/form/FieldsGrid";
 import { FormField } from "../../../components/form/FormField";
 import { IndexInfoTooltip } from "../../collections/indices/addIndex/IndexInfoTooltip";
 import { useEditViewContext } from "../editView/EditViewContext";
-import { PrimarySortType, StoredValueType } from "../searchView.types";
+import { PrimarySortType, StoredValueType } from "../View.types";
 import { LinksEditor } from "./linksEditor/LinksEditor";
 
 import { useArangoSearchFieldsData } from "./useArangoSearchFieldsData";

@@ -69,6 +69,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     server.addReporter(
         {[&](ArangodServer::State state) {
+           CrashHandler::setState(ArangodServer::stringifyState(state));
+
            if (state == ArangodServer::State::IN_START) {
              // drop priveleges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
@@ -80,6 +82,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         []<typename T>(auto& server, TypeTag<T>) {
           return std::make_unique<T>(server);
         },
+#ifdef TRI_HAVE_GETRLIMIT
+        [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
+          return std::make_unique<BumpFileDescriptorsFeature>(
+              server, "--server.descriptors-minimum");
+        },
+#endif
         [](auto& server, TypeTag<GreetingsFeaturePhase>) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::false_type{});

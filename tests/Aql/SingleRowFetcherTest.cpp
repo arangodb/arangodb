@@ -67,8 +67,7 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
   ExecutionState state;
   static constexpr ::arangodb::aql::BlockPassthrough passBlocksThrough =
       ::arangodb::aql::BlockPassthrough::Enable;
-  SingleRowFetcherTestPassBlocks()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {}
+  SingleRowFetcherTestPassBlocks() : itemBlockManager(monitor) {}
 
   void validateInputRange(AqlItemBlockInputRange& input,
                           std::vector<std::string> const& result) {
@@ -128,8 +127,7 @@ class SingleRowFetcherTestDoNotPassBlocks : public ::testing::Test {
   ExecutionState state;
   static constexpr ::arangodb::aql::BlockPassthrough passBlocksThrough =
       ::arangodb::aql::BlockPassthrough::Disable;
-  SingleRowFetcherTestDoNotPassBlocks()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {}
+  SingleRowFetcherTestDoNotPassBlocks() : itemBlockManager(monitor) {}
 };
 
 TEST_F(SingleRowFetcherTestPassBlocks,

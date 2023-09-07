@@ -196,8 +196,7 @@ if (!(
   global.IS_EXECUTE_SCRIPT ||
   global.IS_EXECUTE_STRING ||
   global.IS_CHECK_SCRIPT ||
-  global.IS_UNIT_TESTS ||
-  global.IS_JS_LINT
+  global.IS_UNIT_TESTS
   )) {
   try {
     let __fs__ = require('fs');
@@ -217,7 +216,6 @@ delete global.IS_EXECUTE_SCRIPT;
 delete global.IS_EXECUTE_STRING;
 delete global.IS_CHECK_SCRIPT;
 delete global.IS_UNIT_TESTS;
-delete global.IS_JS_LINT;
 
 {
   const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');

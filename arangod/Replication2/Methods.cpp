@@ -47,6 +47,7 @@
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/StateMachines/BlackHole/BlackHoleStateMachine.h"
 #include "VocBase/vocbase.h"
 
 #include "Agency/AgencyPaths.h"
@@ -220,8 +221,31 @@ struct ReplicatedLogMethodsDBServer final
 
   auto release(LogId id, LogIndex index) const
       -> futures::Future<Result> override {
-    auto log = vocbase.getReplicatedLogById(id);
-    return log->getParticipant()->release(index);
+    auto stateBase = vocbase.getReplicatedStateById(id);
+    if (!stateBase.ok()) {
+      return std::move(stateBase).result();
+    }
+    if (auto state =
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
+      if (auto leaderState = state->getLeader(); leaderState != nullptr) {
+        return leaderState->release(index);
+      } else {
+        return Result(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/release API is only allowed on leaders; while "
+                        "trying to release state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
+      }
+    } else {
+      return Result(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/release API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
+    }
   }
 
   auto replaceParticipant(LogId id, ParticipantId const& participantToRemove,

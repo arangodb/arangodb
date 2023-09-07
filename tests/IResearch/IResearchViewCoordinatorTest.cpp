@@ -31,7 +31,6 @@
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -7903,9 +7902,10 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
 
     // dummy query
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(std::string_view("RETURN 1")), nullptr);
-    query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+    query->prepareQuery();
 
     arangodb::aql::SingletonNode singleton(query->plan(),
                                            arangodb::aql::ExecutionNodeId{0});

@@ -29,8 +29,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -39,22 +37,23 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief creates a query
-QueryContext::QueryContext(TRI_vocbase_t& vocbase, QueryId id)
+QueryContext::QueryContext(TRI_vocbase_t& vocbase,
+                           transaction::OperationOrigin operationOrigin,
+                           QueryId id)
     : _resourceMonitor(GlobalResourceMonitor::instance()),
       _queryId(id ? id : TRI_NewServerSpecificTick()),
       _collections(&vocbase),
       _vocbase(vocbase),
       _execState(QueryExecutionState::ValueType::INVALID_STATE),
+      _operationOrigin(operationOrigin),
       _numRequests(0) {
   // aql analyzers should be able to run even during recovery when AqlFeature
   // is not started. And as optimization - these queries do not need
@@ -77,6 +76,12 @@ QueryContext::~QueryContext() {
   }
 }
 
+TRI_vocbase_t& QueryContext::vocbase() const noexcept { return _vocbase; }
+
+transaction::OperationOrigin QueryContext::operationOrigin() const noexcept {
+  return _operationOrigin;
+}
+
 Collections& QueryContext::collections() {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION ||
              ClusterEngine::Mocking);
@@ -93,6 +98,8 @@ std::vector<std::string> QueryContext::collectionNames() const {
 /// @brief return the user that started the query
 std::string const& QueryContext::user() const { return StaticStrings::Empty; }
 
+QueryWarnings& QueryContext::warnings() { return _warnings; }
+
 /// @brief look up a graph either from our cache list or from the _graphs
 ///        collection
 ResultT<graph::Graph const*> QueryContext::lookupGraphByName(
@@ -105,7 +112,7 @@ ResultT<graph::Graph const*> QueryContext::lookupGraphByName(
     return it->second.get();
   }
 
-  graph::GraphManager graphManager{_vocbase};
+  graph::GraphManager graphManager{_vocbase, _operationOrigin};
 
   auto g = graphManager.lookupGraphByName(name);
 

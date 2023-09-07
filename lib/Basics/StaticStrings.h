@@ -117,7 +117,6 @@ class StaticStrings {
   // database definition fields
   static std::string const DatabaseId;
   static std::string const DatabaseName;
-  static std::string const DatabaseOptions;
   static std::string const Properties;
 
   // LogicalDataSource definition fields
@@ -153,9 +152,7 @@ class StaticStrings {
   static std::string const IndexNameEdge;
   static std::string const IndexNameEdgeFrom;
   static std::string const IndexNameEdgeTo;
-  static std::string const IndexNameInaccessible;
   static std::string const IndexNamePrimary;
-  static std::string const IndexNameTime;
 
   // index hint strings
   static std::string const IndexHintDisableIndex;
@@ -206,7 +203,6 @@ class StaticStrings {
   static std::string const Expect;
   static std::string const ExposedCorsHeaders;
   static std::string const HLCHeader;
-  static std::string const KeepAlive;
   static std::string const LeaderEndpoint;
   static std::string const Location;
   static std::string const LockLocation;
@@ -242,7 +238,6 @@ class StaticStrings {
   static std::string const MultiPartContentType;
 
   // encodings
-  static std::string const EncodingIdentity;
   static std::string const EncodingDeflate;
   static std::string const EncodingGzip;
 
@@ -278,8 +273,6 @@ class StaticStrings {
   static std::string const ShardingSingle;
   static std::string const ReplicationVersion;
   static std::string const ReplicatedLogs;
-  static std::string_view const SoftWriteConcern;
-  static std::string_view const EffectiveWriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -291,14 +284,12 @@ class StaticStrings {
   static std::string const GraphDropCollection;
   static std::string const GraphCreateCollection;
   static std::string const GraphEdgeDefinitions;
-  static std::string const GraphEdgeDefinitionType;
   static std::string const GraphOrphans;
   static std::string const GraphName;
   static std::string const GraphTraversalProfileLevel;
 
   // smart graph relevant attributes
   static std::string const IsDisjoint;
-  static std::string const IsHybrid;
   static std::string const GraphIsSatellite;
   static std::string const GraphSatellites;
   static std::string const GraphIsSmart;
@@ -313,27 +304,6 @@ class StaticStrings {
   static std::string const GraphDirection;
   static std::string const GraphDirectionInbound;
   static std::string const GraphDirectionOutbound;
-
-  // Pregel Section Start
-
-  // Pregel Accumulator Attributes
-  static std::string const AccumulatorHot;
-  static std::string const AccumulatorCold;
-  static std::string const AccumulatorValue;
-  static std::string const AccumulatorSender;
-  static std::string const AccumulatorName;
-
-  // Pregel VertexComputation Attributes
-  static std::string const VertexComputationPregelId;
-  static std::string const VertexComputationVertexId;
-  static std::string const VertexComputationPhase;
-  static std::string const VertexComputationGlobalSuperstep;
-  static std::string const VertexComputationPhaseStep;
-  static std::string const VertexComputationMessage;
-  static std::string const VertexComputationVoteActive;
-  static std::string const VertexComputationVoteHalt;
-
-  // Pregel Section End
 
   // Query Strings
   static std::string const QuerySortASC;
@@ -382,14 +352,11 @@ class StaticStrings {
   static std::string const Participants;
   static std::string const ServerId;
   static std::string const Spearhead;
-  static std::string const TargetConfig;
   static std::string const Term;
   static std::string const CommitIndex;
   static std::string const FirstIndex;
   static std::string const ReleaseIndex;
   static std::string const SyncIndex;
-  static std::string const LowestIndexToKeep;
-  static std::string const Outcome;
   constexpr static std::string_view MessageId = "messageId";
   constexpr static std::string_view LogIndex = "logIndex";
   constexpr static std::string_view LogTerm = "logTerm";
@@ -421,7 +388,6 @@ class StaticStrings {
   static std::string const BackupSearchToDeleteName;
 
   // aql api strings
-  static std::string const SerializationFormat;
   static std::string const AqlDocumentCall;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
@@ -457,8 +423,5 @@ class StaticStrings {
   static std::string const ValidationParameterLevel;
   static std::string const ValidationParameterRule;
   static std::string const ValidationParameterType;
-
-  // TODO: remove me after refactor is done
-  static std::string const GraphRefactorFlag;
 };
 }  // namespace arangodb

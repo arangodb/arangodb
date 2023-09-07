@@ -117,12 +117,13 @@ ERROR_ARANGO_DATABASE_NOT_FOUND,1228,"database not found","Will be raised when a
 ERROR_ARANGO_DATABASE_NAME_INVALID,1229,"database name invalid","Will be raised when an invalid database name is used."
 ERROR_ARANGO_USE_SYSTEM_DATABASE,1230,"operation only allowed in system database","Will be raised when an operation is requested in a database other than the system database."
 ERROR_ARANGO_INVALID_KEY_GENERATOR,1232,"invalid key generator","Will be raised when an invalid key generator description is used."
-ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,1233,"edge attribute missing or invalid","will be raised when the _from or _to values of an edge are undefined or contain an invalid value."
+ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,1233,"expecting both `_from` and `_to` attributes to be defined in the edge document and have the format `<collectionName>/<vertexKey>` ","will be raised when the _from or _to values of an edge are undefined or contain an invalid value."
 ERROR_ARANGO_INDEX_CREATION_FAILED,1235,"index creation failed","Will be raised when an attempt to create an index has failed."
 ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,1237,"collection type mismatch","Will be raised when a collection has a different type from what has been expected."
 ERROR_ARANGO_COLLECTION_NOT_LOADED,1238,"collection not loaded","Will be raised when a collection is accessed that is not yet loaded."
 ERROR_ARANGO_DOCUMENT_REV_BAD,1239,"illegal document revision","Will be raised when a document revision is corrupt or is missing where needed."
 ERROR_ARANGO_INCOMPLETE_READ,1240,"incomplete read","Will be raised by the storage engine when a read cannot be completed."
+ERROR_ARANGO_OLD_ROCKSDB_FORMAT,1241,"not supported by old legacy data format","Will be raised by the storage engine when an operation cannot be performed because the old, deprecated, little endian key encoding format is still used and an operation is tried which is not supported by this format."
 
 ################################################################################
 ## Checked ArangoDB storage errors

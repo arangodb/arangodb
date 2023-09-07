@@ -106,7 +106,9 @@ const useSetupKeyboardShortcuts = (
     onExecute,
     queryBindParams,
     onOpenSaveAsModal,
-    bindVariablesJsonEditorRef
+    bindVariablesJsonEditorRef,
+    queryOptions,
+    disabledRules
   } = useQueryContext();
   useEffect(() => {
     const editor = (aqlJsonEditorRef.current as any)?.jsonEditor;
@@ -173,7 +175,9 @@ const useSetupKeyboardShortcuts = (
         const selectedText = editor.getSelectedText();
         onExecute({
           queryValue: selectedText,
-          queryBindParams
+          queryBindParams,
+          queryOptions,
+          disabledRules
         });
       }
     });
@@ -207,6 +211,8 @@ const useSetupKeyboardShortcuts = (
     queryBindParams,
     onExecute,
     onOpenSaveAsModal,
-    bindVariablesJsonEditorRef
+    bindVariablesJsonEditorRef,
+    queryOptions,
+    disabledRules
   ]);
 };

@@ -955,7 +955,8 @@ AstNode* Ast::createNodeReference(Variable const* variable) {
 }
 
 /// @brief create an AST subquery reference node
-AstNode* Ast::createNodeSubqueryReference(std::string_view variableName) {
+AstNode* Ast::createNodeSubqueryReference(std::string_view variableName,
+                                          AstNode const* subquery) {
   AstNode* node = createNode(NODE_TYPE_REFERENCE);
   node->setFlag(AstNodeFlagType::FLAG_SUBQUERY_REFERENCE);
 
@@ -967,6 +968,8 @@ AstNode* Ast::createNodeSubqueryReference(std::string_view variableName) {
   }
 
   node->setData(variable);
+
+  _subqueries.emplace(variable->id, subquery);
 
   return node;
 }
@@ -4379,7 +4382,7 @@ AstNode* Ast::endSubQuery() {
   return root;
 }
 
-bool Ast::isInSubQuery() const { return (_queries.size() > 1); }
+bool Ast::isInSubQuery() const noexcept { return (_queries.size() > 1); }
 
 std::unordered_set<std::string> Ast::bindParameters() const {
   return std::unordered_set<std::string>(_bindParameters);
@@ -4415,4 +4418,11 @@ void Ast::setContainsParallelNode() noexcept {
 #ifdef USE_ENTERPRISE
   _containsParallelNode = true;
 #endif
+}
+
+AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
+  if (auto it = _subqueries.find(variable->id); it != _subqueries.end()) {
+    return it->second;
+  }
+  return nullptr;
 }

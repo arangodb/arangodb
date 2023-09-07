@@ -313,11 +313,14 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
     transaction::Options options;  // use default lock timeout
     options.waitForSync = false;
     options.allowImplicitCollectionsForRead = false;
-    transaction::Methods trx(transaction::StandaloneContext::Create(vocbase()),
-                             collections,  // readCollections
-                             EMPTY,        // writeCollections
-                             EMPTY,        // exclusiveCollections
-                             options);
+    auto operationOrigin =
+        transaction::OperationOriginInternal{"generating view definition"};
+    transaction::Methods trx(
+        transaction::StandaloneContext::create(vocbase(), operationOrigin),
+        collections,  // readCollections
+        EMPTY,        // writeCollections
+        EMPTY,        // exclusiveCollections
+        options);
     auto r = trx.begin();
     if (!r.ok()) {
       return r;

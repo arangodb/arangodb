@@ -72,7 +72,7 @@ class RebootTracker {
 
   void updateServerState(ServersKnown state);
 
-  bool isServerAlive(ServerID id) const;
+  bool isServerAlive(ServerID const& id) const;
 
  private:
   void unregisterCallback(PeerState const& peer,

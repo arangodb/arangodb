@@ -25,7 +25,6 @@
 #include "QueryCursor.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
@@ -34,7 +33,6 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
@@ -142,16 +140,16 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // QueryStreamCursor class
 // .............................................................................
 
-QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
-                                     size_t batchSize, double ttl,
-                                     bool isRetriable)
+QueryStreamCursor::QueryStreamCursor(
+    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
+    bool isRetriable, transaction::OperationOrigin operationOrigin)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false,
              isRetriable),
       _query(std::move(q)),
       _queryResultPos(0),
       _finalization(false),
       _allowDirtyReads(false) {
-  _query->prepareQuery(SerializationFormat::SHADOWROWS);
+  _query->prepareQuery();
   _allowDirtyReads = _query->allowDirtyReads();  // is set by prepareQuery!
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
     QueryStreamCursor::debugKillQuery();

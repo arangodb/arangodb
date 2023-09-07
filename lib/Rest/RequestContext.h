@@ -25,11 +25,11 @@
 
 namespace arangodb {
 class RequestContext {
-  RequestContext(const RequestContext&) = delete;
-  RequestContext& operator=(const RequestContext&) = delete;
+  RequestContext(RequestContext const&) = delete;
+  RequestContext& operator=(RequestContext const&) = delete;
 
  public:
-  RequestContext() {}
+  RequestContext() = default;
   virtual ~RequestContext() = default;
 };
 }  // namespace arangodb

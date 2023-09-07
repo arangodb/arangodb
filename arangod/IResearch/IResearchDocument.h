@@ -45,19 +45,6 @@
 #include "store/data_output.hpp"
 #include "index/norm.hpp"
 
-namespace iresearch {
-
-class boolean_filter;
-struct data_output;
-class token_stream;
-class numeric_token_stream;
-class boolean_token_stream;
-
-namespace analysis {
-class analyzer;
-}  // namespace analysis
-}  // namespace iresearch
-
 namespace arangodb {
 namespace aql {
 

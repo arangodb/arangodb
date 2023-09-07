@@ -33,6 +33,9 @@
 #include <string>
 #include <unordered_map>
 
+#include <absl/strings/str_cat.h>
+#include <absl/strings/escaping.h>
+
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
@@ -120,8 +123,7 @@ struct SimpleHttpClientParams {
                            std::string const& password) {
     TRI_ASSERT(prefix != nullptr);
     TRI_ASSERT(strcmp(prefix, "/") == 0);
-    _basicAuth =
-        arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
+    _basicAuth = absl::Base64Escape(absl::StrCat(username, ":", password));
   }
 
   //////////////////////////////////////////////////////////////////////////////

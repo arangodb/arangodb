@@ -32,7 +32,6 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ProfileLevel.h"
@@ -420,7 +419,8 @@ std::shared_ptr<transaction::Methods> MockAqlServer::createFakeTransaction()
     const {
   std::vector<std::string> noCollections{};
   transaction::Options opts;
-  auto ctx = transaction::StandaloneContext::Create(getSystemDatabase());
+  auto ctx = transaction::StandaloneContext::create(
+      getSystemDatabase(), transaction::OperationOriginTestCase{});
   return std::make_shared<transaction::Methods>(
       ctx, noCollections, noCollections, noCollections, opts);
 }
@@ -446,11 +446,12 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
   }
 
   auto query = aql::Query::create(
-      transaction::StandaloneContext::Create(getSystemDatabase()),
+      transaction::StandaloneContext::create(
+          getSystemDatabase(), transaction::OperationOriginTestCase{}),
       aql::QueryString(queryString), nullptr,
       aql::QueryOptions(queryOptions.slice()), scheduler);
   callback(*query);
-  query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   return query;
 }
@@ -582,11 +583,12 @@ std::shared_ptr<aql::Query> MockClusterServer::createFakeQuery(
   }
 
   auto query = aql::Query::create(
-      transaction::StandaloneContext::Create(getSystemDatabase()),
+      transaction::StandaloneContext::create(
+          getSystemDatabase(), transaction::OperationOriginTestCase{}),
       aql::QueryString(queryString), nullptr,
       aql::QueryOptions(queryOptions.slice()));
   callback(*query);
-  query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   return query;
 }

@@ -8,7 +8,7 @@ target_sources(arangodbtests
   HashesTest.cpp
   HybridLogicalClockTest.cpp
   OverloadTest.cpp
-  PriorityQueueTest.cpp
+  SizeLimitedStringTest.cpp
   StringBufferTest.cpp
   StringBufferInternalTest.cpp
   StringTest.cpp

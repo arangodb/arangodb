@@ -92,6 +92,9 @@ struct ClusterCollectionMethods {
       ClusterInfo& ci, std::string_view databaseName,
       std::vector<CreateCollectionBody>& collections)
       -> ResultT<replication2::CollectionGroupUpdates>;
+
+  [[nodiscard]] static auto updateCollectionProperties(
+      TRI_vocbase_t& vocbase, LogicalCollection const& col) -> Result;
 };
 
 }  // namespace arangodb

@@ -160,7 +160,5 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
  private:
   std::vector<std::vector<basics::AttributeName>> const _coveredFields;
-
-  bool const _isRunningInCluster;
 };
 }  // namespace arangodb

@@ -151,12 +151,12 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
 
   /// singleton
   ExecutionNode* eSingleton =
-      plan->registerNode(new SingletonNode(plan, plan->nextId()));
+      plan->createNode<SingletonNode>(plan, plan->nextId());
 
   /// return
-  ExecutionNode* eReturn = plan->registerNode(
-      // link output of index with the return node
-      new ReturnNode(plan, plan->nextId(), lastOutVariable));
+  /// link output of index with the return node
+  ExecutionNode* eReturn =
+      plan->createNode<ReturnNode>(plan, plan->nextId(), lastOutVariable);
 
   /// link nodes together
   first->addDependency(eSingleton);
@@ -164,8 +164,8 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
 
   /// add optional limit node
   if (limit && !limit->isNullValue()) {
-    ExecutionNode* eLimit = plan->registerNode(new LimitNode(
-        plan, plan->nextId(), 0 /*offset*/, limit->getIntValue()));
+    ExecutionNode* eLimit = plan->createNode<LimitNode>(
+        plan, plan->nextId(), 0 /*offset*/, limit->getIntValue());
     plan->insertAfter(last, eLimit);  // inject into plan
   }
 
@@ -308,8 +308,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
 
   // put condition into calculation node
   Variable* calcOutVariable = ast->variables()->createTemporaryVariable();
-  ExecutionNode* eCalc = plan->registerNode(new CalculationNode(
-      plan, plan->nextId(), std::move(calcExpr), calcOutVariable));
+  ExecutionNode* eCalc = plan->createNode<CalculationNode>(
+      plan, plan->nextId(), std::move(calcExpr), calcOutVariable);
   eCalc->addDependency(eEnumerate);
 
   //// create SORT or FILTER
@@ -319,11 +319,11 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
     SortElementVector sortElements{
         SortElement{calcOutVariable, /*asc*/ true,
                     plan->getAst()->query().resourceMonitor()}};
-    eSortOrFilter = plan->registerNode(
-        new SortNode(plan, plan->nextId(), sortElements, false));
+    eSortOrFilter =
+        plan->createNode<SortNode>(plan, plan->nextId(), sortElements, false);
   } else {
-    eSortOrFilter = plan->registerNode(
-        new FilterNode(plan, plan->nextId(), calcOutVariable));
+    eSortOrFilter =
+        plan->createNode<FilterNode>(plan, plan->nextId(), calcOutVariable);
   }
   eSortOrFilter->addDependency(eCalc);
 
@@ -363,8 +363,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
     Variable* calcMergeOutVariable =
         ast->variables()->createTemporaryVariable();
     auto calcMergeExpr = std::make_unique<Expression>(ast, funMerge);
-    ExecutionNode* eCalcMerge = plan->registerNode(new CalculationNode(
-        plan, plan->nextId(), std::move(calcMergeExpr), calcMergeOutVariable));
+    ExecutionNode* eCalcMerge = plan->createNode<CalculationNode>(
+        plan, plan->nextId(), std::move(calcMergeExpr), calcMergeOutVariable);
     plan->insertAfter(eSortOrFilter, eCalcMerge);
 
     //// wrap plan part into subquery

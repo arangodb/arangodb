@@ -62,6 +62,16 @@ void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
   _shardingPrototype = type;
 }
 
+void CreateDatabaseInfo::setSharding(std::string_view sharding) {
+  // sharding -- must be "", "flexible" or "single"
+  bool isValidProperty =
+      (sharding.empty() || sharding == "flexible" || sharding == "single");
+  TRI_ASSERT(isValidProperty);
+  if (isValidProperty) {
+    _sharding = sharding;
+  }
+}
+
 Result CreateDatabaseInfo::load(std::string_view name, uint64_t id) {
   _name = name;
   _id = id;
@@ -249,16 +259,14 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice options, bool extractId,
     if (extractName) {
       auto nameSlice = options.get(StaticStrings::DatabaseName);
       if (!nameSlice.isString()) {
-        return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
+        return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD,
+                      "no valid database name given");
       }
       _name = nameSlice.copyString();
     }
     if (extractId) {
       auto idSlice = options.get(StaticStrings::DatabaseId);
       if (idSlice.isString()) {
-        // improve once it works
-        // look for some nice internal helper this has proably been done before
-        auto idStr = idSlice.copyString();
         _id = basics::StringUtils::uint64(idSlice.stringView().data(),
                                           idSlice.stringView().size());
 

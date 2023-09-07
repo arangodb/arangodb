@@ -1,4 +1,7 @@
-import { EdgeDataType, NodeDataType } from "../../graphV2/GraphData.types";
+import {
+  EdgeDataType,
+  NodeDataType
+} from "../../graphV2/viewGraph/GraphData.types";
 
 type EdgeDataInputType = {
   _id: string;

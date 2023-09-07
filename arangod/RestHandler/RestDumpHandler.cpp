@@ -24,6 +24,7 @@
 #include "RestDumpHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/TokenCache.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -36,6 +37,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
@@ -54,9 +56,11 @@ RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
 
 // main function that dispatches the different routes and commands
 RestStatus RestDumpHandler::execute() {
-  if (!ServerState::instance()->isDBServer()) {
-    generateError(Result(TRI_ERROR_HTTP_NOT_IMPLEMENTED,
-                         "api only expected to be called on dbservers"));
+  if (!ServerState::instance()->isDBServer() &&
+      !ServerState::instance()->isSingleServer()) {
+    generateError(Result(
+        TRI_ERROR_HTTP_NOT_IMPLEMENTED,
+        "API only expected to be called on single server and DBServers"));
     return RestStatus::DONE;
   }
 
@@ -126,7 +130,7 @@ ResultT<std::pair<std::string, bool>> RestDumpHandler::forwardingTarget() {
   if (ServerState::instance()->isCoordinator()) {
     ServerID const& DBserver = _request->value("dbserver");
     if (!DBserver.empty()) {
-      // if DBserver property present, remove auth header
+      // if DBserver property present, add user header
       _request->addHeader(StaticStrings::DumpAuthUser, _request->user());
       return std::make_pair(DBserver, true);
     }
@@ -151,8 +155,11 @@ void RestDumpHandler::handleCommandDumpStart() {
   RocksDBDumpContextOptions opts;
   velocypack::deserializeUnsafe(body, opts);
 
+  auto useVPack = _request->parsedValue("useVPack", false);
+
   auto* manager = _engine.dumpManager();
-  auto guard = manager->createContext(std::move(opts), user, database);
+  auto guard =
+      manager->createContext(std::move(opts), user, database, useVPack);
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());
@@ -194,11 +201,12 @@ void RestDumpHandler::handleCommandDumpNext() {
   }
 
   // output the batch value
+  _response->setAllowCompression(true);
   _response->setHeaderNC(StaticStrings::DumpShardId, std::string{batch->shard});
   _response->setHeaderNC(StaticStrings::DumpBlockCounts,
                          std::to_string(counts));
   _response->setContentType(rest::ContentType::DUMP);
-  _response->addRawPayload(batch->content);
+  _response->addRawPayload(batch->content());
   _response->setGenerateBody(true);
   _response->setResponseCode(rest::ResponseCode::OK);
 
@@ -226,6 +234,12 @@ void RestDumpHandler::handleCommandDumpFinished() {
 }
 
 std::string RestDumpHandler::getAuthorizedUser() const {
+  if (ServerState::instance()->isSingleServer()) {
+    // single server case
+    return _request->user();
+  }
+
+  // cluster case
   bool headerExtracted;
   auto user = _request->header(StaticStrings::DumpAuthUser, headerExtracted);
   if (!headerExtracted) {
@@ -261,19 +275,25 @@ Result RestDumpHandler::validateRequest() {
         return {TRI_ERROR_BAD_PARAMETER};
       }
 
-      // validate permissions for all participating shards
-      RocksDBDumpContextOptions opts;
-      velocypack::deserializeUnsafe(body, opts);
+      if (!ServerState::instance()->isDBServer()) {
+        // make this version of dump compatible with the previous version of
+        // arangodump. the previous version assumed that as long as you are
+        // an admin user, you can dump every collection
+        ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-      ExecContext& exec =
-          *static_cast<ExecContext*>(_request->requestContext());
+        // validate permissions for all participating shards
+        RocksDBDumpContextOptions opts;
+        velocypack::deserializeUnsafe(body, opts);
 
-      for (auto const& it : opts.shards) {
-        // get collection name
-        auto collectionName = _clusterInfo.getCollectionNameForShard(it);
-        if (!exec.canUseCollection(_request->databaseName(), collectionName,
-                                   auth::Level::RO)) {
-          return {TRI_ERROR_FORBIDDEN};
+        for (auto const& it : opts.shards) {
+          // get collection name
+          auto collectionName = _clusterInfo.getCollectionNameForShard(it);
+          if (!ExecContext::current().canUseCollection(
+                  _request->databaseName(), collectionName, auth::Level::RO)) {
+            return {TRI_ERROR_FORBIDDEN,
+                    absl::StrCat("insufficient permissions to access shard ",
+                                 it, " of collection ", collectionName)};
+          }
         }
       }
     }
