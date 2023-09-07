@@ -116,9 +116,9 @@ class RocksDBMethods {
   /// key to a LockInfo struct. The LockInfo struct is 120 bytes big.
   /// we also assume some more overhead for the hash table entries and some
   /// general overhead because the hash table is never assumed to be completely
-  /// full (load factor < 1). thus we assume 64 bytes of overhead for each
+  /// full (load factor < 1). thus we assume 80 bytes of overhead for each
   /// entry. this is an arbitrary value.
-  static constexpr size_t fixedLockEntryOverhead = 120 + 64;
+  static constexpr size_t fixedLockEntryOverhead = 120 + 80;
 
   /// @brief assumed additional overhead for making a dynamic memory allocation
   /// for an std::string value that exceeds the string's internal SSO buffer.
