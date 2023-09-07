@@ -32,7 +32,7 @@ let fs = require('fs');
 function dumpIntegrationSuite () {
   'use strict';
   // this file is used by multiple, hence the checked structure is only in a subdirectory:
-  const dumpDir = fs.join(process.env['dump-directory'], 'UnitTestsDumpSrc');
+  const dumpDir = process.env['dump-directory'];
   const cn = 'UnitTestsDumpEdges';
 
   return {
