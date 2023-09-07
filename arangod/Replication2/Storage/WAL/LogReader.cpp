@@ -46,17 +46,17 @@ LogReader::LogReader(std::unique_ptr<IFileReader> reader)
   if (!_reader->read(header)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-        "failed to read header from log file " + reader->path());
+        "failed to read header from log file " + _reader->path());
   }
   if (header.magic != wMagicFileType) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_REPLICATION_REPLICATED_WAL_INVALID_FILE,
-        "invalid file type in log file " + reader->path());
+        "invalid file type in log file " + _reader->path());
   }
   if (header.version != wCurrentVersion) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_REPLICATION_REPLICATED_WAL_INVALID_FILE,
-        "invalid file version in file " + reader->path());
+        "invalid file version in file " + _reader->path());
   }
   _firstEntry = _reader->position();
 }
