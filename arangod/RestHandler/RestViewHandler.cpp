@@ -288,6 +288,29 @@ void RestViewHandler::modifyView(bool partialUpdate) {
                          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
+  bool parseSuccess = false;
+  auto body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return;
+  }
+
+  auto& analyzers = server().getFeature<iresearch::IResearchAnalyzerFeature>();
+  // First refresh our analyzers cache to see all latest changes in analyzers
+  r = analyzers.loadAvailableAnalyzers(
+      _vocbase.name(), transaction::OperationOriginREST{"modifiying view"});
+  if (!r.ok()) {
+    return generateError(r);
+  }
+
+  bool const isRename = suffixes[1] == "rename";
+  if (isRename) {
+    body = body.get("name");
+    if (!body.isString()) {
+      return generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                           "expecting \"name\" parameter to be a string");
+    }
+  }
+
   // check auth after ensuring that the view exists
   if (!view->canUse(auth::Level::RW)) {
     return generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
@@ -302,28 +325,9 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     return generateError(r);
   }
 
-  auto& analyzers = server().getFeature<iresearch::IResearchAnalyzerFeature>();
-  // First refresh our analyzers cache to see all latest changes in analyzers
-  r = analyzers.loadAvailableAnalyzers(
-      _vocbase.name(), transaction::OperationOriginREST{"modifiying view"});
-  if (!r.ok()) {
-    return generateError(r);
-  }
-
-  bool parseSuccess = false;
-  auto body = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) {
-    return;
-  }
-
   if (suffixes[1] == "rename") {
-    auto name = body.get("name");
-    if (!name.isString()) {
-      return generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                           "expecting \"name\" parameter to be a string");
-    }
     // handle rename functionality
-    r = view->rename(name.copyString());
+    r = view->rename(body.copyString());
   } else {
     // handle update functionality
     r = view->properties(body, true, partialUpdate);
