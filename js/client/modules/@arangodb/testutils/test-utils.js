@@ -461,7 +461,7 @@ function readTestResult(path, rc, testCase) {
     if ((testCase !== undefined) && result.hasOwnProperty(testCase)) {
       return result[testCase];
     } else {
-      if (rc.exitCode != 0) {
+      if (rc.exitCode !== 0) {
         result.failed += 1;
         result.status = false;
         result.message = rc.message;
