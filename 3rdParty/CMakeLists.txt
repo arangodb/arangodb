@@ -216,7 +216,6 @@ endforeach()
 
 add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}")
 
-
 target_compile_definitions(iresearch-static PRIVATE -DDISABLE_EXECINFO)
 
 ################################################################################
