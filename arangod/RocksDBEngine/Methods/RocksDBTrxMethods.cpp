@@ -454,7 +454,7 @@ void RocksDBTrxMethods::initializeReadWriteBatch() {
   // we release the WriteBatch.
   TRI_ASSERT(_memoryUsedByReadWriteBatch == 0);
   auto value =
-      _readWriteBatch->GetWriteBatch()->GetDataSize() + cloner.memoryUsage;
+      _readWriteBatch->GetWriteBatch()->Data().capacity() + cloner.memoryUsage;
   // may throw
   _memoryTracker.increaseMemoryUsage(value);
   _memoryUsedByReadWriteBatch = value;
