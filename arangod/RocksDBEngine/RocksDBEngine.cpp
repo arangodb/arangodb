@@ -149,7 +149,7 @@
 // correct sequence numbers for the files without gaps
 #undef USE_SST_INGESTION
 
-#define USE_CUSTOM_WAL
+//#define USE_CUSTOM_WAL
 
 using namespace arangodb;
 using namespace arangodb::application_features;
