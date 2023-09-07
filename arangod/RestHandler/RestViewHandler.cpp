@@ -341,7 +341,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     auto newView = resolver.getView(view->id());
     if (!newView) {
       LOG_TOPIC("f58dc", WARN, Logger::CLUSTER)
-          << "Load plan for some strange reason doesn't contain this view";
+          << "Failed to refresh view definition from the Agency";
       return generateResult(rest::ResponseCode::OK, builder.close().slice());
     }
     view = std::move(newView);
