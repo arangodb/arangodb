@@ -547,9 +547,8 @@ Result IResearchView::properties(velocypack::Slice slice, bool isUserRequest,
 }
 
 Result IResearchView::renameImpl(std::string const& oldName) {
-  return ServerState::instance()->isSingleServer()
-             ? storage_helper::rename(*this, oldName)
-             : Result{TRI_ERROR_CLUSTER_UNSUPPORTED};
+  TRI_ASSERT(ServerState::instance()->isSingleServer());
+  return storage_helper::rename(*this, oldName);
 }
 
 Result IResearchView::unlink(DataSourceId cid) noexcept {

@@ -46,6 +46,8 @@
 
 #include <utility>
 
+#include <absl/cleanup/cleanup.h>
+
 namespace arangodb {
 namespace {
 
@@ -198,18 +200,18 @@ Result LogicalView::instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
 }
 
 Result LogicalView::rename(std::string&& newName) {
-  auto oldName = name();
-  try {
-    name(std::move(newName));
-    auto r = renameImpl(oldName);
-    if (!r.ok()) {
-      name(std::move(oldName));
-    }
-    return r;
-  } catch (...) {
-    name(std::move(oldName));
-    throw;
+  if (!ServerState::instance()->isSingleServer()) {
+    return {TRI_ERROR_CLUSTER_UNSUPPORTED};
   }
+  // TODO thread unsafe
+  auto oldName = name();
+  absl::Cleanup revert = [&] { name(std::move(oldName)); };
+  name(std::move(newName));
+  auto r = renameImpl(oldName);
+  if (r.ok()) {
+    std::move(revert).Cancel();
+  }
+  return r;
 }
 
 namespace cluster_helper {

@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.17.1.
+
 * Fixed BTS-1489: Race condition in AsioSocket shutdown when using SSL.
           
 * Added startup option `--transaction.streaming-max-transaction-size` to make
