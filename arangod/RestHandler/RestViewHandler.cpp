@@ -325,7 +325,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     return generateError(r);
   }
 
-  if (suffixes[1] == "rename") {
+  if (isRename) {
     // handle rename functionality
     r = view->rename(body.copyString());
   } else {
