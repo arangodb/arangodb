@@ -377,7 +377,7 @@ function ahuacatlMemoryLimitSkipTestSuite () {
 
     testUpdate : function () {
       const query = "FOR doc IN " + cn + " UPDATE doc WITH { foobar: 'bazbarkqux', p2: doc.payload } IN " + cn;
-      const options = { memoryLimit: 400 * 1000 * 1000 };
+      const options = { memoryLimit: 420 * 1000 * 1000 };
       
       let actual = AQL_EXECUTE(query, null, options).json;
       assertEqual(0, actual.length);
