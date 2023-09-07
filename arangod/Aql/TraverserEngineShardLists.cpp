@@ -84,10 +84,11 @@ TraverserEngineShardLists::TraverserEngineShardLists(
 
 std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
     containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
-    ServerID const& server, std::vector<std::string> const& shardIds,
+    ServerID const& server,
+    std::shared_ptr<std::vector<std::string> const> const& shardIds,
     bool allowReadFromFollower) {
   std::vector<ShardID> localShards;
-  for (auto const& shard : shardIds) {
+  for (auto const& shard : *shardIds) {
     auto const& it = shardMapping.find(shard);
     if (it == shardMapping.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(

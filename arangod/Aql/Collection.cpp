@@ -111,7 +111,8 @@ std::unordered_set<std::string> Collection::responsibleServers() const {
   auto& clusterInfo =
       _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
-  for (auto const& it : shardIds()) {
+  auto shardIds = this->shardIds();
+  for (auto const& it : *shardIds) {
     auto servers = clusterInfo.getResponsibleServer(it);
     result.emplace((*servers)[0]);
   }
@@ -124,7 +125,8 @@ size_t Collection::responsibleServers(
       _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   size_t n = 0;
-  for (auto const& it : shardIds()) {
+  auto shardIds = this->shardIds();
+  for (auto const& it : *shardIds) {
     auto servers = clusterInfo.getResponsibleServer(it);
     result.emplace((*servers)[0]);
     ++n;
@@ -137,19 +139,19 @@ std::string Collection::distributeShardsLike() const {
 }
 
 /// @brief returns the shard ids of a collection
-std::vector<std::string> Collection::shardIds() const {
+std::shared_ptr<std::vector<std::string> const> Collection::shardIds() const {
   auto& clusterInfo =
       _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
   auto coll = getCollection();
   if (coll->isSmart() && coll->type() == TRI_COL_TYPE_EDGE) {
     auto names = coll->realNamesForRead();
-    std::vector<std::string> res;
+    auto res = std::make_shared<std::vector<std::string>>();
     for (auto const& n : names) {
       auto collectionInfo = clusterInfo.getCollection(_vocbase->name(), n);
       auto list = clusterInfo.getShardList(
           basics::StringUtils::itoa(collectionInfo->id().id()));
-      for (auto const& x : list) {
-        res.push_back(x);
+      for (auto const& x : *list) {
+        res->push_back(x);
       }
     }
     return res;
@@ -159,13 +161,21 @@ std::vector<std::string> Collection::shardIds() const {
 }
 
 /// @brief returns the filtered list of shard ids of a collection
-std::vector<std::string> Collection::shardIds(
+std::shared_ptr<std::vector<std::string> const> Collection::shardIds(
     std::unordered_set<std::string> const& includedShards) const {
   // use the simple method first
-  auto result = shardIds();
+  auto copy = shardIds();
+
+  if (includedShards.empty()) {
+    // no shards given => return them all!
+    return copy;
+  }
+
+  // copy first as we will modify the result
+  auto result = std::make_shared<std::vector<std::string>>(*copy);
 
   if (!includedShards.empty()) {
-    std::erase_if(result, [&includedShards](auto const& s) {
+    std::erase_if(*result, [&includedShards](auto const& s) {
       return !includedShards.contains(s);
     });
   }

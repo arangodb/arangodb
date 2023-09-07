@@ -229,9 +229,9 @@ void ShardLocking::updateLocking(
   }
   if (info.allShards.empty()) {
     // Load shards only once per collection!
-    auto shards = col->shardIds(_query.queryOptions().restrictToShards);
+    auto const shards = col->shardIds(_query.queryOptions().restrictToShards);
     // What if we have an empty shard list here?
-    if (shards.empty()) {
+    if (shards->empty()) {
       auto const& name = col->name();
       if (!NameValidator::isSystemName(name)) {
         LOG_TOPIC("0997e", WARN, arangodb::Logger::AQL)
@@ -243,8 +243,8 @@ void ShardLocking::updateLocking(
           absl::StrCat("Could not identify any shard belonging to collection: ",
                        name, ". Maybe it is dropped?"));
     }
-    for (auto& s : shards) {
-      info.allShards.emplace(std::move(s));
+    for (auto const& s : *shards) {
+      info.allShards.emplace(s);
     }
   }
   auto snippetPart = info.snippetInfo.find(snippetId);

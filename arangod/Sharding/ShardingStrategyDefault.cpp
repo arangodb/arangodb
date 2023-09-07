@@ -321,12 +321,12 @@ std::span<ShardID const> ShardingStrategyHashBase::determineShards() {
     auto shards =
         ci.getShardList(std::to_string(_sharding->collection()->id().id()));
 
-    if (shards.empty()) {
+    if (shards->empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid shard count");
     }
 
-    _shards = std::move(shards);
+    _shards = *shards;
     _shardsSet.store(true, std::memory_order_release);
   }
   return _shards;

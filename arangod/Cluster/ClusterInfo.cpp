@@ -1670,13 +1670,13 @@ void ClusterInfo::loadPlan() {
         }
 
         auto shardIDs = newCollection->shardIds();
-        auto shards = allocateShared<ManagedVector<pmr::ShardID>>();
+        auto shards = std::make_shared<std::vector<ServerID>>();
         shards->reserve(shardIDs->size());
         newShardToName.reserve(shardIDs->size());
 
         for (auto const& p : *shardIDs) {
           TRI_ASSERT(p.first.size() >= 2);
-          shards->push_back(pmr::ShardID{p.first, _resourceMonitor});
+          shards->push_back(p.first);
           auto v = allocateShared<ManagedVector<pmr::ServerID>>();
           v->assign(p.second.begin(), p.second.end());
           newShardsToPlanServers.insert_or_assign(
@@ -5478,30 +5478,24 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 /// @brief find the shard list of a collection, sorted numerically
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<ShardID> ClusterInfo::getShardList(std::string_view collectionID) {
-  std::vector<ShardID> result;
-
+std::shared_ptr<std::vector<ShardID> const> ClusterInfo::getShardList(
+    std::string_view collectionID) {
   TRI_IF_FAILURE("ClusterInfo::failedToGetShardList") {
     // Simulate no results
-    return result;
+    return std::make_shared<std::vector<ShardID> const>();
   }
 
   {
     // Get the sharding keys and the number of shards:
     READ_LOCKER(readLocker, _planProt.lock);
-    // _shards is a map-type <DataSourceId,
-    // shared_ptr<vector<pmr::ManagedString>>>
-    if (auto it = _shards.find(collectionID); it != _shards.end()) {
-      auto copy = it->second;
-      readLocker.unlock();
+    // _shards is a map-type <DataSourceId, shared_ptr<vector<string>>>
+    auto it = _shards.find(collectionID);
 
-      result.reserve(copy->size());
-      for (auto const& s : *copy) {
-        result.emplace_back(s);
-      }
+    if (it != _shards.end()) {
+      return it->second;
     }
   }
-  return result;
+  return std::make_shared<std::vector<ShardID> const>();
 }
 
 std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>

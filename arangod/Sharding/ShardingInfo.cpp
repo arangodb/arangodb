@@ -28,7 +28,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
@@ -623,12 +622,8 @@ void ShardingInfo::sortShardNamesNumerically(T& list) {
       });
 }
 
-template void ShardingInfo::sortShardNamesNumerically<std::vector<ShardID>>(
-    std::vector<ShardID>& list);
-
-template void ShardingInfo::sortShardNamesNumerically<
-    ClusterInfo::ManagedVector<ClusterInfo::pmr::ShardID>>(
-    ClusterInfo::ManagedVector<ClusterInfo::pmr::ShardID>& list);
+template void ShardingInfo::sortShardNamesNumerically<std::vector<ServerID>>(
+    std::vector<ServerID>& list);
 
 template void ShardingInfo::sortShardNamesNumerically<
     containers::SmallVector<std::string_view, 8>>(
