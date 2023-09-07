@@ -242,6 +242,9 @@ class ConfigBuilder {
     }
     this.config['collection'] = collection;
   }
+  resetAllDatabases() {
+    delete this.config['all-databases'];
+  }
   setAllDatabases() {
     this.config['all-databases'] = 'true';
     delete this.config['server.database'];

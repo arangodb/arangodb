@@ -364,12 +364,13 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   runCheckDumpFilesSuite(path) {
-    this.print('Inspecting dumped files - ' + path);
+    this.print(`Inspecting dumped files - ${path} - ${this.allDumps.length}`);
     if (this.allDumps.length > 0) {
       process.env['dump-directory'] = this.allDumps[0];
     } else {
       process.env['dump-directory'] = this.dumpConfig.config['output-directory'];
     }
+    print(process.env['dump-directory'])
     this.results.checkDumpFiles = this.runOneTest(path);
     delete process.env['dump-directory'];
     return this.validate(this.results.checkDumpFiles);
@@ -384,15 +385,18 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
 
   dumpFrom(database, separateDir = false) {
     this.print(`dumping ${database}`);
-    if (separateDir) {
-      if (!fs.exists(fs.join(this.instanceManager.rootDir, 'dump'))) {
-        fs.makeDirectory(fs.join(this.instanceManager.rootDir, 'dump'));
-      }
-      let dumpDir = 'dump' + fs.pathSeparator + database;
-      this.dumpConfig.setOutputDirectory(dumpDir);
-      this.allDumps.push(dumpDir);
+    let baseDir = fs.join(this.instanceManager.rootDir, 'dump');
+    print(baseDir)
+    if (!fs.exists(baseDir)) {
+      fs.makeDirectory(baseDir);
     }
-    if (!this.dumpConfig.haveSetAllDatabases()) {
+    if (separateDir) {
+      this.dumpConfig.setOutputDirectory(database);
+      this.allDumps.push(this.dumpConfig.config['output-directory']);
+    }
+    if (database !== '_system' || !this.dumpConfig.haveSetAllDatabases()) {
+      this.dumpConfig.resetAllDatabases();
+      print(this.dumpConfig.config['output-directory'])
       this.allDumps.push(this.dumpConfig.config['output-directory']);
       this.dumpConfig.setDatabase(database);
     }
@@ -410,7 +414,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       if (!fs.exists(fs.join(this.instanceManager.rootDir, 'dump'))) {
         fs.makeDirectory(fs.join(this.instanceManager.rootDir, 'dump'));
       }
-      this.restoreConfig.setInputDirectory('dump' + fs.pathSeparator + options.fromDir, true);
+      this.restoreConfig.setInputDirectory(options.fromDir, true);
     }
 
     if (!this.restoreConfig.haveSetAllDatabases()) {
@@ -762,7 +766,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
     } else {
       if (!helper.runSetupSuite(setupFile) ||
           !helper.runRtaMakedata() ||
-          !helper.dumpFrom('UnitTestsDumpSrc') ||
+          !helper.dumpFrom('UnitTestsDumpSrc', true) ||
           !helper.dumpFromRta() ||
           (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
           !helper.runCleanupSuite(cleanupFile) ||
@@ -922,7 +926,6 @@ function dumpWithCrashes (options) {
 function dumpWithCrashesParallel (options) {
   let dumpOptions = {
     dbServers: 3,
-    allDatabases: true,
     deactivateCompression: true,
     activateFailurePoint: true,
     threads: 1,
