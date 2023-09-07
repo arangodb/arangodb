@@ -721,13 +721,18 @@ void DumpFeature::collectOptions(
                   "Wrap each document into a {type, data} envelope "
                   "(this is required for compatibility with v3.7 and before).",
                   new BooleanParameter(&_options.useEnvelope))
-      .setIntroducedIn(30800);
+      .setIntroducedIn(30800)
+      .setDeprecatedIn(31011);
 
-  options->addOption("--tick-start", "Only include data after this tick.",
-                     new UInt64Parameter(&_options.tickStart));
+  options
+      ->addOption("--tick-start", "Only include data after this tick.",
+                  new UInt64Parameter(&_options.tickStart))
+      .setDeprecatedIn(31011);
 
-  options->addOption("--tick-end", "Last tick to be included in data dump.",
-                     new UInt64Parameter(&_options.tickEnd));
+  options
+      ->addOption("--tick-end", "Last tick to be included in data dump.",
+                  new UInt64Parameter(&_options.tickEnd))
+      .setDeprecatedIn(31011);
 
   options
       ->addOption("--maskings", "A path to a file with masking definitions.",
