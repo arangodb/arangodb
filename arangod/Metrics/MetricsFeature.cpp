@@ -61,21 +61,16 @@ void MetricsFeature::collectOptions(
   _serverStatistics =
       std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
 
-  options
-      ->addOption("--server.export-metrics-api",
-                  "Whether to enable the metrics API.",
-                  new options::BooleanParameter(&_export),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30600);
+  options->addOption(
+      "--server.export-metrics-api", "Whether to enable the metrics API.",
+      new options::BooleanParameter(&_export),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption("--server.export-read-write-metrics",
-                  "Whether to enable metrics for document reads and writes.",
-                  new options::BooleanParameter(&_exportReadWriteMetrics),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30707);
+  options->addOption(
+      "--server.export-read-write-metrics",
+      "Whether to enable metrics for document reads and writes.",
+      new options::BooleanParameter(&_exportReadWriteMetrics),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(
@@ -105,7 +100,7 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   return metric;
 }
 
-Metric* MetricsFeature::get(MetricKeyView const& key) {
+Metric* MetricsFeature::get(MetricKeyView const& key) const {
   std::shared_lock lock{_mutex};
   auto it = _registry.find(key);
   if (it == _registry.end()) {
@@ -134,7 +129,7 @@ void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 
 void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
   // minimize reallocs
-  result.reserve(32768);
+  result.reserve(64 * 1024);
 
   // QueryRegistryFeature
   auto& q = server().getFeature<QueryRegistryFeature>();

@@ -59,6 +59,8 @@ DocumentLeaderState::DocumentLeaderState(
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
+  _resigning = true;
+
   auto core = _guardedData.doUnderLock([&](auto& data) {
     ADB_PROD_ASSERT(!data.didResign())
         << "resigning leader " << gid
@@ -104,11 +106,16 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                                    ptr = std::move(ptr)](
                                       auto& data) -> futures::Future<Result> {
     if (data.didResign()) {
-      return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
     }
 
     std::unordered_set<TransactionId> activeTransactions;
     while (auto entry = ptr->next()) {
+      if (self->_resigning) {
+        // We have not officially resigned yet, but we are about to. So, we can
+        // just stop here.
+        break;
+      }
       auto doc = entry->second;
 
       auto res = std::visit(
@@ -171,17 +178,17 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     }
 
     auto abortAll = ReplicatedOperation::buildAbortAllOngoingTrxOperation();
-    auto abortAllResFut =
+    auto abortAllReplicationFut =
         self->replicateOperation(abortAll, ReplicationOptions{});
     // Should finish immediately, because we are not waiting the operation to be
     // committed in the replicated log
-    TRI_ASSERT(abortAllResFut.isReady());
-    auto abortAllRes = abortAllResFut.get();
-    if (abortAllRes.fail()) {
+    TRI_ASSERT(abortAllReplicationFut.isReady());
+    auto abortAllReplicationStatus = abortAllReplicationFut.get();
+    if (abortAllReplicationStatus.fail()) {
       LOG_CTX("b4217", FATAL, self->loggerContext)
           << "failed to replicate AbortAllOngoingTrx operation during "
              "recovery: "
-          << abortAllRes.result();
+          << abortAllReplicationStatus.result();
       FATAL_ERROR_EXIT();
     }
 
@@ -200,10 +207,15 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       }
     }
 
-    auto abortAllResult = data.transactionHandler->applyEntry(abortAll);
-    TRI_ASSERT(abortAllResult.ok());
+    auto abortAllTrxStatus = data.transactionHandler->applyEntry(abortAll);
+    TRI_ASSERT(abortAllTrxStatus.ok()) << abortAllTrxStatus;
 
-    self->release(abortAllRes.get());
+    if (self->_resigning) {
+      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+    }
+
+    TRI_ASSERT(abortAllReplicationStatus.ok());
+    self->release(abortAllReplicationStatus.get());
 
     return {TRI_ERROR_NO_ERROR};
   });
@@ -400,7 +412,8 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
     }
     auto logIndex = result.get();
 
-    return self->_guardedData.doUnderLock([&](auto& data) -> Result {
+    return self->_guardedData.doUnderLock([self, logIndex, op = std::move(op)](
+                                              auto& data) mutable -> Result {
       if (data.didResign()) {
         return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
       }
@@ -415,6 +428,60 @@ auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
 
       if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
         LOG_CTX("ed8e5", ERR, self->loggerContext)
+            << "Failed to call release: " << releaseRes;
+      }
+      return {};
+    });
+  });
+}
+
+auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
+                                      std::shared_ptr<VPackBuilder> properties,
+                                      std::string followersToDrop)
+    -> futures::Future<Result> {
+  ReplicatedOperation op = ReplicatedOperation::buildModifyShardOperation(
+      std::move(shard), std::move(collectionId), std::move(properties),
+      std::move(followersToDrop));
+
+  auto fut = _guardedData.doUnderLock([&](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+
+    return replicateOperation(
+        op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
+  });
+
+  return std::move(fut).thenValue([self = shared_from_this(),
+                                   op = std::move(op)](auto&& result) mutable {
+    if (result.fail()) {
+      return result.result();
+    }
+    auto logIndex = result.get();
+
+    return self->_guardedData.doUnderLock([logIndex, self, op = std::move(op)](
+                                              auto& data) mutable -> Result {
+      if (data.didResign()) {
+        return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+      }
+
+      // Unlike followers, the leader does not ignore the "followersToDrop"
+      // parameter.
+      std::get<ReplicatedOperation::ModifyShard>(op.operation)
+          .ignoreFollowersToDrop = false;
+
+      auto&& applyEntryRes = data.transactionHandler->applyEntry(std::move(op));
+      if (applyEntryRes.fail()) {
+        LOG_CTX("b5e46", FATAL, self->loggerContext)
+            << "ModifyShard operation failed on the leader, after being "
+               "replicated to followers: "
+            << applyEntryRes;
+        FATAL_ERROR_EXIT();
+      }
+
+      if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
+        LOG_CTX("bbe40", ERR, self->loggerContext)
             << "Failed to call release: " << releaseRes;
       }
       return {};
@@ -445,7 +512,9 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
     }
     auto logIndex = result.get();
 
-    return self->_guardedData.doUnderLock([&](auto& data) -> Result {
+    return self->_guardedData.doUnderLock([self, logIndex, op = std::move(op),
+                                           shard = std::move(shard)](
+                                              auto& data) mutable -> Result {
       if (data.didResign()) {
         return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
       }

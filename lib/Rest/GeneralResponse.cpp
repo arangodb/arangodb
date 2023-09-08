@@ -478,5 +478,4 @@ GeneralResponse::GeneralResponse(ResponseCode responseCode, uint64_t mid)
       _responseCode(responseCode),
       _contentType(ContentType::UNSET),
       _contentTypeRequested(ContentType::UNSET),
-      _generateBody(true),
-      _allowCompression(false) {}
+      _generateBody(true) {}

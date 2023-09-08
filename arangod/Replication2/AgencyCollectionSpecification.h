@@ -47,6 +47,7 @@ struct CollectionGroupId : basics::Identifier {
  */
 struct CollectionGroup {
   CollectionGroupId id;
+  CollectionID groupLeader;
 
   struct Collection {};
   std::unordered_map<CollectionID, Collection> collections;
@@ -117,6 +118,7 @@ struct Collection {
     bool isSmart{false};
     bool isDisjoint{false};
     bool cacheEnabled{false};
+    std::string shardingStrategy{""};
     std::vector<std::string> shardKeys{};
     inspection::NonNullOptional<std::string> smartJoinAttribute{std::nullopt};
     inspection::NonNullOptional<std::string> smartGraphAttribute{std::nullopt};

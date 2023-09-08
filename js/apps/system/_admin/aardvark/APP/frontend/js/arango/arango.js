@@ -1,5 +1,4 @@
-/* jshint unused: false */
-/* global Noty, Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
+/* global frontendConfig */
 
 (function () {
   'use strict';

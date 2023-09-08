@@ -59,11 +59,12 @@ using namespace arangodb::basics;
 aql::QueryResultV8 AqlQuery(v8::Isolate* isolate,
                             arangodb::LogicalCollection const* col,
                             std::string const& aql,
-                            std::shared_ptr<VPackBuilder> const& bindVars) {
+                            std::shared_ptr<VPackBuilder> const& bindVars,
+                            transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(col != nullptr);
 
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(col->vocbase(), true),
+      transaction::V8Context::create(col->vocbase(), operationOrigin, true),
       arangodb::aql::QueryString(aql), bindVars);
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
@@ -183,7 +184,9 @@ static void EdgesQuery(TRI_edge_direction_e direction,
 
   std::string const queryString =
       "FOR doc IN @@collection " + filter + " RETURN doc";
-  auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
+  auto queryResult =
+      AqlQuery(isolate, collection, queryString, bindVars,
+               transaction::OperationOriginREST{"fetching edges"});
 
   if (!queryResult.v8Data.IsEmpty()) {
     TRI_V8_RETURN(queryResult.v8Data);
@@ -211,10 +214,13 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
 
-  auto transactionContext =
-      transaction::V8Context::Create(collection->vocbase(), true);
+  auto operationOrigin =
+      transaction::OperationOriginREST{"enumerating collection documents"};
+  auto transactionContext = transaction::V8Context::create(
+      collection->vocbase(), operationOrigin, true);
   SingleCollectionTransaction trx(transactionContext, *collection,
                                   AccessMode::Type::READ);
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -297,10 +303,13 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const collectionName(col->name());
 
+  auto operationOrigin =
+      transaction::OperationOriginREST{"fetching random document"};
   auto transactionContext =
-      transaction::V8Context::Create(col->vocbase(), true);
+      transaction::V8Context::create(col->vocbase(), operationOrigin, true);
   SingleCollectionTransaction trx(transactionContext, *col,
                                   AccessMode::Type::READ);
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -451,7 +460,9 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const queryString(
       "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
-  auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
+  auto queryResult =
+      AqlQuery(isolate, collection, queryString, bindVars,
+               transaction::OperationOriginREST{"looking up documents"});
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (!queryResult.v8Data.IsEmpty()) {
@@ -496,7 +507,9 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
       "FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: "
       "true }");
 
-  auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
+  auto queryResult =
+      AqlQuery(isolate, collection, queryString, bindVars,
+               transaction::OperationOriginREST{"removing documents"});
 
   size_t ignored = 0;
   size_t removed = 0;

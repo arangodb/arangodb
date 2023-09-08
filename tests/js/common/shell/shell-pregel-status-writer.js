@@ -142,7 +142,7 @@ function pregelStatusWriterSuiteModules() {
     tearDown: function () {
       pregelTestHelpers.dropExampleGraph();
     },
-
+    
     testSystemCollectionExists: function () {
       assertTrue(db[pregelSystemCollectionName]);
       const properties = db[pregelSystemCollectionName].properties();
@@ -239,6 +239,7 @@ function pregelStatusWriterSuiteModules() {
       // delete entry again, should reply that deletion is not possible as history entry not available anymore
       try {
         pregel.removeHistory(pid);
+        fail();
       } catch (error) {
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, error.errorNum);
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message, error.errorMessage);

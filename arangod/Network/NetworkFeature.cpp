@@ -26,8 +26,11 @@
 #include <fuerte/connection.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/EncodingUtils.h"
 #include "Basics/FunctionUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -147,30 +150,23 @@ void NetworkFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("network", "cluster-internal networking");
 
-  options
-      ->addOption("--network.io-threads",
-                  "The number of network I/O threads for cluster-internal "
-                  "communication.",
-                  new UInt32Parameter(&_numIOThreads))
-      .setIntroducedIn(30600);
-  options
-      ->addOption("--network.max-open-connections",
-                  "The maximum number of open TCP connections for "
-                  "cluster-internal communication per endpoint",
-                  new UInt64Parameter(&_maxOpenConnections))
-      .setIntroducedIn(30600);
-  options
-      ->addOption("--network.idle-connection-ttl",
-                  "The default time-to-live of idle connections for "
-                  "cluster-internal communication (in milliseconds).",
-                  new UInt64Parameter(&_idleTtlMilli))
-      .setIntroducedIn(30600);
-  options
-      ->addOption("--network.verify-hosts",
-                  "Verify peer certificates when using TLS in cluster-internal "
-                  "communication.",
-                  new BooleanParameter(&_verifyHosts))
-      .setIntroducedIn(30600);
+  options->addOption("--network.io-threads",
+                     "The number of network I/O threads for cluster-internal "
+                     "communication.",
+                     new UInt32Parameter(&_numIOThreads));
+  options->addOption("--network.max-open-connections",
+                     "The maximum number of open TCP connections for "
+                     "cluster-internal communication per endpoint",
+                     new UInt64Parameter(&_maxOpenConnections));
+  options->addOption("--network.idle-connection-ttl",
+                     "The default time-to-live of idle connections for "
+                     "cluster-internal communication (in milliseconds).",
+                     new UInt64Parameter(&_idleTtlMilli));
+  options->addOption(
+      "--network.verify-hosts",
+      "Verify peer certificates when using TLS in cluster-internal "
+      "communication.",
+      new BooleanParameter(&_verifyHosts));
 
   std::unordered_set<std::string> protos = {"", "http", "http2", "h2", "vst"};
 
@@ -182,7 +178,6 @@ void NetworkFeature::collectOptions(
           "The network protocol to use for cluster-internal communication.",
           new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
           options::makeDefaultFlags(options::Flags::Uncommon))
-      .setIntroducedIn(30700)
       .setDeprecatedIn(30900);
 
   options
@@ -301,6 +296,7 @@ void NetworkFeature::beginShutdown() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
     for (auto const& [req, item] : _retryRequests) {
+      TRI_ASSERT(item != nullptr);
       item->cancel();
     }
     _retryRequests.clear();
@@ -317,6 +313,7 @@ void NetworkFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
     for (auto const& [req, item] : _retryRequests) {
+      TRI_ASSERT(item != nullptr);
       item->cancel();
     }
     _retryRequests.clear();
@@ -386,10 +383,11 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   }
   conn->sendRequest(
       std::move(req),
-      [this, &pool, isFromPool, cb = std::move(cb),
-       endpoint = std::move(endpoint)](fuerte::Error err,
-                                       std::unique_ptr<fuerte::Request> req,
-                                       std::unique_ptr<fuerte::Response> res) {
+      [this, &pool, isFromPool,
+       handleContentEncoding = options.handleContentEncoding,
+       cb = std::move(cb), endpoint = std::move(endpoint)](
+          fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+          std::unique_ptr<fuerte::Response> res) {
         if (req->timeQueued().time_since_epoch().count() != 0 &&
             req->timeAsyncWrite().time_since_epoch().count() != 0) {
           // In the 0 cases fuerte did not even accept or start to send
@@ -444,6 +442,30 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
         }
         TRI_ASSERT(req != nullptr);
         finishRequest(pool, err, req, res);
+        if (res != nullptr && handleContentEncoding) {
+          // transparently handle decompression
+          auto const& encoding =
+              res->header.metaByKey(StaticStrings::ContentEncoding);
+          if (encoding == StaticStrings::EncodingGzip) {
+            velocypack::Buffer<uint8_t> uncompressed;
+            auto r = encoding::gzipUncompress(
+                reinterpret_cast<uint8_t const*>(res->payload().data()),
+                res->payload().size(), uncompressed);
+            if (r != TRI_ERROR_NO_ERROR) {
+              THROW_ARANGO_EXCEPTION(r);
+            }
+            res->setPayload(std::move(uncompressed), 0);
+          } else if (encoding == StaticStrings::EncodingDeflate) {
+            velocypack::Buffer<uint8_t> uncompressed;
+            auto r = encoding::gzipInflate(
+                reinterpret_cast<uint8_t const*>(res->payload().data()),
+                res->payload().size(), uncompressed);
+            if (r != TRI_ERROR_NO_ERROR) {
+              THROW_ARANGO_EXCEPTION(r);
+            }
+            res->setPayload(std::move(uncompressed), 0);
+          }
+        }
         cb(err, std::move(req), std::move(res), isFromPool);
       });
 }
@@ -493,9 +515,6 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
 void NetworkFeature::retryRequest(
     std::shared_ptr<network::RetryableRequest> req, RequestLane lane,
     std::chrono::steady_clock::duration duration) {
-  if (server().isStopping()) {
-    req->cancel();
-  }
   auto cb = [this, weak = std::weak_ptr(req)](bool cancelled) {
     std::unique_lock guard(_workItemMutex);
     if (auto self = weak.lock(); self) {
@@ -508,12 +527,44 @@ void NetworkFeature::retryRequest(
       }
     }
   };
+
+  // this will automatically cancel the request when we leave this
+  // method, unless we are canceling this scopeGuard explicitly.
+  // note that the mutex lock will be unlocked before the scopeGuard
+  // fires.
+  auto cancelGuard = scopeGuard([req]() noexcept {
+    if (req) {
+      req->cancel();
+    }
+  });
+
   // we need the mutex during `queueDelayed` because the lambda might be
   // executed faster than we can add the work item to the _retryRequests map.
   std::unique_lock guard(_workItemMutex);
+
+  if (server().isStopping()) {
+    // with trigger cancelGuard - cancels request
+    return;
+  }
+
   auto item = SchedulerFeature::SCHEDULER->queueDelayed(
       "retry-requests", lane, duration, std::move(cb));
-  _retryRequests.emplace(std::move(req), std::move(item));
+
+  if (item != nullptr) {
+    try {
+      TRI_IF_FAILURE("NetworkFeature::retryRequestFail") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      _retryRequests.emplace(std::move(req), std::move(item));
+      // the request successfully made it into _retryRequests.
+      // now abandon the automatic cancelation.
+      cancelGuard.cancel();
+    } catch (...) {
+    }
+  }
+  // if we get here and haven't canceled cancelGuard,
+  // the request will be automatically canceled
 }
 
 }  // namespace arangodb

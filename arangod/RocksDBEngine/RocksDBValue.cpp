@@ -37,6 +37,22 @@
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
+namespace {
+uint64_t doubleToInt(double d) {
+  uint64_t i;
+  static_assert(sizeof(i) == sizeof(d));
+  std::memcpy(&i, &d, sizeof(i));
+  return i;
+}
+
+double intToDouble(uint64_t i) {
+  double d;
+  static_assert(sizeof(i) == sizeof(d));
+  std::memcpy(&d, &i, sizeof(d));
+  return d;
+}
+}  // namespace
+
 RocksDBValue RocksDBValue::Database(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::Database, data);
 }
@@ -178,9 +194,9 @@ VPackSlice RocksDBValue::uniqueIndexStoredValues(rocksdb::Slice const& slice) {
 S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
   TRI_ASSERT(s.size() == sizeof(double) * 3);
   return S2Point(
-      intToDouble(uint64FromPersistent(s.data())),
-      intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t))),
-      intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t) * 2)));
+      ::intToDouble(uint64FromPersistent(s.data())),
+      ::intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t))),
+      ::intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t) * 2)));
 }
 
 replication2::LogTerm RocksDBValue::logTerm(rocksdb::Slice const& slice) {
@@ -293,9 +309,9 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type,
 RocksDBValue::RocksDBValue(S2Point const& p)
     : _type(RocksDBEntryType::GeoIndexValue), _buffer() {
   _buffer.reserve(sizeof(uint64_t) * 3);
-  uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.x()));
-  uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.y()));
-  uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.z()));
+  uint64ToPersistent(_buffer, ::doubleToInt(p.x()));
+  uint64ToPersistent(_buffer, ::doubleToInt(p.y()));
+  uint64ToPersistent(_buffer, ::doubleToInt(p.z()));
 }
 
 LocalDocumentId RocksDBValue::documentId(char const* data, uint64_t size) {

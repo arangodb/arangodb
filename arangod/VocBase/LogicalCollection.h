@@ -224,8 +224,7 @@ class LogicalCollection : public LogicalDataSource {
   size_t replicationFactor() const noexcept;
   size_t writeConcern() const noexcept;
   replication::Version replicationVersion() const noexcept;
-  std::string const& distributeShardsLike() const noexcept;
-  std::vector<std::string> const& avoidServers() const noexcept;
+  std::string distributeShardsLike() const noexcept;
   bool isSatellite() const noexcept;
   bool usesDefaultShardKeys() const noexcept;
   std::vector<std::string> const& shardKeys() const noexcept;
@@ -255,7 +254,6 @@ class LogicalCollection : public LogicalDataSource {
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
-  void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
   ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,

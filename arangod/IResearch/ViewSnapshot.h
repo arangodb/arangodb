@@ -44,8 +44,16 @@ class Methods;
 }  // namespace transaction
 namespace iresearch {
 
-using ViewSegment =
-    std::tuple<DataSourceId, irs::SubReader const*, StorageSnapshot const&>;
+struct ViewSegment {
+  explicit ViewSegment(LogicalCollection const& collection,
+                       StorageSnapshot const& snapshot,
+                       irs::SubReader const& segment) noexcept
+      : collection{&collection}, snapshot{&snapshot}, segment{&segment} {}
+
+  LogicalCollection const* collection;
+  StorageSnapshot const* snapshot;
+  irs::SubReader const* segment;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a snapshot representation of the view with ability to query for cid
@@ -59,8 +67,8 @@ class ViewSnapshot : public irs::IndexReader {
 
   uint64_t CountMappedMemory() const final { return 0; }
 
-  /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
-  [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
+  [[nodiscard]] virtual LogicalCollection const& collection(
+      std::size_t i) const noexcept = 0;
 
   [[nodiscard]] virtual ImmutablePartCache& immutablePartCache() noexcept = 0;
 

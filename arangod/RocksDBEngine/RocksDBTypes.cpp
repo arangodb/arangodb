@@ -28,6 +28,18 @@ using namespace arangodb;
 /// @brief rocksdb format version
 char arangodb::rocksDBFormatVersion() { return '1'; }
 
+std::string_view arangodb::rocksDBEndiannessString(RocksDBEndianness value) {
+  switch (value) {
+    case RocksDBEndianness::Big:
+      return "big";
+    case RocksDBEndianness::Little:
+      return "little";
+    case RocksDBEndianness::Invalid:
+      break;
+  }
+  return "invalid";
+}
+
 namespace {
 
 static RocksDBEntryType placeholder = arangodb::RocksDBEntryType::Placeholder;
@@ -162,7 +174,8 @@ static rocksdb::Slice UniqueZdkIndexValue(
     1);
 }  // namespace
 
-char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
+std::string_view arangodb::rocksDBEntryTypeName(
+    arangodb::RocksDBEntryType type) {
   switch (type) {
     case arangodb::RocksDBEntryType::Placeholder:
       return "Placeholder";
@@ -212,7 +225,7 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
   return "Invalid";
 }
 
-char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
+std::string_view arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
   switch (type) {
     case arangodb::RocksDBLogType::DatabaseCreate:
       return "DatabaseCreate";

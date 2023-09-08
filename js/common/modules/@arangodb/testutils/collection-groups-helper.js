@@ -47,6 +47,7 @@ const createCollectionTarget = function (gid, cid) {
     isDisjoint: false,
     cacheEnabled: false,
     shardKeys: ["_key"],
+    shardingStrategy: "hash",
     type: 2,
     keyOptions: {
       allowUserKeys: true,
@@ -100,6 +101,7 @@ const createCollectionGroupTarget = function (database, config) {
   const cids = new Array(numberOfCollections).fill(undefined).map(() => lh.nextUniqueLogId());
   const target = {
     id: gid,
+    leader: "",
     collections: {},
     attributes: {
       mutable: {

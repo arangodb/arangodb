@@ -728,9 +728,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   struct MethodsImpl : IReplicatedLogLeaderMethods {
     explicit MethodsImpl(LogLeader& log) : _log(log) {}
     auto releaseIndex(LogIndex index) -> void override {
-      if (auto res = _log.release(index); res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+      return _log.updateReleaseIndex(index);
     }
     auto getCommittedLogIterator(std::optional<LogRange> range)
         -> std::unique_ptr<LogViewRangeIterator> override {
@@ -1219,9 +1217,8 @@ replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(
     std::unique_ptr<IReplicatedStateHandle> stateHandle, LogIndex firstIndex)
     : _self(self), _stateHandle(std::move(stateHandle)) {}
 
-auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
-  _compactionManager->updateReleaseIndex(doneWithIdx);
-  return {};
+void replicated_log::LogLeader::updateReleaseIndex(LogIndex doneWithIdx) {
+  return _compactionManager->updateReleaseIndex(doneWithIdx);
 }
 
 auto replicated_log::LogLeader::compact() -> ResultT<CompactionResult> {

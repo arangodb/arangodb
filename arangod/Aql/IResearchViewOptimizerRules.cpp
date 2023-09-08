@@ -183,7 +183,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   // build search condition
   Condition searchCondition(plan.getAst());
 
-  auto nodeFilter = viewNode.filterCondition();
+  auto& nodeFilter = viewNode.filterCondition();
   if (!isFilterConditionEmpty(&nodeFilter)) {
     searchCondition.andCombine(&nodeFilter);
     searchCondition.normalize(&plan, true,
@@ -282,7 +282,6 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         break;
       default:
         return false;
-        break;
     }
     if (limitNode && sortNode) {
       // only first SORT + LIMIT makes sense

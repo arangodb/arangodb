@@ -52,6 +52,7 @@ auto inspect(Inspector& f, CollectionGroup::Attributes& x) {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionGroup& x) {
   return f.object(x).fields(f.field(StaticStrings::Id, x.id),
+                            f.field(StaticStrings::Leader, x.groupLeader),
                             f.field("collections", x.collections),
                             f.field("attributes", x.attributes));
 }
@@ -94,6 +95,7 @@ auto inspect(Inspector& f, Collection::ImmutableProperties& props) {
       f.field(StaticStrings::IsSmart, props.isSmart),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint),
       f.field(StaticStrings::CacheEnabled, props.cacheEnabled),
+      f.field(StaticStrings::ShardingStrategy, props.shardingStrategy),
       f.field(StaticStrings::ShardKeys, props.shardKeys),
       f.field(StaticStrings::GraphSmartGraphAttribute,
               props.smartGraphAttribute)

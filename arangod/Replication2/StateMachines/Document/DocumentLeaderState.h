@@ -68,6 +68,9 @@ struct DocumentLeaderState
   auto createShard(ShardID shard, CollectionID collectionId,
                    std::shared_ptr<VPackBuilder> properties)
       -> futures::Future<Result>;
+  auto modifyShard(ShardID shard, CollectionID collectionId,
+                   std::shared_ptr<VPackBuilder> properties,
+                   std::string followersToDrop) -> futures::Future<Result>;
   auto dropShard(ShardID shard, CollectionID collectionId)
       -> futures::Future<Result>;
 
@@ -110,5 +113,8 @@ struct DocumentLeaderState
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
+
+  std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of the
+                                        // state machine upon resigning
 };
 }  // namespace arangodb::replication2::replicated_state::document

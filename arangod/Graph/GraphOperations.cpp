@@ -56,7 +56,8 @@ using namespace arangodb::graph;
 
 std::shared_ptr<transaction::Context> GraphOperations::ctx() {
   if (!_ctx) {
-    _ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+    _ctx = std::make_shared<transaction::StandaloneContext>(_vocbase,
+                                                            _operationOrigin);
   }
   return _ctx;
 }
@@ -88,7 +89,7 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(
   graph.toPersistence(builder);
   builder.close();
 
-  GraphManager gmngr{_vocbase};
+  GraphManager gmngr{_vocbase, _operationOrigin};
   res = gmngr.ensureAllCollections(&_graph, waitForSync);
   if (res.fail()) {
     return OperationResult(res, options);
@@ -137,7 +138,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
 
   if (dropCollection) {
     std::unordered_set<std::string> collectionsToBeRemoved;
-    GraphManager gmngr{_vocbase};
+    GraphManager gmngr{_vocbase, _operationOrigin};
 
     // add the edge collection itself for removal
     gmngr.pushCollectionIfMayBeDropped(edgeDefinitionName, _graph.name(),
@@ -252,7 +253,7 @@ OperationResult GraphOperations::editEdgeDefinition(
     }
   }
 
-  GraphManager gmngr{_vocbase};
+  GraphManager gmngr{_vocbase, _operationOrigin};
   res = gmngr.findOrCreateCollectionsByEdgeDefinition(_graph, edgeDefinition,
                                                       waitForSync);
   if (res.fail()) {
@@ -301,7 +302,7 @@ OperationResult GraphOperations::editEdgeDefinition(
 OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
                                                      bool waitForSync,
                                                      bool createCollection) {
-  GraphManager gmngr{_vocbase};
+  GraphManager gmngr{_vocbase, _operationOrigin};
   std::string collectionName = document.get("collection").copyString();
 
   std::shared_ptr<LogicalCollection> def;
@@ -487,7 +488,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
 
   if (dropCollection && collectionExists) {
     std::unordered_set<std::string> collectionsToBeRemoved;
-    GraphManager gmngr{_vocbase};
+    GraphManager gmngr{_vocbase, _operationOrigin};
     res = gmngr.pushCollectionIfMayBeDropped(collectionName, "",
                                              collectionsToBeRemoved);
 
@@ -529,7 +530,7 @@ OperationResult GraphOperations::addEdgeDefinition(
   TRI_ASSERT(defRes.get() != nullptr);
 
   // ... in different graph
-  GraphManager gmngr{_vocbase};
+  GraphManager gmngr{_vocbase, _operationOrigin};
 
   Result res =
       gmngr.checkForEdgeDefinitionConflicts(*(defRes.get()), _graph.name());
@@ -978,7 +979,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(
   VPackSlice search{searchBuffer->data()};
 
   // check for used edge definitions in ALL graphs
-  GraphManager gmngr{_vocbase};
+  GraphManager gmngr{_vocbase, _operationOrigin};
 
   std::unordered_set<std::string> possibleEdgeCollections;
 
@@ -1069,7 +1070,7 @@ OperationResult GraphOperations::removeVertex(std::string const& collectionName,
 }
 
 bool GraphOperations::collectionExists(std::string const& collection) const {
-  GraphManager gmngr{_vocbase};
+  GraphManager gmngr{_vocbase, _operationOrigin};
   return gmngr.collectionExists(collection);
 }
 

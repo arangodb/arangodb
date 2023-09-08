@@ -56,9 +56,11 @@ RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
 
 // main function that dispatches the different routes and commands
 RestStatus RestDumpHandler::execute() {
-  if (!ServerState::instance()->isDBServer()) {
-    generateError(Result(TRI_ERROR_HTTP_NOT_IMPLEMENTED,
-                         "api only expected to be called on dbservers"));
+  if (!ServerState::instance()->isDBServer() &&
+      !ServerState::instance()->isSingleServer()) {
+    generateError(Result(
+        TRI_ERROR_HTTP_NOT_IMPLEMENTED,
+        "API only expected to be called on single server and DBServers"));
     return RestStatus::DONE;
   }
 
@@ -153,8 +155,11 @@ void RestDumpHandler::handleCommandDumpStart() {
   RocksDBDumpContextOptions opts;
   velocypack::deserializeUnsafe(body, opts);
 
+  auto useVPack = _request->parsedValue("useVPack", false);
+
   auto* manager = _engine.dumpManager();
-  auto guard = manager->createContext(std::move(opts), user, database);
+  auto guard =
+      manager->createContext(std::move(opts), user, database, useVPack);
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());
@@ -196,11 +201,12 @@ void RestDumpHandler::handleCommandDumpNext() {
   }
 
   // output the batch value
+  _response->setAllowCompression(true);
   _response->setHeaderNC(StaticStrings::DumpShardId, std::string{batch->shard});
   _response->setHeaderNC(StaticStrings::DumpBlockCounts,
                          std::to_string(counts));
   _response->setContentType(rest::ContentType::DUMP);
-  _response->addRawPayload(batch->content);
+  _response->addRawPayload(batch->content());
   _response->setGenerateBody(true);
   _response->setResponseCode(rest::ResponseCode::OK);
 
@@ -228,6 +234,12 @@ void RestDumpHandler::handleCommandDumpFinished() {
 }
 
 std::string RestDumpHandler::getAuthorizedUser() const {
+  if (ServerState::instance()->isSingleServer()) {
+    // single server case
+    return _request->user();
+  }
+
+  // cluster case
   bool headerExtracted;
   auto user = _request->header(StaticStrings::DumpAuthUser, headerExtracted);
   if (!headerExtracted) {

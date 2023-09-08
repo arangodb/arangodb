@@ -94,9 +94,10 @@ class QueryOr : public QueryTest {
       OperationOptions opt;
 
       transaction::Methods trx(
-          transaction::StandaloneContext::Create(_vocbase), kEmpty,
-          {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          transaction::Options());
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+          kEmpty, transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections

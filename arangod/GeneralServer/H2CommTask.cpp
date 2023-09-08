@@ -41,6 +41,8 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 
+#include <absl/strings/escaping.h>
+
 #include <cstring>
 
 #include <llhttp.h>
@@ -261,7 +263,7 @@ template<SocketType T>
 
 template<SocketType T>
 H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
-                          std::unique_ptr<AsioSocket<T>> so)
+                          std::shared_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
   this->_connectionStatistics.SET_HTTP();
   this->_generalServerFeature.countHttp2Connection();
@@ -388,7 +390,8 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
   std::string const& settings = req->header("http2-settings", found);
   bool const wasHead = req->requestType() == RequestType::HEAD;
 
-  std::string decoded = StringUtils::decodeBase64(settings);
+  std::string decoded;
+  absl::Base64Unescape(settings, &decoded);
   uint8_t const* src = reinterpret_cast<uint8_t const*>(decoded.data());
   int rv =
       nghttp2_session_upgrade2(_session, src, decoded.size(), wasHead, nullptr);

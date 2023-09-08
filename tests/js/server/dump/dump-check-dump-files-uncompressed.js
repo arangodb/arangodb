@@ -55,16 +55,20 @@ function dumpIntegrationSuite () {
       data = JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)).toString());
       assertEqual(cn, data.parameters.name);
       
-      assertEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
-      assertNotEqual(-1, tree.indexOf(prefix + ".data.json"));
-      data = fs.readFileSync(fs.join(dumpDir, prefix + ".data.json")).toString().trim().split('\n');
-      assertEqual(10, data.length);
-      data.forEach(function(line) {
-        line = JSON.parse(line);
-        assertEqual(2300, line.type);
-        assertTrue(line.data.hasOwnProperty('_key'));
-        assertTrue(line.data.hasOwnProperty('_rev'));
+      let files = tree.filter((f) => f.startsWith(prefix) && f.match(/(\.\d+)?\.data\.json$/));
+      assertNotEqual(0, files.length, files);
+      files.forEach((file) => {
+        data = fs.readFileSync(fs.join(dumpDir, file)).toString().trim().split('\n');
+        assertEqual(10, data.length);
+        data.forEach(function(line) {
+          line = JSON.parse(line);
+          assertTrue(line.hasOwnProperty('_key'));
+          assertTrue(line.hasOwnProperty('_rev'));
+        });
       });
+      
+      files = tree.filter((f) => f.startsWith(prefix) && f.match(/(\.\d+)?\.data\.json\.gz$/));
+      assertEqual(0, files.length, files);
     }
   };
 }

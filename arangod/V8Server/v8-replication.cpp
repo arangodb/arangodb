@@ -40,6 +40,7 @@
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/V8Context.h"
 #include "Utils/DatabaseGuard.h"
 #include "V8/v8-conv.h"
@@ -160,7 +161,10 @@ static void JS_LastLoggerReplication(
     TRI_V8_THROW_EXCEPTION_USAGE("tickStart < tickEnd");
   }
 
-  auto transactionContext = transaction::V8Context::Create(vocbase, true);
+  auto origin =
+      transaction::OperationOriginREST{"returning last documents from WAL"};
+  auto transactionContext =
+      transaction::V8Context::create(vocbase, origin, true);
   VPackBuilder builder(transactionContext->getVPackOptions());
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =

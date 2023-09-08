@@ -50,6 +50,7 @@ add_library(arango_lightweight STATIC
         Basics/FileUtils.cpp
         Basics/Guarded.h
         Basics/Identifier.cpp
+        Basics/InputProcessors.cpp
         Basics/NumberOfCores.cpp
         Basics/PageSize.cpp
         Basics/PhysicalMemory.cpp
@@ -149,6 +150,7 @@ add_library(arango STATIC
   ${LIB_ARANGO_DATE}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeaturePhase.cpp
+  ApplicationFeatures/BumpFileDescriptorsFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/FileSystemFeature.cpp
@@ -166,6 +168,7 @@ add_library(arango STATIC
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/FeatureFlags.cpp
+  Basics/FileDescriptors.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
   Basics/HybridLogicalClock.cpp
@@ -198,6 +201,7 @@ add_library(arango STATIC
   Endpoint/EndpointList.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
+  Maskings/MaskingFunction.cpp
   Maskings/Maskings.cpp
   Maskings/Path.cpp
   Maskings/RandomMask.cpp
@@ -232,6 +236,7 @@ add_library(arango STATIC
 
 target_link_libraries(arango
   PUBLIC s2
+         arango_build_id
          boost_system
          boost_boost
          arango_futures
@@ -299,3 +304,4 @@ add_subdirectory(VelocypackUtils)
 add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)
 add_subdirectory(Inspection)
+add_subdirectory(BuildId)
