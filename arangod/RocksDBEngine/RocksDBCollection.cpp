@@ -21,6 +21,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearch/IResearchRocksDBInvertedIndex.h"  // because of string.hpp
 #include "RocksDBCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -40,7 +41,6 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
-#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Random/RandomGenerator.h"
