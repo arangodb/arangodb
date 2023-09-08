@@ -252,7 +252,8 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalViewTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
-  Cluster/ShardAutoRebalancerTest.cpp)
+  Cluster/ShardAutoRebalancerTest.cpp
+        Aql/IndexMergeJoin.cpp)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
