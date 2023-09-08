@@ -370,7 +370,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     } else {
       process.env['dump-directory'] = this.dumpConfig.config['output-directory'];
     }
-    print(process.env['dump-directory'])
     this.results.checkDumpFiles = this.runOneTest(path);
     delete process.env['dump-directory'];
     return this.validate(this.results.checkDumpFiles);
@@ -386,7 +385,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   dumpFrom(database, separateDir = false) {
     this.print(`dumping ${database}`);
     let baseDir = fs.join(this.instanceManager.rootDir, 'dump');
-    print(baseDir)
     if (!fs.exists(baseDir)) {
       fs.makeDirectory(baseDir);
     }
@@ -396,7 +394,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
     if (database !== '_system' || !this.dumpConfig.haveSetAllDatabases()) {
       this.dumpConfig.resetAllDatabases();
-      print(this.dumpConfig.config['output-directory'])
       this.allDumps.push(this.dumpConfig.config['output-directory']);
       this.dumpConfig.setDatabase(database);
     }
