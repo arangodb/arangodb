@@ -18,35 +18,48 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "RocksDBIndexingDisabler.h"
 
-#include "GeneralServer/Acceptor.h"
-#include "GeneralServer/AsioSocket.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 
-#include <memory>
-#include <mutex>
+namespace arangodb {
+class RocksDBMethods;
 
-namespace arangodb::rest {
+// will only be active if condition is true
+IndexingDisabler::IndexingDisabler(RocksDBMethods* methods, bool condition)
+    : _methods(nullptr) {
+  if (condition) {
+    bool disabledHere = methods->DisableIndexing();
+    if (disabledHere) {
+      _methods = methods;
+    }
+  }
+}
 
-class AcceptorUnixDomain final : public Acceptor {
- public:
-  AcceptorUnixDomain(rest::GeneralServer& server, rest::IoContext& ctx,
-                     Endpoint* endpoint)
-      : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
+IndexingDisabler::~IndexingDisabler() {
+  if (_methods) {
+    _methods->EnableIndexing();
+  }
+}
 
- public:
-  void open() override;
-  void close() override;
-  void cancel() override;
-  void asyncAccept() override;
+// will only be active if condition is true
+IndexingEnabler::IndexingEnabler(RocksDBMethods* methods, bool condition)
+    : _methods(nullptr) {
+  if (condition) {
+    bool enabledHere = methods->EnableIndexing();
+    if (enabledHere) {
+      _methods = methods;
+    }
+  }
+}
 
- private:
-  asio_ns::local::stream_protocol::acceptor _acceptor;
-  /// @brief protects the _asioSocket
-  std::mutex _mutex;
-  std::shared_ptr<AsioSocket<SocketType::Unix>> _asioSocket;
-};
-}  // namespace arangodb::rest
+IndexingEnabler::~IndexingEnabler() {
+  if (_methods) {
+    _methods->DisableIndexing();
+  }
+}
+
+}  // namespace arangodb
