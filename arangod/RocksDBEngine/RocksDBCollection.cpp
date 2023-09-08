@@ -21,6 +21,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearch/IResearchRocksDBInvertedIndex.h"  // because of string.hpp
+
 #include "RocksDBCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -43,7 +45,6 @@
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "CrashHandler/CrashHandler.h"
 #endif
-#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Random/RandomGenerator.h"
