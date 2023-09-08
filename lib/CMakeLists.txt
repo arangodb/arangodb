@@ -50,6 +50,7 @@ add_library(arango_lightweight STATIC
         Basics/FileUtils.cpp
         Basics/Guarded.h
         Basics/Identifier.cpp
+        Basics/InputProcessors.cpp
         Basics/NumberOfCores.cpp
         Basics/PageSize.cpp
         Basics/PhysicalMemory.cpp
@@ -149,6 +150,7 @@ add_library(arango STATIC
   ${LIB_ARANGO_DATE}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeaturePhase.cpp
+  ApplicationFeatures/BumpFileDescriptorsFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/FileSystemFeature.cpp

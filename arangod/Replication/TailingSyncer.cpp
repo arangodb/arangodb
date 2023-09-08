@@ -516,10 +516,13 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       conflictDocumentKey.clear();
     }
 
+    auto operationOrigin =
+        transaction::OperationOriginInternal{"applying replication change"};
+
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(*vocbase), *coll,
-        AccessMode::Type::EXCLUSIVE);
+        transaction::StandaloneContext::create(*vocbase, operationOrigin),
+        *coll, AccessMode::Type::EXCLUSIVE);
 
     // we will always check if the target document already exists and then
     // either carry out an insert or a replace. so we will be carrying out
@@ -578,9 +581,12 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
 Result TailingSyncer::removeSingleDocument(LogicalCollection* coll,
                                            std::string const& key) {
+  auto operationOrigin =
+      transaction::OperationOriginInternal{"applying replication change"};
+
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(coll->vocbase()), *coll,
-      AccessMode::Type::EXCLUSIVE);
+      transaction::StandaloneContext::create(coll->vocbase(), operationOrigin),
+      *coll, AccessMode::Type::EXCLUSIVE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -645,7 +651,9 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   TRI_ASSERT(countOngoingTransactions(slice) == 0);
 #endif
 
-  auto trx = std::make_unique<ReplicationTransaction>(*vocbase);
+  auto trx = std::make_unique<ReplicationTransaction>(
+      *vocbase,
+      transaction::OperationOriginInternal{"replication transaction"});
   Result res = trx->begin();
 
   if (res.ok()) {
@@ -860,8 +868,10 @@ Result TailingSyncer::truncateCollection(
   uint64_t count = 0;
   Result res;
   {
+    auto operationOrigin = transaction::OperationOriginInternal{
+        "truncating collection for replication"};
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(*vocbase), *col,
+        transaction::StandaloneContext::create(*vocbase, operationOrigin), *col,
         AccessMode::Type::EXCLUSIVE);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
@@ -1130,7 +1140,9 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
           // because single server has no revisions
           // and never reloads cache from db by itself
           // so new analyzers will be not usable on follower
-          analyzersFeature.invalidate(*vocbase);
+          analyzersFeature.invalidate(
+              *vocbase,
+              transaction::OperationOriginInternal{"invalidating analyzers"});
         }
       }
       _analyzersModified.clear();

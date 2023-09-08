@@ -25,6 +25,10 @@
 
 #include "Aql/QueryContext.h"
 #include "Aql/Stats.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "IResearch/IResearchReadUtils.h"
 #include <formats/formats.hpp>
@@ -35,31 +39,47 @@ namespace arangodb::aql {
 
 template<typename T, bool localDocumentId>
 MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext(Infos& infos)
-    : _infos{&infos}, _callback{[this](LocalDocumentId /*id*/, VPackSlice doc) {
-        TRI_ASSERT(_outputRow);
-        TRI_ASSERT(_inputRow);
-        TRI_ASSERT(_inputRow->isInitialized());
-        TRI_ASSERT(_infos);
-        AqlValue a{AqlValueHintSliceCopy(doc)};
-        bool mustDestroy = true;
-        AqlValueGuard guard{a, mustDestroy};
-        _outputRow->moveValueInto(_infos->outputMaterializedDocumentRegId(),
-                                  *_inputRow, guard);
-        return true;
-      }} {}
+    : infos{&infos} {
+  if constexpr (localDocumentId) {
+    callback = [this](LocalDocumentId /*id*/, VPackSlice doc) {
+      TRI_ASSERT(this->infos);
+      TRI_ASSERT(outputRow);
+      TRI_ASSERT(inputRow);
+      TRI_ASSERT(inputRow->isInitialized());
+      outputRow->moveValueInto(this->infos->outputMaterializedDocumentRegId(),
+                               *inputRow, doc);
+      return true;
+    };
+  }
+}
+
+template<typename T, bool localDocumentId>
+void MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext::
+    moveInto(std::unique_ptr<uint8_t[]> data) {
+  TRI_ASSERT(infos);
+  TRI_ASSERT(outputRow);
+  TRI_ASSERT(inputRow);
+  TRI_ASSERT(inputRow->isInitialized());
+  AqlValue value{std::move(data)};
+  bool mustDestroy = true;
+  AqlValueGuard guard{value, mustDestroy};
+  // TODO(MBkkt) add moveValueInto overload for std::unique_ptr<uint8_t[]>
+  outputRow->moveValueInto(infos->outputMaterializedDocumentRegId(), *inputRow,
+                           guard);
+}
 
 template<typename T, bool localDocumentId>
 MaterializeExecutor<T, localDocumentId>::MaterializeExecutor(
     MaterializeExecutor<T, localDocumentId>::Fetcher& /*fetcher*/, Infos& infos)
-    : _trx{infos.query().newTrxContext()},
-      _readDocumentContext{infos},
-      _memoryTracker{infos.query().resourceMonitor()} {}
+    : _buffer{infos.query().resourceMonitor()},
+      _trx{infos.query().newTrxContext()},
+      _readCtx{infos} {}
 
 template<typename T, bool localDocumentId>
-void MaterializeExecutor<T, localDocumentId>::fillBuffer(
-    AqlItemBlockInputRange& inputRange) {
+void MaterializeExecutor<T, localDocumentId>::Buffer::fill(
+    AqlItemBlockInputRange& inputRange, ReadContext& ctx) {
   TRI_ASSERT(!localDocumentId);
-  _bufferedDocs.clear();
+  docs.clear();
 
   auto const block = inputRange.getBlock();
   if (ADB_UNLIKELY(block == nullptr)) {
@@ -72,46 +92,43 @@ void MaterializeExecutor<T, localDocumentId>::fillBuffer(
     return;
   }
 
-  auto const tracked = _memoryTracker.tracked();
-  auto const required = numDataRows * (sizeof(BufferRecord) + sizeof(void*));
+  auto const tracked = scope.tracked();
+  auto const required = numDataRows * (sizeof(Record) + sizeof(void*));
   if (required > tracked) {
-    _memoryTracker.increase(required - tracked);
+    scope.increase(required - tracked);
   }
 
-  _bufferedDocs.reserve(numDataRows);
+  docs.reserve(numDataRows);
   irs::ResolveBool(numRows != numDataRows, [&]<bool HasShadowRows>() {
-    auto searchDocRegId =
-        _readDocumentContext._infos->inputNonMaterializedDocRegId();
+    auto searchDocRegId = ctx.infos->inputNonMaterializedDocRegId();
     for (size_t i = 0; i != numRows; ++i) {
       if constexpr (HasShadowRows) {
         if (block->isShadowRow(i)) {
           continue;
         }
       }
-      auto const buf =
-          block->getValueReference(i, searchDocRegId).slice().stringView();
-      _bufferedDocs.emplace_back(iresearch::SearchDoc::decode(buf));
+      auto const buf = block->getValueReference(i, searchDocRegId).slice();
+      docs.emplace_back(iresearch::SearchDoc::decode(buf.stringView()));
     }
   });
 
-  _readOrder.resize(numDataRows);
-  for (auto* data = _readOrder.data(); auto& doc : _bufferedDocs) {
+  order.resize(numDataRows);
+  for (auto* data = order.data(); auto& doc : docs) {
     *data++ = &doc;
   }
-  std::sort(_readOrder.begin(), _readOrder.end(),
-            [](const auto* lhs, const auto* rhs) {
-              auto* lhs_segment = lhs->segment;
-              auto* rhs_segment = rhs->segment;
-              if (lhs_segment != rhs_segment) {
-                return lhs_segment < rhs_segment;
-              }
-              return lhs->search < rhs->search;
-            });
+  std::sort(order.begin(), order.end(), [](const auto* lhs, const auto* rhs) {
+    auto* lhs_segment = lhs->segment;
+    auto* rhs_segment = rhs->segment;
+    if (lhs_segment != rhs_segment) {
+      return lhs_segment < rhs_segment;
+    }
+    return lhs->search < rhs->search;
+  });
 
   iresearch::ViewSegment const* lastSegment{};
   irs::doc_iterator::ptr pkColumn;
   irs::payload const* pkPayload{};
-  for (auto* doc : _readOrder) {
+  for (auto* doc : order) {
     auto const search = doc->search;
     doc->storage = {};
     if (lastSegment != doc->segment) {
@@ -139,30 +156,63 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
 
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
-
-  if constexpr (isSingleCollection) {
+  if constexpr (localDocumentId) {
     if (!_collection) {
-      _collection = _trx.documentCollection(
-                            _readDocumentContext._infos->collectionSource())
+      _collection = _trx.documentCollection(_readCtx.infos->collectionSource())
                         ->getPhysical();
       TRI_ASSERT(_collection);
     }
-  }
-  if constexpr (!localDocumentId) {
+  } else {
     // buffering all LocalDocumentIds to avoid memory ping-pong
     // between iresearch and storage engine
-    fillBuffer(inputRange);
+    _buffer.fill(inputRange, _readCtx);
+    auto it = _buffer.order.begin();
+    auto end = _buffer.order.end();
+    // We cannot call MultiGet from different snapshots
+    std::sort(it, end, [](const auto& lhs, const auto& rhs) {
+      return lhs->segment->snapshot < rhs->segment->snapshot;
+    });
+    StorageSnapshot const* lastSnapshot{};
+    auto fillKeys = [&] {
+      if (it == end) {
+        return MultiGetState::kLast;
+      }
+      auto const* snapshot = (*it)->segment->snapshot;
+      if (lastSnapshot != snapshot) {
+        lastSnapshot = snapshot;
+        return MultiGetState::kWork;
+      }
+      _getCtx.snapshot = snapshot;
+
+      auto doc = it++;
+      auto const storage = (*doc)->storage;
+      if (ADB_UNLIKELY(!storage.isSet())) {
+        (*doc)->executor = std::numeric_limits<size_t>::max();
+        return MultiGetState::kNext;
+      }
+
+      auto& logical = *(*doc)->segment->collection;
+      (*doc)->executor = _getCtx.serialize(_trx, logical, storage);
+
+      return MultiGetState::kNext;
+    };
+    _getCtx.multiGet(_buffer.order.size(), fillKeys);
   }
-  auto doc = _bufferedDocs.begin();
-  auto end = _bufferedDocs.end();
-  auto& callback = _readDocumentContext._callback;
-  auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
+  auto [it, end] = [&] {
+    if constexpr (localDocumentId) {
+      return std::pair{nullptr, nullptr};
+    } else {
+      return std::pair{_buffer.docs.begin(), _buffer.docs.end()};
+    }
+  }();
+  auto& callback = _readCtx.callback;
+  auto docRegId = _readCtx.infos->inputNonMaterializedDocRegId();
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool written = false;
     auto const [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    _readDocumentContext._inputRow = &input;
-    _readDocumentContext._outputRow = &output;
+    _readCtx.inputRow = &input;
+    _readCtx.outputRow = &output;
 
     TRI_IF_FAILURE("MaterializeExecutor::all_fail_and_count") {
       stats.incrFiltered();
@@ -179,27 +229,20 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
       }
     }
 
-    // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
     if constexpr (localDocumentId) {
       static_assert(isSingleCollection);
-      written =
-          _collection
-              ->read(
-                  &_trx,
-                  LocalDocumentId{input.getValue(docRegId).slice().getUInt()},
-                  callback, ReadOwnWrites::no)
-              .ok();
-    } else if (doc != end) {
-      auto const storage = doc->storage;
-      if (storage.isSet()) {
-        written =
-            doc->segment->collection->getPhysical()
-                ->readFromSnapshot(&_trx, storage, callback, ReadOwnWrites::no,
-                                   *doc->segment->snapshot)
-                .ok();
+      LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
+      written = _collection->read(&_trx, id, callback, ReadOwnWrites::no).ok();
+    } else if (it != end) {
+      if (it->executor != kInvalidRecord) {
+        if (auto& value = _getCtx.values[it->executor]; value) {
+          _readCtx.moveInto(std::move(value));
+          written = true;
+        }
       }
-      ++doc;
+      ++it;
     }
+
     if (written) {
       output.advanceRow();  // document found
     } else {

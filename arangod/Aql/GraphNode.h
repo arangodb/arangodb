@@ -28,13 +28,14 @@
 #include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 
-#include <map>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -241,7 +242,8 @@ class GraphNode : public ExecutionNode {
 
   Collection const* getShardingPrototype() const;
 
-  void determineEnterpriseFlags(AstNode const* edgeCollectionList);
+  void determineEnterpriseFlags(AstNode const* edgeCollectionList,
+                                transaction::OperationOrigin operationOrigin);
 
  protected:
   /// @brief the database

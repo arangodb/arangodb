@@ -177,7 +177,8 @@ class RocksDBEngine final : public StorageEngine {
       transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
-      transaction::Options const& options) override;
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -734,6 +735,8 @@ class RocksDBEngine final : public StorageEngine {
   // minimum number of live WAL files that need to be present to trigger
   // an auto-flush
   uint64_t _autoFlushMinWalFiles;
+
+  bool _forceLittleEndianKeys;  // force new database to use old format
 
   metrics::Gauge<uint64_t>& _metricsIndexEstimatorMemoryUsage;
   metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;

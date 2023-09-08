@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryContext.h"
 #include "Basics/DebugRaceController.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
@@ -41,6 +42,9 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Transaction/History.h"
+#endif
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Utils/ExecContext.h"
@@ -55,11 +59,13 @@ using namespace arangodb;
 
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                   transaction::Options const& options)
+                                   transaction::Options const& options,
+                                   transaction::OperationOrigin operationOrigin)
     : _vocbase(vocbase),
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
-      _id(tid) {
+      _id(tid),
+      _operationOrigin(operationOrigin) {
   // patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   transaction::Options::adjustIntermediateCommitCount(_options);
@@ -130,6 +136,10 @@ TransactionState::Cookie::ptr TransactionState::cookie(
   _cookies[key].swap(cookie);
 
   return std::move(cookie);
+}
+
+std::shared_ptr<transaction::CounterGuard> TransactionState::counterGuard() {
+  return _counterGuard;
 }
 
 /// @brief add a collection to a transaction
@@ -365,6 +375,11 @@ void TransactionState::acceptAnalyzersRevision(
   _analyzersRevision = analyzersRevision;
 }
 
+[[nodiscard]] transaction::OperationOrigin TransactionState::operationOrigin()
+    const noexcept {
+  return _operationOrigin;
+}
+
 Result TransactionState::checkCollectionPermission(
     DataSourceId cid, std::string_view cname, AccessMode::Type accessType) {
   TRI_ASSERT(!cname.empty());
@@ -443,12 +458,28 @@ void TransactionState::clearQueryCache() const {
   }
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// only used in maintainer mode for testing
+void TransactionState::setHistoryEntry(
+    std::shared_ptr<transaction::HistoryEntry> const& entry) {
+  TRI_ASSERT(entry != nullptr);
+  TRI_ASSERT(_historyEntry == nullptr);
+  _historyEntry = entry;
+}
+
+void TransactionState::clearHistoryEntry() noexcept { _historyEntry.reset(); }
+
+void TransactionState::adjustMemoryUsage(std::int64_t value) noexcept {
+  if (_historyEntry != nullptr) {
+    _historyEntry->adjustMemoryUsage(value);
+  }
+}
+#endif
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // reset the internal Transaction ID to none.
 // Only used in the Transaction Mock for internal reasons.
 void TransactionState::resetTransactionId() {
-  // avoid use of
-  // TransactionManagerFeature::manager()->unregisterTransaction(...)
   _id = arangodb::TransactionId::none();
 }
 #endif
@@ -484,7 +515,7 @@ void TransactionState::updateStatus(transaction::Status status) noexcept {
 /// - follower
 /// - coordinator
 /// - single
-char const* TransactionState::actorName() const noexcept {
+std::string_view TransactionState::actorName() const noexcept {
   if (isDBServer()) {
     return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX) ? "follower"
                                                               : "leader";

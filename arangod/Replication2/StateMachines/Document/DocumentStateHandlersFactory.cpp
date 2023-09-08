@@ -33,6 +33,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/ReplicatedContext.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -79,10 +80,12 @@ auto DocumentStateHandlersFactory::createTransaction(
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
 
-  auto state =
-      std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
+  auto origin = transaction::OperationOriginInternal{"replication transaction"};
+  auto state = std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid,
+                                                               options, origin);
 
-  auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
+  auto ctx =
+      std::make_shared<transaction::ReplicatedContext>(tid, state, origin);
 
   auto methods =
       std::make_unique<transaction::Methods>(std::move(ctx), shard, accessType);

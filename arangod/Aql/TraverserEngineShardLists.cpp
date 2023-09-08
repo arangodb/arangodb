@@ -27,6 +27,8 @@
 #include "Aql/QueryContext.h"
 #include "Graph/BaseOptions.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -83,16 +85,16 @@ TraverserEngineShardLists::TraverserEngineShardLists(
 std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
     containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
     ServerID const& server,
-    std::shared_ptr<std::vector<std::string>> const& shardIds,
+    std::shared_ptr<std::vector<std::string> const> const& shardIds,
     bool allowReadFromFollower) {
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {
     auto const& it = shardMapping.find(shard);
     if (it == shardMapping.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          "no entry for shard '" + shard + "' in shard mapping table (" +
-              std::to_string(shardMapping.size()) + " entries)");
+          TRI_ERROR_INTERNAL, absl::StrCat("no entry for shard '", shard,
+                                           "' in shard mapping table (",
+                                           shardMapping.size(), " entries)"));
     }
     if (it->second == server) {
       localShards.emplace_back(shard);

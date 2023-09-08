@@ -1,7 +1,7 @@
 import { JSONSchemaType } from "ajv";
 import { useEffect, useState } from "react";
 import { useEditViewContext } from "../editView/EditViewContext";
-import { ArangoSearchViewPropertiesType } from "../searchView.types";
+import { ArangoSearchViewPropertiesType } from "../View.types";
 
 const extendedNames = window.frontendConfig.extendedNames;
 

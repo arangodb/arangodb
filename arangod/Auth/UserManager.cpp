@@ -45,6 +45,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -146,8 +147,10 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
+  auto origin =
+      transaction::OperationOriginInternal{"querying all users from database"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*vocbase),
+      transaction::StandaloneContext::create(*vocbase, origin),
       arangodb::aql::QueryString(queryStr), nullptr);
 
   query->queryOptions().cache = false;
@@ -293,7 +296,8 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
-  auto ctx = transaction::StandaloneContext::Create(*vocbase);
+  auto origin = transaction::OperationOriginInternal{"storing user"};
+  auto ctx = transaction::StandaloneContext::create(*vocbase, origin);
   SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
                                   AccessMode::Type::WRITE);
 
@@ -678,7 +682,8 @@ static Result RemoveUserInternal(ArangodServer& server,
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
-  auto ctx = transaction::StandaloneContext::Create(*vocbase);
+  auto origin = transaction::OperationOriginInternal{"removing user"};
+  auto ctx = transaction::StandaloneContext::create(*vocbase, origin);
   SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
                                   AccessMode::Type::WRITE);
 

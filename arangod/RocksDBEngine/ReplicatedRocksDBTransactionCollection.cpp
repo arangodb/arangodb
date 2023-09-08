@@ -119,10 +119,10 @@ Result ReplicatedRocksDBTransactionCollection::abortTransaction() {
 }
 
 void ReplicatedRocksDBTransactionCollection::beginQuery(
-    bool isModificationQuery) {
+    ResourceMonitor* resourceMonitor, bool isModificationQuery) {
   auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
   if (trxMethods) {
-    trxMethods->beginQuery(isModificationQuery);
+    trxMethods->beginQuery(resourceMonitor, isModificationQuery);
   }
 }
 

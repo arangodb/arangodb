@@ -123,7 +123,8 @@ void assertOrder(
   TRI_vocbase_t vocbase(testDBInfo(server));
 
   auto query = arangodb::aql::Query::create(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), bindVars);
 
   auto const parseResult = query->parse();
@@ -182,8 +183,9 @@ void assertOrder(
     irs::Scorer::ptr actualScorer;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        {}, {}, {}, arangodb::transaction::Options());
 
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
@@ -241,7 +243,8 @@ void assertOrderParseFail(arangodb::ArangodServer& server,
   TRI_vocbase_t vocbase(testDBInfo(server));
 
   auto query = arangodb::aql::Query::create(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), nullptr);
 
   auto const parseResult = query->parse();

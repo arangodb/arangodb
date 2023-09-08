@@ -51,7 +51,10 @@ void SnapshotTransaction::addCollection(LogicalCollection const& collection) {
 
 DatabaseSnapshot::DatabaseSnapshot(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase),
-      _ctx(transaction::StandaloneContext::Create(vocbase)),
+      _ctx(transaction::StandaloneContext::create(
+          vocbase,
+          transaction::OperationOriginInternal{
+              "snapshotting collection for replication"})),
       _trx(std::make_unique<SnapshotTransaction>(_ctx)) {
   // We call begin here so that rocksMethods are initialized
   if (auto res = _trx->begin(); res.fail()) {
@@ -74,7 +77,9 @@ auto DatabaseSnapshot::createCollectionReader(std::string_view collectionName)
 
 auto DatabaseSnapshot::resetTransaction() -> Result {
   _trx.reset();
-  _ctx = transaction::StandaloneContext::Create(_vocbase);
+  _ctx = transaction::StandaloneContext::create(
+      _vocbase, transaction::OperationOriginInternal{
+                    "snapshotting collection for replication"});
   _trx = std::make_unique<SnapshotTransaction>(_ctx);
   return _trx->begin();
 }

@@ -34,6 +34,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/Methods/Queries.h"
 #include "VocBase/vocbase.h"
@@ -320,8 +321,10 @@ void RestQueryHandler::parseQuery() {
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  auto query = Query::create(transaction::StandaloneContext::Create(_vocbase),
-                             QueryString(queryString), nullptr);
+  auto origin = transaction::OperationOriginAQL{"parsing AQL query"};
+  auto query =
+      Query::create(transaction::StandaloneContext::create(_vocbase, origin),
+                    QueryString(queryString), nullptr);
   auto parseResult = query->parse();
 
   if (parseResult.result.fail()) {

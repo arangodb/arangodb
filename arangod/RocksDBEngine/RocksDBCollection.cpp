@@ -58,6 +58,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBIndexingDisabler.h"
 #include "RocksDBEngine/RocksDBIterators.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -880,9 +881,9 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
   }
 
   // push our current transaction on the stack
-  state->beginQuery(true);
+  state->beginQuery(/*resourceMonitor*/ nullptr, /*isModificationQuery*/ true);
   auto stateGuard = scopeGuard([state, prvICC]() noexcept {
-    state->endQuery(true);
+    state->endQuery(/*isModificationQuery*/ true);
     // reset to previous value after truncate is finished
     state->options().intermediateCommitCount = prvICC;
   });
@@ -1047,7 +1048,7 @@ Result RocksDBCollection::readFromSnapshot(
   }
 
   return lookupDocumentVPack(
-      trx, token, cb, /*withCache*/ true, readOwnWrites,
+      trx, token, cb, /*withCache*/ false, readOwnWrites,
       basics::downCast<RocksDBEngine::RocksDBSnapshot>(&snapshot));
 }
 
@@ -2004,14 +2005,12 @@ Result RocksDBCollection::lookupDocumentVPack(
 
   RocksDBMethods* mthd =
       RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
+  auto* family = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
   rocksdb::Status s =
-      snapshot ? mthd->GetFromSnapshot(
-                     RocksDBColumnFamilyManager::get(
-                         RocksDBColumnFamilyManager::Family::Documents),
-                     key->string(), &ps, readOwnWrites, snapshot->getSnapshot())
-               : mthd->Get(RocksDBColumnFamilyManager::get(
-                               RocksDBColumnFamilyManager::Family::Documents),
-                           key->string(), &ps, readOwnWrites);
+      snapshot
+          ? mthd->SingleGet(snapshot->getSnapshot(), *family, key->string(), ps)
+          : mthd->Get(family, key->string(), &ps, readOwnWrites);
 
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
