@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchRocksDBInvertedIndex.h"  // because of string.hpp
+
 #include "RocksDBCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
