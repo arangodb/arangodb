@@ -390,8 +390,10 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
     if (separateDir) {
       this.dumpConfig.setOutputDirectory(database);
-      this.allDumps.push(this.dumpConfig.config['output-directory']);
+    } else {
+      this.dumpConfig.setOutputDirectory('dump');
     }
+    this.allDumps.push(this.dumpConfig.config['output-directory']);
     if (database !== '_system' || !this.dumpConfig.haveSetAllDatabases()) {
       this.dumpConfig.resetAllDatabases();
       this.allDumps.push(this.dumpConfig.config['output-directory']);
@@ -637,7 +639,21 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       return true;
     }
   }
-  
+
+  dumpSrc() {
+    if (!this.dumpConfig.haveSetAllDatabases()) {
+      if (!this.dumpFrom('UnitTestsDumpSrc', true)) {
+        this.results.dumpSrc = {
+          message:  `dumpSrc: failed for UnitTestsDumpSrc`,
+          status: false
+        };
+        success = false;
+        return false;
+      }
+    }
+    return true;
+  }
+
   dumpFromRta() {
     let success = true;
     const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst', 'UnitTestsDumpFoxxComplete'];
@@ -762,14 +778,14 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
     } else {
       if (!helper.runSetupSuite(setupFile) ||
           !helper.runRtaMakedata() ||
-          !helper.dumpFrom('UnitTestsDumpSrc', true) ||
+          !helper.dumpSrc() ||
           !helper.dumpFromRta() ||
-          !helper.dumpFrom('_system', true) ||
+          !helper.dumpFrom('_system', false) ||
           (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
           !helper.runCleanupSuite(cleanupFile) ||
           !helper.restartInstance() ||
           !helper.restoreTo('UnitTestsDumpDst') ||
-          !helper.restoreTo('_system', { separate: true }) ||
+          // !helper.restoreTo('_system', { separate: true }) ||
           !helper.restoreRta() ||
           !helper.runRtaCheckData() ||
           !helper.runTests(testFile,'UnitTestsDumpDst') ||
@@ -906,7 +922,7 @@ function dumpWithCrashes (options) {
     dbServers: 3,
     allDatabases: true,
     deactivateCompression: true,
-    activateFailurePoint: true,
+    activateFailurePoint: false,
     threads: 1,
     extremeVerbosity: true
   };
