@@ -81,12 +81,11 @@ struct NoActionPossible {
 };
 }  // namespace actions
 
-using Action =
-    std::variant<NoActionRequired, NoActionPossible, UpdateReplicatedLogConfig,
-                 UpdateConvergedVersion, DropCollectionPlan,
-                 DropCollectionGroup, AddCollectionToPlan,
-                 AddCollectionGroupToPlan, UpdateCollectionShardMap,
-                 AddParticipantToLog, RemoveParticipantFromLog, UpdateCollectionPlan>;
+using Action = std::variant<
+    NoActionRequired, NoActionPossible, UpdateReplicatedLogConfig,
+    UpdateConvergedVersion, DropCollectionPlan, DropCollectionGroup,
+    AddCollectionToPlan, AddCollectionGroupToPlan, UpdateCollectionShardMap,
+    AddParticipantToLog, RemoveParticipantFromLog, UpdateCollectionPlan>;
 
 struct CollectionGroup {
   agency::CollectionGroupTargetSpecification target;
