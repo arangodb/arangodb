@@ -298,8 +298,7 @@ bool CreateCollection::createReplication2Shard(CollectionID const& collection,
     if (leaderState != nullptr) {
       // It is necessary to block here to prevent creation of an additional
       // action while we are waiting for the shard to be created.
-      leaderState->createShard(shard, collection, std::move(cProps))
-          .get();
+      leaderState->createShard(shard, collection, std::move(cProps)).get();
     } else {
       // TODO prevent busy loop and wait for log to become ready.
       std::this_thread::sleep_for(std::chrono::milliseconds{50});
