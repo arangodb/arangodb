@@ -24,6 +24,10 @@ struct RocksDBInstance {
     options.create_if_missing = true;
     options.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(8));
 
+    rocksdb::BlockBasedTableOptions blockOpts;
+    blockOpts.no_block_cache = true;
+    options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(blockOpts));
+
     if (auto s = rocksdb::DB::Open(options, _path, &_db); !s.ok()) {
       auto res = arangodb::rocksutils::convertStatus(s);
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
@@ -78,13 +82,6 @@ struct PatternBase {
   }
 };
 
-struct EvenOddPattern : PatternBase {
-  void operator()(RocksDBInstance& db) {
-    generateData(db, 10000000, 1, [x = 0]() mutable { return 2 * ++x; });
-    generateData(db, 10000000, 2, [x = 0]() mutable { return 2 * ++x + 1; });
-  }
-};
-
 struct JoinTestBase : ::testing::Test {
   static std::shared_ptr<RocksDBInstance> db;
 };
@@ -128,16 +125,18 @@ struct MyJoinPerformanceTest : JoinTestBase {
   }
 };
 
+constexpr std::size_t scale = 10000000;
+
 struct SameRangePattern : PatternBase {
   void operator()(RocksDBInstance& db) {
-    generateData(db, 10000000, 1, [x = 0]() mutable { return 2 * ++x; });
-    generateData(db, 10000000, 2, [x = 0]() mutable { return 2 * ++x; });
+    generateData(db, scale, 1, [x = 0]() mutable { return 2 * ++x; });
+    generateData(db, scale, 2, [x = 0]() mutable { return 2 * ++x; });
   }
 };
 
 struct CommonRangePattern : PatternBase {
   void operator()(RocksDBInstance& db) {
-    std::size_t total_size = 10000000;
+    std::size_t total_size = scale;
     generateData(db, total_size, 1, [x = 0]() mutable { return ++x; });
     generateData(db, total_size, 2,
                  [x = total_size / 2]() mutable { return ++x; });
@@ -146,10 +145,17 @@ struct CommonRangePattern : PatternBase {
 
 struct HalfSize : PatternBase {
   void operator()(RocksDBInstance& db) {
-    std::size_t total_size = 10000000;
+    std::size_t total_size = scale;
     // we can assume that the optimizer would pick the smaller collection
     generateData(db, total_size / 2, 1, [x = 0]() mutable { return 2 * ++x; });
     generateData(db, total_size, 2, [x = 0]() mutable { return ++x; });
+  }
+};
+
+struct EvenOddPattern : PatternBase {
+  void operator()(RocksDBInstance& db) {
+    generateData(db, scale, 1, [x = 0]() mutable { return 2 * ++x; });
+    generateData(db, scale, 2, [x = 0]() mutable { return 2 * ++x + 1; });
   }
 };
 
@@ -240,6 +246,90 @@ TYPED_TEST(MyJoinPerformanceTest, merge_join) {
 
     numSeeks += 1;
     iter1->Seek(seekKey);
+  }
+
+  LOG_DEVEL << "num seeks = " << numSeeks;
+  LOG_DEVEL << "num results = " << numResults;
+}
+
+TYPED_TEST(MyJoinPerformanceTest, nested_loops_join_next) {
+  auto iter1 = this->iterForPrefix(1);
+  auto iter2 = this->iterForPrefix(2);
+
+  std::string seekKey = this->buildKey(2, 0);
+
+  std::size_t numSkippedSeeks = 0;
+  std::size_t numSeeks = 0;
+  std::size_t numResults = 0;
+
+  while (iter1->Valid()) {
+    std::uint64_t a;
+    memcpy(&a, iter1->key().data_ + 8, 8);
+    a = basics::bigToHost(a);
+
+    while (iter2->Valid()) {
+      std::uint64_t b;
+      memcpy(&b, iter2->key().data_ + 8, 8);
+      b = basics::bigToHost(b);
+
+      if (b < a) {
+        iter2->Next();
+        continue;
+      }
+
+      if (a < b) {
+        break;
+      }
+
+      // LOG_DEVEL << "a = " << basics::bigToHost(a)
+      //           << " b = " << basics::bigToHost(b);
+      numResults += 1;
+      iter2->Next();
+    }
+
+    iter1->Next();
+  }
+
+  LOG_DEVEL << "num seeks = " << numSeeks;
+  LOG_DEVEL << "num results = " << numResults;
+  LOG_DEVEL << "num skipped seeks = " << numSkippedSeeks;
+}
+
+TYPED_TEST(MyJoinPerformanceTest, merge_join_next) {
+  auto iter1 = this->iterForPrefix(1);
+  auto iter2 = this->iterForPrefix(2);
+
+  std::uint64_t iter1_prefix = basics::hostToBig<uint64_t>(1);
+  std::uint64_t iter2_prefix = basics::hostToBig<uint64_t>(2);
+
+  std::size_t numSeeks = 0;
+  std::size_t numResults = 0;
+
+  std::string seekKey;
+  seekKey.resize(16);
+
+  while (iter1->Valid() && iter2->Valid()) {
+    std::uint64_t a;
+    memcpy(&a, iter1->key().data_ + 8, 8);
+    a = basics::bigToHost(a);
+
+    std::uint64_t b;
+    memcpy(&b, iter2->key().data_ + 8, 8);
+    b = basics::bigToHost(b);
+
+    if (a > b) {
+      std::swap(iter1, iter2);
+      std::swap(iter1_prefix, iter2_prefix);
+      std::swap(a, b);
+    } else if (a == b) {
+      numResults += 1;
+      iter1->Next();
+      iter2->Next();
+      continue;
+    }
+
+    assert(a < b);
+    iter1->Next();
   }
 
   LOG_DEVEL << "num seeks = " << numSeeks;
