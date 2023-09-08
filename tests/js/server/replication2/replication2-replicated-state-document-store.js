@@ -529,6 +529,11 @@ const replicatedStateRecoverySuite = function () {
       let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
       dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, true);
 
+      // Create an index.
+      let index = collection.ensureIndex({name: "katze", type: "persistent", fields: ["value"]});
+      assertEqual(index.name, "katze");
+      assertEqual(index.isNewlyCreated, true);
+
       // We unset the leader here so that once the old leader node is resumed we
       // do not move leadership back to that node.
       lh.unsetLeader(database, logId);
@@ -948,6 +953,7 @@ const replicatedStateSnapshotTransferSuite = function () {
  * This test suite checks the correctness of a DocumentState shard-related operations.
  */
 const replicatedStateDocumentShardsSuite = function () {
+  var collection = null;
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd, stopServerWait} =
       lh.testHelperFunctions(database, {replicationVersion: "2"});
 
@@ -969,7 +975,30 @@ const replicatedStateDocumentShardsSuite = function () {
     }
   };
 
-  var collection = null;
+  const createIndexTest = function (unique) {
+    return () => {
+      collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 2, replicationFactor: 3});
+      let {logs} = dh.getCollectionShardsAndLogs(db, collection);
+
+      // Create an index.
+      let index = collection.ensureIndex({name: "hund", type: "persistent", fields: ["_key", "value"], unique: unique});
+      assertEqual(index.name, "hund");
+      assertEqual(index.isNewlyCreated, true);
+
+      // Check if the CreateIndex operation appears in the log during the current term.
+      for (let log of logs) {
+        let logContents = log.head(1000);
+        let createIndexEntryFound = _.some(logContents, entry => {
+          if (entry.payload === undefined) {
+            return false;
+          }
+          return entry.payload.operation.type === "CreateIndex";
+        });
+        assertTrue(createIndexEntryFound,
+          `Log contents for log ${log.id()}: ${JSON.stringify(logContents)}`);
+      }
+    }
+  }
 
   return {
     setUpAll, tearDownAll,
@@ -1066,30 +1095,8 @@ const replicatedStateDocumentShardsSuite = function () {
       }
     },
 
-    testCreateIndex: function () {
-      collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 2, replicationFactor: 3});
-      let {logs} = dh.getCollectionShardsAndLogs(db, collection);
-
-      // Create an index.
-      let index = collection.ensureIndex({name: "hund", type: "persistent", fields: ["value"]}); // unique: true
-      assertEqual(index.name, "hund");
-      assertEqual(index.isNewlyCreated, true);
-
-      // Check if the CreateIndex operation appears in the log during the current term.
-
-      for (let log of logs) {
-        let logContents = log.head(1000);
-        let createIndexEntryFound = _.some(logContents, entry => {
-          if (entry.payload === undefined) {
-            return false;
-          }
-          return entry.payload.operation.type === "CreateIndex";
-        });
-        assertTrue(createIndexEntryFound,
-          `Log contents for log ${log.id()}: ${JSON.stringify(logContents)}`);
-      }
-
-    },
+    testCreateIndex: createIndexTest(false),
+    testCreateUniqueIndex: createIndexTest(true),
   };
 };
 
