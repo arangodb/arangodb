@@ -39,7 +39,6 @@
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
-#include "VocBase/Methods/Indexes.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -156,23 +155,22 @@ bool EnsureIndex::first() {
       // continue with the job normally
     }
 
-    VPackBuilder index;
-    auto res = ensureIndex(*col, body.slice(), index);
+    auto lambda = std::make_shared<Indexes::ProgressTracker>(
+        [this](double d) { return setProgress(d); });
+    std::shared_ptr<VPackBuilder> index{std::make_shared<VPackBuilder>()};
+    Result res;
+
+    if (vocbase->replicationVersion() == replication::Version::TWO) {
+      res = ensureIndexReplication2(vocbase, *col, body.slice(), index,
+                                    std::move(lambda));
+    } else {
+      res = methods::Indexes::ensureIndex(*col, body.slice(), true, *index,
+                                          std::move(lambda));
+    }
     result(res);
 
-    if (vocbase->replicationVersion() == replication::Version::TWO &&
-        res.ok()) {
-      // Now that the index has been created on the leader, it must be
-      // replicated to the followers.
-      res = ensureIndexReplication2(vocbase, *col, body.slice(), index);
-      if (res.fail()) {
-        LOG_DEVEL << "was erlaube";
-        return false;
-      }
-    }
-
     if (res.ok()) {
-      VPackSlice created = index.slice().get("isNewlyCreated");
+      VPackSlice created = index->slice().get("isNewlyCreated");
       std::string log = std::string("Index ") + id;
       log += (created.isBool() && created.getBool() ? std::string(" created")
                                                     : std::string(" updated"));
@@ -226,26 +224,19 @@ bool EnsureIndex::first() {
   return false;
 }
 
-auto EnsureIndex::ensureIndex(LogicalCollection& collection,
-                              VPackSlice indexInfo, VPackBuilder& output)
-    -> Result {
-  auto lambda = std::make_shared<std::function<arangodb::Result(double d)>>(
-      [this](double d) { return setProgress(d); });
-  return methods::Indexes::ensureIndex(collection, indexInfo, true, output,
-                                       std::move(lambda));
-}
-
-auto EnsureIndex::ensureIndexReplication2(TRI_vocbase_t* vocbase,
-                                          LogicalCollection& col,
-                                          VPackSlice indexInfo,
-                                          VPackBuilder& output) -> Result {
-  auto logId = col.replicatedStateId();
-  if (auto state = vocbase->getReplicatedStateById(logId); state.ok()) {
+auto EnsureIndex::ensureIndexReplication2(
+    TRI_vocbase_t* vocbase, LogicalCollection& col, VPackSlice indexInfo,
+    std::shared_ptr<VPackBuilder> output,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result {
+  if (auto state = vocbase->getReplicatedStateById(col.replicatedStateId());
+      state.ok()) {
     auto leaderState = std::dynamic_pointer_cast<
         replication2::replicated_state::document::DocumentLeaderState>(
         state.get()->getLeader());
     if (leaderState != nullptr) {
-      return leaderState->createIndex(col, indexInfo).get();
+      return leaderState
+          ->createIndex(col, indexInfo, std::move(output), std::move(progress))
+          .get();
     } else {
       // TODO prevent busy loop and wait for log to become ready (CINFRA-831)
       std::this_thread::sleep_for(std::chrono::milliseconds{50});

@@ -23,6 +23,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
+#include "Replication2/StateMachines/Document/DocumentStateIndexHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
@@ -51,6 +52,12 @@ auto DocumentStateHandlersFactory::createShardHandler(TRI_vocbase_t& vocbase,
                                                      std::move(maintenance));
 }
 
+auto DocumentStateHandlersFactory::createIndexHandler(TRI_vocbase_t& vocbase,
+                                                      GlobalLogIdentifier gid)
+    -> std::shared_ptr<IDocumentStateIndexHandler> {
+  return std::make_shared<DocumentStateIndexHandler>(std::move(gid), vocbase);
+}
+
 auto DocumentStateHandlersFactory::createSnapshotHandler(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier const& gid)
     -> std::shared_ptr<IDocumentStateSnapshotHandler> {
@@ -66,10 +73,12 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
 
 auto DocumentStateHandlersFactory::createTransactionHandler(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
-    std::shared_ptr<IDocumentStateShardHandler> shardHandler)
+    std::shared_ptr<IDocumentStateShardHandler> shardHandler,
+    std::shared_ptr<IDocumentStateIndexHandler> indexHandler)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
   return std::make_unique<DocumentStateTransactionHandler>(
-      gid, &vocbase, shared_from_this(), std::move(shardHandler));
+      gid, &vocbase, shared_from_this(), std::move(shardHandler),
+      std::move(indexHandler));
 }
 
 auto DocumentStateHandlersFactory::createTransaction(

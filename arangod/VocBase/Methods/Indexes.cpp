@@ -391,8 +391,7 @@ arangodb::Result Indexes::getAll(
 
 static Result EnsureIndexLocal(
     arangodb::LogicalCollection& collection, VPackSlice definition, bool create,
-    VPackBuilder& output,
-    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
+    VPackBuilder& output, std::shared_ptr<Indexes::ProgressTracker> progress) {
   return arangodb::basics::catchVoidToResult([&]() -> void {
     bool created = false;
     std::shared_ptr<arangodb::Index> idx;
@@ -433,10 +432,9 @@ Result Indexes::ensureIndexCoordinator(
       cluster.indexCreationTimeout());
 }
 
-Result Indexes::ensureIndex(
-    LogicalCollection& collection, VPackSlice input, bool create,
-    VPackBuilder& output,
-    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
+Result Indexes::ensureIndex(LogicalCollection& collection, VPackSlice input,
+                            bool create, VPackBuilder& output,
+                            std::shared_ptr<ProgressTracker> progress) {
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;
   // always log a message at the end of index creation
   auto logResultToAuditLog = scopeGuard([&]() noexcept {

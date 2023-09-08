@@ -26,6 +26,7 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <chrono>
 
@@ -46,11 +47,10 @@ class EnsureIndex : public ActionBase {
   virtual bool first() override final;
 
  private:
-  auto ensureIndex(LogicalCollection& collection, VPackSlice indexInfo,
-                   VPackBuilder& output) -> Result;
-  auto ensureIndexReplication2(TRI_vocbase_t* vocbase, LogicalCollection& col,
-                               VPackSlice indexInfo, VPackBuilder& output)
-      -> Result;
+  auto ensureIndexReplication2(
+      TRI_vocbase_t* vocbase, LogicalCollection& col, VPackSlice indexInfo,
+      std::shared_ptr<VPackBuilder> output,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result;
 };
 
 }  // namespace maintenance

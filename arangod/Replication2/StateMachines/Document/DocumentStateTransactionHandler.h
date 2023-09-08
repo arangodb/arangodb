@@ -35,6 +35,7 @@
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IDocumentStateIndexHandler;
 struct IDocumentStateTransaction;
 struct IDocumentStateHandlersFactory;
 struct IDocumentStateShardHandler;
@@ -65,7 +66,8 @@ class DocumentStateTransactionHandler
   explicit DocumentStateTransactionHandler(
       GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
       std::shared_ptr<IDocumentStateHandlersFactory> factory,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler);
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
+      std::shared_ptr<IDocumentStateIndexHandler> indexHandler);
   [[nodiscard]] auto applyEntry(ReplicatedOperation operation)
       -> Result override;
   [[nodiscard]] auto applyEntry(
@@ -99,6 +101,7 @@ class DocumentStateTransactionHandler
   LoggerContext _logContext;
   std::shared_ptr<IDocumentStateHandlersFactory> _factory;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
+  std::shared_ptr<IDocumentStateIndexHandler> _indexHandler;
   TransactionMap _transactions;
 };
 

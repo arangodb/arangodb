@@ -32,6 +32,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IDocumentStateIndexHandler;
 struct IDocumentStateShardHandler;
 struct IDocumentStateTransactionHandler;
 
@@ -48,10 +49,12 @@ struct DocumentCore {
   auto getVocbase() -> TRI_vocbase_t&;
   void drop();
   auto getShardHandler() -> std::shared_ptr<IDocumentStateShardHandler>;
+  auto getIndexHandler() -> std::shared_ptr<IDocumentStateIndexHandler>;
 
  private:
   TRI_vocbase_t& _vocbase;
   DocumentCoreParameters _params;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
+  std::shared_ptr<IDocumentStateIndexHandler> _indexHandler;
 };
 }  // namespace arangodb::replication2::replicated_state::document

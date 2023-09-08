@@ -27,6 +27,7 @@
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
 #include "VocBase/Identifiers/TransactionId.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <variant>
 
@@ -121,6 +122,16 @@ struct ReplicatedOperation {
     ShardID shard;
     std::shared_ptr<VPackBuilder> properties;
 
+    // Parameters attached to the operation, but not replicated, because they
+    // make sense only locally.
+    struct Parameters {
+      std::shared_ptr<VPackBuilder> output;
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress;
+
+      friend auto operator==(Parameters const&, Parameters const&)
+          -> bool = default;
+    } params;
+
     friend auto operator==(CreateIndex const&, CreateIndex const&)
         -> bool = default;
   };
@@ -163,8 +174,10 @@ struct ReplicatedOperation {
                                       CollectionID collection) noexcept
       -> ReplicatedOperation;
   static auto buildCreateIndexOperation(
-      ShardID shard, std::shared_ptr<VPackBuilder> properties) noexcept
-      -> ReplicatedOperation;
+      ShardID shard, std::shared_ptr<VPackBuilder> properties,
+      std::shared_ptr<VPackBuilder> output = nullptr,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress =
+          nullptr) noexcept -> ReplicatedOperation;
   static auto buildDocumentOperation(TRI_voc_document_operation_e const& op,
                                      TransactionId tid, ShardID shard,
                                      velocypack::SharedSlice payload) noexcept

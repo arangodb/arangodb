@@ -49,6 +49,7 @@ namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateNetworkHandler;
 struct IDocumentStateShardHandler;
+struct IDocumentStateIndexHandler;
 struct IDocumentStateSnapshotHandler;
 struct IDocumentStateTransactionHandler;
 struct IDocumentStateTransaction;
@@ -59,12 +60,16 @@ struct IDocumentStateHandlersFactory {
   virtual auto createShardHandler(TRI_vocbase_t& vocbase,
                                   GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
+  virtual auto createIndexHandler(TRI_vocbase_t& vocbase,
+                                  GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateIndexHandler> = 0;
   virtual auto createSnapshotHandler(TRI_vocbase_t& vocbase,
                                      GlobalLogIdentifier const& gid)
       -> std::shared_ptr<IDocumentStateSnapshotHandler> = 0;
   virtual auto createTransactionHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler)
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
+      std::shared_ptr<IDocumentStateIndexHandler> indexHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
   virtual auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
                                  ShardID const& shard,
@@ -85,12 +90,15 @@ class DocumentStateHandlersFactory
                                MaintenanceFeature& maintenanceFeature);
   auto createShardHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override;
+  auto createIndexHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateIndexHandler> override;
   auto createSnapshotHandler(TRI_vocbase_t& vocbase,
                              GlobalLogIdentifier const& gid)
       -> std::shared_ptr<IDocumentStateSnapshotHandler> override;
   auto createTransactionHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler)
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
+      std::shared_ptr<IDocumentStateIndexHandler> indexHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
   auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
                          ShardID const& shard, AccessMode::Type accessType)

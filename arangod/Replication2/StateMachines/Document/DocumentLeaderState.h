@@ -29,6 +29,8 @@
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
+#include "VocBase/Methods/Indexes.h"
+
 #include "Basics/UnshackledMutex.h"
 
 #include <atomic>
@@ -77,7 +79,9 @@ struct DocumentLeaderState
   auto dropShard(ShardID shard, CollectionID collectionId)
       -> futures::Future<Result>;
 
-  auto createIndex(LogicalCollection& col, VPackSlice indexInfo)
+  auto createIndex(LogicalCollection& col, VPackSlice indexInfo,
+                   std::shared_ptr<VPackBuilder> output,
+                   std::shared_ptr<methods::Indexes::ProgressTracker> progress)
       -> futures::Future<Result>;
 
   auto getActiveTransactionsCount() const noexcept -> std::size_t {

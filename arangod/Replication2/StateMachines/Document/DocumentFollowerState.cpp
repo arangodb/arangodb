@@ -41,7 +41,8 @@ DocumentFollowerState::GuardedData::GuardedData(
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
     : core(std::move(core)), currentSnapshotVersion{0} {
   transactionHandler = handlersFactory->createTransactionHandler(
-      this->core->getVocbase(), this->core->gid, this->core->getShardHandler());
+      this->core->getVocbase(), this->core->gid, this->core->getShardHandler(),
+      this->core->getIndexHandler());
 }
 
 DocumentFollowerState::DocumentFollowerState(
@@ -592,7 +593,11 @@ auto DocumentFollowerState::GuardedData::applyEntry(
 auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::CreateIndex const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
-  LOG_DEVEL << "create index follower";
+  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
+    return res;
+  }
+
+  // Index has been created, we can release the entry.
   return ResultT<std::optional<LogIndex>>::success(
       activeTransactions.getReleaseIndex().value_or(index));
 }
