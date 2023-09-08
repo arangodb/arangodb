@@ -23,7 +23,6 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
-#include "Replication2/StateMachines/Document/DocumentStateIndexHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
@@ -46,16 +45,10 @@ DocumentStateHandlersFactory::DocumentStateHandlersFactory(
 auto DocumentStateHandlersFactory::createShardHandler(TRI_vocbase_t& vocbase,
                                                       GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateShardHandler> {
-  auto maintenance =
-      createMaintenanceActionExecutor(gid, ServerState::instance()->getId());
+  auto maintenance = createMaintenanceActionExecutor(
+      vocbase, gid, ServerState::instance()->getId());
   return std::make_shared<DocumentStateShardHandler>(vocbase, std::move(gid),
                                                      std::move(maintenance));
-}
-
-auto DocumentStateHandlersFactory::createIndexHandler(TRI_vocbase_t& vocbase,
-                                                      GlobalLogIdentifier gid)
-    -> std::shared_ptr<IDocumentStateIndexHandler> {
-  return std::make_shared<DocumentStateIndexHandler>(std::move(gid), vocbase);
 }
 
 auto DocumentStateHandlersFactory::createSnapshotHandler(
@@ -73,12 +66,10 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
 
 auto DocumentStateHandlersFactory::createTransactionHandler(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
-    std::shared_ptr<IDocumentStateShardHandler> shardHandler,
-    std::shared_ptr<IDocumentStateIndexHandler> indexHandler)
+    std::shared_ptr<IDocumentStateShardHandler> shardHandler)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
   return std::make_unique<DocumentStateTransactionHandler>(
-      gid, &vocbase, shared_from_this(), std::move(shardHandler),
-      std::move(indexHandler));
+      gid, &vocbase, shared_from_this(), std::move(shardHandler));
 }
 
 auto DocumentStateHandlersFactory::createTransaction(
@@ -115,10 +106,10 @@ auto DocumentStateHandlersFactory::createNetworkHandler(GlobalLogIdentifier gid)
 }
 
 auto DocumentStateHandlersFactory::createMaintenanceActionExecutor(
-    GlobalLogIdentifier gid, ServerID server)
+    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid, ServerID server)
     -> std::shared_ptr<IMaintenanceActionExecutor> {
   return std::make_shared<MaintenanceActionExecutor>(
-      std::move(gid), std::move(server), _maintenanceFeature);
+      std::move(gid), std::move(server), _maintenanceFeature, vocbase);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

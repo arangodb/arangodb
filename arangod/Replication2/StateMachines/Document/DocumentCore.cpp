@@ -40,8 +40,7 @@ DocumentCore::DocumentCore(
       loggerContext(std::move(loggerContext)),
       _vocbase(vocbase),
       _params(std::move(coreParameters)),
-      _shardHandler(handlersFactory->createShardHandler(vocbase, this->gid)),
-      _indexHandler(handlersFactory->createIndexHandler(vocbase, this->gid)) {}
+      _shardHandler(handlersFactory->createShardHandler(vocbase, this->gid)) {}
 
 void DocumentCore::drop() {
   if (auto res = _shardHandler->dropAllShards(); res.fail()) {
@@ -55,9 +54,4 @@ auto DocumentCore::getVocbase() -> TRI_vocbase_t& { return _vocbase; }
 auto DocumentCore::getShardHandler()
     -> std::shared_ptr<IDocumentStateShardHandler> {
   return _shardHandler;
-}
-
-auto DocumentCore::getIndexHandler()
-    -> std::shared_ptr<IDocumentStateIndexHandler> {
-  return _indexHandler;
 }

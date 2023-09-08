@@ -142,4 +142,28 @@ auto DocumentStateShardHandler::getShardMap() -> ShardMap {
   return _shardMap.shards;
 }
 
+auto DocumentStateShardHandler::ensureIndex(
+    ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
+    std::shared_ptr<VPackBuilder> output,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result {
+  if (output == nullptr) {
+    output = std::make_shared<VPackBuilder>();
+  }
+
+  auto res = basics::catchToResult([&] {
+    return _maintenance->executeCreateIndex(shard, properties, output,
+                                            std::move(progress));
+  });
+  if (res.fail()) {
+    res = Result{res.errorNumber(),
+                 fmt::format("Error: {} Failed to ensure index on shard {}: {}",
+                             res.errorMessage(), shard, output->toJson())};
+  } else {
+    LOG_TOPIC("0954e", DEBUG, Logger::MAINTENANCE)
+        << "Index " << output->toJson() << " created on shard " << shard;
+  }
+
+  return res;
+}
+
 }  // namespace arangodb::replication2::replicated_state::document

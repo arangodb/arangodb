@@ -6,7 +6,6 @@ target_sources(arango_replication2 PRIVATE
   DocumentLeaderState.cpp
   DocumentLogEntry.cpp
   DocumentStateHandlersFactory.cpp
-  DocumentStateIndexHandler.cpp
   DocumentStateMachine.cpp
   DocumentStateMachineFeature.cpp
   DocumentStateMethods.cpp

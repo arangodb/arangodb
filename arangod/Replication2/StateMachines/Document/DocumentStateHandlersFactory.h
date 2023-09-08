@@ -49,7 +49,6 @@ namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateNetworkHandler;
 struct IDocumentStateShardHandler;
-struct IDocumentStateIndexHandler;
 struct IDocumentStateSnapshotHandler;
 struct IDocumentStateTransactionHandler;
 struct IDocumentStateTransaction;
@@ -60,16 +59,12 @@ struct IDocumentStateHandlersFactory {
   virtual auto createShardHandler(TRI_vocbase_t& vocbase,
                                   GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
-  virtual auto createIndexHandler(TRI_vocbase_t& vocbase,
-                                  GlobalLogIdentifier gid)
-      -> std::shared_ptr<IDocumentStateIndexHandler> = 0;
   virtual auto createSnapshotHandler(TRI_vocbase_t& vocbase,
                                      GlobalLogIdentifier const& gid)
       -> std::shared_ptr<IDocumentStateSnapshotHandler> = 0;
   virtual auto createTransactionHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
-      std::shared_ptr<IDocumentStateIndexHandler> indexHandler)
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
   virtual auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
                                  ShardID const& shard,
@@ -77,7 +72,8 @@ struct IDocumentStateHandlersFactory {
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> = 0;
-  virtual auto createMaintenanceActionExecutor(GlobalLogIdentifier gid,
+  virtual auto createMaintenanceActionExecutor(TRI_vocbase_t& vocbase,
+                                               GlobalLogIdentifier gid,
                                                ServerID server)
       -> std::shared_ptr<IMaintenanceActionExecutor> = 0;
 };
@@ -90,22 +86,20 @@ class DocumentStateHandlersFactory
                                MaintenanceFeature& maintenanceFeature);
   auto createShardHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override;
-  auto createIndexHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
-      -> std::shared_ptr<IDocumentStateIndexHandler> override;
   auto createSnapshotHandler(TRI_vocbase_t& vocbase,
                              GlobalLogIdentifier const& gid)
       -> std::shared_ptr<IDocumentStateSnapshotHandler> override;
   auto createTransactionHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
-      std::shared_ptr<IDocumentStateIndexHandler> indexHandler)
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
   auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
                          ShardID const& shard, AccessMode::Type accessType)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;
-  auto createMaintenanceActionExecutor(GlobalLogIdentifier gid, ServerID server)
+  auto createMaintenanceActionExecutor(TRI_vocbase_t& vocbase,
+                                       GlobalLogIdentifier gid, ServerID server)
       -> std::shared_ptr<IMaintenanceActionExecutor> override;
 
  private:

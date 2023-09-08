@@ -41,8 +41,7 @@ DocumentFollowerState::GuardedData::GuardedData(
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
     : core(std::move(core)), currentSnapshotVersion{0} {
   transactionHandler = handlersFactory->createTransactionHandler(
-      this->core->getVocbase(), this->core->gid, this->core->getShardHandler(),
-      this->core->getIndexHandler());
+      this->core->getVocbase(), this->core->gid, this->core->getShardHandler());
 }
 
 DocumentFollowerState::DocumentFollowerState(

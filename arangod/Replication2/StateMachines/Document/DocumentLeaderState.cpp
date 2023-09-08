@@ -42,8 +42,7 @@ DocumentLeaderState::GuardedData::GuardedData(
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
     : core(std::move(core)) {
   transactionHandler = handlersFactory->createTransactionHandler(
-      this->core->getVocbase(), this->core->gid, this->core->getShardHandler(),
-      this->core->getIndexHandler());
+      this->core->getVocbase(), this->core->gid, this->core->getShardHandler());
 }
 
 DocumentLeaderState::DocumentLeaderState(
@@ -560,7 +559,7 @@ auto DocumentLeaderState::createIndex(
       col.name(), std::make_shared<VPackBuilder>(indexInfo), std::move(output),
       std::move(progress));
 
-  if (indexInfo.get("unique").getBoolean() || true) {
+  if (indexInfo.get("unique").getBoolean()) {
     // An unique index is always constructed first on the leader, and then
     // replicated. This is because the leader has to check for uniqueness
     // before every insert. If a follower would create the index first, it

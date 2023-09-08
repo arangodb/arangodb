@@ -27,7 +27,6 @@
 #include "Basics/voc-errors.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
-#include "Replication2/StateMachines/Document/DocumentStateIndexHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "VocBase/AccessMode.h"
@@ -85,16 +84,14 @@ namespace arangodb::replication2::replicated_state::document {
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
     GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
     std::shared_ptr<IDocumentStateHandlersFactory> factory,
-    std::shared_ptr<IDocumentStateShardHandler> shardHandler,
-    std::shared_ptr<IDocumentStateIndexHandler> indexHandler)
+    std::shared_ptr<IDocumentStateShardHandler> shardHandler)
     : _gid(std::move(gid)),
       _vocbase(vocbase),
       _logContext(LoggerContext(Logger::REPLICATED_STATE)
                       .with<logContextKeyDatabaseName>(_gid.database)
                       .with<logContextKeyLogId>(_gid.id)),
       _factory(std::move(factory)),
-      _shardHandler(std::move(shardHandler)),
-      _indexHandler(std::move(indexHandler)) {
+      _shardHandler(std::move(shardHandler)) {
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(_vocbase != nullptr);
 #endif
@@ -249,7 +246,7 @@ auto DocumentStateTransactionHandler::applyOp(
 
 auto DocumentStateTransactionHandler::applyOp(
     ReplicatedOperation::CreateIndex const& op) -> Result {
-  auto res = _indexHandler->ensureIndex(op.shard, op.properties,
+  auto res = _shardHandler->ensureIndex(op.shard, op.properties,
                                         op.params.output, op.params.progress);
   return res;
 }
