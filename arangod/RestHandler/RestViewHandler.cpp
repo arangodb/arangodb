@@ -286,7 +286,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   // First refresh our analyzers cache to see all latest changes in analyzers
   auto& analyzers = server().getFeature<iresearch::IResearchAnalyzerFeature>();
-  r = analyzers.loadAvailableAnalyzers(_vocbase.name());
+  auto r = analyzers.loadAvailableAnalyzers(_vocbase.name());
   if (!r.ok()) {
     return generateError(r);
   }
