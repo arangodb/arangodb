@@ -23,10 +23,14 @@
 
 #include "LogPersistor.h"
 
-#include <absl/crc/crc32c.h>
+#include <exception>
+#include <optional>
 #include <type_traits>
 
+#include <fmt/format.h>
+
 #include "Assertions/Assert.h"
+#include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
@@ -36,6 +40,7 @@
 #include "Logger/LogMacros.h"
 #include "Replication2/Storage/IteratorPosition.h"
 #include "Replication2/Storage/WAL/Buffer.h"
+#include "Replication2/Storage/WAL/EntryWriter.h"
 #include "Replication2/Storage/WAL/FileHeader.h"
 #include "Replication2/Storage/WAL/FileIterator.h"
 #include "Replication2/Storage/WAL/IFileManager.h"
@@ -71,37 +76,41 @@ LogPersistor::LogPersistor(LogId logId,
 void LogPersistor::loadFileSet() {
   for (auto& file : _fileManager->listFiles()) {
     try {
-      LogReader reader(_fileManager->createReader(file));
-      auto res = reader.getFirstRecordHeader();
+      auto res = addToFileSet(file);
       if (res.fail()) {
         LOG_TOPIC("b0f4c", WARN, Logger::REPLICATED_WAL)
-            << "Ignoring file " << file << " in log " << _logId
-            << " because we failed to read the first record: "
+            << "Ignoring file " << file << " in log " << _logId << " - "
             << res.errorMessage();
-        continue;
       }
-      auto first = res.get();
-
-      res = reader.getLastRecordHeader();
-      if (res.fail()) {
-        LOG_TOPIC("5b8d6", WARN, Logger::REPLICATED_WAL)
-            << "Ignoring file " << file << " in log " << _logId
-            << "because we failed to read the last record: "
-            << res.errorMessage();
-        continue;
-      }
-      auto last = res.get();
-
-      _fileSet.insert(LogFile{
-          .filename = file,
-          .first = TermIndexPair(LogTerm{first.term()}, LogIndex{first.index}),
-          .last = TermIndexPair(LogTerm{last.term()}, LogIndex{last.index})});
     } catch (std::exception const& ex) {
       LOG_TOPIC("4550a", WARN, Logger::REPLICATED_WAL)
           << "Ignoring file " << file << " in log " << _logId << ": "
           << ex.what();
     }
   }
+}
+
+auto LogPersistor::addToFileSet(std::string const& file) -> Result {
+  LogReader reader(_fileManager->createReader(file));
+  auto res = reader.getFirstRecordHeader();
+  if (res.fail()) {
+    return Result{res.errorNumber(), "failed to read the first record - " +
+                                         std::string(res.errorMessage())};
+  }
+  auto first = res.get();
+
+  res = reader.getLastRecordHeader();
+  if (res.fail()) {
+    return Result{res.errorNumber(), "failed to read the last record - " +
+                                         std::string(res.errorMessage())};
+  }
+  auto last = res.get();
+
+  _fileSet.insert(LogFile{
+      .filename = file,
+      .first = TermIndexPair(LogTerm{first.term()}, LogIndex{first.index}),
+      .last = TermIndexPair(LogTerm{last.term()}, LogIndex{last.index})});
+  return {};
 }
 
 void LogPersistor::validateFileSet() {
@@ -124,8 +133,10 @@ void LogPersistor::validateFileSet() {
 }
 
 void LogPersistor::createActiveLogFile() {
-  _activeFile = _fileManager->createWriter(activeLogFileName);
-  auto fileReader = _activeFile->getReader();
+  _activeFile.writer = _fileManager->createWriter(activeLogFileName);
+  _activeFile.firstIndex = std::nullopt;
+
+  auto fileReader = _activeFile.writer->getReader();
   if (fileReader->size() > sizeof(FileHeader)) {
     LogReader logReader(std::move(fileReader));
     auto res = logReader.getLastRecordHeader();
@@ -144,10 +155,10 @@ void LogPersistor::createActiveLogFile() {
                     fileReader->size() == sizeof(FileHeader));
     if (fileReader->size() == 0) {
       FileHeader header = {.magic = wMagicFileType, .version = wCurrentVersion};
-      auto res = _activeFile->append(header);
+      auto res = _activeFile.writer->append(header);
       if (res.fail()) {
         LOG_TOPIC("f219e", ERR, Logger::REPLICATED_WAL)
-            << "Failed to write file header to " << _activeFile->path();
+            << "Failed to write file header to " << _activeFile.writer->path();
         THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
       }
     }
@@ -162,8 +173,9 @@ auto LogPersistor::getIterator(IteratorPosition position)
     -> std::unique_ptr<PersistedLogIterator> {
   LOG_TOPIC("a6986", TRACE, Logger::REPLICATED_WAL)
       << "Creating iterator for index " << position.index() << " at offset "
-      << position.fileOffset() << " in file " << _activeFile->path();
-  return std::make_unique<FileIterator>(position, _activeFile->getReader());
+      << position.fileOffset() << " in file " << _activeFile.writer->path();
+  return std::make_unique<FileIterator>(position,
+                                        _activeFile.writer->getReader());
 }
 
 auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
@@ -174,6 +186,7 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
 
   SequenceNumber seq = 0;  // TODO - what if iterator is empty?
   auto lastWrittenEntry = _lastWrittenEntry;
+  std::optional<LogIndex> firstEntry;
   unsigned cnt = 0;
   while (auto e = iter->next()) {
     auto& entry = e.value();
@@ -183,6 +196,9 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
           << "attempting to write log entry " << entry.logTermIndexPair()
           << " after " << lastWrittenEntry.value();
     }
+    if (!firstEntry) {
+      firstEntry = entry.logIndex();
+    }
 
     ++cnt;
     entryWriter.appendEntry(entry);
@@ -191,12 +207,12 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
     lastWrittenEntry = entry.logTermIndexPair();
   }
 
-  auto res = _activeFile->append(
+  auto res = _activeFile.writer->append(
       {reinterpret_cast<char const*>(buffer.data()), buffer.size()});
   if (res.fail()) {
     LOG_TOPIC("89261", ERR, Logger::REPLICATED_WAL)
         << "Failed to write " << cnt << " entries (" << buffer.size()
-        << " bytes) to file " << _activeFile->path()
+        << " bytes) to file " << _activeFile.writer->path()
         << "; last written entry is "
         << (_lastWrittenEntry.has_value() ? to_string(_lastWrittenEntry.value())
                                           : "<na>");
@@ -205,17 +221,52 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
   }
   LOG_TOPIC("6fbfd", TRACE, Logger::REPLICATED_WAL)
       << "Wrote " << cnt << " entries (" << buffer.size() << " bytes) to file "
-      << _activeFile->path() << "; last written entry is "
+      << _activeFile.writer->path() << "; last written entry is "
       << (lastWrittenEntry.has_value() ? to_string(lastWrittenEntry.value())
                                        : "<na>");
 
   _lastWrittenEntry = lastWrittenEntry;
-
-  if (writeOptions.waitForSync) {
-    _activeFile->sync();
+  if (firstEntry.has_value() && !_activeFile.firstIndex.has_value()) {
+    _activeFile.firstIndex = firstEntry;
   }
 
+  if (writeOptions.waitForSync) {
+    _activeFile.writer->sync();
+  }
+
+  if (_activeFile.writer->size() > _options.logFileSizeThreshold) {
+    finishActiveLogFile();
+    createNewActiveLogFile();
+  }
   return ResultT<SequenceNumber>::success(seq);
+}
+
+void LogPersistor::finishActiveLogFile() {
+  _activeFile.writer->sync();
+  _activeFile.writer.reset();
+  ADB_PROD_ASSERT(_activeFile.firstIndex.has_value());
+  auto newFileName = fmt::format("{:06}.log", _activeFile.firstIndex->value);
+  _fileManager->moveFile(activeLogFileName, newFileName);
+  auto res = addToFileSet(newFileName);
+  if (res.fail()) {
+    LOG_TOPIC("a674f", FATAL, Logger::REPLICATED_WAL)
+        << "Failed to add new file " << newFileName << " to file set of log "
+        << _logId << ": " << res.errorMessage();
+    std::abort();
+  }
+}
+
+void LogPersistor::createNewActiveLogFile() {
+  _activeFile.writer = _fileManager->createWriter(activeLogFileName);
+  _activeFile.firstIndex = std::nullopt;
+  ADB_PROD_ASSERT(_activeFile.writer->size() == 0);
+  FileHeader header = {.magic = wMagicFileType, .version = wCurrentVersion};
+  auto res = _activeFile.writer->append(header);
+  if (res.fail()) {
+    LOG_TOPIC("db0d5", ERR, Logger::REPLICATED_WAL)
+        << "Failed to write file header to " << _activeFile.writer->path();
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  }
 }
 
 auto LogPersistor::removeFront(LogIndex stop, WriteOptions const&)
@@ -232,7 +283,7 @@ auto LogPersistor::removeBack(LogIndex start, WriteOptions const&)
       << _logId;
   ADB_PROD_ASSERT(start.value > 0);
 
-  LogReader reader(_activeFile->getReader());
+  LogReader reader(_activeFile.writer->getReader());
   reader.seek(reader.size());
 
   // we seek the predecessor of start, because we want to get its term
@@ -256,19 +307,19 @@ auto LogPersistor::removeBack(LogIndex start, WriteOptions const&)
 
   auto newSize = reader.position();
   LOG_TOPIC("a1db0", INFO, Logger::REPLICATED_WAL)
-      << "Truncating file " << _activeFile->path() << " at " << newSize;
+      << "Truncating file " << _activeFile.writer->path() << " at " << newSize;
 
-  _activeFile->truncate(newSize);
+  _activeFile.writer->truncate(newSize);
   return ResultT<SequenceNumber>::success(start.value);
 } catch (basics::Exception& ex) {
   LOG_TOPIC("7741d", ERR, Logger::REPLICATED_WAL)
-      << "Failed to remove entries from back of file " << _activeFile->path()
-      << ": " << ex.message();
+      << "Failed to remove entries from back of file "
+      << _activeFile.writer->path() << ": " << ex.message();
   return ResultT<SequenceNumber>::error(ex.code(), ex.message());
 } catch (std::exception& ex) {
   LOG_TOPIC("08da6", FATAL, Logger::REPLICATED_WAL)
-      << "Failed to remove entries from back of file " << _activeFile->path()
-      << ": " << ex.what();
+      << "Failed to remove entries from back of file "
+      << _activeFile.writer->path() << ": " << ex.what();
   return ResultT<SequenceNumber>::error(
       TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, ex.what());
 }
@@ -294,7 +345,7 @@ auto LogPersistor::drop() -> Result {
   LOG_TOPIC("8fb77", INFO, Logger::REPLICATED_WAL)
       << "Dropping LogPersistor for log " << _logId;
   // TODO - error handling
-  _activeFile.reset();
+  _activeFile.writer.reset();
   _fileManager->removeAll();
   return Result{};
 }

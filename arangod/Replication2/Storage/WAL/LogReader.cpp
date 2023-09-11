@@ -41,8 +41,9 @@
 namespace arangodb::replication2::storage::wal {
 
 namespace {
-constexpr auto minFileSize =
-    sizeof(FileHeader) + sizeof(Record::Header) + sizeof(Record::Footer);
+constexpr auto minFileSize = sizeof(FileHeader) +
+                             sizeof(Record::CompressedHeader) +
+                             sizeof(Record::Footer);
 }
 
 LogReader::LogReader(std::unique_ptr<IFileReader> reader)

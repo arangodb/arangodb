@@ -77,16 +77,23 @@ struct LogPersistor : ILogPersistor {
   }
 
  private:
+  struct ActiveFile {
+    std::unique_ptr<IFileWriter> writer;
+    std::optional<LogIndex> firstIndex;
+  };
+
   void loadFileSet();
+  [[nodiscard]] auto addToFileSet(std::string const& file) -> Result;
   void validateFileSet();
   void createActiveLogFile();
 
-  void createNewLogFile();
+  void finishActiveLogFile();
+  void createNewActiveLogFile();
 
   LogId const _logId;
   std::shared_ptr<IFileManager> const _fileManager;
   std::set<LogFile> _fileSet;
-  std::unique_ptr<IFileWriter> _activeFile;
+  ActiveFile _activeFile;
   std::optional<TermIndexPair> _lastWrittenEntry;
   Options _options;
 };

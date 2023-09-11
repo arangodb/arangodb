@@ -607,4 +607,54 @@ TEST_F(
             persistor->lastWrittenEntry().value());
 }
 
+TEST_F(LogPersistorMultiFileTest,
+       insert_starts_new_file_if_threshold_exceeded) {
+  initializePersistor(
+      {}, "",
+      // we set the threshold very low to force a new file after each insert
+      Options{.logFileSizeThreshold = 1});
+  ASSERT_EQ(1, writeBuffers.size());
+
+  auto insertEntryAndCheckFile = [&](std::uint64_t index) {
+    auto fileToFinish = fmt::format("{:06}.log", index);
+    EXPECT_CALL(*fileManager, moveFile("_current.log", fileToFinish)).Times(1);
+    // after moving the file we will create a reader for it to fetch the first
+    // and last entries
+    EXPECT_CALL(*fileManager, createReader(fileToFinish)).WillOnce([&](auto) {
+      return std::make_unique<InMemoryFileReader>(writeBuffers.back());
+    });
+    EXPECT_CALL(*fileManager, createWriter("_current.log")).WillOnce([&](auto) {
+      writeBuffers.emplace_back();
+      return std::make_unique<InMemoryFileWriter>(writeBuffers.back());
+    });
+
+    auto res = persistor
+                   ->insert(InMemoryLog{}
+                                .append({makeNormalLogEntry(1, index, "blubb")})
+                                .getLogIterator(),
+                            LogPersistor::WriteOptions{})
+                   .get();
+
+    ASSERT_TRUE(res.ok());
+    EXPECT_EQ(res.get(), index);
+    testing::Mock::VerifyAndClearExpectations(fileManager.get());
+
+    ASSERT_EQ(index + 1, writeBuffers.size());
+    StreamReader reader{writeBuffers[index - 1]};
+    checkFileHeader(reader);
+    checkLogEntry(reader, LogIndex{index}, LogTerm{1}, RecordType::wNormal,
+                  LogPayload::createFromString("blubb"));
+
+    ASSERT_FALSE(persistor->fileSet().empty());
+    auto file = *persistor->fileSet().rbegin();
+    EXPECT_EQ(fileToFinish, file.filename);
+    EXPECT_EQ(TermIndexPair(LogTerm{1}, LogIndex{index}), file.first);
+    EXPECT_EQ(TermIndexPair(LogTerm{1}, LogIndex{index}), file.last);
+  };
+
+  insertEntryAndCheckFile(1);
+  insertEntryAndCheckFile(2);
+  insertEntryAndCheckFile(3);
+}
+
 }  // namespace arangodb::replication2::storage::wal::test
