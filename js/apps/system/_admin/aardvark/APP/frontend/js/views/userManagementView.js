@@ -170,7 +170,6 @@
           return false;
         }
       );
-      console.log(reducedCollection, this.collection, {searchString});
 
       $(this.el).html(this.template.render({
         collection: reducedCollection,
