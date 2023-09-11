@@ -133,10 +133,12 @@
         }
 
         {
+          db._view(viewName).properties({commitIntervalMsec: 0});
           const oldValue = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
           db._query("FOR d IN " + collectionName + " REMOVE d IN " + collectionName);
           const newValue = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
           assertNotEqual(oldValue, newValue);
+          db._view(viewName).properties({commitIntervalMsec: 100});
         }
 
         db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
