@@ -1,6 +1,12 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-1556: Potential shutdown race, when the server is shutting down
+  and still AgencyCommunication was going on it could use the scheduler
+  which was already deleted, causing a crash right before a normal shutdown.
+  This should not have any negative effect, as all state preserving operations
+  are done by then, it just wasn't a clean exit.
+
 * Updated ArangoDB Starter to 0.17.1.
 
 * Fixed BTS-1541: Old legacy little endian key format for RocksDB database
@@ -36,12 +42,6 @@ v3.11.3 (2023-08-17)
   some data rows not being returned to the client.
 
 * BTS-1544: The _system database now properly reports its sharding value.
-
-* Fixed BTS-1556: Potential shutdown race, when the server is shutting down
-  and still AgencyCommunication was going on it could use the scheduler
-  which was already deleted, causing a crash right before a normal shutdown.
-  This should not have any negative effect, as all state preserving operations
-  are done by then, it just wasn't a clean exit.
 
 * Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition
   was executed through an index lookup.
