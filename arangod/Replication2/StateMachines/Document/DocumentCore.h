@@ -32,7 +32,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb::replication2::replicated_state::document {
 
-struct IDocumentStateIndexHandler;
 struct IDocumentStateShardHandler;
 struct IDocumentStateTransactionHandler;
 
