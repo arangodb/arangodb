@@ -25,6 +25,7 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/CreateCollection.h"
 #include "Cluster/DropCollection.h"
+#include "Cluster/EnsureIndex.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/UpdateCollection.h"
 #include "Utils/DatabaseGuard.h"
@@ -103,7 +104,6 @@ auto MaintenanceActionExecutor::executeModifyCollectionAction(
 
 auto MaintenanceActionExecutor::executeCreateIndex(
     ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
-    std::shared_ptr<VPackBuilder> const& output,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result {
   DatabaseGuard guard(_vocbase);
   auto col = guard->lookupCollection(shard);
@@ -113,8 +113,13 @@ auto MaintenanceActionExecutor::executeCreateIndex(
                         guard->name())};
   }
 
-  return methods::Indexes::ensureIndex(*col, properties->slice(), true, *output,
-                                       std::move(progress));
+  VPackBuilder output;
+  auto res = methods::Indexes::ensureIndex(*col, properties->slice(), true,
+                                           output, std::move(progress));
+  if (res.ok()) {
+    arangodb::maintenance::EnsureIndex::indexCreationLogging(output);
+  }
+  return res;
 }
 
 void MaintenanceActionExecutor::addDirty() {

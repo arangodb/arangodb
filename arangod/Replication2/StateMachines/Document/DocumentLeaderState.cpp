@@ -552,11 +552,10 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
 
 auto DocumentLeaderState::createIndex(
     LogicalCollection& col, VPackSlice indexInfo,
-    std::shared_ptr<VPackBuilder> output,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress)
     -> futures::Future<Result> {
   ReplicatedOperation op = ReplicatedOperation::buildCreateIndexOperation(
-      col.name(), std::make_shared<VPackBuilder>(indexInfo), std::move(output),
+      col.name(), std::make_shared<VPackBuilder>(indexInfo),
       std::move(progress));
 
   if (indexInfo.get("unique").getBoolean()) {

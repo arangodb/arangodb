@@ -246,7 +246,6 @@ struct MockMaintenanceActionExecutor
               (override));
   MOCK_METHOD(Result, executeCreateIndex,
               (ShardID, std::shared_ptr<VPackBuilder> const&,
-               std::shared_ptr<VPackBuilder> const&,
                std::shared_ptr<methods::Indexes::ProgressTracker>),
               (override));
   MOCK_METHOD(void, addDirty, (), (override));
@@ -265,7 +264,6 @@ struct MockDocumentStateShardHandler
   MOCK_METHOD(ResultT<bool>, dropShard, (ShardID const&), (override));
   MOCK_METHOD(Result, ensureIndex,
               (ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
-               std::shared_ptr<VPackBuilder> output,
                std::shared_ptr<methods::Indexes::ProgressTracker> progress),
               (override));
   MOCK_METHOD(Result, dropAllShards, (), (override));

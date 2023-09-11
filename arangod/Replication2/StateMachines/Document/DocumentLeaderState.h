@@ -80,7 +80,6 @@ struct DocumentLeaderState
       -> futures::Future<Result>;
 
   auto createIndex(LogicalCollection& col, VPackSlice indexInfo,
-                   std::shared_ptr<VPackBuilder> output,
                    std::shared_ptr<methods::Indexes::ProgressTracker> progress)
       -> futures::Future<Result>;
 

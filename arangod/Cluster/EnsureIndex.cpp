@@ -155,27 +155,27 @@ bool EnsureIndex::first() {
       // continue with the job normally
     }
 
-    auto lambda = std::make_shared<Indexes::ProgressTracker>(
-        [this](double d) { return setProgress(d); });
-    auto index = std::make_shared<VPackBuilder>();
-    Result res;
+    auto res = std::invoke([&]() -> Result {
+      auto lambda = std::make_shared<Indexes::ProgressTracker>(
+          [this](double d) { return setProgress(d); });
 
-    if (vocbase->replicationVersion() == replication::Version::TWO) {
-      res = ensureIndexReplication2(vocbase, *col, body.slice(), index,
-                                    std::move(lambda));
-    } else {
-      res = methods::Indexes::ensureIndex(*col, body.slice(), true, *index,
-                                          std::move(lambda));
-    }
+      if (vocbase->replicationVersion() == replication::Version::TWO) {
+        return ensureIndexReplication2(vocbase, *col, body.slice(),
+                                       std::move(lambda));
+      } else {
+        auto index = VPackBuilder();
+        auto res = methods::Indexes::ensureIndex(*col, body.slice(), true,
+                                                 index, std::move(lambda));
+        if (res.ok()) {
+          indexCreationLogging(index);
+        }
+        return res;
+      }
+    });
+
     result(res);
 
-    if (res.ok()) {
-      VPackSlice created = index->slice().get("isNewlyCreated");
-      std::string log = std::string("Index ") + id;
-      log += (created.isBool() && created.getBool() ? std::string(" created")
-                                                    : std::string(" updated"));
-      LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
-    } else {
+    if (res.fail()) {
       std::stringstream error;
       error << "failed to ensure index " << body.slice().toJson() << " "
             << res.errorMessage();
@@ -224,9 +224,16 @@ bool EnsureIndex::first() {
   return false;
 }
 
+void EnsureIndex::indexCreationLogging(VPackBuilder& index) {
+  VPackSlice created = index.slice().get("isNewlyCreated");
+  std::string log = std::string("Index ") + index.slice().get(ID).copyString();
+  log += (created.isBool() && created.getBool() ? std::string(" created")
+                                                : std::string(" updated"));
+  LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
+}
+
 auto EnsureIndex::ensureIndexReplication2(
     TRI_vocbase_t* vocbase, LogicalCollection& col, VPackSlice indexInfo,
-    std::shared_ptr<VPackBuilder> output,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result {
   if (auto state = vocbase->getReplicatedStateById(col.replicatedStateId());
       state.ok()) {
@@ -234,8 +241,7 @@ auto EnsureIndex::ensureIndexReplication2(
         replication2::replicated_state::document::DocumentLeaderState>(
         state.get()->getLeader());
     if (leaderState != nullptr) {
-      return leaderState
-          ->createIndex(col, indexInfo, std::move(output), std::move(progress))
+      return leaderState->createIndex(col, indexInfo, std::move(progress))
           .get();
     } else {
       // TODO prevent busy loop and wait for log to become ready (CINFRA-831)

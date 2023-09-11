@@ -95,13 +95,11 @@ auto ReplicatedOperation::buildDropShardOperation(
 
 auto ReplicatedOperation::buildCreateIndexOperation(
     ShardID shard, std::shared_ptr<VPackBuilder> properties,
-    std::shared_ptr<VPackBuilder> output,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
     -> ReplicatedOperation {
   return ReplicatedOperation{
       std::in_place, CreateIndex{std::move(shard), std::move(properties),
-                                 CreateIndex::Parameters{std::move(output),
-                                                         std::move(progress)}}};
+                                 CreateIndex::Parameters{std::move(progress)}}};
 }
 
 auto ReplicatedOperation::buildDocumentOperation(

@@ -50,7 +50,6 @@ struct IDocumentStateShardHandler {
   virtual auto getShardMap() -> ShardMap = 0;
   virtual auto ensureIndex(
       ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
-      std::shared_ptr<VPackBuilder> output,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress)
       -> Result = 0;
 };
@@ -80,7 +79,6 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
   auto getShardMap() -> ShardMap override;
   auto ensureIndex(ShardID shard,
                    std::shared_ptr<VPackBuilder> const& properties,
-                   std::shared_ptr<VPackBuilder> output,
                    std::shared_ptr<methods::Indexes::ProgressTracker> progress)
       -> Result override;
 

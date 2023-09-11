@@ -47,7 +47,6 @@ struct IMaintenanceActionExecutor {
       -> Result = 0;
   virtual auto executeCreateIndex(
       ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
-      std::shared_ptr<VPackBuilder> const& output,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress)
       -> Result = 0;
   virtual void addDirty() = 0;
@@ -69,7 +68,6 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
       -> Result override;
   auto executeCreateIndex(
       ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
-      std::shared_ptr<VPackBuilder> const& output,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress)
       -> Result override;
   void addDirty() override;

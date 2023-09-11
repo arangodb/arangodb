@@ -125,7 +125,6 @@ struct ReplicatedOperation {
     // Parameters attached to the operation, but not replicated, because they
     // make sense only locally.
     struct Parameters {
-      std::shared_ptr<VPackBuilder> output;
       std::shared_ptr<methods::Indexes::ProgressTracker> progress;
 
       friend auto operator==(Parameters const&, Parameters const&)
@@ -175,7 +174,6 @@ struct ReplicatedOperation {
       -> ReplicatedOperation;
   static auto buildCreateIndexOperation(
       ShardID shard, std::shared_ptr<VPackBuilder> properties,
-      std::shared_ptr<VPackBuilder> output = nullptr,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress =
           nullptr) noexcept -> ReplicatedOperation;
   static auto buildDocumentOperation(TRI_voc_document_operation_e const& op,
@@ -208,7 +206,8 @@ concept FinishesUserTransaction =
     std::is_same_v<T, ReplicatedOperation::Abort>;
 
 template<class T>
-concept FinishesUserTransactionOrIntermediate = FinishesUserTransaction<T> ||
+concept FinishesUserTransactionOrIntermediate =
+    FinishesUserTransaction<T> ||
     std::is_same_v<T, ReplicatedOperation::IntermediateCommit>;
 
 template<class T>
