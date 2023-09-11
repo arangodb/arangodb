@@ -27,6 +27,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -35,18 +37,38 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <thread>
+
 using namespace arangodb;
 
-RocksDBDumpManager::RocksDBDumpManager(RocksDBEngine& engine)
-    : _engine(engine) {}
+DECLARE_GAUGE(arangodb_dumps_ongoing, std::uint64_t,
+              "Number of dumps currently ongoing");
+DECLARE_GAUGE(arangodb_dumps_memory_usage, std::uint64_t,
+              "Memory usage of currently ongoing dumps");
 
-RocksDBDumpManager::~RocksDBDumpManager() = default;
+RocksDBDumpManager::RocksDBDumpManager(RocksDBEngine& engine,
+                                       metrics::MetricsFeature& metricsFeature,
+                                       RocksDBDumpContextLimits const& limits)
+    : _engine(engine),
+      _limits(limits),
+      _dumpsOngoing(metricsFeature.add(arangodb_dumps_ongoing{})),
+      _dumpsMemoryUsage(metricsFeature.add(arangodb_dumps_memory_usage{})) {}
+
+RocksDBDumpManager::~RocksDBDumpManager() {
+  garbageCollect(true);
+  TRI_ASSERT(_dumpsMemoryUsage.load() == 0);
+}
 
 std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
     RocksDBDumpContextOptions opts, std::string const& user,
     std::string const& database, bool useVPack) {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
+
+  opts.batchSize = std::clamp(opts.batchSize, _limits.batchSizeLowerBound,
+                              _limits.batchSizeUpperBound);
+  opts.parallelism = std::clamp(opts.parallelism, _limits.parallelismLowerBound,
+                                _limits.parallelismUpperBound);
 
   // If the local RocksDB database still uses little endian key encoding,
   // then the whole new dump method does not work, since ranges in _revs
@@ -59,8 +81,8 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   // generating the dump context can throw exceptions. if it does, then
   // no harm is done, and no resources will be leaked.
   auto context = std::make_shared<RocksDBDumpContext>(
-      _engine, _engine.server().getFeature<DatabaseFeature>(), generateId(),
-      std::move(opts), user, database, useVPack);
+      _engine, *this, _engine.server().getFeature<DatabaseFeature>(),
+      generateId(), std::move(opts), user, database, useVPack);
 
   std::lock_guard mutexLocker{_lock};
 
@@ -78,6 +100,8 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   }
 
   TRI_ASSERT(_contexts.at(context->id()) != nullptr);
+
+  _dumpsOngoing.fetch_add(1);
 
   return context;
 }
@@ -111,6 +135,7 @@ void RocksDBDumpManager::remove(std::string const& id,
   // context, and the context will be destroyed once the shared_ptr
   // goes out of scope in the other thread
   _contexts.erase(it);
+  _dumpsOngoing.fetch_sub(1);
 }
 
 void RocksDBDumpManager::dropDatabase(TRI_vocbase_t& vocbase) {
@@ -119,6 +144,8 @@ void RocksDBDumpManager::dropDatabase(TRI_vocbase_t& vocbase) {
   std::erase_if(_contexts, [&](auto const& x) {
     return x.second->database() == vocbase.name();
   });
+
+  _dumpsOngoing = _contexts.size();
 }
 
 void RocksDBDumpManager::garbageCollect(bool force) {
@@ -131,9 +158,49 @@ void RocksDBDumpManager::garbageCollect(bool force) {
     std::erase_if(_contexts,
                   [&](auto const& x) { return x.second->expires() < now; });
   }
+
+  _dumpsOngoing = _contexts.size();
 }
 
-void RocksDBDumpManager::beginShutdown() { garbageCollect(true); }
+std::unique_ptr<RocksDBDumpContext::Batch> RocksDBDumpManager::requestBatch(
+    std::string const& collectionName, std::uint64_t batchSize, bool useVPack,
+    velocypack::Options const* vpackOptions) {
+  while (!reserveCapacity(batchSize)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    if (_engine.server().isStopping()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+  }
+
+  if (useVPack) {
+    return std::make_unique<RocksDBDumpContext::BatchVPackArray>(
+        *this, batchSize, collectionName);
+  }
+  return std::make_unique<RocksDBDumpContext::BatchJSONL>(
+      *this, batchSize, collectionName, vpackOptions);
+}
+
+bool RocksDBDumpManager::reserveCapacity(std::uint64_t value) noexcept {
+  auto expected = _dumpsMemoryUsage.load();
+  auto desired = expected + value;
+  while (desired < _limits.memoryUsage) {
+    if (_dumpsMemoryUsage.compare_exchange_weak(expected, desired)) {
+      return true;
+    }
+    desired = expected + value;
+  }
+  return false;
+}
+
+// returns false if we are beyond the configured limit for all dumps.
+void RocksDBDumpManager::trackMemoryUsage(std::uint64_t size) noexcept {
+  _dumpsMemoryUsage.fetch_add(size);
+}
+
+void RocksDBDumpManager::untrackMemoryUsage(std::uint64_t size) noexcept {
+  TRI_ASSERT(_dumpsMemoryUsage.load() >= size);
+  _dumpsMemoryUsage.fetch_sub(size);
+}
 
 std::string RocksDBDumpManager::generateId() {
   // rationale: we use a HLC value here, because it is guaranteed to

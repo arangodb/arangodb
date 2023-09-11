@@ -443,6 +443,46 @@ void RocksDBEngine::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("rocksdb", "RocksDB engine");
 
+  options
+      ->addOption(
+          "--dump.max-memory-usage",
+          "Maximum memory usage (in bytes) to be used by all ongoing dumps.",
+          new UInt64Parameter(&_dumpLimits.memoryUsage),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(The approximate per-server maximum memory usage 
+for all ongoing dump actions combined.)");
+
+  options
+      ->addOption("--dump.max-batch-size",
+                  "Maximum batch size value that can be used in a dump.",
+                  new UInt64Parameter(&_dumpLimits.batchSizeUpperBound),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Each batch in a dump can grow to at most this
+size.)");
+
+  options
+      ->addOption("--dump.max-parallelism",
+                  "Maximum parallelism that can be used in a dump.",
+                  new UInt64Parameter(&_dumpLimits.parallelismUpperBound),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Each dump action on a server can use at most
+this many parallel threads. Note that end users can still start multiple 
+dump actions that run in parallel.)");
+
   /// @brief minimum required percentage of free disk space for considering
   /// the server "healthy". this is expressed as a floating point value
   /// between 0 and 1! if set to 0.0, the % amount of free disk is ignored in
@@ -843,6 +883,20 @@ void RocksDBEngine::validateOptions(
 #ifdef USE_ENTERPRISE
   validateEnterpriseOptions(options);
 #endif
+
+  if (_dumpLimits.batchSizeLowerBound > _dumpLimits.batchSizeUpperBound) {
+    LOG_TOPIC("79c1b", FATAL, arangodb::Logger::CONFIG)
+        << "invalid value for --dump.max-batch-size. Please use a value "
+        << "of at least " << _dumpLimits.batchSizeLowerBound;
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_dumpLimits.parallelismLowerBound > _dumpLimits.parallelismUpperBound) {
+    LOG_TOPIC("f433c", FATAL, arangodb::Logger::CONFIG)
+        << "invalid value for --dump.max-parallelism. Please use a value "
+        << "of at least " << _dumpLimits.parallelismLowerBound;
+    FATAL_ERROR_EXIT();
+  }
 
   if (_throttleScalingFactor == 0) {
     _throttleScalingFactor = 1;
@@ -1271,7 +1325,8 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
-  _dumpManager = std::make_unique<RocksDBDumpManager>(*this);
+  _dumpManager = std::make_unique<RocksDBDumpManager>(
+      *this, server().getFeature<metrics::MetricsFeature>(), _dumpLimits);
 
   struct SchedulerExecutor
       : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
@@ -1348,9 +1403,8 @@ void RocksDBEngine::beginShutdown() {
     _replicationManager->beginShutdown();
   }
 
-  // block the creation of new dump contexts
   if (_dumpManager != nullptr) {
-    _dumpManager->beginShutdown();
+    _dumpManager->garbageCollect(/*force*/ true);
   }
 
   // from now on, all started compactions can be canceled.
@@ -1365,6 +1419,10 @@ void RocksDBEngine::stop() {
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
+
+  if (_dumpManager != nullptr) {
+    _dumpManager->garbageCollect(/*force*/ true);
+  }
 
   if (_backgroundThread) {
     // stop the press

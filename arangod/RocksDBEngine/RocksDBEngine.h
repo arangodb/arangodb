@@ -37,6 +37,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "RocksDBEngine/RocksDBDumpContext.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
@@ -779,6 +780,8 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<rocksdb::Env> _checksumEnv;
 
   std::unique_ptr<RocksDBDumpManager> _dumpManager;
+
+  RocksDBDumpContextLimits _dumpLimits;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

@@ -29,6 +29,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Transaction/Context.h"
 #include "Utils/DatabaseGuard.h"
@@ -41,12 +42,17 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
 #include <utility>
 
 using namespace arangodb;
 
-RocksDBDumpContext::BatchVPackArray::BatchVPackArray(std::string_view shard)
-    : Batch(shard) {
+RocksDBDumpContext::Batch::~Batch() { manager.untrackMemoryUsage(memoryUsage); }
+
+RocksDBDumpContext::BatchVPackArray::BatchVPackArray(
+    RocksDBDumpManager& manager, std::uint64_t batchSize,
+    std::string_view shard)
+    : Batch(manager, batchSize, shard) {
   _builder.openArray(/*unindexed*/ true);
 }
 
@@ -56,7 +62,18 @@ void RocksDBDumpContext::BatchVPackArray::add(velocypack::Slice data) {
   _builder.add(data);
 }
 
-void RocksDBDumpContext::BatchVPackArray::close() { _builder.close(); }
+void RocksDBDumpContext::BatchVPackArray::close() {
+  _builder.close();
+
+  // now we calculate the actual memory usage of the batch
+  auto current = _builder.bufferRef().capacity();
+  if (current > memoryUsage) {
+    manager.trackMemoryUsage(current - memoryUsage);
+  } else if (current < memoryUsage) {
+    manager.untrackMemoryUsage(memoryUsage - current);
+  }
+  memoryUsage = current;
+}
 
 std::string_view RocksDBDumpContext::BatchVPackArray::content() const {
   return {reinterpret_cast<char const*>(_builder.bufferRef().data()),
@@ -67,12 +84,18 @@ size_t RocksDBDumpContext::BatchVPackArray::byteSize() const {
   return _builder.bufferRef().size();
 }
 
-RocksDBDumpContext::BatchJSONL::BatchJSONL(std::string_view shard,
+RocksDBDumpContext::BatchJSONL::BatchJSONL(RocksDBDumpManager& manager,
+                                           std::uint64_t batchSize,
+                                           std::string_view shard,
                                            velocypack::Options const* options)
-    : Batch(shard), _sink(&_content), _dumper(&_sink, options) {
+    : Batch(manager, batchSize, shard),
+      _sink(&_content),
+      _dumper(&_sink, options) {
   // make sink point into the string of the current batch
+
   // save at least a few small (re)allocations
-  _content.reserve(8 * 1024);
+  constexpr size_t smallAllocation = 8 * 1024;
+  _content.reserve(smallAllocation);
 }
 
 RocksDBDumpContext::BatchJSONL::~BatchJSONL() = default;
@@ -84,7 +107,16 @@ void RocksDBDumpContext::BatchJSONL::add(velocypack::Slice data) {
   _content.push_back('\n');
 }
 
-void RocksDBDumpContext::BatchJSONL::close() {}
+void RocksDBDumpContext::BatchJSONL::close() {
+  // now we calculate the actual memory usage of the batch
+  auto current = _content.capacity();
+  if (current > memoryUsage) {
+    manager.trackMemoryUsage(current - memoryUsage);
+  } else if (current < memoryUsage) {
+    manager.untrackMemoryUsage(memoryUsage - current);
+  }
+  memoryUsage = current;
+}
 
 std::string_view RocksDBDumpContext::BatchJSONL::content() const {
   return _content;
@@ -163,12 +195,14 @@ void RocksDBDumpContext::WorkItems::stop() {
 }
 
 RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
+                                       RocksDBDumpManager& manager,
                                        DatabaseFeature& databaseFeature,
                                        std::string id,
                                        RocksDBDumpContextOptions options,
                                        std::string user, std::string database,
                                        bool useVPack)
     : _engine(engine),
+      _manager(manager),
       _id(std::move(id)),
       _user(std::move(user)),
       _database(std::move(database)),
@@ -353,8 +387,8 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
 
   std::unique_ptr<Batch> batch;
 
-  velocypack::Options options;
-  options.customTypeHandler = _customTypeHandler.get();
+  velocypack::Options vpackOptions;
+  vpackOptions.customTypeHandler = _customTypeHandler.get();
 
   auto it = buildIterator(ci);
   TRI_ASSERT(it != nullptr);
@@ -374,13 +408,9 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
     ++docsProduced;
 
     if (batch == nullptr) {
-      if (_useVPack) {
-        batch =
-            std::make_unique<BatchVPackArray>(ci.guard.collection()->name());
-      } else {
-        batch = std::make_unique<BatchJSONL>(ci.guard.collection()->name(),
-                                             &options);
-      }
+      batch =
+          _manager.requestBatch(ci.guard.collection()->name(),
+                                _options.batchSize, _useVPack, &vpackOptions);
       docsInBatch = 0;
     }
 
@@ -389,6 +419,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
 
     if (batch->byteSize() >= _options.batchSize || ++docsInBatch >= 10'000) {
       batch->close();
+
       auto [stopped, blocked] = _channel.push(std::move(batch));
       if (blocked) {
         _blockCounter.fetch_sub(1);

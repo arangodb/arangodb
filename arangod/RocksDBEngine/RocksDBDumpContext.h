@@ -60,7 +60,16 @@ class DatabaseFeature;
 class DatabaseGuard;
 class LogicalCollection;
 class RocksDBCollection;
+class RocksDBDumpManager;
 class RocksDBEngine;
+
+struct RocksDBDumpContextLimits {
+  std::uint64_t batchSizeLowerBound = 4 * 1024;
+  std::uint64_t batchSizeUpperBound = 512 * 1024 * 1024;
+  std::uint64_t parallelismLowerBound = 1;
+  std::uint64_t parallelismUpperBound = 2;
+  std::uint64_t memoryUsage = 512 * 1024 * 1024;
+};
 
 struct RocksDBDumpContextOptions {
   std::uint64_t batchSize = 16 * 1024;
@@ -85,9 +94,10 @@ class RocksDBDumpContext {
   RocksDBDumpContext(RocksDBDumpContext const&) = delete;
   RocksDBDumpContext& operator=(RocksDBDumpContext const&) = delete;
 
-  RocksDBDumpContext(RocksDBEngine& engine, DatabaseFeature& databaseFeature,
-                     std::string id, RocksDBDumpContextOptions options,
-                     std::string user, std::string database, bool useVPack);
+  RocksDBDumpContext(RocksDBEngine& engine, RocksDBDumpManager& manager,
+                     DatabaseFeature& databaseFeature, std::string id,
+                     RocksDBDumpContextOptions options, std::string user,
+                     std::string database, bool useVPack);
 
   ~RocksDBDumpContext();
 
@@ -123,20 +133,25 @@ class RocksDBDumpContext {
     Batch(Batch const&) = delete;
     Batch& operator=(Batch const&) = delete;
 
-    Batch(std::string_view shard) : shard(shard) {}
-    virtual ~Batch() = default;
+    Batch(RocksDBDumpManager& manager, std::uint64_t batchSize,
+          std::string_view shard)
+        : manager(manager), shard(shard), memoryUsage(batchSize) {}
+    virtual ~Batch();
 
     virtual void add(velocypack::Slice) = 0;
     virtual void close() = 0;
     virtual std::string_view content() const = 0;
     virtual size_t byteSize() const = 0;
 
+    RocksDBDumpManager& manager;
     std::string_view shard;
+    std::uint64_t memoryUsage;
   };
 
   class BatchVPackArray : public Batch {
    public:
-    explicit BatchVPackArray(std::string_view shard);
+    explicit BatchVPackArray(RocksDBDumpManager& manager,
+                             std::uint64_t batchSize, std::string_view shard);
     ~BatchVPackArray();
 
     void add(velocypack::Slice data) override;
@@ -150,7 +165,8 @@ class RocksDBDumpContext {
 
   class BatchJSONL : public Batch {
    public:
-    explicit BatchJSONL(std::string_view shard,
+    explicit BatchJSONL(RocksDBDumpManager& manager, std::uint64_t batchSize,
+                        std::string_view shard,
                         velocypack::Options const* options);
     ~BatchJSONL();
 
@@ -227,6 +243,8 @@ class RocksDBDumpContext {
       CollectionInfo const& ci) const;
 
   RocksDBEngine& _engine;
+
+  RocksDBDumpManager& _manager;
 
   // these parameters will not change during the lifetime of the object.
 
