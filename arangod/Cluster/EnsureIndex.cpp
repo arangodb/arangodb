@@ -157,7 +157,7 @@ bool EnsureIndex::first() {
 
     auto lambda = std::make_shared<Indexes::ProgressTracker>(
         [this](double d) { return setProgress(d); });
-    std::shared_ptr<VPackBuilder> index{std::make_shared<VPackBuilder>()};
+    auto index = std::make_shared<VPackBuilder>();
     Result res;
 
     if (vocbase->replicationVersion() == replication::Version::TWO) {
