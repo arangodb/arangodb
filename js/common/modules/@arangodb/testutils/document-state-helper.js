@@ -42,6 +42,29 @@ const getLocalValue = function (endpoint, db, col, key) {
 };
 
 /**
+ * Lookup a particular index on a server.
+ */
+const getLocalIndex = function (endpoint, db, indexId) {
+  let res = request.get({
+    url: `${endpoint}/_db/${db}/_api/index/${indexId}`,
+  });
+  lh.checkRequestResult(res, true);
+  return res.json;
+}
+
+/**
+ * Returns all indexes available locally on a server.
+ */
+const getAllLocalIndexes = function (endpoint, db, shard) {
+  let res = request.get({
+    url: `${endpoint}/_db/${db}/_api/index?collection=${shard}`,
+  });
+  lh.checkRequestResult(res, true);
+  return res.json;
+}
+
+
+/**
  * Verify that a key is available (or not) on a server.
  * If available is set to false, the key must not exist.
  * Otherwise, the value at that key must be equal to the given value.
@@ -268,6 +291,8 @@ const getCollectionShardsAndLogs = function (db, collection) {
 }
 
 exports.getLocalValue = getLocalValue;
+exports.getLocalIndex = getLocalIndex;
+exports.getAllLocalIndexes = getAllLocalIndexes;
 exports.localKeyStatus = localKeyStatus;
 exports.checkFollowersValue = checkFollowersValue;
 exports.getBulkDocuments = getBulkDocuments;

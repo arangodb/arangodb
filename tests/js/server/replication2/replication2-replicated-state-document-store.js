@@ -953,7 +953,6 @@ const replicatedStateSnapshotTransferSuite = function () {
  * This test suite checks the correctness of a DocumentState shard-related operations.
  */
 const replicatedStateDocumentShardsSuite = function () {
-  var collection = null;
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd, stopServerWait} =
       lh.testHelperFunctions(database, {replicationVersion: "2"});
 
@@ -977,13 +976,16 @@ const replicatedStateDocumentShardsSuite = function () {
 
   const createIndexTest = function (unique) {
     return () => {
-      collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 2, replicationFactor: 3});
+      let collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 2, replicationFactor: 3});
       let {logs} = dh.getCollectionShardsAndLogs(db, collection);
 
       // Create an index.
       let index = collection.ensureIndex({name: "hund", type: "persistent", fields: ["_key", "value"], unique: unique});
       assertEqual(index.name, "hund");
       assertEqual(index.isNewlyCreated, true);
+      if (unique) {
+        assertTrue(index.unique);
+      }
 
       // Check if the CreateIndex operation appears in the log during the current term.
       for (let log of logs) {
@@ -997,27 +999,51 @@ const replicatedStateDocumentShardsSuite = function () {
         assertTrue(createIndexEntryFound,
           `Log contents for log ${log.id()}: ${JSON.stringify(logContents)}`);
       }
+
+      const indexId = index.id.split('/')[1];
+      const shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+      for (const [shard, log] of Object.entries(shardsToLogs)) {
+        const participants = lhttp.listLogs(lh.coordinators[0], database).result[log];
+        for (let pid of participants) {
+          lh.waitFor(() => {
+            // Check that the newly created index is available
+            let res = dh.getLocalIndex(lh.getServerUrl(pid), database, `${shard}/${indexId}`);
+            if (res.error) {
+              return Error(`Error while getting index ${shard}/${indexId} ` +
+                `from server ${pid} of log ${log}: ${JSON.stringify(res)}`);
+            }
+            return true;
+          });
+
+          // Check that all indexes are available (there should be two: primary and hund)
+          let res = dh.getAllLocalIndexes(lh.getServerUrl(pid), database, shard);
+          assertFalse(res.error,
+            `Error while getting all indexes from server ${pid} of log ${log}, shard ${shard}: ${JSON.stringify(res)}`);
+          assertEqual(res.indexes.length, 2, `Expected 2 indexes, got ${JSON.stringify(res)}`);
+          for (let index of res.indexes) {
+            assertTrue(["primary", "hund"].includes(index.name),
+              `Unexpected index name ${index.name} in ${JSON.stringify(res)}`);
+          }
+        }
+      }
     }
-  }
+  };
 
   return {
     setUpAll, tearDownAll,
     setUp: setUpAnd(() => {
     }),
     tearDown: tearDownAnd(() => {
-      if (collection !== null) {
-        db._drop(collectionName);
-        collection = null;
-      }
+      db._drop(collectionName);
     }),
 
     testCreateSingleCollection: function () {
-      collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
+      let collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
       checkCollectionShards(collection);
     },
 
     testCreateMultipleCollections: function () {
-      collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
+      let collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
       checkCollectionShards(collection);
       try {
         const collection2 = db._create("other-collection", {
@@ -1031,7 +1057,7 @@ const replicatedStateDocumentShardsSuite = function () {
     },
 
     testModifyShard: function () {
-      collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
+      let collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
 
       // TODO currently we cannot modify collection.properties for replication2, because the API must write to `Target`.
       const cid = collection._id;
