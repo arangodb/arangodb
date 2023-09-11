@@ -886,7 +886,7 @@ static bool assertFilterBoostImpl(irs::filter const& expected,
     auto* actualNegationFilter = dynamic_cast<irs::Not const*>(&actual);
     return actualNegationFilter != nullptr &&
            assertFilterBoostImpl(*expectedNegationFilter->filter(),
-                      *actualNegationFilter->filter());
+                                 *actualNegationFilter->filter());
   }
   return true;
 }
@@ -1091,9 +1091,9 @@ void assertFilter(
     if (execOk) {
       EXPECT_TRUE(r.ok()) << r.errorMessage();
       if (r.ok()) {
-      EXPECT_EQ(expected, actual);
+        EXPECT_EQ(expected, actual);
         EXPECT_TRUE(assertFilterBoostImpl(expected, actual));
-    }
+      }
     } else {
       EXPECT_FALSE(r.ok());
     }

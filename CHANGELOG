@@ -1,6 +1,12 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* Fix issue #19630: wildcard automaton sometime accept more symbols when required
+
+* Fix BTS-1583: search-alias view sometime was unavailable in cluster 
+
+* Fix BTS-1379: add inverted index to collection figures
+
 * Updated ArangoDB Starter to 0.17.1.
 
 * Fixed BTS-1541: Old legacy little endian key format for RocksDB database
