@@ -27,7 +27,8 @@
 #include "Basics/ResultT.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/voc-errors.h"
-
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Replication2/Storage/WAL/IFileReader.h"
 #include "Replication2/Storage/WAL/FileHeader.h"
 #include "Replication2/Storage/WAL/Record.h"
@@ -207,10 +208,15 @@ auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
         TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
         "failed to read footer: " + std::string(res.errorMessage()));
   }
-  ADB_PROD_ASSERT(footer.size % Record::alignment == 0 &&
-                  footer.size <= fileSize - sizeof(FileHeader))
-      << "file " << _reader->path() << " - footer.size: " << footer.size
-      << "; fileSize: " << fileSize;
+  if (footer.size % 8 != 0 || footer.size > fileSize - sizeof(FileHeader)) {
+    LOG_TOPIC("ee7e7", ERR, Logger::REPLICATED_WAL)
+        << "Footer at offset " << fileSize - sizeof(Record::Footer) << " in "
+        << _reader->path() << " has invalid size: " << footer.size
+        << " (file size: " << fileSize << ")";
+    return ResultT<Record::CompressedHeader>::error(
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,
+        "invalid footer size in file " + _reader->path());
+  }
   _reader->seek(fileSize - footer.size);
   Record::CompressedHeader header;
   res = _reader->read(header);
@@ -219,6 +225,19 @@ auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
         TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
         "failed to read header" + std::string(res.errorMessage()));
   }
+
+  if (Record::paddedPayloadSize(header.payloadSize) + sizeof(header) +
+          sizeof(footer) !=
+      footer.size) {
+    LOG_TOPIC("730f9", ERR, Logger::REPLICATED_WAL)
+        << "Record at " << fileSize - footer.size << " in " << _reader->path()
+        << " has size that does not match size in footer (payload size: "
+        << header.payloadSize << "; footer size: " << footer.size << ")";
+    return ResultT<Record::CompressedHeader>::error(
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,
+        "Mismatching size information in " + _reader->path());
+  }
+
   return ResultT<Record::CompressedHeader>::success(header);
 }
 

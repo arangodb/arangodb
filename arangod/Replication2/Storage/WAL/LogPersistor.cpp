@@ -48,120 +48,85 @@
 namespace arangodb::replication2::storage::wal {
 
 namespace {
+std::string activeLogFileName = "_current.log";
+}
 
-struct BufferWriter {
-  Buffer const& buffer() const { return _buffer; }
-
-  void appendEntry(LogEntry const& entry) {
-    auto startPos = _buffer.size();
-
-    auto payloadSize = [&]() {
-      if (entry.hasPayload()) {
-        return writeNormalEntry(entry);
-      } else {
-        return writeMetaEntry(entry);
-      }
-    }();
-
-    // we want everything to be 8 byte aligned, so we round size to the next
-    // greater multiple of 8
-    writePaddingBytes(payloadSize);
-    writeFooter(startPos);
-    TRI_ASSERT(_buffer.size() % Record::alignment == 0);
-  }
-
- private:
-  std::uint64_t writeNormalEntry(LogEntry const& entry) {
-    TRI_ASSERT(entry.hasPayload());
-    Record::Header header;
-    header.index = entry.logIndex().value;
-    header.term = entry.logTerm().value;
-    header.type = RecordType::wNormal;
-
-    auto* payload = entry.logPayload();
-    TRI_ASSERT(payload != nullptr);
-    header.payloadSize = payload->byteSize();
-    _buffer.append(Record::CompressedHeader{header});
-    _buffer.append(payload->slice().getDataPtr(), payload->byteSize());
-    return header.payloadSize;
-  }
-
-  std::uint64_t writeMetaEntry(LogEntry const& entry) {
-    TRI_ASSERT(entry.hasMeta());
-    Record::Header header;
-    header.index = entry.logIndex().value;
-    header.term = entry.logTerm().value;
-    header.type = RecordType::wMeta;
-    header.payloadSize = 0;  // we initialize this to zero so the compiler is
-                             // happy, but will update it later
-
-    // the meta entry is directly encoded into the buffer, so we have to write
-    // the header beforehand and update the size afterwards
-    _buffer.append(Record::CompressedHeader{header});
-    auto pos = _buffer.size() - sizeof(Record::CompressedHeader::payloadSize);
-
-    auto* payload = entry.meta();
-    TRI_ASSERT(payload != nullptr);
-    VPackBuilder builder(_buffer.buffer());
-    payload->toVelocyPack(builder);
-    header.payloadSize =
-        _buffer.size() - pos - sizeof(Record::CompressedHeader::payloadSize);
-
-    // reset to the saved position so we can write the actual size
-    _buffer.resetTo(pos);
-    _buffer.append(static_cast<decltype(Record::CompressedHeader::payloadSize)>(
-        header.payloadSize));
-    _buffer.advance(header.payloadSize);
-    return header.payloadSize;
-  }
-
-  void writePaddingBytes(
-      std::uint64_t payloadSize) {  // write zeroed out padding bytes
-    auto numPaddingBytes = Record::paddedPayloadSize(payloadSize) - payloadSize;
-    TRI_ASSERT(numPaddingBytes < Record::alignment);
-    constexpr std::uint8_t zero[Record::alignment]{};
-    _buffer.append(&zero, numPaddingBytes);
-  }
-
-  void writeFooter(std::size_t startPos) {
-    auto size = _buffer.size() - startPos;
-    Record::Footer footer{
-        .crc32 = static_cast<std::uint32_t>(absl::ComputeCrc32c(
-            {reinterpret_cast<char const*>(_buffer.data() + startPos), size})),
-        .size = size + sizeof(Record::Footer)};
-    TRI_ASSERT(footer.size % Record::alignment == 0);
-    _buffer.append(footer);
-  }
-
-  Buffer _buffer;
-};
-
-}  // namespace
+std::ostream& operator<<(std::ostream& s, LogPersistor::LogFile const& f) {
+  return s << f.filename << " [" << f.first << " - " << f.last << "]";
+}
 
 LogPersistor::LogPersistor(LogId logId,
-                           std::shared_ptr<IFileManager> fileManager)
-    : _logId(logId), _fileManager(std::move(fileManager)) {
+                           std::shared_ptr<IFileManager> fileManager,
+                           Options options)
+    : _logId(logId), _fileManager(std::move(fileManager)), _options(options) {
   LOG_TOPIC("a5ceb", TRACE, Logger::REPLICATED_WAL)
       << "Creating LogPersistor for log " << logId;
 
   // TODO - implement segmented logs
-  auto filename = std::to_string(logId.id()) + ".log";
-  auto [_, inserted] = _fileSet.emplace(LogFile{.filename = filename});
-  ADB_PROD_ASSERT(inserted);
+  loadFileSet();
+  validateFileSet();
+  createActiveLogFile();
+}
 
-  _activeFile = _fileManager->createWriter(filename);
-  auto fileReader = _activeFile->getReader();
-  if (fileReader->size() == 0) {
-    FileHeader header = {.magic = wMagicFileType, .version = wCurrentVersion};
-    auto res = _activeFile->append(header);
-    if (res.fail()) {
-      LOG_TOPIC("f219e", ERR, Logger::REPLICATED_WAL)
-          << "Failed to write file header to " << _activeFile->path();
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+void LogPersistor::loadFileSet() {
+  for (auto& file : _fileManager->listFiles()) {
+    try {
+      LogReader reader(_fileManager->createReader(file));
+      auto res = reader.getFirstRecordHeader();
+      if (res.fail()) {
+        LOG_TOPIC("b0f4c", WARN, Logger::REPLICATED_WAL)
+            << "Ignoring file " << file << " in log " << _logId
+            << " because we failed to read the first record: "
+            << res.errorMessage();
+        continue;
+      }
+      auto first = res.get();
+
+      res = reader.getLastRecordHeader();
+      if (res.fail()) {
+        LOG_TOPIC("5b8d6", WARN, Logger::REPLICATED_WAL)
+            << "Ignoring file " << file << " in log " << _logId
+            << "because we failed to read the last record: "
+            << res.errorMessage();
+        continue;
+      }
+      auto last = res.get();
+
+      _fileSet.insert(LogFile{
+          .filename = file,
+          .first = TermIndexPair(LogTerm{first.term()}, LogIndex{first.index}),
+          .last = TermIndexPair(LogTerm{last.term()}, LogIndex{last.index})});
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("4550a", WARN, Logger::REPLICATED_WAL)
+          << "Ignoring file " << file << " in log " << _logId << ": "
+          << ex.what();
     }
-  } else if (fileReader->size() > sizeof(FileHeader)) {
-    // if the file size is greater than just the header, we must have written at
-    // least one entry!
+  }
+}
+
+void LogPersistor::validateFileSet() {
+  for (auto it = _fileSet.begin(); it != _fileSet.end();) {
+    auto next = std::next(it);
+    if (next != _fileSet.end()) {
+      if (it->last.index + 1 != next->first.index) {
+        LOG_TOPIC("a9e3c", ERR, Logger::REPLICATED_WAL)
+            << "Found a gap in the file set of log " << _logId << " - "
+            << " file " << it->filename << " ends at log index " << it->last
+            << " and file " << next->filename << " starts at log index"
+            << next->first;
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+            "Found a gap in the file set of log " + to_string(_logId));
+      }
+    }
+    it = next;
+  }
+}
+
+void LogPersistor::createActiveLogFile() {
+  _activeFile = _fileManager->createWriter(activeLogFileName);
+  auto fileReader = _activeFile->getReader();
+  if (fileReader->size() > sizeof(FileHeader)) {
     LogReader logReader(std::move(fileReader));
     auto res = logReader.getLastRecordHeader();
     if (res.fail()) {
@@ -172,6 +137,24 @@ LogPersistor::LogPersistor(LogId logId,
     auto header = res.get();
     _lastWrittenEntry =
         TermIndexPair(LogTerm{header.term()}, LogIndex{header.index});
+  } else {
+    // file must either be completely empty (newly created) or contain only the
+    // FileHeader
+    ADB_PROD_ASSERT(fileReader->size() == 0 ||
+                    fileReader->size() == sizeof(FileHeader));
+    if (fileReader->size() == 0) {
+      FileHeader header = {.magic = wMagicFileType, .version = wCurrentVersion};
+      auto res = _activeFile->append(header);
+      if (res.fail()) {
+        LOG_TOPIC("f219e", ERR, Logger::REPLICATED_WAL)
+            << "Failed to write file header to " << _activeFile->path();
+        THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      }
+    }
+
+    if (!_fileSet.empty()) {
+      _lastWrittenEntry = _fileSet.rbegin()->last;
+    }
   }
 }
 
@@ -186,7 +169,8 @@ auto LogPersistor::getIterator(IteratorPosition position)
 auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
                           WriteOptions const& writeOptions)
     -> futures::Future<ResultT<SequenceNumber>> {
-  BufferWriter bufferWriter;
+  Buffer buffer;
+  EntryWriter entryWriter(buffer);
 
   SequenceNumber seq = 0;  // TODO - what if iterator is empty?
   auto lastWrittenEntry = _lastWrittenEntry;
@@ -201,28 +185,27 @@ auto LogPersistor::insert(std::unique_ptr<LogIterator> iter,
     }
 
     ++cnt;
-    bufferWriter.appendEntry(entry);
+    entryWriter.appendEntry(entry);
 
     seq = entry.logIndex().value;
     lastWrittenEntry = entry.logTermIndexPair();
   }
 
-  auto& buffer = bufferWriter.buffer();
   auto res = _activeFile->append(
       {reinterpret_cast<char const*>(buffer.data()), buffer.size()});
   if (res.fail()) {
     LOG_TOPIC("89261", ERR, Logger::REPLICATED_WAL)
-        << "Failed to write " << cnt << " entries ("
-        << bufferWriter.buffer().size() << " bytes) to file "
-        << _activeFile->path() << "; last written entry is "
+        << "Failed to write " << cnt << " entries (" << buffer.size()
+        << " bytes) to file " << _activeFile->path()
+        << "; last written entry is "
         << (_lastWrittenEntry.has_value() ? to_string(_lastWrittenEntry.value())
                                           : "<na>");
 
     return res;
   }
   LOG_TOPIC("6fbfd", TRACE, Logger::REPLICATED_WAL)
-      << "Wrote " << cnt << " entries (" << bufferWriter.buffer().size()
-      << " bytes) to file " << _activeFile->path() << "; last written entry is "
+      << "Wrote " << cnt << " entries (" << buffer.size() << " bytes) to file "
+      << _activeFile->path() << "; last written entry is "
       << (lastWrittenEntry.has_value() ? to_string(lastWrittenEntry.value())
                                        : "<na>");
 
