@@ -136,9 +136,7 @@ void RocksDBMethodsMemoryTracker::popSavePoint() noexcept {
 
 void RocksDBMethodsMemoryTracker::beginQuery(ResourceMonitor* resourceMonitor) {
   // note: resourceMonitor can be a nullptr if we are called from truncate
-  TRI_ASSERT(_resourceMonitor == nullptr ||
-             resourceMonitor == _resourceMonitor);
-  if (_resourceMonitor == nullptr) {
+  if (_resourceMonitor == nullptr && resourceMonitor != nullptr) {
     TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
 
     _resourceMonitor = resourceMonitor;
@@ -150,6 +148,11 @@ void RocksDBMethodsMemoryTracker::endQuery() noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_memoryUsage >= _lastPublishedValue);
 #endif
+
+  if (_resourceMonitor == nullptr) {
+    TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
+    return;
+  }
 
   _memoryUsage = _memoryUsageAtBeginQuery;
   try {
