@@ -149,10 +149,13 @@ auto DocumentStateShardHandler::ensureIndex(
     return _maintenance->executeCreateIndex(shard, properties,
                                             std::move(progress));
   });
+
   if (res.fail()) {
     res = Result{res.errorNumber(),
                  fmt::format("Error: {} Failed to ensure index on shard {}: {}",
                              res.errorMessage(), shard, properties->toJson())};
+  } else {
+    _maintenance->addDirty();
   }
 
   return res;

@@ -542,7 +542,8 @@ static void handleLocalShard(
   }
 
   // We only drop indexes, when collection is not being dropped already
-  if (cprops.hasKey(INDEXES)) {
+  if (cprops.hasKey(INDEXES) &&
+      (replicationVersion != replication::Version::TWO || isLeading)) {
     if (cprops.get(INDEXES).isArray()) {
       for (auto const& index : VPackArrayIterator(cprops.get(INDEXES))) {
         std::string_view type =
