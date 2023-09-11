@@ -1,6 +1,8 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* BTS-1544: The _system database now properly reports its sharding value.
+
 * Updated ArangoDB Starter to 0.17.1.
 
 * Whenever there is a query request timeout in AQL (e.g., a server died) which
