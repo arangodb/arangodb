@@ -139,7 +139,7 @@ std::string Collection::distributeShardsLike() const {
 }
 
 /// @brief returns the shard ids of a collection
-std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
+std::shared_ptr<std::vector<std::string> const> Collection::shardIds() const {
   auto& clusterInfo =
       _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
   auto coll = getCollection();
@@ -149,7 +149,7 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     for (auto const& n : names) {
       auto collectionInfo = clusterInfo.getCollection(_vocbase->name(), n);
       auto list = clusterInfo.getShardList(
-          arangodb::basics::StringUtils::itoa(collectionInfo->id().id()));
+          basics::StringUtils::itoa(collectionInfo->id().id()));
       for (auto const& x : *list) {
         res->push_back(x);
       }
@@ -157,12 +157,11 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     return res;
   }
 
-  return clusterInfo.getShardList(
-      arangodb::basics::StringUtils::itoa(id().id()));
+  return clusterInfo.getShardList(basics::StringUtils::itoa(id().id()));
 }
 
 /// @brief returns the filtered list of shard ids of a collection
-std::shared_ptr<std::vector<std::string>> Collection::shardIds(
+std::shared_ptr<std::vector<std::string> const> Collection::shardIds(
     std::unordered_set<std::string> const& includedShards) const {
   // use the simple method first
   auto copy = shardIds();
@@ -173,14 +172,12 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds(
   }
 
   // copy first as we will modify the result
-  auto result = std::make_shared<std::vector<std::string>>();
+  auto result = std::make_shared<std::vector<std::string>>(*copy);
 
-  // post-filter the result
-  for (auto const& it : *copy) {
-    if (includedShards.find(it) == includedShards.end()) {
-      continue;
-    }
-    result->emplace_back(it);
+  if (!includedShards.empty()) {
+    std::erase_if(*result, [&includedShards](auto const& s) {
+      return !includedShards.contains(s);
+    });
   }
 
   return result;
