@@ -47,8 +47,8 @@ TEST(InputProcessorsTest, testEmpty) {
   }
 }
 
-#ifndef _WIN32
 TEST(InputProcessorsTest, testNonEmpty) {
+#ifndef _WIN32
   char const* data =
 #include "InputProcessorsData.json"
       ;
