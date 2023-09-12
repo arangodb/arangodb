@@ -47,7 +47,7 @@ function dumpIntegrationSuite () {
 
       let structure = fs.join(dbName, prefix + ".structure.json");
       let fullNameIndex = tree.indexOf(structure);
-      if (fullNameIndex == -1) {
+      if (fullNameIndex === -1) {
         structure = cn + ".structure.json";
         fullNameIndex = tree.indexOf(structure);
       }
