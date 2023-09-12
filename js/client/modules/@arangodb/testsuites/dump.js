@@ -90,7 +90,7 @@ const testPaths = {
 };
 
 class DumpRestoreHelper extends tu.runInArangoshRunner {
-  constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart) {
+  constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs) {
     super(firstRunOptions, which, serverOptions, false);
     this.serverOptions = serverOptions;
     this.firstRunOptions = firstRunOptions;
@@ -101,6 +101,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.restoreOptions = restoreOptions;
     this.allDatabases = [];
     this.allDumps = [];
+    this.rtaArgs = [ 'DUMPDB', '--numberOfDBs', '2'].concat(rtaArgs);
     this.which = which;
     this.results = {failed: 0};
     this.dumpConfig = false;
@@ -621,8 +622,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   runRtaMakedata() {
     let res = {};
     let logFile = fs.join(fs.getTempPath(), `rta_out_makedata.log`);
-    let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 0, "creating test data", logFile, [
-      'DUMPDB', '--numberOfDBs', '2']);
+    let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 0, "creating test data", logFile, this.rtaArgs);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
       this.results.RtaMakedata = {
@@ -699,8 +699,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   runRtaCheckData() {
     let res = {};
     let logFile = fs.join(fs.getTempPath(), `rta_out_checkdata.log`);
-    let rc = pu.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 1, "checking test data", logFile, [
-      'DUMPDB', '--numberOfDBs', '2']);
+    let rc = pu.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 1, "checking test data", logFile, this.rtaArgs);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
       this.results.RtaCheckdata = {
@@ -740,10 +739,10 @@ function getClusterStrings(options) {
   }
 }
 
-function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
+function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs) {
   print(CYAN + which + ' tests...' + RESET);
 
-  const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
+  const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs);
   if (!helper.startFirstInstance()) {
     helper.destructor(false);
     return helper.extractResults();
@@ -829,8 +828,8 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
   return helper.extractResults();
 }
 
-function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
-  return dump_backend_two_instances(options, options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart);
+function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs) {
+  return dump_backend_two_instances(options, options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs);
 }
 
 function dump (options) {
@@ -849,7 +848,7 @@ function dump (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(opts, {}, {}, opts, opts, 'dump', tstFiles, function(){});
+  return dump_backend(opts, {}, {}, opts, opts, 'dump', tstFiles, function(){}, []);
 }
 
 function dumpMixedClusterSingle (options) {
@@ -860,7 +859,6 @@ function dumpMixedClusterSingle (options) {
   singleOptions.cluster = false;
   let clusterStrings = getClusterStrings(clusterOptions);
   let singleStrings = getClusterStrings(singleOptions);
-  clusterOptions.rtaNegFilter = '550,900,960';
   let tstFiles = {
     dumpSetup: 'dump-setup' + clusterStrings.cluster + '.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
@@ -871,14 +869,17 @@ function dumpMixedClusterSingle (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend_two_instances(clusterOptions, singleOptions, {}, {}, options, options, 'dump_mixed_cluster_single', tstFiles, function(){});
+  return dump_backend_two_instances(clusterOptions, singleOptions, {}, {},
+                                    options, options, 'dump_mixed_cluster_single',
+                                    tstFiles, function(){}, [
+                                      '--testFoxx', 'false',
+                                      '--rtaNegFilter', '550,900,960']);
 }
 
 function dumpMixedSingleCluster (options) {
   let clusterOptions = _.clone(options);
   clusterOptions.cluster = true;
   clusterOptions.dbServers = 3;
-  clusterOptions.rtaNegFilter = '550,900,960';
   let singleOptions = _.clone(options);
   singleOptions.cluster = false;
   let clusterStrings = getClusterStrings(clusterOptions);
@@ -893,7 +894,11 @@ function dumpMixedSingleCluster (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend_two_instances(singleOptions, clusterOptions, {}, {}, options, options, 'dump_mixed_single_cluster', tstFiles, function(){});
+  return dump_backend_two_instances(singleOptions, clusterOptions, {}, {},
+                                    options, options, 'dump_mixed_single_cluster',
+                                    tstFiles, function(){}, [
+                                      '--testFoxx', 'false',
+                                      '--rtaNegFilter', '550,900,960']);
 }
 
 function dumpMultiple (options) {
@@ -913,7 +918,7 @@ function dumpMultiple (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){}, []);
 }
 
 function dumpWithCrashes (options) {
@@ -936,7 +941,7 @@ function dumpWithCrashes (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){});
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){}, []);
 }
 
 function dumpWithCrashesParallel (options) {
@@ -960,7 +965,7 @@ function dumpWithCrashesParallel (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){});
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){}, []);
 }
 
 function dumpAuthentication (options) {
@@ -997,7 +1002,7 @@ function dumpAuthentication (options) {
     dbServers: 3
   });
 
-  let ret= dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
+  let ret= dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){}, []);
   options.cleanup = opts.cleanup;
   return ret;
 }
@@ -1024,7 +1029,7 @@ function dumpJwt (options) {
     dbServers: 3
   });
 
-  let ret = dump_backend(opts, tu.testServerAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_jwt', tstFiles, function(){});
+  let ret = dump_backend(opts, tu.testServerAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_jwt', tstFiles, function(){}, []);
   options.cleanup = opts.cleanup;
   return ret;
 }
@@ -1063,7 +1068,7 @@ function dumpEncrypted (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart, []);
 }
 
 function dumpParallel (options) {
@@ -1084,7 +1089,7 @@ function dumpParallel (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){});
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){}, []);
 }
 
 function dumpMaskings (options) {
@@ -1114,7 +1119,7 @@ function dumpMaskings (options) {
 
   _.defaults(dumpMaskingsOpts, options);
 
-  return dump_backend(dumpMaskingsOpts, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
+  return dump_backend(dumpMaskingsOpts, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){}, []);
 }
 
 function hotBackup (options) {
@@ -1161,7 +1166,7 @@ function hotBackup (options) {
     addArgs['rocksdb.encryption-keyfolder'] = keyDir;
   }
 
-  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){});
+  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, []);
   if (!helper.startFirstInstance()) {
       helper.destructor(false);
     return helper.extractResults();
@@ -1175,6 +1180,7 @@ function hotBackup (options) {
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
   try {
     if (!helper.runSetupSuite(setupFile) ||
+        !helper.runRtaMakedata() ||
         !helper.dumpFrom('UnitTestsDumpSrc') ||
         !helper.restartInstance() ||
         !helper.restoreTo('UnitTestsDumpDst') ||
@@ -1189,6 +1195,7 @@ function hotBackup (options) {
         !helper.isAlive() ||
         !helper.restoreHotBackup() ||
         !helper.runTests(dumpCheck, 'UnitTestsDumpDst')||
+        !helper.runRtaCheckData() ||
         !helper.tearDown(tearDownFile)) {
       helper.destructor(true);
       return helper.extractResults();
