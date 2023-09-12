@@ -338,17 +338,17 @@ class RocksDBEngine final : public StorageEngine {
                                      velocypack::Slice slice,
                                      RocksDBLogValue&& logValue);
 
-  void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);
-  std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> collectionMappings()
-      const;
-  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, DataSourceId,
-                       IndexId);
-  void removeIndexMapping(uint64_t);
+  void addCollectionMapping(uint64_t objectId, TRI_voc_tick_t dbId,
+                            DataSourceId cid);
+  std::vector<std::tuple<uint64_t, TRI_voc_tick_t, DataSourceId>>
+  collectionMappings() const;
+  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t dbId, DataSourceId cid,
+                       IndexId iid);
+  void removeIndexMapping(uint64_t objectId);
 
   // Identifies a collection
   using CollectionPair = std::pair<TRI_voc_tick_t, DataSourceId>;
   using IndexTriple = std::tuple<TRI_voc_tick_t, DataSourceId, IndexId>;
-  void removeEntriesForDatabase(TRI_voc_tick_t dbid);
   CollectionPair mapObjectToCollection(uint64_t objectId) const;
   IndexTriple mapObjectToIndex(uint64_t objectId) const;
   void removeCollectionMapping(uint64_t objectId);
@@ -399,6 +399,7 @@ class RocksDBEngine final : public StorageEngine {
 
   void trackRevisionTreeBufferedMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeBufferedMemoryDecrease(std::uint64_t value) noexcept;
+  uint64_t treeBufferedMemoryUsage() const noexcept;
 
   void trackIndexSelectivityMemoryIncrease(std::uint64_t value) noexcept;
   void trackIndexSelectivityMemoryDecrease(std::uint64_t value) noexcept;

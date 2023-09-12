@@ -1436,6 +1436,10 @@ void RocksDBEngine::trackRevisionTreeBufferedMemoryDecrease(
   TRI_ASSERT(old >= value);
 }
 
+uint64_t RocksDBEngine::treeBufferedMemoryUsage() const noexcept {
+  return _metricsTreeBufferedMemoryUsage.load();
+}
+
 bool RocksDBEngine::hasBackgroundError() const {
   return _errorListener != nullptr && _errorListener->called();
 }
@@ -2394,47 +2398,19 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
   }
 }
 
-void RocksDBEngine::removeEntriesForDatabase(TRI_voc_tick_t dbid) {
-  WRITE_LOCKER(guard, _mapLock);
-
-  {
-    // scan collections map
-    auto it = _collectionMap.begin();
-    while (it != _collectionMap.end()) {
-      if (it->second.first == dbid) {
-        it = _collectionMap.erase(it);
-      } else {
-        ++it;
-      }
-    }
-  }
-
-  {
-    // scan indexes map
-    auto it = _indexMap.begin();
-    while (it != _indexMap.end()) {
-      if (std::get<0>(it->second) == dbid) {
-        it = _indexMap.erase(it);
-      } else {
-        ++it;
-      }
-    }
-  }
-}
-
 void RocksDBEngine::removeCollectionMapping(uint64_t objectId) {
   WRITE_LOCKER(guard, _mapLock);
   _collectionMap.erase(objectId);
 }
 
-std::vector<std::pair<TRI_voc_tick_t, DataSourceId>>
+std::vector<std::tuple<uint64_t, TRI_voc_tick_t, DataSourceId>>
 RocksDBEngine::collectionMappings() const {
-  std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> res;
+  std::vector<std::tuple<uint64_t, TRI_voc_tick_t, DataSourceId>> res;
 
   READ_LOCKER(guard, _mapLock);
   res.reserve(_collectionMap.size());
   for (auto const& it : _collectionMap) {
-    res.emplace_back(it.second.first, it.second.second);
+    res.emplace_back(it.first, it.second.first, it.second.second);
   }
   return res;
 }
@@ -3040,9 +3016,6 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
                                          numDocsLeft));
   }
 #endif
-
-  // delete all entries for database from _collectionMap and _indexMap
-  removeEntriesForDatabase(id);
 
   return res;
 }

@@ -118,6 +118,7 @@ void RocksDBMetaCollection::freeMemory() noexcept {
 
   decreaseBufferedMemoryUsage(_revisionsBufferedMemoryUsage);
   _revisionsBufferedMemoryUsage = 0;
+
   _revisionRemovalBuffers.clear();
   _revisionInsertBuffers.clear();
   _revisionTruncateBuffer.clear();

@@ -93,25 +93,17 @@
           docs = [];
         }
       }
-      if (docs.length > 0) {
-        c.insert(docs);
-        docs = [];
-      }
     };
 
     let insertEdges = (collName) => {
       let c = db._collection(collName);
       let docs = [];
       for (let i = 0; i < n; ++i) {
-        docs.push({_from: i, _to: i+1});
-        if (docs.length === 5000) {
+        docs.push({_from: "v/" + i, _to: "v/" + (i + 1)});
+        if (docs.length === 1000) {
           c.insert(docs);
           docs = [];
         }
-      }
-      if (docs.length > 0) {
-        c.insert(docs);
-        docs = [];
       }
     };
 
