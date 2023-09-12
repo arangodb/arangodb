@@ -30,7 +30,7 @@ yet.
 
 - If the modifications change any documented behavior or add new features,
   document the changes. It should be written in American English.
-  The documentation can be found in [docs repository](https://github.com/arangodb/docs#readme).
+  The documentation can be found in [docs-hugo repository](https://github.com/arangodb/docs-hugo#readme).
 
 - When done, run the complete test suite and make sure all tests pass.
 
