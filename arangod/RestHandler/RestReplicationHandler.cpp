@@ -911,7 +911,21 @@ void RestReplicationHandler::handleCommandClusterInventory() {
               foundShadowCollection = true;
             }
           }
-          TRI_ASSERT(foundShadowCollection);
+          if (!foundShadowCollection) {
+            // Add extensive logging to find issue triggered randomly in arangosync tests
+            // We will dump the full view of current here
+            LOG_DEVEL << "We are about to crash. We print all Local collections!";
+            for (std::shared_ptr<LogicalCollection> const& cInternal : cols) {
+              VPackBuilder dataDump;
+              cInternal->toVelocyPackForClusterInventory(
+                  dataDump, includeSystem, false, false);
+              LOG_DEVEL << c->name() << ": " << dataDump.toJson();
+            }
+          }
+          TRI_ASSERT(foundShadowCollection)
+              << "We could not find shadow collections for " << c->name() << "("
+              << c->id().id() << ") we are looking for shadow collection "
+              << shadowCollectionName;
         }
 #endif
       } else {
