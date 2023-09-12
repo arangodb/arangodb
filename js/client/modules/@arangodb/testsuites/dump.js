@@ -647,7 +647,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
           message:  `dumpSrc: failed for UnitTestsDumpSrc`,
           status: false
         };
-        success = false;
         return false;
       }
     }
