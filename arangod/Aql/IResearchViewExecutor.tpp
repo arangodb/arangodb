@@ -205,7 +205,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _scorersSortLimit{scorersSortLimit},
       _meta{meta},
       _depth{depth},
-      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
+      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition) &&
+                              !_reader->hasNestedFields()},
       _volatileSort{volatility.second},
       // `_volatileSort` implies `_volatileFilter`
       _volatileFilter{_volatileSort || volatility.first} {
@@ -1531,27 +1532,27 @@ template<typename ExecutionTraits>
 size_t IResearchViewExecutor<ExecutionTraits>::skipAll(IResearchViewStats&) {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter);
-
   size_t skipped = 0;
-
-  if (_readerOffset < this->_reader->size()) {
-    if (this->infos().filterConditionIsEmpty()) {
-      skipped = this->_reader->live_docs_count();
-      TRI_ASSERT(_totalPos <= skipped);
-      skipped -= std::min(skipped, _totalPos);
-      _readerOffset = this->_reader->size();
-      _currentSegmentPos = 0;
-    } else {
-      for (size_t count = this->_reader->size(); _readerOffset < count;
-           ++_readerOffset, _currentSegmentPos = 0) {
-        if (!_itr && !resetIterator()) {
-          continue;
-        }
-        skipped += calculateSkipAllCount(this->infos().countApproximate(),
-                                         _currentSegmentPos, _itr.get());
-        _itr.reset();
-        _doc = nullptr;
+  auto const count = this->_reader->size();
+  if (_readerOffset >= count) {
+    return skipped;
+  }
+  if (this->infos().filterConditionIsEmpty()) {
+    skipped = this->_reader->live_docs_count();
+    TRI_ASSERT(_totalPos <= skipped);
+    skipped -= std::min(skipped, _totalPos);
+    _readerOffset = count;
+    _currentSegmentPos = 0;
+  } else {
+    auto const approximate = this->infos().countApproximate();
+    for (; _readerOffset != count; ++_readerOffset, _currentSegmentPos = 0) {
+      if (!_itr && !resetIterator()) {
+        continue;
       }
+      skipped +=
+          calculateSkipAllCount(approximate, _currentSegmentPos, _itr.get());
+      _itr.reset();
+      _doc = nullptr;
     }
   }
   return skipped;
