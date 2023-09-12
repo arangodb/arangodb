@@ -41,10 +41,12 @@
 
   const waitForMetricToBeAtMost = (metricName, expected) => {
     let current = getCompleteMetricsValues(metricName);
+    require("console").error("metric value at start of wait function", current);
     let tries = 120;
     while (current > expected && tries-- > 0) {
       require("internal").sleep(0.25);
       current = getCompleteMetricsValues(metricName);
+      require("console").error("metric value inside wait function", current, "iteraton: ", tries);
     }
     assertTrue(current <= expected, metricName + " value is not decreased to at least " + expected);
   };
@@ -131,17 +133,22 @@
 
       setUp: function () {
         internal.debugClearFailAt();
+        require("console").error("metric value at setUp:", getCompleteMetricsValues(bufferedMemoryMetric));
       },
 
       tearDown: function () {
         internal.debugClearFailAt();
+        require("console").error("metric value at tearDown:", getCompleteMetricsValues(bufferedMemoryMetric));
         db._drop(collectionName);
       },
 
       testRevisionTreeMemoryUsageShouldIncreaseAfterBatchedInserts: function () {
+        require("console").error("metric value at start of func", getCompleteMetricsValues(bufferedMemoryMetric));
         // wait until all pending estimates & revision tree buffers have been applied
         let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
         assertNull(res);
+        
+        require("console").error("metric value after estimator sync", getCompleteMetricsValues(bufferedMemoryMetric));
 
         // block sync thread from doing anything from now on
         internal.debugSetFailAt("RocksDBSettingsManagerSync");
@@ -149,10 +156,14 @@
         // wait until all pending estimates & revision tree buffers have been applied
         res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
         assertNull(res);
+        
+        require("console").error("metric value after second estimator sync", getCompleteMetricsValues(bufferedMemoryMetric));
 
         db._create(collectionName, collectionCreationOptions);
         let metric0 = getCompleteMetricsValues(bufferedMemoryMetric);
         insertDocuments(collectionName);
+        
+        require("console").error("metric value after document insert", getCompleteMetricsValues(bufferedMemoryMetric));
 
         // must have more memory allocated for the documents
         let metric1 = getCompleteMetricsValues(bufferedMemoryMetric);
@@ -163,6 +174,8 @@
         // wait until all pending estimates & revision tree buffers have been applied
         res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
         assertNull(res);
+        
+        require("console").error("metric value after latest estimator sync", getCompleteMetricsValues(bufferedMemoryMetric));
 
         waitForMetricToBeZero(bufferedMemoryMetric);
       },
