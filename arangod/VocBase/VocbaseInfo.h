@@ -127,6 +127,7 @@ class CreateDatabaseInfo {
 
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
+  void setSharding(std::string_view sharding);
 
  private:
   Result extractUsers(VPackSlice users);

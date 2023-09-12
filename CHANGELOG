@@ -1,11 +1,20 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
-* Fixed BTS-1556: Potential shutdown race, when the server is shutting down
-  and still AgencyCommunication was going on it could use the scheduler
-  which was already deleted, causing a crash right before a normal shutdown.
+* Fixed BTS-1556: Potential shutdown race, when the server is shutting down and
+  still AgencyCommunication was going on it could use the scheduler which was
+  already deleted, causing a crash right before a normal shutdown.
   This should not have any negative effect, as all state preserving operations
   are done by then, it just wasn't a clean exit.
+
+* Fix issue #19630: wildcard automaton sometime accepts more symbols than
+  required.
+
+* Fix BTS-1583: search-alias view sometimes was unavailable in cluster.
+
+* Fix BTS-1379: add inverted index to collection figures.
+
+* BTS-1544: The _system database now properly reports its sharding value.
 
 * Updated ArangoDB Starter to 0.17.1.
 

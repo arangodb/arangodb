@@ -1666,7 +1666,10 @@ void TRI_vocbase_t::setShardingPrototype(ShardingPrototype type) {
   _info.shardingPrototype(type);
 }
 
-/// @brief gets prototype collection for sharding (_users or _graphs)
+void TRI_vocbase_t::setSharding(std::string_view sharding) {
+  _info.setSharding(sharding);
+}
+
 ShardingPrototype TRI_vocbase_t::shardingPrototype() const {
   return _info.shardingPrototype();
 }
