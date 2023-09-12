@@ -716,7 +716,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       return false;
     }
   }
-  
 };
 
 function getClusterStrings(options) {
@@ -782,8 +781,8 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
           (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
           !helper.runCleanupSuite(cleanupFile) ||
           !helper.restartInstance() ||
-          !helper.restoreTo('UnitTestsDumpDst') ||
-          // !helper.restoreTo('_system', { separate: true }) ||
+          !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
+          !helper.restoreTo('_system', { separate: true, fromDir: 'dump' }) ||
           !helper.restoreRta() ||
           !helper.runRtaCheckData() ||
           !helper.runTests(testFile,'UnitTestsDumpDst') ||
@@ -872,7 +871,7 @@ function dumpMixedClusterSingle (options) {
   return dump_backend_two_instances(clusterOptions, singleOptions, {}, {},
                                     options, options, 'dump_mixed_cluster_single',
                                     tstFiles, function(){}, [
-                                      '--testFoxx', 'false',
+                                      //'--testFoxx', 'false',
                                       '--rtaNegFilter', '550,900,960']);
 }
 
@@ -897,7 +896,7 @@ function dumpMixedSingleCluster (options) {
   return dump_backend_two_instances(singleOptions, clusterOptions, {}, {},
                                     options, options, 'dump_mixed_single_cluster',
                                     tstFiles, function(){}, [
-                                      '--testFoxx', 'false',
+                                      // '--testFoxx', 'false',
                                       '--rtaNegFilter', '550,900,960']);
 }
 
