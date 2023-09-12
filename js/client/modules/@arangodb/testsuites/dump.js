@@ -653,6 +653,14 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     return true;
   }
 
+  restoreSrc() {
+    if (!this.dumpConfig.haveSetAllDatabases()) {
+      return this.restoreTo('UnitTestsDumpDst',
+                            { separate: true, fromDir: 'UnitTestsDumpSrc'});
+    }
+    return true;
+  }
+
   dumpFromRta() {
     let success = true;
     const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst', 'UnitTestsDumpFoxxComplete'];
@@ -763,7 +771,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
           (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
           !helper.runCleanupSuite(cleanupFile) ||
           !helper.restartInstance() ||
-          !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
+          !helper.restoreSrc() ||
           !helper.restoreTo('_system', { separate: true }) ||
           !helper.restoreRta() ||
           !helper.runTests(testFile,'UnitTestsDumpDst') ||
@@ -781,7 +789,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
           (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
           !helper.runCleanupSuite(cleanupFile) ||
           !helper.restartInstance() ||
-          !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
+          !helper.restoreSrc() ||
           !helper.restoreTo('_system', { separate: true, fromDir: 'dump' }) ||
           !helper.restoreRta() ||
           !helper.runRtaCheckData() ||
@@ -925,7 +933,7 @@ function dumpWithCrashes (options) {
     dbServers: 3,
     allDatabases: true,
     deactivateCompression: true,
-    activateFailurePoint: false,
+    activateFailurePoint: true,
     threads: 1,
     extremeVerbosity: true
   };
