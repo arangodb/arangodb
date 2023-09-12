@@ -238,6 +238,7 @@ jobs:
             - persist_to_workspace:
                 root: .
                 paths:
+                  - build/compile_commands.json
                   - CMakePresets.json
                   - build/
                   - scripts/
@@ -331,6 +332,59 @@ jobs:
           destination: hotbackup-test
           path: /tmp/test-workdir
 
+  run-cppcheck:
+    docker:
+      - image: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.2
+    resource_class: medium+
+    steps:
+      - run:
+          name: Prepare container
+          command: |
+            mkdir -p /root/workspace/ 
+            mkdir -p /root/project/ 
+      - attach_workspace:
+          at: "/root/workspace/"
+      - checkout-arangodb:
+          with-submodules: true 
+          destination: "/root/project"
+      - checkout-enterprise:
+          destination: "/root/project/enterprise"
+      - run:
+          name: Install cppcheck 2.11
+          command: |
+            cd /root 
+            wget https://github.com/danmar/cppcheck/archive/2.11.tar.gz 
+            tar zxvf 2.11.tar.gz 
+            cd cppcheck-2.11/ 
+            sed -i 's/"2.11"/"2.11.0"/' cmake/versions.cmake  
+            cmake . 
+            make -j4 FILESDIR=/usr install 
+            ln -s /root/workspace/build/ /root/project/
+      - run:
+          name: Install cppcheck junit formator
+          command: |
+            cd /root 
+            wget https://bootstrap.pypa.io/get-pip.py
+            python3 get-pip.py
+            pip install cppcheck-junit
+      - run:
+          name: Run cppcheck
+          command: |
+            cd /root/project/ 
+            utils/cppcheck-circleci.sh /root/workspace/build/compile_commands.json  
+      - run:
+          name: Format result
+          when: always
+          command: |
+            cd /root/project/ 
+            sed -i 's/\/root\/project\/\/root\/project\///g' cppcheck.xml
+            sed -i 's/\/root\/project\///g' cppcheck.xml
+            cppcheck_junit cppcheck.xml cppcheck-junit.xml
+      - store_artifacts:
+          path: /root/project/cppcheck.xml
+      - store_test_results:
+          path: /root/project/cppcheck-junit.xml
+
 workflows:
   lint:
     jobs:
@@ -358,6 +412,10 @@ workflows:
           name: build-ce-x64
           preset: community-pr
           enterprise: false
+      - run-cppcheck:
+          name: cppcheck
+          requires:
+            - build-ce-x64
 
   x64-enterprise-pr:
     jobs:
@@ -377,6 +435,10 @@ workflows:
           enterprise: true
           publish-artifacts: false
           build-tests: false
+      - run-cppcheck:
+          name: cppcheck
+          requires:
+            - build-ee-x64
       - run-hotbackup-tests:
           name: run-hotbackup-tests-x64
           size: medium
