@@ -63,15 +63,8 @@ class RocksDBCollection;
 class RocksDBDumpManager;
 class RocksDBEngine;
 
-struct RocksDBDumpContextLimits {
-  std::uint64_t batchSizeLowerBound = 4 * 1024;
-  std::uint64_t batchSizeUpperBound = 512 * 1024 * 1024;
-  std::uint64_t parallelismLowerBound = 1;
-  std::uint64_t parallelismUpperBound = 2;
-  std::uint64_t memoryUsage = 512 * 1024 * 1024;
-};
-
 struct RocksDBDumpContextOptions {
+  std::uint64_t docsPerBatch = 10 * 1000;
   std::uint64_t batchSize = 16 * 1024;
   std::uint64_t prefetchCount = 2;
   std::uint64_t parallelism = 2;
@@ -81,6 +74,7 @@ struct RocksDBDumpContextOptions {
   template<class Inspector>
   inline friend auto inspect(Inspector& f, RocksDBDumpContextOptions& o) {
     return f.object(o).fields(
+        f.field("docsPerBatch", o.docsPerBatch).fallback(f.keep()),
         f.field("batchSize", o.batchSize).fallback(f.keep()),
         f.field("prefetchCount", o.prefetchCount).fallback(f.keep()),
         f.field("parallelism", o.parallelism).fallback(f.keep()),
@@ -135,7 +129,7 @@ class RocksDBDumpContext {
 
     Batch(RocksDBDumpManager& manager, std::uint64_t batchSize,
           std::string_view shard)
-        : manager(manager), shard(shard), memoryUsage(batchSize) {}
+        : manager(manager), shard(shard), memoryUsage(batchSize), numDocs(0) {}
     virtual ~Batch();
 
     virtual void add(velocypack::Slice) = 0;
@@ -143,9 +137,12 @@ class RocksDBDumpContext {
     virtual std::string_view content() const = 0;
     virtual size_t byteSize() const = 0;
 
+    size_t count() const noexcept { return numDocs; }
+
     RocksDBDumpManager& manager;
     std::string_view shard;
     std::uint64_t memoryUsage;
+    std::size_t numDocs;
   };
 
   class BatchVPackArray : public Batch {

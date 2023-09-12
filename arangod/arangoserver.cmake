@@ -126,6 +126,7 @@ add_library(arangoserver STATIC
   RestServer/CpuUsageFeature.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
+  RestServer/DumpLimitsFeature.cpp
   RestServer/EndpointFeature.cpp
   RestServer/EnvironmentFeature.cpp
   RestServer/FileDescriptorsFeature.cpp

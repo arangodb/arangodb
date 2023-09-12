@@ -31,11 +31,13 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+struct DumpLimits;
+class RocksDBEngine;
+
 namespace metrics {
 class MetricsFeature;
 }
@@ -44,13 +46,11 @@ namespace velocypack {
 struct Options;
 }
 
-class RocksDBEngine;
-
 class RocksDBDumpManager {
  public:
   explicit RocksDBDumpManager(RocksDBEngine& engine,
                               metrics::MetricsFeature& metricsFeature,
-                              RocksDBDumpContextLimits const& limits);
+                              DumpLimits const& limits);
 
   ~RocksDBDumpManager();
 
@@ -84,8 +84,8 @@ class RocksDBDumpManager {
   void garbageCollect(bool force);
 
   std::unique_ptr<RocksDBDumpContext::Batch> requestBatch(
-      std::string const& collectionName, std::uint64_t batchSize, bool useVPack,
-      velocypack::Options const* vpackOptions);
+      std::string const& collectionName, std::uint64_t& batchSize,
+      bool useVPack, velocypack::Options const* vpackOptions);
 
   bool reserveCapacity(std::uint64_t value) noexcept;
   void trackMemoryUsage(std::uint64_t size) noexcept;
@@ -115,10 +115,11 @@ class RocksDBDumpManager {
   // destroyed once the last shared_ptr to it goes out of scope.
   MapType _contexts;
 
-  RocksDBDumpContextLimits const& _limits;
+  DumpLimits const& _limits;
 
   metrics::Gauge<std::uint64_t>& _dumpsOngoing;
   metrics::Gauge<std::uint64_t>& _dumpsMemoryUsage;
+  metrics::Counter& _dumpsThreadsBlocked;
 };
 
 }  // namespace arangodb

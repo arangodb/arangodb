@@ -27,9 +27,12 @@
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DumpLimitsFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBDumpContext.h"
@@ -37,22 +40,28 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <chrono>
 #include <thread>
 
 using namespace arangodb;
 
-DECLARE_GAUGE(arangodb_dumps_ongoing, std::uint64_t,
+DECLARE_GAUGE(arangodb_dump_ongoing, std::uint64_t,
               "Number of dumps currently ongoing");
-DECLARE_GAUGE(arangodb_dumps_memory_usage, std::uint64_t,
+DECLARE_GAUGE(arangodb_dump_memory_usage, std::uint64_t,
               "Memory usage of currently ongoing dumps");
+DECLARE_COUNTER(
+    arangodb_dump_threads_blocked_total,
+    "Number of times a dump thread was blocked because of memory restrictions");
 
 RocksDBDumpManager::RocksDBDumpManager(RocksDBEngine& engine,
                                        metrics::MetricsFeature& metricsFeature,
-                                       RocksDBDumpContextLimits const& limits)
+                                       DumpLimits const& limits)
     : _engine(engine),
       _limits(limits),
-      _dumpsOngoing(metricsFeature.add(arangodb_dumps_ongoing{})),
-      _dumpsMemoryUsage(metricsFeature.add(arangodb_dumps_memory_usage{})) {}
+      _dumpsOngoing(metricsFeature.add(arangodb_dump_ongoing{})),
+      _dumpsMemoryUsage(metricsFeature.add(arangodb_dump_memory_usage{})),
+      _dumpsThreadsBlocked(
+          metricsFeature.add(arangodb_dump_threads_blocked_total{})) {}
 
 RocksDBDumpManager::~RocksDBDumpManager() {
   garbageCollect(true);
@@ -65,6 +74,9 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
 
+  opts.docsPerBatch =
+      std::clamp(opts.docsPerBatch, _limits.docsPerBatchLowerBound,
+                 _limits.docsPerBatchUpperBound);
   opts.batchSize = std::clamp(opts.batchSize, _limits.batchSizeLowerBound,
                               _limits.batchSizeUpperBound);
   opts.parallelism = std::clamp(opts.parallelism, _limits.parallelismLowerBound,
@@ -163,12 +175,46 @@ void RocksDBDumpManager::garbageCollect(bool force) {
 }
 
 std::unique_ptr<RocksDBDumpContext::Batch> RocksDBDumpManager::requestBatch(
-    std::string const& collectionName, std::uint64_t batchSize, bool useVPack,
+    std::string const& collectionName, std::uint64_t& batchSize, bool useVPack,
     velocypack::Options const* vpackOptions) {
+  auto waitTime = std::chrono::milliseconds(10);
+
+  int counter = 0;
+  bool metricIncreased = false;
   while (!reserveCapacity(batchSize)) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // we have exceeded the memory limit for dumping.
+    // block this thread and wait until we have some memory capacity left.
+    if (!metricIncreased) {
+      // count only once per batch
+      _dumpsThreadsBlocked.count();
+      metricIncreased = true;
+      LOG_TOPIC("d8adc", INFO, Logger::DUMP)
+          << "blocking dump operation because memory reserve capacity for dump "
+             "is temporarily exceeded";
+    }
     if (_engine.server().isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::this_thread::sleep_for(waitTime);
+    if (waitTime <= std::chrono::milliseconds(50)) {
+      waitTime *= 2;
+    }
+
+    if (++counter >= 30) {
+      // we came along here 30 times without making progress.
+      // probably the batch size is still too high.
+      // in order to make _some_ progress, we reduce the batch size
+      // and then try again in the next round.
+      counter = 0;
+      batchSize /= 2;
+      if (batchSize < 16 * 1024) {
+        // now it doesn't make any sense anymore
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_RESOURCE_LIMIT,
+            "dump resource limit exceeded. requested batch size value is "
+            "probably too high");
+      }
     }
   }
 

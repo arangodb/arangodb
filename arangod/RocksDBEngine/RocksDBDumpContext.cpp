@@ -60,6 +60,7 @@ RocksDBDumpContext::BatchVPackArray::~BatchVPackArray() = default;
 
 void RocksDBDumpContext::BatchVPackArray::add(velocypack::Slice data) {
   _builder.add(data);
+  ++numDocs;
 }
 
 void RocksDBDumpContext::BatchVPackArray::close() {
@@ -105,6 +106,7 @@ void RocksDBDumpContext::BatchJSONL::add(velocypack::Slice data) {
   // always add a newline after each document, as we must produce
   // JSONL output format
   _content.push_back('\n');
+  ++numDocs;
 }
 
 void RocksDBDumpContext::BatchJSONL::close() {
@@ -346,6 +348,9 @@ std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(
     return it->second;
   }
 
+  // release lock temporarily because _channel.pop() can block
+  guard.unlock();
+
   // get the next batch from the channel
   auto [batch, blocked] = _channel.pop();
   if (blocked) {
@@ -355,6 +360,8 @@ std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(
     // no batches left
     return nullptr;
   }
+
+  guard.lock();
 
   auto [iter, inserted] =
       _batches.try_emplace(batchId, std::shared_ptr<Batch>(batch.release()));
@@ -393,9 +400,9 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   auto it = buildIterator(ci);
   TRI_ASSERT(it != nullptr);
 
-  std::uint64_t docsInBatch = 0;
   std::uint64_t docsProduced = 0;
   std::uint64_t batchesProduced = 0;
+  std::uint64_t batchSize = _options.batchSize;
 
   for (it->Seek(lowerBound.string()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(ci.upper) < 0);
@@ -405,19 +412,19 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
       break;
     }
 
-    ++docsProduced;
-
     if (batch == nullptr) {
-      batch =
-          _manager.requestBatch(ci.guard.collection()->name(),
-                                _options.batchSize, _useVPack, &vpackOptions);
-      docsInBatch = 0;
+      batchSize = _options.batchSize;
+      // note: this call can block, and it can modify batchSize!
+      batch = _manager.requestBatch(ci.guard.collection()->name(), batchSize,
+                                    _useVPack, &vpackOptions);
     }
 
     batch->add(velocypack::Slice(
         reinterpret_cast<std::uint8_t const*>(it->value().data())));
+    ++docsProduced;
 
-    if (batch->byteSize() >= _options.batchSize || ++docsInBatch >= 10'000) {
+    if (batch->byteSize() >= batchSize ||
+        batch->count() >= _options.docsPerBatch) {
       batch->close();
 
       auto [stopped, blocked] = _channel.push(std::move(batch));
@@ -458,6 +465,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
     // we can ignore the last one. Going to exit anyway.
     std::ignore = _channel.push(std::move(batch));
     ++batchesProduced;
+    batch.reset();
   }
 
   LOG_TOPIC("49016", DEBUG, Logger::DUMP)
