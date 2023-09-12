@@ -335,13 +335,13 @@ class instance {
     if (!this.args.hasOwnProperty('server.endpoint')) {
       this.port = PORTMANAGER.findFreePort(this.options.minPort, this.options.maxPort);
       this.endpoint = this.protocol + '://127.0.0.1:' + this.port;
+      bindEndpoint = this.endpoint;
       if (this.options.bindBroadcast) {
         bindEndpoint = this.protocol + '://0.0.0.0:' + this.port;
-      } else {
-        bindEndpoint = this.Endpoint;
       }
     } else {
-      bindEndpoint = this.endpoint = this.args['server.endpoint'];
+      this.endpoint = this.args['server.endpoint'];
+      bindEndpoint = this.endpoint;
       this.port = this.endpoint.split(':').pop();
     }
     this.url = pu.endpointToURL(this.endpoint);
