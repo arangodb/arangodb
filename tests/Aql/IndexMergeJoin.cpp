@@ -15,6 +15,8 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "Basics/Endian.h"
 
+#define LOG_DEVEL_ITER LOG_DEVEL_IF(true)
+
 using namespace arangodb;
 
 namespace {
@@ -62,13 +64,16 @@ struct PatternBase {
     prefix = basics::hostToBig(prefix);
     memcpy(buffer.data(), &prefix, 8);
 
+    std::string value;
+    value.resize(4096);
+
     rocksdb::WriteBatch wb;
     for (std::size_t i = 0; i < num; i++) {
       auto v = basics::hostToBig<uint64_t>(generator());
       memcpy(buffer.data() + 8, &v, 8);
 
       auto key = rocksdb::Slice(buffer.data(), 16);
-      wb.Put(key, {});
+      wb.Put(key, value);
 
       if (wb.GetDataSize() > 10000) {
         auto s = db.getDatabase()->Write(wo, &wb);
@@ -125,19 +130,20 @@ struct MyJoinPerformanceTest : JoinTestBase {
   }
 };
 
-constexpr std::size_t scale = 10000000;
+constexpr std::size_t scale = 100'000'000;
 
 struct SameRangePattern : PatternBase {
   void operator()(RocksDBInstance& db) {
-    generateData(db, scale, 1, [x = 0]() mutable { return 2 * ++x; });
-    generateData(db, scale, 2, [x = 0]() mutable { return 2 * ++x; });
+    generateData(db, scale, 1, [x = uint64_t{0}]() mutable { return 2 * ++x; });
+    generateData(db, scale, 2, [x = uint64_t{0}]() mutable { return 2 * ++x; });
   }
 };
 
 struct CommonRangePattern : PatternBase {
   void operator()(RocksDBInstance& db) {
     std::size_t total_size = scale;
-    generateData(db, total_size, 1, [x = 0]() mutable { return ++x; });
+    generateData(db, total_size, 1,
+                 [x = uint64_t{0}]() mutable { return ++x; });
     generateData(db, total_size, 2,
                  [x = total_size / 2]() mutable { return ++x; });
   }
@@ -147,20 +153,31 @@ struct HalfSize : PatternBase {
   void operator()(RocksDBInstance& db) {
     std::size_t total_size = scale;
     // we can assume that the optimizer would pick the smaller collection
-    generateData(db, total_size / 2, 1, [x = 0]() mutable { return 2 * ++x; });
-    generateData(db, total_size, 2, [x = 0]() mutable { return ++x; });
+    generateData(db, total_size / 2, 1,
+                 [x = uint64_t{0}]() mutable { return 2 * ++x; });
+    generateData(db, total_size, 2,
+                 [x = uint64_t{0}]() mutable { return ++x; });
   }
 };
 
 struct EvenOddPattern : PatternBase {
   void operator()(RocksDBInstance& db) {
-    generateData(db, scale, 1, [x = 0]() mutable { return 2 * ++x; });
-    generateData(db, scale, 2, [x = 0]() mutable { return 2 * ++x + 1; });
+    generateData(db, scale, 1, [x = uint64_t{0}]() mutable { return 2 * ++x; });
+    generateData(db, scale, 2,
+                 [x = uint64_t{0}]() mutable { return 2 * ++x + 1; });
+  }
+};
+
+struct BigGapsPattern : PatternBase {
+  void operator()(RocksDBInstance& db) {
+    generateData(db, scale / 100, 2,
+                 [x = uint64_t{0}]() mutable { return ++x * 1000; });
+    generateData(db, scale, 1, [x = uint64_t{0}]() mutable { return ++x; });
   }
 };
 
 using MyTypes = ::testing::Types<EvenOddPattern, SameRangePattern,
-                                 CommonRangePattern, HalfSize>;
+                                 CommonRangePattern, HalfSize, BigGapsPattern>;
 TYPED_TEST_SUITE(MyJoinPerformanceTest, MyTypes);
 
 TYPED_TEST(MyJoinPerformanceTest, nested_loops_join) {
@@ -193,7 +210,7 @@ TYPED_TEST(MyJoinPerformanceTest, nested_loops_join) {
         break;
       }
 
-      // LOG_DEVEL << "a = " << basics::bigToHost(a)
+      // LOG_DEVEL_ITER<< "a = " << basics::bigToHost(a)
       //           << " b = " << basics::bigToHost(b);
       numResults += 1;
       iter2->Next();
@@ -202,9 +219,9 @@ TYPED_TEST(MyJoinPerformanceTest, nested_loops_join) {
     iter1->Next();
   }
 
-  LOG_DEVEL << "num seeks = " << numSeeks;
-  LOG_DEVEL << "num results = " << numResults;
-  LOG_DEVEL << "num skipped seeks = " << numSkippedSeeks;
+  LOG_DEVEL_ITER << "num seeks = " << numSeeks;
+  LOG_DEVEL_ITER << "num results = " << numResults;
+  LOG_DEVEL_ITER << "num skipped seeks = " << numSkippedSeeks;
 }
 
 TYPED_TEST(MyJoinPerformanceTest, merge_join) {
@@ -248,8 +265,8 @@ TYPED_TEST(MyJoinPerformanceTest, merge_join) {
     iter1->Seek(seekKey);
   }
 
-  LOG_DEVEL << "num seeks = " << numSeeks;
-  LOG_DEVEL << "num results = " << numResults;
+  LOG_DEVEL_ITER << "num seeks = " << numSeeks;
+  LOG_DEVEL_ITER << "num results = " << numResults;
 }
 
 TYPED_TEST(MyJoinPerformanceTest, nested_loops_join_next) {
@@ -281,7 +298,7 @@ TYPED_TEST(MyJoinPerformanceTest, nested_loops_join_next) {
         break;
       }
 
-      // LOG_DEVEL << "a = " << basics::bigToHost(a)
+      // LOG_DEVEL_ITER<< "a = " << basics::bigToHost(a)
       //           << " b = " << basics::bigToHost(b);
       numResults += 1;
       iter2->Next();
@@ -290,9 +307,9 @@ TYPED_TEST(MyJoinPerformanceTest, nested_loops_join_next) {
     iter1->Next();
   }
 
-  LOG_DEVEL << "num seeks = " << numSeeks;
-  LOG_DEVEL << "num results = " << numResults;
-  LOG_DEVEL << "num skipped seeks = " << numSkippedSeeks;
+  LOG_DEVEL_ITER << "num seeks = " << numSeeks;
+  LOG_DEVEL_ITER << "num results = " << numResults;
+  LOG_DEVEL_ITER << "num skipped seeks = " << numSkippedSeeks;
 }
 
 TYPED_TEST(MyJoinPerformanceTest, merge_join_next) {
@@ -332,6 +349,6 @@ TYPED_TEST(MyJoinPerformanceTest, merge_join_next) {
     iter1->Next();
   }
 
-  LOG_DEVEL << "num seeks = " << numSeeks;
-  LOG_DEVEL << "num results = " << numResults;
+  LOG_DEVEL_ITER << "num seeks = " << numSeeks;
+  LOG_DEVEL_ITER << "num results = " << numResults;
 }
