@@ -50,7 +50,7 @@ const getLocalIndex = function (endpoint, db, indexId) {
   });
   lh.checkRequestResult(res, true);
   return res.json;
-}
+};
 
 /**
  * Returns all indexes available locally on a server.
@@ -61,7 +61,7 @@ const getAllLocalIndexes = function (endpoint, db, shard) {
   });
   lh.checkRequestResult(res, true);
   return res.json;
-}
+};
 
 
 /**
@@ -288,7 +288,7 @@ const getCollectionShardsAndLogs = function (db, collection) {
   const shardsToLogs = lh.getShardsToLogsMapping(db._name(), collection._id);
   const logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
   return {shards, shardsToLogs, logs};
-}
+};
 
 exports.getLocalValue = getLocalValue;
 exports.getLocalIndex = getLocalIndex;

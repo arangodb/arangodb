@@ -1026,7 +1026,7 @@ const replicatedStateDocumentShardsSuite = function () {
           }
         }
       }
-    }
+    };
   };
 
   return {
