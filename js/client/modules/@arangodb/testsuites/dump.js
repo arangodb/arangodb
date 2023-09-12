@@ -880,7 +880,7 @@ function dumpMixedClusterSingle (options) {
                                     options, options, 'dump_mixed_cluster_single',
                                     tstFiles, function(){}, [
                                       //'--testFoxx', 'false',
-                                      '--rtaNegFilter', '550,900,960']);
+                                      '--skip', '550,900,960']);
 }
 
 function dumpMixedSingleCluster (options) {
@@ -905,7 +905,7 @@ function dumpMixedSingleCluster (options) {
                                     options, options, 'dump_mixed_single_cluster',
                                     tstFiles, function(){}, [
                                       // '--testFoxx', 'false',
-                                      '--rtaNegFilter', '550,900,960']);
+                                      '--skip', '550,900,960']);
 }
 
 function dumpMultiple (options) {
