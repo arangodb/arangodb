@@ -94,6 +94,7 @@ class PathValidatorOptions {
    */
   bool usesPrune() const;
   bool usesPostFilter() const;
+  bool usesMinMaxDepth() const noexcept;
 
   /**
    * @brief In case prune or postFilter has been enabled, we need to unprepare
@@ -109,6 +110,7 @@ class PathValidatorOptions {
    */
   void setPruneContext(aql::InputAqlItemRow& inputRow);
   void setPostFilterContext(aql::InputAqlItemRow& inputRow);
+  void setMinMaxDepth(std::size_t minDepth, std::size_t maxDepth);
 
   /**
    * @brief Get the Expression a vertex needs to hold if defined on the given
@@ -127,6 +129,8 @@ class PathValidatorOptions {
   aql::Variable const* getTempVar() const;
 
   aql::FixedVarExpressionContext& getExpressionContext();
+
+  std::pair<std::size_t, std::size_t> getMinMaxDepth() const;
 
   // @brief If a graph is asked for the first vertex and that is filtered
   void setBfsResultHasToIncludeFirstVertex() {
@@ -161,6 +165,8 @@ class PathValidatorOptions {
   bool _isDisjoint;
   bool _isSatelliteLeader;
   bool _enabledClusterOneShardRule;
+
+  std::optional<std::pair<std::size_t, std::size_t>> _optMinMaxDepth;
 };
 }  // namespace graph
 }  // namespace arangodb

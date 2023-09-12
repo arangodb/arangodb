@@ -302,6 +302,19 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     }
   }
 
+  if (_options.usesMinMaxDepth()) {
+    auto [minDepth, maxDepth] = _options.getMinMaxDepth();
+    if (step.getDepth() >= maxDepth) {
+      res.combine(ValidationResult::Type::PRUNE);
+    }
+
+    if (step.getDepth() < minDepth) {
+      res.combine(ValidationResult::Type::FILTER);
+      // returning here is ok, because there is no condition for pruning left.
+      return res;
+    }
+  }
+
   if (res.isPruned() && res.isFiltered()) {
     return res;
   }

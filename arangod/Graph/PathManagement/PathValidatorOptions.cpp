@@ -156,3 +156,18 @@ aql::Variable const* PathValidatorOptions::getTempVar() const {
 aql::FixedVarExpressionContext& PathValidatorOptions::getExpressionContext() {
   return _expressionCtx;
 }
+
+bool PathValidatorOptions::usesMinMaxDepth() const noexcept {
+  return _optMinMaxDepth.has_value();
+}
+void PathValidatorOptions::setMinMaxDepth(std::size_t minDepth,
+                                          std::size_t maxDepth) {
+  _optMinMaxDepth.emplace(minDepth, maxDepth);
+}
+
+std::pair<std::size_t, std::size_t> PathValidatorOptions::getMinMaxDepth()
+    const {
+  std::pair<std::size_t, std::size_t> defaulValue = {
+      0, std::numeric_limits<std::size_t>::max()};
+  return _optMinMaxDepth.value_or(defaulValue);
+}
