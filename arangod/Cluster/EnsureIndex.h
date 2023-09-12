@@ -46,7 +46,7 @@ class EnsureIndex : public ActionBase {
   virtual arangodb::Result setProgress(double d) override final;
   virtual bool first() override final;
 
-  static void indexCreationLogging(VPackBuilder& index);
+  static void indexCreationLogging(VPackSlice index);
 
  private:
   static auto ensureIndexReplication2(

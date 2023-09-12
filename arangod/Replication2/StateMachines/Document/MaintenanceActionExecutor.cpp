@@ -117,7 +117,7 @@ auto MaintenanceActionExecutor::executeCreateIndex(
   auto res = methods::Indexes::ensureIndex(*col, properties->slice(), true,
                                            output, std::move(progress));
   if (res.ok()) {
-    arangodb::maintenance::EnsureIndex::indexCreationLogging(output);
+    arangodb::maintenance::EnsureIndex::indexCreationLogging(output.slice());
   }
   return res;
 }

@@ -167,7 +167,7 @@ bool EnsureIndex::first() {
         auto res = methods::Indexes::ensureIndex(*col, body.slice(), true,
                                                  index, std::move(lambda));
         if (res.ok()) {
-          indexCreationLogging(index);
+          indexCreationLogging(index.slice());
         }
         return res;
       }
@@ -224,9 +224,9 @@ bool EnsureIndex::first() {
   return false;
 }
 
-void EnsureIndex::indexCreationLogging(VPackBuilder& index) {
-  VPackSlice created = index.slice().get("isNewlyCreated");
-  std::string log = std::string("Index ") + index.slice().get(ID).copyString();
+void EnsureIndex::indexCreationLogging(VPackSlice index) {
+  VPackSlice created = index.get("isNewlyCreated");
+  std::string log = std::string("Index ") + index.get(ID).copyString();
   log += (created.isBool() && created.getBool() ? std::string(" created")
                                                 : std::string(" updated"));
   LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
