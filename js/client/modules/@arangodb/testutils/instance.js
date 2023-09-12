@@ -335,13 +335,13 @@ class instance {
     if (!this.args.hasOwnProperty('server.endpoint')) {
       this.port = PORTMANAGER.findFreePort(this.options.minPort, this.options.maxPort);
       this.endpoint = this.protocol + '://127.0.0.1:' + this.port;
-      bindEndpoint = this.endpoint;
       if (this.options.bindBroadcast) {
         bindEndpoint = this.protocol + '://0.0.0.0:' + this.port;
+      } else {
+        bindEndpoint = this.Endpoint;
       }
     } else {
-      this.endpoint = this.args['server.endpoint'];
-      bindEndpoint = this.endpoint;
+      bindEndpoint = this.endpoint = this.args['server.endpoint'];
       this.port = this.endpoint.split(':').pop();
     }
     this.url = pu.endpointToURL(this.endpoint);
@@ -870,7 +870,7 @@ class instance {
     let res = statusExternal(this.pid, false);
     if (res.status === 'NOT-FOUND') {
       print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
-      sleep(0.2);
+      time.sleep(0.2);
       res = statusExternal(this.pid, false);
     }
     const running = res.status === 'RUNNING';
