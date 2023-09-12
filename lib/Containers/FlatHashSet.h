@@ -50,8 +50,12 @@ template<class T, class Hash = typename absl::flat_hash_set<T>::hasher,
          class Eq = typename absl::flat_hash_set<T, Hash>::key_equal,
          class Allocator =
              typename absl::flat_hash_set<T, Hash, Eq>::allocator_type,
+#if !defined(ABSL_HAVE_ADDRESS_SANITIZER) && \
+    !defined(ABSL_HAVE_MEMORY_SANITIZER)
          // TODO(MBkkt) After additional benchmarks change Sizeof
-         class = std::enable_if_t<detail::SetSizeofChecker<40, T>()>>
+         class = std::enable_if_t<detail::SetSizeofChecker<40, T>()>
+#endif
+         >
 using FlatHashSet = absl::flat_hash_set<T, Hash, Eq, Allocator>;
 
 }  // namespace arangodb::containers
