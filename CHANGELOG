@@ -1,6 +1,29 @@
 devel
 -----
 
+* When dropping a database, immediately also mark all collections of the
+  database as dropped. This has the advantage that ongoing operations on these
+  collections can be stopped earlier, and memory for the underlying collections
+  and indexes can be reclaimed sooner.
+
+  This changes the behavior for some operations, for example:
+  ```
+  db._createDatabase("testDatabase");
+  db._useDatabase("testDatabase");
+
+  let c = db._create("testCollection");
+
+  db._useDatabase("_system");
+  db._dropDatabase("testDatabase");
+
+  // the following operation will now return "collection not found".
+  // in previous versions, it could still be executed.
+  print(c.count()); 
+  ```
+
+  The new behavior is more consistent with dropping collections, after which 
+  operations on the dropped collection also fail immediately.
+
 * Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where
   the inner amount of a limit in the LimitExecutor is set to a wrong
   value which lead to some data rows not being returned to the client.
