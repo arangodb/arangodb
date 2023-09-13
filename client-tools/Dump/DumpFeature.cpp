@@ -585,11 +585,6 @@ Result DumpFeature::DumpCollectionJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
   Result res;
 
-  if (options.progress) {
-    LOG_TOPIC("a9ec1", INFO, arangodb::Logger::DUMP)
-        << "# Dumping collection '" << collectionName << "'...";
-  }
-
   bool dumpStructure = true;
   bool dumpData = options.dumpData;
 
@@ -602,6 +597,20 @@ Result DumpFeature::DumpCollectionJob::run(
 
   if (!dumpStructure && !dumpData) {
     return res;
+  }
+
+  if (options.progress) {
+    std::string_view types;
+    if (dumpData && dumpStructure) {
+      types = "structure and data";
+    } else if (dumpData) {
+      types = "data";
+    } else {
+      types = " structure";
+    }
+    LOG_TOPIC("a9ec1", INFO, arangodb::Logger::DUMP)
+        << "# Dumping " << types << " of collection '" << collectionName
+        << "'...";
   }
 
   // prep hex string of collection name
