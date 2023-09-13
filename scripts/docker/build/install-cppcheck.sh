@@ -20,5 +20,5 @@ python3 get-pip.py
 pip install cppcheck-junit
 	    
 cd /tmp
-rm -rf $CPPCHECK_VERSION.tar.gz cppcheck-$CPPCHECK_VERSION 
+rm -rf $CPPCHECK_VERSION.tar.gz cppcheck-$CPPCHECK_VERSION get-pip.py
 
