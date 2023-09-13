@@ -208,6 +208,9 @@ class ConfigBuilder {
     delete this.config['server.password'];
     this.config['server.jwt-secret-keyfile'] = file;
   }
+  hasJwt() {
+    return this.config.hasOwnProperty('server.jwt-secret-keyfile');
+  }
   setMaskings(dir) {
     if (this.type !== 'dump') {
       throw '"maskings" is not supported for binary: ' + this.type;

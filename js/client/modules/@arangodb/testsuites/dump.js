@@ -683,12 +683,14 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   restoreRta() {
     let success = true;
     if (!this.restoreConfig.haveSetAllDatabases()) {
-      // Since we restore afterwards, any dumped passwords
-      // are in action again.
-      this.restoreConfig.setAuth(
-        this.dumpOptions.username,
-        this.dumpOptions.password
-      );
+      if (!this.restoreConfig.hasJwt()) {
+        // Since we restore afterwards, any dumped passwords
+        // are in action again.
+        this.restoreConfig.setAuth(
+          this.dumpOptions.username,
+          this.dumpOptions.password
+        );
+      }
       this.allDatabases.forEach(db => {
         if (!this.restoreTo(db, { separate: true, fromDir: db})) {
           this.results.RtaRestore = {
