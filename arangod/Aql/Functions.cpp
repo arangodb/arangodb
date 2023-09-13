@@ -954,7 +954,8 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
           registerInvalidArgumentWarning(expressionContext, funcName);
           return AqlValue(AqlValueHintNull());
         }
-        for (auto const& [key, value] : VPackObjectIterator(it)) {
+        for (auto const& [key, value] :
+             VPackObjectIterator(it, /*useSequentialIteration*/ true)) {
           attributes[key.stringView()] = value;
         }
       }
