@@ -49,15 +49,15 @@ CachedValue* CachedValue::copy() const {
 CachedValue* CachedValue::construct(void const* k, std::size_t kSize,
                                     void const* v, std::size_t vSize) {
   if (kSize == 0 || k == nullptr || (vSize > 0 && v == nullptr) ||
-      kSize > maxKeySize || vSize > maxValueSize) {
+      kSize > kMaxKeySize || vSize > kMaxValueSize) {
     return nullptr;
   }
 
   // cppcheck-suppress *
   std::uint8_t* buf = new std::uint8_t[kCachedValueHeaderSize + kSize + vSize];
   std::uint8_t* aligned = reinterpret_cast<std::uint8_t*>(
-      (reinterpret_cast<std::size_t>(buf) + _headerAllocOffset) &
-      _headerAllocMask);
+      (reinterpret_cast<std::size_t>(buf) + kHeaderAllocOffset) &
+      kHeaderAllocMask);
   std::size_t offset = buf - aligned;
   // ctor of CachedValue is noexcept
   // cppcheck-suppress memleak
@@ -74,7 +74,7 @@ void CachedValue::operator delete(void* ptr) {
 CachedValue::CachedValue(std::size_t off, void const* k, std::size_t kSize,
                          void const* v, std::size_t vSize) noexcept
     : _refCount(0),
-      _keySize(static_cast<std::uint32_t>(kSize + (off << _offsetShift))),
+      _keySize(static_cast<std::uint32_t>(kSize + (off << kOffsetShift))),
       _valueSize(static_cast<std::uint32_t>(vSize)) {
   std::memcpy(const_cast<std::uint8_t*>(key()), k, kSize);
   if (vSize > 0) {

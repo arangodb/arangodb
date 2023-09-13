@@ -57,7 +57,8 @@ TraverserDocumentCache::~TraverserDocumentCache() {
       _query.vocbase().server().getFeature<CacheManagerFeature>().manager();
   if (cacheManager != nullptr) {
     try {
-      cacheManager->destroyCache(_cache);
+      cacheManager->destroyCache(std::move(_cache));
+      _cache.reset();
     } catch (...) {
       // no exceptions allowed here
     }
@@ -133,8 +134,8 @@ void TraverserDocumentCache::insertIntoCache(
 
   if (value) {
     auto result = _cache->insert(value.get());
-    if (!result.ok()) {
-      LOG_TOPIC("9de3a", DEBUG, Logger::GRAPHS) << "Insert failed";
+    if (result != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC("9de3a", TRACE, Logger::GRAPHS) << "cache insert failed";
     } else {
       // Cache is responsible.
       // If this failed, well we do not store it and read it again next time.
