@@ -502,8 +502,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     }
 
     // more data to retrieve, adaptively increase chunksize
-    chunkSize = std::clamp<decltype(chunkSize)>(chunkSize * 1.5, chunkSize,
-                                                job.options.maxChunkSize);
+    chunkSize = std::min(uint64_t(chunkSize * 1.5), job.options.maxChunkSize);
   }
 
   // should never get here, but need to make compiler play nice
