@@ -7,7 +7,6 @@ export PATCHED_VERSION=$2
 # Compile cppcheck:
 cd /tmp
 wget https://github.com/danmar/cppcheck/archive/$CPPCHECK_VERSION.tar.gz 
-echo "https://github.com/danmar/cppcheck/archive/$CPPCHECK_VERSION.tar.gz "
 tar xzf $CPPCHECK_VERSION.tar.gz 
 cd cppcheck-$CPPCHECK_VERSION/ 
 sed -i "s/\"$CPPCHECK_VERSION\"/\"$PATCHED_VERSION\"/" cmake/versions.cmake  
