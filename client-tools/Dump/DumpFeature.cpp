@@ -1590,7 +1590,8 @@ bool shouldRetryRequest(httpclient::SimpleHttpResult const* response,
   }
 
   if (check.is(TRI_ERROR_CLUSTER_TIMEOUT) ||
-      check.is(TRI_ERROR_HTTP_GATEWAY_TIMEOUT)) {
+      check.is(TRI_ERROR_HTTP_GATEWAY_TIMEOUT) ||
+      check.is(TRI_ERROR_RESOURCE_LIMIT)) {
     // retry
     return true;
   }

@@ -65,7 +65,7 @@ function testSuite() {
 
       let config = { 
         docsPerBatch: 10000, 
-        prefetchCount: 32, 
+        prefetchCount: 8, 
         parallelism: 8, 
         shards: collections,
       };
@@ -152,7 +152,7 @@ function testSuite() {
           }
           internal.sleep(0.5);
         }
-        assertTrue(blocked > 0, {blocked});
+        assertTrue(blocked > originalBlocked, {blocked});
       } finally {
         arango.DELETE_RAW("/_api/dump/" + id);
      
@@ -198,6 +198,11 @@ function testSuite() {
             let res = arango.POST_RAW(url, {});
             if (res.code === 204) {
               d.done = true;
+              return;
+            }
+            if (res.code === 500 && 
+                res.parsedBody.errorNum === internal.errors.ERROR_RESOURCE_LIMIT.code) {
+              // resource limit temporarily exceeded. simply try again in this case.
               return;
             }
             let shard = res.headers["x-arango-dump-shard-id"];

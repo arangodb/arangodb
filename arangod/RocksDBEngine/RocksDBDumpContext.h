@@ -95,6 +95,11 @@ class RocksDBDumpContext {
 
   ~RocksDBDumpContext();
 
+  // this will make the dump context stop all its threads
+  void stop() noexcept;
+
+  bool stopped() const noexcept;
+
   // return id of the context. will not change during the lifetime of the
   // context.
   std::string const& id() const noexcept;
@@ -305,6 +310,8 @@ class RocksDBDumpContext {
 
   // Counts +1 for a block on the pop side and -1 for a block on the push side.
   std::atomic<int64_t> _blockCounter{0};
+
+  std::atomic_bool _stopped{false};
 };
 
 }  // namespace arangodb

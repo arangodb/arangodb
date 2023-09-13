@@ -134,20 +134,31 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::find(
 void RocksDBDumpManager::remove(std::string const& id,
                                 std::string const& database,
                                 std::string const& user) {
-  std::lock_guard mutexLocker{_lock};
+  std::shared_ptr<RocksDBDumpContext> victim;
+  {
+    std::lock_guard mutexLocker{_lock};
 
-  // this will throw in case the context cannot be found or belongs to a
-  // different user
-  auto it = lookupContext(id, database, user);
-  TRI_ASSERT(it != _contexts.end());
+    // this will throw in case the context cannot be found or belongs to a
+    // different user
+    auto it = lookupContext(id, database, user);
+    TRI_ASSERT(it != _contexts.end());
+    victim = (*it).second;
 
-  // if we remove the context from the map, then the context will be
-  // destroyed if it is not in use by any other thread. if it is in
-  // use by another thread, the thread will have a shared_ptr of the
-  // context, and the context will be destroyed once the shared_ptr
-  // goes out of scope in the other thread
-  _contexts.erase(it);
-  _dumpsOngoing.fetch_sub(1);
+    TRI_ASSERT(victim != nullptr);
+    // give the victim a hind to stop all its threads.
+    victim->stop();
+
+    // if we remove the context from the map, then the context will be
+    // destroyed if it is not in use by any other thread. if it is in
+    // use by another thread, the thread will have a shared_ptr of the
+    // context, and the context will be destroyed once the shared_ptr
+    // goes out of scope in the other thread
+    _contexts.erase(it);
+    _dumpsOngoing.fetch_sub(1);
+  }
+
+  // when we go out of scope here, we can destroy the victim
+  // without holding the mutex
 }
 
 void RocksDBDumpManager::dropDatabase(TRI_vocbase_t& vocbase) {
@@ -175,16 +186,16 @@ void RocksDBDumpManager::garbageCollect(bool force) {
 }
 
 std::unique_ptr<RocksDBDumpContext::Batch> RocksDBDumpManager::requestBatch(
-    std::string const& collectionName, std::uint64_t& batchSize, bool useVPack,
+    RocksDBDumpContext& context, std::string const& collectionName,
+    std::uint64_t& batchSize, bool useVPack,
     velocypack::Options const* vpackOptions) {
   auto waitTime = std::chrono::milliseconds(10);
 
-  int counter = 0;
   bool metricIncreased = false;
-  while (!reserveCapacity(batchSize)) {
+  auto reserve = [&]() -> bool {
+    bool result = reserveCapacity(batchSize);
     // we have exceeded the memory limit for dumping.
-    // block this thread and wait until we have some memory capacity left.
-    if (!metricIncreased) {
+    if (!result && !metricIncreased) {
       // count only once per batch
       _dumpsThreadsBlocked.count();
       metricIncreased = true;
@@ -192,6 +203,19 @@ std::unique_ptr<RocksDBDumpContext::Batch> RocksDBDumpManager::requestBatch(
           << "blocking dump operation because memory reserve capacity for dump "
              "is temporarily exceeded";
     }
+    return result;
+  };
+
+  int counter = 0;
+  while (!reserve()) {
+    if (context.stopped()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_REQUEST_CANCELED,
+          "dump context was explicitly canceled or timed out");
+    }
+
+    // we have exceeded the memory limit for dumping.
+    // block this thread and wait until we have some memory capacity left.
     if (_engine.server().isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }

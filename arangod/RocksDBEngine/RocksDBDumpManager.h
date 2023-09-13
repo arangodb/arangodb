@@ -84,8 +84,9 @@ class RocksDBDumpManager {
   void garbageCollect(bool force);
 
   std::unique_ptr<RocksDBDumpContext::Batch> requestBatch(
-      std::string const& collectionName, std::uint64_t& batchSize,
-      bool useVPack, velocypack::Options const* vpackOptions);
+      RocksDBDumpContext& context, std::string const& collectionName,
+      std::uint64_t& batchSize, bool useVPack,
+      velocypack::Options const* vpackOptions);
 
   bool reserveCapacity(std::uint64_t value) noexcept;
   void trackMemoryUsage(std::uint64_t size) noexcept;

@@ -274,14 +274,23 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
     _threads.emplace_back(
         [this, guard = BoundedChannelProducerGuard(_channel)] {
           try {
-            while (true) {
+            while (!stopped()) {
               // will block until all workers wait, i.e. no work is left
               auto workItem = _workItems.pop();
               if (workItem.empty()) {
                 break;
               }
 
-              handleWorkItem(std::move(workItem));
+              do {
+                try {
+                  handleWorkItem(workItem);
+                  break;
+                } catch (basics::Exception const& ex) {
+                  if (ex.code() != TRI_ERROR_RESOURCE_LIMIT) {
+                    throw ex;
+                  }
+                }
+              } while (!stopped());
             }
           } catch (basics::Exception const& ex) {
             _workItems.setError(Result(ex.code(), ex.what()));
@@ -295,6 +304,8 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
 
 // will automatically delete the RocksDB snapshot and all guards
 RocksDBDumpContext::~RocksDBDumpContext() {
+  stop();
+
   _workItems.stop();
   _channel.stop();
 
@@ -303,6 +314,14 @@ RocksDBDumpContext::~RocksDBDumpContext() {
     thrd.join();
   }
   _threads.clear();
+}
+
+void RocksDBDumpContext::stop() noexcept {
+  _stopped.store(true, std::memory_order_relaxed);
+}
+
+bool RocksDBDumpContext::stopped() const noexcept {
+  return _stopped.load(std::memory_order_relaxed);
 }
 
 std::string const& RocksDBDumpContext::id() const noexcept { return _id; }
@@ -415,9 +434,11 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
     if (batch == nullptr) {
       batchSize = _options.batchSize;
       // note: this call can block, and it can modify batchSize!
-      batch = _manager.requestBatch(ci.guard.collection()->name(), batchSize,
-                                    _useVPack, &vpackOptions);
+      batch = _manager.requestBatch(*this, ci.guard.collection()->name(),
+                                    batchSize, _useVPack, &vpackOptions);
     }
+
+    TRI_ASSERT(batch != nullptr);
 
     batch->add(velocypack::Slice(
         reinterpret_cast<std::uint8_t const*>(it->value().data())));
