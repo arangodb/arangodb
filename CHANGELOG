@@ -1,4 +1,111 @@
-v3.11.3 (XXXX-XX-XX)
+v3.11.4 (XXXX-XX-XX)
+--------------------
+
+* Added metric `rocksdb_cache_edge_empty_inserts_total` to count the number
+  of inserts into the edge cache for non-connected edges.
+
+* Renamed two edge-cache related metrics to improve naming consistency:
+  - `rocksdb_cache_edge_effective_entries_size` was renamed to 
+    `rocksdb_cache_edge_inserts_effective_entries_size_total` and was changed
+    from a gauge to a counter.
+  - `rocksdb_cache_edge_uncompressed_entries_size` was renamed to 
+    `rocksdb_cache_edge_inserts_uncompressed_entries_size_total` and is now
+    also a counter instead of a gauge.
+
+* Do not auto-reload entries into in-memory edge cache for edge index entries
+  that were previously not contained in the in-memory edge cache. This change
+  will help to keep the hot set in memory rather than evicting it in favor of
+  "random" other index entries.
+
+* Properly track memory usage for allocated objects in the in-memory cache
+  (e.g. the edge cache or the in-memory cache for other persistent indexes).
+  Previously the memory used for the underlying hash tables was accounted for
+  correctly, but the sizes of the cache payloads (keys and values) were not
+  accounted for under all circumstances (at least for the initial entries in
+  the caches).
+  This change leads to more accurate memory usage tracking and reporting by the 
+  in-memory cache subsystem, and to the cache subsystem not exceeding its 
+  configured memory usage limit. 
+  The cache subsystem was also changed so that it can use as much memory as
+  configured by the global cache memory limit (configurable via startup options
+  `--cache.size` and `--cache.high-water-multiplier`). Previously the cache 
+  subsystem was freeing memory as soon as it hit 56% of the configured limit.
+  Overall, the effective memory usage of the cache subsystem can be different 
+  to the cache memory usage in previous versions. In previous versions the
+  configured memory usage limit could be temporarily exceeded, but in most
+  cases the cache used considerably less memory than allowed by the limit.
+  Effectively the memory usage was capped at 56% of the configured limit.
+  Now the cache will try to use up to as much memory as allowed by the
+  configured memory usage limit (i.e. `--cache.size` multiplied by the high
+  water multiplier `--cache.high-water-multiplier`). The default value for
+  the high water multiplier is set to 56% in this version to keep compatibility
+  with previous versions.
+
+* Expose the "high water multiplier" for the in-memory cache subsystem. The
+  high water multiplier is used to calculate the effective memory usage limit
+  for the in-memory cache subsystem. The cache's configured memory usage limit
+  (`--cache.size`) is multiplied by the high water multiplier, and the 
+  resulting value is used as the effective memory limit. It defaults to 56%
+  to ensure compatibility with previous versions, in which the threshold was
+  effectively hard-coded to the same value.
+
+* Reduce memory usage for empty in-memory edge caches by ~40%. This is achieved
+  by allocating each cache's statistics objects only lazily, when actually 
+  needed.
+
+* Added the following metrics for the in-memory edge cache:
+
+  - `rocksdb_cache_edge_inserts_total`: total number of insertions into the
+    in-memory edge cache.
+  - `rocksdb_cache_edge_compressed_inserts_total`: total number of insertions
+    into the in-memory edge cache that used compression.
+
+* Added the startup option `--cache.max-spare-memory-usage` to control memory
+  usage for spare, unused hash tables in the in-memory caching subsystem. This
+  option can be used to cap the memory used by spare tables. It can be set to
+  a value of 0 to not use any memory except for active hash tables. 
+
+* Fixed BTS-1556: Potential shutdown race, when the server is shutting down and
+  still AgencyCommunication was going on it could use the scheduler which was
+  already deleted, causing a crash right before a normal shutdown.
+  This should not have any negative effect, as all state preserving operations
+  are done by then, it just wasn't a clean exit.
+
+* Fix issue #19630: wildcard automaton sometime accepts more symbols than 
+  required.
+
+* Fix BTS-1583: search-alias view sometimes was unavailable in cluster.
+
+* Fix BTS-1379: add inverted index to collection figures.
+
+* Updated ArangoDB Starter to 0.17.1.
+
+* Fixed BTS-1541: Old legacy little endian key format for RocksDB database
+  (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer versions.
+  This fixes a persistent index corruption bug with the old format.
+
+* Fixed a loophole in COLLECT variable name validation: in COLLECT INTO
+  expressions it was possible to refer to variables that the COLLECT just
+  introduced. This was undefined behavior and not caught by the previous version
+  of COLLECT's variable checking.
+
+* BTS-1598: fix race in agency.
+
+* ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
+  "conflict, _rev values do not match" for non-local edges in Smart- and
+  EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
+
+* Upgraded Swagger-UI to v5.4.1.
+
+* Fixed BTS-1590: Fixed potentially undefined behavior in NetworkFeature, when
+  it was referring to an options object that could have been destroyed already.
+
+* Allow compression content-negotation in metrics API, so that responses from
+  the metrics API at `/_admin/metrics` can be sent compressed if the client
+  supports it.
+
+
+v3.11.3 (2023-08-17)
 --------------------
 
 * Backport multiple fixes for the scheduler behavior during ArangoDB shutdown.
@@ -15,9 +122,6 @@ v3.11.3 (XXXX-XX-XX)
 * BTS-1549: adjust permission handling in experimental dump to the same behavior
   as in non-experimental dump.
 
-* Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition was
-  executed through an index lookup.
-
 * Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used in
   the row based variant like (e.g. WINDOW { preceding: 1, following: 1 }) it
   errored with:  mandatory variable "inVariable" not found. This variable is now
@@ -26,9 +130,6 @@ v3.11.3 (XXXX-XX-XX)
 * Fixed AQL WINDOW statement for OneShard databases: Whenever WINDOW is used on
   a OneShardDatabase, or on data from a collection that only has one shard, the
   preceding and following clauses were flipped.
-
-* Fixed BTS-1554: wrong aggregation count when an "in" or "or" condition was
-  executed through an index lookup.
 
 * Updated arangosync to v2.19.3.
 

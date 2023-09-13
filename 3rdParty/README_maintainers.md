@@ -260,22 +260,32 @@ http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided
 
 https://github.com/swagger-api/swagger-ui/releases
 
-Our copy of swagger-ui resides at `js/assets/swagger`. The `index.html`
-contains a few tweaks to make swagger-ui work with the web interface.
+Our copy of swagger-ui resides at `js/server/assets/swagger`. The `index.css`
+and `swagger-initializer.js` files contain a few tweaks to make swagger-ui look
+a little nicer and make it work with the web interface.
 
 To upgrade to a newer version:
 
-1. Copy the file `js/assets/swagger/index.html` to a safe location and open it in an editor
-2. Delete all existing files inside `js/assets/swagger` including `index.html`
+1. Copy the files `js/server/assets/swagger/index.css` and
+   `js/server/assets/swagger/swagger-initializer.js`
+   to a safe location and open them in an editor
+2. Delete all existing files inside `js/server/assets/swagger`
 3. Download the release bundle of swagger-ui you want to upgrade to
-4. Copy all files from the bundle's `dist` folder into `js/assets/swagger`
-5. Open the new `js/assets/swagger/index.html` in an editor
-6. Add an HTML comment to the start of the file indicating the release version number,
-   e.g.  `<!-- swagger-ui 1.2.3 -->`
-7. Apply all changes from the old copy to the new file,
-   these are indicated by code comments in the following format:
+4. Copy all files from the bundle's `dist` folder into `js/server/assets/swagger`,
+   but delete the unnecessary `*es-bundle*` and non-bundle files (`swagger-ui.*`)
+5. Open the new `js/server/assets/swagger/index.css` file in an editor
+6. Apply the style adjustments from the old copy to the new file, indicated by
+   code comments in the following format:
+   `/* #region ArangoDB-specific changes */` and `/* #endregion */`
+7. Open the new `js/server/assets/swagger/swagger-initializer.js` file in an editor
+8. Add a comment to the start of the file indicating the release version number,
+   e.g.  `// Version: swagger-ui 5.6.7`
+9. Apply all code changes from the old copy to the new file,
+   indicated by code comments in the following format:
    `#region ArangoDB-specific changes` and `#endregion`
-8. Verify the changes were applied correctly and discard the old copy of `index.html`
+10. Verify the changes were applied correctly and discard the old copies of
+    `index.css` and `swagger-initializer.js`
+11. Update the information in `LICENSES-OTHER-COMPONENTS.md` for swagger-ui
 
 To verify the changes were applied correctly, start the ArangoDB server and
 open the _Rest API_ documentation (_Support_ tab) in the ArangoDB web interface.
@@ -305,7 +315,21 @@ the _Execute_ button.
 * All text in the API documentation should use readable color combinations.
   The API documentation should NOT look obviously "broken" or "ugly".
 
-  This indicates the stylistic CSS changes were applied correctly.
+  Text should NOT partially have a font size of 12px or smaller but 14px.
+
+  Inline code should be black, NOT purple, and the background should only have
+  little padding that only slightly overlaps with other inline code in the
+  above or below line.
+
+  Code blocks should have a background, but NOT the individual lines of it.
+  The font weight should be normal, NOT bold.
+
+  Models should NOT have a background, expandible nested models should only have
+  a slightly larger font size than the properties. Property descriptions should
+  NOT use a monospace but a sans-serif font.
+
+  This indicates the stylistic CSS changes were applied correctly and that the
+  HTML IDs and classes are unchanged.
 
 * Scroll to the very end of the page and check the bottom right corner.
   There should be NO badge reading _INVALID_.
