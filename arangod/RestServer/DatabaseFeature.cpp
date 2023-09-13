@@ -838,7 +838,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("1f096", WARN, Logger::FIXME)
-          << "error while droppings in database '" << vocbase->name()
+          << "error while dropping collections in database '" << vocbase->name()
           << "': " << ex.what();
     }
 

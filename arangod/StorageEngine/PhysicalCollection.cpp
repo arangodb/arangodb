@@ -130,15 +130,10 @@ void PhysicalCollection::prepareIndexes(velocypack::Slice indexesSlice) {
 }
 
 void PhysicalCollection::close() {
-  {
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    for (auto& it : _indexes) {
-      it->unload();
-    }
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  for (auto& it : _indexes) {
+    it->unload();
   }
-
-  // TODO: does this cause problems?
-  // freeMemory();
 }
 
 void PhysicalCollection::drop() {

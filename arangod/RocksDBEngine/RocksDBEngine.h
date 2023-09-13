@@ -399,7 +399,6 @@ class RocksDBEngine final : public StorageEngine {
 
   void trackRevisionTreeBufferedMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeBufferedMemoryDecrease(std::uint64_t value) noexcept;
-  uint64_t treeBufferedMemoryUsage() const noexcept;
 
   void trackIndexSelectivityMemoryIncrease(std::uint64_t value) noexcept;
   void trackIndexSelectivityMemoryDecrease(std::uint64_t value) noexcept;

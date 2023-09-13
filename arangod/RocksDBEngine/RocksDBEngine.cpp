@@ -1436,10 +1436,6 @@ void RocksDBEngine::trackRevisionTreeBufferedMemoryDecrease(
   TRI_ASSERT(old >= value);
 }
 
-uint64_t RocksDBEngine::treeBufferedMemoryUsage() const noexcept {
-  return _metricsTreeBufferedMemoryUsage.load();
-}
-
 bool RocksDBEngine::hasBackgroundError() const {
   return _errorListener != nullptr && _errorListener->called();
 }
