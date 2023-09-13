@@ -350,26 +350,9 @@ jobs:
       - checkout-enterprise:
           destination: "/root/project/enterprise"
       - run:
-          name: Install cppcheck 2.11
-          command: |
-            cd /root 
-            wget https://github.com/danmar/cppcheck/archive/2.11.tar.gz 
-            tar zxvf 2.11.tar.gz 
-            cd cppcheck-2.11/ 
-            sed -i 's/"2.11"/"2.11.0"/' cmake/versions.cmake  
-            cmake . 
-            make -j4 FILESDIR=/usr install 
-            ln -s /root/workspace/build/ /root/project/
-      - run:
-          name: Install cppcheck junit formator
-          command: |
-            cd /root 
-            wget https://bootstrap.pypa.io/get-pip.py
-            python3 get-pip.py
-            pip install cppcheck-junit
-      - run:
           name: Run cppcheck
           command: |
+            ln -s /root/workspace/build/ /root/project/
             cd /root/project/ 
             utils/cppcheck-circleci.sh /root/workspace/build/compile_commands.json  
       - run:
