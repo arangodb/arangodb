@@ -596,6 +596,10 @@ Result DumpFeature::DumpCollectionJob::run(
   }
 
   if (!dumpStructure && !dumpData) {
+    if (options.progress) {
+      LOG_TOPIC("11764", INFO, arangodb::Logger::DUMP)
+          << "# Skipping collection '" << collectionName << "'...";
+    }
     return res;
   }
 
