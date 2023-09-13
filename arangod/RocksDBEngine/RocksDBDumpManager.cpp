@@ -201,8 +201,8 @@ std::unique_ptr<RocksDBDumpContext::Batch> RocksDBDumpManager::requestBatch(
       waitTime *= 2;
     }
 
-    if (++counter >= 30) {
-      // we came along here 30 times without making progress.
+    if (++counter >= 50) {
+      // we came along here 50 times without making progress.
       // probably the batch size is still too high.
       // in order to make _some_ progress, we reduce the batch size
       // and then try again in the next round.

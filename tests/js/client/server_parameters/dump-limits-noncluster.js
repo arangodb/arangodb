@@ -166,11 +166,11 @@ function testSuite() {
     testCheckProgressWithMultipleDumpsThatHitMemoryLimit: function() {
       const originalBlocked = getMetricSingle("arangodb_dump_threads_blocked_total");
 
-      // we are telling the server to fetch up to 1024 batches.
+      // we are telling the server to fetch up to 512 batches.
       // this will surely exceed the allowed max memory value of 16 MB
       let config = { 
         docsPerBatch: 10000, 
-        prefetchCount: 1024, 
+        prefetchCount: 512, 
         parallelism: 8, 
         shards: collections,
       };
@@ -189,8 +189,6 @@ function testSuite() {
       }
        
       try {
-        //let tries = 0;
-        //let blocked = 0;
         while (true) {
           dumps.filter((d) => !d.done).forEach((d) => {
             let url = "/_api/dump/next/" + d.id + "?batchId=" + d.batchId;
@@ -203,8 +201,8 @@ function testSuite() {
               return;
             }
             let shard = res.headers["x-arango-dump-shard-id"];
-            assertTrue(collections.includes(shard), shard);
-            assertEqual(200, res.code);
+            assertEqual(200, res.code, res);
+            assertTrue(collections.includes(shard), res);
             d.lastBatch = d.batchId;
             ++d.batchId;
           });
