@@ -47,14 +47,14 @@ function dumpIntegrationSuite () {
       let structure = prefix + ".structure.json";
       let fullNameIndex = tree.indexOf(structure);
       if (fullNameIndex === -1) {
-        fs.join(dbName, structure);
+        structure = fs.join(dbName, structure);
         fullNameIndex = tree.indexOf(structure);
       }
       if (fullNameIndex === -1) {
         structure = cn + ".structure.json";
         fullNameIndex = tree.indexOf(structure);
       }
-      assertNotEqual(-1, fullNameIndex, fs.join(dumpDir, '*', structure));
+      assertNotEqual(-1, fullNameIndex, `no ${fs.join(dumpDir, '*', structure)} in ${JSON.stringify(tree)}`);
       let structureFile = fs.join(dumpDir, tree[fullNameIndex]);
 
       assertTrue(fs.isFile(structureFile),"structure file does not exist: " + structureFile);
