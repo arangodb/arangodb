@@ -44,9 +44,12 @@ function dumpIntegrationSuite () {
       assertEqual("none", data.toString());
       
       const prefix = "UnitTestsDumpEdges_8a31b923e9407ab76b6ca41131b8acf1";
-
-      let structure = fs.join(dbName, prefix + ".structure.json");
+      let structure = prefix + ".structure.json";
       let fullNameIndex = tree.indexOf(structure);
+      if (fullNameIndex === -1) {
+        fs.join(dbName, structure);
+        fullNameIndex = tree.indexOf(structure);
+      }
       if (fullNameIndex === -1) {
         structure = cn + ".structure.json";
         fullNameIndex = tree.indexOf(structure);
@@ -59,7 +62,9 @@ function dumpIntegrationSuite () {
       data = JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)).toString());
       assertEqual(cn, data.parameters.name);
       
-      let files = tree.filter((f) => f.startsWith(fs.join(dbName, prefix)) && f.match(/(\.\d+)?\.data\.json$/));
+      let files = tree.filter((f) =>
+        (f.startsWith(prefix) || f.startsWith(fs.join(dbName, prefix))) &&
+          f.match(/(\.\d+)?\.data\.json$/));
       assertNotEqual(0, files.length, files);
       files.forEach((file) => {
         data = fs.readFileSync(fs.join(dumpDir, file)).toString().trim().split('\n');
