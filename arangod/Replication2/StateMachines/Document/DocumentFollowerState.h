@@ -106,6 +106,8 @@ struct DocumentFollowerState
         -> ResultT<std::optional<LogIndex>>;
     auto applyEntry(ReplicatedOperation::CreateIndex const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::DropIndex const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
 
     std::unique_ptr<DocumentCore> core;
     std::uint64_t currentSnapshotVersion;
