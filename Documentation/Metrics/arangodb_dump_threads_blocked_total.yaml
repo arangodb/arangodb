@@ -27,6 +27,7 @@ troubleshoot: |
   option `--dump.max-memory-usage`, to reduce the number
   of parallel threads used in an arangodump invocation, or
   to start less concurrent arangodumps.
+  
   This metric will have a value of 0 on coordinators. It will
   also not be increased for arangodump invocations that did
   not use `--parallel-dump` option.

@@ -21,6 +21,7 @@ description: |
   The value will be decreased whenever a parallel arangodump operation
   finishes, or if it is abandonded, after the timeout value used for
   the server-side part of the dump operation.
+  
   This metric will have a value of 0 on coordinators. The metric will
   not be increased for any arangodump invocations that did not use the
   `--parallel-dump` option.

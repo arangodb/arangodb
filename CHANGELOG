@@ -10,6 +10,8 @@ devel
     and keeping results on the server side when arangodump is invoked
     with the `--parallel-dump` option. It does not have an effect for
     arangodump invocations that did not use the `--parallel-dump` option.
+    Note that the memory usage limit is not exact and that it can be 
+    slightly exceeded in some situations to guarantee progress.
   - `--dump.max-docs-per-batch`: Maximum number of documents per batch 
     that can be used in a dump. If an arangodump invocation requests
     higher values than configured here, the value will automatically be
@@ -26,6 +28,17 @@ devel
     number of server-side prefetch threads will be capped to this value. 
     Will only be followed for arangodump invocations that use the 
     `--parallel-dump` option.
+
+* Added the following metrics to observe the behavior of parallel
+  arangodump on the server:
+
+  - `arangodb_dump_memory_usage`: Current memory usage of all ongoing 
+    arangodump operations on the server.
+  - `arangodb_dump_ongoing`: Number of currently ongoing arangodump 
+    operations on the server.
+  - `arangodb_dump_threads_blocked_total`: Number of times a server-side 
+    dump thread was blocked because it honored the server-side memory 
+    limit for dumps.
 
 * Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where
   the inner amount of a limit in the LimitExecutor is set to a wrong
