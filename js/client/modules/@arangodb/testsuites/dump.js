@@ -686,8 +686,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       // Since we restore afterwards, any dumped passwords
       // are in action again.
       this.restoreConfig.setAuth(
-        this.dumpConfig.username,
-        this.dumpConfig.password
+        this.dumpOptions.username,
+        this.dumpOptions.password
       );
       this.allDatabases.forEach(db => {
         if (!this.restoreTo(db, { separate: true, fromDir: db})) {
