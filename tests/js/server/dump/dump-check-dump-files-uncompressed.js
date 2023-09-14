@@ -39,8 +39,8 @@ function dumpIntegrationSuite () {
   return {
     testDumpUncompressed: function () {
       let ddir = dumpDir;
-      if (fs.exists(fs.join(dumpDir, cn))) {
-        fs.join(dumpDir, cn);
+      if (fs.exists(fs.join(dumpDir, dbName))) {
+        ddir = fs.join(dumpDir, dbName);
       }
       let tree = fs.listTree(ddir);
       assertNotEqual(-1, tree.indexOf("ENCRYPTION"), dumpDir);
