@@ -397,33 +397,36 @@ static void handlePlanShard(
     }
 
     // Indexes
-    auto const& pindexes = cprops.get(INDEXES);
-    if (pindexes.isArray()) {
-      auto const& lindexes = lcol.get(INDEXES);
-      auto difference = compareIndexes(engine, dbname, colname, shname,
-                                       pindexes, lindexes, errors, indis);
+    if (replicationVersion != replication::Version::TWO || shouldBeLeading) {
+      // Skip for replication 2 databases on followers
+      auto const& pindexes = cprops.get(INDEXES);
+      if (pindexes.isArray()) {
+        auto const& lindexes = lcol.get(INDEXES);
+        auto difference = compareIndexes(engine, dbname, colname, shname,
+                                         pindexes, lindexes, errors, indis);
 
-      // Index errors are checked in `compareIndexes`. The loop below only
-      // cares about those indexes that have no error.
-      if (difference.slice().isArray()) {
-        for (auto&& index : VPackArrayIterator(difference.slice())) {
-          // Ensure index is exempt from locking for the shard, since we allow
-          // these actions to run in parallel to others and to similar ones.
-          // Note however, that new index jobs are intentionally not discovered
-          // when the shard is locked for maintenance.
-          makeDirty.insert(dbname);
-          callNotify = true;
-          actions.emplace_back(std::make_shared<ActionDescription>(
-              std::map<std::string, std::string>{
-                  {NAME, ENSURE_INDEX},
-                  {DATABASE, dbname},
-                  {COLLECTION, colname},
-                  {SHARD, shname},
-                  {StaticStrings::IndexType,
-                   index.get(StaticStrings::IndexType).copyString()},
-                  {FIELDS, index.get(FIELDS).toJson()},
-                  {ID, index.get(ID).copyString()}},
-              INDEX_PRIORITY, false, std::make_shared<VPackBuilder>(index)));
+        // Index errors are checked in `compareIndexes`. The loop below only
+        // cares about those indexes that have no error.
+        if (difference.slice().isArray()) {
+          for (auto&& index : VPackArrayIterator(difference.slice())) {
+            // Ensure index is exempt from locking for the shard, since we allow
+            // these actions to run in parallel to others and to similar ones.
+            // Note however, that new index jobs are intentionally not
+            // discovered when the shard is locked for maintenance.
+            makeDirty.insert(dbname);
+            callNotify = true;
+            actions.emplace_back(std::make_shared<ActionDescription>(
+                std::map<std::string, std::string>{
+                    {NAME, ENSURE_INDEX},
+                    {DATABASE, dbname},
+                    {COLLECTION, colname},
+                    {SHARD, shname},
+                    {StaticStrings::IndexType,
+                     index.get(StaticStrings::IndexType).copyString()},
+                    {FIELDS, index.get(FIELDS).toJson()},
+                    {ID, index.get(ID).copyString()}},
+                INDEX_PRIORITY, false, std::make_shared<VPackBuilder>(index)));
+          }
         }
       }
     }
@@ -539,7 +542,8 @@ static void handleLocalShard(
   }
 
   // We only drop indexes, when collection is not being dropped already
-  if (cprops.hasKey(INDEXES)) {
+  if (cprops.hasKey(INDEXES) &&
+      (replicationVersion != replication::Version::TWO || isLeading)) {
     if (cprops.get(INDEXES).isArray()) {
       for (auto const& index : VPackArrayIterator(cprops.get(INDEXES))) {
         std::string_view type =
