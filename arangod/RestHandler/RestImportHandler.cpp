@@ -286,10 +286,6 @@ ErrorCode RestImportHandler::handleSingleDocument(
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_import_json
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestImportHandler::createFromJson(std::string const& type) {
   RestImportResult result;
 
@@ -655,10 +651,6 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   }
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_import_document
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createFromKeyValueList() {
   if (_request == nullptr) {

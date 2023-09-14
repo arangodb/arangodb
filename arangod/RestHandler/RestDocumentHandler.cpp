@@ -154,10 +154,6 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_CREATE
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::insertDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
@@ -334,10 +330,6 @@ RestStatus RestDocumentHandler::readDocument() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_READ
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
@@ -445,10 +437,6 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
           }));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_READ_HEAD
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::checkDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
@@ -461,10 +449,6 @@ RestStatus RestDocumentHandler::checkDocument() {
   return readSingleDocument(false);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_REPLACE
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::replaceDocument() {
   bool found;
   _request->value("onlyget", found);
@@ -474,17 +458,9 @@ RestStatus RestDocumentHandler::replaceDocument() {
   return modifyDocument(false);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_UPDATE
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::updateDocument() {
   return modifyDocument(true);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function for replaceDocument and updateDocument
-////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -690,10 +666,6 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
       }));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_DELETE
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::removeDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
@@ -840,10 +812,6 @@ RestStatus RestDocumentHandler::removeDocument() {
                 });
           }));
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_READ_MANY
-////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestDocumentHandler::readManyDocuments() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();

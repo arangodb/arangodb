@@ -345,10 +345,6 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionChecksum
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ChecksumCollection(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -393,20 +389,12 @@ static void JS_ChecksumCollection(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock edgeCollectionEdges
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_EdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   EdgesQuery(TRI_EDGE_ANY, args);
   // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock edgeCollectionInEdges
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -415,20 +403,12 @@ static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock edgeCollectionOutEdges
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_OutEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   EdgesQuery(TRI_EDGE_OUT, args);
   // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionLookupByKeys
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -475,10 +455,6 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionRemoveByKeys
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
