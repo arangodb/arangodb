@@ -493,7 +493,14 @@ install_command_alias(${BIN_ARANGOSH}
 install_config(arangoinspect)
 
 add_custom_target(arangotools
-    DEPENDS arangosh arangodump arangoexport arangoimport arangorestore arangobench)
+    DEPENDS arangosh
+            arangodump
+            arangoexport
+            arangoimport
+            arangorestore
+            arangobench
+            arangovpack
+            arangoinspect)
 
 if (USE_ENTERPRISE)
   add_dependencies(arangotools arangobackup)
