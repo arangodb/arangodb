@@ -1693,6 +1693,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
     }
   });
 
+  config.isSystemDB = isSystem();
   config.maxNumberOfShards = cl.maxNumberOfShards();
   config.allowExtendedNames = db.extendedNames();
   config.shouldValidateClusterSettings = true;

@@ -1,7 +1,15 @@
 devel
 -----
 
-* Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where
+* Fixed BTS-1239: Restoring a single server dump with system collections
+  into a cluster caused some of those system collections to lose the
+  `distributeShardsLike` setting and also changed the `shardingStrategy` to
+  `enterprise-compat`.
+  Now system collections in the cluster are always restored with
+  `distributeShardsLike` and `shardingStrategy` set to the correct
+  default values.
+
+* Fixed BTS-1553: Fixed a rare occurring issue during AQL queries where
   the inner amount of a limit in the LimitExecutor is set to a wrong
   value which lead to some data rows not being returned to the client.
 
