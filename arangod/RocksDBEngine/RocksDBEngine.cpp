@@ -2512,8 +2512,7 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool flushColumnFamilies) {
   return res;
 }
 
-void RocksDBEngine::waitForEstimatorSync(
-    std::chrono::milliseconds /*maxWaitTime*/) {
+void RocksDBEngine::waitForEstimatorSync() {
   // release all unused ticks from flush feature
   server().getFeature<FlushFeature>().releaseUnusedTicks();
 

@@ -252,7 +252,7 @@ class RocksDBEngine final : public StorageEngine {
   /// flushing column families becomes a separate API.
   Result flushWal(bool waitForSync = false,
                   bool flushColumnFamilies = false) override;
-  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
+  void waitForEstimatorSync() override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(CreateDatabaseInfo&& info,
                                                       bool isUpgrade) override;

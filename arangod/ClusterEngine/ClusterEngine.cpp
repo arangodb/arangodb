@@ -283,8 +283,7 @@ void ClusterEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
   ClusterRestHandlers::registerResources(&handlerFactory);
 }
 
-void ClusterEngine::waitForEstimatorSync(
-    std::chrono::milliseconds maxWaitTime) {
+void ClusterEngine::waitForEstimatorSync() {
   // fixes tests by allowing us to reload the cluster selectivity estimates
   // If test `shell-cluster-collection-selectivity.js` fails consider increasing
   // timeout
