@@ -9512,8 +9512,6 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
 
-  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
-
 * Prevented arangod from making a call to www.arangodb.com at startup.
 
   This call was done to check for available updates, but it could have contributed
