@@ -1,6 +1,9 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump
+  to the Single server database.
+
 * Fixed BTS-1556: Potential shutdown race, when the server is shutting down and
   still AgencyCommunication was going on it could use the scheduler which was
   already deleted, causing a crash right before a normal shutdown.
