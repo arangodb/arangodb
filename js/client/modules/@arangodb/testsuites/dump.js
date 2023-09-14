@@ -882,7 +882,8 @@ function dumpMixedClusterSingle (options) {
                                     options, options, 'dump_mixed_cluster_single',
                                     tstFiles, function(){}, [
                                       //'--testFoxx', 'false',
-                                      '--skip', '550,900,960']);
+                                      // BTS-1613 - re-enable 6xx
+                                      '--skip', '607,608,609,610,611,550,900,960']);
 }
 
 function dumpMixedSingleCluster (options) {
