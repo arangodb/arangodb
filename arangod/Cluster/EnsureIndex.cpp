@@ -162,15 +162,14 @@ bool EnsureIndex::first() {
       if (vocbase->replicationVersion() == replication::Version::TWO) {
         return ensureIndexReplication2(vocbase, *col, body.slice(),
                                        std::move(lambda));
-      } else {
-        auto index = VPackBuilder();
-        auto res = methods::Indexes::ensureIndex(*col, body.slice(), true,
-                                                 index, std::move(lambda));
-        if (res.ok()) {
-          indexCreationLogging(index.slice());
-        }
-        return res;
       }
+      auto index = VPackBuilder();
+      auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index,
+                                               std::move(lambda));
+      if (res.ok()) {
+        indexCreationLogging(index.slice());
+      }
+      return res;
     });
 
     result(res);
