@@ -70,7 +70,7 @@ struct LRWorkerContext : WorkerContext {
   void preGlobalSuperstep(uint64_t gss) override {
     if (gss == 0) {
       if (edgeCount() > 0) {
-        startAtNodeProb = 1.0f / vertexCount();
+        startAtNodeProb = 1.0f / edgeCount();
       } else {
         startAtNodeProb = 0;
       }
