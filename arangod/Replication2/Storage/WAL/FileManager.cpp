@@ -81,4 +81,8 @@ void FileManager::moveFile(std::string_view oldName, std::string_view newName) {
   std::filesystem::rename(_folderPath / oldName, _folderPath / newName);
 }
 
+void FileManager::deleteFile(std::string_view filename) {
+  std::filesystem::remove(_folderPath / filename);
+}
+
 }  // namespace arangodb::replication2::storage::wal

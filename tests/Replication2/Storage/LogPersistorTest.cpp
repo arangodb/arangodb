@@ -223,6 +223,12 @@ struct LogPersistorSingleFileTest : ::testing::Test {
         .WillOnce(Return(std::move(file)));
     EXPECT_CALL(*fileManager, listFiles)
         .WillOnce(Return(std::vector<std::string>{}));
+
+    ON_CALL(*fileManager, createReader("_current.log"))
+        .WillByDefault([this](auto) {
+          return std::make_unique<InMemoryFileReader>(buffer);
+        });
+
     persistor =
         std::make_unique<LogPersistor>(LogId{42}, fileManager, Options{});
   }
@@ -251,8 +257,8 @@ struct LogPersistorSingleFileTest : ::testing::Test {
   }
 
   std::string buffer;
-  std::shared_ptr<MockFileManager> fileManager{
-      std::make_shared<MockFileManager>()};
+  std::shared_ptr<StrictMock<MockFileManager>> fileManager{
+      std::make_shared<StrictMock<MockFileManager>>()};
 
   InMemoryLog log;
   std::unique_ptr<LogPersistor> persistor;
@@ -475,7 +481,7 @@ TEST_F(LogPersistorMultiFileTest, loads_file_set_upon_construction) {
         .buffer = createBufferWithLogEntries(6, 9, LogTerm{2})}},
       "");
 
-  auto& fileSet = persistor->fileSet();
+  auto fileSet = persistor->fileSet();
   ASSERT_EQ(3, fileSet.size());
   auto it = fileSet.begin();
   auto checkFile = [](std::string const& filename, LogTerm term,
@@ -485,11 +491,11 @@ TEST_F(LogPersistorMultiFileTest, loads_file_set_upon_construction) {
                             .last = TermIndexPair(term, LogIndex{last})};
     EXPECT_EQ(f, actual);
   };
-  checkFile("file1", LogTerm{1}, 1, 3, *it);
+  checkFile("file1", LogTerm{1}, 1, 3, it->second);
   ++it;
-  checkFile("file2", LogTerm{1}, 4, 5, *it);
+  checkFile("file2", LogTerm{1}, 4, 5, it->second);
   ++it;
-  checkFile("file3", LogTerm{2}, 6, 9, *it);
+  checkFile("file3", LogTerm{2}, 6, 9, it->second);
   ++it;
   EXPECT_EQ(fileSet.end(), it);
 
@@ -529,7 +535,7 @@ TEST_F(LogPersistorMultiFileTest, loading_file_set_ignores_invalid_files) {
        }},
       "");
 
-  auto& fileSet = persistor->fileSet();
+  auto fileSet = persistor->fileSet();
   ASSERT_EQ(2, fileSet.size());
   auto it = fileSet.begin();
   auto checkFile = [](std::string const& filename, LogTerm term,
@@ -539,9 +545,9 @@ TEST_F(LogPersistorMultiFileTest, loading_file_set_ignores_invalid_files) {
                             .last = TermIndexPair(term, LogIndex{last})};
     EXPECT_EQ(f, actual);
   };
-  checkFile("file1", LogTerm{1}, 1, 3, *it);
+  checkFile("file1", LogTerm{1}, 1, 3, it->second);
   ++it;
-  checkFile("file5", LogTerm{2}, 4, 6, *it);
+  checkFile("file5", LogTerm{2}, 4, 6, it->second);
   ++it;
   EXPECT_EQ(fileSet.end(), it);
 
@@ -645,8 +651,9 @@ TEST_F(LogPersistorMultiFileTest,
     checkLogEntry(reader, LogIndex{index}, LogTerm{1}, RecordType::wNormal,
                   LogPayload::createFromString("blubb"));
 
-    ASSERT_FALSE(persistor->fileSet().empty());
-    auto file = *persistor->fileSet().rbegin();
+    auto fileSet = persistor->fileSet();
+    ASSERT_FALSE(fileSet.empty());
+    auto file = fileSet.rbegin()->second;
     EXPECT_EQ(fileToFinish, file.filename);
     EXPECT_EQ(TermIndexPair(LogTerm{1}, LogIndex{index}), file.first);
     EXPECT_EQ(TermIndexPair(LogTerm{1}, LogIndex{index}), file.last);
@@ -655,6 +662,130 @@ TEST_F(LogPersistorMultiFileTest,
   insertEntryAndCheckFile(1);
   insertEntryAndCheckFile(2);
   insertEntryAndCheckFile(3);
+}
+
+TEST_F(LogPersistorMultiFileTest, getIterator) {
+  initializePersistor(
+      {{.filename = "file1",
+        .buffer = createBufferWithLogEntries(1, 3, LogTerm{1})},
+       {.filename = "file2",
+        .buffer = createBufferWithLogEntries(4, 6, LogTerm{1})},
+       {.filename = "file3",
+        .buffer = createBufferWithLogEntries(7, 9, LogTerm{2})}},
+      createBufferWithLogEntries(10, 12, LogTerm{2}));
+
+  auto log = InMemoryLog{}.append({makeNormalLogEntry(1, 5, "dummyPayload"),
+                                   makeNormalLogEntry(1, 6, "dummyPayload"),
+                                   makeNormalLogEntry(2, 7, "dummyPayload"),
+                                   makeNormalLogEntry(2, 8, "dummyPayload"),
+                                   makeNormalLogEntry(2, 9, "dummyPayload"),
+                                   makeNormalLogEntry(2, 10, "dummyPayload"),
+                                   makeNormalLogEntry(2, 11, "dummyPayload"),
+                                   makeNormalLogEntry(2, 12, "dummyPayload")});
+
+  {
+    EXPECT_CALL(*fileManager, createReader("file2"))
+        .WillOnce(Return(
+            std::make_unique<InMemoryFileReader>(_completedFiles[1].buffer)));
+    EXPECT_CALL(*fileManager, createReader("file3"))
+        .WillOnce(Return(
+            std::make_unique<InMemoryFileReader>(_completedFiles[2].buffer)));
+    auto iter =
+        persistor->getIterator(IteratorPosition::fromLogIndex(LogIndex{5}));
+    ASSERT_NE(nullptr, iter);
+
+    auto logIter = log.getLogIterator();
+    checkIterators(std::move(iter), std::move(logIter), 8);
+  }
+
+  {
+    EXPECT_CALL(*fileManager, createReader("file2"))
+        .WillOnce(Return(
+            std::make_unique<InMemoryFileReader>(_completedFiles[1].buffer)));
+    EXPECT_CALL(*fileManager, createReader("file3"))
+        .WillOnce(Return(
+            std::make_unique<InMemoryFileReader>(_completedFiles[2].buffer)));
+    auto iter =
+        persistor->getIterator(IteratorPosition::fromLogIndex(LogIndex{6}));
+    ASSERT_NE(nullptr, iter);
+
+    auto logIter = log.getLogIterator();
+    logIter->next();
+    checkIterators(std::move(iter), std::move(logIter), 7);
+  }
+
+  {
+    EXPECT_CALL(*fileManager, createReader("file3"))
+        .WillOnce(Return(
+            std::make_unique<InMemoryFileReader>(_completedFiles[2].buffer)));
+    auto iter =
+        persistor->getIterator(IteratorPosition::fromLogIndex(LogIndex{7}));
+    ASSERT_NE(nullptr, iter);
+
+    auto logIter = log.getLogIterator();
+    logIter->next();
+    logIter->next();
+    checkIterators(std::move(iter), std::move(logIter), 6);
+  }
+
+  {
+    // read only from currently active file
+    auto iter =
+        persistor->getIterator(IteratorPosition::fromLogIndex(LogIndex{11}));
+    ASSERT_NE(nullptr, iter);
+
+    auto log =
+        InMemoryLog{}.append({makeNormalLogEntry(2, 11, "dummyPayload"),
+                              makeNormalLogEntry(2, 12, "dummyPayload")});
+    auto logIter = log.getLogIterator();
+    checkIterators(std::move(iter), std::move(logIter), 2);
+  }
+}
+
+TEST_F(LogPersistorMultiFileTest, removeFront) {
+  initializePersistor(
+      {{.filename = "file1",
+        .buffer = createBufferWithLogEntries(1, 3, LogTerm{1})},
+       {.filename = "file2",
+        .buffer = createBufferWithLogEntries(4, 6, LogTerm{1})},
+       {.filename = "file3",
+        .buffer = createBufferWithLogEntries(7, 9, LogTerm{2})}},
+      createBufferWithLogEntries(10, 12, LogTerm{2}));
+
+  auto res = persistor->removeFront(LogIndex{2}, {}).get();
+  ASSERT_TRUE(res.ok());
+  auto fileSet = persistor->fileSet();
+  ASSERT_EQ(3, fileSet.size());
+
+  res = persistor->removeFront(LogIndex{3}, {}).get();
+  ASSERT_TRUE(res.ok());
+  fileSet = persistor->fileSet();
+  ASSERT_EQ(3, fileSet.size());
+
+  EXPECT_CALL(*fileManager, deleteFile("file1"));
+  res = persistor->removeFront(LogIndex{4}, {}).get();
+  testing::Mock::VerifyAndClearExpectations(fileManager.get());
+  ASSERT_TRUE(res.ok());
+  fileSet = persistor->fileSet();
+  ASSERT_EQ(2, fileSet.size());
+  auto it = fileSet.begin();
+  EXPECT_EQ("file2", it->second.filename);
+
+  EXPECT_CALL(*fileManager, deleteFile("file2"));
+  res = persistor->removeFront(LogIndex{7}, {}).get();
+  testing::Mock::VerifyAndClearExpectations(fileManager.get());
+  ASSERT_TRUE(res.ok());
+  fileSet = persistor->fileSet();
+  ASSERT_EQ(1, fileSet.size());
+  it = fileSet.begin();
+  EXPECT_EQ("file3", it->second.filename);
+
+  EXPECT_CALL(*fileManager, deleteFile("file3"));
+  res = persistor->removeFront(LogIndex{10}, {}).get();
+  testing::Mock::VerifyAndClearExpectations(fileManager.get());
+  ASSERT_TRUE(res.ok());
+  fileSet = persistor->fileSet();
+  ASSERT_EQ(0, fileSet.size());
 }
 
 }  // namespace arangodb::replication2::storage::wal::test

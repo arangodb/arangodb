@@ -41,6 +41,7 @@ struct MockFileManager : IFileManager {
               (override));
   MOCK_METHOD(void, removeAll, (), (override));
   MOCK_METHOD(void, moveFile, (std::string_view, std::string_view), (override));
+  MOCK_METHOD(void, deleteFile, (std::string_view), (override));
 };
 
 }  // namespace arangodb::replication2::storage::wal::test

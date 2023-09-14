@@ -44,6 +44,8 @@ struct IFileManager {
   virtual void removeAll() = 0;
 
   virtual void moveFile(std::string_view oldName, std::string_view newName) = 0;
+
+  virtual void deleteFile(std::string_view filename) = 0;
 };
 
 }  // namespace arangodb::replication2::storage::wal

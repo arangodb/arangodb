@@ -23,9 +23,10 @@
 
 #pragma once
 
-#include <set>
+#include <map>
 #include <memory>
 
+#include "Basics/Guarded.h"
 #include "Replication2/Storage/ILogPersistor.h"
 #include "Replication2/Storage/WAL/Options.h"
 
@@ -40,9 +41,6 @@ struct LogPersistor : ILogPersistor {
     TermIndexPair first;
     TermIndexPair last;
 
-    bool operator<(LogFile const& other) const {
-      return first.index < other.first.index;
-    }
     bool operator==(LogFile const& other) const = default;
   };
 
@@ -70,7 +68,7 @@ struct LogPersistor : ILogPersistor {
 
   auto drop() -> Result override;
 
-  auto fileSet() const -> std::set<LogFile> const& { return _fileSet; }
+  auto fileSet() const -> std::map<LogIndex, LogFile>;
 
   auto lastWrittenEntry() const -> std::optional<TermIndexPair> {
     return _lastWrittenEntry;
@@ -81,19 +79,25 @@ struct LogPersistor : ILogPersistor {
     std::unique_ptr<IFileWriter> writer;
     std::optional<LogIndex> firstIndex;
   };
+  struct Files {
+    // we map from lastIndex to LogFile, so we can easily find the file
+    // containing a specific index note that we need a sorted map with pointer
+    // stability!
+    std::map<LogIndex, LogFile> fileSet;
+    ActiveFile activeFile;
+  };
 
   void loadFileSet();
-  [[nodiscard]] auto addToFileSet(std::string const& file) -> Result;
+  [[nodiscard]] auto addToFileSet(Files& f, std::string const& file) -> Result;
   void validateFileSet();
   void createActiveLogFile();
 
-  void finishActiveLogFile();
-  void createNewActiveLogFile();
+  void finishActiveLogFile(Files& f);
+  void createNewActiveLogFile(Files& f);
 
   LogId const _logId;
   std::shared_ptr<IFileManager> const _fileManager;
-  std::set<LogFile> _fileSet;
-  ActiveFile _activeFile;
+  Guarded<Files> _files;
   std::optional<TermIndexPair> _lastWrittenEntry;
   Options _options;
 };

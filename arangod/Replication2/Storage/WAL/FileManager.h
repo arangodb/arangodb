@@ -43,6 +43,8 @@ struct FileManager : IFileManager {
 
   void moveFile(std::string_view oldName, std::string_view newName) override;
 
+  void deleteFile(std::string_view filename) override;
+
  private:
   std::filesystem::path _folderPath;
 };
