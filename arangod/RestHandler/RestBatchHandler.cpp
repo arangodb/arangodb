@@ -49,10 +49,6 @@ RestBatchHandler::RestBatchHandler(ArangodServer& server,
 
 RestBatchHandler::~RestBatchHandler() = default;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_batch_processing
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestBatchHandler::execute() {
   switch (_response->transportType()) {
     case Endpoint::TransportType::HTTP: {
