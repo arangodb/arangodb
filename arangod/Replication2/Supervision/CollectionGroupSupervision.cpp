@@ -616,6 +616,11 @@ struct TransactionBuilder {
             velocypack::serialize(builder, it.value);
           });
     }
+    // Special handling for Schema, which can be nullopt and should be removed
+    if (!action.spec.schema.has_value()) {
+      tmp = std::move(tmp).remove(basics::StringUtils::concatT(
+          "/arango/Plan/Collections/", database, "/", action.cid, "/schema"));
+    }
     env = std::move(tmp)
               .inc("/arango/Plan/Version")
               .precs()

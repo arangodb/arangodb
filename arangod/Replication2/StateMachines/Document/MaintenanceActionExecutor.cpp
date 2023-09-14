@@ -25,16 +25,19 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/CreateCollection.h"
 #include "Cluster/DropCollection.h"
+#include "Cluster/EnsureIndex.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/UpdateCollection.h"
+#include "Utils/DatabaseGuard.h"
 
 namespace arangodb::replication2::replicated_state::document {
 MaintenanceActionExecutor::MaintenanceActionExecutor(
     GlobalLogIdentifier gid, ServerID server,
-    MaintenanceFeature& maintenanceFeature)
+    MaintenanceFeature& maintenanceFeature, TRI_vocbase_t& vocbase)
     : _gid(std::move(gid)),
       _maintenanceFeature(maintenanceFeature),
-      _server(std::move(server)) {}
+      _server(std::move(server)),
+      _vocbase(vocbase) {}
 
 auto MaintenanceActionExecutor::executeCreateCollectionAction(
     ShardID shard, CollectionID collection,
@@ -97,6 +100,26 @@ auto MaintenanceActionExecutor::executeModifyCollectionAction(
                                                        actionDescription);
   updateCollectionAction.first();
   return updateCollectionAction.result();
+}
+
+auto MaintenanceActionExecutor::executeCreateIndex(
+    ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result {
+  DatabaseGuard guard(_vocbase);
+  auto col = guard->lookupCollection(shard);
+  if (col == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+            fmt::format("Failed to lookup shard {} in database {}", shard,
+                        guard->name())};
+  }
+
+  VPackBuilder output;
+  auto res = methods::Indexes::ensureIndex(*col, properties->slice(), true,
+                                           output, std::move(progress));
+  if (res.ok()) {
+    arangodb::maintenance::EnsureIndex::indexCreationLogging(output.slice());
+  }
+  return res;
 }
 
 void MaintenanceActionExecutor::addDirty() {
