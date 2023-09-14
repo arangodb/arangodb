@@ -116,12 +116,12 @@ void RocksDBMetaCollection::freeMemory() noexcept {
   TRI_ASSERT(memoryUsage == _revisionsBufferedMemoryUsage);
 #endif
 
-  decreaseBufferedMemoryUsage(_revisionsBufferedMemoryUsage);
-  _revisionsBufferedMemoryUsage = 0;
-
   _revisionRemovalBuffers.clear();
   _revisionInsertBuffers.clear();
   _revisionTruncateBuffer.clear();
+
+  decreaseBufferedMemoryUsage(_revisionsBufferedMemoryUsage);
+  _revisionsBufferedMemoryUsage = 0;
 }
 
 void RocksDBMetaCollection::deferDropCollection(
