@@ -32,7 +32,6 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "Logger/LogMacros.h"
 
 #include <utility>
 
@@ -49,15 +48,16 @@ LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
 LimitExecutor::~LimitExecutor() = default;
 
 auto LimitExecutor::limitFulfilled() const noexcept -> bool {
-  return remainingOffset() + remainingLimit() == 0;
+  return (remainingOffset() == 0 && remainingLimit() == 0);
 }
 
 auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const
     -> AqlCall {
   auto upstreamCall = AqlCall{};
 
-  auto const limitedClientOffset =
-      std::min(clientCall.getOffset(), remainingLimit());
+  auto remaining = remainingLimit();
+
+  auto const limitedClientOffset = std::min(clientCall.getOffset(), remaining);
 
   // Offsets must be added, but the client's offset is limited by our limit.
   upstreamCall.offset = remainingOffset() + limitedClientOffset;
@@ -91,7 +91,7 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const
     TRI_ASSERT(!useSoftLimit);
     TRI_ASSERT(clientCall.hasHardLimit());
 
-    upstreamCall.offset = upstreamCall.offset + remainingLimit();
+    upstreamCall.offset = upstreamCall.offset + remaining;
     upstreamCall.hardLimit = std::size_t(0);
     // We need to send fullCount upstream iff this is fullCount-enabled LIMIT
     // block.
@@ -133,9 +133,9 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   auto call = output.getClientCall();
   TRI_ASSERT(call.getOffset() == 0);
   while (inputRange.skippedInFlight() > 0 || inputRange.hasDataRow()) {
-    if (remainingOffset() > 0) {
+    if (auto remaining = remainingOffset(); remaining > 0) {
       // First we skip in the input row until we fullfill our local offset.
-      auto const didSkip = inputRange.skip(remainingOffset());
+      auto const didSkip = inputRange.skip(remaining);
       // Need to forward the
       _counter += didSkip;
       // We do not report this to downstream
@@ -146,27 +146,36 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     } else if (!output.isFull()) {
       auto numRowsWritten = size_t{0};
 
-      while (inputRange.hasDataRow()) {
-        // This block is passhthrough.
-        static_assert(
-            Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
-            "For LIMIT with passthrough to work, there must be "
-            "exactly enough space for all input in the output.");
-        // So there will always be enough place for all inputRows within
-        // the output.
-        TRI_ASSERT(!output.isFull());
-        // Also this number can be at most remainingOffset.
-        TRI_ASSERT(remainingLimit() > numRowsWritten);
-        output.copyRow(
-            inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{})
-                .second);
-        output.advanceRow();
-        numRowsWritten++;
-        _didProduceRows = true;
+      if (_infos.getOffset() == 0 && inputRange.hasDataRow()) {
+        auto const& [_, inputRow] = inputRange.peekDataRow();
+        size_t rows = inputRange.countAndSkipAllRemainingDataRows();
+        output.fastForwardAllRows(inputRow, rows);
+        numRowsWritten = rows;
+      } else {
+        while (inputRange.hasDataRow()) {
+          // This block is passthrough.
+          static_assert(
+              Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
+              "For LIMIT with passthrough to work, there must be "
+              "exactly enough space for all input in the output.");
+          // So there will always be enough place for all inputRows within
+          // the output.
+          TRI_ASSERT(!output.isFull());
+          // Also this number can be at most remainingOffset.
+          TRI_ASSERT(remainingLimit() > numRowsWritten);
+          output.copyRow(
+              inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{})
+                  .second);
+          output.advanceRow();
+          numRowsWritten++;
+        }
       }
-      _counter += numRowsWritten;
-      if (infos().isFullCountEnabled()) {
-        stats.incrFullCountBy(numRowsWritten);
+      if (numRowsWritten > 0) {
+        _didProduceRows = true;
+        _counter += numRowsWritten;
+        if (infos().isFullCountEnabled()) {
+          stats.incrFullCountBy(numRowsWritten);
+        }
       }
     } else if (call.needsFullCount()) {
       // We are done with producing.
