@@ -944,18 +944,46 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
   if (initial.isArray() && n == 1) {
     // special case: a single array parameter
     // Create an empty document as start point
-    builder.openObject();
-    builder.close();
-    // merge in all other arguments
-    for (VPackSlice it : VPackArrayIterator(initialSlice)) {
-      if (!it.isObject()) {
-        registerInvalidArgumentWarning(expressionContext, funcName);
-        return AqlValue(AqlValueHintNull());
+    if (!recursive) {
+      // Fast path for large arrays
+      containers::FlatHashMap<std::string_view, VPackSlice> attributes;
+
+      // first we construct a map holding the latest value for a key
+      for (VPackSlice it : VPackArrayIterator(initialSlice)) {
+        if (!it.isObject()) {
+          registerInvalidArgumentWarning(expressionContext, funcName);
+          return AqlValue(AqlValueHintNull());
+        }
+        for (auto const& [key, value] :
+             VPackObjectIterator(it, /*useSequentialIteration*/ true)) {
+          attributes[key.stringView()] = value;
+        }
       }
-      builder = velocypack::Collection::merge(builder.slice(), it,
-                                              /*mergeObjects*/ recursive,
-                                              /*nullMeansRemove*/ false);
+
+      // then we output the object
+      {
+        VPackObjectBuilder ob(&builder);
+        for (auto const& [k, v] : attributes) {
+          builder.add(k, v);
+        }
+      }
+
+    } else {
+      // slow path for recursive merge
+      builder.openObject();
+      builder.close();
+      // merge in all other arguments
+      for (VPackSlice it : VPackArrayIterator(initialSlice)) {
+        if (!it.isObject()) {
+          registerInvalidArgumentWarning(expressionContext, funcName);
+          return AqlValue(AqlValueHintNull());
+        }
+        builder = velocypack::Collection::merge(builder.slice(), it,
+                                                /*mergeObjects*/ recursive,
+                                                /*nullMeansRemove*/ false);
+      }
     }
+
     return AqlValue(builder.slice(), builder.size());
   }
 

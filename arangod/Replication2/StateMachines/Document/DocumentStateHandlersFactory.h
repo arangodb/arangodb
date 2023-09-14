@@ -72,7 +72,8 @@ struct IDocumentStateHandlersFactory {
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> = 0;
-  virtual auto createMaintenanceActionExecutor(GlobalLogIdentifier gid,
+  virtual auto createMaintenanceActionExecutor(TRI_vocbase_t& vocbase,
+                                               GlobalLogIdentifier gid,
                                                ServerID server)
       -> std::shared_ptr<IMaintenanceActionExecutor> = 0;
 };
@@ -97,7 +98,8 @@ class DocumentStateHandlersFactory
       -> std::shared_ptr<IDocumentStateTransaction> override;
   auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;
-  auto createMaintenanceActionExecutor(GlobalLogIdentifier gid, ServerID server)
+  auto createMaintenanceActionExecutor(TRI_vocbase_t& vocbase,
+                                       GlobalLogIdentifier gid, ServerID server)
       -> std::shared_ptr<IMaintenanceActionExecutor> override;
 
  private:
