@@ -485,3 +485,11 @@ install_command_alias(${BIN_ARANGOSH}
   arangoinspect)
 
 install_config(arangoinspect)
+
+add_custom_target(arangotools
+    DEPENDS arangosh arangodump arangoexport arangoimport arangorestore arangobench)
+
+if (USE_ENTERPRISE)
+  add_dependencies(arangotools arangobackup)
+endif ()
+
