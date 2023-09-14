@@ -67,7 +67,15 @@ struct LRMasterContext : MasterContext {
 struct LRWorkerContext : WorkerContext {
   float startAtNodeProb = 0;
 
-  void preApplication() override { startAtNodeProb = 1.0f / edgeCount(); };
+  void preGlobalSuperstep(uint64_t gss) override {
+    if (gss == 0) {
+      if (edgeCount() > 0) {
+        startAtNodeProb = 1.0f / vertexCount();
+      } else {
+        startAtNodeProb = 0;
+      }
+    }
+  }
 };
 
 // github.com/JananiC/NetworkCentralities/blob/master/src/main/java/linerank/LineRank.java
