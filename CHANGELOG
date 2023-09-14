@@ -1,6 +1,9 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump
+  to the Single server database.
+
 * Added metric `rocksdb_cache_edge_empty_inserts_total` to count the number
   of inserts into the edge cache for non-connected edges.
 
