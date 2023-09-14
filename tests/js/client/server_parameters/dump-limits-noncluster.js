@@ -54,7 +54,9 @@ function testSuite() {
         if (docs.length === 2000) {
           c1.insert(docs);
           c2.insert(docs);
-          c3.insert(docs);
+          if (i < n / 2) {
+            c3.insert(docs);
+          }
           docs = [];
         }
       }
@@ -172,20 +174,21 @@ function testSuite() {
         docsPerBatch: 10000, 
         prefetchCount: 512, 
         parallelism: 8, 
-        shards: collections,
       };
 
       const n = 3;
 
       let dumps = [];
       for (let i = 0; i < n; ++i) {
+        let shard = cn + (1 + (i % 3));
+        config.shards = [ shard ];
         let res = arango.POST_RAW("/_api/dump/start", config);
         assertEqual(201, res.code);
          
         let id = res.headers["x-arango-dump-id"];
         assertMatch(/^dump-\d+$/, id);
 
-        dumps.push({ id, done: false, batchId: 1, lastBatch: null });
+        dumps.push({ id, done: false, batchId: 1, lastBatch: null, shard });
       }
        
       try {
@@ -207,7 +210,7 @@ function testSuite() {
             }
             let shard = res.headers["x-arango-dump-shard-id"];
             assertEqual(200, res.code, res);
-            assertTrue(collections.includes(shard), res);
+            assertTrue(d.shard, shard, { shard, res });
             d.lastBatch = d.batchId;
             ++d.batchId;
           });
