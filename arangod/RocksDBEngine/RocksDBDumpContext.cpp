@@ -367,9 +367,6 @@ std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(
     return it->second;
   }
 
-  // release lock temporarily because _channel.pop() can block
-  guard.unlock();
-
   // get the next batch from the channel
   auto [batch, blocked] = _channel.pop();
   if (blocked) {
@@ -379,8 +376,6 @@ std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(
     // no batches left
     return nullptr;
   }
-
-  guard.lock();
 
   auto [iter, inserted] =
       _batches.try_emplace(batchId, std::shared_ptr<Batch>(batch.release()));
