@@ -148,7 +148,7 @@ class TargetCollectionReader {
     _collection = _read->slice()[0];
 
     std::initializer_list<std::string_view> const vpath{
-        AgencyCommHelper::path(), "Plan", "Collections", databaseName,
+        AgencyCommHelper::path(), "Target", "Collections", databaseName,
         collectionID};
 
     if (!_collection.hasKey(vpath)) {
@@ -629,9 +629,7 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
           if (!indexSlice.hasKey(StaticStrings::IndexIsBuilding)) {
             // TODO: We do not yet handle errors, e.g. on UniqueIndexes
             report->addReport(id, TRI_ERROR_NO_ERROR);
-            LOG_DEVEL << "Index build successfully";
           }
-          LOG_DEVEL << "Index called back: " << indexSlice.toJson();
         }
       }
       return true;
@@ -683,8 +681,9 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
   AgencyOperation newValue(targetIndexesKey, AgencyValueOperationType::PUSH,
                            newIndexBuilder.slice());
 
-  AgencyPrecondition oldValue(targetPath->str(), AgencyPrecondition::Type::VALUE,
-                              collectionFromTarget.slice());
+  AgencyPrecondition oldValue(
+      targetPath->str(arangodb::cluster::paths::SkipComponents(1)),
+      AgencyPrecondition::Type::VALUE, collectionFromTarget.slice());
   AgencyComm ac(server);
 
   AgencyWriteTransaction trx(newValue, oldValue);
@@ -704,7 +703,6 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
       // Retry loop is outside!
       return Result(TRI_ERROR_HTTP_PRECONDITION_FAILED);
     }
-
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,
                   basics::StringUtils::concatT(
                       " Failed to execute ", trx.toJson(),
@@ -1217,7 +1215,7 @@ Result ClusterIndexMethods::ensureIndexCoordinator(
     // Keep trying for 2 minutes, if it's preconditions, which are stopping us
     do {
       resultBuilder.clear();
-      if (false && collection.replicationVersion() == replication::Version::TWO) {
+      if (collection.replicationVersion() == replication::Version::TWO) {
         auto tmpRes = ::ensureIndexCoordinatorReplication2Inner(
             collection, idString, slice, create, timeout, server);
         if (!res.ok()) {
