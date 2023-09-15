@@ -361,9 +361,11 @@ class instance {
       'server.endpoint': bindEndpoint,
       'database.directory': this.dataDir,
       'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
-      'log.file': this.logFile,
-      'arangosearch.columns-cache-limit': '10000'
+      'log.file': this.logFile
     });
+    if (pu.isEnterpriseClient()) {
+      this.args['arangosearch.columns-cache-limit'] = '10000';
+    }
     if (this.options.auditLoggingEnabled) {
       this.args['audit.output'] = 'file://' + fs.join(this.rootDir, 'audit.log');
       this.args['server.statistics'] = false;
