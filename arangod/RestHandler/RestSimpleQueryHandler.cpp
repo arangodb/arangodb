@@ -65,10 +65,6 @@ RestStatus RestSimpleQueryHandler::execute() {
   return RestStatus::DONE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSA_put_api_simple_all
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
