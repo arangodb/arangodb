@@ -21,8 +21,11 @@ devel
   print(c.count()); 
   ```
 
-  The new behavior is more consistent with dropping collections, after which 
+  The new behavior is more consistent with dropping collections, after which
   operations on the dropped collection also fail immediately.
+
+* Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump
+  to the Single server database.
 
 * Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where
   the inner amount of a limit in the LimitExecutor is set to a wrong
