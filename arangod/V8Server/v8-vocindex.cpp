@@ -95,10 +95,6 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8_RETURN(result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionEnsureIndex
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_EnsureIndexVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -122,10 +118,6 @@ static void JS_LookupIndexVocbaseCol(
   EnsureIndex(args, false, "lookupIndex");
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock col_dropIndex
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DropIndexVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -159,10 +151,6 @@ static void JS_DropIndexVocbaseCol(
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionGetIndexes
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetIndexesVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -300,19 +288,11 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8_RETURN(result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionDatabaseCreate
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_CreateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   CreateVocBase(args, TRI_COL_TYPE_DOCUMENT);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionCreateDocumentCollection
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateDocumentCollectionVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -320,10 +300,6 @@ static void JS_CreateDocumentCollectionVocbase(
   CreateVocBase(args, TRI_COL_TYPE_DOCUMENT);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionCreateEdgeCollection
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateEdgeCollectionVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {

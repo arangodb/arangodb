@@ -1319,10 +1319,6 @@ static v8::Handle<v8::Object> WrapVocBase(v8::Isolate* isolate,
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionDatabaseCollectionName
-////////////////////////////////////////////////////////////////////////////////
-
 static void MapGetVocBase(v8::Local<v8::Name> const name,
                           v8::PropertyCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -1520,10 +1516,6 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseVersion
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1545,10 +1537,6 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databasePath
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1574,10 +1562,6 @@ static void JS_VersionFilenameDatabase(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseId
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1586,10 +1570,6 @@ static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_tick_t>(isolate, vocbase.id()));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseName
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1600,10 +1580,6 @@ static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_STD_STRING(n);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseIsSystem
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsSystemDatabase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1624,10 +1600,6 @@ static void JS_FakeFlushCache(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseUseDatabase
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1671,10 +1643,6 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseListDatabase
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1710,10 +1678,6 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseCreateDatabase
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1779,10 +1743,6 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseDropDatabase
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1811,10 +1771,6 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseListDatabase
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DBProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
