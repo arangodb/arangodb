@@ -42,11 +42,9 @@ uint64_t defaultMemoryUsage() {
         (PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.2);
   }
   if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(2) << 30)) {
-    // if we have at least 2GB of RAM, the default size is 256MB
-    return (static_cast<uint64_t>(256) << 20);
+    // if we have at least 2GB of RAM, the default size is 64MB
+    return (static_cast<uint64_t>(64) << 20);
   }
-  // for everything else the default size is 64MB
-  return (static_cast<uint64_t>(64) << 20);
 }
 }  // namespace
 

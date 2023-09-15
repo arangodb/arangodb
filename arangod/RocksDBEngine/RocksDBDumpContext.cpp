@@ -287,7 +287,7 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
                   break;
                 } catch (basics::Exception const& ex) {
                   if (ex.code() != TRI_ERROR_RESOURCE_LIMIT) {
-                    throw ex;
+                    throw;
                   }
                 }
               } while (!stopped());
