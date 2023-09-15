@@ -335,7 +335,8 @@ arangodb::Result dumpData(arangodb::DumpFeature::Stats& stats,
                           arangodb::maskings::Maskings* maskings,
                           arangodb::ManagedDirectory::File& file,
                           std::string_view body,
-                          std::string const& collectionName, bool useVPack) {
+                          std::string const& collectionName,
+                          bool useVPack) try {
   size_t length;
   if (maskings != nullptr) {
     std::unique_ptr<arangodb::InputProcessor> processor;
@@ -348,13 +349,12 @@ arangodb::Result dumpData(arangodb::DumpFeature::Stats& stats,
     VPackBuilder out;
     out.openArray(/*unindexed*/ true);
     while (processor->valid()) {
-      arangodb::velocypack::Slice value = processor->value();
-      maskings->mask(collectionName, value, out);
+      maskings->mask(collectionName, processor->value(), out);
     }
     out.close();
     if (useVPack) {
-      file.write(out.slice().startAs<char const>(), out.slice().byteSize());
       length = out.slice().byteSize();
+      file.write(out.slice().startAs<char const>(), length);
     } else {
       std::string temp;
       arangodb::velocypack::StringSink sink(&temp);
@@ -365,12 +365,16 @@ arangodb::Result dumpData(arangodb::DumpFeature::Stats& stats,
         }
         dumper.dump(it);
       }
-      file.write(temp.data(), temp.length());
+      if (!temp.empty()) {
+        // if we have data, the last line should end with a \n...
+        temp.push_back('\n');
+      }
       length = temp.length();
+      file.write(temp.data(), length);
     }
   } else {
-    file.write(body.data(), body.length());
     length = body.length();
+    file.write(body.data(), length);
   }
 
   if (file.status().fail()) {
@@ -382,6 +386,14 @@ arangodb::Result dumpData(arangodb::DumpFeature::Stats& stats,
   stats.totalWritten += static_cast<uint64_t>(length);
 
   return {};
+} catch (arangodb::basics::Exception const& ex) {
+  return {ex.code(),
+          absl::StrCat("caught exception in dumpData for collection '",
+                       collectionName, "': ", ex.what())};
+} catch (std::exception const& ex) {
+  return {TRI_ERROR_INTERNAL,
+          absl::StrCat("caught exception in dumpData for collection '",
+                       collectionName, "': ", ex.what())};
 }
 
 /// @brief dump the actual data from an individual collection
@@ -436,7 +448,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     if (check.fail()) {
       LOG_TOPIC("ac972", ERR, arangodb::Logger::DUMP)
           << "An error occurred while dumping collection '" << name
-          << "': " << check.errorMessage();
+          << "' via URL " << url << ": " << check.errorMessage();
       return check;
     }
 
@@ -472,6 +484,10 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     std::string_view body = {response->getBody().c_str(),
                              response->getBody().size()};
     job.stats.totalReceived += static_cast<uint64_t>(body.size());
+
+    LOG_TOPIC("83f66", TRACE, arangodb::Logger::DUMP)
+        << "received response body of size " << response->getBody().size()
+        << ", type: " << (job.options.useVPack ? "vpack" : "json");
 
     // transparently uncompress gzip-encoded data
     std::string uncompressed;

@@ -49,7 +49,6 @@ const jsunity = require('jsunity');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
-const isServer = require("@arangodb").isServer;
 
 exports.runWithRetry = runWithRetry;
 exports.isEnterprise = isEnterprise;
@@ -231,7 +230,11 @@ function getMetricName(text, name) {
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+  let res = 0; // Sum up values from all matches
+  for(let i = 0; i < matches.length; i+= 1) {
+    res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+  }
+  return res;
 }
 
 exports.getMetric = function (endpoint, name) {
@@ -245,6 +248,70 @@ exports.getMetricSingle = function (name) {
     throw "error fetching metric";
   }
   return getMetricName(res.body, name);
+};
+
+// Function for getting metric/metrics from either cluster or single server deployments.
+// - 'name' - can be either string or array of strings.
+//    If 'name' is string, we want to get the only one metric value with name 'name'
+//    If 'name' is array of strings, we want to get values for every metric which is defined in this array 
+// - 'roles' - string
+//    Specify which roles of arangod should be queried for particular metric/metrics.
+//    This argument will be used in function getAllMetricsFromEndpoints.
+//    Possible values are:
+//      "coordinators" - get metric/metrics only from coordinators.
+//      "dbservers" - get metric/metrics only from dbservers.
+//      "all" - get metric/metrics from dbservers and from coordinators.
+//    In case of single server deployment, this argument is ommited.
+exports.getCompleteMetricsValues = function (name, roles = "") {
+  function transpose(matrix) {
+    return matrix[0].map((col, i) => matrix.map(row => row[i]));
+  };
+
+  let metrics = exports.getMetricsByNameFromEndpoints(name, roles);
+
+  if (typeof name === "string") {
+    // In case of "string", 'metrics' variable is an array with values of metric from each server
+
+    // It may happen that some db servers will not have required metric. 
+    // But if all of them don't have it - throw a error.
+    if (metrics.every( (val) => Number.isNaN(val) === true )) {
+      // If we have got NaN from every endpoint - throw error
+      throw "Metric " + name + " not found";
+    }
+    let res = 0;
+    metrics.forEach( num => {
+      if(!Number.isNaN(num)) {
+        // avoid adding NaN
+        res += num;
+      }
+    });
+    assertFalse(Number.isNaN(res)); // res should not be NaN
+    return res;
+  } else {
+    let result_metrics = [];
+    // 'metrics' variable is a matrix. Every row represent metrics values from only one dbserver.
+    // Number of rows equal to number of dbservers
+    // Number of columns equal to number of required metrics (name.length)
+    // We will transpose this matrix. After that in row 'i' we have values for metric 'i' from all servers.
+    let m = transpose(metrics);
+
+    for (let i = 0; i < m.length; i += 1) {
+      let row = m[i]; // Every row represents values for this metric from all servers.
+      // Now assert that at least one dbserver returned real value. Throw exception otherwise
+      assertFalse(row.every((val) => Number.isNaN(val) === true), `Metric ${name[i]} not found`);
+      
+      let accumulated = 0;
+      row.forEach(v => {
+        if (!Number.isNaN(v)) {
+          accumulated += v;
+        }
+      });
+      result_metrics.push(accumulated);
+    }
+    // Result array shouldn't contain NaN at all
+    assertTrue(result_metrics.every((val) => Number.isNaN(val) === false));
+    return result_metrics;
+  }
 };
 
 const debug = function (text) {
@@ -554,10 +621,71 @@ exports.triggerMetrics = function () {
   require("internal").sleep(2);
 };
 
+exports.getAllMetricsFromEndpoints = function (roles = "") {
+  
+  const isCluster = require("internal").isCluster();
+  
+  let res = [];
+  let endpoints = [];
+  
+  if (isCluster) {
+    exports.triggerMetrics();
+
+    if (roles === "" || roles === "dbservers" || roles === "all") {
+      endpoints = endpoints.concat(exports.getDBServerEndpoints());
+    }
+    if (roles === "coordinators" || roles === "all") {
+      endpoints = endpoints.concat(exports.getCoordinatorEndpoints());
+    }
+  } else {
+    endpoints = endpoints.concat(exports.getSingleServerEndpoint());
+  }
+
+  endpoints.forEach(e => {
+    res.push(exports.getAllMetric(e, ''));
+  });
+  return res;
+};
+
+exports.getMetricsByNameFromEndpoints = function (name, roles = "") {
+  function func (text, name_str) {
+    let value;
+    try {
+      value = getMetricName(text, name_str);
+    } catch (e) {
+      value = NaN;
+    }
+    return value;
+  };
+  let result = [];
+
+  // This is an array with metrics from all required endpoints.
+  let all_server_metrics = exports.getAllMetricsFromEndpoints(roles);
+  // Now we need to parse every element from this array and extract
+  // required metrics.
+  all_server_metrics.forEach(server_metrics => {
+    if (typeof name === "string") {
+      result.push(func(server_metrics, name));
+    } else if (typeof name === "object") {
+      let res = [];
+      name.forEach(curr_metric_name => {
+        res.push(func(server_metrics, curr_metric_name));
+      });
+      result.push(res);
+    } else {
+      throw Error(`Unsupported ${typeof name} type`);
+    }   
+  });
+  return result;
+};
+
 exports.getEndpoints = function (role) {
   return exports.getServers(role).map(instance => endpointToURL(instance.endpoint));
 };
 
+exports.getSingleServerEndpoint = function () {
+  return exports.getEndpoints(inst.instanceRole.single);
+};
 exports.getCoordinatorEndpoints = function () {
   return exports.getEndpoints(inst.instanceRole.coordinator);
 };

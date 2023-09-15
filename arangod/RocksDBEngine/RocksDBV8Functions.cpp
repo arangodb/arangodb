@@ -209,18 +209,10 @@ static void JS_WaitForEstimatorSync(
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
 
-  // release all unused ticks from flush feature
-  v8g->server().getFeature<FlushFeature>().releaseUnusedTicks();
-
-  // force-flush
-  RocksDBEngine& engine =
-      v8g->server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  engine.settingsManager()->sync(/*force*/ true);
-
   v8g->server()
       .getFeature<EngineSelectorFeature>()
       .engine()
-      .waitForEstimatorSync(std::chrono::seconds(10));
+      .waitForEstimatorSync();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
