@@ -41,6 +41,8 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -114,8 +116,8 @@ void PhysicalCollection::prepareIndexes(velocypack::Slice indexesSlice) {
        (_indexes.size() < 3 ||
         ((*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
          (*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
-    std::string msg = "got invalid indexes for collection '" +
-                      _logicalCollection.name() + "'";
+    std::string msg = absl::StrCat("got invalid indexes for collection '",
+                                   _logicalCollection.name(), "'");
     LOG_TOPIC("0ef34", ERR, arangodb::Logger::ENGINES) << msg;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto const& it : _indexes) {
@@ -146,6 +148,8 @@ void PhysicalCollection::drop() {
     _indexes.clear();
   }
 }
+
+void PhysicalCollection::freeMemory() noexcept {}
 
 uint64_t PhysicalCollection::recalculateCounts() {
   THROW_ARANGO_EXCEPTION_MESSAGE(
