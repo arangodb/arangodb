@@ -101,7 +101,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.restoreOptions = restoreOptions;
     this.allDatabases = [];
     this.allDumps = [];
-    this.rtaArgs = [ 'DUMPDB', '--numberOfDBs', '2'].concat(rtaArgs);
+    this.rtaArgs = [ 'DUMPDB', '--numberOfDBs', '1'].concat(rtaArgs);
     this.which = which;
     this.results = {failed: 0};
     this.dumpConfig = false;
