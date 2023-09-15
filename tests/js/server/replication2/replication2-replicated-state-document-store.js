@@ -606,31 +606,6 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
       let plan = lh.readAgencyValueAt(`Plan/ReplicatedLogs/${dbNameR1}`);
       assertEqual(plan, undefined, `Expected no replicated logs in agency, got ${JSON.stringify(plan)}`);
     },
-
-    testChangeCollectionProperties: function () {
-      // This test does not work with replication version 2,
-      // because the collection properties must be written to Target.
-      // I'm leaving this test here for now, because it is a good example.
-      // We should eventually port it to replication2.
-      collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
-      collection.properties({computedValues: [{
-          name: "createdAt",
-          expression: "RETURN DATE_NOW()",
-          overwrite: true,
-          computeOn: ["insert"]
-      }]});
-
-      let cnt = 0;
-      lh.waitFor(() => {
-        ++cnt;
-        collection.insert({_key: `bar${cnt}`});
-        let doc = collection.document(`bar${cnt}`);
-        if ("createdAt" in doc) {
-          return true;
-        }
-        return Error(`No createdAt property in doc: ${JSON.stringify(doc)}`);
-      });
-    }
   };
 };
 
@@ -1057,21 +1032,13 @@ const replicatedStateDocumentShardsSuite = function () {
     },
 
     testModifyShard: function () {
-      let collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
-
-      // TODO currently we cannot modify collection.properties for replication2, because the API must write to `Target`.
-      const cid = collection._id;
-      let {plan} = ch.readCollection(database, cid);
-      plan.computedValues = [{
-        name: "createdAt",
-        expression: "RETURN DATE_NOW()",
-        overwrite: true,
-        keepNull: true,
-        failOnWarning: false,
-        computeOn: ["insert"]
-      }];
-      helper.agency.set(`Plan/Collections/${database}/${cid}`, plan);
-      helper.agency.increaseVersion(`Plan/Version`);
+      const collection = db._create(collectionName, {numberOfShards: 1, writeConcern: 2, replicationFactor: 3});
+      collection.properties({computedValues: [{
+          name: "createdAt",
+          expression: "RETURN DATE_NOW()",
+          overwrite: true,
+          computeOn: ["insert"]
+        }]});
 
       // Wait for the shard to be modified.
       let cnt = 0;

@@ -21,12 +21,41 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Iterator.h>
-
-#include <Basics/debugging.h>
-#include <Basics/StaticStrings.h>
-
 #include "AgencyCollectionSpecification.h"
+
+#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb::replication2::agency;
 using namespace arangodb::basics;
+
+bool Collection::MutableProperties::operator==(
+    MutableProperties other) const noexcept {
+  if (schema.has_value() != other.schema.has_value()) {
+    if (schema.has_value()) {
+      if (!(schema.value().slice().isNone() ||
+            schema.value().slice().isNull())) {
+        // Null is equal to absence, everything else is a difference
+        return false;
+      }
+    } else {
+      if (!(other.schema.value().slice().isNone() ||
+            other.schema.value().slice().isNull())) {
+        // Null is equal to absence, everything else is a difference
+        return false;
+      }
+    }
+  } else {
+    // Both either have a schema or not.
+    if (schema.has_value()) {
+      // If both have a schema, compare them
+      TRI_ASSERT(other.schema.has_value())
+          << "We should have tested that either both or none have a schema";
+      if (!VelocyPackHelper::equal(schema.value().slice(),
+                                   other.schema.value().slice(), true)) {
+        return false;
+      }
+    }
+  }
+  return VelocyPackHelper::equal(computedValues.slice(),
+                                 other.computedValues.slice(), true);
+}
