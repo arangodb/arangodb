@@ -242,6 +242,18 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
     }
 };
 
+const testLineRankOnGraph = function (vertices, edges) {
+  db[vColl].save(vertices);
+  db[eColl].save(edges);
+  let parameters = {maxGSS: 1000, resultField: "linerank"};
+  const pid = pregel.start("linerank", graphName, parameters);
+  waitUntilRunFinishedSuccessfully(pid);
+  return db._query(`
+                  FOR v in ${vColl}
+                  sort v._rev
+                  RETURN v.linerank
+                `).toArray();
+};
 
 class Vertex {
     constructor(key, result) {
@@ -997,9 +1009,29 @@ function makePagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
     };
 }
 
+function makeLineRankTestSuite(isSmart, smartAttribute, numberOfShards) {
+  const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
+  return function () {
+    'use strict';
+    return {
+      setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
+      tearDown: makeTearDown(isSmart),
+
+      testLineRankDirectedCycle: function () {
+        const length = 4;
+        const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
+        const result = testLineRankOnGraph(vertices, edges);
+        for (const rank of result) {
+          assertAlmostEquals(rank, 2.0 / length, 0.1);
+        }
+      },
+    };
+  };
+}
 
 exports.makeWCCTestSuite = makeWCCTestSuite;
 exports.makeHeavyWCCTestSuite = makeHeavyWCCTestSuite;
 exports.makeSCCTestSuite = makeSCCTestSuite;
 exports.makeLabelPropagationTestSuite = makeLabelPropagationTestSuite;
 exports.makePagerankTestSuite = makePagerankTestSuite;
+exports.makeLineRankTestSuite = makeLineRankTestSuite;

@@ -424,10 +424,13 @@ const labelPropagationTestSuite = pregelTestHelpers.makeLabelPropagationTestSuit
 
 const pagerankTestSuite = pregelTestHelpers.makePagerankTestSuite(false, "", 4);
 
+const linerankTestSuite = pregelTestHelpers.makeLineRankTestSuite(false, "", 4);
+
 jsunity.run(componentsTestSuite);
 jsunity.run(wccRegressionTestSuite);
 jsunity.run(wccTestSuite);
 jsunity.run(sccTestSuite);
 jsunity.run(labelPropagationTestSuite);
 jsunity.run(pagerankTestSuite);
+jsunity.run(linerankTestSuite);
 return jsunity.done();
