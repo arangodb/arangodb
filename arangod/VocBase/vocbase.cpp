@@ -543,14 +543,14 @@ void TRI_vocbase_t::shutdown() {
     RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
     checkCollectionInvariants();
-    _dataSourceByName.clear();
-    _dataSourceById.clear();
-    _dataSourceByUuid.clear();
+    _dataSourceByName = {};
+    _dataSourceById = {};
+    _dataSourceByUuid = {};
     checkCollectionInvariants();
   }
 
-  _deadCollections.clear();
-  _collections.clear();
+  _deadCollections = {};
+  _collections = {};
 }
 
 std::vector<std::string> TRI_vocbase_t::collectionNames() const {

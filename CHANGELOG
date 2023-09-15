@@ -4,6 +4,29 @@ devel
 * Removed DocuBlocks and obsolete documentation tooling.
   The HTTP API descriptions are now in the `arangodb/docs-hugo` repository.
 
+* When dropping a database, immediately also mark all collections of the
+  database as dropped. This has the advantage that ongoing operations on these
+  collections can be stopped earlier, and memory for the underlying collections
+  and indexes can be reclaimed sooner.
+
+  This changes the behavior for some operations, for example:
+  ```
+  db._createDatabase("testDatabase");
+  db._useDatabase("testDatabase");
+
+  let c = db._create("testCollection");
+
+  db._useDatabase("_system");
+  db._dropDatabase("testDatabase");
+
+  // the following operation will now return "collection not found".
+  // in previous versions, it could still be executed.
+  print(c.count()); 
+  ```
+
+  The new behavior is more consistent with dropping collections, after which
+  operations on the dropped collection also fail immediately.
+
 * Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump
   to the Single server database.
 

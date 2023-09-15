@@ -489,9 +489,7 @@ std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
   return versionFilenameResult;
 }
 
-void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
-  TRI_ASSERT(false);
-}
+void StorageEngineMock::waitForEstimatorSync() { TRI_ASSERT(false); }
 
 std::vector<std::string> StorageEngineMock::currentWalFiles() const {
   return std::vector<std::string>();
