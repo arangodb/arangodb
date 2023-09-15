@@ -365,7 +365,6 @@ class instance {
     });
 
     if (require("@arangodb/test-helper").isEnterprise()) {
-      print('santoehusantoeuh')
       this.args['arangosearch.columns-cache-limit'] = '100000';
     }
     if (this.options.auditLoggingEnabled) {
