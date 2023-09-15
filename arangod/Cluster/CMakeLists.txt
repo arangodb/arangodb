@@ -1,6 +1,7 @@
 add_library(arango_cluster_methods STATIC
   ClusterMethods.cpp
   ClusterCollectionMethods.cpp
+  ClusterIndexMethods.cpp
   ClusterTtlMethods.cpp)
 
 target_link_libraries(arango_cluster_methods

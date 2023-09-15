@@ -691,23 +691,6 @@ class ClusterInfo final {
   AnalyzerModificationTransaction::Ptr createAnalyzersCleanupTrans();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-  Result ensureIndexCoordinator(  // create index
-      LogicalCollection const& collection, velocypack::Slice slice, bool create,
-      velocypack::Builder& resultBuilder, double timeout);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief drop an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-  Result dropIndexCoordinator(          // drop index
-      std::string const& databaseName,  // database name
-      std::string const& collectionID,  // collection identifier
-      IndexId iid,                      // index identifier
-      double timeout                    // request timeout
-  );
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about servers from the agency
   /// Usually one does not have to call this directly.
   //////////////////////////////////////////////////////////////////////////////
@@ -972,12 +955,7 @@ class ClusterInfo final {
   static double getPollInterval() { return 5.0; }
 
  private:
-  /// @brief worker function for dropIndexCoordinator
-  Result dropIndexCoordinatorInner(std::string const& databaseName,
-                                   std::string const& collectionID, IndexId iid,
-                                   double endTime);
-
-  /// @brief create a new collecion object from the data, using the cache if
+  /// @brief create a new collection object from the data, using the cache if
   /// possible
   CollectionWithHash buildCollection(
       bool isBuilding, AllCollections::const_iterator existingCollections,
@@ -1016,15 +994,6 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   static double getReloadServerListTimeout() { return 60.0; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-  Result ensureIndexCoordinatorInner(  // create index
-      LogicalCollection const& collection, std::string_view idString,
-      velocypack::Slice slice, bool create, velocypack::Builder& resultBuilder,
-      double timeout  // request timeout
-  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief triggers a new background thread to obtain the next batch of ids
