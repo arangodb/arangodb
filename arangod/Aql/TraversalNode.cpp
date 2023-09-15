@@ -697,6 +697,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       opts->tmpVar(), opts->getExpressionCtx(), isDisjointIsSat.first,
       isDisjointIsSat.second, isClusterOneShardRuleEnabled()};
 
+  // set min/max depth
+  validatorOptions.setMinMaxDepth(opts->minDepth, opts->maxDepth);
+
   // Prune Section
   if (pruneExpression() != nullptr) {
     std::shared_ptr<aql::PruneExpressionEvaluator> pruneEvaluator;
