@@ -4,6 +4,9 @@ parameters:
   enterprise-branch:
     type: string
     default: ""
+  test-options:
+    type: string
+    default: ""
   default-enterprise-branch:
     type: string
     default: "devel"
