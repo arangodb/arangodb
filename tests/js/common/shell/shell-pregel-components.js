@@ -385,6 +385,8 @@ const ssspTestSuite = pregelTestHelpers.makeSSSPTestSuite(false, "", 4);
 
 const hitsTestSuite = pregelTestHelpers.makeHITSTestSuite(false, "", 4);
 
+const lineRankTestSuite = pregelTestHelpers.makeLineRankTestSuite(false, "", 4);
+
 // const effectiveClosenessTestSuite = pregelTestEffectiveClosenessHelpers.makeEffectiveClosenessTestSuite(false, ", 4");
 
 const readWriteTestSuite = pregelTestReadWriteHelpers.makeReadWriteTestSuite(false, "", 4);
@@ -398,6 +400,7 @@ jsunity.run(pagerankTestSuite);
 jsunity.run(seededPagerankTestSuite);
 jsunity.run(ssspTestSuite);
 jsunity.run(hitsTestSuite);
+jsunity.run(lineRankTestSuite);
 // jsunity.run(effectiveClosenessTestSuite);
 if (require('internal').db._version(true)['maintainer-mode'] === 'true') {
     jsunity.run(readWriteTestSuite);
