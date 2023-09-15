@@ -650,7 +650,7 @@ auto DocumentLeaderState::createIndex(
           }
 
           if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
-            LOG_CTX("a03c7", ERR, self->loggerContext)
+            LOG_CTX("26355", ERR, self->loggerContext)
                 << "Failed to call release: " << releaseRes;
           }
           return {};
@@ -691,7 +691,7 @@ auto DocumentLeaderState::dropIndex(LogicalCollection& col,
               auto&& localIndexRemoval =
                   data.transactionHandler->applyEntry(std::move(op));
               if (localIndexRemoval.fail()) {
-                LOG_CTX("6da4a", FATAL, self->loggerContext)
+                LOG_CTX("5c321", FATAL, self->loggerContext)
                     << "DropIndex operation failed on the leader, after being "
                        "replicated to followers: "
                     << localIndexRemoval;
@@ -700,7 +700,7 @@ auto DocumentLeaderState::dropIndex(LogicalCollection& col,
 
               if (auto releaseRes = self->release(logIndex);
                   releaseRes.fail()) {
-                LOG_CTX("a03c7", ERR, self->loggerContext)
+                LOG_CTX("57877", ERR, self->loggerContext)
                     << "Failed to call release: " << releaseRes;
               }
 
