@@ -38,6 +38,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterIndexMethods.h"
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/RebootTracker.h"
@@ -2004,8 +2005,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 
     VPackBuilder tmp;
 
-    res = ci.ensureIndexCoordinator(*col, idxDef, true, tmp,
-                                    cluster.indexCreationTimeout());
+    res = ClusterIndexMethods::ensureIndexCoordinator(
+        *col, idxDef, true, tmp, cluster.indexCreationTimeout());
 
     if (res.fail()) {
       return res.reset(

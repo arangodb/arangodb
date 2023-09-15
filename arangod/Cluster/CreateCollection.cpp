@@ -238,6 +238,7 @@ bool CreateCollection::createReplication2Shard(CollectionID const& collection,
                                                TRI_vocbase_t& vocbase)
     const {  // special case for replication 2 on the leader
   auto logId = LogicalCollection::shardIdToStateId(shard);
+  auto cProps = _description.properties();
   if (auto gid = props.get("groupId"); gid.isNumber()) {
     logId = replication2::LogId{gid.getUInt()};
     // Now look up the collection group
@@ -262,6 +263,32 @@ bool CreateCollection::createReplication2Shard(CollectionID const& collection,
     ADB_PROD_ASSERT(found);
     ADB_PROD_ASSERT(index < group->shardSheaves.size());
     logId = group->shardSheaves[index].replicatedLog;
+
+    auto tmpBuilderReplication2 = std::make_shared<VPackBuilder>();
+    {
+      // For replication 2 the CollectionGroupProperties are not stored
+      // in the collection anymore, but they are still required for
+      // shard creation. So let us rewrite the Properties.
+      {
+        VPackObjectBuilder ob(tmpBuilderReplication2.get());
+        // Add all other attributes
+        tmpBuilderReplication2->add(VPackObjectIterator(cProps->slice()));
+        // Add Group attributes
+        tmpBuilderReplication2->add(
+            StaticStrings::NumberOfShards,
+            VPackValue(group->attributes.immutableAttributes.numberOfShards));
+        tmpBuilderReplication2->add(
+            StaticStrings::WriteConcern,
+            VPackValue(group->attributes.mutableAttributes.writeConcern));
+        tmpBuilderReplication2->add(
+            StaticStrings::WaitForSyncString,
+            VPackValue(group->attributes.mutableAttributes.waitForSync));
+        tmpBuilderReplication2->add(
+            StaticStrings::ReplicationFactor,
+            VPackValue(group->attributes.mutableAttributes.replicationFactor));
+      }
+      cProps.swap(tmpBuilderReplication2);
+    }
   }
   auto state = vocbase.getReplicatedStateById(logId);
   if (state.ok()) {
@@ -271,8 +298,7 @@ bool CreateCollection::createReplication2Shard(CollectionID const& collection,
     if (leaderState != nullptr) {
       // It is necessary to block here to prevent creation of an additional
       // action while we are waiting for the shard to be created.
-      leaderState->createShard(shard, collection, _description.properties())
-          .get();
+      leaderState->createShard(shard, collection, std::move(cProps)).get();
     } else {
       // TODO prevent busy loop and wait for log to become ready.
       std::this_thread::sleep_for(std::chrono::milliseconds{50});
