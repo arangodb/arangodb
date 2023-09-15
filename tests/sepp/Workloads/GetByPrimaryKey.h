@@ -95,7 +95,8 @@ inline auto inspect(Inspector& f, GetByPrimaryKey::Options& o) {
 }
 
 struct GetByPrimaryKey::Thread : ExecutionThread {
-  Thread(ThreadOptions options, Execution& exec, Server& server);
+  Thread(ThreadOptions options, std::uint32_t id, Execution& exec,
+         Server& server);
   ~Thread();
   void run() override;
   [[nodiscard]] virtual ThreadReport report() const override {

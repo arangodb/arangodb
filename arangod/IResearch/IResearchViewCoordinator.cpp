@@ -300,6 +300,7 @@ Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
 }
 
 Result IResearchViewCoordinator::renameImpl(std::string const&) {
+  TRI_ASSERT(false);
   return {TRI_ERROR_CLUSTER_UNSUPPORTED};
 }
 

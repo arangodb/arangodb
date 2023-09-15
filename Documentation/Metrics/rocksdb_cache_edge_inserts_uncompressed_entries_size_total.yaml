@@ -1,9 +1,10 @@
-name: rocksdb_cache_edge_uncompressed_entries_size
+name: rocksdb_cache_edge_inserts_uncompressed_entries_size_total
+renamedFrom: rocksdb_cache_edge_uncompressed_entries_size
 introducedIn: "3.11.2"
 help: |
   Total gross memory size of all edge cache entries ever stored in the edge cache.
 unit: bytes
-type: gauge
+type: counter
 category: Statistics
 complexity: advanced
 exposedBy:
@@ -11,9 +12,9 @@ exposedBy:
   - agent
   - single
 description: |
-  Total gross memory size of all edge cache data that were ever stored in
-  the edge cache of any collection/shard. The size is calculated before any
-  potential compression.
+  Total gross memory size of all edge cache data that were stored in the edge
+  cache of any collection/shard since the server start. 
+  The size is calculated before any potential compression.
   Note that this metric is incremented upon every cache insert attempt. 
   It is increased also when data cannot be inserted into the cache (e.g. because
   the cache had no memory left). The metric is not decreased when data gets 
