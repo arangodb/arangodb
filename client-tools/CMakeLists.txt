@@ -499,8 +499,7 @@ add_custom_target(arangotools
             arangoimport
             arangorestore
             arangobench
-            arangovpack
-            arangoinspect)
+            arangovpack)
 
 if (USE_ENTERPRISE)
   add_dependencies(arangotools arangobackup)
