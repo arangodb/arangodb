@@ -173,7 +173,7 @@ class StorageEngine : public ArangodFeature {
   virtual Result flushWal(bool waitForSync = false,
                           bool flushColumnFamilies = false) = 0;
 
-  virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) = 0;
+  virtual void waitForEstimatorSync() = 0;
 
   //// operations on databases
 

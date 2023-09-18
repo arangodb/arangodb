@@ -31,6 +31,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
+#include "Containers/NodeHashMap.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
@@ -255,7 +256,7 @@ static void ReportInSync(
 
 static void ReportOffSync(
     LogicalCollection const* col, ShardMap const* shardIds,
-    containers::FlatHashMap<ShardID, SyncCountInfo>& counters,
+    containers::NodeHashMap<ShardID, SyncCountInfo>& counters,
     containers::FlatHashMap<ServerID, std::string> const& aliases,
     VPackBuilder& result, bool progress) {
   TRI_ASSERT(result.isOpenObject());
@@ -332,7 +333,8 @@ void ShardDistributionReporter::helperDistributionForDatabase(
     double endtime, containers::FlatHashMap<std::string, std::string>& aliases,
     bool progress) {
   if (!todoSyncStateCheck.empty()) {
-    containers::FlatHashMap<ShardID, SyncCountInfo> counters;
+    // TODO FlatHashMap<K, unique_ptr<V>>
+    containers::NodeHashMap<ShardID, SyncCountInfo> counters;
     std::vector<ServerID> serversToAsk;
     while (!todoSyncStateCheck.empty()) {
       counters.clear();

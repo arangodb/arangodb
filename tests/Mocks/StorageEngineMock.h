@@ -200,7 +200,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
   ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice,
                                                 bool) override;
   std::string versionFilename(TRI_voc_tick_t) const override;
-  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
+  void waitForEstimatorSync() override;
   arangodb::WalAccess const* walAccess() const override;
 
   bool autoRefillIndexCaches() const override;

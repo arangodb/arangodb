@@ -109,10 +109,6 @@ void RocksDBSettingsManager::retrieveInitialValues() {
 
 // Thread-Safe force sync.
 ResultT<bool> RocksDBSettingsManager::sync(bool force) {
-  TRI_IF_FAILURE("RocksDBSettingsManagerSync") {
-    return ResultT<bool>::success(false);
-  }
-
   std::unique_lock lock{_syncingMutex, std::defer_lock};
 
   if (force) {
@@ -125,6 +121,10 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
   }
 
   TRI_ASSERT(lock.owns_lock());
+
+  TRI_IF_FAILURE("RocksDBSettingsManagerSync") {
+    return ResultT<bool>::success(false);
+  }
 
   try {
     // need superuser scope to ensure we can sync all collections and keep seq
@@ -153,13 +153,17 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     constexpr size_t scratchBufferSize = 128 * 1024;
     _scratch.reserve(scratchBufferSize);
 
-    for (auto const& pair : mappings) {
-      TRI_voc_tick_t dbid = pair.first;
-      DataSourceId cid = pair.second;
+    for (auto const& triple : mappings) {
+      uint64_t objectId = std::get<0>(triple);
+      TRI_voc_tick_t dbid = std::get<1>(triple);
+      DataSourceId cid = std::get<2>(triple);
+
       auto vocbase = dbfeature.useDatabase(dbid);
       if (!vocbase) {
+        _engine.removeCollectionMapping(objectId);
         continue;
       }
+
       TRI_ASSERT(!vocbase->isDangling());
 
       std::shared_ptr<LogicalCollection> coll;
@@ -169,9 +173,10 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
         // will fail if collection does not exist
       }
       // Collections which are marked as isAStub are not allowed to have
-      // physicalCollections. Therefore, we cannot continue serializing in that
+      // PhysicalCollections. Therefore, we cannot continue serializing in that
       // case.
       if (!coll) {
+        _engine.removeCollectionMapping(objectId);
         continue;
       }
       auto sg2 = arangodb::scopeGuard(
@@ -243,7 +248,7 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
         << "about to store lastSync. previous value: " << lastSync
         << ", current value: " << minSeqNr;
 
-    if (minSeqNr < lastSync) {
+    if (minSeqNr < lastSync && !force) {
       if (minSeqNr != 0) {
         LOG_TOPIC("1038e", ERR, Logger::ENGINES)
             << "min tick is smaller than "

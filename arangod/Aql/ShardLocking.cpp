@@ -39,6 +39,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "Utilities/NameValidator.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -238,8 +240,8 @@ void ShardLocking::updateLocking(
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-          "Could not identify any shard belonging to collection: " + name +
-              ". Maybe it is dropped?");
+          absl::StrCat("Could not identify any shard belonging to collection: ",
+                       name, ". Maybe it is dropped?"));
     }
     for (auto const& s : *shards) {
       info.allShards.emplace(s);

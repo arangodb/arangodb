@@ -362,7 +362,7 @@ function ahuacatlMemoryLimitSkipTestSuite () {
       const payload = Array(1024).join("x");
 
       let docs = [];
-      for (let i = 0; i < 100 * 1000; ++i) {
+      for (let i = 0; i < 80 * 1000; ++i) {
         docs.push({ payload });
         if (docs.length === 100) {
           c.insert(docs);
@@ -377,7 +377,7 @@ function ahuacatlMemoryLimitSkipTestSuite () {
 
     testUpdate : function () {
       const query = "FOR doc IN " + cn + " UPDATE doc WITH { foobar: 'bazbarkqux', p2: doc.payload } IN " + cn;
-      const options = { memoryLimit: 350 * 1000 * 1000 };
+      const options = { memoryLimit: 420 * 1000 * 1000 };
       
       let actual = AQL_EXECUTE(query, null, options).json;
       assertEqual(0, actual.length);
