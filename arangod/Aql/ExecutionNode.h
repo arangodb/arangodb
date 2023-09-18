@@ -100,6 +100,17 @@ struct Variable;
 
 size_t estimateListLength(ExecutionPlan const* plan, Variable const* var);
 
+enum class AsyncPrefetchEligibility {
+  // enable prefetching for one particular node
+  kEnableForNode,
+  // disable prefetching for one particular node
+  kDisableForNode,
+  // disable for node and its dependencies (north of ourselves)
+  kDisableForNodeAndDependencies,
+  // disable prefetching for entire query
+  kDisableGlobally,
+};
+
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document
 
@@ -455,6 +466,8 @@ class ExecutionNode {
   /// @brief whether or not the node is a data modification node
   virtual bool isModificationNode() const;
 
+  virtual AsyncPrefetchEligibility canUseAsyncPrefetching() const noexcept;
+
   ExecutionPlan const* plan() const;
 
   ExecutionPlan* plan();
@@ -633,6 +646,9 @@ class SingletonNode : public ExecutionNode {
   /// @brief the cost of a singleton is 1
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
@@ -678,6 +694,9 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief the cost of an enumerate collection node is a multiple of the cost
   /// of its unique dependency
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -735,6 +754,9 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief the cost of an enumerate list node
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
@@ -789,6 +811,9 @@ class LimitNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   /// @brief tell the node to fully count what it will limit
   void setFullCount(bool enable = true);
@@ -853,6 +878,9 @@ class CalculationNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
@@ -984,6 +1012,9 @@ class FilterNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
@@ -1058,6 +1089,9 @@ class ReturnNode : public ExecutionNode {
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   Variable const* inVariable() const;
 
   void inVariable(Variable const* v);
@@ -1102,6 +1136,9 @@ class NoResultsNode : public ExecutionNode {
 
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
  protected:
   /// @brief export to VelocyPack

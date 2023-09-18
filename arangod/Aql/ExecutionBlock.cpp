@@ -30,12 +30,12 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/Timing.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 
@@ -107,15 +107,11 @@ std::pair<ExecutionState, Result> ExecutionBlock::initializeCursor(
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-ExecutionState ExecutionBlock::getHasMoreState() {
-  if (_done) {
-    return ExecutionState::DONE;
-  }
-  if (_upstreamState == ExecutionState::DONE) {
+ExecutionState ExecutionBlock::getHasMoreState() noexcept {
+  if (!_done && _upstreamState == ExecutionState::DONE) {
     _done = true;
-    return ExecutionState::DONE;
   }
-  return ExecutionState::HASMORE;
+  return _done ? ExecutionState::DONE : ExecutionState::HASMORE;
 }
 
 ExecutionNode const* ExecutionBlock::getPlanNode() const { return _exeNode; }
@@ -136,40 +132,27 @@ void ExecutionBlock::collectExecStats(ExecutionStats& stats) {
 }
 
 void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack,
-                                       std::string const& clientId) {
-  if (_profileLevel >= ProfileLevel::Blocks) {
-    if (_execNodeStats.runtime >= 0.0) {
-      _execNodeStats.runtime -= currentSteadyClockValue();
-      TRI_ASSERT(_execNodeStats.runtime < 0.0);
-    }
-
-    if (_profileLevel >= ProfileLevel::TraceOne) {
-      auto const node = getPlanNode();
-      auto const queryId = this->_engine->getQuery().id();
-      LOG_TOPIC("1e717", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] "
-          << "execute type=" << node->getTypeString()
-          << " callStack= " << stack.toString() << " this=" << (uintptr_t)this
-          << " id=" << node->id()
-          << (clientId.empty() ? "" : " clientId=" + clientId);
-    }
+                                       std::string_view clientId) {
+  if (_profileLevel >= ProfileLevel::TraceOne) {
+    auto const queryId = this->_engine->getQuery().id();
+    LOG_TOPIC("1e717", INFO, Logger::QUERIES)
+        << "[query#" << queryId << "] "
+        << "execute type=" << getPlanNode()->getTypeString()
+        << " callStack= " << stack.toString() << " this=" << (uintptr_t)this
+        << " id=" << getPlanNode()->id()
+        << (clientId.empty() ? "" : " clientId=") << clientId;
   }
 }
 
 void ExecutionBlock::traceExecuteEnd(
     std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
-    std::string const& clientId) {
+    std::string_view clientId) {
   if (_profileLevel >= ProfileLevel::Blocks) {
     auto const& [state, skipped, block] = result;
     auto const items = block != nullptr ? block->numRows() : 0;
 
     _execNodeStats.calls += 1;
     _execNodeStats.items += skipped.getSkipCount() + items;
-    if (state != ExecutionState::WAITING) {
-      TRI_ASSERT(_execNodeStats.runtime < 0.0);
-      _execNodeStats.runtime += currentSteadyClockValue();
-      TRI_ASSERT(_execNodeStats.runtime >= 0.0);
-    }
 
     if (_profileLevel >= ProfileLevel::TraceOne) {
       size_t rows = 0;
@@ -184,7 +167,7 @@ void ExecutionBlock::traceExecuteEnd(
           << " state=" << stateToString(state)
           << " skipped=" << skipped.getSkipCount() << " produced=" << rows
           << " shadowRows=" << shadowRows
-          << (clientId.empty() ? "" : " clientId=" + clientId);
+          << (clientId.empty() ? "" : " clientId=") << clientId;
 
       if (_profileLevel >= ProfileLevel::TraceTwo) {
         auto const resultString =
@@ -200,24 +183,20 @@ void ExecutionBlock::traceExecuteEnd(
             });
         LOG_QUERY("f12f9", INFO)
             << "execute type=" << node->getTypeString() << " id=" << node->id()
-            << (clientId.empty() ? "" : " clientId=" + clientId)
+            << (clientId.empty() ? "" : " clientId=") << clientId
             << " result: " << resultString;
       }
     }
   }
 }
 
+ExecutionNodeStats& ExecutionBlock::stats() noexcept { return _execNodeStats; }
+
 auto ExecutionBlock::printTypeInfo() const -> std::string const {
-  std::stringstream stream;
-  ExecutionNode const* node = getPlanNode();
-  stream << "type=" << node->getTypeString();
-  return stream.str();
+  return absl::StrCat("type=", getPlanNode()->getTypeString());
 }
 
 auto ExecutionBlock::printBlockInfo() const -> std::string const {
-  std::stringstream stream;
-  ExecutionNode const* node = getPlanNode();
-  stream << printTypeInfo() << " this=" << (uintptr_t)this
-         << " id=" << node->id().id();
-  return stream.str();
+  return absl::StrCat(printTypeInfo(), " this=", (uintptr_t)this,
+                      " id=", getPlanNode()->id().id());
 }

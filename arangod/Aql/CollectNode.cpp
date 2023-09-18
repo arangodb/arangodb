@@ -750,6 +750,15 @@ CostEstimate CollectNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility CollectNode::canUseAsyncPrefetching() const noexcept {
+  if (_groupVariables.empty() && !_aggregateVariables.empty()) {
+    // COLLECT AGGREGATE producing only a single result row. no need to
+    // parallelize
+    return AsyncPrefetchEligibility::kDisableForNode;
+  }
+  return AsyncPrefetchEligibility::kEnableForNode;
+}
+
 ExecutionNode::NodeType CollectNode::getType() const { return COLLECT; }
 
 size_t CollectNode::getMemoryUsedBytes() const { return sizeof(*this); }

@@ -306,6 +306,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   void resetExecutor();
 
+  void setFailure(Result&& res);
+
   // Forwarding of ShadowRows if the executor has SideEffects.
   // This skips over ShadowRows, and counts them in the correct
   // position of the callStack as "skipped".
@@ -366,7 +368,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     bool tryClaim() noexcept;
     void waitFor() noexcept;
     void reset() noexcept;
-    PrefetchResult stealResult() noexcept;
+    void discard() noexcept;
+    // note: this will throw if the PrefetchTask ran into an exception
+    // during execution.
+    PrefetchResult stealResult();
+    void wakeupWaiter() noexcept;
+    void setFailure(Result&& result);
 
     void execute(ExecutionBlockImpl& block, AqlCallStack& stack);
 
@@ -375,6 +382,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     std::mutex _lock;
     std::condition_variable _bell;
     std::optional<PrefetchResult> _result;
+    Result _firstFailure;
   };
 
   /**

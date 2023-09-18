@@ -31,6 +31,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -56,7 +57,6 @@ class ExecutionBlock {
   ExecutionBlock(ExecutionBlock const&) = delete;
   ExecutionBlock& operator=(ExecutionBlock const&) = delete;
 
- public:
   /// @brief batch size value
   static constexpr size_t ProductionDefaultBatchSize = 1000;
 
@@ -77,7 +77,7 @@ class ExecutionBlock {
   /// affect the results. It's only to reduce the number of necessary
   /// skipRowsRange calls.
   [[nodiscard]] static constexpr inline size_t SkipAllSize() {
-    return 1000000000;
+    return 1'000'000'000;
   }
 
   /// @brief Methods for execution
@@ -94,9 +94,8 @@ class ExecutionBlock {
   [[nodiscard]] virtual std::pair<ExecutionState, Result> initializeCursor(
       InputAqlItemRow const& input);
 
-  [[nodiscard]] ExecutionState getHasMoreState();
+  [[nodiscard]] ExecutionState getHasMoreState() noexcept;
 
-  // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
   [[nodiscard]] ExecutionNode const* getPlanNode() const;
 
   /// @brief add a dependency
@@ -121,20 +120,21 @@ class ExecutionBlock {
 
   virtual void collectExecStats(ExecutionStats&);
 
+  ExecutionNodeStats& stats() noexcept;
+
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
   [[nodiscard]] auto printTypeInfo() const -> std::string const;
 
  protected:
   // Trace the start of a execute call
   void traceExecuteBegin(AqlCallStack const& stack,
-                         std::string const& clientId = "");
+                         std::string_view clientId = "");
 
   // Trace the end of a execute call, potentially with result
   void traceExecuteEnd(std::tuple<ExecutionState, SkipResult,
                                   SharedAqlItemBlockPtr> const& result,
-                       std::string const& clientId = "");
+                       std::string_view clientId = "");
 
- protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;
 
@@ -143,8 +143,7 @@ class ExecutionBlock {
   ExecutionState _upstreamState;
 
   /// @brief our corresponding ExecutionNode node
-  ExecutionNode const* _exeNode;  // TODO: Can we get rid of this? Problem:
-                                  // Subquery Executor is using it.
+  ExecutionNode const* _exeNode;
 
   /// @brief our dependent nodes
   std::vector<ExecutionBlock*> _dependencies;

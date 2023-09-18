@@ -799,12 +799,12 @@ optimizations.)");
   // parallel, but as some internal details are currently not guaranteed to be
   // thread safe (e.g., TransactionState), this is currently disabled, and
   // should only be activated for experimental usage at one's own risk.
-  registerRule("async-prefetch", asyncPrefetchRule,
-               OptimizerRule::asyncPrefetch,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault,
-                                        OptimizerRule::Flags::Hidden),
-               R"(Allow query execution nodes to asynchronously prefetch the
+  registerRule(
+      "async-prefetch", asyncPrefetchRule, OptimizerRule::asyncPrefetch,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                               OptimizerRule::Flags::Hidden),
+      //                               OptimizerRule::Flags::DisabledByDefault),
+      R"(Allow query execution nodes to asynchronously prefetch the
 next batch while processing the current batch, allowing parts of the query to
 run in parallel. This is an experimental option as not all operations are
 thread-safe.)");

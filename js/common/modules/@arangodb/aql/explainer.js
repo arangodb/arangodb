@@ -798,6 +798,7 @@ function processQuery(query, explain, planIndex) {
     maxIdLen = String('Id').length,
     maxEstimateLen = String('Est.').length,
     maxCallsLen = String('Calls').length,
+    maxParallelLen = String('Par').length,
     maxItemsLen = String('Items').length,
     maxFilteredLen = String('Filtered').length,
     maxRuntimeLen = String('Runtime [s]').length,
@@ -855,14 +856,40 @@ function processQuery(query, explain, planIndex) {
 
   if (profileMode) { // merge runtime info into plan
     stats.nodes.forEach(n => {
+      if (nodes.hasOwnProperty(n.id) && !n.hasOwnProperty('fetching')) {
+        // no separate fetching stats. that means the runtime is cumulative.
+        // by subtracting the dependencies from parent runtime we get the runtime per node
+        nodes[n.id].fetching = 0;
+        if (parents.hasOwnProperty(n.id)) {
+          parents[n.id].forEach(pid => {
+            if (typeof nodes[pid].runtime === 'number') {
+              nodes[pid].runtime -= n.runtime;
+              nodes[pid].fetching = 0;
+            }
+          });
+        }
+      }
+    });
+
+    stats.nodes.forEach(n => {
       if (nodes.hasOwnProperty(n.id)) {
-        nodes[n.id].calls = (n.calls === undefined ? "n/a" : n.calls);
-        nodes[n.id].items = (n.items === undefined ? "n/a" : n.items);
-        nodes[n.id].filtered = (n.filtered === undefined ? "n/a" : n.filtered);
-        nodes[n.id].runtime = (n.runtime === undefined ? "n/a" : n.runtime);
+        let runtime = n.runtime || 0;
+        if (n.hasOwnProperty('fetching')) {
+          // we have separate runtime (including fetching time)
+          // and fetching stats
+          runtime -= n.fetching;
+        }
+        nodes[n.id].calls = String(n.calls || 0);
+        nodes[n.id].parallel = (nodes[n.id].isAsyncPrefetchEnabled ? String(n.parallel || 0) : '-');
+        nodes[n.id].items = String(n.items || 0);
+        nodes[n.id].filtered = String(n.filtered || 0);
+        nodes[n.id].runtime = runtime.toFixed(5);
 
         if (String(nodes[n.id].calls).length > maxCallsLen) {
           maxCallsLen = String(nodes[n.id].calls).length;
+        }
+        if (String(nodes[n.id].parallel).length > maxParallelLen) {
+          maxParallelLen = String(nodes[n.id].parallel).length;
         }
         if (String(nodes[n.id].items).length > maxItemsLen) {
           maxItemsLen = String(nodes[n.id].items).length;
@@ -870,27 +897,8 @@ function processQuery(query, explain, planIndex) {
         if (String(nodes[n.id].filtered).length > maxFilteredLen) {
           maxFilteredLen = String(nodes[n.id].filtered).length;
         }
-        let l;
-        if (typeof nodes[n.id].runtime === 'number') {
-          l = String(nodes[n.id].runtime.toFixed(3)).length;
-        } else {
-          l = nodes[n.id].runtime.length;
-        }
-        if (l > maxRuntimeLen) {
-          maxRuntimeLen = l;
-        }
-      }
-    });
-    // by design the runtime is cumulative right now.
-    // by subtracting the dependencies from parent runtime we get the runtime per node
-    stats.nodes.forEach(n => {
-      if (typeof n.runtime === 'number') {
-        if (parents.hasOwnProperty(n.id)) {
-          parents[n.id].forEach(pid => {
-            if (typeof nodes[pid].runtime === 'number') {
-              nodes[pid].runtime -= n.runtime;
-            }
-          });
+        if (nodes[n.id].runtime.length > maxRuntimeLen) {
+          maxRuntimeLen = nodes[n.id].runtime.length;
         }
       }
     });
@@ -1319,6 +1327,7 @@ function processQuery(query, explain, planIndex) {
 
       return allIndexes;
     };
+
     switch (node.type) {
       case 'SingletonNode':
         return keyword('ROOT');
@@ -2204,29 +2213,15 @@ function processQuery(query, explain, planIndex) {
     }
 
     if (profileMode) {
-      if (node.calls === undefined) {
-        node.calls = 'n/a';
-      }
-      if (node.items === undefined) {
-        node.items = 'n/a';
-      }
-      if (node.filtered === undefined) {
-        node.filtered = 'n/a';
-      }
-      let runtime = node.runtime;
-      if (runtime === undefined) {
-        runtime = 'n/a';
-      } else {
-        runtime = String(Math.abs(node.runtime).toFixed(5));
-      }
-
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
+        pad(1 + maxParallelLen - String(node.parallel).length) + value(node.parallel) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
         pad(1 + maxFilteredLen - String(node.filtered).length) + value(node.filtered) + '   ' +
-        pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
+        pad(1 + maxRuntimeLen - node.runtime.length) + value(node.runtime) + '   ' +
         indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
     } else {
-      line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
+      line += pad('Par'.length) + value(node.isAsyncPrefetchEnabled ? '✓' : ' ') + '   ' +
+        pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
         indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
     }
 
@@ -2243,7 +2238,7 @@ function processQuery(query, explain, planIndex) {
 
   stringBuilder.appendLine(section('Execution plan:'));
 
-  var line = ' ' +
+  let line = ' ' +
     pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
     header('NodeType') + pad(1 + maxTypeLen - String('NodeType').length) + '   ';
 
@@ -2253,12 +2248,15 @@ function processQuery(query, explain, planIndex) {
 
   if (profileMode) {
     line += pad(1 + maxCallsLen - String('Calls').length) + header('Calls') + '   ' +
+      pad(1 + maxParallelLen - String('Par').length) + header('Par') + '   ' +
       pad(1 + maxItemsLen - String('Items').length) + header('Items') + '   ' +
       pad(1 + maxFilteredLen - String('Filtered').length) + header('Filtered') + '   ' +
       pad(1 + maxRuntimeLen - String('Runtime [s]').length) + header('Runtime [s]') + '   ' +
       header('Comment');
   } else {
-    line += pad(1 + maxEstimateLen - String('Est.').length) + header('Est.') + '   ' +
+    line += 
+      pad(1 + maxParallelLen - String('Par').length) + header('Par') + '   ' +
+      pad(1 + maxEstimateLen - String('Est.').length) + header('Est.') + '   ' +
       header('Comment');
   }
 

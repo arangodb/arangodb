@@ -335,8 +335,9 @@ void Query::prepareQuery() {
         _queryOptions.profile >= ProfileLevel::Blocks &&
         ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
     if (keepPlan) {
-      unsigned flags =
-          ExecutionPlan::buildSerializationFlags(false, false, false);
+      unsigned flags = ExecutionPlan::buildSerializationFlags(
+          /*verbose*/ false, /*includeInternals*/ false,
+          /*explainRegisters*/ false);
       _planSliceCopy = std::make_unique<VPackBufferUInt8>();
       VPackBuilder b(*_planSliceCopy);
       plan->toVelocyPack(b, _ast.get(), flags);
@@ -1511,6 +1512,8 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
     TRI_ASSERT(!_ast->containsModificationNode());
     return _transactionContext->clone();
   }
+  // TODO: make this cheaper!
+  return _transactionContext->clone();
   return _transactionContext;
 }
 

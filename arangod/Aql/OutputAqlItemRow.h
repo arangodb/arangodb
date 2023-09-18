@@ -140,7 +140,7 @@ class OutputAqlItemRow {
   void advanceRow();
 
   // returns true if row was produced
-  [[nodiscard]] bool produced() const {
+  [[nodiscard]] bool produced() const noexcept {
     return _inputRowCopied && allValuesWritten();
   }
 
@@ -160,14 +160,14 @@ class OutputAqlItemRow {
    *        the client call as well. We are considered full as soon as
    *        hard or softLimit are reached.
    */
-  [[nodiscard]] bool isFull() const { return numRowsLeft() == 0; }
+  [[nodiscard]] bool isFull() const noexcept { return numRowsLeft() == 0; }
 
   /**
    * @brief Test if all allocated rows are used.
    *        this does not consider the client call and allows to use
    *        the left-over space for ShadowRows.
    */
-  [[nodiscard]] bool allRowsUsed() const {
+  [[nodiscard]] bool allRowsUsed() const noexcept {
     return _block == nullptr || block().numRows() <= _baseIndex;
   }
 

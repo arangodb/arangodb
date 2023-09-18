@@ -488,6 +488,10 @@ CostEstimate IndexNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility IndexNode::canUseAsyncPrefetching() const noexcept {
+  return DocumentProducingNode::canUseAsyncPrefetching();
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void IndexNode::getVariablesUsedHere(VarSet& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);

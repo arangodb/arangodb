@@ -805,6 +805,10 @@ CostEstimate GraphNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility GraphNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kDisableGlobally;
+}
+
 void GraphNode::addEngine(aql::EngineId engineId, ServerID const& server) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   _engines.try_emplace(server, engineId);
