@@ -804,6 +804,7 @@ optimizations.)");
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                OptimizerRule::Flags::Hidden),
       //                               OptimizerRule::Flags::DisabledByDefault),
+      //                               // TODO
       R"(Allow query execution nodes to asynchronously prefetch the
 next batch while processing the current batch, allowing parts of the query to
 run in parallel. This is an experimental option as not all operations are

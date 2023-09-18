@@ -1514,7 +1514,7 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
   }
   // TODO: make this cheaper!
   return _transactionContext->clone();
-  return _transactionContext;
+  // return _transactionContext;
 }
 
 velocypack::Options const& Query::vpackOptions() const {

@@ -8457,7 +8457,12 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
       TRI_ASSERT(!stack.empty());
       if (stack.back() == 0 &&
           eligibility == AsyncPrefetchEligibility::kEnableForNode &&
-          !n->isInSubquery()) {
+          !n->isInSubquery() &&
+          (!n->hasParent() || n->getFirstParent()->getType() != EN::REMOTE)) {
+        // we are currently excluding any node inside a subquery and all
+        // nodes that are direct dependencies of REMOTE nodes from the
+        // optimization, because of assertion failures.
+        // TODO: lift these restrictions.
         n->setIsAsyncPrefetchEnabled(true);
       }
       if (eligibility ==
@@ -8477,7 +8482,7 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
       stack.pop_back();
     }
 
-    std::vector<uint32_t> stack;
+    containers::SmallVector<uint32_t, 4> stack;
     bool eligible{true};
   };
 
