@@ -790,8 +790,9 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     cmd = options.valgrind;
   }
 
+  const launchCmd = `${Date()} executeAndWait: cmd =${cmd} args =${JSON.stringify(args)}`;
   if (options.extremeVerbosity) {
-    print(Date() + ' executeAndWait: cmd =', cmd, 'args =', args);
+    print(launchCmd);
   }
 
   const startTime = time();
@@ -830,7 +831,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
         return {
           timeout: true,
           status: false,
-          message: 'irregular termination by TIMEOUT',
+          message: `irregular termination of '${launchCmd}' by TIMEOUT`,
           duration: deltaTime
         };
       }
@@ -861,11 +862,11 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
        (platform.substr(0, 3) === 'win')
       )
      ) {
-    print(Date() + " executeAndWait: Marking crashy - " + JSON.stringify(instanceInfo));
+    print(`${Date()} executeAndWait: Marking '${launchCmd}' crashy - ${JSON.stringify(instanceInfo)}`);
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,
                             options,
-                            'execution of ' + cmd + ' - ' + instanceInfo.exitStatus.signal);
+                            `execution of '${launchCmd}' - ${instanceInfo.exitStatus.signal}`);
     if (options.coreCheck) {
       print(instanceInfo.exitStatus.gdbHint);
     }
@@ -890,7 +891,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       return {
         timeout: false,
         status: false,
-        message: 'exit code was ' + instanceInfo.exitStatus.exit,
+        message: `exit code of '${launchCmd}' was ${instanceInfo.exitStatus.exit}`,
         duration: deltaTime,
         exitCode: instanceInfo.exitStatus.exit,
       };
@@ -907,8 +908,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     return {
       timeout: false,
       status: false,
-      message: 'irregular termination: ' + instanceInfo.exitStatus.status +
-        ' exit signal: ' + instanceInfo.exitStatus.signal + errorMessage,
+      message: `irregular termination of '${launchCmd}': ${instanceInfo.exitStatus.status}` +
+        ` exit signal: ${instanceInfo.exitStatus.signal} ${errorMessage}`,
       duration: deltaTime
     };
   } else if (res.status === 'TIMEOUT') {
@@ -919,7 +920,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       crashUtils.analyzeCrash(cmd,
                               instanceInfo,
                               options,
-                              'execution of ' + cmd + ' - kill because of timeout');
+                              `execution of '${launchCmd}' - kill because of timeout`);
       if (options.coreCheck) {
         print(instanceInfo.exitStatus.gdbHint);
       }
@@ -930,8 +931,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     return {
       timeout: true,
       status: false,
-      message: 'termination by timeout: ' + instanceInfo.exitStatus.status +
-        ' killed by : ' + abortSignal + errorMessage,
+      message: `termination of '${launchCmd}' by timeout: ${instanceInfo.exitStatus.status}` +
+        ` killed by : ${abortSignal} ${errorMessage}`,
       duration: deltaTime
     };
   } else {
@@ -946,8 +947,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     return {
       timeout: false,
       status: false,
-      message: 'irregular termination: ' + instanceInfo.exitStatus.status +
-        ' exit code: ' + instanceInfo.exitStatus.exit + errorMessage,
+      message: `irregular termination of  '${launchCmd}' : ${instanceInfo.exitStatus.status}` +
+        ` exit code: ${instanceInfo.exitStatus.exit} ${errorMessage}`,
       duration: deltaTime
     };
   }
