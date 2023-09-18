@@ -528,6 +528,10 @@ void NetworkFeature::retryRequest(
     }
   };
 
+  // we need the mutex during `queueDelayed` because the lambda might be
+  // executed faster than we can add the work item to the _retryRequests map.
+  std::unique_lock guard(_workItemMutex);
+
   // this will automatically cancel the request when we leave this
   // method, unless we are canceling this scopeGuard explicitly.
   // note that the mutex lock will be unlocked before the scopeGuard
@@ -537,10 +541,6 @@ void NetworkFeature::retryRequest(
       req->cancel();
     }
   });
-
-  // we need the mutex during `queueDelayed` because the lambda might be
-  // executed faster than we can add the work item to the _retryRequests map.
-  std::unique_lock guard(_workItemMutex);
 
   if (server().isStopping()) {
     // with trigger cancelGuard - cancels request
