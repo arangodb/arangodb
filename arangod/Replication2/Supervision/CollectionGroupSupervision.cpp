@@ -445,6 +445,52 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
       return UpdateCollectionPlan{cid, iter->second.mutableProperties};
     }
 
+    {
+      // Compare Indexes
+      auto const& targetIndexes = iter->second.indexes.indexes;
+      auto const& planIndexes = collection.indexes.indexes;
+
+      // NOTE/TODO: Maybe we want to make the Target entry for Indexes an Object
+      // where the keys are the IndexIds, this way we already have the lookupList here.
+
+      // This lookup set should map indexId -> foundInPlan
+      // It will be seeded with all indexes from the target.
+      // If an index is found in plan it is supposed to erase
+      // it's entry. => Whatever is left is missing in Plan.
+      std::unordered_set<std::string> lookupTargetIndexes;
+      lookupTargetIndexes.reserve(targetIndexes.size());
+      for (auto const& it : targetIndexes) {
+        auto idx = it.slice().get(StaticStrings::IndexId);
+        TRI_ASSERT(idx.isString());
+        lookupTargetIndexes.emplace(idx.copyString());
+      }
+
+      // Now check what we have in Plan
+      for (auto const& it : planIndexes) {
+        auto idx = it.slice().get(StaticStrings::IndexId);
+        TRI_ASSERT(idx.isString());
+        auto indexId = idx.copyString();
+        auto removedCount = lookupTargetIndexes.erase(indexId);
+        if (removedCount == 0) {
+          // This is an Index that is in Plan but not in Target
+          return RemoveCollectionIndexPlan{cid, it.sharedSlice()};
+        }
+      }
+
+      if (!lookupTargetIndexes.empty()) {
+        // This is at least one Index that is in Target but not yet in Plan
+        // Create an action to create the first one
+        auto const& missingIndex = lookupTargetIndexes.begin();
+        // We need to find the index again in the list of all Indexes in Target
+        for (auto const& it : targetIndexes) {
+          if (it.slice().get(StaticStrings::IndexId).isEqualString(*missingIndex)) {
+            return AddCollectionIndexPlan{cid, it.buffer()};
+          }
+        }
+        TRI_ASSERT(false) << "We discovered a missing index, it has to be part of the list of indexes";
+      }
+    }
+
     if (!collection.immutableProperties.shadowCollections.has_value()) {
       // TODO remove deprecatedShardMap comparison
       auto expectedShardMap = computeShardList(
@@ -621,6 +667,47 @@ struct TransactionBuilder {
       tmp = std::move(tmp).remove(basics::StringUtils::concatT(
           "/arango/Plan/Collections/", database, "/", action.cid, "/schema"));
     }
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
+  void operator()(RemoveCollectionIndexPlan const& action) {
+    auto tmp = env.write();
+    // Just overwrite all indexes as defined by the Action
+    tmp = std::move(tmp).erase_object(
+        basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
+                                     action.cid, "/indexes"),
+        [&](VPackBuilder& builder) {
+          builder.add(action.index.slice());
+        });
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
+  void operator()(AddCollectionIndexPlan const& action) {
+    auto tmp = env.write();
+    // Just overwrite all indexes as defined by the Action
+    tmp = std::move(tmp).push_object(
+        basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
+                                     action.cid, "/indexes"),
+        [&](VPackBuilder& builder) {
+          arangodb::velocypack::Slice indexData{action.index->data()};
+          // We need to add the isBuildingFlag
+          TRI_ASSERT(indexData.isObject());
+          VPackObjectBuilder guard{&builder};
+          for (auto const& [key, value] : VPackObjectIterator(indexData)) {
+            builder.add(key.copyString(), value);
+          }
+          builder.add(StaticStrings::IndexIsBuilding, VPackValue(true));
+        });
     env = std::move(tmp)
               .inc("/arango/Plan/Version")
               .precs()
