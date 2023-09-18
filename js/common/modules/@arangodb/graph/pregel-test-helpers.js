@@ -100,6 +100,62 @@ const pregelRunSmallInstanceGetComponents = function (algName, graphName, parame
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
+const epsilon = 0.00001;
+
+const runFinishedSuccessfully = (stats) => stats.state === "done";
+const runCanceled = (stats) => stats.state === "canceled";
+const runInFatalError = (stats) => stats.state === "fatal error";
+const runFinishedUnsuccessfully = (stats) => runCanceled(stats) || runInFatalError(stats);
+const runFinished = (stats) => runFinishedSuccessfully(stats) || runFinishedUnsuccessfully(stats);
+
+const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sleepIntervalSeconds = 0.2) {
+  let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
+  var status;
+  // Note: This is added because there is a race between the conductor for pid
+  // being created and the user asking for the status of a pregel run for the
+  // first time.
+  //
+  // The *correct* fix for this is that once a client gets to know an
+  // ExecutionNumber this should be valid for being requested.
+  do {
+    internal.sleep(sleepIntervalSeconds);
+    try {
+      status = pregel.status(pid);
+    } catch(e) {
+      require('console').warn(`ExecutionNumber ${pid} does not exist (yet).`);
+    }
+    if (wakeupsLeft-- === 0) {
+      assertTrue(false, "Pregel did not start after timeout");
+      return;
+    }
+  } while(status === undefined);
+  do {
+    internal.sleep(sleepIntervalSeconds);
+    try {
+      status = pregel.status(pid);
+    } catch(e) {
+      require('console').warn("ExecutionNumber ${pid} does not exist.");
+      return;
+    }
+    if (wakeupsLeft-- === 0) {
+      assertTrue(false, "Pregel did not finish after timeout but is in state " + status.state);
+      return;
+    }
+  } while (!runFinished(status));
+
+  if (runFinishedSuccessfully(status)) {
+    return status;
+  }
+
+  if (runInFatalError(status)) {
+    assertTrue(false, "Pregel run finished unsuccessfully with error " + status.errorMessage);
+    return status;
+  }
+
+  assertTrue(false, "Pregel run finished unsuccessfully in state " + status.state);
+  return status;
+};
+
 function makeSetUp(smart, smartAttribute, numberOfShards) {
     return function () {
         if (smart) {
@@ -899,6 +955,33 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
     };
 }
 
+/**
+ * Assert that expected and actual are of the same type and that they are equal up to the tolerance epsilon.
+ * @param expected the expected value, a number
+ * @param actual the actual value, a number
+ * @param epsilon the tolerance, a number
+ * @param msg the message to prepend th output of the values
+ * @param expectedDescription the description of expected
+ * @param actualDescription the description of actual
+ * @param context the context in that the test is performed, output after the values
+ */
+const assertAlmostEquals = function (expected, actual, epsilon, msg, expectedDescription, actualDescription, context) {
+  assertEqual(typeof expected, typeof actual,
+    `Different types: type of ${expectedDescription} is ${typeof expected}, ` +
+    `type of ${actualDescription} is ${typeof actual}. ` + `${context}`);
+  if (Math.abs(expected - actual) >= epsilon) {
+    console.error(msg + ":");
+    console.error("    " + expectedDescription + ":");
+    console.error("        " + expected);
+    console.error("    " + actualDescription + ":");
+    console.error("        " + actual);
+    console.error("    Difference: " + Math.abs(actual - expected));
+    console.error(context);
+    assertTrue(false);
+  }
+};
+
+
 function makePagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
@@ -1035,3 +1118,6 @@ exports.makeSCCTestSuite = makeSCCTestSuite;
 exports.makeLabelPropagationTestSuite = makeLabelPropagationTestSuite;
 exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeLineRankTestSuite = makeLineRankTestSuite;
+
+exports.assertAlmostEquals = assertAlmostEquals;
+exports.waitUntilRunFinishedSuccessfully = waitUntilRunFinishedSuccessfully;
