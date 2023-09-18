@@ -177,9 +177,6 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       TRI_ASSERT(inputRange.skippedInFlight() > 0);
       break;
     } else {
-      TRI_ASSERT(remainingOffset() == 0);
-      TRI_ASSERT(output.isFull());
-      TRI_ASSERT(!call.needsFullCount());
       // We are done with producing.
       if (infos().isFullCountEnabled()) {
         // However we need to report the fullCount from above.
