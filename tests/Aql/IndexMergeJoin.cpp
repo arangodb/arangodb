@@ -4,6 +4,7 @@
 #include <span>
 #include <vector>
 #include <iostream>
+#include <random>
 
 #include <gtest/gtest.h>
 
@@ -87,8 +88,34 @@ struct PatternBase {
   }
 };
 
+constexpr std::size_t scale = 1'000'000;
+
 struct JoinTestBase : ::testing::Test {
   static std::shared_ptr<RocksDBInstance> db;
+
+  static std::vector<std::uint64_t> const& getRandomKeys() {
+    static auto keys = [] {
+      std::vector<uint64_t> result(scale);
+      for (std::size_t k = 0; k < scale; k++) {
+        result.emplace_back(k);
+      }
+      std::mt19937 g(8745315);
+      std::shuffle(result.begin(), result.end(), g);
+      return result;
+    }();
+    return keys;
+  }
+
+  static std::vector<std::uint64_t> const& getSequentialKeys() {
+    static auto keys = [] {
+      std::vector<uint64_t> result(scale);
+      for (std::size_t k = 0; k < scale; k++) {
+        result.emplace_back(k);
+      }
+      return result;
+    }();
+    return keys;
+  }
 };
 
 std::shared_ptr<RocksDBInstance> JoinTestBase::db;
@@ -104,6 +131,9 @@ struct MyJoinPerformanceTest : JoinTestBase {
     rocksdb::FlushOptions fo;
     fo.wait = true;
     db->getDatabase()->Flush(fo);
+
+    std::ignore = getRandomKeys();
+    std::ignore = getSequentialKeys();
   }
 
   static std::string buildKey(std::uint64_t prefix, std::uint64_t key) {
@@ -129,8 +159,6 @@ struct MyJoinPerformanceTest : JoinTestBase {
     return iter;
   }
 };
-
-constexpr std::size_t scale = 100'000'000;
 
 struct SameRangePattern : PatternBase {
   void operator()(RocksDBInstance& db) {
@@ -351,4 +379,24 @@ TYPED_TEST(MyJoinPerformanceTest, merge_join_next) {
 
   LOG_DEVEL_ITER << "num seeks = " << numSeeks;
   LOG_DEVEL_ITER << "num results = " << numResults;
+}
+
+TYPED_TEST(MyJoinPerformanceTest, many_sequential_seeks) {
+  auto iter1 = this->iterForPrefix(1);
+  auto iter2 = this->iterForPrefix(2);
+
+  for (std::size_t k : this->getSequentialKeys()) {
+    auto key = this->buildKey(1, k);
+    iter1->Seek(key);
+  }
+}
+
+TYPED_TEST(MyJoinPerformanceTest, many_random_seeks) {
+  auto iter1 = this->iterForPrefix(1);
+  auto iter2 = this->iterForPrefix(2);
+
+  for (std::size_t k : this->getRandomKeys()) {
+    auto key = this->buildKey(1, k);
+    iter1->Seek(key);
+  }
 }
