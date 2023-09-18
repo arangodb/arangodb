@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed BTS-1610: In certain situations with at least three levels of nested
+  subqueries, of which some of the outer iterations don't return any results,
+  results of later iterations could be lost.
+
 * Fixed BTS-1239: Restoring a single server dump with system collections
   into a cluster caused some of those system collections to lose the
   `distributeShardsLike` setting and also changed the `shardingStrategy` to
