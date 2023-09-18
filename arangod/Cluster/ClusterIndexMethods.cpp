@@ -312,7 +312,7 @@ class CollectionWatcher
 };
 
 auto buildIndexEntry(VPackSlice input, size_t numberOfShards,
-                     std::string_view idString) -> VPackBuilder {
+                     std::string_view idString, bool includeIsBuilding) -> VPackBuilder {
   VPackBuilder newIndexBuilder;
   {
     VPackObjectBuilder ob(&newIndexBuilder);
@@ -326,7 +326,7 @@ auto buildIndexEntry(VPackSlice input, size_t numberOfShards,
         ob->add(e.value);
       }
     }
-    if (numberOfShards > 0) {
+    if (numberOfShards > 0 && includeIsBuilding) {
       ob->add(StaticStrings::IndexIsBuilding, VPackValue(true));
       // add our coordinator id and reboot id
       ob->add(StaticStrings::AttrCoordinator,
@@ -602,7 +602,7 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
 
   const size_t numberOfShards = collection.numberOfShards();
   VPackBuilder newIndexBuilder =
-      ::buildIndexEntry(index, numberOfShards, idString);
+      ::buildIndexEntry(index, numberOfShards, idString, false);
 
   auto report = std::make_shared<CurrentWatcher>();
   {
@@ -676,8 +676,10 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
   }
   report->clearCallbacks();
 
-  auto targetPath = pathCollectionInTarget(collection.vocbase().name(), std::to_string(collection.id().id()));
-  std::string const targetIndexesKey = targetPath->str() + "/indexes";
+  auto targetPath = pathCollectionInTarget(
+      collection.vocbase().name(), std::to_string(collection.id().id()));
+  std::string const targetIndexesKey =
+      targetPath->str(arangodb::cluster::paths::SkipComponents(1)) + "/indexes";
   AgencyOperation newValue(targetIndexesKey, AgencyValueOperationType::PUSH,
                            newIndexBuilder.slice());
 
@@ -890,7 +892,7 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
       };
 
   VPackBuilder newIndexBuilder =
-      ::buildIndexEntry(slice, numberOfShards, idString);
+      ::buildIndexEntry(slice, numberOfShards, idString, true);
 
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our
