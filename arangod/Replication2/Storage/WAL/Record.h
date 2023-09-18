@@ -82,7 +82,7 @@ struct Record {
   };
   static_assert(sizeof(CompressedHeader) == 24);
 
-  static std::uint32_t paddedPayloadSize(std::uint32_t size) {
+  static std::uint64_t paddedPayloadSize(std::uint64_t size) {
     // we round to the next multiple of 8
     return (size + 7) & ~7;
   }

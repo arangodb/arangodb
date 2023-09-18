@@ -71,7 +71,7 @@ struct BufferWriter {
   }
 
  private:
-  std::uint32_t writeNormalEntry(LogEntry const& entry) {
+  std::uint64_t writeNormalEntry(LogEntry const& entry) {
     TRI_ASSERT(entry.hasPayload());
     Record::Header header;
     header.index = entry.logIndex().value;
@@ -86,7 +86,7 @@ struct BufferWriter {
     return header.payloadSize;
   }
 
-  std::uint32_t writeMetaEntry(LogEntry const& entry) {
+  std::uint64_t writeMetaEntry(LogEntry const& entry) {
     TRI_ASSERT(entry.hasMeta());
     Record::Header header;
     header.index = entry.logIndex().value;
