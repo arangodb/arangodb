@@ -1,6 +1,7 @@
 devel
 -----
 
+
 * Added the following server startup options that can be used to limit
   the resource usage of parallel arangodump invocations:
 
@@ -39,6 +40,9 @@ devel
   - `arangodb_dump_threads_blocked_total`: Number of times a server-side 
     dump thread was blocked because it honored the server-side memory 
     limit for dumps.
+
+* Removed DocuBlocks and obsolete documentation tooling.
+  The HTTP API descriptions are now in the `arangodb/docs-hugo` repository.
 
 * When dropping a database, immediately also mark all collections of the
   database as dropped. This has the advantage that ongoing operations on these
@@ -9576,8 +9580,6 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.environment-variables-whitelist`: control environment variables visible in JavaScript
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
-
-  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 

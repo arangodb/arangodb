@@ -142,10 +142,6 @@ RestStatus RestViewHandler::execute() {
   return RestStatus::DONE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_post_api_cursor
-////////////////////////////////////////////////////////////////////////////////
-
 void RestViewHandler::createView() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
@@ -358,10 +354,6 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   generateResult(rest::ResponseCode::OK, builder.close().slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_post_api_cursor_delete
-////////////////////////////////////////////////////////////////////////////////
-
 void RestViewHandler::deleteView() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
@@ -433,10 +425,6 @@ void RestViewHandler::deleteView() {
 
   generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_post_api_cursor_delete
-////////////////////////////////////////////////////////////////////////////////
 
 void RestViewHandler::getViews() {
   std::vector<std::string> const& suffixes = _request->suffixes();
