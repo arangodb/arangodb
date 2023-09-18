@@ -1252,7 +1252,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       return ExecState::NEXTSUBQUERY;
     }
 
-    [[maybe_unused]] bool const hasDoneNothing =
+    bool const hasDoneNothing =
         _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
     auto&& [state, shadowRow] = _lastRange.nextShadowRow();
     TRI_ASSERT(shadowRow.isInitialized());
