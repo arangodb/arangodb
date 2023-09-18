@@ -30,7 +30,7 @@ yet.
 
 - If the modifications change any documented behavior or add new features,
   document the changes. It should be written in American English.
-  The documentation can be found in [docs repository](https://github.com/arangodb/docs#readme).
+  The documentation can be found in [`docs-hugo` repository](https://github.com/arangodb/docs-hugo#readme).
 
 - When done, run the complete test suite and make sure all tests pass.
 
@@ -279,10 +279,15 @@ favorite browser and open the web interface.
 All changes to any source will automatically re-build and reload your browser.
 Enjoy :)
 
-### Cross Origin Policy (CORS) ERROR
+#### Cross Origin Policy (CORS) ERROR
 
-Our front-end development server currently runs on port:`3000`, while the backend runs on port:`8529` respectively. This implies that when the front-end sends a request to the backend would result in Cross-Origin-Policy security checks which recently got enforced by some browsers for security reasons. Until recently, we never had reports of CORS errors when running both the backend and front-end dev servers independently, however,
-we recently confirmed that this error occurs in ( Chrome v: 98.0.4758.102 and Firefox v: 96.0.1 ).
+Our front-end development server currently runs on port:`3000`, while the backend
+runs on port:`8529` respectively. This implies that when the front-end sends a
+request to the backend would result in Cross-Origin-Policy security checks which
+recently got enforced by some browsers for security reasons. Until recently, we
+never had reports of CORS errors when running both the backend and front-end dev
+servers independently, however, we recently confirmed that this error occurs in
+(Chrome version 98.0.4758.102 and Firefox version 96.0.1).
 
 In case you run into CORS errors while running the development server, here is a quick fix:
 
@@ -337,6 +342,58 @@ For example to commit a patch for the transitive dependency `is-wsl` of the depe
 `node-netstat`, make your changes in `js/node/node_modules/node-netstat/node_modules/is-wsl`
 and then run `npx patch-package node-netstat/is-wsl` in `js/node` and commit the resulting
 patch file in `js/node/patches`.
+
+#### Build the HTTP API documentation for Swagger-UI
+
+The REST HTTP API of the ArangoDB server is described using the OpenAPI
+specification (formerly Swagger). The source code is in documentation repository
+at <https://github.com/arangodb/docs-hugo>.
+
+To build the `api-docs.json` file for viewing the API documentation in the
+Swagger-UI of the web interface (**SUPPORT** section, **Rest API** tab), run
+the following commands in a terminal:
+
+1. Get a working copy of the documentation content with Git:
+
+   `git clone https://github.com/arangodb/docs-hugo`
+
+2. Enter the `docs-hugo` folder:
+
+   `cd docs-hugo`
+
+3. Optional: Switch to a tag, branch, or commit if you want to build the
+   API documentation for a specific version of the docs:
+   
+   `git checkout <reference>`
+
+4. Enter the folder of the Docker toolchain, `amd64` on the x86-64 architecture
+   and `arm64` on ARM CPUs:
+
+   ```shell
+   cd toolchain/docker/amd64 # x86-64
+   cd toolchain/docker/arm64 # ARM 64-bit
+   ```
+
+5. Set the environment variable `ENV` to any value other than `local` to make
+   the documentation tooling not start a live server in watch mode but rather
+   create and static build and exit:
+
+   ```shell
+   export ENV=static  # Bash
+   set -xg ENV static # Fish
+   $Env:ENV='static'  # PowerShell
+   ```
+
+6. Run Docker Compose using the plain build configuration for the documentation:
+
+   `docker compose -f docker-compose.plain-build.yml up --abort-on-container-exit`
+
+7. When the docs building finishes successfully, you can find the `api-docs.json`
+   files in `site/data/<version>/`.
+
+8. Copy the respective `api-docs.json` file into the ArangoDB working copy or
+   installation folder under `js/apps/system/_admin/aardvark/APP/api-docs.json`
+   and refresh the web interface.
 
 ---
 

@@ -441,7 +441,9 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
       return DropCollectionPlan{cid};
     }
 
-    // TODO compare mutable properties and update if necessary
+    if (collection.mutableProperties != iter->second.mutableProperties) {
+      return UpdateCollectionPlan{cid, iter->second.mutableProperties};
+    }
 
     if (!collection.immutableProperties.shadowCollections.has_value()) {
       // TODO remove deprecatedShardMap comparison
@@ -598,6 +600,32 @@ struct TransactionBuilder {
               .precs()
               .isNotEmpty(basics::StringUtils::concatT(
                   "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .end();
+  }
+
+  void operator()(UpdateCollectionPlan const& action) {
+    auto tmp = env.write();
+    auto allProps = velocypack::serialize(action.spec);
+    ADB_PROD_ASSERT(allProps.isObject());
+    for (auto const& it : VPackObjectIterator(allProps.slice())) {
+      tmp = std::move(tmp).emplace_object(
+          basics::StringUtils::concatT("/arango/Plan/Collections/", database,
+                                       "/", action.cid, "/",
+                                       it.key.stringView()),
+          [&](VPackBuilder& builder) {
+            velocypack::serialize(builder, it.value);
+          });
+    }
+    // Special handling for Schema, which can be nullopt and should be removed
+    if (!action.spec.schema.has_value()) {
+      tmp = std::move(tmp).remove(basics::StringUtils::concatT(
+          "/arango/Plan/Collections/", database, "/", action.cid, "/schema"));
+    }
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
               .end();
   }
 

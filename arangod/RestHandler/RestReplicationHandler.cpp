@@ -38,6 +38,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterIndexMethods.h"
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/RebootTracker.h"
@@ -882,10 +883,6 @@ RestReplicationHandler::forwardingTarget() {
   return {std::make_pair(StaticStrings::Empty, false)};
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_makeFollower
-////////////////////////////////////////////////////////////////////////////////
-
 void RestReplicationHandler::handleCommandMakeFollower() {
   bool isGlobal = false;
   ReplicationApplier* applier = getApplier(isGlobal);
@@ -962,10 +959,6 @@ void RestReplicationHandler::handleUnforwardedTrampolineCoordinator() {
 
   TRI_ASSERT(false);  // should only get here if request is not well-formed
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_cluster_inventory
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandClusterInventory() {
   auto& replicationFeature = _vocbase.server().getFeature<ReplicationFeature>();
@@ -2012,8 +2005,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 
     VPackBuilder tmp;
 
-    res = ci.ensureIndexCoordinator(*col, idxDef, true, tmp,
-                                    cluster.indexCreationTimeout());
+    res = ClusterIndexMethods::ensureIndexCoordinator(
+        *col, idxDef, true, tmp, cluster.indexCreationTimeout());
 
     if (res.fail()) {
       return res.reset(
@@ -2112,10 +2105,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_serverID
-////////////////////////////////////////////////////////////////////////////////
-
 void RestReplicationHandler::handleCommandServerId() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
@@ -2124,10 +2113,6 @@ void RestReplicationHandler::handleCommandServerId() {
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_synchronize
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandSync() {
   bool isGlobal;
@@ -2196,10 +2181,6 @@ void RestReplicationHandler::handleCommandSync() {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_applier
-////////////////////////////////////////////////////////////////////////////////
-
 void RestReplicationHandler::handleCommandApplierGetConfig() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
@@ -2215,10 +2196,6 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_applier_adjust
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierSetConfig() {
   bool isGlobal;
@@ -2249,10 +2226,6 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   handleCommandApplierGetConfig();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_applier_start
-////////////////////////////////////////////////////////////////////////////////
-
 void RestReplicationHandler::handleCommandApplierStart() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
@@ -2276,10 +2249,6 @@ void RestReplicationHandler::handleCommandApplierStart() {
   handleCommandApplierGetState();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_applier_stop
-////////////////////////////////////////////////////////////////////////////////
-
 void RestReplicationHandler::handleCommandApplierStop() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
@@ -2290,10 +2259,6 @@ void RestReplicationHandler::handleCommandApplierStop() {
   applier->stopAndJoin();
   handleCommandApplierGetState();
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_applier_state
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetState() {
   bool isGlobal;
@@ -2308,10 +2273,6 @@ void RestReplicationHandler::handleCommandApplierGetState() {
   builder.close();
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_applier_state_all
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetStateAll() {
   if (_request->databaseName() != StaticStrings::SystemDatabase) {
@@ -2941,10 +2902,6 @@ void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
 
   generateResult(rest::ResponseCode::OK, b.slice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_logger_return_state
-////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerState() {
   TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
