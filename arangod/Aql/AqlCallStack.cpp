@@ -68,6 +68,16 @@ auto AqlCallStack::popCall() -> AqlCallList {
   return call;
 }
 
+void AqlCallStack::popDepthsLowerThan(size_t depth) {
+  TRI_ASSERT(!_operations.empty());
+  for (auto i = _operations.size() - depth; i < _operations.size(); ++i) {
+    auto& operation = _operations[i];
+    if (operation.hasMoreCalls()) {
+      std::ignore = operation.popNextCall();
+    }
+  }
+}
+
 auto AqlCallStack::peek() const -> AqlCall const& {
   TRI_ASSERT(!_operations.empty());
   return _operations.back().peekNextCall();
