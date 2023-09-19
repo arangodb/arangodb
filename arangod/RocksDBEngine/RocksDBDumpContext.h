@@ -60,9 +60,11 @@ class DatabaseFeature;
 class DatabaseGuard;
 class LogicalCollection;
 class RocksDBCollection;
+class RocksDBDumpManager;
 class RocksDBEngine;
 
 struct RocksDBDumpContextOptions {
+  std::uint64_t docsPerBatch = 10 * 1000;
   std::uint64_t batchSize = 16 * 1024;
   std::uint64_t prefetchCount = 2;
   std::uint64_t parallelism = 2;
@@ -72,6 +74,7 @@ struct RocksDBDumpContextOptions {
   template<class Inspector>
   inline friend auto inspect(Inspector& f, RocksDBDumpContextOptions& o) {
     return f.object(o).fields(
+        f.field("docsPerBatch", o.docsPerBatch).fallback(f.keep()),
         f.field("batchSize", o.batchSize).fallback(f.keep()),
         f.field("prefetchCount", o.prefetchCount).fallback(f.keep()),
         f.field("parallelism", o.parallelism).fallback(f.keep()),
@@ -85,11 +88,17 @@ class RocksDBDumpContext {
   RocksDBDumpContext(RocksDBDumpContext const&) = delete;
   RocksDBDumpContext& operator=(RocksDBDumpContext const&) = delete;
 
-  RocksDBDumpContext(RocksDBEngine& engine, DatabaseFeature& databaseFeature,
-                     std::string id, RocksDBDumpContextOptions options,
-                     std::string user, std::string database, bool useVPack);
+  RocksDBDumpContext(RocksDBEngine& engine, RocksDBDumpManager& manager,
+                     DatabaseFeature& databaseFeature, std::string id,
+                     RocksDBDumpContextOptions options, std::string user,
+                     std::string database, bool useVPack);
 
   ~RocksDBDumpContext();
+
+  // this will make the dump context stop all its threads
+  void stop() noexcept;
+
+  bool stopped() const noexcept;
 
   // return id of the context. will not change during the lifetime of the
   // context.
@@ -123,20 +132,28 @@ class RocksDBDumpContext {
     Batch(Batch const&) = delete;
     Batch& operator=(Batch const&) = delete;
 
-    Batch(std::string_view shard) : shard(shard) {}
-    virtual ~Batch() = default;
+    Batch(RocksDBDumpManager& manager, std::uint64_t batchSize,
+          std::string_view shard)
+        : manager(manager), shard(shard), memoryUsage(batchSize), numDocs(0) {}
+    virtual ~Batch();
 
     virtual void add(velocypack::Slice) = 0;
     virtual void close() = 0;
     virtual std::string_view content() const = 0;
     virtual size_t byteSize() const = 0;
 
+    size_t count() const noexcept { return numDocs; }
+
+    RocksDBDumpManager& manager;
     std::string_view shard;
+    std::uint64_t memoryUsage;
+    std::size_t numDocs;
   };
 
   class BatchVPackArray : public Batch {
    public:
-    explicit BatchVPackArray(std::string_view shard);
+    explicit BatchVPackArray(RocksDBDumpManager& manager,
+                             std::uint64_t batchSize, std::string_view shard);
     ~BatchVPackArray();
 
     void add(velocypack::Slice data) override;
@@ -150,7 +167,8 @@ class RocksDBDumpContext {
 
   class BatchJSONL : public Batch {
    public:
-    explicit BatchJSONL(std::string_view shard,
+    explicit BatchJSONL(RocksDBDumpManager& manager, std::uint64_t batchSize,
+                        std::string_view shard,
                         velocypack::Options const* options);
     ~BatchJSONL();
 
@@ -228,6 +246,8 @@ class RocksDBDumpContext {
 
   RocksDBEngine& _engine;
 
+  RocksDBDumpManager& _manager;
+
   // these parameters will not change during the lifetime of the object.
 
   // context id
@@ -290,6 +310,8 @@ class RocksDBDumpContext {
 
   // Counts +1 for a block on the pop side and -1 for a block on the push side.
   std::atomic<int64_t> _blockCounter{0};
+
+  std::atomic_bool _stopped{false};
 };
 
 }  // namespace arangodb

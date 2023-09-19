@@ -66,6 +66,7 @@ class DumpFeature final : public ArangoDumpFeature {
     std::vector<std::string> shards{};
     std::string outputPath{};
     std::string maskingsFile{};
+    uint64_t docsPerBatch{1000 * 10};
     uint64_t initialChunkSize{1024 * 1024 * 8};
     uint64_t maxChunkSize{1024 * 1024 * 64};
     // actual default value depends on the number of available cores

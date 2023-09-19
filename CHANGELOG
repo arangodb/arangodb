@@ -1,6 +1,6 @@
 devel
 -----
-
+    
 * FE-365: fix query import breaking due to extra fields.
 
 * Fixed BTS-1239: Restoring a single server dump with system collections
@@ -13,6 +13,45 @@ devel
 
 * Removed DocuBlocks and obsolete documentation tooling.
   The HTTP API descriptions are now in the `arangodb/docs-hugo` repository.
+
+* Added the following server startup options that can be used to limit
+  the resource usage of parallel arangodump invocations:
+
+  - `--dump.max-memory-usage`: Maximum memory usage (in bytes) to be 
+    used by the server-side parts of all ongoing arangodump invocations.
+    This option can be used to limit the amount of memory for prefetching
+    and keeping results on the server side when arangodump is invoked
+    with the `--parallel-dump` option. It does not have an effect for
+    arangodump invocations that did not use the `--parallel-dump` option.
+    Note that the memory usage limit is not exact and that it can be 
+    slightly exceeded in some situations to guarantee progress.
+  - `--dump.max-docs-per-batch`: Maximum number of documents per batch 
+    that can be used in a dump. If an arangodump invocation requests
+    higher values than configured here, the value will automatically be
+    capped to this value. Will only be followed for arangodump invocations
+    that use the `--parallel-dump` option.
+  - `--dump.max-batch-size`: Maximum batch size value (in bytes) that 
+    can be used in a dump. If an arangodump invocation requests larger
+    batch sizes than configured here, the actual batch sizes will be capped
+    to this value. Will only be followed for arangodump invocations that
+    use the `--parallel-dump` option.
+  - `--dump.max-parallelism`: Maximum parallelism (number of server-side
+    threads) that can be used in a dump. If an arangodump invocation requests
+    a higher number of prefetch threads than configured here, the actual 
+    number of server-side prefetch threads will be capped to this value. 
+    Will only be followed for arangodump invocations that use the 
+    `--parallel-dump` option.
+
+* Added the following metrics to observe the behavior of parallel
+  arangodump on the server:
+
+  - `arangodb_dump_memory_usage`: Current memory usage of all ongoing 
+    arangodump operations on the server.
+  - `arangodb_dump_ongoing`: Number of currently ongoing arangodump 
+    operations on the server.
+  - `arangodb_dump_threads_blocked_total`: Number of times a server-side 
+    dump thread was blocked because it honored the server-side memory 
+    limit for dumps.
 
 * When dropping a database, immediately also mark all collections of the
   database as dropped. This has the advantage that ongoing operations on these
