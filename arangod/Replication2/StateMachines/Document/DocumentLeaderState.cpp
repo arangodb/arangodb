@@ -650,11 +650,62 @@ auto DocumentLeaderState::createIndex(
           }
 
           if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
-            LOG_CTX("a03c7", ERR, self->loggerContext)
+            LOG_CTX("26355", ERR, self->loggerContext)
                 << "Failed to call release: " << releaseRes;
           }
           return {};
         });
+      });
+}
+
+auto DocumentLeaderState::dropIndex(LogicalCollection& col,
+                                    velocypack::SharedSlice indexInfo)
+    -> futures::Future<Result> {
+  ReplicatedOperation op = ReplicatedOperation::buildDropIndexOperation(
+      col.name(), std::move(indexInfo));
+
+  auto replication = _guardedData.doUnderLock([&](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    }
+
+    return replicateOperation(
+        op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
+  });
+
+  return std::move(replication)
+      .thenValue([self = shared_from_this(),
+                  op = std::move(op)](auto&& result) mutable {
+        if (result.fail()) {
+          return result.result();
+        }
+        auto logIndex = result.get();
+
+        return self->_guardedData.doUnderLock(
+            [logIndex, self, op = std::move(op)](auto& data) mutable -> Result {
+              if (data.didResign()) {
+                return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+              }
+
+              auto&& localIndexRemoval =
+                  data.transactionHandler->applyEntry(std::move(op));
+              if (localIndexRemoval.fail()) {
+                LOG_CTX("5c321", FATAL, self->loggerContext)
+                    << "DropIndex operation failed on the leader, after being "
+                       "replicated to followers: "
+                    << localIndexRemoval;
+                FATAL_ERROR_EXIT();
+              }
+
+              if (auto releaseRes = self->release(logIndex);
+                  releaseRes.fail()) {
+                LOG_CTX("57877", ERR, self->loggerContext)
+                    << "Failed to call release: " << releaseRes;
+              }
+
+              return {};
+            });
       });
 }
 

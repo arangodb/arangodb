@@ -66,6 +66,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   ErrorCode lockRead(double timeout = 0.0);
   void unlockRead();
 
+  void freeMemory() noexcept override;
+
   /// recalculate counts for collection in case of failure, blocks other writes
   /// for a short period
   uint64_t recalculateCounts() override;
@@ -93,18 +95,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
       std::string const& context, std::string& output,
       rocksdb::SequenceNumber& appliedSeq);
 
- private:
-  bool needToPersistRevisionTree(
-      rocksdb::SequenceNumber maxCommitSeq,
-      std::unique_lock<std::mutex> const& lock) const;
-  rocksdb::SequenceNumber lastSerializedRevisionTree(
-      rocksdb::SequenceNumber maxCommitSeq,
-      std::unique_lock<std::mutex> const& lock);
-  rocksdb::SequenceNumber serializeRevisionTree(
-      std::string& output, rocksdb::SequenceNumber commitSeq, bool force,
-      std::unique_lock<std::mutex> const& lock);
-
- public:
   Result rebuildRevisionTree() override;
   void rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter);
   // returns a pair with the number of documents and the tree's seq number.
@@ -149,6 +139,16 @@ class RocksDBMetaCollection : public PhysicalCollection {
 #endif
 
  private:
+  bool needToPersistRevisionTree(
+      rocksdb::SequenceNumber maxCommitSeq,
+      std::unique_lock<std::mutex> const& lock) const;
+  rocksdb::SequenceNumber lastSerializedRevisionTree(
+      rocksdb::SequenceNumber maxCommitSeq,
+      std::unique_lock<std::mutex> const& lock);
+  rocksdb::SequenceNumber serializeRevisionTree(
+      std::string& output, rocksdb::SequenceNumber commitSeq, bool force,
+      std::unique_lock<std::mutex> const& lock);
+
   /// @brief sends the collection's revision tree to hibernation
   void hibernateRevisionTree(std::unique_lock<std::mutex> const& lock);
 

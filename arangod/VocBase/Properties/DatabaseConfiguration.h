@@ -41,6 +41,7 @@ struct DatabaseConfiguration {
       std::function<ResultT<UserInputCollectionProperties>(std::string const&)>
           getCollectionGroupSharding);
 
+  bool isSystemDB = false;
   bool allowExtendedNames = false;
   bool shouldValidateClusterSettings = false;
   uint32_t maxNumberOfShards = 0;

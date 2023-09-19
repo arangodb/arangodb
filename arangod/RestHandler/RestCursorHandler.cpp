@@ -617,7 +617,6 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   return RestStatus::DONE;
 }
 
-/// @brief was docuBlock JSF_post_api_cursor
 RestStatus RestCursorHandler::createQueryCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 

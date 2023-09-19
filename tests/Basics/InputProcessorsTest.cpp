@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,38 +18,49 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Basics/InputProcessors.h"
 
-#include "ActionBase.h"
-#include "ActionDescription.h"
+#include "gtest/gtest.h"
 
-#include <chrono>
+using namespace arangodb;
 
-struct TRI_vocbase_t;
+TEST(InputProcessorsTest, testEmpty) {
+  {
+    std::string empty;
+    InputProcessorJSONL proc(empty);
+    ASSERT_FALSE(proc.valid());
+  }
 
-namespace arangodb {
+  {
+    std::string empty("\n");
+    InputProcessorJSONL proc(empty);
+    ASSERT_FALSE(proc.valid());
+  }
 
-class LogicalCollection;
+  {
+    std::string empty("\n\n\n");
+    InputProcessorJSONL proc(empty);
+    ASSERT_FALSE(proc.valid());
+  }
+}
 
-namespace maintenance {
+#ifndef _WIN32
+TEST(InputProcessorsTest, testNonEmpty) {
+  char const* data =
+#include "InputProcessorsData.json"
+      ;
 
-class DropIndex : public ActionBase {
- public:
-  DropIndex(MaintenanceFeature&, ActionDescription const&);
+  int rowsFound = 0;
+  InputProcessorJSONL proc(data);
+  while (proc.valid()) {
+    auto slice = proc.value();
+    ASSERT_TRUE(slice.isObject());
+    ++rowsFound;
+  }
 
-  virtual ~DropIndex();
-
-  virtual bool first() override final;
-
- private:
-  static auto dropIndexReplication2(TRI_vocbase_t* vocbase,
-                                    LogicalCollection& col,
-                                    velocypack::SharedSlice index) -> Result;
-};
-
-}  // namespace maintenance
-}  // namespace arangodb
+  ASSERT_EQ(202, rowsFound);
+}
+#endif
