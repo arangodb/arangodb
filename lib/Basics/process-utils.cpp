@@ -1080,7 +1080,8 @@ bool TRI_WritePipe(ExternalProcess const* process, char const* buffer,
 ////////////////////////////////////////////////////////////////////////////////
 
 ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
-                                               uint32_t timeout) {
+                                               uint32_t timeout,
+                                               bool(deadlineReached)(void) ) {
   auto status = TRI_LookupSpawnedProcessStatus(pid._pid);
 
   if (!status.has_value()) {
@@ -1124,6 +1125,10 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
         } else if (now >= endTime) {
           res = pid._pid;
           timeoutHappened = true;
+          break;
+        }
+        timeoutHappened = !deadlineReached();
+        if (timeoutHappened) {
           break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
@@ -1452,7 +1457,8 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal,
     // if the process wasn't spawned by us, no waiting required.
     int count = 0;
     while (true) {
-      ExternalProcessStatus status = TRI_CheckExternalProcess(pid, false, 0);
+      ExternalProcessStatus status = TRI_CheckExternalProcess(pid, false, 0,
+                                                              noDeadLine);
       if (!isTerminal) {
         // we just sent a signal, don't care whether
         // the process is gone by now.
@@ -1491,7 +1497,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal,
       count++;
     }
   }
-  return TRI_CheckExternalProcess(pid, false, 0);
+  return TRI_CheckExternalProcess(pid, false, 0, noDeadLine);
 }
 
 #ifdef _WIN32

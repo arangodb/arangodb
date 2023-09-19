@@ -210,7 +210,8 @@ bool TRI_WritePipe(ExternalProcess const* process, char const* buffer,
 ////////////////////////////////////////////////////////////////////////////////
 
 ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
-                                               uint32_t timeout);
+                                               uint32_t timeout,
+                                               bool(deadlineReached)(void));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
@@ -242,3 +243,5 @@ void TRI_ShutdownProcess();
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TRI_SetPriority(ExternalId pid, int prio);
+
+bool noDeadLine() { return false;}
