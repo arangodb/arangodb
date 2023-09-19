@@ -254,7 +254,7 @@ void EnumerateCollectionExecutor::initializeNewRow(
   _cursorHasMore = _cursor->hasMore();
 }
 
-[[nodiscard]] auto EnumerateCollectionExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto EnumerateCollectionExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (_infos.getCount()) {

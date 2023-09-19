@@ -98,7 +98,7 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, AqlCall{}};
 }
 
-[[nodiscard]] auto FilterExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto FilterExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (input.finalState() == MainQueryState::DONE) {

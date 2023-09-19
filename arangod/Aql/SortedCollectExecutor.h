@@ -166,7 +166,6 @@ class SortedCollectExecutor {
     static constexpr bool preservesOrder = false;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortedCollectExecutorInfos;
@@ -202,8 +201,8 @@ class SortedCollectExecutor {
    * it will produce exactly. It can however only
    * overestimate never underestimate.
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+  [[nodiscard]] auto expectedNumberOfRows(AqlItemBlockInputRange const& input,
+                                          AqlCall const& call) const noexcept
       -> size_t;
 
  private:
