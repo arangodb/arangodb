@@ -71,7 +71,11 @@ auto FileIterator::next() -> std::optional<PersistedLogEntry> {
   new (&_reader) LogReader(std::move(fileReader));
 
   res = _reader.readNextLogEntry();
-  ADB_PROD_ASSERT(res.ok());
+  if (res.errorNumber() == TRI_ERROR_END_OF_FILE) {
+    // this can only happen if we reach an empty active file
+    // TODO - add an assertion
+    return std::nullopt;
+  }
   return {std::move(res.get())};
 }
 

@@ -94,6 +94,8 @@ struct LogPersistor : ILogPersistor {
 
   void finishActiveLogFile(Files& f);
   void createNewActiveLogFile(Files& f);
+  auto removeBackFromFile(IFileWriter& writer, LogIndex start)
+      -> ResultT<SequenceNumber>;
 
   LogId const _logId;
   std::shared_ptr<IFileManager> const _fileManager;

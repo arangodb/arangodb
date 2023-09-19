@@ -29,9 +29,11 @@
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntry.h"
 #include "Replication2/ReplicatedLog/LogMetaPayload.h"
 #include "Replication2/ReplicatedLog/PersistedLogEntry.h"
+#include "Replication2/Storage/IteratorPosition.h"
 #include "Replication2/Storage/WAL/Buffer.h"
 #include "Replication2/Storage/WAL/EntryWriter.h"
 #include "Replication2/Storage/WAL/FileHeader.h"
@@ -432,6 +434,22 @@ TEST_F(LogPersistorSingleFileTest, removeBack_fails_if_start_index_too_large) {
 }
 
 struct LogPersistorMultiFileTest : ::testing::Test {
+  void SetUp() override {
+    // in case of uninteresting calls we don't want the default behavior that
+    // returns nullptr, because this simply leads to segmentation faults.
+    // so instead, we simply throw an exception
+    ON_CALL(*fileManager, createReader(_))
+        .WillByDefault([](auto& file) -> std::unique_ptr<IFileReader> {
+          throw std::runtime_error("Unexpected call to createReader(\"" + file +
+                                   "\")");
+        });
+    ON_CALL(*fileManager, createWriter(_))
+        .WillByDefault([](auto& file) -> std::unique_ptr<IFileWriter> {
+          throw std::runtime_error("Unexpected call to createWriter(\"" + file +
+                                   "\")");
+        });
+  }
+
   struct CompletedFile {
     std::string filename;
     std::string buffer;
@@ -742,16 +760,23 @@ TEST_F(LogPersistorMultiFileTest, getIterator) {
   }
 }
 
-TEST_F(LogPersistorMultiFileTest, removeFront) {
-  initializePersistor(
-      {{.filename = "file1",
-        .buffer = createBufferWithLogEntries(1, 3, LogTerm{1})},
-       {.filename = "file2",
-        .buffer = createBufferWithLogEntries(4, 6, LogTerm{1})},
-       {.filename = "file3",
-        .buffer = createBufferWithLogEntries(7, 9, LogTerm{2})}},
-      createBufferWithLogEntries(10, 12, LogTerm{2}));
+struct LogPersistorMultiFileTest_removeFront : LogPersistorMultiFileTest {
+  void SetUp() override {
+    LogPersistorMultiFileTest::SetUp();
+    initializePersistor(
+        {{.filename = "file1",
+          .buffer = createBufferWithLogEntries(1, 3, LogTerm{1})},
+         {.filename = "file2",
+          .buffer = createBufferWithLogEntries(4, 6, LogTerm{1})},
+         {.filename = "file3",
+          .buffer = createBufferWithLogEntries(7, 9, LogTerm{2})}},
+        createBufferWithLogEntries(10, 12, LogTerm{2}));
+    ASSERT_EQ(3, _completedFiles.size());
+  }
+};
 
+TEST_F(LogPersistorMultiFileTest_removeFront,
+       remove_some_entries_from_first_file) {
   auto res = persistor->removeFront(LogIndex{2}, {}).get();
   ASSERT_TRUE(res.ok());
   auto fileSet = persistor->fileSet();
@@ -761,31 +786,152 @@ TEST_F(LogPersistorMultiFileTest, removeFront) {
   ASSERT_TRUE(res.ok());
   fileSet = persistor->fileSet();
   ASSERT_EQ(3, fileSet.size());
+}
+
+TEST_F(LogPersistorMultiFileTest_removeFront,
+       remove_all_entries_from_first_file) {
+  EXPECT_CALL(*fileManager, deleteFile("file1"));
+  auto res = persistor->removeFront(LogIndex{4}, {}).get();
+  testing::Mock::VerifyAndClearExpectations(fileManager.get());
+  ASSERT_TRUE(res.ok());
+  auto fileSet = persistor->fileSet();
+  ASSERT_EQ(2, fileSet.size());
+  auto it = fileSet.begin();
+  EXPECT_EQ("file2", it->second.filename);
+}
+
+TEST_F(LogPersistorMultiFileTest_removeFront,
+       remove_all_entries_from_first_two_files) {
+  EXPECT_CALL(*fileManager, deleteFile("file1"));
+  EXPECT_CALL(*fileManager, deleteFile("file2"));
+  auto res = persistor->removeFront(LogIndex{7}, {}).get();
+  testing::Mock::VerifyAndClearExpectations(fileManager.get());
+  ASSERT_TRUE(res.ok());
+  auto fileSet = persistor->fileSet();
+  ASSERT_EQ(1, fileSet.size());
+  auto it = fileSet.begin();
+  EXPECT_EQ("file3", it->second.filename);
+}
+
+TEST_F(LogPersistorMultiFileTest_removeFront, remove_all_completed_files) {
+  EXPECT_CALL(*fileManager, deleteFile("file1"));
+  EXPECT_CALL(*fileManager, deleteFile("file2"));
+  EXPECT_CALL(*fileManager, deleteFile("file3"));
+  auto res = persistor->removeFront(LogIndex{10}, {}).get();
+  testing::Mock::VerifyAndClearExpectations(fileManager.get());
+  ASSERT_TRUE(res.ok());
+  auto fileSet = persistor->fileSet();
+  ASSERT_EQ(0, fileSet.size());
+}
+
+TEST_F(LogPersistorMultiFileTest_removeFront,
+       multiple_subsequent_removeFront_calls) {
+  auto res = persistor->removeFront(LogIndex{2}, {}).get();
+  ASSERT_TRUE(res.ok());
 
   EXPECT_CALL(*fileManager, deleteFile("file1"));
   res = persistor->removeFront(LogIndex{4}, {}).get();
   testing::Mock::VerifyAndClearExpectations(fileManager.get());
-  ASSERT_TRUE(res.ok());
-  fileSet = persistor->fileSet();
-  ASSERT_EQ(2, fileSet.size());
-  auto it = fileSet.begin();
-  EXPECT_EQ("file2", it->second.filename);
 
   EXPECT_CALL(*fileManager, deleteFile("file2"));
   res = persistor->removeFront(LogIndex{7}, {}).get();
   testing::Mock::VerifyAndClearExpectations(fileManager.get());
-  ASSERT_TRUE(res.ok());
-  fileSet = persistor->fileSet();
-  ASSERT_EQ(1, fileSet.size());
-  it = fileSet.begin();
-  EXPECT_EQ("file3", it->second.filename);
 
   EXPECT_CALL(*fileManager, deleteFile("file3"));
   res = persistor->removeFront(LogIndex{10}, {}).get();
   testing::Mock::VerifyAndClearExpectations(fileManager.get());
   ASSERT_TRUE(res.ok());
-  fileSet = persistor->fileSet();
+  auto fileSet = persistor->fileSet();
   ASSERT_EQ(0, fileSet.size());
 }
+
+struct LogPersistorMultiFileTest_removeBack : LogPersistorMultiFileTest {
+  void SetUp() override {
+    LogPersistorMultiFileTest::SetUp();
+    initializePersistor(
+        {{.filename = "file1",
+          .buffer = createBufferWithLogEntries(2, 3, LogTerm{1})},
+         {.filename = "file2",
+          .buffer = createBufferWithLogEntries(4, 6, LogTerm{1})},
+         {.filename = "file3",
+          .buffer = createBufferWithLogEntries(7, 9, LogTerm{2})}},
+        createBufferWithLogEntries(10, 12, LogTerm{2}));
+    ASSERT_EQ(3, _completedFiles.size());
+  }
+
+  void checkLastEntry(LogTerm term, LogIndex index) {
+    EXPECT_EQ(TermIndexPair(term, index), persistor->lastWrittenEntry());
+    auto it = persistor->getIterator(IteratorPosition::fromLogIndex(index));
+    ASSERT_NE(nullptr, it);
+    auto entry = it->next();
+    ASSERT_TRUE(entry.has_value());
+    EXPECT_EQ(term, entry->entry().logTerm());
+    EXPECT_EQ(index, entry->entry().logIndex());
+    EXPECT_FALSE(it->next().has_value());
+    testing::Mock::VerifyAndClearExpectations(fileManager.get());
+  }
+};
+
+TEST_F(LogPersistorMultiFileTest_removeBack,
+       remove_some_entries_in_active_file) {
+  auto res = persistor->removeBack(LogIndex{11}, {}).get();
+  ASSERT_TRUE(res.ok());
+  auto fileSet = persistor->fileSet();
+  EXPECT_EQ(3, fileSet.size());
+  checkLastEntry(LogTerm{2}, LogIndex{10});
+}
+
+TEST_F(LogPersistorMultiFileTest_removeBack,
+       remove_all_entries_in_active_file) {
+  auto res = persistor->removeBack(LogIndex{10}, {}).get();
+  ASSERT_TRUE(res.ok());
+  auto fileSet = persistor->fileSet();
+  EXPECT_EQ(3, fileSet.size());
+  EXPECT_CALL(*fileManager, createReader("file3")).WillOnce([this](auto) {
+    return std::make_unique<InMemoryFileReader>(_completedFiles[2].buffer);
+  });
+  checkLastEntry(LogTerm{2}, LogIndex{9});
+}
+
+TEST_F(LogPersistorMultiFileTest_removeBack,
+       remove_some_entries_in_completed_file) {
+  EXPECT_CALL(*fileManager, createWriter("file3")).WillOnce([this](auto) {
+    return std::make_unique<InMemoryFileWriter>(_completedFiles[2].buffer);
+  });
+  auto res = persistor->removeBack(LogIndex{9}, {}).get();
+
+  testing::Mock::VerifyAndClearExpectations(fileManager.get());
+  ASSERT_TRUE(res.ok());
+  auto fileSet = persistor->fileSet();
+  EXPECT_EQ(3, fileSet.size());
+
+  TermIndexPair expectedTermIndex(LogTerm{2}, LogIndex{8});
+  EXPECT_EQ(expectedTermIndex.index, fileSet.rbegin()->first);
+  EXPECT_EQ(expectedTermIndex, fileSet.rbegin()->second.last);
+
+  EXPECT_CALL(*fileManager, createReader("file3")).WillOnce([this](auto) {
+    return std::make_unique<InMemoryFileReader>(_completedFiles[2].buffer);
+  });
+  checkLastEntry(expectedTermIndex.term, expectedTermIndex.index);
+}
+
+TEST_F(LogPersistorMultiFileTest_removeBack,
+       remove_all_entries_in_completed_file) {
+  EXPECT_CALL(*fileManager, deleteFile("file3"));
+  auto res = persistor->removeBack(LogIndex{7}, {}).get();
+
+  testing::Mock::VerifyAndClearExpectations(fileManager.get());
+  ASSERT_TRUE(res.ok());
+  auto fileSet = persistor->fileSet();
+  EXPECT_EQ(2, fileSet.size());
+  auto it = fileSet.rbegin();
+  EXPECT_EQ("file2", it->second.filename);
+  EXPECT_CALL(*fileManager, createReader("file2")).WillOnce([this](auto) {
+    return std::make_unique<InMemoryFileReader>(_completedFiles[1].buffer);
+  });
+  checkLastEntry(LogTerm{1}, LogIndex{6});
+}
+
+// TODO - do we need a test for the case that _all_ entries are compacted?
 
 }  // namespace arangodb::replication2::storage::wal::test

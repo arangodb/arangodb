@@ -24,6 +24,7 @@
 #include "LogPersistor.h"
 
 #include <exception>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <type_traits>
@@ -69,7 +70,6 @@ LogPersistor::LogPersistor(LogId logId,
   LOG_TOPIC("a5ceb", TRACE, Logger::REPLICATED_WAL)
       << "Creating LogPersistor for log " << logId;
 
-  // TODO - implement segmented logs
   loadFileSet();
   validateFileSet();
   createActiveLogFile();
@@ -97,6 +97,9 @@ void LogPersistor::loadFileSet() {
 }
 
 auto LogPersistor::addToFileSet(Files& f, std::string const& file) -> Result {
+  LOG_TOPIC("3fc50", TRACE, Logger::REPLICATED_WAL)
+      << "Adding file " << file << " to file set of log " << _logId;
+
   LogReader reader(_fileManager->createReader(file));
   auto res = reader.getFirstRecordHeader();
   if (res.fail()) {
@@ -151,7 +154,15 @@ void LogPersistor::createActiveLogFile() {
     auto fileReader = f.activeFile.writer->getReader();
     if (fileReader->size() > sizeof(FileHeader)) {
       LogReader logReader(std::move(fileReader));
-      auto res = logReader.getLastRecordHeader();
+      auto res = logReader.getFirstRecordHeader();
+      if (res.fail()) {
+        LOG_TOPIC("a2184", ERR, Logger::REPLICATED_WAL)
+            << "Failed to read first record from " << fileReader->path();
+        THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      }
+      f.activeFile.firstIndex = LogIndex{res.get().index};
+
+      res = logReader.getLastRecordHeader();
       if (res.fail()) {
         LOG_TOPIC("940c2", ERR, Logger::REPLICATED_WAL)
             << "Failed to read last record from " << fileReader->path();
@@ -166,6 +177,7 @@ void LogPersistor::createActiveLogFile() {
       ADB_PROD_ASSERT(fileReader->size() == 0 ||
                       fileReader->size() == sizeof(FileHeader));
       if (fileReader->size() == 0) {
+        // file is empty, so we write the header
         FileHeader header = {.magic = wMagicFileType,
                              .version = wCurrentVersion};
         auto res = f.activeFile.writer->append(header);
@@ -289,6 +301,9 @@ void LogPersistor::finishActiveLogFile(Files& f) {
   f.activeFile.writer.reset();
   ADB_PROD_ASSERT(f.activeFile.firstIndex.has_value());
   auto newFileName = fmt::format("{:06}.log", f.activeFile.firstIndex->value);
+  LOG_TOPIC("093bb", INFO, Logger::REPLICATED_WAL)
+      << "Finishing current log file for log " << _logId
+      << " and renaming it to " << newFileName;
   _fileManager->moveFile(activeLogFileName, newFileName);
   auto res = addToFileSet(f, newFileName);
   if (res.fail()) {
@@ -340,51 +355,113 @@ auto LogPersistor::removeBack(LogIndex start, WriteOptions const&)
       << "Removing entries from back starting at " << start << " from log "
       << _logId;
   ADB_PROD_ASSERT(start.value > 0);
+  // TODO - use WriteOptions or remove
 
   return _files.doUnderLock([&](Files& f) -> ResultT<SequenceNumber> {
-    try {
-      LogReader reader(f.activeFile.writer->getReader());
-      reader.seek(reader.size());
+    auto startIt = f.fileSet.lower_bound(start);
+    if (startIt == f.fileSet.end()) {
+      // index is not in file set, so it can only be in the active file
 
-      // we seek the predecessor of start, because we want to get its term
-      auto lookupIndex = start.saturatedDecrement();
-      auto res = reader.seekLogIndexBackward(lookupIndex);
-      if (res.fail()) {
-        LOG_TOPIC("93e92", ERR, Logger::REPLICATED_WAL)
-            << "Failed to located entry with index " << lookupIndex
-            << " in log " << _logId << ": " << res.errorMessage();
-        return res.result();
+      // active file must not be empty!
+      if (!f.activeFile.firstIndex.has_value()) {
+        return ResultT<SequenceNumber>::error(
+            TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+            "log is empty or corrupt");
       }
 
-      auto header = res.get();
-      TRI_ASSERT(header.index + 1 == start.value);
-      // we located the predecessor, now we skip over it so we find the offset
-      // at which we need to truncate
-      reader.skipEntry();
+      if (f.activeFile.firstIndex.value() == start) {
+        TRI_ASSERT(!f.fileSet.empty());
+        f.activeFile.writer->truncate(sizeof(FileHeader));
+        _lastWrittenEntry = f.fileSet.rbegin()->second.last;
+        return ResultT<SequenceNumber>::success(start.value);
+      } else {
+        return removeBackFromFile(*f.activeFile.writer, start);
+      }
+    } else {
+      // since we found the entry in the file set, we can completely truncate
+      // the active file
+      f.activeFile.writer->truncate(sizeof(FileHeader));
 
-      _lastWrittenEntry =
-          TermIndexPair(LogTerm{header.term()}, LogIndex{header.index});
+      // delete all items following startIt
+      for (auto it = std::next(startIt); it != f.fileSet.end();) {
+        _fileManager->deleteFile(it->second.filename);
+        it = f.fileSet.erase(it);
+      }
+      TRI_ASSERT(std::next(startIt) == f.fileSet.end());
 
-      auto newSize = reader.position();
-      LOG_TOPIC("a1db0", INFO, Logger::REPLICATED_WAL)
-          << "Truncating file " << f.activeFile.writer->path() << " at "
-          << newSize;
+      if (start == startIt->second.first.index) {
+        // start index is the first index in the file, so we can just delete the
+        // whole file and remove it from the file set
+        _fileManager->deleteFile(startIt->second.filename);
 
-      f.activeFile.writer->truncate(newSize);
-      return ResultT<SequenceNumber>::success(start.value);
-    } catch (basics::Exception& ex) {
-      LOG_TOPIC("7741d", ERR, Logger::REPLICATED_WAL)
-          << "Failed to remove entries from back of file "
-          << f.activeFile.writer->path() << ": " << ex.message();
-      return ResultT<SequenceNumber>::error(ex.code(), ex.message());
-    } catch (std::exception& ex) {
-      LOG_TOPIC("08da6", FATAL, Logger::REPLICATED_WAL)
-          << "Failed to remove entries from back of file "
-          << f.activeFile.writer->path() << ": " << ex.what();
-      return ResultT<SequenceNumber>::error(
-          TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, ex.what());
+        TRI_ASSERT(startIt != f.fileSet.begin());
+        auto prev = std::prev(startIt);
+        _lastWrittenEntry = prev->second.last;
+
+        f.fileSet.erase(startIt);
+        return ResultT<SequenceNumber>::success(start.value);
+      } else {
+        // we cannot remove the file, but have to truncate it
+        auto writer = _fileManager->createWriter(startIt->second.filename);
+        auto res = removeBackFromFile(*writer, start);
+        if (res.ok()) {
+          // we have just removed some entries from the back of the file, so we
+          // must updated the tracked index values in the file set. The file set
+          // is sorted by the `last` values, but since keys cannot be changed we
+          // have to remove and reinsert the entry. _lastWrittenEntry has
+          // already been updated accordingly, so we can just use that value
+          auto entry = startIt->second;
+          entry.last = _lastWrittenEntry.value();
+          f.fileSet.erase(startIt);
+          f.fileSet.emplace(entry.last.index, entry);
+        }
+        return res;
+      }
     }
   });
+}
+
+auto LogPersistor::removeBackFromFile(IFileWriter& writer, LogIndex start)
+    -> ResultT<SequenceNumber> try {
+  LogReader reader(writer.getReader());
+  reader.seek(reader.size());
+
+  // we seek the predecessor of start, because we want to get its term
+  auto lookupIndex = start.saturatedDecrement();
+  auto res = reader.seekLogIndexBackward(lookupIndex);
+  if (res.fail()) {
+    LOG_TOPIC("93e92", ERR, Logger::REPLICATED_WAL)
+        << "Failed to located entry with index " << lookupIndex << " in log "
+        << _logId << ": " << res.errorMessage();
+    return res.result();
+  }
+
+  auto header = res.get();
+  TRI_ASSERT(header.index + 1 == start.value);
+  // we located the predecessor, now we skip over it so we find the offset
+  // at which we need to truncate
+  reader.skipEntry();
+
+  _lastWrittenEntry =
+      TermIndexPair(LogTerm{header.term()}, LogIndex{header.index});
+
+  auto newSize = reader.position();
+  LOG_TOPIC("a1db0", INFO, Logger::REPLICATED_WAL)
+      << "Truncating file " << writer.path() << " at " << newSize;
+
+  writer.truncate(newSize);
+  return ResultT<SequenceNumber>::success(start.value);
+} catch (basics::Exception& ex) {
+  LOG_TOPIC("7741d", ERR, Logger::REPLICATED_WAL)
+      << "Failed to remove entries from back of file " << writer.path() << ": "
+      << ex.message();
+  return ResultT<SequenceNumber>::error(ex.code(), ex.message());
+} catch (std::exception& ex) {
+  LOG_TOPIC("08da6", FATAL, Logger::REPLICATED_WAL)
+      << "Failed to remove entries from back of file " << writer.path() << ": "
+      << ex.what();
+  return ResultT<SequenceNumber>::error(
+      TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, ex.what());
 }
 
 auto LogPersistor::getLogId() -> LogId { return _logId; }
