@@ -452,7 +452,8 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
       auto const& planIndexes = collection.indexes.indexes;
 
       // NOTE/TODO: Maybe we want to make the Target entry for Indexes an Object
-      // where the keys are the IndexIds, this way we already have the lookupList here.
+      // where the keys are the IndexIds, this way we already have the
+      // lookupList here.
 
       // This lookup set should map indexId -> foundInPlan
       // It will be seeded with all indexes from the target.
@@ -477,13 +478,15 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
           // This is an Index that is in Plan but not in Target
           return RemoveCollectionIndexPlan{cid, it.sharedSlice()};
         }
-        if (arangodb::basics::VelocyPackHelper::getBooleanValue(idx, StaticStrings::IndexIsBuilding, false)) {
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(
+                idx, StaticStrings::IndexIsBuilding, false)) {
           // Index is still Flagged as isBuilding. Let us test if it converged
 
-          // TODO: We do not yet implement errors that could appear during creation of a UniqueIndex
+          // TODO: We do not yet implement errors that could appear during
+          // creation of a UniqueIndex
           auto const& currentCollection = group.currentCollections.find(cid);
-          // Let us protect against Collection not created, although it should be,
-          // as we are trying to add an index to it right now.
+          // Let us protect against Collection not created, although it should
+          // be, as we are trying to add an index to it right now.
           if (currentCollection != group.currentCollections.end()) {
             auto const& currentShards = currentCollection->second.shards;
             bool allConverged = true;
@@ -513,12 +516,17 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
         auto const& missingIndex = lookupTargetIndexes.begin();
         // We need to find the index again in the list of all Indexes in Target
         for (auto const& it : targetIndexes) {
-          if (it.slice().get(StaticStrings::IndexId).isEqualString(*missingIndex)) {
-            // If we do have shards, we need to create the isBuilding Flag, otherwise index is already converged
-            return AddCollectionIndexPlan{cid, it.buffer(), !collection.shardList.empty()};
+          if (it.slice()
+                  .get(StaticStrings::IndexId)
+                  .isEqualString(*missingIndex)) {
+            // If we do have shards, we need to create the isBuilding Flag,
+            // otherwise index is already converged
+            return AddCollectionIndexPlan{cid, it.buffer(),
+                                          !collection.shardList.empty()};
           }
         }
-        TRI_ASSERT(false) << "We discovered a missing index, it has to be part of the list of indexes";
+        TRI_ASSERT(false) << "We discovered a missing index, it has to be part "
+                             "of the list of indexes";
       }
     }
 
@@ -712,9 +720,7 @@ struct TransactionBuilder {
     tmp = std::move(tmp).erase_object(
         basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
                                      action.cid, "/indexes"),
-        [&](VPackBuilder& builder) {
-          builder.add(action.index.slice());
-        });
+        [&](VPackBuilder& builder) { builder.add(action.index.slice()); });
     env = std::move(tmp)
               .inc("/arango/Plan/Version")
               .precs()

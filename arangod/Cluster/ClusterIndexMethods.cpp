@@ -62,7 +62,8 @@ inline auto pathCollectionInTarget(std::string_view databaseName,
       ->collection(std::string{cid});
 }
 
-inline auto pathCollectionIndexesInPlan(std::string_view databaseName, std::string_view cid) {
+inline auto pathCollectionIndexesInPlan(std::string_view databaseName,
+                                        std::string_view cid) {
   return paths::plan()
       ->collections()
       ->database(std::string{databaseName})
@@ -312,7 +313,8 @@ class CollectionWatcher
 };
 
 auto buildIndexEntry(VPackSlice input, size_t numberOfShards,
-                     std::string_view idString, bool includeIsBuilding) -> VPackBuilder {
+                     std::string_view idString, bool includeIsBuilding)
+    -> VPackBuilder {
   VPackBuilder newIndexBuilder;
   {
     VPackObjectBuilder ob(&newIndexBuilder);
@@ -339,8 +341,9 @@ auto buildIndexEntry(VPackSlice input, size_t numberOfShards,
   return newIndexBuilder;
 }
 
-Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col, IndexId iid,
-                                 double endTime, AgencyComm& agencyComm) {
+Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
+                                             IndexId iid, double endTime,
+                                             AgencyComm& agencyComm) {
   // Get the current entry in Target for this collection
   TargetCollectionReader collectionFromTarget(col);
   if (!collectionFromTarget.state().ok()) {
@@ -384,11 +387,10 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col, Index
         return Result(TRI_ERROR_FORBIDDEN);
       }
 
-
       if (!indexSlice.isObject()) {
         LOG_TOPIC("95fe6", DEBUG, Logger::CLUSTER)
-            << "Failed to find index " << databaseName << "/" << collectionID << "/"
-            << iid.id();
+            << "Failed to find index " << databaseName << "/" << collectionID
+            << "/" << iid.id();
         return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
       }
       indexToRemove = indexSlice;
@@ -400,14 +402,15 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col, Index
   auto report = std::make_shared<CurrentWatcher>();
   {
     // This callback waits for the index to disappear from the plan
-    auto watcherCallback = [report, id = std::string{idString}](VPackSlice slice) -> bool {
+    auto watcherCallback =
+        [report, id = std::string{idString}](VPackSlice slice) -> bool {
       if (report->hasReported(id)) {
         // This index has already reported
         return true;
       }
       if (slice.isNone()) {
-        // TODO: Should this actual set an "error"? It indicates that the collection
-        // is dropped if i am not mistaken
+        // TODO: Should this actual set an "error"? It indicates that the
+        // collection is dropped if i am not mistaken
         return false;
       }
       auto collection = velocypack::deserialize<
@@ -415,7 +418,8 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col, Index
       auto const& indexes = collection.indexes.indexes;
       for (auto const& index : indexes) {
         auto indexSlice = index.slice();
-        if (indexSlice.hasKey(StaticStrings::IndexId) && indexSlice.get(StaticStrings::IndexId).isEqualString(id)) {
+        if (indexSlice.hasKey(StaticStrings::IndexId) &&
+            indexSlice.get(StaticStrings::IndexId).isEqualString(id)) {
           // Index still there
           return false;
         }
@@ -425,10 +429,9 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col, Index
       return true;
     };
 
-    report->addWatchPath(
-        pathCollectionIndexesInPlan(databaseName, collectionID)
-            ->str(arangodb::cluster::paths::SkipComponents(1)),
-        std::string{idString}, watcherCallback);
+    report->addWatchPath(pathCollectionIndexesInPlan(databaseName, collectionID)
+                             ->str(arangodb::cluster::paths::SkipComponents(1)),
+                         std::string{idString}, watcherCallback);
   }
   // Register Callbacks
   auto& server = vocbase.server();
@@ -453,8 +456,7 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col, Index
       });
 
   // First register all callbacks
-  for (auto const& [path, identifier, cb] :
-       report->getCallbackInfos()) {
+  for (auto const& [path, identifier, cb] : report->getCallbackInfos()) {
     auto agencyCallback =
         std::make_shared<AgencyCallback>(server, path, cb, true, false);
     Result r = callbackRegistry.registerCallback(agencyCallback);
@@ -480,7 +482,6 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col, Index
 
   AgencyWriteTransaction trx(newValue, oldValue);
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
-
 
   if (!result.successful()) {
     if (result.httpCode() ==
@@ -549,7 +550,6 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col, Index
     }
   }
 }
-
 
 Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
                                  double endTime, AgencyComm& agencyComm) {
@@ -762,21 +762,23 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
 }
 
 /**
- * This function orders the new index in Target, and waits until it is present and not building
- * anymore.
+ * This function orders the new index in Target, and waits until it is present
+ * and not building anymore.
  *
  * @param collection The collection in which to create the index
  * @param idString Index Identifier
  * @param index The Index data
- * @param create If we should create the index (NOTE: i think this should be handled outside
+ * @param create If we should create the index (NOTE: i think this should be
+ * handled outside
  * @param timeout How long we should wait until we roll back operation
  * @param server Server for communication
- * @return Either an error, or a Builder containing an Object with the Index data.
+ * @return Either an error, or a Builder containing an Object with the Index
+ * data.
  */
-auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection,
-                                   std::string_view idString, VPackSlice index,
-                                   bool create,
-                                   double timeout, ArangodServer& server) -> ResultT<VPackBuilder> {
+auto ensureIndexCoordinatorReplication2Inner(
+    LogicalCollection const& collection, std::string_view idString,
+    VPackSlice index, bool create, double timeout, ArangodServer& server)
+    -> ResultT<VPackBuilder> {
   // Get the current entry in Target for this collection
   TargetCollectionReader collectionFromTarget(collection);
   if (!collectionFromTarget.state().ok()) {
@@ -811,25 +813,25 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
     return {TRI_ERROR_NO_ERROR};
   }
 
-
   const size_t numberOfShards = collection.numberOfShards();
   VPackBuilder newIndexBuilder =
       ::buildIndexEntry(index, numberOfShards, idString, false);
 
   auto report = std::make_shared<CurrentWatcher>();
   {
-    // This callback waits on two things: First for the Index to appear in Plan, and Second
-    // for the IsBuilding Flag to be removed.
-    // This way the index creation is Completed
+    // This callback waits on two things: First for the Index to appear in Plan,
+    // and Second for the IsBuilding Flag to be removed. This way the index
+    // creation is Completed
     // TODO: We still need to report errors, only happy Path for now.
-    auto watcherCallback = [report, id = std::string{idString}](VPackSlice slice) -> bool {
+    auto watcherCallback =
+        [report, id = std::string{idString}](VPackSlice slice) -> bool {
       if (report->hasReported(id)) {
         // This index has already reported
         return true;
       }
       if (slice.isNone()) {
-        // TODO: Should this actual set an "error"? It indicates that the collection
-        // is dropped if i am not mistaken
+        // TODO: Should this actual set an "error"? It indicates that the
+        // collection is dropped if i am not mistaken
         return false;
       }
       auto collection = velocypack::deserialize<
@@ -837,7 +839,8 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
       auto const& indexes = collection.indexes.indexes;
       for (auto const& index : indexes) {
         auto indexSlice = index.slice();
-        if (indexSlice.hasKey(StaticStrings::IndexId) && indexSlice.get(StaticStrings::IndexId).isEqualString(id)) {
+        if (indexSlice.hasKey(StaticStrings::IndexId) &&
+            indexSlice.get(StaticStrings::IndexId).isEqualString(id)) {
           if (!indexSlice.hasKey(StaticStrings::IndexIsBuilding)) {
             // TODO: We do not yet handle errors, e.g. on UniqueIndexes
             report->addReport(id, TRI_ERROR_NO_ERROR);
@@ -875,8 +878,7 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
       });
 
   // First register all callbacks
-  for (auto const& [path, identifier, cb] :
-       report->getCallbackInfos()) {
+  for (auto const& [path, identifier, cb] : report->getCallbackInfos()) {
     auto agencyCallback =
         std::make_shared<AgencyCallback>(server, path, cb, true, false);
     Result r = callbackRegistry.registerCallback(agencyCallback);
@@ -981,7 +983,6 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
   TRI_ASSERT(server.isStopping());
   return Result{TRI_ERROR_SHUTTING_DOWN};
 }
-
 
 // The following function does the actual work of index creation: Create
 // in Plan, watch Current until all dbservers for all shards have done their
@@ -1448,9 +1449,9 @@ Result ClusterIndexMethods::ensureIndexCoordinator(
         }
       } else {
         res = ::ensureIndexCoordinatorInner(  // create index
-            collection, idString, slice, create, resultBuilder, timeout, server);
+            collection, idString, slice, create, resultBuilder, timeout,
+            server);
       }
-
 
       // Note that this function sets the errorMsg unless it is precondition
       // failed, in which case we retry, if this times out, we need to set
