@@ -48,6 +48,7 @@ constexpr auto minFileSize = sizeof(FileHeader) +
 
 LogReader::LogReader(std::unique_ptr<IFileReader> reader)
     : _reader(std::move(reader)) {
+  TRI_ASSERT(_reader->position() == 0);
   FileHeader header;
   auto res = _reader->read(header);
   if (res.fail()) {

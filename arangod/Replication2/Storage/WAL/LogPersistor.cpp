@@ -364,9 +364,16 @@ auto LogPersistor::removeBack(LogIndex start, WriteOptions const&)
 
       // active file must not be empty!
       if (!f.activeFile.firstIndex.has_value()) {
+        auto lastFileSetIndex =
+            f.fileSet.empty()
+                ? std::string{"<na>"}
+                : to_string(f.fileSet.rbegin()->second.last.index);
         return ResultT<SequenceNumber>::error(
             TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-            "log is empty or corrupt");
+            "log " + to_string(_logId) + " is empty or corrupt - index " +
+                std::to_string(start.value) +
+                " is not in file set (last index: " + lastFileSetIndex +
+                ") and the active file is empty");
       }
 
       if (f.activeFile.firstIndex.value() == start) {

@@ -42,6 +42,7 @@
 #include "Replication2/Storage/WAL/Options.h"
 #include "Replication2/Storage/WAL/Record.h"
 
+#include "Replication2/Storage/Helpers.h"
 #include "Replication2/Storage/InMemoryLogFile.h"
 #include "Replication2/Storage/StreamReader.h"
 #include "Replication2/Storage/MockFileManager.h"
@@ -67,52 +68,11 @@ namespace {
 
 using namespace arangodb::replication2::storage::wal;
 
-auto makeNormalLogEntry(std::uint64_t term, std::uint64_t index,
-                        std::string payload) {
-  return InMemoryLogEntry{LogEntry{LogTerm{term}, LogIndex{index},
-                                   LogPayload::createFromString(payload)}};
-}
-
-auto makeMetaLogEntry(std::uint64_t term, std::uint64_t index,
-                      LogMetaPayload payload) {
-  return InMemoryLogEntry{LogEntry{LogTerm{term}, LogIndex{index}, payload}};
-}
-
 auto paddedPayloadSize(std::size_t payloadSize) -> std::size_t {
   // we intentionally use a different implementation to calculate the padded
   // size to implicitly test the other paddedPayloadSize implementation
   using arangodb::replication2::storage::wal::Record;
   return ((payloadSize + Record::alignment - 1) / 8) * 8;
-}
-
-template<class Func>
-auto createBuffer(Func func) -> std::string {
-  Buffer buffer;
-  buffer.append(
-      FileHeader{.magic = wMagicFileType, .version = wCurrentVersion});
-
-  func(buffer);
-
-  std::string result;
-  result.resize(buffer.size());
-  std::memcpy(result.data(), buffer.data(), buffer.size());
-  return result;
-}
-
-auto createEmptyBuffer() -> std::string {
-  return createBuffer([](auto&) {});
-}
-
-auto createBufferWithLogEntries(std::uint64_t firstIndex,
-                                std::uint64_t lastIndex, LogTerm term)
-    -> std::string {
-  return createBuffer([&](auto& buffer) {
-    EntryWriter writer{buffer};
-    for (auto i = firstIndex; i < lastIndex + 1; ++i) {
-      writer.appendEntry(
-          makeNormalLogEntry(term.value, i, "dummyPayload").entry());
-    }
-  });
 }
 
 void checkFileHeader(StreamReader& reader) {
@@ -391,7 +351,10 @@ TEST_F(LogPersistorSingleFileTest, removeBack) {
 TEST_F(LogPersistorSingleFileTest, removeBack_fails_no_matching_entry_found) {
   auto res = persistor->removeBack(LogIndex{2}, {}).get();
   ASSERT_TRUE(res.fail());
-  EXPECT_EQ("log file in-memory file is empty", res.errorMessage());
+  EXPECT_EQ(
+      "log 42 is empty or corrupt - index 2 is not in file set (last index: "
+      "<na>) and the active file is empty",
+      res.errorMessage());
 }
 
 TEST_F(LogPersistorSingleFileTest, removeBack_fails_if_log_file_corrupt) {
