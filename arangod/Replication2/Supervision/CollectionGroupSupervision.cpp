@@ -514,7 +514,8 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
         // We need to find the index again in the list of all Indexes in Target
         for (auto const& it : targetIndexes) {
           if (it.slice().get(StaticStrings::IndexId).isEqualString(*missingIndex)) {
-            return AddCollectionIndexPlan{cid, it.buffer()};
+            // If we do have shards, we need to create the isBuilding Flag, otherwise index is already converged
+            return AddCollectionIndexPlan{cid, it.buffer(), !collection.shardList.empty()};
           }
         }
         TRI_ASSERT(false) << "We discovered a missing index, it has to be part of the list of indexes";
@@ -733,10 +734,10 @@ struct TransactionBuilder {
           // We need to add the isBuildingFlag
           TRI_ASSERT(indexData.isObject());
           VPackObjectBuilder guard{&builder};
-          for (auto const& [key, value] : VPackObjectIterator(indexData)) {
-            builder.add(key.copyString(), value);
+          builder.add(VPackObjectIterator(indexData));
+          if (action.useIsBuilding) {
+            builder.add(StaticStrings::IndexIsBuilding, VPackValue(true));
           }
-          builder.add(StaticStrings::IndexIsBuilding, VPackValue(true));
         });
     env = std::move(tmp)
               .inc("/arango/Plan/Version")

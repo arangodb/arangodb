@@ -84,6 +84,7 @@ struct RemoveCollectionIndexPlan {
 struct AddCollectionIndexPlan {
   CollectionID cid;
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> index;
+  bool useIsBuilding;
 };
 
 struct IndexConvergedCurrent {
