@@ -130,14 +130,14 @@ class OutputAqlItemRow {
   auto fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows)
       -> void;
 
-  [[nodiscard]] RegisterCount getNumRegisters() const;
+  [[nodiscard]] RegisterCount getNumRegisters() const noexcept;
 
   /**
    * @brief May only be called after all output values in the current row have
    * been set, or in case there are zero output registers, after copyRow has
    * been called.
    */
-  void advanceRow();
+  void advanceRow() noexcept;
 
   // returns true if row was produced
   [[nodiscard]] bool produced() const noexcept {
@@ -217,7 +217,7 @@ class OutputAqlItemRow {
 
   AqlCall&& stealClientCall();
 
-  void setCall(AqlCall call);
+  void setCall(AqlCall call) noexcept;
 
  private:
   [[nodiscard]] RegIdSet const& outputRegisters() const noexcept {

@@ -297,7 +297,7 @@ size_t OutputAqlItemRow::numRowsWritten() const noexcept {
   //   return lastWrittenIndex + 1;
 }
 
-void OutputAqlItemRow::advanceRow() {
+void OutputAqlItemRow::advanceRow() noexcept {
   // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(produced());
   // cppcheck-suppress ignoredReturnValue
@@ -336,7 +336,7 @@ AqlCall& OutputAqlItemRow::getModifiableClientCall() { return _call; }
 
 AqlCall&& OutputAqlItemRow::stealClientCall() { return std::move(_call); }
 
-void OutputAqlItemRow::setCall(AqlCall call) {
+void OutputAqlItemRow::setCall(AqlCall call) noexcept {
   // We cannot create an output row if we still have unreported skipCount
   // in the call.
   TRI_ASSERT(_call.getSkipCount() == 0);
@@ -566,7 +566,7 @@ auto constexpr OutputAqlItemRow::depthDelta(AdaptRowDepth adaptRowDepth)
   return static_cast<std::underlying_type_t<AdaptRowDepth>>(adaptRowDepth);
 }
 
-RegisterCount OutputAqlItemRow::getNumRegisters() const {
+RegisterCount OutputAqlItemRow::getNumRegisters() const noexcept {
   return block().numRegisters();
 }
 
