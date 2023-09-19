@@ -102,6 +102,13 @@ auto ReplicatedOperation::buildCreateIndexOperation(
                                  CreateIndex::Parameters{std::move(progress)}}};
 }
 
+auto ReplicatedOperation::buildDropIndexOperation(
+    ShardID shard, velocypack::SharedSlice index) noexcept
+    -> ReplicatedOperation {
+  return ReplicatedOperation{std::in_place,
+                             DropIndex{std::move(shard), std::move(index)}};
+}
+
 auto ReplicatedOperation::buildDocumentOperation(
     TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
     velocypack::SharedSlice payload) noexcept -> ReplicatedOperation {

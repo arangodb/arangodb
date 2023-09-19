@@ -250,6 +250,11 @@ auto DocumentStateTransactionHandler::applyOp(
                                     op.params.progress);
 }
 
+auto DocumentStateTransactionHandler::applyOp(
+    ReplicatedOperation::DropIndex const& op) -> Result {
+  return _shardHandler->dropIndex(op.shard, op.index);
+}
+
 auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)
     -> Result {
   return applyEntry(operation.operation);
