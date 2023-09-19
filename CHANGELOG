@@ -1,7 +1,6 @@
 devel
 -----
 
-
 * Added the following server startup options that can be used to limit
   the resource usage of parallel arangodump invocations:
 
@@ -40,6 +39,14 @@ devel
   - `arangodb_dump_threads_blocked_total`: Number of times a server-side 
     dump thread was blocked because it honored the server-side memory 
     limit for dumps.
+
+* Fixed BTS-1239: Restoring a single server dump with system collections
+  into a cluster caused some of those system collections to lose the
+  `distributeShardsLike` setting and also changed the `shardingStrategy` to
+  `enterprise-compat`.
+  Now system collections in the cluster are always restored with
+  `distributeShardsLike` and `shardingStrategy` set to the correct
+  default values.
 
 * Removed DocuBlocks and obsolete documentation tooling.
   The HTTP API descriptions are now in the `arangodb/docs-hugo` repository.
