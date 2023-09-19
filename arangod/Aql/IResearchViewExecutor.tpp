@@ -24,16 +24,15 @@
 
 #pragma once
 
-#include "Aql/MultiGet.h"
 #include "IResearchViewExecutor.h"
 
 #include "Aql/AqlCall.h"
 #include "Aql/ExecutionStats.h"
+#include "Aql/MultiGet.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StringUtils.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
