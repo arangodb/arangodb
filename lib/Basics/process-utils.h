@@ -244,4 +244,4 @@ void TRI_ShutdownProcess();
 
 std::string TRI_SetPriority(ExternalId pid, int prio);
 
-bool noDeadLine() { return false;}
+inline bool noDeadLine() { return false; }
