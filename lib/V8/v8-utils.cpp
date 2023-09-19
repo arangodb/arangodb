@@ -4619,8 +4619,9 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (historicStatus.has_value()) {
     external = *historicStatus;
   } else {
-    external = TRI_CheckExternalProcess(pid, wait, timeoutms,
-                                        isExecutionDeadlineReached);
+    external = TRI_CheckExternalProcess(pid, wait, timeoutms, [&]() {
+      return isExecutionDeadlineReached(isolate);
+    });
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -4830,8 +4831,9 @@ static void JS_ExecuteExternalAndWait(
   ExternalId pid;
   pid._pid = external._pid;
 
-  auto external_status = TRI_CheckExternalProcess(pid, true, timeoutms,
-                                                  isExecutionDeadlineReached);
+  auto external_status = TRI_CheckExternalProcess(pid, true, timeoutms, [&]() {
+    return isExecutionDeadlineReached(isolate);
+  });
 
   convertStatusToV8(args, result, external_status, external);
 
