@@ -63,7 +63,7 @@ inline auto pathCollectionInTarget(std::string_view databaseName,
 }
 
 inline auto pathCollectionIndexesInPlan(std::string_view databaseName, std::string_view cid) {
-  return paths::target()
+  return paths::plan()
       ->collections()
       ->database(std::string{databaseName})
       ->collection(std::string{cid});
@@ -621,11 +621,11 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
         return false;
       }
       auto collection = velocypack::deserialize<
-          replication2::agency::CollectionTargetSpecification>(slice);
+          replication2::agency::CollectionPlanSpecification>(slice);
       auto const& indexes = collection.indexes.indexes;
       for (auto const& index : indexes) {
         auto indexSlice = index.slice();
-        if (indexSlice.hasKey(StaticStrings::IndexId) && indexSlice.isEqualString(id)) {
+        if (indexSlice.hasKey(StaticStrings::IndexId) && indexSlice.get(StaticStrings::IndexId).isEqualString(id)) {
           if (!indexSlice.hasKey(StaticStrings::IndexIsBuilding)) {
             // TODO: We do not yet handle errors, e.g. on UniqueIndexes
             report->addReport(id, TRI_ERROR_NO_ERROR);
@@ -726,7 +726,15 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
         // Abort
         return finalResult;
       }
-      // TODO: Continue here.
+
+      VPackBuilder resultBuilder;
+      {
+        VPackObjectBuilder guard(&resultBuilder);
+        // add all original values
+        resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
+        resultBuilder.add("isNewlyCreated", VPackValue(true));
+      }
+      return std::move(resultBuilder);
     }
     // We do not have a final result. Let's wait for more input
     // Wait for the next incomplete callback

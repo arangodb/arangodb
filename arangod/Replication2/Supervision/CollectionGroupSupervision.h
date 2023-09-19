@@ -86,6 +86,11 @@ struct AddCollectionIndexPlan {
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> index;
 };
 
+struct IndexConvergedCurrent {
+  CollectionID cid;
+  arangodb::velocypack::SharedSlice index;
+};
+
 struct NoActionRequired {};
 struct NoActionPossible {
   std::string reason;
@@ -97,7 +102,7 @@ using Action = std::variant<
     UpdateConvergedVersion, DropCollectionPlan, DropCollectionGroup,
     AddCollectionToPlan, AddCollectionGroupToPlan, UpdateCollectionShardMap,
     AddParticipantToLog, RemoveParticipantFromLog, UpdateCollectionPlan,
-    RemoveCollectionIndexPlan, AddCollectionIndexPlan>;
+    RemoveCollectionIndexPlan, AddCollectionIndexPlan, IndexConvergedCurrent>;
 
 struct CollectionGroup {
   agency::CollectionGroupTargetSpecification target;

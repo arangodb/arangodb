@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Agency/TransactionBuilder.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/Utils/EvenDistribution.h"
 #include "CollectionGroupSupervision.h"
 #include "Replication2/AgencyCollectionSpecification.h"
@@ -467,13 +468,42 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
 
       // Now check what we have in Plan
       for (auto const& it : planIndexes) {
-        auto idx = it.slice().get(StaticStrings::IndexId);
-        TRI_ASSERT(idx.isString());
-        auto indexId = idx.copyString();
+        auto idx = it.slice();
+        auto idxId = idx.get(StaticStrings::IndexId);
+        TRI_ASSERT(idxId.isString());
+        auto indexId = idxId.copyString();
         auto removedCount = lookupTargetIndexes.erase(indexId);
         if (removedCount == 0) {
           // This is an Index that is in Plan but not in Target
           return RemoveCollectionIndexPlan{cid, it.sharedSlice()};
+        }
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(idx, StaticStrings::IndexIsBuilding, false)) {
+          // Index is still Flagged as isBuilding. Let us test if it converged
+
+          // TODO: We do not yet implement errors that could appear during creation of a UniqueIndex
+          auto const& currentCollection = group.currentCollections.find(cid);
+          // Let us protect against Collection not created, although it should be,
+          // as we are trying to add an index to it right now.
+          if (currentCollection != group.currentCollections.end()) {
+            auto const& currentShards = currentCollection->second.shards;
+            bool allConverged = true;
+            for (auto const& [shardId, shard] : currentShards) {
+              bool foundLocalIndex = false;
+              for (auto const& index : shard.indexes) {
+                if (index.get(StaticStrings::IndexId).isEqualString(indexId)) {
+                  foundLocalIndex = true;
+                  break;
+                }
+              }
+              if (!foundLocalIndex) {
+                allConverged = false;
+                break;
+              }
+            }
+            if (allConverged) {
+              return IndexConvergedCurrent{cid, it.sharedSlice()};
+            }
+          }
         }
       }
 
@@ -707,6 +737,36 @@ struct TransactionBuilder {
             builder.add(key.copyString(), value);
           }
           builder.add(StaticStrings::IndexIsBuilding, VPackValue(true));
+        });
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
+  void operator()(IndexConvergedCurrent const& action) {
+    auto tmp = env.write();
+    // Just overwrite all indexes as defined by the Action
+    tmp = std::move(tmp).replace(
+        basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
+                                     action.cid, "/indexes"),
+        [&](VPackBuilder& builder) {
+          // Old value, take from the Action
+          builder.add(action.index.slice());
+        },
+        [&](VPackBuilder& builder) {
+          // New value, take everything from the action, but remove the
+          // isBuilding Flag
+          TRI_ASSERT(action.index.slice().isObject());
+          VPackObjectBuilder guard{&builder};
+          for (auto const& [key, value] :
+               VPackObjectIterator(action.index.slice())) {
+            if (!key.isEqualString(StaticStrings::IndexIsBuilding)) {
+              builder.add(key.copyString(), value);
+            }
+          }
         });
     env = std::move(tmp)
               .inc("/arango/Plan/Version")
