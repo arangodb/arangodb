@@ -57,14 +57,6 @@ class UnsortedGatherExecutor {
     static constexpr bool preservesOrder = false;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    // This (inputSizeRestrictsOutputSize) could be set to true, but its
-    // usefulness would be limited.
-    // We either can only use it for the last dependency, in which case it's
-    // already too late to avoid a large allocation for a small result set; or
-    // we'd have to prefetch all dependencies (at least until we got >=1000
-    // rows) before answering hasExpectedNumberOfRows(). This might be okay,
-    // but would increase the latency.
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = MultiDependencySingleRowFetcher;
   // TODO I should probably implement custom Infos, we don't need
