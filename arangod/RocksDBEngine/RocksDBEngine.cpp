@@ -56,6 +56,7 @@
 #include "Replication/ReplicationClients.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "Replication2/Storage/WAL/Options.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabaseFeature.h"
@@ -150,7 +151,7 @@
 // correct sequence numbers for the files without gaps
 #undef USE_SST_INGESTION
 
-//#define USE_CUSTOM_WAL
+#define USE_CUSTOM_WAL
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -3279,7 +3280,8 @@ auto RocksDBEngine::makeLogStorageMethods(
 #if defined(USE_CUSTOM_WAL)
   auto logPersistor =
       std::make_unique<replication2::storage::wal::LogPersistor>(
-          logId, _walManager->createFileManager(logId));
+          logId, _walManager->createFileManager(logId),
+          replication2::storage::wal::Options{});
 #else
   auto logPersistor =
       std::make_unique<replication2::storage::rocksdb::LogPersistor>(
