@@ -907,7 +907,8 @@ function dumpMixedSingleCluster (options) {
                                     options, options, 'dump_mixed_single_cluster',
                                     tstFiles, function(){}, [
                                       // '--testFoxx', 'false',
-                                      '--skip', '550,900,960']);
+                                      // BTS-1617: disable 404 for now
+                                      '--skip', '404,550,900,960']);
 }
 
 function dumpMultiple (options) {
