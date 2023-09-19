@@ -23,14 +23,13 @@
 
 #pragma once
 
-#include <functional>
-#include <mutex>
 #include <string>
 #include <vector>
 #include <optional>
 
 #include "Basics/Common.h"
 #include "Basics/threads.h"
+#include <mutex>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalid process id
@@ -210,9 +209,9 @@ bool TRI_WritePipe(ExternalProcess const* process, char const* buffer,
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_CheckExternalProcess(
-    ExternalId pid, bool wait, uint32_t timeout,
-    std::function<bool()> const& deadlineReached = {});
+ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
+                                               uint32_t timeout,
+                                               bool(deadlineReached)(void));
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
@@ -245,4 +244,4 @@ void TRI_ShutdownProcess();
 
 std::string TRI_SetPriority(ExternalId pid, int prio);
 
-inline bool noDeadLine() { return false; }
+bool noDeadLine() { return false;}
