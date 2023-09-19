@@ -946,7 +946,7 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
         resultBuilder.add(VPackObjectIterator(newIndexBuilder.slice()));
         resultBuilder.add("isNewlyCreated", VPackValue(true));
       }
-      return std::move(resultBuilder);
+      return resultBuilder;
     }
     // We do not have a final result. Let's wait for more input
     // Wait for the next incomplete callback
