@@ -26,7 +26,9 @@
 #include "Basics/UnshackledMutex.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/ShardProperties.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/Methods/Indexes.h"
+#include "Transaction/OperationOrigin.h"
 
 #include <shared_mutex>
 
@@ -54,10 +56,13 @@ struct IDocumentStateShardHandler {
       -> Result = 0;
   virtual auto dropIndex(ShardID shard, velocypack::SharedSlice index)
       -> Result = 0;
+  virtual auto lockShard(ShardID shard, AccessMode::Type accessType,
+                         transaction::OperationOrigin origin)
+      -> ResultT<std::unique_ptr<transaction::Methods>> = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
+#if false && defined(ARANGODB_USE_GOOGLE_TESTS)
  public:
   explicit DocumentStateShardHandler(
       GlobalLogIdentifier gid,
@@ -85,10 +90,14 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
       -> Result override;
   auto dropIndex(ShardID shard, velocypack::SharedSlice index)
       -> Result override;
+  auto lockShard(ShardID shard, AccessMode::Type accessType,
+                 transaction::OperationOrigin origin)
+      -> ResultT<std::unique_ptr<transaction::Methods>> override;
 
  private:
   GlobalLogIdentifier _gid;
   std::shared_ptr<IMaintenanceActionExecutor> _maintenance;
+  TRI_vocbase_t& _vocbase;
   struct {
     ShardMap shards;
     std::shared_mutex mutex;

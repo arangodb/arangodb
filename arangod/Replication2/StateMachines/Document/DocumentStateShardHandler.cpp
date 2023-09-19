@@ -27,13 +27,18 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocBaseLogManager.h"
+#include "Transaction/Methods.h"
+#include "Transaction/V8Context.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateShardHandler::DocumentStateShardHandler(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
     std::shared_ptr<IMaintenanceActionExecutor> maintenance)
-    : _gid(std::move(gid)), _maintenance(std::move(maintenance)) {
+    : _gid(std::move(gid)),
+      _maintenance(std::move(maintenance)),
+      _vocbase(vocbase) {
   auto manager = vocbase._logManager;
   // TODO this is more like a hack than an actual solution
   //  but for now its good enough
@@ -183,6 +188,38 @@ auto DocumentStateShardHandler::dropIndex(ShardID shard,
                     res.errorMessage(), std::move(shard), std::move(indexId))};
   }
   return res;
+}
+
+auto DocumentStateShardHandler::lockShard(ShardID shard,
+                                          AccessMode::Type accessType,
+                                          transaction::OperationOrigin origin)
+    -> ResultT<std::unique_ptr<transaction::Methods>> {
+  auto col = _vocbase.lookupCollection(shard);
+  if (col == nullptr) {
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  fmt::format("Failed to lookup shard {} in database {} while "
+                              "locking it for operation {}",
+                              shard, _vocbase.name(), origin.description)};
+  }
+
+  auto ctx =
+      transaction::V8Context::createWhenRequired(_vocbase, origin, false);
+
+  // Not replicating this transaction
+  transaction::Options options;
+  options.requiresReplication = false;
+
+  auto trx = std::make_unique<SingleCollectionTransaction>(std::move(ctx), *col,
+                                                           accessType, options);
+  Result res = trx->begin();
+  if (res.fail()) {
+    return Result{res.errorNumber(),
+                  fmt::format("Failed to lock shard {} in database "
+                              "{} for operation {}. Error: {}",
+                              shard, _vocbase.name(), origin.description,
+                              res.errorMessage())};
+  }
+  return trx;
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
