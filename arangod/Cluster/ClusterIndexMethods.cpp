@@ -339,6 +339,218 @@ auto buildIndexEntry(VPackSlice input, size_t numberOfShards,
   return newIndexBuilder;
 }
 
+Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col, IndexId iid,
+                                 double endTime, AgencyComm& agencyComm) {
+  // Get the current entry in Target for this collection
+  TargetCollectionReader collectionFromTarget(col);
+  if (!collectionFromTarget.state().ok()) {
+    return collectionFromTarget.state();
+  }
+
+  VPackSlice indexes = collectionFromTarget.indexes();
+
+  auto const& vocbase = col.vocbase();
+  auto const& databaseName = vocbase.name();
+  auto collectionID = std::to_string(col.id().id());
+
+  if (!indexes.isArray()) {
+    LOG_TOPIC("63178", DEBUG, Logger::CLUSTER)
+        << "Failed to find index " << databaseName << "/" << collectionID << "/"
+        << iid.id();
+    return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+  }
+
+  VPackSlice indexToRemove;
+
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
+  // Search for the right index to delete
+  for (VPackSlice indexSlice : VPackArrayIterator(indexes)) {
+    auto idSlice = indexSlice.get(arangodb::StaticStrings::IndexId);
+
+    if (!idSlice.isString()) {
+      TRI_ASSERT(false) << "Found an index without an id: "
+                        << indexSlice.toJson()
+                        << " in Collection: " << databaseName << "/"
+                        << collectionID;
+      continue;
+    }
+
+    if (idSlice.isEqualString(idString)) {
+      Index::IndexType type =
+          Index::type(indexSlice.get(StaticStrings::IndexType).copyString());
+
+      if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+          type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        return Result(TRI_ERROR_FORBIDDEN);
+      }
+
+
+      if (!indexSlice.isObject()) {
+        LOG_TOPIC("95fe6", DEBUG, Logger::CLUSTER)
+            << "Failed to find index " << databaseName << "/" << collectionID << "/"
+            << iid.id();
+        return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+      }
+      indexToRemove = indexSlice;
+
+      break;
+    }
+  }
+
+  auto report = std::make_shared<CurrentWatcher>();
+  {
+    // This callback waits for the index to disappear from the plan
+    auto watcherCallback = [report, id = std::string{idString}](VPackSlice slice) -> bool {
+      if (report->hasReported(id)) {
+        // This index has already reported
+        return true;
+      }
+      if (slice.isNone()) {
+        // TODO: Should this actual set an "error"? It indicates that the collection
+        // is dropped if i am not mistaken
+        return false;
+      }
+      auto collection = velocypack::deserialize<
+          replication2::agency::CollectionPlanSpecification>(slice);
+      auto const& indexes = collection.indexes.indexes;
+      for (auto const& index : indexes) {
+        auto indexSlice = index.slice();
+        if (indexSlice.hasKey(StaticStrings::IndexId) && indexSlice.get(StaticStrings::IndexId).isEqualString(id)) {
+          // Index still there
+          return false;
+        }
+      }
+      // We did not find the index in our array, report success
+      report->addReport(id, TRI_ERROR_NO_ERROR);
+      return true;
+    };
+
+    report->addWatchPath(
+        pathCollectionIndexesInPlan(databaseName, collectionID)
+            ->str(arangodb::cluster::paths::SkipComponents(1)),
+        std::string{idString}, watcherCallback);
+  }
+  // Register Callbacks
+  auto& server = vocbase.server();
+  auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
+  AgencyCallbackRegistry& callbackRegistry =
+      clusterInfo.agencyCallbackRegistry();
+
+  std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
+      callbackList;
+  auto unregisterCallbacksGuard =
+      scopeGuard([&callbackList, &callbackRegistry]() noexcept {
+        try {
+          for (auto& [cb, _] : callbackList) {
+            callbackRegistry.unregisterCallback(cb);
+          }
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("cc912", ERR, Logger::CLUSTER)
+              << "Failed to unregister agency callback: " << ex.what();
+        } catch (...) {
+          // Should never be thrown, we only throw exceptions
+        }
+      });
+
+  // First register all callbacks
+  for (auto const& [path, identifier, cb] :
+       report->getCallbackInfos()) {
+    auto agencyCallback =
+        std::make_shared<AgencyCallback>(server, path, cb, true, false);
+    Result r = callbackRegistry.registerCallback(agencyCallback);
+    if (r.fail()) {
+      return r;
+    }
+    callbackList.emplace_back(
+        std::make_pair(std::move(agencyCallback), identifier));
+  }
+  report->clearCallbacks();
+
+  auto targetPath = pathCollectionInTarget(databaseName, collectionID);
+  std::string const targetIndexesKey =
+      targetPath->str(arangodb::cluster::paths::SkipComponents(1)) + "/indexes";
+
+  AgencyOperation newValue(targetIndexesKey, AgencyValueOperationType::ERASE,
+                           indexToRemove);
+
+  AgencyPrecondition oldValue(
+      targetPath->str(arangodb::cluster::paths::SkipComponents(1)),
+      AgencyPrecondition::Type::VALUE, collectionFromTarget.slice());
+  AgencyComm ac(server);
+
+  AgencyWriteTransaction trx(newValue, oldValue);
+  AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
+
+
+  if (!result.successful()) {
+    if (result.httpCode() ==
+        arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      // Retry loop is outside!
+      return Result(TRI_ERROR_HTTP_PRECONDITION_FAILED);
+    }
+
+    return Result(
+        TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,
+        basics::StringUtils::concatT(" Failed to execute ", trx.toJson(),
+                                     " ResultCode: ", result.errorCode()));
+  }
+  if (VPackSlice resultSlice = result.slice().get("results");
+      resultSlice.length() > 0) {
+    Result r =
+        clusterInfo.waitForPlan(resultSlice[0].getNumber<uint64_t>()).get();
+    if (r.fail()) {
+      return r;
+    }
+  }
+
+  while (true) {
+    auto maybeFinalResult = report->getResultIfAllReported();
+    if (maybeFinalResult.has_value()) {
+      events::DropIndex(databaseName, collectionID, idString,
+                        maybeFinalResult->errorNumber());
+
+      return std::move(maybeFinalResult.value());
+    }
+
+    if (TRI_microtime() > endTime) {
+      return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+    }
+
+    // We do not have a final result. Let's wait for more input
+    // Wait for the next incomplete callback
+    for (auto& [cb, indexId] : callbackList) {
+      if (!report->hasReported(indexId)) {
+        // We do not have result for this collection, wait for it.
+        bool gotTimeout;
+        {
+          // This one has not responded, wait for it.
+          std::unique_lock guard(cb->_cv.mutex);
+          gotTimeout = cb->executeByCallbackOrTimeout(getPollInterval());
+        }
+        if (gotTimeout) {
+          // We got woken up by waittime, not by  callback.
+          // Let us check if we skipped other callbacks as well
+          for (auto& [cb2, cid2] : callbackList) {
+            if (report->hasReported(cid2)) {
+              // Only re check those where we have not yet found a
+              // result.
+              cb2->refetchAndUpdate(true, false);
+            }
+          }
+        }
+        // Break the callback loop,
+        // continue on the check if we completed loop
+        break;
+      }
+    }
+
+    if (server.isStopping()) {
+      return Result(TRI_ERROR_SHUTTING_DOWN);
+    }
+  }
+}
+
+
 Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
                                  double endTime, AgencyComm& agencyComm) {
   std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
@@ -565,7 +777,7 @@ auto ensureIndexCoordinatorReplication2Inner(LogicalCollection const& collection
                                    std::string_view idString, VPackSlice index,
                                    bool create,
                                    double timeout, ArangodServer& server) -> ResultT<VPackBuilder> {
-  // Get the current entry in Plan for this collection
+  // Get the current entry in Target for this collection
   TargetCollectionReader collectionFromTarget(collection);
   if (!collectionFromTarget.state().ok()) {
     return collectionFromTarget.state();
@@ -1295,7 +1507,11 @@ auto ClusterIndexMethods::dropIndexCoordinator(LogicalCollection const& col,
 
   Result res(TRI_ERROR_CLUSTER_TIMEOUT);
   do {
-    res = ::dropIndexCoordinatorInner(col, iid, endTime, ac);
+    if (col.replicationVersion() == replication::Version::TWO) {
+      res = ::dropIndexCoordinatorReplication2Inner(col, iid, endTime, ac);
+    } else {
+      res = ::dropIndexCoordinatorInner(col, iid, endTime, ac);
+    }
 
     if (res.ok()) {
       // success!
