@@ -496,8 +496,7 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       LOG_TOPIC("e547d", WARN, Logger::CLUSTER)
           << "attempted to create index '" << slice.toJson()
-          << "' but found conflicting index '" << other.toJson()
-          << "'";
+          << "' but found conflicting index '" << other.toJson() << "'";
 #endif
       return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
                     "duplicate value for `" + arangodb::StaticStrings::IndexId +
