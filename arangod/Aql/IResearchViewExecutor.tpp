@@ -665,7 +665,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
              (!this->infos().heapSort().empty() && needFullCount));
   auto& impl = static_cast<Impl&>(*this);
   IResearchViewStats stats{};
-  while (inputRange.hasDataRow() && call.shouldSkip()) {
+  while (inputRange.hasDataRow() && call.needSkipMore()) {
     if (!_inputRow.isInitialized()) {
       auto rowState = ExecutorState::HASMORE;
       std::tie(rowState, _inputRow) = inputRange.peekDataRow();
@@ -690,7 +690,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
     // only heapsort version could possibly fetch more than skip requested
     TRI_ASSERT(_indexReadBuffer.empty() || !infos().heapSort().empty());
 
-    if (call.shouldSkip()) {
+    if (call.needSkipMore()) {
       // We still need to fetch more
       // trigger refetch of new input row
       inputRange.advanceDataRow();
