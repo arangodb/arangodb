@@ -36,6 +36,7 @@
 #include "RestServer/arangod.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/vocbase.h"
 
 #include "search/all_filter.hpp"
@@ -315,8 +316,9 @@ inline Result getAnalyzerByName(FieldMeta::Analyzer& out,
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
   auto& [analyzer, shortName] = out;
 
-  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
-                                 ctx.trx->state()->analyzersRevision());
+  analyzer = analyzerFeature.get(
+      analyzerId, ctx.trx->vocbase(), ctx.trx->state()->analyzersRevision(),
+      transaction::OperationOriginInternal{"fetching analyzer"});
   if (!analyzer) {
     return {TRI_ERROR_BAD_PARAMETER,
             absl::StrCat("'", funcName,

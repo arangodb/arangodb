@@ -82,6 +82,8 @@ class PhysicalCollection {
 
   void drop();
 
+  virtual void freeMemory() noexcept;
+
   /// recalculate counts for collection in case of failure, blocking
   virtual uint64_t recalculateCounts();
 

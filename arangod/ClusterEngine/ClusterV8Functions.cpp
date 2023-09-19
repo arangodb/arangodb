@@ -182,7 +182,7 @@ static void JS_WaitForEstimatorSync(
   v8g->server()
       .getFeature<EngineSelectorFeature>()
       .engine()
-      .waitForEstimatorSync(std::chrono::seconds(10));
+      .waitForEstimatorSync();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

@@ -58,8 +58,7 @@
       'logs': 'logger',
       'helpus': 'helpUs',
       'views': 'views',
-      'view/:name': 'viewSettings',
-      'view/:name/*link': 'viewSettings',
+      'view/:name': 'views',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -706,21 +705,9 @@
     collections: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        const self = this;
-        if (this.collectionsView) {
-          this.collectionsView.remove();
-        }
-        this.collectionsView = new window.CollectionsView({
-          collection: this.arangoCollectionsStore
-        });
-        this.arangoCollectionsStore.fetch({
-          cache: false,
-          success: function () {
-            self.collectionsView.render();
-          }
-        });
-      });
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.CollectionsReactView),
+          document.getElementById('content-react')));
     },
 
     cIndices: function (colname) {
@@ -1218,18 +1205,11 @@
         document.getElementById('content-react')));
     },
 
-    viewSettings: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
-          document.getElementById('content-react')));
-    },
     views: function () {
       this.checkUser();
       
       this.init.then(
-       () => ReactDOM.render(React.createElement(window.ViewsListReactView),
+       () => ReactDOM.render(React.createElement(window.ViewsReactView),
          document.getElementById('content-react')));
     },
 

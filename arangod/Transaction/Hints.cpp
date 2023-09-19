@@ -44,9 +44,6 @@ std::string Hints::toString() const {
   if (has(Hint::LOCK_NEVER)) {
     append("lock never");
   }
-  if (has(Hint::NO_DLD)) {
-    append("no dld");
-  }
   if (has(Hint::NO_INDEXING)) {
     append("no indexing");
   }

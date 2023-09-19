@@ -107,7 +107,7 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
   return status;
 };
 
-const waitForResultsBeeingGarbageCollected = function (pid, ttl) {
+const waitForResultsBeingGarbageCollected = function (pid, ttl) {
   // garbage collection runs every 20s, therefore we should wait at least that long plus the ttl given
 	const maxWaitSeconds = ttl + 100;
 	const sleepIntervalSeconds = 0.2;
@@ -189,6 +189,19 @@ const testPageRankOnGraph = function (vertices, edges, seeded = false) {
       `for vertex ${JSON.stringify(resultV)}. The ranks returned by the algorithm are ${JSON.stringify(result)}.`
     );
   }
+};
+
+const testLineRankOnGraph = function (vertices, edges) {
+  db[vColl].save(vertices);
+  db[eColl].save(edges);
+  let parameters = {maxGSS: 1000, resultField: "linerank"};
+  const pid = pregel.start("linerank", graphName, parameters);
+  waitUntilRunFinishedSuccessfully(pid);
+  return db._query(`
+                  FOR v in ${vColl}
+                  sort v._rev
+                  RETURN v.linerank
+                `).toArray();
 };
 
 /**
@@ -1710,6 +1723,26 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
   };
 }
 
+function makeLineRankTestSuite(isSmart, smartAttribute, numberOfShards) {
+  const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
+  return function () {
+    'use strict';
+    return {
+      setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
+      tearDown: makeTearDown(isSmart),
+
+      testLineRankDirectedCycle: function () {
+        const length = 4;
+        const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
+        const result = testLineRankOnGraph(vertices, edges);
+        for (const rank of result) {
+          assertAlmostEquals(rank, 2.0 / length, 0.1);
+        }
+      },
+    };
+  };
+}
+
 function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
 
   const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
@@ -1815,6 +1848,7 @@ exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
 exports.makeHITSTestSuite = makeHITSTestSuite;
+exports.makeLineRankTestSuite = makeLineRankTestSuite;
 
 // Suite helper methods
 exports.makeSetUp = makeSetUp;
@@ -1830,5 +1864,5 @@ exports.runFinished = runFinished;
 exports.runCanceled = runCanceled;
 exports.runFinishedSuccessfully = runFinishedSuccessfully;
 exports.waitUntilRunFinishedSuccessfully = waitUntilRunFinishedSuccessfully;
-exports.waitForResultsBeeingGarbageCollected = waitForResultsBeeingGarbageCollected;
+exports.waitForResultsBeingGarbageCollected = waitForResultsBeingGarbageCollected;
 exports.uniquePregelResults = uniquePregelResults;

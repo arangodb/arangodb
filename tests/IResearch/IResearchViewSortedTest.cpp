@@ -224,8 +224,9 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
@@ -529,8 +530,9 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 

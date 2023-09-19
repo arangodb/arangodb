@@ -1289,7 +1289,9 @@ void HeartbeatThread::beginShutdown() {
     size_t counter = 0;
     auto start = std::chrono::steady_clock::now();
     while (_maintenanceThread->isRunning()) {
-      if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
+      double timeout = agencySync().requestTimeout() + 5.0;
+      if (std::chrono::steady_clock::now() - start >
+          std::chrono::duration<double>(timeout)) {
         LOG_TOPIC("d8a5c", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the maintenance "
                "thread";

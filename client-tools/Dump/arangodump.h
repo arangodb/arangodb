@@ -24,14 +24,19 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/operating-system.h"
 #include "Utils/ArangoClient.h"
 
 namespace arangodb {
 
+class BumpFileDescriptorsFeature;
 class DumpFeature;
 class EncryptionFeature;
 
 using ArangoDumpFeaturesList = ArangoClientFeaturesList<
+#ifdef TRI_HAVE_GETRLIMIT
+    BumpFileDescriptorsFeature,
+#endif
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif

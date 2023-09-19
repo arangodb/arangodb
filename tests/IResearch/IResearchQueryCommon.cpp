@@ -59,6 +59,7 @@ IResearchQueryTest::IResearchQueryTest() : server{false} {
   auto res = analyzers.emplace(
       result, "testVocbase::test_analyzer", "TestAnalyzer",
       VPackParser::fromJson("\"abc\"")->slice(),
+      arangodb::transaction::OperationOriginTestCase{},
       arangodb::iresearch::Features(
           {}, irs::IndexFeatures::FREQ |
                   irs::IndexFeatures::POS));  // required for PHRASE
@@ -66,13 +67,15 @@ IResearchQueryTest::IResearchQueryTest() : server{false} {
 
   res = analyzers.emplace(
       result, "testVocbase::test_csv_analyzer", "TestDelimAnalyzer",
-      VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+      VPackParser::fromJson("\",\"")->slice(),
+      arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
   EXPECT_TRUE(res.ok());
 
   res = analyzers.emplace(
       result, "testVocbase::text_en", "text",
       VPackParser::fromJson("{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
           ->slice(),
+      arangodb::transaction::OperationOriginTestCase{},
       arangodb::iresearch::Features{
           arangodb::iresearch::FieldFeatures::NORM,
           irs::IndexFeatures::FREQ |
@@ -87,6 +90,7 @@ IResearchQueryTest::IResearchQueryTest() : server{false} {
 
   res = analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                           VPackParser::fromJson("\"abc\"")->slice(),
+                          arangodb::transaction::OperationOriginTestCase{},
                           arangodb::iresearch::Features{
                               irs::IndexFeatures::FREQ |
                               irs::IndexFeatures::POS});  // required for PHRASE
@@ -96,6 +100,7 @@ IResearchQueryTest::IResearchQueryTest() : server{false} {
       VPackParser::fromJson("{\"min\":1, \"max\":3, \"streamType\":\"utf8\", "
                             "\"preserveOriginal\":false}")
           ->slice(),
+      arangodb::transaction::OperationOriginTestCase{},
       arangodb::iresearch::Features{
           irs::IndexFeatures::FREQ |
           irs::IndexFeatures::POS});  // required for PHRASE
@@ -105,6 +110,7 @@ IResearchQueryTest::IResearchQueryTest() : server{false} {
       VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                             "\"preserveOriginal\":false}")
           ->slice(),
+      arangodb::transaction::OperationOriginTestCase{},
       arangodb::iresearch::Features{
           irs::IndexFeatures::FREQ |
           irs::IndexFeatures::POS});  // required for PHRASE
@@ -113,7 +119,8 @@ IResearchQueryTest::IResearchQueryTest() : server{false} {
 
   res = analyzers.emplace(
       result, "_system::test_csv_analyzer", "TestDelimAnalyzer",
-      VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+      VPackParser::fromJson("\",\"")->slice(),
+      arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
   EXPECT_TRUE(res.ok());
 
   auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
@@ -188,8 +195,9 @@ void QueryTest::createCollections() {
     OperationOptions options;
     options.returnNew = true;
     SingleCollectionTransaction trx{
-        transaction::StandaloneContext::Create(_vocbase), *collection,
-        AccessMode::Type::WRITE};
+        transaction::StandaloneContext::create(
+            _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *collection, AccessMode::Type::WRITE};
     {
       auto r = trx.begin();
       EXPECT_TRUE(r.ok()) << r.errorMessage();
@@ -221,8 +229,9 @@ void QueryTest::createCollections() {
     OperationOptions options;
     options.returnNew = true;
     SingleCollectionTransaction trx{
-        transaction::StandaloneContext::Create(_vocbase), *collection,
-        AccessMode::Type::WRITE};
+        transaction::StandaloneContext::create(
+            _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *collection, AccessMode::Type::WRITE};
     {
       auto r = trx.begin();
       EXPECT_TRUE(r.ok()) << r.errorMessage();

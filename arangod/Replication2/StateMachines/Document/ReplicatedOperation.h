@@ -27,6 +27,7 @@
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
 #include "VocBase/Identifiers/TransactionId.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <variant>
 
@@ -117,6 +118,33 @@ struct ReplicatedOperation {
         -> bool = default;
   };
 
+  struct CreateIndex {
+    ShardID shard;
+    std::shared_ptr<VPackBuilder> properties;
+
+    // Parameters attached to the operation, but not replicated, because they
+    // make sense only locally.
+    struct Parameters {
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress;
+
+      friend auto operator==(Parameters const&, Parameters const&)
+          -> bool = default;
+    } params;
+
+    friend auto operator==(CreateIndex const&, CreateIndex const&)
+        -> bool = default;
+  };
+
+  struct DropIndex {
+    ShardID shard;
+    velocypack::SharedSlice index;
+
+    friend auto operator==(DropIndex const& lhs, DropIndex const& rhs) -> bool {
+      return lhs.shard == rhs.shard &&
+             lhs.index.binaryEquals(rhs.index.slice());
+    }
+  };
+
   struct Insert : DocumentOperation {};
 
   struct Update : DocumentOperation {};
@@ -128,8 +156,8 @@ struct ReplicatedOperation {
  public:
   using OperationType =
       std::variant<AbortAllOngoingTrx, Commit, IntermediateCommit, Abort,
-                   Truncate, CreateShard, ModifyShard, DropShard, Insert,
-                   Update, Replace, Remove>;
+                   Truncate, CreateShard, ModifyShard, DropShard, CreateIndex,
+                   DropIndex, Insert, Update, Replace, Remove>;
   OperationType operation;
 
   static auto fromOperationType(OperationType op) noexcept
@@ -153,6 +181,13 @@ struct ReplicatedOperation {
       std::string followersToDrop) noexcept -> ReplicatedOperation;
   static auto buildDropShardOperation(ShardID shard,
                                       CollectionID collection) noexcept
+      -> ReplicatedOperation;
+  static auto buildCreateIndexOperation(
+      ShardID shard, std::shared_ptr<VPackBuilder> properties,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress =
+          nullptr) noexcept -> ReplicatedOperation;
+  static auto buildDropIndexOperation(ShardID shard,
+                                      velocypack::SharedSlice index) noexcept
       -> ReplicatedOperation;
   static auto buildDocumentOperation(TRI_voc_document_operation_e const& op,
                                      TransactionId tid, ShardID shard,

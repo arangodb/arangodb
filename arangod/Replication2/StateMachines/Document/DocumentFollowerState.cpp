@@ -473,6 +473,18 @@ auto DocumentFollowerState::handleSnapshotTransfer(
       });
 }
 
+template<class T>
+auto DocumentFollowerState::GuardedData::applyAndRelease(T const& op,
+                                                         LogIndex index)
+    -> ResultT<std::optional<LogIndex>> {
+  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
+    return res;
+  }
+
+  return ResultT<std::optional<LogIndex>>::success(
+      activeTransactions.getReleaseIndex().value_or(index));
+}
+
 auto DocumentFollowerState::GuardedData::applyEntry(
     ModifiesUserTransaction auto const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
@@ -580,25 +592,25 @@ auto DocumentFollowerState::GuardedData::applyEntry(
 auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::CreateShard const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
-  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
-    return res;
-  }
+  return applyAndRelease(op, index);
+}
 
-  // Once the shard has been created, we can release the entry.
-  return ResultT<std::optional<LogIndex>>::success(
-      activeTransactions.getReleaseIndex().value_or(index));
+auto DocumentFollowerState::GuardedData::applyEntry(
+    ReplicatedOperation::CreateIndex const& op, LogIndex index)
+    -> ResultT<std::optional<LogIndex>> {
+  return applyAndRelease(op, index);
+}
+
+auto DocumentFollowerState::GuardedData::applyEntry(
+    ReplicatedOperation::DropIndex const& op, LogIndex index)
+    -> ResultT<std::optional<LogIndex>> {
+  return applyAndRelease(op, index);
 }
 
 auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::ModifyShard const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
-  if (auto res = transactionHandler->applyEntry(op); res.fail()) {
-    return res;
-  }
-
-  // Once the shard has been modified, we can release the entry.
-  return ResultT<std::optional<LogIndex>>::success(
-      activeTransactions.getReleaseIndex().value_or(index));
+  return applyAndRelease(op, index);
 }
 
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"

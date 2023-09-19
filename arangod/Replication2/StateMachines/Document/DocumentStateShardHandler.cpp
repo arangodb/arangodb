@@ -142,4 +142,47 @@ auto DocumentStateShardHandler::getShardMap() -> ShardMap {
   return _shardMap.shards;
 }
 
+auto DocumentStateShardHandler::ensureIndex(
+    ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result {
+  auto res = basics::catchToResult(
+      [this, &properties, shard = shard,
+       progress = std::move(progress)]() mutable -> Result {
+        return _maintenance->executeCreateIndex(shard, properties,
+                                                std::move(progress));
+      });
+
+  if (res.ok()) {
+    _maintenance->addDirty();
+  } else {
+    res = Result{res.errorNumber(),
+                 fmt::format("Error: {}! Failed to ensure index on shard {}! "
+                             "Index: {}",
+                             res.errorMessage(), std::move(shard),
+                             properties->toJson())};
+  }
+  return res;
+}
+
+auto DocumentStateShardHandler::dropIndex(ShardID shard,
+                                          velocypack::SharedSlice index)
+    -> Result {
+  auto indexId = index.toString();
+  auto res = basics::catchToResult(
+      [this, shard, index = std::move(index)]() mutable -> Result {
+        return _maintenance->executeDropIndex(std::move(shard),
+                                              std::move(index));
+      });
+
+  if (res.ok()) {
+    _maintenance->addDirty();
+  } else {
+    res = Result{
+        res.errorNumber(),
+        fmt::format("Error {}! Failed to drop index on shard {}! Index: {}",
+                    res.errorMessage(), std::move(shard), std::move(indexId))};
+  }
+  return res;
+}
+
 }  // namespace arangodb::replication2::replicated_state::document

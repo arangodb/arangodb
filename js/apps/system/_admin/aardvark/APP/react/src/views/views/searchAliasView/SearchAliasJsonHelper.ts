@@ -1,7 +1,7 @@
 import { JSONSchemaType } from "ajv";
 import { useEffect, useState } from "react";
 import { useEditViewContext } from "../editView/EditViewContext";
-import { SearchAliasViewPropertiesType } from "../searchView.types";
+import { SearchAliasViewPropertiesType } from "../View.types";
 
 const searchAliasJsonSchema: JSONSchemaType<SearchAliasViewPropertiesType> = {
   $id: "https://arangodb.com/schemas/views/searchAliasViews.json",

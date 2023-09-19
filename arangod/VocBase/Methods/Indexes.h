@@ -28,6 +28,7 @@
 
 #include "Basics/Result.h"
 #include "Indexes/Index.h"
+#include "Transaction/Hints.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
@@ -40,9 +41,11 @@ namespace methods {
 
 /// Common code for ensureIndexes and api-index.js
 struct Indexes {
+  using ProgressTracker = std::function<arangodb::Result(double)>;
+
   static arangodb::Result getIndex(LogicalCollection const& collection,
                                    velocypack::Slice indexId,
-                                   velocypack::Builder&,
+                                   velocypack::Builder& out,
                                    transaction::Methods* trx = nullptr);
 
   /// @brief get all indexes, skips view links
@@ -59,7 +62,7 @@ struct Indexes {
   static arangodb::Result ensureIndex(
       LogicalCollection& collection, velocypack::Slice definition, bool create,
       velocypack::Builder& output,
-      std::shared_ptr<std::function<arangodb::Result(double)>> f = nullptr);
+      std::shared_ptr<ProgressTracker> f = nullptr);
 
   static arangodb::Result drop(LogicalCollection& collection,
                                velocypack::Slice indexArg);

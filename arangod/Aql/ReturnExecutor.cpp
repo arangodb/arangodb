@@ -102,7 +102,7 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 
-[[nodiscard]] auto ReturnExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto ReturnExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (input.finalState() == MainQueryState::DONE) {

@@ -85,17 +85,17 @@ struct Collection {
   std::unordered_set<std::string> responsibleServers() const;
 
   /// @brief returns the "distributeShardsLike" attribute for the collection
-  std::string const& distributeShardsLike() const;
+  std::string distributeShardsLike() const;
 
   /// @brief fills the set with the responsible servers for the collection
   /// returns the number of responsible servers found for the collection
   size_t responsibleServers(std::unordered_set<std::string>&) const;
 
   /// @brief returns the shard ids of a collection
-  std::shared_ptr<std::vector<std::string>> shardIds() const;
+  std::shared_ptr<std::vector<std::string> const> shardIds() const;
 
   /// @brief returns the filtered list of shard ids of a collection
-  std::shared_ptr<std::vector<std::string>> shardIds(
+  std::shared_ptr<std::vector<std::string> const> shardIds(
       std::unordered_set<std::string> const& includedShards) const;
 
   /// @brief returns the shard keys of a collection

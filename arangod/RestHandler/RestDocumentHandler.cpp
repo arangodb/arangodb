@@ -35,6 +35,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
@@ -153,10 +154,6 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_CREATE
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::insertDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
@@ -244,8 +241,10 @@ RestStatus RestDocumentHandler::insertDocument() {
                                         // single document operations
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
-                                 std::move(trxOpts));
+  _activeTrx = createTransaction(
+      cname, AccessMode::Type::WRITE, opOptions,
+      transaction::OperationOriginREST{"inserting document(s)"},
+      std::move(trxOpts));
 
   addTransactionHints(cname, isMultiple,
                       opOptions.isOverwriteModeUpdateReplace());
@@ -331,10 +330,6 @@ RestStatus RestDocumentHandler::readDocument() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_READ
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
@@ -388,7 +383,9 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(collection, AccessMode::Type::READ, options);
+  _activeTrx =
+      createTransaction(collection, AccessMode::Type::READ, options,
+                        transaction::OperationOriginREST{"fetching document"});
 
   _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -440,10 +437,6 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
           }));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_READ_HEAD
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::checkDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
@@ -456,10 +449,6 @@ RestStatus RestDocumentHandler::checkDocument() {
   return readSingleDocument(false);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_REPLACE
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::replaceDocument() {
   bool found;
   _request->value("onlyget", found);
@@ -469,17 +458,9 @@ RestStatus RestDocumentHandler::replaceDocument() {
   return modifyDocument(false);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_UPDATE
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::updateDocument() {
   return modifyDocument(true);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function for replaceDocument and updateDocument
-////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -608,8 +589,10 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
                                         // single document operations
 
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
-                                 std::move(trxOpts));
+  _activeTrx = createTransaction(
+      cname, AccessMode::Type::WRITE, opOptions,
+      transaction::OperationOriginREST{"modifying document(s)"},
+      std::move(trxOpts));
 
   addTransactionHints(cname, isArrayCase, false);
 
@@ -682,10 +665,6 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
             });
       }));
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_DELETE
-////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestDocumentHandler::removeDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -772,8 +751,10 @@ RestStatus RestDocumentHandler::removeDocument() {
   trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
                                         // single document operations
 
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
-                                 std::move(trxOpts));
+  _activeTrx = createTransaction(
+      cname, AccessMode::Type::WRITE, opOptions,
+      transaction::OperationOriginREST{"removing document(s)"},
+      std::move(trxOpts));
 
   addTransactionHints(cname, isMultiple, false);
 
@@ -832,10 +813,6 @@ RestStatus RestDocumentHandler::removeDocument() {
           }));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_READ_MANY
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestDocumentHandler::readManyDocuments() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
@@ -864,7 +841,9 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     // there, the flag is ignored.
   }
 
-  _activeTrx = createTransaction(cname, AccessMode::Type::READ, opOptions);
+  _activeTrx =
+      createTransaction(cname, AccessMode::Type::READ, opOptions,
+                        transaction::OperationOriginREST{"fetching documents"});
 
   // ...........................................................................
   // inside read transaction

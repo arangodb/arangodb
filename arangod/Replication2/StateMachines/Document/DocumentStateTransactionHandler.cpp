@@ -235,12 +235,24 @@ auto DocumentStateTransactionHandler::applyOp(
 auto DocumentStateTransactionHandler::applyOp(
     ReplicatedOperation::DropShard const& op) -> Result {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // Make sure all transactions are aborted before dropping a shard.
   auto transactions = getTransactionsForShard(op.shard);
   TRI_ASSERT(transactions.empty())
       << "Some transactions were not aborted before dropping shard " << op.shard
       << ": " << transactions;
 #endif
   return _shardHandler->dropShard(op.shard).result();
+}
+
+auto DocumentStateTransactionHandler::applyOp(
+    ReplicatedOperation::CreateIndex const& op) -> Result {
+  return _shardHandler->ensureIndex(op.shard, op.properties,
+                                    op.params.progress);
+}
+
+auto DocumentStateTransactionHandler::applyOp(
+    ReplicatedOperation::DropIndex const& op) -> Result {
+  return _shardHandler->dropIndex(op.shard, op.index);
 }
 
 auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)

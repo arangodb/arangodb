@@ -173,6 +173,7 @@ add_library(arangoserver STATIC
   Transaction/CountCache.cpp
   Transaction/Helpers.cpp
   Transaction/Hints.cpp
+  Transaction/History.cpp
   Transaction/IndexesSnapshot.cpp
   Transaction/Manager.cpp
   Transaction/ManagedContext.cpp
