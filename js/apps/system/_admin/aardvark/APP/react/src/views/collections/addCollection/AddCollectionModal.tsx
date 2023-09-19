@@ -136,7 +136,7 @@ export const AddCollectionModal = ({
       isSatellite,
       ...extra
     } = values;
-    const clusterOptions: Partial<CreateCollectionOptions> = window.App
+    const clusterOptions = window.App
       .isCluster
       ? distributeShardsLike
         ? { distributeShardsLike, ...extra }
