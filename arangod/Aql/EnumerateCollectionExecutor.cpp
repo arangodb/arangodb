@@ -192,7 +192,7 @@ EnumerateCollectionExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
-  while ((inputRange.hasDataRow() || _cursorHasMore) && call.shouldSkip()) {
+  while ((inputRange.hasDataRow() || _cursorHasMore) && call.needSkipMore()) {
     uint64_t skipped = 0;
 
     if (!_cursorHasMore) {

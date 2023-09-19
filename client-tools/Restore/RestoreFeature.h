@@ -94,6 +94,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
     uint64_t chunkSize{1024 * 1024 * 8};
     uint64_t defaultNumberOfShards{1};     // deprecated
     uint64_t defaultReplicationFactor{1};  // deprecated
+    uint64_t maxUnusedBufferSize{1024 * 1024 * 512};
     std::vector<std::string> numberOfShards;
     std::vector<std::string> replicationFactor;
     uint32_t threadCount{2};
@@ -108,7 +109,6 @@ class RestoreFeature final : public ArangoRestoreFeature {
     bool importStructure{true};
     bool includeSystemCollections{false};
     bool overwrite{true};
-    bool useEnvelope{false};
     bool enableRevisionTrees{true};
     bool continueRestore{false};
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
