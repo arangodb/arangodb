@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-365: fix query import breaking due to extra fields.
+
 * Fixed BTS-1239: Restoring a single server dump with system collections
   into a cluster caused some of those system collections to lose the
   `distributeShardsLike` setting and also changed the `shardingStrategy` to
