@@ -28,7 +28,6 @@
 #include <string_view>
 
 #include "H1Connection.h"
-#include "H2Connection.h"
 #include "VstConnection.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
@@ -50,21 +49,6 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
     else if (_conf._socketType == SocketType::Unix) {
       result =
           std::make_shared<http::H1Connection<SocketType::Unix>>(loop, _conf);
-    }
-#endif
-  } else if (_conf._protocolType == ProtocolType::Http2) {
-    FUERTE_LOG_DEBUG << "fuerte - creating http 2 connection\n";
-    if (_conf._socketType == SocketType::Tcp) {
-      result =
-          std::make_shared<http::H2Connection<SocketType::Tcp>>(loop, _conf);
-    } else if (_conf._socketType == SocketType::Ssl) {
-      result =
-          std::make_shared<http::H2Connection<SocketType::Ssl>>(loop, _conf);
-    }
-#ifdef ASIO_HAS_LOCAL_SOCKETS
-    else if (_conf._socketType == SocketType::Unix) {
-      result =
-          std::make_shared<http::H2Connection<SocketType::Unix>>(loop, _conf);
     }
 #endif
   } else if (_conf._protocolType == ProtocolType::Vst) {

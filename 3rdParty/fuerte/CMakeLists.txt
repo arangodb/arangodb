@@ -9,7 +9,6 @@ add_library(fuerte STATIC
   src/helper.cpp
   src/http.cpp
   src/H1Connection.cpp
-  src/H2Connection.cpp
   src/jwt.cpp
   src/loop.cpp
   src/message.cpp
