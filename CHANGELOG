@@ -1,6 +1,12 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump to the
+  Single server database.
+
+* Removed DocuBlocks and obsolete documentation tooling.
+  The HTTP API descriptions are now in the `arangodb/docs-hugo` repository.
+
 * Added metric `rocksdb_cache_edge_empty_inserts_total` to count the number
   of inserts into the edge cache for non-connected edges.
 
@@ -10294,8 +10300,6 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.environment-variables-whitelist`: control environment variables visible in JavaScript
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
-
-  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 
