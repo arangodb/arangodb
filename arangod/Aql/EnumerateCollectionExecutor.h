@@ -119,9 +119,6 @@ class EnumerateCollectionExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    /* With some more modifications this could be turned to true. Actually the
-   output of this block is input * itemsInCollection */
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateCollectionExecutorInfos;
@@ -145,8 +142,8 @@ class EnumerateCollectionExecutor {
    * @brief This Executor in some cases knows how many rows it will produce and
    * most by itself
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+  [[nodiscard]] auto expectedNumberOfRows(AqlItemBlockInputRange const& input,
+                                          AqlCall const& call) const noexcept
       -> size_t;
 
   /**

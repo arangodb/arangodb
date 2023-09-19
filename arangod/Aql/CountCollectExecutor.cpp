@@ -97,7 +97,7 @@ auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
           AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 }
 
-auto CountCollectExecutor::expectedNumberOfRowsNew(
+auto CountCollectExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   auto subqueries = input.countShadowRows();
