@@ -49,6 +49,8 @@ struct IMaintenanceActionExecutor {
       ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress)
       -> Result = 0;
+  virtual auto executeDropIndex(ShardID shard, velocypack::SharedSlice index)
+      -> Result = 0;
   virtual void addDirty() = 0;
 };
 
@@ -70,12 +72,17 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
       ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress)
       -> Result override;
+  auto executeDropIndex(ShardID shard, velocypack::SharedSlice index)
+      -> Result override;
   void addDirty() override;
 
  private:
   GlobalLogIdentifier _gid;
   MaintenanceFeature& _maintenanceFeature;
   ServerID _server;
+
+  // The vocbase reference remains valid for the lifetime of the executor.
+  // Replicated logs are stopped before the vocbase is marked as dropped.
   TRI_vocbase_t& _vocbase;
 };
 }  // namespace arangodb::replication2::replicated_state::document
