@@ -1128,7 +1128,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(
           break;
         }
         if (deadlineReached) {
-          timeoutHappened = !deadlineReached();
+          timeoutHappened = deadlineReached();
           if (timeoutHappened) {
             break;
           }
