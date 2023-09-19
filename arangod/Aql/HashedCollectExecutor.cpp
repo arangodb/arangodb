@@ -410,7 +410,7 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   return result;
 }
 
-[[nodiscard]] auto HashedCollectExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto HashedCollectExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (!_isInitialized) {

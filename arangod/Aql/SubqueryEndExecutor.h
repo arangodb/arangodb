@@ -73,7 +73,6 @@ class SubqueryEndExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -98,8 +97,8 @@ class SubqueryEndExecutor {
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+  [[nodiscard]] auto expectedNumberOfRows(AqlItemBlockInputRange const& input,
+                                          AqlCall const& call) const noexcept
       -> size_t;
 
   /**

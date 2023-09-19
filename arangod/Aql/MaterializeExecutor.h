@@ -106,8 +106,6 @@ class MaterializeExecutor {
     // FIXME(gnusi): enable?
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    // TODO this could be set to true!
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = MaterializerExecutorInfos<T>;
