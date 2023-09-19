@@ -458,7 +458,7 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto skipped = size_t{0};
 
-  while (call.shouldSkip()) {
+  while (call.needSkipMore()) {
     if (traversalEnumerator()->isDone()) {
       if (!initTraverser(input)) {
         TRI_ASSERT(!input.hasDataRow());
