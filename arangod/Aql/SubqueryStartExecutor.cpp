@@ -92,7 +92,7 @@ auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
   return false;
 }
 
-[[nodiscard]] auto SubqueryStartExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto SubqueryStartExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   // The DataRow is consumed after a shadowRow is produced.

@@ -48,7 +48,6 @@ class AsyncExecutor final {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Enable;
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   // using Fetcher = std::monostate;
   using Infos = std::monostate;
