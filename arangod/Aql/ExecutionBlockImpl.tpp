@@ -245,7 +245,6 @@ using namespace arangodb::aql;
 CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
 CREATE_HAS_MEMBER_CHECK(expectedNumberOfRows, hasExpectedNumberOfRows);
 CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
-CREATE_HAS_MEMBER_CHECK(expectedNumberOfRowsNew, hasExpectedNumberOfRowsNew);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // Forward declaration of Test Executors.
@@ -577,7 +576,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
 
     // Non-Passthrough variant, we need to allocate the block ourselfs
     size_t blockSize = ExecutionBlock::DefaultBatchSize;
-    if constexpr (hasExpectedNumberOfRowsNew<Executor>::value) {
+    if constexpr (hasExpectedNumberOfRows<Executor>::value) {
       // Only limit the output size if there will be no more
       // data from upstream. Or if we have ordered a SOFT LIMIT.
       // Otherwise we will overallocate here.
@@ -586,7 +585,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
       // returns HASMORE.
       if (_lastRange.finalState() == MainQueryState::DONE ||
           call.hasSoftLimit()) {
-        blockSize = executor().expectedNumberOfRowsNew(_lastRange, call);
+        blockSize = executor().expectedNumberOfRows(_lastRange, call);
         if (_lastRange.finalState() == MainQueryState::HASMORE) {
           // There might be more from above!
           blockSize = std::max(call.getLimit(), blockSize);
@@ -627,6 +626,12 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
   if (_outputItemRow == nullptr || !_outputItemRow->isInitialized()) {
     _outputItemRow = allocateOutputBlock(std::move(call));
+    TRI_ASSERT(_outputItemRow->numRowsLeft() ==
+               std::min(_outputItemRow->blockNumRows(),
+                        _outputItemRow->getClientCall().getLimit()))
+        << "output numRowsLeft: " << _outputItemRow->numRowsLeft()
+        << ", blockNumRows: " << _outputItemRow->blockNumRows()
+        << ", call: " << _outputItemRow->getClientCall();
   } else {
     _outputItemRow->setCall(std::move(call));
   }

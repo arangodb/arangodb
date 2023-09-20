@@ -68,15 +68,21 @@ namespace {
 
 /// @brief fake client and syncer ids we will send to the server. the server
 /// keeps track of all connected clients
-static std::string clientId;
-static std::string syncerId;
+std::string clientId;
+std::string syncerId;
 
 /// @brief minimum amount of data to fetch from server in a single batch
-constexpr uint64_t MinChunkSize = 1024 * 128;
+constexpr uint64_t minChunkSize = 1024 * 128;
 
 /// @brief maximum amount of data to fetch from server in a single batch
-// NB: larger value may cause tcp issues (check exact limits)
-constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
+/// NB: larger value may cause tcp issues (check exact limits)
+constexpr uint64_t maxChunkSize = 1024 * 1024 * 96;
+
+/// @brief minimum number of documents per batch
+constexpr uint64_t minDocsPerBatch = 100;
+
+/// @brief maximum number of documents per batch
+constexpr uint64_t maxDocsPerBatch = 100 * 1000;
 
 std::string serverLabel(std::string const& server) {
   if (server.empty()) {
@@ -404,7 +410,8 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
       job.options.initialChunkSize;  // will grow adaptively up to max
   std::string baseUrl =
       absl::StrCat("/_api/replication/dump?collection=", urlEncode(name),
-                   "&batchId=", batchId, "&useEnvelope=false",
+                   "&batchId=", batchId,
+                   "&useEnvelope=false&docsPerBatch=", job.options.docsPerBatch,
                    "&array=", (job.options.useVPack ? "true" : "false"));
   if (job.options.clusterMode) {
     // we are in cluster mode, must specify dbserver
@@ -511,12 +518,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     }
 
     // more data to retrieve, adaptively increase chunksize
-    if (chunkSize < job.options.maxChunkSize) {
-      chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
-      if (chunkSize > job.options.maxChunkSize) {
-        chunkSize = job.options.maxChunkSize;
-      }
-    }
+    chunkSize = std::min(uint64_t(chunkSize * 1.5), job.options.maxChunkSize);
   }
 
   // should never get here, but need to make compiler play nice
@@ -598,11 +600,6 @@ Result DumpFeature::DumpCollectionJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
   Result res;
 
-  if (options.progress) {
-    LOG_TOPIC("a9ec1", INFO, arangodb::Logger::DUMP)
-        << "# Dumping collection '" << collectionName << "'...";
-  }
-
   bool dumpStructure = true;
   bool dumpData = options.dumpData;
 
@@ -614,7 +611,25 @@ Result DumpFeature::DumpCollectionJob::run(
   }
 
   if (!dumpStructure && !dumpData) {
+    if (options.progress) {
+      LOG_TOPIC("11764", INFO, arangodb::Logger::DUMP)
+          << "# Skipping collection '" << collectionName << "'...";
+    }
     return res;
+  }
+
+  if (options.progress) {
+    std::string_view types;
+    if (dumpData && dumpStructure) {
+      types = "structure and data";
+    } else if (dumpData) {
+      types = "data";
+    } else {
+      types = " structure";
+    }
+    LOG_TOPIC("a9ec1", INFO, arangodb::Logger::DUMP)
+        << "# Dumping " << types << " of collection '" << collectionName
+        << "'...";
   }
 
   // prep hex string of collection name
@@ -806,6 +821,12 @@ void DumpFeature::collectOptions(
                      "The maximum size for individual data batches (in bytes).",
                      new UInt64Parameter(&_options.maxChunkSize));
 
+  options
+      ->addOption("--docs-per-batch",
+                  "The maximum number of documents to be returned per batch.",
+                  new UInt64Parameter(&_options.docsPerBatch))
+      .setIntroducedIn(31200);
+
   options->addOption(
       "--threads",
       "The maximum number of collections/shards to process in parallel.",
@@ -957,10 +978,12 @@ void DumpFeature::validateOptions(
   }
 
   // clamp chunk values to allowed ranges
+  _options.docsPerBatch =
+      std::clamp(_options.docsPerBatch, ::minDocsPerBatch, ::maxDocsPerBatch);
   _options.initialChunkSize =
-      std::clamp(_options.initialChunkSize, ::MinChunkSize, ::MaxChunkSize);
+      std::clamp(_options.initialChunkSize, ::minChunkSize, ::maxChunkSize);
   _options.maxChunkSize = std::clamp(_options.maxChunkSize,
-                                     _options.initialChunkSize, ::MaxChunkSize);
+                                     _options.initialChunkSize, ::maxChunkSize);
 
   if (options->processingResult().touched("server.database") &&
       _options.allDatabases) {
@@ -1583,7 +1606,8 @@ bool shouldRetryRequest(httpclient::SimpleHttpResult const* response,
   }
 
   if (check.is(TRI_ERROR_CLUSTER_TIMEOUT) ||
-      check.is(TRI_ERROR_HTTP_GATEWAY_TIMEOUT)) {
+      check.is(TRI_ERROR_HTTP_GATEWAY_TIMEOUT) ||
+      check.is(TRI_ERROR_RESOURCE_LIMIT)) {
     // retry
     return true;
   }
@@ -1597,6 +1621,7 @@ void DumpFeature::ParallelDumpServer::createDumpContext(
   VPackBuilder builder;
   {
     VPackObjectBuilder ob(&builder);
+    builder.add("docsPerBatch", VPackValue(options.docsPerBatch));
     builder.add("batchSize", VPackValue(options.maxChunkSize));
     builder.add("prefetchCount", VPackValue(options.dbserverPrefetchBatches));
     builder.add("parallelism", VPackValue(options.dbserverWorkerThreads));

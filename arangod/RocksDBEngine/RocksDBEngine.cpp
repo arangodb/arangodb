@@ -65,6 +65,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Replication2/Storage/LogStorageMethods.h"
@@ -1257,7 +1258,9 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
-  _dumpManager = std::make_unique<RocksDBDumpManager>(*this);
+  _dumpManager = std::make_unique<RocksDBDumpManager>(
+      *this, server().getFeature<metrics::MetricsFeature>(),
+      server().getFeature<DumpLimitsFeature>().limits());
   _walManager = std::make_shared<replication2::storage::wal::WalManager>(
       databasePathFeature.subdirectoryName("replicated-logs"));
 
@@ -1336,9 +1339,8 @@ void RocksDBEngine::beginShutdown() {
     _replicationManager->beginShutdown();
   }
 
-  // block the creation of new dump contexts
   if (_dumpManager != nullptr) {
-    _dumpManager->beginShutdown();
+    _dumpManager->garbageCollect(/*force*/ true);
   }
 
   // from now on, all started compactions can be canceled.
@@ -1353,6 +1355,10 @@ void RocksDBEngine::stop() {
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
+
+  if (_dumpManager != nullptr) {
+    _dumpManager->garbageCollect(/*force*/ true);
+  }
 
   if (_backgroundThread) {
     // stop the press

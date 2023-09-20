@@ -60,7 +60,6 @@ class ConstrainedSortExecutor {
     static constexpr bool preservesOrder = false;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortExecutorInfos;
@@ -94,8 +93,8 @@ class ConstrainedSortExecutor {
    *        It also knows that it could produce less if the upstream only has
    * fewer rows.
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+  [[nodiscard]] auto expectedNumberOfRows(AqlItemBlockInputRange const& input,
+                                          AqlCall const& call) const noexcept
       -> size_t;
 
  private:

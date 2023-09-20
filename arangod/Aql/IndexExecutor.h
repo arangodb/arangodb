@@ -280,7 +280,6 @@ class IndexExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -297,8 +296,8 @@ class IndexExecutor {
    * @brief This Executor in some cases knows how many rows it will produce and
    * most by itself
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+  [[nodiscard]] auto expectedNumberOfRows(AqlItemBlockInputRange const& input,
+                                          AqlCall const& call) const noexcept
       -> size_t;
 
   auto produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)

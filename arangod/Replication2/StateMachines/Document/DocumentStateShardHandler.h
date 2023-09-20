@@ -52,6 +52,8 @@ struct IDocumentStateShardHandler {
       ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress)
       -> Result = 0;
+  virtual auto dropIndex(ShardID shard, velocypack::SharedSlice index)
+      -> Result = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
@@ -80,6 +82,8 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
   auto ensureIndex(ShardID shard,
                    std::shared_ptr<VPackBuilder> const& properties,
                    std::shared_ptr<methods::Indexes::ProgressTracker> progress)
+      -> Result override;
+  auto dropIndex(ShardID shard, velocypack::SharedSlice index)
       -> Result override;
 
  private:

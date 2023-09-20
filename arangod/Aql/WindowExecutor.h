@@ -131,7 +131,6 @@ class AccuWindowExecutor : public BaseWindowExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Enable;
-    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = WindowExecutorInfos;
@@ -171,8 +170,8 @@ class AccuWindowExecutor : public BaseWindowExecutor {
    * it knows that it can only create as many new rows as pulled from upstream.
    * So it will overestimate.
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+  [[nodiscard]] auto expectedNumberOfRows(AqlItemBlockInputRange const& input,
+                                          AqlCall const& call) const noexcept
       -> size_t;
 };
 
@@ -185,7 +184,6 @@ class WindowExecutor : public BaseWindowExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = WindowExecutorInfos;
@@ -223,8 +221,8 @@ class WindowExecutor : public BaseWindowExecutor {
    * it knows that it can only create as many new rows as pulled from upstream.
    * So it will overestimate.
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+  [[nodiscard]] auto expectedNumberOfRows(AqlItemBlockInputRange const& input,
+                                          AqlCall const& call) const noexcept
       -> size_t;
 
  private:
