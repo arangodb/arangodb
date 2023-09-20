@@ -37,7 +37,7 @@ function dumpIntegrationSuite () {
   return {
     testDumpCompressed: function () {
       let tree = fs.listTree(dumpDir);
-      assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
+      assertNotEqual(-1, tree.indexOf("ENCRYPTION"), dumpDir);
       let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION")).toString();
       assertEqual("none", data);
       const prefix = "UnitTestsDumpEdges_8a31b923e9407ab76b6ca41131b8acf1";
