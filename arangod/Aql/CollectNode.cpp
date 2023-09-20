@@ -751,11 +751,6 @@ CostEstimate CollectNode::estimateCost() const {
 }
 
 AsyncPrefetchEligibility CollectNode::canUseAsyncPrefetching() const noexcept {
-  if (_groupVariables.empty() && !_aggregateVariables.empty()) {
-    // COLLECT AGGREGATE producing only a single result row. no need to
-    // parallelize
-    return AsyncPrefetchEligibility::kDisableForNode;
-  }
   return AsyncPrefetchEligibility::kEnableForNode;
 }
 

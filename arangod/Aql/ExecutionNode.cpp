@@ -2043,8 +2043,7 @@ ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 AsyncPrefetchEligibility LimitNode::canUseAsyncPrefetching() const noexcept {
-  // LimitNodes do not support async prefetching. They run into an
-  // assertion failure otherwise. TODO: this likely can be fixed.
+  // LimitNodes do not support async prefetching.
   return AsyncPrefetchEligibility::kDisableForNode;
 }
 
