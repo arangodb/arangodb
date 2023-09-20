@@ -626,6 +626,12 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
   if (_outputItemRow == nullptr || !_outputItemRow->isInitialized()) {
     _outputItemRow = allocateOutputBlock(std::move(call));
+    TRI_ASSERT(_outputItemRow->numRowsLeft() ==
+               std::min(_outputItemRow->blockNumRows(),
+                        _outputItemRow->getClientCall().getLimit()))
+        << "output numRowsLeft: " << _outputItemRow->numRowsLeft()
+        << ", blockNumRows: " << _outputItemRow->blockNumRows()
+        << ", call: " << _outputItemRow->getClientCall();
   } else {
     _outputItemRow->setCall(std::move(call));
   }

@@ -95,7 +95,7 @@ class AqlCallList {
    *
    * @return AqlCall The next call
    */
-  [[nodiscard]] auto peekNextCall() const -> AqlCall const&;
+  [[nodiscard]] auto peekNextCall() const noexcept -> AqlCall const&;
 
   /**
    * @brief Test if there are more calls available in the list.

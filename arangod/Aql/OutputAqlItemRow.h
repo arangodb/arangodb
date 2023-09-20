@@ -32,6 +32,7 @@
 #include "Aql/types.h"
 #include "Containers/HashSet.h"
 
+#include <iosfwd>
 #include <memory>
 
 namespace arangodb::aql {
@@ -213,11 +214,15 @@ class OutputAqlItemRow {
 
   AqlCall const& getClientCall() const noexcept;
 
-  AqlCall& getModifiableClientCall();
-
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   AqlCall&& stealClientCall();
+#endif
 
-  void setCall(AqlCall call);
+  void setCall(AqlCall call) noexcept;
+
+  size_t blockNumRows() const noexcept {
+    return _block == nullptr ? 0 : _block->numRows();
+  }
 
  private:
   [[nodiscard]] RegIdSet const& outputRegisters() const noexcept {
@@ -350,4 +355,7 @@ class OutputAqlItemRow {
   RegIdFlatSetStack const& _registersToKeep;
   RegIdFlatSet const& _registersToClear;
 };
+
+auto operator<<(std::ostream& out, arangodb::aql::OutputAqlItemRow const&)
+    -> std::ostream&;
 }  // namespace arangodb::aql

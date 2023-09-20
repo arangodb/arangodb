@@ -36,8 +36,6 @@ namespace arangodb {
 namespace aql {
 
 class AsyncNode;
-class NoStats;
-class OutputAqlItemRow;
 class SharedQueryState;
 
 // The RemoteBlock is actually implemented by specializing ExecutionBlockImpl,
@@ -49,9 +47,7 @@ class AsyncExecutor final {
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Enable;
   };
-  // using Fetcher = std::monostate;
   using Infos = std::monostate;
-  // using Stats = NoStats;
 };
 
 /**

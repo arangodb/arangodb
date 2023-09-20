@@ -307,10 +307,10 @@ constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
 }
 
 auto operator<<(std::ostream& out,
-                const arangodb::aql::AqlCall::LimitPrinter& limit)
+                arangodb::aql::AqlCall::LimitPrinter const& limit)
     -> std::ostream&;
 
-auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call)
+auto operator<<(std::ostream& out, arangodb::aql::AqlCall const& call)
     -> std::ostream&;
 
 }  // namespace arangodb::aql
