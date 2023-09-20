@@ -769,7 +769,7 @@ function check_edge_operationSuite() {
       const response = create_edge(
         sync, graph_name, friend_collection, v1, v2, {}
       );
-      assertTrue(response.parsedBody);
+      assertTrue(response.hasOwnProperty('parsedBody'));
       assertTrue(response.parsedBody.error);
       assertEqual(
         response.parsedBody.errorNum,
@@ -794,7 +794,7 @@ function check_edge_operationSuite() {
       const response = create_edge(
         sync, graph_name, unrelatedEdgeCollectionName, v1id, v2id, {}
       );
-      assertTrue(response.parsedBody);
+      assertTrue(response.hasOwnProperty('parsedBody'));
       assertTrue(response.parsedBody.error);
       assertEqual(
         response.parsedBody.errorNum,
@@ -1339,7 +1339,7 @@ function check404_graph_not_found(doc) {
 }
 
 const assertVertexCollectionNotKnown = (response) => {
-  assertTrue(response.parsedBody);
+  assertTrue(response.hasOwnProperty('parsedBody'));
   assertTrue(response.parsedBody.error);
   assertEqual(
     response.parsedBody.errorNum,
@@ -1348,7 +1348,7 @@ const assertVertexCollectionNotKnown = (response) => {
 };
 
 const assertEdgeCollectionNotKnown = (response) => {
-  assertTrue(response.parsedBody);
+  assertTrue(response.hasOwnProperty('parsedBody'));
   assertTrue(response.parsedBody.error);
   assertEqual(
     response.parsedBody.errorNum,
