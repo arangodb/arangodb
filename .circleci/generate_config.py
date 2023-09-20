@@ -24,6 +24,7 @@ known_flags = {
     "ldap": "ldap",
     "enterprise": "this tests is only executed with the enterprise version",
     "!windows": "test is excluded from ps1 output",
+    "!circleci": "test is excluded on CircleCI",
     "!mac": "test is excluded when launched on MacOS",
     "!arm": "test is excluded when launched on Arm Linux/MacOS hosts",
     "!coverage": "test is excluded when coverage scenario are ran",
@@ -78,6 +79,7 @@ def parse_arguments():
     parser.add_argument(
         "--single", help="output single server tests", action="store_true"
     )
+    parser.add_argument("--circleci", help="generate for CircleCI", action="store_true")
     parser.add_argument("--cluster", help="output cluster tests", action="store_true")
     parser.add_argument("--gtest", help="only run gtest", action="store_true")
     parser.add_argument("--full", help="output full test set", action="store_true")
@@ -202,6 +204,9 @@ def filter_tests(args, tests, enterprise):
         filters.append(lambda test: "!full" not in test["flags"])
     else:
         filters.append(lambda test: "full" not in test["flags"])
+
+    if args.circleci:
+        filters.append(lambda test: "!circleci" not in test["flags"])
 
     # if args.gtest:
     #     filters.append(lambda test: "gtest" == test["name"])
