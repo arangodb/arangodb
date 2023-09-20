@@ -78,25 +78,33 @@ auto DocumentStateShardHandler::ensureShard(
   return true;
 }
 
-auto DocumentStateShardHandler::modifyShard(
-    ShardID shard, CollectionID collection,
-    std::shared_ptr<VPackBuilder> properties, std::string followersToDrop)
-    -> ResultT<bool> {
-  std::unique_lock lock(_shardMap.mutex);
+auto DocumentStateShardHandler::modifyShard(ShardID shard,
+                                            CollectionID collection,
+                                            velocypack::SharedSlice properties)
+    -> Result {
+  // The shard map is not updated with the new properties.
+  // We are in progress of reworking the snapshot transfer to accomodate such
+  // changes. I am not even sure whether this map is still needed at all, we'll
+  // figure it out in an upcoming PR.
+  std::shared_lock lock(_shardMap.mutex);
   if (!_shardMap.shards.contains(shard)) {
-    return false;
+    LOG_TOPIC("5de59", TRACE, arangodb::Logger::REPLICATED_STATE)
+        << "Shard " << shard << " not found in database " << _vocbase.name()
+        << " while trying to modifying it";
+
+    // Don't fail if the shard is not found.
+    return {};
   }
 
   if (auto res = _maintenance->executeModifyCollectionAction(
-          std::move(shard), std::move(collection), std::move(properties),
-          std::move(followersToDrop));
+          std::move(shard), std::move(collection), std::move(properties));
       res.fail()) {
     return res;
   }
   lock.unlock();
 
   _maintenance->addDirty();
-  return true;
+  return {};
 }
 
 auto DocumentStateShardHandler::dropShard(ShardID const& shard)
@@ -190,7 +198,7 @@ auto DocumentStateShardHandler::dropIndex(ShardID shard,
   return res;
 }
 
-auto DocumentStateShardHandler::lockShard(ShardID shard,
+auto DocumentStateShardHandler::lockShard(ShardID const& shard,
                                           AccessMode::Type accessType,
                                           transaction::OperationOrigin origin)
     -> ResultT<std::unique_ptr<transaction::Methods>> {
