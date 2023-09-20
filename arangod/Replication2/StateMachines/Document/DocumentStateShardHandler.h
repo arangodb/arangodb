@@ -61,14 +61,6 @@ struct IDocumentStateShardHandler {
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
-#if false && defined(ARANGODB_USE_GOOGLE_TESTS)
- public:
-  explicit DocumentStateShardHandler(
-      GlobalLogIdentifier gid,
-      std::shared_ptr<IMaintenanceActionExecutor> maintenance)
-      : _gid(std::move(gid)), _maintenance(std::move(maintenance)) {}
-#endif
-
  public:
   explicit DocumentStateShardHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
