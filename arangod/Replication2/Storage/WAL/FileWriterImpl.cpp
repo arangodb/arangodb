@@ -82,7 +82,7 @@ auto FileWriterImplPosix::getReader() const -> std::unique_ptr<IFileReader> {
 FileWriterImplWindows::FileWriterImplWindows(std::string path)
     : _path(std::move(path)) {
   _file = CreateFileA(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
-                    OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+                      OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
   ADB_PROD_ASSERT(_file != INVALID_HANDLE_VALUE)
       << "failed to open replicated log file" << path
@@ -98,10 +98,11 @@ FileWriterImplWindows::~FileWriterImplWindows() {
 auto FileWriterImplWindows::append(std::string_view data) -> Result {
   DWORD written = 0;
   TRI_ASSERT(data.size() < std::numeric_limits<DWORD>::max());
-  if (WriteFile(_file, data.data(), static_cast<DWORD>(data.size()), &written, nullptr) == FALSE) {
-    return Result(
-        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-        "failed to write to log file " + _path + ": " + std::to_string(GetLastError()));
+  if (WriteFile(_file, data.data(), static_cast<DWORD>(data.size()), &written,
+                nullptr) == FALSE) {
+    return Result(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+                  "failed to write to log file " + _path + ": " +
+                      std::to_string(GetLastError()));
   }
   if (static_cast<std::size_t>(written) != data.size()) {
     return Result(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
@@ -113,8 +114,8 @@ auto FileWriterImplWindows::append(std::string_view data) -> Result {
 
 void FileWriterImplWindows::truncate(std::uint64_t size) {
   TRI_ASSERT(size < std::numeric_limits<DWORD>::max());
-  ADB_PROD_ASSERT(SetFilePointer(_file, static_cast<DWORD>(size), nullptr, FILE_BEGIN) !=
-                  INVALID_SET_FILE_POINTER)
+  ADB_PROD_ASSERT(SetFilePointer(_file, static_cast<DWORD>(size), nullptr,
+                                 FILE_BEGIN) != INVALID_SET_FILE_POINTER)
       << "failed to set file" << _path << " to position" << size << ": "
       << GetLastError();
   ADB_PROD_ASSERT(SetEndOfFile(_file))

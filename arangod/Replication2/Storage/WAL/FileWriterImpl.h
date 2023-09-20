@@ -60,7 +60,7 @@ struct FileWriterImplPosix final : IFileWriter {
 
 using FileWriterImpl = FileWriterImplPosix;
 
-#else // _WIN32
+#else  // _WIN32
 
 struct FileWriterImplWindows final : IFileWriter {
   FileWriterImplWindows(std::string path);
