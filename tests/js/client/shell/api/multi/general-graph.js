@@ -1282,7 +1282,6 @@ function check400VertexUnused(doc) {
 }
 
 function check404CRUD(doc) {
-  console.warn(doc.parsedBody);
   assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code, doc);
   assertTrue(doc.parsedBody['error'], doc);
   assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code, doc);
