@@ -59,7 +59,7 @@ jobs:
           name: Generate config
           command: |
             pip install pyyaml
-            python3 ".circleci/generate_config.py" << pipeline.parameters.test-options >> -o generated_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+            python3 ".circleci/generate_config.py" << pipeline.parameters.test-options >> --circleci -o generated_config.yml ./.circleci/base_config.yml << parameters.definitions >>
 
       - continuation/continue:
           configuration_path: generated_config.yml # use newly generated config to continue
