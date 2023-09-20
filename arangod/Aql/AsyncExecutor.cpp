@@ -28,7 +28,6 @@
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SharedQueryState.h"

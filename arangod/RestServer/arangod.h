@@ -69,6 +69,7 @@ class ConsoleFeature;
 class CpuUsageFeature;
 class DatabaseFeature;
 class DatabasePathFeature;
+class DumpLimitsFeature;
 class HttpEndpointProvider;
 class EngineSelectorFeature;
 class EnvironmentFeature;
@@ -213,6 +214,7 @@ using ArangodFeaturesList = TypeList<
     CpuUsageFeature,
     DatabaseFeature,
     DatabasePathFeature,
+    DumpLimitsFeature,
     HttpEndpointProvider,
     EngineSelectorFeature,
     EnvironmentFeature,
