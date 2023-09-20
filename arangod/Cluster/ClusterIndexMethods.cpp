@@ -357,7 +357,7 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
   auto collectionID = std::to_string(col.id().id());
 
   if (!indexes.isArray()) {
-    LOG_TOPIC("63178", DEBUG, Logger::CLUSTER)
+    LOG_TOPIC("63179", DEBUG, Logger::CLUSTER)
         << "Failed to find index " << databaseName << "/" << collectionID << "/"
         << iid.id();
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
@@ -388,7 +388,7 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
       }
 
       if (!indexSlice.isObject()) {
-        LOG_TOPIC("95fe6", DEBUG, Logger::CLUSTER)
+        LOG_TOPIC("95fe7", DEBUG, Logger::CLUSTER)
             << "Failed to find index " << databaseName << "/" << collectionID
             << "/" << iid.id();
         return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
@@ -448,7 +448,7 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
             callbackRegistry.unregisterCallback(cb);
           }
         } catch (std::exception const& ex) {
-          LOG_TOPIC("cc912", ERR, Logger::CLUSTER)
+          LOG_TOPIC("cc913", ERR, Logger::CLUSTER)
               << "Failed to unregister agency callback: " << ex.what();
         } catch (...) {
           // Should never be thrown, we only throw exceptions
@@ -870,7 +870,7 @@ auto ensureIndexCoordinatorReplication2Inner(
             callbackRegistry.unregisterCallback(cb);
           }
         } catch (std::exception const& ex) {
-          LOG_TOPIC("cc912", ERR, Logger::CLUSTER)
+          LOG_TOPIC("cc914", ERR, Logger::CLUSTER)
               << "Failed to unregister agency callback: " << ex.what();
         } catch (...) {
           // Should never be thrown, we only throw exceptions
