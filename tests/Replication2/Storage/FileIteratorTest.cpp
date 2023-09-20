@@ -36,18 +36,11 @@
 
 #include "Replication2/Storage/Helpers.h"
 #include "Replication2/Storage/InMemoryLogFile.h"
+#include "Replication2/Storage/MockFileReader.h"
 
 namespace arangodb::replication2::storage::wal::test {
 
 using namespace testing;
-
-struct MockFileReader : IFileReader {
-  MOCK_METHOD(std::string, path, (), (const, override));
-  MOCK_METHOD(Result, read, (void*, std::size_t), (override));
-  MOCK_METHOD(void, seek, (std::uint64_t), (override));
-  MOCK_METHOD(std::uint64_t, position, (), (const, override));
-  MOCK_METHOD(std::uint64_t, size, (), (const, override));
-};
 
 TEST(FileIteratorTest, create_should_seek_to_IteratorPosition_fileOffset) {
   auto reader = std::make_unique<MockFileReader>();

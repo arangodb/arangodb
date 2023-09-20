@@ -24,24 +24,17 @@
 #pragma once
 
 #include <gmock/gmock.h>
-#include <string_view>
 
-#include "Basics/Result.h"
 #include "Replication2/Storage/WAL/IFileReader.h"
-#include "Replication2/Storage/WAL/IFileWriter.h"
-#include "Replication2/Storage/WAL/IFileManager.h"
 
 namespace arangodb::replication2::storage::wal::test {
 
-struct MockFileManager : IFileManager {
-  MOCK_METHOD(std::vector<std::string>, listFiles, (), (override));
-  MOCK_METHOD(std::unique_ptr<IFileReader>, createReader, (std::string const&),
-              (override));
-  MOCK_METHOD(std::unique_ptr<IFileWriter>, createWriter, (std::string const&),
-              (override));
-  MOCK_METHOD(void, removeAll, (), (override));
-  MOCK_METHOD(void, moveFile, (std::string_view, std::string_view), (override));
-  MOCK_METHOD(void, deleteFile, (std::string_view), (override));
+struct MockFileReader : IFileReader {
+  MOCK_METHOD(std::string, path, (), (const, override));
+  MOCK_METHOD(Result, read, (void*, std::size_t), (override));
+  MOCK_METHOD(void, seek, (std::uint64_t), (override));
+  MOCK_METHOD(std::uint64_t, position, (), (const, override));
+  MOCK_METHOD(std::uint64_t, size, (), (const, override));
 };
 
 }  // namespace arangodb::replication2::storage::wal::test
