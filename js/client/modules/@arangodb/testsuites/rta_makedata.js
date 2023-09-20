@@ -98,7 +98,12 @@ function makeDataWrapper (options) {
       ];
       let count = 0;
       let counters = { nonAgenciesCount: 1};
-      [0, 1, 1, 2].forEach(testCount => {
+      [
+        0, // makedata
+        1, // checkdata
+        1, // checkdata (with resillience test - instances stopped)
+        2  // clear data
+      ].forEach(testCount => {
         let moreargv = [];
         count += 1;
         if (this.options.cluster) {
