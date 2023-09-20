@@ -1752,6 +1752,11 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   return estimate;
 }
 
+aql::AsyncPrefetchEligibility IResearchViewNode::canUseAsyncPrefetching()
+    const noexcept {
+  return aql::AsyncPrefetchEligibility::kEnableForNode;
+}
+
 // Replaces variables in the internals of the execution node
 // replacements are { old variable id => new variable }.
 void IResearchViewNode::replaceVariables(
