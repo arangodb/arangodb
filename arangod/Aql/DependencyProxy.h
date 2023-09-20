@@ -71,10 +71,10 @@ class DependencyProxy {
 
   // TODO Implement and document properly!
   TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-  execute(AqlCallStack& stack);
+  execute(AqlCallStack const& stack);
 
   TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-  executeForDependency(size_t dependency, AqlCallStack& stack);
+  executeForDependency(size_t dependency, AqlCallStack const& stack);
 
   [[nodiscard]] RegisterCount getNrInputRegisters() const;
 

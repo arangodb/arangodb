@@ -157,7 +157,7 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     _inputReady = true;
   }
 
-  while (call.shouldSkip() && _storageBackend->hasMore()) {
+  while (call.needSkipMore() && _storageBackend->hasMore()) {
     _storageBackend->skipOutputRow();
     call.didSkip(1);
   }

@@ -182,7 +182,7 @@ class SplicedSubqueryIntegrationTest
   auto createSkipCall() -> SkipCall {
     return [](AqlItemBlockInputRange& input, AqlCall& call)
                -> std::tuple<ExecutorState, LambdaExe::Stats, size_t, AqlCall> {
-      while (call.shouldSkip() && input.skippedInFlight() > 0) {
+      while (call.needSkipMore() && input.skippedInFlight() > 0) {
         if (call.getOffset() > 0) {
           call.didSkip(input.skip(call.getOffset()));
         } else {
@@ -193,7 +193,7 @@ class SplicedSubqueryIntegrationTest
         }
       }
       // If we overfetched and have data, throw it away
-      while (input.hasDataRow() && call.shouldSkip()) {
+      while (input.hasDataRow() && call.needSkipMore()) {
         auto const& [state, inputRow] = input.nextDataRow();
         EXPECT_TRUE(inputRow.isInitialized());
         call.didSkip(1);
