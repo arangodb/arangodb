@@ -2229,30 +2229,31 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       }
 
       AnalyzersRevision::Revision revision{AnalyzersRevision::MIN};
-      if (slice.hasKey(arangodb::StaticStrings::AnalyzersRevision)) {
-        revision = slice.get(arangodb::StaticStrings::AnalyzersRevision)
-                       .getNumber<AnalyzersRevision::Revision>();
-      }
-      if (revision > loadingRevision) {
-        LOG_TOPIC("44a5b", DEBUG, iresearch::TOPIC)
-            << "analyzer " << name
-            << " ignored as not existed. Revision:" << revision
-            << " Current revision:" << loadingRevision;
-        return {};  // this analyzers is still not exists for our revision
-      }
-      if (slice.hasKey(arangodb::StaticStrings::AnalyzersDeletedRevision)) {
-        auto deletedRevision =
-            slice.get(arangodb::StaticStrings::AnalyzersDeletedRevision)
-                .getNumber<AnalyzersRevision::Revision>();
-        if (deletedRevision <= loadingRevision) {
-          LOG_TOPIC("93b34", DEBUG, iresearch::TOPIC)
+      if (ServerState::instance()->isRunningInCluster()) {
+        if (slice.hasKey(arangodb::StaticStrings::AnalyzersRevision)) {
+          revision = slice.get(arangodb::StaticStrings::AnalyzersRevision)
+                         .getNumber<AnalyzersRevision::Revision>();
+        }
+        if (revision > loadingRevision) {
+          LOG_TOPIC("44a5b", DEBUG, iresearch::TOPIC)
               << "analyzer " << name
-              << " ignored as deleted. Deleted revision:" << deletedRevision
+              << " ignored as not existed. Revision:" << revision
               << " Current revision:" << loadingRevision;
-          return {};  // this analyzers already not exists for our revision
+          return {};  // this analyzers is still not exists for our revision
+        }
+        if (slice.hasKey(arangodb::StaticStrings::AnalyzersDeletedRevision)) {
+          auto deletedRevision =
+              slice.get(arangodb::StaticStrings::AnalyzersDeletedRevision)
+                  .getNumber<AnalyzersRevision::Revision>();
+          if (deletedRevision <= loadingRevision) {
+            LOG_TOPIC("93b34", DEBUG, iresearch::TOPIC)
+                << "analyzer " << name
+                << " ignored as deleted. Deleted revision:" << deletedRevision
+                << " Current revision:" << loadingRevision;
+            return {};  // this analyzers already not exists for our revision
+          }
         }
       }
-
       auto normalizedName = normalizedAnalyzerName(vocbase->name(), name);
       EmplaceAnalyzerResult result;
       auto res = emplaceAnalyzer(result, analyzers, normalizedName, type,

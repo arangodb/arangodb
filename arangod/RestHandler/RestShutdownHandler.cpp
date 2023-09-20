@@ -44,10 +44,6 @@ RestShutdownHandler::RestShutdownHandler(ArangodServer& server,
                                          GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_initiate
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestShutdownHandler::execute() {
   if (_request->requestType() != rest::RequestType::DELETE_REQ &&
       _request->requestType() != rest::RequestType::GET) {

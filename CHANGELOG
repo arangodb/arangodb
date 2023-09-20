@@ -3,6 +3,14 @@ v3.10.11 (XXXX-XX-XX)
 
 * FE-355: fix ctrl + A for search box.
 
+* FE-365: fix query import breaking due to extra fields.
+
+* Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump to the
+  Single server database.
+
+* Removed DocuBlocks and obsolete documentation tooling.
+  The HTTP API descriptions are now in the `arangodb/docs-hugo` repository.
+
 * Fixed BTS-1556: Potential shutdown race, when the server is shutting down and
   still AgencyCommunication was going on it could use the scheduler which was
   already deleted, causing a crash right before a normal shutdown.
@@ -9420,8 +9428,6 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.environment-variables-whitelist`: control environment variables visible in JavaScript
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
-
-  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 
