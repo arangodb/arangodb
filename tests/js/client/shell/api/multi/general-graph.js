@@ -1345,7 +1345,7 @@ const assertVertexCollectionNotKnown = (response) => {
     response.parsedBody.errorNum,
     internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code
   );
-}
+};
 
 const assertEdgeCollectionNotKnown = (response) => {
   assertTrue(response.parsedBody);
@@ -1354,7 +1354,7 @@ const assertEdgeCollectionNotKnown = (response) => {
     response.parsedBody.errorNum,
     internal.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code
   );
-}
+};
 
 function check_error_codeSuite() {
   return {
