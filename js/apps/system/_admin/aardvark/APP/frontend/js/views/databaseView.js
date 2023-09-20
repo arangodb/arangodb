@@ -23,7 +23,7 @@
       'click #selectDatabase': 'updateDatabase',
       'click #submitDeleteDatabase': 'submitDeleteDatabase',
       'click .contentRowInactive a': 'changeDatabase',
-      'keyup #databaseSearchInput': 'search',
+      'keydown #databaseSearchInput': 'searchKeyDown',
       'click #databaseSearchSubmit': 'search',
       'click #databaseToggle': 'toggleSettingsDropdown',
       'click .css-label': 'checkBoxes',
@@ -252,6 +252,22 @@
       this.createEditDatabaseModal(dbName, isDeletable);
     },
 
+    searchKeyDown: function (event) {
+      if (window.searchHelper.skipEvent(event)) {
+        return;
+      }
+      this.resetSearch();
+      var self = this;
+      self.searchTimeout = setTimeout(function () {
+        self.search();
+      }, 200);
+    },
+    resetSearch: function () {
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+        this.searchTimeout = null;
+      }
+    },
     search: function () {
       var searchInput,
         searchString,
