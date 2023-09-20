@@ -25,6 +25,7 @@
 // arangod dummy implementation doing nothing
 void setExecutionDeadlineInMS(uint64_t timeout) {}
 
+bool isExecutionDeadlineReached() { return false; }
 bool isExecutionDeadlineReached(v8::Isolate* isolate) { return false; }
 
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
