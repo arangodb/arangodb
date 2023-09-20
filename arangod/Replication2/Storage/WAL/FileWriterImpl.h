@@ -28,11 +28,20 @@
 #include <cstdio>
 #include <string_view>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <Windows.h>
+#endif
+
 namespace arangodb::replication2::storage::wal {
 
-struct FileWriterImpl final : IFileWriter {
-  FileWriterImpl(std::string path);
-  ~FileWriterImpl();
+#ifndef _WIN32
+
+struct FileWriterImplPosix final : IFileWriter {
+  FileWriterImplPosix(std::string path);
+  ~FileWriterImplPosix();
 
   auto path() const -> std::string const& override { return _path; }
 
@@ -48,5 +57,31 @@ struct FileWriterImpl final : IFileWriter {
   std::string _path;
   int _file = 0;
 };
+
+using FileWriterImpl = FileWriterImplPosix;
+
+#else // _WIN32
+
+struct FileWriterImplWindows final : IFileWriter {
+  FileWriterImplWindows(std::string path);
+  ~FileWriterImplWindows();
+
+  auto path() const -> std::string const& override { return _path; }
+
+  auto append(std::string_view data) -> Result override;
+
+  void truncate(std::uint64_t size) override;
+
+  void sync() override;
+
+  auto getReader() const -> std::unique_ptr<IFileReader> override;
+
+ private:
+  std::string _path;
+  HANDLE _file = INVALID_HANDLE_VALUE;
+};
+using FileWriterImpl = FileWriterImplWindows;
+
+#endif
 
 }  // namespace arangodb::replication2::storage::wal

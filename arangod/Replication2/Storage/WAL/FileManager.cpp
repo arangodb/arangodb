@@ -53,7 +53,7 @@ auto FileManager::createReader(std::string const& filename)
   auto path = _folderPath / filename;
   LOG_TOPIC("43baa", TRACE, Logger::REPLICATED_WAL)
       << "Creating file reader for " << path.string();
-  return std::make_unique<FileReaderImpl>(path);
+  return std::make_unique<FileReaderImpl>(path.string());
 }
 
 auto FileManager::createWriter(std::string const& filename)
@@ -61,7 +61,7 @@ auto FileManager::createWriter(std::string const& filename)
   auto path = _folderPath / filename;
   LOG_TOPIC("453d9", TRACE, Logger::REPLICATED_WAL)
       << "Creating file writer for " << path.string();
-  return std::make_unique<FileWriterImpl>(path);
+  return std::make_unique<FileWriterImpl>(path.string());
 }
 
 void FileManager::removeAll() {

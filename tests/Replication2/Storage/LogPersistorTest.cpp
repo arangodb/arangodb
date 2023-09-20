@@ -87,7 +87,7 @@ struct LogPersistorTest : ::testing::Test {
                 // the timepoint is serialized as seconds, so we must avoid
                 // sub-second precision for simple equality comparison
                 LogMetaPayload::Ping::clock::time_point{
-                    std::chrono::nanoseconds(123000000000)})),
+                    std::chrono::milliseconds(123000)})),
         makeNormalLogEntry(1, 4, "entry with somewhat larger payload"),
         makeNormalLogEntry(2, 5, "foobar"),
     });

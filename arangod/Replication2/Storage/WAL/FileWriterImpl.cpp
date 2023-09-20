@@ -33,20 +33,21 @@
 #include "Replication2/Storage/WAL/FileReaderImpl.h"
 
 namespace arangodb::replication2::storage::wal {
-
-FileWriterImpl::FileWriterImpl(std::string path) : _path(std::move(path)) {
+#ifndef _WIN32
+FileWriterImplPosix::FileWriterImplPosix(std::string path)
+    : _path(std::move(path)) {
   _file = ::open(_path.c_str(), O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
   ADB_PROD_ASSERT(_file >= 0) << "failed to open replicated log file" << path
                               << " for writing with error " << strerror(errno);
 }
 
-FileWriterImpl::~FileWriterImpl() {
+FileWriterImplPosix::~FileWriterImplPosix() {
   if (_file >= 0) {
     ::close(_file);
   }
 }
 
-auto FileWriterImpl::append(std::string_view data) -> Result {
+auto FileWriterImplPosix::append(std::string_view data) -> Result {
   auto n = ::write(_file, data.data(), data.size());
   if (n < 0) {
     return Result(
@@ -61,19 +62,74 @@ auto FileWriterImpl::append(std::string_view data) -> Result {
   return Result{};
 }
 
-void FileWriterImpl::truncate(std::uint64_t size) {
+void FileWriterImplPosix::truncate(std::uint64_t size) {
   ADB_PROD_ASSERT(::ftruncate(_file, size) == 0)
       << "failed to truncate file" << _path << " to size " << size << ": "
       << strerror(errno);
 }
 
-void FileWriterImpl::sync() {
+void FileWriterImplPosix::sync() {
   ADB_PROD_ASSERT(fdatasync(_file) == 0)
       << "failed to flush file " << _path << ": " << strerror(errno);
 }
 
-auto FileWriterImpl::getReader() const -> std::unique_ptr<IFileReader> {
+auto FileWriterImplPosix::getReader() const -> std::unique_ptr<IFileReader> {
   return std::make_unique<FileReaderImpl>(_path);
 }
 
+#else
+
+FileWriterImplWindows::FileWriterImplWindows(std::string path)
+    : _path(std::move(path)) {
+  _file = CreateFileA(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+                    OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+  ADB_PROD_ASSERT(_file != INVALID_HANDLE_VALUE)
+      << "failed to open replicated log file" << path
+      << " for writing with error " << GetLastError();
+}
+
+FileWriterImplWindows::~FileWriterImplWindows() {
+  if (_file != INVALID_HANDLE_VALUE) {
+    CloseHandle(_file);
+  }
+}
+
+auto FileWriterImplWindows::append(std::string_view data) -> Result {
+  DWORD written = 0;
+  TRI_ASSERT(data.size() < std::numeric_limits<DWORD>::max());
+  if (WriteFile(_file, data.data(), static_cast<DWORD>(data.size()), &written, nullptr) == FALSE) {
+    return Result(
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+        "failed to write to log file " + _path + ": " + std::to_string(GetLastError()));
+  }
+  if (static_cast<std::size_t>(written) != data.size()) {
+    return Result(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+                  "write to log file was incomplete");
+  }
+
+  return Result{};
+}
+
+void FileWriterImplWindows::truncate(std::uint64_t size) {
+  TRI_ASSERT(size < std::numeric_limits<DWORD>::max());
+  ADB_PROD_ASSERT(SetFilePointer(_file, static_cast<DWORD>(size), nullptr, FILE_BEGIN) !=
+                  INVALID_SET_FILE_POINTER)
+      << "failed to set file" << _path << " to position" << size << ": "
+      << GetLastError();
+  ADB_PROD_ASSERT(SetEndOfFile(_file))
+      << "failed to truncate file" << _path << " to size " << size << ": "
+      << GetLastError();
+}
+
+void FileWriterImplWindows::sync() {
+  ADB_PROD_ASSERT(FlushFileBuffers(_file))
+      << "failed to flush file " << _path << ": " << GetLastError();
+}
+
+auto FileWriterImplWindows::getReader() const -> std::unique_ptr<IFileReader> {
+  return std::make_unique<FileReaderImpl>(_path);
+}
+
+#endif
 }  // namespace arangodb::replication2::storage::wal
