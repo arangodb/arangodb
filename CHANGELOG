@@ -1,6 +1,8 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* FE-365: fix query import breaking due to extra fields.
+
 * Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump to the
   Single server database.
 
