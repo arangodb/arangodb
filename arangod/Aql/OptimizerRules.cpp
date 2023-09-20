@@ -8430,8 +8430,20 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
 void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
                                       std::unique_ptr<ExecutionPlan> plan,
                                       OptimizerRule const& rule) {
-  // at the moment we only allow async prefetching for read-only queries that
-  // do not contain graph operations.
+  struct AsyncPrefetchChecker : WalkerWorkerBase<ExecutionNode> {
+    bool before(ExecutionNode* n) override {
+      auto eligibility = n->canUseAsyncPrefetching();
+      if (eligibility == AsyncPrefetchEligibility::kDisableGlobally) {
+        // found a node that we can't support -> abort
+        eligible = false;
+        return true;
+      }
+      return false;
+    }
+
+    bool eligible{true};
+  };
+
   struct AsyncPrefetchEnabler : WalkerWorkerBase<ExecutionNode> {
     AsyncPrefetchEnabler() { stack.push_back(0); }
 
@@ -8439,7 +8451,7 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
       auto eligibility = n->canUseAsyncPrefetching();
       if (eligibility == AsyncPrefetchEligibility::kDisableGlobally) {
         // found a node that we can't support -> abort
-        eligible = false;
+        TRI_ASSERT(!modified);
         return true;
       }
       if (eligibility ==
@@ -8451,8 +8463,6 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
     }
 
     void after(ExecutionNode* n) override {
-      TRI_ASSERT(eligible);
-
       auto eligibility = n->canUseAsyncPrefetching();
       TRI_ASSERT(!stack.empty());
       if (stack.back() == 0 &&
@@ -8464,6 +8474,7 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
         // optimization, because of assertion failures.
         // TODO: lift these restrictions.
         n->setIsAsyncPrefetchEnabled(true);
+        modified = true;
       }
       if (eligibility ==
           AsyncPrefetchEligibility::kDisableForNodeAndDependencies) {
@@ -8482,13 +8493,24 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
       stack.pop_back();
     }
 
+    // per query-level (main query, subuqueries) stack of eligibilities
     containers::SmallVector<uint32_t, 4> stack;
-    bool eligible{true};
+    bool modified{false};
   };
 
-  AsyncPrefetchEnabler enabler;
-  plan->root()->walk(enabler);
-  opt->addPlan(std::move(plan), rule, enabler.eligible);
+  bool modified = false;
+  // first check if the query satisfies all constraints we have for
+  // async prefetching
+  AsyncPrefetchChecker checker;
+  plan->root()->walk(checker);
+
+  if (checker.eligible) {
+    // only if it does, start modifying nodes in the query
+    AsyncPrefetchEnabler enabler;
+    plan->root()->walk(enabler);
+    modified = enabler.modified;
+  }
+  opt->addPlan(std::move(plan), rule, modified);
 }
 
 void arangodb::aql::activateCallstackSplit(ExecutionPlan& plan) {

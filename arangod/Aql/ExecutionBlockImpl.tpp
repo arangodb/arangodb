@@ -945,15 +945,13 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
 
         // we have claimed the task, but we are executing the fetcher
         // ourselves. so let's reset the task's internals properly.
-        _prefetchTask->discard();
+        _prefetchTask->discard(/*isFinished*/ false);
       }
       return fetcher().execute(ctx.stack);
     });
 
-    // TODO - we should also consider the limit here, but unfortunately the
-    // softLimit is currently also used for the batchSize
     if (std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
-        _exeNode->isAsyncPrefetchEnabled()) {
+        _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
       if (_prefetchTask == nullptr) {
         _prefetchTask = std::make_shared<PrefetchTask>();
       } else {
@@ -2390,10 +2388,11 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::reset() noexcept {
   TRI_ASSERT(!_result);
   _state.store(State::Pending);
+  // intentionally do not reset _firstFailure
 }
 
 template<class Executor>
-void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() noexcept {
+void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
   // (1) - this acquire-load synchronizes with the release-store (3)
   if (_state.load(std::memory_order_acquire) == State::Finished) {
     return;
@@ -2406,15 +2405,18 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() noexcept {
 }
 
 template<class Executor>
-auto ExecutionBlockImpl<Executor>::PrefetchTask::discard() noexcept -> void {
-  _state.store(State::Finished, std::memory_order_relaxed);
+auto ExecutionBlockImpl<Executor>::PrefetchTask::discard(
+    bool isFinished) noexcept -> void {
   _result.reset();
+  _state.store(isFinished ? State::Finished : State::Consumed,
+               std::memory_order_release);
 }
 
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::PrefetchTask::stealResult()
     -> PrefetchResult {
-  TRI_ASSERT(_result || _firstFailure.fail());
+  TRI_ASSERT(_result || _firstFailure.fail())
+      << "prefetch task state: " << (int)_state.load(std::memory_order_relaxed);
   _state.store(State::Consumed, std::memory_order_relaxed);
   if (_firstFailure.fail()) {
     _result.reset();
@@ -2437,6 +2439,8 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute(
 
     _result = block.fetcher().execute(stack);
 
+    TRI_ASSERT(_result.has_value());
+
     // (3) - this release-store synchronizes with the acquire-load (1, 2)
     _state.store(State::Finished, std::memory_order_release);
 
@@ -2446,10 +2450,11 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute(
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::setFailure(Result&& res) {
+  TRI_ASSERT(res.fail());
   if (_firstFailure.ok()) {
     _firstFailure = std::move(res);
   }
-  discard();
+  discard(/*isFinished*/ true);
   wakeupWaiter();
 }
 

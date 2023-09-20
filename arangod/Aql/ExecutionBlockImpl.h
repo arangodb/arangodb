@@ -366,9 +366,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
     bool isConsumed() const noexcept;
     bool tryClaim() noexcept;
-    void waitFor() noexcept;
+    void waitFor() const noexcept;
     void reset() noexcept;
-    void discard() noexcept;
+    void discard(bool isFinished) noexcept;
     // note: this will throw if the PrefetchTask ran into an exception
     // during execution.
     PrefetchResult stealResult();
@@ -379,9 +379,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
    private:
     std::atomic<State> _state{State::Pending};
-    std::mutex _lock;
-    std::condition_variable _bell;
+    std::mutex mutable _lock;
+    std::condition_variable mutable _bell;
     std::optional<PrefetchResult> _result;
+    // _firstFailure contains the first error that happened in the prefetch
+    // task and it will not be resetted.
     Result _firstFailure;
   };
 
