@@ -68,7 +68,8 @@ AqlCallList::AqlCallList(AqlCall const& specificCall,
   return _defaultCall.value();
 }
 
-[[nodiscard]] auto AqlCallList::peekNextCall() const -> AqlCall const& {
+[[nodiscard]] auto AqlCallList::peekNextCall() const noexcept
+    -> AqlCall const& {
   TRI_ASSERT(hasMoreCalls());
   if (!_specificCalls.empty()) {
     // We only implemented for a single given call.

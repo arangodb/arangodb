@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/Algos/ShortestPath/ShortestPath.h"
-#include "Aql/ExecutionBlockImpl.tpp"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/MasterContext.h"

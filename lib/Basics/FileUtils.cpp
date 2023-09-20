@@ -764,7 +764,7 @@ std::string slurpProgram(std::string const& program) {
     }
     output.append(buf, nRead);
   }
-  res = TRI_CheckExternalProcess(external, true, 0);
+  res = TRI_CheckExternalProcess(external, true, 0, noDeadLine);
   if (error) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
   }

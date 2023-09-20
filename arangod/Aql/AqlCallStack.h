@@ -71,7 +71,7 @@ class AqlCallStack {
 
   // Peek at the topmost Call element (this must be relevant).
   // The responsibility for the peek-ed call will stay with the stack
-  AqlCall const& peek() const;
+  AqlCall const& peek() const noexcept;
 
   // Put another call on top of the stack.
   void pushCall(AqlCallList&& call);

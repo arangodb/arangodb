@@ -149,7 +149,6 @@ class HashedCollectExecutor {
     static constexpr bool preservesOrder = false;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = HashedCollectExecutorInfos;
@@ -187,8 +186,8 @@ class HashedCollectExecutor {
    * it knows that it can only create as many new rows as pulled from upstream.
    * So it will overestimate.
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+  [[nodiscard]] auto expectedNumberOfRows(AqlItemBlockInputRange const& input,
+                                          AqlCall const& call) const noexcept
       -> size_t;
 
  private:

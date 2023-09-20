@@ -98,9 +98,6 @@ TEST_P(SubqueryStartExecutorTest, check_properties) {
   EXPECT_EQ(SubqueryStartExecutor::Properties::allowsBlockPassthrough,
             ::arangodb::aql::BlockPassthrough::Disable)
       << "The block cannot be passThrough, as it increases the number of rows.";
-  EXPECT_TRUE(SubqueryStartExecutor::Properties::inputSizeRestrictsOutputSize)
-      << "The block is restricted by input, it will atMost produce 2 times the "
-         "input. (Might be less if input contains shadowRows";
 }
 
 TEST_P(SubqueryStartExecutorTest, empty_input_does_not_add_shadow_rows) {

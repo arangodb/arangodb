@@ -57,7 +57,7 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input,
 auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input,
                                           AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  TRI_ASSERT(call.shouldSkip());
+  TRI_ASSERT(call.needSkipMore());
   if (_inputRow.isInitialized()) {
     // We have not been able to report the ShadowRow.
     // Simply return DONE to trigger Impl to fetch shadow row instead.
@@ -92,7 +92,7 @@ auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
   return false;
 }
 
-[[nodiscard]] auto SubqueryStartExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto SubqueryStartExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   // The DataRow is consumed after a shadowRow is produced.
