@@ -77,6 +77,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
@@ -169,15 +170,22 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
                 "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
-DECLARE_GAUGE(rocksdb_cache_edge_uncompressed_entries_size, uint64_t,
-              "Total gross memory size of all edge cache entries ever stored "
-              "in memory");
-DECLARE_GAUGE(rocksdb_cache_edge_effective_entries_size, uint64_t,
-              "Total effective memory size of all edge cache entries ever "
-              "stored in memory (after compression)");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_uncompressed_entries_size_total,
+                "Total gross memory size of all edge cache entries ever stored "
+                "in memory");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_effective_entries_size_total,
+                "Total effective memory size of all edge cache entries ever "
+                "stored in memory (after compression)");
 DECLARE_GAUGE(rocksdb_cache_edge_compression_ratio, double,
               "Overall compression ratio for all edge cache entries ever "
               "stored in memory");
+DECLARE_COUNTER(rocksdb_cache_edge_inserts_total,
+                "Number of inserts into the edge cache");
+DECLARE_COUNTER(rocksdb_cache_edge_compressed_inserts_total,
+                "Number of compressed inserts into the edge cache");
+DECLARE_COUNTER(
+    rocksdb_cache_edge_empty_inserts_total,
+    "Number of inserts into the edge cache that were an empty array");
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
@@ -248,8 +256,6 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _maxParallelCompactions(2),
-      _minValueSizeForEdgeCompression(1073741824ULL),
-      _accelerationFactorForEdgeCompression(1),
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(60.0),
       _maxWalArchiveSizeLimit(0),
@@ -275,6 +281,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _runningCompactions(0),
       _autoFlushCheckInterval(60.0 * 30.0),
       _autoFlushMinWalFiles(20),
+      _forceLittleEndianKeys(false),
       _metricsWalReleasedTickFlush(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_wal_released_tick_flush{})),
@@ -309,10 +316,18 @@ RocksDBEngine::RocksDBEngine(Server& server,
               arangodb_revision_tree_resurrections_total{})),
       _metricsEdgeCacheEntriesSizeInitial(
           server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_uncompressed_entries_size{})),
+              rocksdb_cache_edge_inserts_uncompressed_entries_size_total{})),
       _metricsEdgeCacheEntriesSizeEffective(
           server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_effective_entries_size{})) {
+              rocksdb_cache_edge_inserts_effective_entries_size_total{})),
+      _metricsEdgeCacheInserts(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_edge_inserts_total{})),
+      _metricsEdgeCacheCompressedInserts(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_cache_edge_compressed_inserts_total{})),
+      _metricsEdgeCacheEmptyInserts(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_cache_edge_empty_inserts_total{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -772,45 +787,27 @@ replication doing a resync, however.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
 
-  options
-      ->addOption("--cache.min-value-size-for-edge-compression",
-                  "The size threshold (in bytes) from which on payloads in the "
-                  "edge index cache transparently get LZ4-compressed.",
-                  new SizeTParameter(&_minValueSizeForEdgeCompression, 1, 0,
-                                     1073741824ULL),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setLongDescription(
-          R"(By transparently compressing values in the in-memory
-edge index cache, more data can be held in memory than without compression.  
-Storing compressed values can increase CPU usage for the on-the-fly compression 
-and decompression. In case compression is undesired, this option can be set to a 
-very high value, which will effectively disable it. To use compression, set the
-option to a value that is lower than medium-to-large average payload sizes.
-It is normally not that useful to compress values that are smaller than 100 bytes.)")
-      .setIntroducedIn(31102);
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options
       ->addOption(
-          "--cache.acceleration-factor-for-edge-compression",
-          "The acceleration factor for the LZ4 compression of in-memory "
-          "edge cache entries.",
-          new UInt32Parameter(&_accelerationFactorForEdgeCompression, 1, 1,
-                              65537),
+          "--rocksdb.force-legacy-little-endian-keys",
+          "Force usage of legacy little endian key encoding when creating "
+          "a new RocksDB database directory. DO NOT USE IN PRODUCTION.",
+          new BooleanParameter(&_forceLittleEndianKeys),
           arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
               arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::Experimental,
+              arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
-      .setLongDescription(
-          R"(This value controls the LZ4-internal acceleration factor for the 
-LZ4 compression. Higher values typically yield less compression in exchange
-for faster compression and decompression speeds. An increase of 1 commonly leads
-to a compression speed increase of 3%, and could slightly increase decompression
-speed.)")
-      .setIntroducedIn(31102);
+      .setIntroducedIn(31104)
+      .setLongDescription(R"(If enabled and a new RocksDB database
+is generated, the legacy little endian key encoding is used.
+
+Only use this option for testing purposes! It is bad for performance and
+disables a few features like parallel index generation!)");
+#endif
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -1152,7 +1149,8 @@ void RocksDBEngine::start() {
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted);
+  arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted,
+                                       _forceLittleEndianKeys);
 
   _dbExisted = dbExisted;
 
@@ -1247,6 +1245,24 @@ void RocksDBEngine::start() {
   // metrics are correctly populated once the HTTP interface comes
   // up
   determineWalFilesInitial();
+
+  if (auto endianness = rocksutils::getRocksDBKeyFormatEndianness();
+      endianness == RocksDBEndianness::Little) {
+    LOG_TOPIC("31103", WARN, Logger::ENGINES)
+        << "detected outdated on-disk format with "
+        << rocksDBEndiannessString(endianness)
+        << " endianness from ArangoDB 3.2 or 3.3. Using this on-disk format "
+           "can have a severe impact on write performance. It is recommended "
+           "to move to the "
+        << rocksDBEndiannessString(RocksDBEndianness::Big)
+        << " endian format by performing a full logical dump of the deployment "
+           "using arangodump, and restoring it into a fresh deployment using "
+           "arangorestore. Taking a hot backup and restoring it is not "
+           "sufficient "
+           "to change the on-disk format, only a logical dump and restore into "
+           "a "
+           "fresh deployment will do.";
+  }
 }
 
 void RocksDBEngine::beginShutdown() {
@@ -3442,6 +3458,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                                          static_cast<double>(initial)));
     }
     builder.add("cache.edge-compression-ratio", VPackValue(compressionRatio));
+    builder.add("cache.edge-inserts",
+                VPackValue(_metricsEdgeCacheInserts.load()));
+    builder.add("cache.edge-compressed-inserts",
+                VPackValue(_metricsEdgeCacheCompressedInserts.load()));
 
     std::pair<double, double> rates;
     if (manager != nullptr) {
@@ -3929,18 +3949,26 @@ std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
   }
 }
 
-void RocksDBEngine::addCacheMetrics(uint64_t initial,
-                                    uint64_t effective) noexcept {
-  _metricsEdgeCacheEntriesSizeInitial.fetch_add(initial);
-  _metricsEdgeCacheEntriesSizeEffective.fetch_add(effective);
+std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>
+RocksDBEngine::getCacheMetrics() {
+  return {_metricsEdgeCacheEntriesSizeInitial.load(),
+          _metricsEdgeCacheEntriesSizeEffective.load(),
+          _metricsEdgeCacheInserts.load(),
+          _metricsEdgeCacheCompressedInserts.load(),
+          _metricsEdgeCacheEmptyInserts.load()};
 }
 
-size_t RocksDBEngine::minValueSizeForEdgeCompression() const noexcept {
-  return _minValueSizeForEdgeCompression;
-}
-
-int RocksDBEngine::accelerationFactorForEdgeCompression() const noexcept {
-  return static_cast<int>(_accelerationFactorForEdgeCompression);
+void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
+                                    uint64_t totalInserts,
+                                    uint64_t totalCompressedInserts,
+                                    uint64_t totalEmptyInserts) noexcept {
+  if (totalInserts > 0) {
+    _metricsEdgeCacheEntriesSizeInitial.count(initial);
+    _metricsEdgeCacheEntriesSizeEffective.count(effective);
+    _metricsEdgeCacheInserts.count(totalInserts);
+    _metricsEdgeCacheCompressedInserts.count(totalCompressedInserts);
+    _metricsEdgeCacheEmptyInserts.count(totalEmptyInserts);
+  }
 }
 
 }  // namespace arangodb

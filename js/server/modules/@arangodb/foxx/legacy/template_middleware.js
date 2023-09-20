@@ -30,52 +30,12 @@
 var db = require('@arangodb').db,
   _ = require('lodash');
 
-// //////////////////////////////////////////////////////////////////////////////
-  // / @start Docu Block JSF_foxx_TemplateMiddleware_initializer
-  // /
-  // / Initialize with the name of a collection or a collection and optionally
-  // / a set of helper functions.
-  // / Then use *before* to attach the initialized middleware to your Foxx.Controller
-  // /
-  // / @EXAMPLES
-  // /
-  // / ```js
-  // / templateMiddleware = new TemplateMiddleware("templates", {
-  // /   uppercase: function (x) { return x.toUpperCase(); }
-  // / })
-  // / // or without helpers:
-  // / //templateMiddleware = new TemplateMiddleware("templates")
-  // /
-  // / app.before(templateMiddleware)
-  // / ```
-  // / @end Docu Block
-  // //////////////////////////////////////////////////////////////////////////////
-
 function TemplateMiddleware (templateCollection, helper) {
   var middleware = function (request, response) {
     var responseFunctions,
       _ = require('lodash');
 
     responseFunctions = {
-
-      // //////////////////////////////////////////////////////////////////////////////
-      // / @start Docu Block JSF_foxx_TemplateMiddleware_response_render
-      // /
-      // / `response.render(templatePath, data)`
-      // /
-      // / When the TemplateMiddleware is included, you will have access to the
-      // / *render* function on the response object.
-      // / If you call render, Controller will look into the this collection and
-      // / search by the path attribute.  It will then render the template with the
-      // / given data.
-      // /
-      // / @EXAMPLES
-      // /
-      // / ```js
-      // / response.render("high/way", {username: 'Application'})
-      // / ```
-      // / @end Docu Block
-      // //////////////////////////////////////////////////////////////////////////////
 
       render: function (templatePath, data) {
         var template;

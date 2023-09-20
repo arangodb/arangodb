@@ -118,9 +118,6 @@ RestStatus RestDatabaseHandler::getDatabases() {
   return RestStatus::DONE;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_get_api_database_create
-// //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::createDatabase() {
   if (!_vocbase.isSystem()) {
     generateError(
@@ -164,9 +161,6 @@ RestStatus RestDatabaseHandler::createDatabase() {
   return RestStatus::DONE;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_get_api_database_delete
-// //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::deleteDatabase() {
   if (!_vocbase.isSystem()) {
     generateError(
