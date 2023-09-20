@@ -215,7 +215,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _scorersSortLimit{scorersSortLimit},
       _meta{meta},
       _depth{depth},
-      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
+      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition) &&
+                              !_reader->hasNestedFields()},
       _volatileSort{volatility.second},
       // `_volatileSort` implies `_volatileFilter`
       _volatileFilter{_volatileSort || volatility.first} {

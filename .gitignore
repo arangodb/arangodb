@@ -130,7 +130,6 @@ npm-debug.log
 /log-*
 data-*
 databases
-!/Documentation/DocuBlocks/Rest/Databases
 cluster-init
 
 datafile-*.db
@@ -146,3 +145,7 @@ cmake-build*/
 .cache/
 
 js/node/**/*.map
+
+swagger-ui-es-bundle*
+swagger-ui.js
+swagger-ui.js.map
