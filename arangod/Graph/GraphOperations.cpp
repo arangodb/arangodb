@@ -570,7 +570,6 @@ OperationResult GraphOperations::getVertex(std::string const& collectionName,
   return getDocument(collectionName, key, std::move(rev));
 }
 
-// TODO check if definitionName is an edge collection in _graph?
 OperationResult GraphOperations::getEdge(std::string const& definitionName,
                                          std::string const& key,
                                          std::optional<RevisionId> rev) {
