@@ -33,6 +33,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/voc-errors.h"
 #include "Cache/BinaryKeyHasher.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
@@ -69,9 +70,6 @@ struct ThreadGuard {
 
 // long-running
 
-// test is temporarily disabled because there are currently memory-accounting
-// assertion failures in the cache manager. TODO: fix assertion failures and
-// reactivate test
 TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
@@ -81,7 +79,9 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 128 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -120,7 +120,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
                                                   &item, sizeof(std::uint64_t));
       TRI_ASSERT(value != nullptr);
       auto status = caches[cacheIndex]->insert(value);
-      if (status.fail()) {
+      if (status != TRI_ERROR_NO_ERROR) {
         delete value;
       }
     }
@@ -154,7 +154,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
             &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = caches[cacheIndex]->insert(value);
-        if (status.fail()) {
+        if (status != TRI_ERROR_NO_ERROR) {
           delete value;
         }
       } else {  // lookup something
@@ -192,8 +192,9 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   rebalancerThread.join();
 
   for (auto cache : caches) {
-    manager.destroyCache(cache);
+    manager.destroyCache(std::move(cache));
   }
+  caches.clear();
 
   RandomGenerator::shutdown();
 }
@@ -208,7 +209,9 @@ TEST(CacheRebalancerTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  co.cacheSize = 128 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -250,7 +253,7 @@ TEST(CacheRebalancerTest,
                                                   &item, sizeof(std::uint64_t));
       TRI_ASSERT(value != nullptr);
       auto status = caches[cacheIndex]->insert(value);
-      if (status.fail()) {
+      if (status != TRI_ERROR_NO_ERROR) {
         delete value;
       }
     }
@@ -288,7 +291,7 @@ TEST(CacheRebalancerTest,
             &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = caches[cacheIndex]->insert(value);
-        if (status.fail()) {
+        if (status != TRI_ERROR_NO_ERROR) {
           delete value;
         }
       } else if (r >= 80) {  // banish something
@@ -335,8 +338,9 @@ TEST(CacheRebalancerTest,
   rebalancerThread.join();
 
   for (auto cache : caches) {
-    manager.destroyCache(cache);
+    manager.destroyCache(std::move(cache));
   }
+  caches.clear();
 
   RandomGenerator::shutdown();
 }
@@ -353,7 +357,10 @@ TEST(
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 128 * 1024 * 1024, true, 0.04, 0.25);
+  CacheOptions co;
+  // small enough so that we have memory pressure!
+  co.cacheSize = 8 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
