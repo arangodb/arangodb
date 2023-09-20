@@ -499,7 +499,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   testFoxxRoutingReady() {
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 20; i++) {
       try {
         let reply = arango.GET_RAW('/this_route_is_not_here', true);
         if (reply.code === 404) {
