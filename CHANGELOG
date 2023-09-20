@@ -1,6 +1,9 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump to the
+  Single server database.
+
 * Removed DocuBlocks and obsolete documentation tooling.
   The HTTP API descriptions are now in the `arangodb/docs-hugo` repository.
 
