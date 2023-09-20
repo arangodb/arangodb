@@ -1,6 +1,10 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* Speed up incremental hotbackup upload by parallelization of
+  remote-to-remote copies. Tolerate deletion of old backups during
+  incremental upload.
+
 * Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump to the
   Single server database.
 
