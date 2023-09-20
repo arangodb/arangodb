@@ -260,7 +260,10 @@
       searchOptions.searchPhrase = null;
     },
 
-    restrictToSearchPhraseKey: function () {
+    restrictToSearchPhraseKey: function (event) {
+      if (window.searchHelper.skipEvent(event)) {
+        return;
+      }
       // key pressed in search box
       var self = this;
 

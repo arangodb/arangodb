@@ -1,6 +1,8 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* FE-355: fix ctrl + A for search box.
+
 * FE-365: fix query import breaking due to extra fields.
 
 * Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump to the
