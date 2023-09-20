@@ -49,8 +49,9 @@ auto FileReaderImpl::read(void* buffer, std::size_t n) -> std::size_t {
 }
 
 void FileReaderImpl::seek(std::uint64_t pos) {
+  TRI_ASSERT(pos < std::numeric_limits<long>::max());
   ADB_PROD_ASSERT(pos <= size()) << "position " << pos << "; size " << size();
-  ADB_PROD_ASSERT(std::fseek(_file, pos, SEEK_SET) == 0);
+  ADB_PROD_ASSERT(std::fseek(_file, static_cast<long>(pos), SEEK_SET) == 0);
 }
 
 auto FileReaderImpl::position() const -> std::uint64_t {
