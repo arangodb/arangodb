@@ -667,8 +667,8 @@ function runClusterChecks (
     }
     return result;
   };
-  for (const rowCounts of testRowCounts) {
-    const rowsByShard = prepareCollection(rowCounts);
+  for (const rowCount of testRowCounts) {
+    const rowsByShard = prepareCollection(rowCount);
     const rowsByServer = getRowsPerServer(rowsByShard);
     const profile = db._query(query, {},
       _.merge(options, {profile: 2, defaultBatchSize})
@@ -677,11 +677,11 @@ function runClusterChecks (
     assertIsLevel2Profile(profile);
     assertStatsNodesMatchPlanNodes(profile);
 
-    const expected = genNodeList(rowsByShard, rowsByServer);
+    const expected = genNodeList(rowsByShard, rowsByServer, rowCount);
     const actual = getCompactStatsNodes(profile);
 
     assertNodesItemsAndCalls(expected, actual,
-      {query: query, rowCounts, rowsByShard, expected, actual});
+      {query: query, rowCount, rowsByShard, expected, actual});
   }
 }
 
