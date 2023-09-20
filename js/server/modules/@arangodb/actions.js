@@ -1299,10 +1299,6 @@ function startup () {
   }
 }
 
-//
-// @brief was docuBlock actionsDefineHttp
-//
-
 function defineHttp (options) {
   'use strict';
 
@@ -1382,10 +1378,6 @@ function addCookie (res, name, value, lifeTime, path, domain, secure, httpOnly) 
   res.cookies.push(cookie);
 }
 
-//
-// @brief was docuBlock actionsGetErrorMessage
-//
-
 function getErrorMessage (code) {
   'use strict';
 
@@ -1434,10 +1426,6 @@ function getJsonBody (req, res, code) {
 
   return body;
 }
-
-//
-// @brief was docuBlock actionsResultError
-//
 
 function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {
   'use strict';
@@ -1513,10 +1501,6 @@ function badParameter (req, res, name) {
   ));
 }
 
-//
-// @brief was docuBlock actionsResultOk
-//
-
 function resultOk (req, res, httpReturnCode, result, headers) {
   'use strict';
 
@@ -1545,29 +1529,17 @@ function resultOk (req, res, httpReturnCode, result, headers) {
   }
 }
 
-//
-// @brief was docuBlock actionsResultBad
-//
-
 function resultBad (req, res, code, msg, headers) {
   'use strict';
 
   resultError(req, res, exports.HTTP_BAD, code, msg, headers);
 }
 
-//
-// @brief was docuBlock actionsResultNotFound
-//
-
 function resultNotFound (req, res, code, msg, headers) {
   'use strict';
 
   resultError(req, res, exports.HTTP_NOT_FOUND, code, msg, headers);
 }
-
-//
-// @brief was docuBlock actionsResultNotImplemented
-//
 
 function resultNotImplemented (req, res, msg, headers) {
   'use strict';
@@ -1579,10 +1551,6 @@ function resultNotImplemented (req, res, msg, headers) {
     msg,
     headers);
 }
-
-//
-// @brief was docuBlock actionsResultUnsupported
-//
 
 function resultUnsupported (req, res, headers) {
   'use strict';
@@ -1637,10 +1605,6 @@ function handleRedirect (req, res, options, headers) {
   res.headers.location = url;
 }
 
-//
-// @brief was docuBlock actionsResultPermanentRedirect
-//
-
 function resultPermanentRedirect (req, res, options, headers) {
   'use strict';
 
@@ -1648,10 +1612,6 @@ function resultPermanentRedirect (req, res, options, headers) {
 
   handleRedirect(req, res, options, headers);
 }
-
-//
-// @brief was docuBlock actionsResultTemporaryRedirect
-//
 
 function resultTemporaryRedirect (req, res, options, headers) {
   'use strict';
@@ -1737,10 +1697,6 @@ function resultCursor (req, res, cursor, code, options) {
   resultOk(req, res, code, result);
 }
 
-//
-// @brief was docuBlock actionsCollectionNotFound
-//
-
 function collectionNotFound (req, res, collection, headers) {
   'use strict';
 
@@ -1755,10 +1711,6 @@ function collectionNotFound (req, res, collection, headers) {
       "unknown collection '" + collection + "'", headers);
   }
 }
-
-//
-// @brief was docuBlock actionsIndexNotFound
-//
 
 function indexNotFound (req, res, collection, index, headers) {
   'use strict';
@@ -1851,10 +1803,6 @@ function arangoErrorToHttpCode (num) {
 
   return exports.HTTP_BAD;
 }
-
-//
-// @brief was docuBlock actionsResultException
-//
 
 function resultException (req, res, err, headers, verbose) {
   'use strict';

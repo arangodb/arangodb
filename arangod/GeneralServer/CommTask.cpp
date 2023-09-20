@@ -1033,7 +1033,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
 /// decompress content
 bool CommTask::handleContentEncoding(GeneralRequest& req) {
   // TODO consider doing the decoding on the fly
-  auto encode = [&](std::string const& encoding) {
+  auto decode = [&](std::string const& encoding) {
     std::string_view raw = req.rawPayload();
     uint8_t* src = reinterpret_cast<uint8_t*>(const_cast<char*>(raw.data()));
     size_t len = raw.size();
@@ -1060,12 +1060,12 @@ bool CommTask::handleContentEncoding(GeneralRequest& req) {
   bool found;
   std::string const& val1 = req.header(StaticStrings::TransferEncoding, found);
   if (found) {
-    return encode(val1);
+    return decode(val1);
   }
 
   std::string const& val2 = req.header(StaticStrings::ContentEncoding, found);
   if (found) {
-    return encode(val2);
+    return decode(val2);
   }
   return true;
 }
