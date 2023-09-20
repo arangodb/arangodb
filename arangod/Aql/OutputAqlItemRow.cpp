@@ -43,6 +43,8 @@ The following conditions need to hold true, we need to add c++ tests for this.
 
 #include <velocypack/Builder.h>
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -332,9 +334,9 @@ AqlCall const& OutputAqlItemRow::getClientCall() const noexcept {
   return _call;
 }
 
-AqlCall& OutputAqlItemRow::getModifiableClientCall() { return _call; }
-
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 AqlCall&& OutputAqlItemRow::stealClientCall() { return std::move(_call); }
+#endif
 
 void OutputAqlItemRow::setCall(AqlCall call) noexcept {
   // We cannot create an output row if we still have unreported skipCount
@@ -362,6 +364,10 @@ SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
   }
 
   return block;
+}
+
+size_t OutputAqlItemRow::blockNumRows() const noexcept {
+  return _block == nullptr ? 0 : _block->numRows();
 }
 
 void OutputAqlItemRow::setBaseIndex(std::size_t index) noexcept {
@@ -627,3 +633,12 @@ template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice>(
 template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, VPackSlice>(
     RegisterId registerId, ShadowAqlItemRow const& sourceRow,
     VPackSlice& value);
+
+auto aql::operator<<(std::ostream& out, OutputAqlItemRow const& output)
+    -> std::ostream& {
+  return out << "{ OutputAqlItemRow " << static_cast<void const*>(&output)
+             << ", blockNumRows: " << output.blockNumRows()
+             << ", numRowsLeft: " << output.numRowsLeft()
+             << ", isFull: " << output.isFull()
+             << ", call: " << output.getClientCall() << " }";
+}

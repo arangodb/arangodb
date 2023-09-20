@@ -32,6 +32,7 @@
 #include "Aql/types.h"
 #include "Containers/HashSet.h"
 
+#include <iosfwd>
 #include <memory>
 
 namespace arangodb::aql {
@@ -189,6 +190,11 @@ class OutputAqlItemRow {
     return (std::min)(block().numRows() - _baseIndex, _call.getLimit());
   }
 
+  /**
+   * @brief Returns the number of rows of the underlying block
+   */
+  [[nodiscard]] size_t blockNumRows() const noexcept;
+
   // Use this function with caution! We need it only for the
   // ConstrainedSortExecutor
   void setBaseIndex(std::size_t index) noexcept;
@@ -213,9 +219,9 @@ class OutputAqlItemRow {
 
   AqlCall const& getClientCall() const noexcept;
 
-  AqlCall& getModifiableClientCall();
-
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   AqlCall&& stealClientCall();
+#endif
 
   void setCall(AqlCall call) noexcept;
 
@@ -350,4 +356,7 @@ class OutputAqlItemRow {
   RegIdFlatSetStack const& _registersToKeep;
   RegIdFlatSet const& _registersToClear;
 };
+
+auto operator<<(std::ostream& out, arangodb::aql::OutputAqlItemRow const&)
+    -> std::ostream&;
 }  // namespace arangodb::aql
