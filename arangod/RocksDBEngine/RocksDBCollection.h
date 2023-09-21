@@ -154,6 +154,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   bool hasDocuments() override;
 
+  void freeMemory() noexcept override;
+
   /// @brief lookup document in cache and / or rocksdb
   /// @param withCache attempt to read from cache
   /// @param fillCache fill cache with found document

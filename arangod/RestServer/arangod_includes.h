@@ -98,6 +98,7 @@
 #include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/EnvironmentFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"

@@ -192,6 +192,10 @@ const getOperationPayload = function(entry) {
   return op.payload;
 };
 
+const getOperationsByType = function(entries, opType) {
+  return entries.filter(entry => getOperationType(entry) === opType);
+};
+
 /**
  * Returns the first entry with the same key and type as provided.
  * If no key is provided, all entries of the specified type are returned.
@@ -300,6 +304,7 @@ exports.mergeLogs = mergeLogs;
 exports.getOperation = getOperation;
 exports.getOperationType = getOperationType;
 exports.getOperationPayload = getOperationPayload;
+exports.getOperationsByType = getOperationsByType;
 exports.getDocumentEntries = getDocumentEntries;
 exports.searchDocs = searchDocs;
 exports.getArrayElements = getArrayElements;

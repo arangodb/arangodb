@@ -283,7 +283,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
   output.advanceRow();
 }
 
-[[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (input.finalState() == MainQueryState::DONE) {

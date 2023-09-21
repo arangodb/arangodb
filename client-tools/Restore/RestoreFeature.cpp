@@ -24,19 +24,6 @@
 
 #include "RestoreFeature.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Validator.h>
-
-#include <algorithm>
-#include <chrono>
-#include <regex>
-#include <string>
-#include <string_view>
-#include <thread>
-#include <unordered_set>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
 #include "Basics/FileUtils.h"
@@ -69,6 +56,21 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
+
+#include <absl/strings/str_cat.h>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Validator.h>
+
+#include <algorithm>
+#include <chrono>
+#include <regex>
+#include <string>
+#include <string_view>
+#include <thread>
+#include <unordered_set>
 
 namespace {
 constexpr std::string_view getSuffix(bool useVPack) noexcept {
@@ -1494,7 +1496,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
     }
 
     updateProgress();
-    return {TRI_ERROR_NO_ERROR};
+    return {};
   }
 
   TRI_ASSERT(datafile);
@@ -1608,10 +1610,15 @@ Result RestoreFeature::RestoreMainJob::restoreData(
         velocypack::Validator validator;
         try {
           validator.validate(buffer->begin(), buffer->length(), true);
-        } catch (std::exception const&) {
+        } catch (std::exception const& ex) {
           // we do not have a complete velocypack array yet.
-          // TODO: prevent endless loop here!
-          continue;
+          if (numRead > 0) {
+            continue;
+          }
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_FAILED,
+              absl::StrCat("error processing velocypack data from input file '",
+                           datafile->path(), "': ", ex.what()));
         }
         VPackSlice data(reinterpret_cast<uint8_t const*>(buffer->begin()));
         TRI_ASSERT(data.isArray());
@@ -1622,6 +1629,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
           continue;
         }
       } else {
+        // JSONL case
         if (numRead == 0) {
           // we're at the end of the file, so send the complete buffer anyway
           length = buffer->length();
@@ -1888,6 +1896,19 @@ void RestoreFeature::collectOptions(
                      "Create the target database if it does not exist.",
                      new BooleanParameter(&_options.createDatabase));
 
+  options
+      ->addOption("--max-unused-buffers-capacity",
+                  "Maximum cumulated size of spare in-memory buffers to keep.",
+                  new UInt64Parameter(&_options.maxUnusedBufferSize),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(Maximum cumulated size of in-memory buffers to keep around for 
+sending batches.
+A value > 0 will increase the memory usage of arangorestore, but can help in 
+avoiding repeated memory allocations for building new in-memory buffers.)");
+
   options->addOption(
       "--force-same-database",
       "Force the same database name as in the source `dump.json` file.",
@@ -1921,12 +1942,11 @@ void RestoreFeature::collectOptions(
   options->addOption("--continue", "Continue the restore operation.",
                      new BooleanParameter(&_options.continueRestore));
 
-  options
-      ->addOption("--envelope",
-                  "wrap each document into a {type, data} envelope "
-                  "(this is required for compatibility with v3.7 and before).",
-                  new BooleanParameter(&_options.useEnvelope))
-      .setIntroducedIn(30800);
+  options->addObsoleteOption(
+      "--envelope",
+      "wrap each document into a {type, data} envelope "
+      "(this is required for compatibility with v3.7 and before).",
+      false);
 
   options
       ->addOption("--enable-revision-trees",
@@ -2352,7 +2372,7 @@ void RestoreFeature::start() {
     ::checkEncryption(*_directory);
 
     // read dump info
-    bool useEnvelope = _options.useEnvelope;
+    bool useEnvelope = false;
     bool useVPack = false;  // for compatibility
     result =
         ::checkDumpDatabase(server(), *_directory, _options.forceSameDatabase,
@@ -2449,7 +2469,7 @@ Result RestoreFeature::getFirstError() const {
       return _workerErrors.front();
     }
   }
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 std::unique_ptr<basics::StringBuffer> RestoreFeature::leaseBuffer() {
@@ -2480,7 +2500,7 @@ void RestoreFeature::returnBuffer(
 
   std::lock_guard lock{_buffersLock};
 
-  if (_buffersCapacity + buffer->capacity() >= 512 * 1024 * 1024) {
+  if (_buffersCapacity + buffer->capacity() >= _options.maxUnusedBufferSize) {
     // do not waste a lot of memory by keeping a lot of empty buffers
     // around
     return;

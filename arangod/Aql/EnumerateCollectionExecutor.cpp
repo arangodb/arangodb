@@ -192,7 +192,7 @@ EnumerateCollectionExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
-  while ((inputRange.hasDataRow() || _cursorHasMore) && call.shouldSkip()) {
+  while ((inputRange.hasDataRow() || _cursorHasMore) && call.needSkipMore()) {
     uint64_t skipped = 0;
 
     if (!_cursorHasMore) {
@@ -254,7 +254,7 @@ void EnumerateCollectionExecutor::initializeNewRow(
   _cursorHasMore = _cursor->hasMore();
 }
 
-[[nodiscard]] auto EnumerateCollectionExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto EnumerateCollectionExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (_infos.getCount()) {

@@ -28,6 +28,7 @@
 #include "Cluster/EnsureIndex.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/UpdateCollection.h"
+#include "Logger/LogMacros.h"
 #include "Utils/DatabaseGuard.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -105,12 +106,13 @@ auto MaintenanceActionExecutor::executeModifyCollectionAction(
 auto MaintenanceActionExecutor::executeCreateIndex(
     ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result {
-  DatabaseGuard guard(_vocbase);
-  auto col = guard->lookupCollection(shard);
+  auto col = _vocbase.lookupCollection(shard);
   if (col == nullptr) {
-    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            fmt::format("Failed to lookup shard {} in database {}", shard,
-                        guard->name())};
+    return {
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        fmt::format(
+            "Failed to lookup shard {} in database {} while creating index {}",
+            shard, _vocbase.name(), properties->toJson())};
   }
 
   VPackBuilder output;
@@ -119,6 +121,25 @@ auto MaintenanceActionExecutor::executeCreateIndex(
   if (res.ok()) {
     arangodb::maintenance::EnsureIndex::indexCreationLogging(output.slice());
   }
+  return res;
+}
+
+auto MaintenanceActionExecutor::executeDropIndex(ShardID shard,
+                                                 velocypack::SharedSlice index)
+    -> Result {
+  auto col = _vocbase.lookupCollection(shard);
+  if (col == nullptr) {
+    return {
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        fmt::format(
+            "Failed to lookup shard {} in database {} while dropping index {}",
+            shard, _vocbase.name(), index.toJson())};
+  }
+
+  auto res = methods::Indexes::drop(*col, index.slice());
+  LOG_TOPIC("e155f", DEBUG, Logger::MAINTENANCE)
+      << "Dropping local index " << index.toJson() << " of shard " << shard
+      << " in database " << _vocbase.name() << " result: " << res;
   return res;
 }
 

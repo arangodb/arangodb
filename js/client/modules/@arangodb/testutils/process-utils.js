@@ -208,6 +208,9 @@ class ConfigBuilder {
     delete this.config['server.password'];
     this.config['server.jwt-secret-keyfile'] = file;
   }
+  hasJwt() {
+    return this.config.hasOwnProperty('server.jwt-secret-keyfile');
+  }
   setMaskings(dir) {
     if (this.type !== 'dump') {
       throw '"maskings" is not supported for binary: ' + this.type;
@@ -241,6 +244,9 @@ class ConfigBuilder {
       throw '"collection" is not supported for binary: ' + this.type;
     }
     this.config['collection'] = collection;
+  }
+  resetAllDatabases() {
+    delete this.config['all-databases'];
   }
   setAllDatabases() {
     this.config['all-databases'] = 'true';
@@ -522,6 +528,62 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false
   return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
 }
 
+function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
+  let args = Object.assign(makeArgsArangosh(options), {
+    'server.endpoint': instanceManager.findEndpoint(),
+    'log.file': logFile,
+    'log.level': ['warning', 'httpclient=debug', 'V8=debug'],
+    'javascript.execute': [
+        fs.join(options.rtasource, 'test_data', 'makedata.js'),
+        fs.join(options.rtasource, 'test_data', 'checkdata.js'),
+        fs.join(options.rtasource, 'test_data', 'cleardata.js')
+    ][writeReadClean],
+    'server.force-json': options.forceJson,
+  });
+  if (addArgs !== undefined) {
+    args = Object.assign(args, addArgs);
+  }
+  let argv = toArgv(args);
+  argv = argv.concat(['--'],
+                     moreargv, [
+                       '--minReplicationFactor', '2',
+                       '--progress', 'true',
+                       '--oldVersion', require('internal').db._version()
+                     ]);
+  if (options.rtaNegFilter !== '') {
+    argv = argv.concat(['--skip', options.rtaNegFilter]);
+  }
+  if (options.hasOwnProperty('makedata_args')) {
+    argv = argv.concat(toArgv(options['makedata_args']));
+  }
+  print('\n' + (new Date()).toISOString() + GREEN + " [============] Makedata : Trying " +
+        args['javascript.execute'] + '\n ' + msg + ' ... ', RESET);
+  if (options.extremeVerbosity !== 'silence') {
+    print(argv);
+  }
+  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, 60 * 15);
+}
+function rtaWaitShardsInSync(options, instanceManager) {
+  let args = Object.assign(makeArgsArangosh(options), {
+    'server.endpoint': instanceManager.findEndpoint(),
+    'log.file': fs.join(fs.getTempPath(), `rta_wait_for_shards_in_sync.log`),
+    'log.level': ['warning', 'httpclient=debug', 'V8=debug'],
+    'server.force-json': options.forceJson,
+    'javascript.execute': fs.join(options.rtasource, 'test_data','run_in_arangosh.js'),
+  });
+  let myargs = toArgv(args).concat([
+    '--javascript.module-directory',
+    fs.join(options.rtasource, 'test_data'),
+    '--',
+    fs.join(options.rtasource, 'test_data', 'tests', 'js', 'server', 'cluster', 'wait_for_shards_in_sync.js'),
+    '--args',
+    'true'
+  ]);
+  if (options.extremeVerbosity !== 'silence') {
+    print(myargs);
+  }
+  let rc = executeAndWait(ARANGOSH_BIN, myargs, options, 'arangosh', instanceManager.rootDir, options.coreCheck);
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangoimport
 // //////////////////////////////////////////////////////////////////////////////
@@ -728,8 +790,9 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     cmd = options.valgrind;
   }
 
+  const launchCmd = `${Date()} executeAndWait: cmd =${cmd} args =${JSON.stringify(args)}`;
   if (options.extremeVerbosity) {
-    print(Date() + ' executeAndWait: cmd =', cmd, 'args =', args);
+    print(launchCmd);
   }
 
   const startTime = time();
@@ -768,7 +831,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
         return {
           timeout: true,
           status: false,
-          message: 'irregular termination by TIMEOUT',
+          message: `irregular termination of '${launchCmd}' by TIMEOUT`,
           duration: deltaTime
         };
       }
@@ -799,11 +862,11 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
        (platform.substr(0, 3) === 'win')
       )
      ) {
-    print(Date() + " executeAndWait: Marking crashy - " + JSON.stringify(instanceInfo));
+    print(`${Date()} executeAndWait: Marking '${launchCmd}' crashy - ${JSON.stringify(instanceInfo)}`);
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,
                             options,
-                            'execution of ' + cmd + ' - ' + instanceInfo.exitStatus.signal);
+                            `execution of '${launchCmd}' - ${instanceInfo.exitStatus.signal}`);
     if (options.coreCheck) {
       print(instanceInfo.exitStatus.gdbHint);
     }
@@ -828,7 +891,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       return {
         timeout: false,
         status: false,
-        message: 'exit code was ' + instanceInfo.exitStatus.exit,
+        message: `exit code of '${launchCmd}' was ${instanceInfo.exitStatus.exit}`,
         duration: deltaTime,
         exitCode: instanceInfo.exitStatus.exit,
       };
@@ -845,8 +908,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     return {
       timeout: false,
       status: false,
-      message: 'irregular termination: ' + instanceInfo.exitStatus.status +
-        ' exit signal: ' + instanceInfo.exitStatus.signal + errorMessage,
+      message: `irregular termination of '${launchCmd}': ${instanceInfo.exitStatus.status}` +
+        ` exit signal: ${instanceInfo.exitStatus.signal} ${errorMessage}`,
       duration: deltaTime
     };
   } else if (res.status === 'TIMEOUT') {
@@ -857,7 +920,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       crashUtils.analyzeCrash(cmd,
                               instanceInfo,
                               options,
-                              'execution of ' + cmd + ' - kill because of timeout');
+                              `execution of '${launchCmd}' - kill because of timeout`);
       if (options.coreCheck) {
         print(instanceInfo.exitStatus.gdbHint);
       }
@@ -868,8 +931,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     return {
       timeout: true,
       status: false,
-      message: 'termination by timeout: ' + instanceInfo.exitStatus.status +
-        ' killed by : ' + abortSignal + errorMessage,
+      message: `termination of '${launchCmd}' by timeout: ${instanceInfo.exitStatus.status}` +
+        ` killed by : ${abortSignal} ${errorMessage}`,
       duration: deltaTime
     };
   } else {
@@ -884,8 +947,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     return {
       timeout: false,
       status: false,
-      message: 'irregular termination: ' + instanceInfo.exitStatus.status +
-        ' exit code: ' + instanceInfo.exitStatus.exit + errorMessage,
+      message: `irregular termination of  '${launchCmd}' : ${instanceInfo.exitStatus.status}` +
+        ` exit code: ${instanceInfo.exitStatus.exit} ${errorMessage}`,
       duration: deltaTime
     };
   }
@@ -910,7 +973,9 @@ exports.run = {
   arangoDumpRestore: runArangoDumpRestore,
   arangoDumpRestoreWithConfig: runArangoDumpRestoreCfg,
   arangoBenchmark: runArangoBenchmark,
-  arangoBackup: runArangoBackup
+  arangoBackup: runArangoBackup,
+  rtaWaitShardsInSync: rtaWaitShardsInSync,
+  rtaMakedata: rtaMakedata
 };
 
 exports.executableExt = executableExt;

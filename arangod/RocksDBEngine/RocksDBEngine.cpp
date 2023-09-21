@@ -65,6 +65,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Replication2/Storage/LogStorageMethods.h"
@@ -1271,7 +1272,9 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
-  _dumpManager = std::make_unique<RocksDBDumpManager>(*this);
+  _dumpManager = std::make_unique<RocksDBDumpManager>(
+      *this, server().getFeature<metrics::MetricsFeature>(),
+      server().getFeature<DumpLimitsFeature>().limits());
 
   struct SchedulerExecutor
       : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
@@ -1348,9 +1351,8 @@ void RocksDBEngine::beginShutdown() {
     _replicationManager->beginShutdown();
   }
 
-  // block the creation of new dump contexts
   if (_dumpManager != nullptr) {
-    _dumpManager->beginShutdown();
+    _dumpManager->garbageCollect(/*force*/ true);
   }
 
   // from now on, all started compactions can be canceled.
@@ -1365,6 +1367,10 @@ void RocksDBEngine::stop() {
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
+
+  if (_dumpManager != nullptr) {
+    _dumpManager->garbageCollect(/*force*/ true);
+  }
 
   if (_backgroundThread) {
     // stop the press
@@ -2149,10 +2155,7 @@ Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   }
 
   // remove from map
-  {
-    WRITE_LOCKER(guard, _mapLock);
-    _collectionMap.erase(rcoll->objectId());
-  }
+  removeCollectionMapping(rcoll->objectId());
 
   // delete indexes, RocksDBIndex::drop() has its own check
   auto indexes = rcoll->getIndexes();
@@ -2397,12 +2400,19 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
   }
 }
 
-std::vector<std::pair<TRI_voc_tick_t, DataSourceId>>
+void RocksDBEngine::removeCollectionMapping(uint64_t objectId) {
+  WRITE_LOCKER(guard, _mapLock);
+  _collectionMap.erase(objectId);
+}
+
+std::vector<std::tuple<uint64_t, TRI_voc_tick_t, DataSourceId>>
 RocksDBEngine::collectionMappings() const {
-  std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> res;
+  std::vector<std::tuple<uint64_t, TRI_voc_tick_t, DataSourceId>> res;
+
   READ_LOCKER(guard, _mapLock);
+  res.reserve(_collectionMap.size());
   for (auto const& it : _collectionMap) {
-    res.emplace_back(it.second.first, it.second.second);
+    res.emplace_back(it.first, it.second.first, it.second.second);
   }
   return res;
 }
@@ -2508,29 +2518,23 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool flushColumnFamilies) {
   return res;
 }
 
-void RocksDBEngine::waitForEstimatorSync(
-    std::chrono::milliseconds maxWaitTime) {
-  auto start = std::chrono::high_resolution_clock::now();
-  auto beginSeq = _db->GetLatestSequenceNumber();
+void RocksDBEngine::waitForEstimatorSync() {
+  // release all unused ticks from flush feature
+  server().getFeature<FlushFeature>().releaseUnusedTicks();
 
-  while (std::chrono::high_resolution_clock::now() - start < maxWaitTime) {
-    if (_settingsManager->earliestSeqNeeded() >= beginSeq) {
-      // all synced up!
-      break;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  }
+  // force-flush
+  _settingsManager->sync(/*force*/ true);
 }
 
 Result RocksDBEngine::registerRecoveryHelper(
     std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
-    _recoveryHelpers.emplace_back(helper);
+    _recoveryHelpers.emplace_back(std::move(helper));
   } catch (std::bad_alloc const&) {
     return {TRI_ERROR_OUT_OF_MEMORY};
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
@@ -2925,7 +2929,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         }
 
         TRI_ASSERT(it.get(StaticStrings::IndexType).isString());
-        auto type = Index::type(it.get(StaticStrings::IndexType).copyString());
+        auto type = Index::type(it.get(StaticStrings::IndexType).stringView());
         bool unique = basics::VelocyPackHelper::getBooleanValue(
             it, StaticStrings::IndexUnique, false);
 
@@ -3006,12 +3010,11 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (numDocsLeft > 0) {
-    std::string errorMsg(
-        "deletion check in drop database failed - not all documents have "
-        "been "
-        "deleted. remaining: ");
-    errorMsg.append(std::to_string(numDocsLeft));
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, absl::StrCat("deletion check in drop database "
+                                         "failed - not all documents have been "
+                                         "deleted. remaining: ",
+                                         numDocsLeft));
   }
 #endif
 

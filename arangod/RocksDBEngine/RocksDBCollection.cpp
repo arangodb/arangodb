@@ -350,7 +350,10 @@ RocksDBCollection::~RocksDBCollection() {
 void RocksDBCollection::deferDropCollection(
     std::function<bool(LogicalCollection&)> const& cb) {
   RocksDBMetaCollection::deferDropCollection(cb);
+  freeMemory();
+}
 
+void RocksDBCollection::freeMemory() noexcept {
   if (useCache()) {
     try {
       destroyCache();
@@ -358,31 +361,40 @@ void RocksDBCollection::deferDropCollection(
     }
   }
 
-  // remove all indexes from the collection object.
-  // we do this because the objects of deleted collections will be
-  // retained in memory until the server is shut down.
-  // deleting the collection's attached index objects saves
-  // memory for caches etc.
-  // when we get here, the code in RocksDBEngine::dropCollection()
-  // will have already called `drop()` on each index object.
-  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  auto it = _indexes.begin();
-  while (it != _indexes.end()) {
-    auto const& idx = (*it);
-    // unloading drops any potential caches
-    idx->unload();
+  {
+    // remove all indexes from the collection object.
+    // we do this because the objects of deleted collections will be
+    // retained in memory until the server is shut down.
+    // deleting the collection's attached index objects saves
+    // memory for caches etc.
+    // when we get here, the code in RocksDBEngine::dropCollection()
+    // will have already called `drop()` on each index object.
+    RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    auto it = _indexes.begin();
+    while (it != _indexes.end()) {
+      auto const& idx = (*it);
+      // unloading drops any potential caches
+      idx->unload();
 
-    if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-      // we keep the primary index object around, because it can
-      // be referred to by the collection object with a pointer.
-      ++it;
-    } else {
-      // all other index types we simply delete, so that the
-      // underlying objects will be garbage-collected and memory
-      // be freed.
-      it = _indexes.erase(it);
+      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        // we keep the primary index object around, because it can
+        // be referred to by the collection object with a pointer.
+        ++it;
+      } else {
+        // all other index types we simply delete, so that the
+        // underlying objects will be garbage-collected and memory
+        // be freed.
+        it = _indexes.erase(it);
+      }
     }
   }
+
+  RocksDBMetaCollection::freeMemory();
+
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  engine.removeCollectionMapping(objectId());
 }
 
 Result RocksDBCollection::updateProperties(velocypack::Slice slice) {

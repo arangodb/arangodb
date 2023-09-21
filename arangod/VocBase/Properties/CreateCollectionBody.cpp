@@ -31,6 +31,7 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
+#include <unordered_set>
 
 using namespace arangodb;
 
@@ -168,6 +169,15 @@ bool isEdgeCollection(VPackSlice fullBody) {
                                 TRI_col_type_e::TRI_COL_TYPE_EDGE;
 }
 #endif
+
+static std::unordered_set<std::string_view> knownSystemCollections = {
+    "_analyzers", "_appbundles", "_apps",         "_aqlfunctions",
+    "_frontend",  "_graphs",     "_jobs",         "_pregel_queries",
+    "_queues",    "_statistics", "_statistics15", "_statisticsRaw"};
+
+bool isKnownSystemCollection(std::string_view name) {
+  return knownSystemCollections.contains(name);
+}
 
 auto justKeep(std::string_view key, VPackSlice value, VPackSlice,
               DatabaseConfiguration const& config, VPackBuilder& result) {
@@ -755,6 +765,15 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
         // By all means, we cannot take an id from the outside. We need to
         // generate an ID here. So better waste one ID than having a collision.
         col.id = config.idGenerator();
+
+        if (isKnownSystemCollection(col.name)) {
+          if (config.isSystemDB) {
+            col.distributeShardsLike = "_users";
+          } else {
+            col.distributeShardsLike = "_graphs";
+          }
+        }
+
         if (!col.shardingStrategy.has_value() &&
             !col.distributeShardsLike.has_value() &&
             config.defaultDistributeShardsLike.empty()) {
