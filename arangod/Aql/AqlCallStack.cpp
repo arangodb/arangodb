@@ -68,7 +68,7 @@ auto AqlCallStack::popCall() -> AqlCallList {
   return call;
 }
 
-auto AqlCallStack::peek() const -> AqlCall const& {
+auto AqlCallStack::peek() const noexcept -> AqlCall const& {
   TRI_ASSERT(!_operations.empty());
   return _operations.back().peekNextCall();
 }

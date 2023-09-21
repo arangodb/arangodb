@@ -761,6 +761,10 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     return;
   }
 
+  // maximum number of documents to be returned per batch
+  size_t docsPerBatch =
+      _request->parsedValue("docsPerBatch", size_t(10 * 1000));
+
   // "useEnvelope" URL parameter supported from >= 3.8 onwards. it defaults to
   // "true" if not set. when explicitly set to "false", we can get away with
   // using a more lightweight response format, in which each document does not
@@ -787,8 +791,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
         "dumping documents in replication"};
     auto trxCtx = transaction::StandaloneContext::create(_vocbase, origin);
 
-    res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize, useEnvelope,
-                         singleArray);
+    res = ctx->dumpVPack(_vocbase, cname, buffer, docsPerBatch, chunkSize,
+                         useEnvelope, singleArray);
     // generate the result
     if (res.fail()) {
       generateError(res.result());
@@ -813,8 +817,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     StringBuffer dump(reserve, false);
 
     // do the work!
-    res =
-        ctx->dumpJson(_vocbase, cname, dump, determineChunkSize(), useEnvelope);
+    res = ctx->dumpJson(_vocbase, cname, dump, docsPerBatch,
+                        determineChunkSize(), useEnvelope);
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER)) {

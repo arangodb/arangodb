@@ -159,7 +159,7 @@ EnumerateListExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                      AqlCall& call) {
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
-  while (inputRange.hasDataRow() && call.shouldSkip()) {
+  while (inputRange.hasDataRow() && call.needSkipMore()) {
     if (_inputArrayLength == _inputArrayPosition) {
       // we reached either the end of an array
       // or are in our first loop iteration
