@@ -757,6 +757,11 @@ CostEstimate SingleRemoteOperationNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility SingleRemoteOperationNode::canUseAsyncPrefetching()
+    const noexcept {
+  return AsyncPrefetchEligibility::kDisableGlobally;
+}
+
 std::vector<Variable const*> SingleRemoteOperationNode::getVariablesSetHere()
     const {
   std::vector<Variable const*> vec;

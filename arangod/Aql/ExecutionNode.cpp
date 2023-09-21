@@ -591,6 +591,10 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
 
   _isCallstackSplitEnabled = VelocyPackHelper::getBooleanValue(
       slice, "isCallstackSplitEnabled", false);
+
+  if (_isAsyncPrefetchEnabled) {
+    plan->getAst()->setContainsAsyncPrefetch();
+  }
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)

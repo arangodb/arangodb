@@ -411,6 +411,9 @@ class SingleRemoteOperationNode final : public ExecutionNode,
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   std::string const& key() const { return _key; }
 
  protected:
