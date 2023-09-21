@@ -950,7 +950,9 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       return fetcher().execute(ctx.stack);
     });
 
-    if (std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
+    // note: SCHEDULER is a nullptr in unit tests
+    if (SchedulerFeature::SCHEDULER != nullptr &&
+        std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
         _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
       if (_prefetchTask == nullptr) {
         _prefetchTask = std::make_shared<PrefetchTask>();
