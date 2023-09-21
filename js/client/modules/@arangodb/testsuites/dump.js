@@ -504,7 +504,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   testFoxxRoutingReady() {
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 20; i++) {
       try {
         let reply = arango.GET_RAW('/this_route_is_not_here', true);
         if (reply.code === 404) {
@@ -980,12 +980,12 @@ function dumpWithCrashes (options) {
 function dumpWithCrashesParallel (options) {
   let dumpOptions = {
     dbServers: 3,
-    allDatabases: true,
     deactivateCompression: true,
     activateFailurePoint: true,
     threads: 1,
     useParallelDump: true,
-    splitFiles: true
+    splitFiles: true,
+    extremeVerbosity: true
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
