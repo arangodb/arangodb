@@ -140,22 +140,24 @@ function ahuacatlProfilerTestSuite () {
       let shards = [5];
       shards.forEach((numberOfShards) => {
         const query = `FOR doc IN ${cn} RETURN doc`;
-
+      
         const genNodeList = (rowsPerShard, rowsPerServer, rowCount) => { 
-          let enumCollection = rowCount.reduce((value, c) => {
+          let enumCalls = rowCount.reduce((value, c) => {
             return value + Math.max(1, Math.ceil(c / defaultBatchSize));
           }, 0);
 
           // the following heuristics are rather fragile and should be reworked.
-          let remote = _.max(rowCount.map((rc) => 1 + Math.max(1, Math.ceil(rc / defaultBatchSize)))) * numberOfShards;
-          let gather = numberOfShards + _.sum(rowCount.map((rc) => Math.floor(rc/ defaultBatchSize)));
+          // unfortunately the actual number of calls depends partly on randomness,
+          // so we specify a lower and an upper bound for the number of calls made.
+          let remoteCalls = _.max(rowCount.map((rc) => 1 + Math.max(1, Math.ceil(rc / defaultBatchSize)))) * numberOfShards;
+          let gatherCalls = numberOfShards + _.sum(rowCount.map((rc) => Math.floor(rc/ defaultBatchSize)));
 
           return [
             { type : SingletonBlock, calls : numberOfShards, items : numberOfShards, filtered: 0 },
-            { type : EnumerateCollectionBlock, calls : enumCollection, items : totalItems(rowsPerShard), filtered: 0 },
-            { type : RemoteBlock, calls : [gather / 2, gather * 2], items : totalItems(rowsPerShard), filtered: 0 },
-            { type : UnsortingGatherBlock, calls : [gather / 2 , gather * 2], items : totalItems(rowsPerShard), filtered: 0 },
-            { type : ReturnBlock, calls : [gather / 2, gather * 2], items : totalItems(rowsPerShard), filtered: 0 }
+            { type : EnumerateCollectionBlock, calls : enumCalls, items : totalItems(rowsPerShard), filtered: 0 },
+            { type : RemoteBlock, calls : [remoteCalls / 2, remoteCalls * 2], items : totalItems(rowsPerShard), filtered: 0 },
+            { type : UnsortingGatherBlock, calls : [gatherCalls / 2 , gatherCalls * 2], items : totalItems(rowsPerShard), filtered: 0 },
+            { type : ReturnBlock, calls : [gatherCalls / 2, gatherCalls * 2], items : totalItems(rowsPerShard), filtered: 0 }
           ]; 
         };
         const options = {optimizer: { rules: ["-parallelize-gather"] } };
