@@ -32,34 +32,43 @@ let fs = require('fs');
 function dumpIntegrationSuite () {
   'use strict';
   // this file is used by multiple, hence the checked structure is only in a subdirectory:
-  const dumpDir = fs.join(process.env['dump-directory'], 'UnitTestsDumpSrc');
+  const dumpDir = process.env['dump-directory'];
   const cn = 'UnitTestsDumpEdges';
+  const dbName = 'UnitTestsDumpSrc';
 
   return {
     testDumpUncompressed: function () {
-      let tree = fs.listTree(dumpDir);
-      assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
+      let ddir = dumpDir;
+      if (fs.exists(fs.join(dumpDir, dbName))) {
+        ddir = fs.join(dumpDir, dbName);
+      }
+      let tree = fs.listTree(ddir);
+      assertNotEqual(-1, tree.indexOf("ENCRYPTION"), dumpDir);
       let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION"));
       assertEqual("none", data.toString());
       
-      const prefix = "UnitTestsDumpEdges_8a31b923e9407ab76b6ca41131b8acf1";
-
+      const prefix = cn + "_8a31b923e9407ab76b6ca41131b8acf1";
       let structure = prefix + ".structure.json";
-      if (!fs.isFile(fs.join(dumpDir, structure))) {
+      let fullNameIndex = tree.indexOf(structure);
+      if (fullNameIndex === -1) {
         structure = cn + ".structure.json";
+        fullNameIndex = tree.indexOf(structure);
       }
+      assertNotEqual(-1, fullNameIndex, `no ${fs.join(ddir, '*', structure)} in ${JSON.stringify(tree)}`);
+      let structureFile = fs.join(ddir, tree[fullNameIndex]);
 
-      let structureFile = fs.join(dumpDir, structure);
       assertTrue(fs.isFile(structureFile),"structure file does not exist: " + structureFile);
       assertNotEqual(-1, tree.indexOf(structure));
-      data = JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)).toString());
+      data = JSON.parse(fs.readFileSync(fs.join(ddir, structure)).toString());
       assertEqual(cn, data.parameters.name);
       
-      let files = tree.filter((f) => f.startsWith(prefix) && f.match(/(\.\d+)?\.data\.json$/));
+      let files = tree.filter((f) =>
+        (f.startsWith(prefix) || f.startsWith(fs.join(dbName, prefix))) &&
+          f.match(/(\.\d+)?\.data\.json$/));
       assertNotEqual(0, files.length, files);
       files.forEach((file) => {
-        data = fs.readFileSync(fs.join(dumpDir, file)).toString().trim().split('\n');
-        assertEqual(10, data.length);
+        data = fs.readFileSync(fs.join(ddir, file)).toString().trim().split('\n');
+        assertEqual(10, data.length, fs.join(ddir, file));
         data.forEach(function(line) {
           line = JSON.parse(line);
           assertTrue(line.hasOwnProperty('_key'));
