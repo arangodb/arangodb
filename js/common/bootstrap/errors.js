@@ -138,7 +138,7 @@
     "ERROR_REPLICATION_REPLICATED_LOG_SUBSEQUENT_FAULT" : { "code" : 1430, "message" : "operation aborted because a previous operation failed" },
     "ERROR_REPLICATION_REPLICATED_STATE_IMPLEMENTATION_NOT_FOUND" : { "code" : 1431, "message" : "replicated state type {type:} is unavailable" },
     "ERROR_REPLICATION_REPLICATED_WAL_ERROR" : { "code" : 1432, "message" : "error in the replicated WAL subsystem" },
-    "ERROR_REPLICATION_REPLICATED_WAL_INVALID_FILE" : { "code" : 1433, "message" : "replicated WAL {file:} is corrupt" },
+    "ERROR_REPLICATION_REPLICATED_WAL_INVALID_FILE" : { "code" : 1433, "message" : "replicated WAL {file:} has an invalid or missing file header" },
     "ERROR_REPLICATION_REPLICATED_WAL_CORRUPT" : { "code" : 1434, "message" : "replicated WAL {file:} is corrupt" },
     "ERROR_CLUSTER_NOT_FOLLOWER"   : { "code" : 1446, "message" : "not a follower" },
     "ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED" : { "code" : 1447, "message" : "follower transaction intermediate commit already performed" },

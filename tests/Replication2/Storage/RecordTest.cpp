@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 #include <limits>
 
+#define RECORD_UNIT_TEST
 #include "Replication2/Storage/WAL/Record.h"
 
 namespace arangodb::replication2::storage::wal::test {
@@ -32,9 +33,25 @@ void compareHeaders(Record::Header const& expected,
                     Record::Header const& actual) {
   EXPECT_EQ(expected.index, actual.index);
   EXPECT_EQ(expected.term, actual.term);
-  EXPECT_EQ(expected.tag, actual.tag);
+  EXPECT_EQ(expected.reserved, actual.reserved);
   EXPECT_EQ(expected.type, actual.type);
   EXPECT_EQ(expected.payloadSize, actual.payloadSize);
+}
+
+TEST(WalRecordTest, paddedPayloadSize) {
+  EXPECT_EQ(0, Record::paddedPayloadSize(0));
+  EXPECT_EQ(Record::alignment, Record::paddedPayloadSize(1));
+  EXPECT_EQ(Record::alignment, Record::paddedPayloadSize(2));
+  EXPECT_EQ(Record::alignment, Record::paddedPayloadSize(3));
+  EXPECT_EQ(Record::alignment, Record::paddedPayloadSize(4));
+  EXPECT_EQ(Record::alignment, Record::paddedPayloadSize(5));
+  EXPECT_EQ(Record::alignment, Record::paddedPayloadSize(6));
+  EXPECT_EQ(Record::alignment, Record::paddedPayloadSize(7));
+  EXPECT_EQ(Record::alignment, Record::paddedPayloadSize(8));
+  EXPECT_EQ(2 * Record::alignment, Record::paddedPayloadSize(9));
+  EXPECT_EQ(2 * Record::alignment, Record::paddedPayloadSize(15));
+  EXPECT_EQ(2 * Record::alignment, Record::paddedPayloadSize(16));
+  EXPECT_EQ(3 * Record::alignment, Record::paddedPayloadSize(17));
 }
 
 TEST(WalRecordTest, index_compress_decompress_roundtrip) {
@@ -53,9 +70,9 @@ TEST(WalRecordTest, term_compress_decompress_roundtrip) {
   compareHeaders(expected, actual);
 }
 
-TEST(WalRecordTest, tag_compress_decompress_roundtrip) {
+TEST(WalRecordTest, reserved_compress_decompress_roundtrip) {
   Record::Header expected{};
-  expected.tag = (1ul << Record::CompressedHeader::tagBits) - 1;
+  expected.reserved = (1ul << Record::CompressedHeader::reservedBits) - 1;
 
   auto actual = Record::Header{Record::CompressedHeader{expected}};
   compareHeaders(expected, actual);

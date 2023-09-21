@@ -44,7 +44,7 @@ auto WalManager::createFileManager(LogId log) -> std::unique_ptr<IFileManager> {
 }
 
 auto WalManager::getLogPath(LogId log) const -> std::filesystem::path {
-  return _folderPath / std::to_string(log.id());
+  return _folderPath / to_string(log);
 }
 
 }  // namespace arangodb::replication2::storage::wal

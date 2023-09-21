@@ -56,9 +56,6 @@ struct LogReader {
   auto readNextLogEntry() -> ResultT<PersistedLogEntry>;
   void skipEntry();
 
-  // TODO - remove this
-  auto file() -> IFileReader& { return *_reader; }
-
  private:
   std::unique_ptr<IFileReader> _reader;
   std::uint64_t _firstEntry;

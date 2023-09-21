@@ -25,6 +25,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/ResultT.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/voc-errors.h"
 #include "Replication2/Storage/WAL/IFileReader.h"
 #include "Replication2/Storage/WAL/FileHeader.h"
@@ -104,7 +105,7 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
   Record::Footer footer;
   Record::CompressedHeader compressedHeader;
   auto pos = _reader->position();
-  ADB_PROD_ASSERT(pos % 8 == 0)
+  ADB_PROD_ASSERT(pos % Record::alignment == 0)
       << "file " << _reader->path() << " - pos: " << pos;
   if (pos < sizeof(Record::Footer)) {
     // TODO - file is corrupt - write log message
@@ -116,7 +117,8 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
   while (_reader->read(footer)) {
     // calculate the max entry size based on our current position
     auto maxEntrySize = pos - sizeof(FileHeader);
-    ADB_PROD_ASSERT(footer.size % 8 == 0 && footer.size <= maxEntrySize)
+    ADB_PROD_ASSERT(footer.size % Record::alignment == 0 &&
+                    footer.size <= maxEntrySize)
         << "file " << _reader->path() << " - pos: " << pos
         << "; footer.size: " << footer.size
         << "; maxEntrySize: " << maxEntrySize;
@@ -151,6 +153,8 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
 }
 
 auto LogReader::getFirstRecordHeader() -> ResultT<Record::CompressedHeader> {
+  auto pos = _reader->position();
+  auto guard = scopeGuard([&]() noexcept { _reader->seek(pos); });
   _reader->seek(_firstEntry);
   Record::CompressedHeader header;
   if (!_reader->read(header)) {
@@ -161,6 +165,8 @@ auto LogReader::getFirstRecordHeader() -> ResultT<Record::CompressedHeader> {
 }
 
 auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
+  auto pos = _reader->position();
+  auto guard = scopeGuard([&]() noexcept { _reader->seek(pos); });
   auto fileSize = _reader->size();
   if (fileSize <= minFileSize) {
     return ResultT<Record::CompressedHeader>::error(
@@ -172,7 +178,7 @@ auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
     return ResultT<Record::CompressedHeader>::error(
         TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, "failed to read footer");
   }
-  ADB_PROD_ASSERT(footer.size % 8 == 0 &&
+  ADB_PROD_ASSERT(footer.size % Record::alignment == 0 &&
                   footer.size <= fileSize - sizeof(FileHeader))
       << "file " << _reader->path() << " - footer.size: " << footer.size
       << "; fileSize: " << fileSize;
@@ -187,8 +193,6 @@ auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
 
 auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
   using RT = ResultT<PersistedLogEntry>;
-
-  // TODO - use proper error codes
 
   auto startPos = _reader->position();
 
@@ -238,7 +242,7 @@ auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
       << startPos << " - file: " << _reader->path()
       << "; calculated crc: " << payloadCrc << "; stored crc: " << footer.crc32;
 
-  ADB_PROD_ASSERT(footer.size % 8 == 0 &&
+  ADB_PROD_ASSERT(footer.size % Record::alignment == 0 &&
                   footer.size == _reader->position() - startPos)
       << "file " << _reader->path() << " - footer.size: " << footer.size
       << "; pos: " << _reader->position() << " startPos: " << startPos;

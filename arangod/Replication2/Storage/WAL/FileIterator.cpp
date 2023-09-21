@@ -43,7 +43,7 @@ FileIterator::FileIterator(IteratorPosition position,
 void FileIterator::moveToFirstEntry(IteratorPosition position) {
   auto res = _reader.seekLogIndexForward(position.index());
   if (res.fail()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    THROW_ARANGO_EXCEPTION(res.result());
   }
 
   TRI_ASSERT(res.get().index >= position.index().value);

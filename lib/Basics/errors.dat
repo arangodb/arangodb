@@ -172,7 +172,7 @@ ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED,1429,"not enough replicas for the 
 ERROR_REPLICATION_REPLICATED_LOG_SUBSEQUENT_FAULT,1430,"operation aborted because a previous operation failed","Will be raised when an operation is aborted due to a cascading failure."
 ERROR_REPLICATION_REPLICATED_STATE_IMPLEMENTATION_NOT_FOUND,1431,"replicated state type {type:} is unavailable","Will be raised when a specific replicated state type was used but is not (yet) available."
 ERROR_REPLICATION_REPLICATED_WAL_ERROR,1432,"error in the replicated WAL subsystem","Will be raised when an error occurred in the replicated WAL subsystem"
-ERROR_REPLICATION_REPLICATED_WAL_INVALID_FILE,1433,"replicated WAL {file:} is corrupt","Will be raised when a log file has an invalid or missing file header."
+ERROR_REPLICATION_REPLICATED_WAL_INVALID_FILE,1433,"replicated WAL {file:} has an invalid or missing file header","Will be raised when a log file has an invalid or missing file header."
 ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,1434,"replicated WAL {file:} is corrupt","Will be raised when a log file has an invalid size or reading from a log file produced unexpected data."
 
 ################################################################################

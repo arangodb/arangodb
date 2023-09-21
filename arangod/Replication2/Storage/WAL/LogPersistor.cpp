@@ -63,11 +63,11 @@ struct BufferWriter {
       }
     }();
 
-    // we want every thing to be 8 byte aligned, so we round size to the next
+    // we want everything to be 8 byte aligned, so we round size to the next
     // greater multiple of 8
     writePaddingBytes(payloadSize);
     writeFooter(startPos);
-    TRI_ASSERT(_buffer.size() % 8 == 0);
+    TRI_ASSERT(_buffer.size() % Record::alignment == 0);
   }
 
  private:
@@ -118,8 +118,9 @@ struct BufferWriter {
   void writePaddingBytes(
       std::uint32_t payloadSize) {  // write zeroed out padding bytes
     auto numPaddingBytes = Record::paddedPayloadSize(payloadSize) - payloadSize;
-    TRI_ASSERT(numPaddingBytes < 8);
+    TRI_ASSERT(numPaddingBytes < Record::alignment);
     std::uint64_t const zero = 0;
+    static_assert(sizeof(zero) == Record::alignment);
     _buffer.append(&zero, numPaddingBytes);
   }
 
@@ -129,7 +130,7 @@ struct BufferWriter {
         .crc32 = static_cast<std::uint32_t>(absl::ComputeCrc32c(
             {reinterpret_cast<char const*>(_buffer.data() + startPos), size})),
         .size = static_cast<std::uint32_t>(size + sizeof(Record::Footer))};
-    TRI_ASSERT(footer.size % 8 == 0);
+    TRI_ASSERT(footer.size % Record::alignment == 0);
     _buffer.append(footer);
   }
 
@@ -146,7 +147,9 @@ LogPersistor::LogPersistor(LogId logId,
 
   // TODO - implement segmented logs
   auto filename = std::to_string(logId.id()) + ".log";
-  _fileSet.emplace(LogFile{.filename = filename});
+  auto [_, inserted] = _fileSet.emplace(LogFile{.filename = filename});
+  ADB_PROD_ASSERT(inserted);
+
   _activeFile = _fileManager->createWriter(filename);
   auto fileReader = _activeFile->getReader();
   if (fileReader->size() == 0) {
@@ -158,6 +161,8 @@ LogPersistor::LogPersistor(LogId logId,
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
   } else if (fileReader->size() > sizeof(FileHeader)) {
+    // if the file size is greater than just the header, we must have written at
+    // least one entry!
     LogReader logReader(std::move(fileReader));
     auto res = logReader.getLastRecordHeader();
     if (res.fail()) {
@@ -305,7 +310,7 @@ auto LogPersistor::compact() -> Result {
 
 auto LogPersistor::drop() -> Result {
   LOG_TOPIC("8fb77", INFO, Logger::REPLICATED_WAL)
-      << "Droping LogPersistor for log " << _logId;
+      << "Dropping LogPersistor for log " << _logId;
   // TODO - error handling
   _activeFile.reset();
   _fileManager->removeAll();

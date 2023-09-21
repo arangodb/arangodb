@@ -23,23 +23,38 @@
 
 #pragma once
 
-#include "Replication2/Storage/WAL/RecordType.h"
-
+#include <bit>
 #include <cstdint>
+
+#include "Assertions/Assert.h"
+#include "Replication2/Storage/WAL/RecordType.h"
 
 namespace arangodb::replication2::storage::wal {
 
-// An record in the WAL consists of a (compressed) header, the payload and a
-// footer.
-// We want everything to be 8 byte aligned, so we squeeze the index, term,
-// type and size into the 24 byte CompressedHeader with the following structure
-//   index = 64bits
-//   term  = 44bits
-//   tag   = 16bits
-//   type  = 4bits
-//   size  = 64bits
+// An record in the WAL consists of a (compressed) header, the payload, some
+// optional padding and a footer.
+// We want everything to be 8 byte aligned, so we squeeze the index, term, type
+// and size into the 24 byte CompressedHeader with the following structure
+//   index    = 64bits
+//   term     = 44bits
+//   reserved = 16bits
+//   type     = 4bits
+//   payloadSize  = 64bits
+// The reserved bits can be used in the future, e.g., to include a tag.
+// The payload size is the actual size of the payload without padding. Since we
+// want everything to be 8 byte aligned, we may have to include some optional
+// padding after the payload.
+// The footer consists of a crc32, some padding and a size. The crc32 contains
+// everything from beginning of the header up to the beginning of the footer,
+// i.e., the header, the payload and the padding. The footer size is the
+// complete size of the entry, i.e., the header, the payload, the padding and
+// the footer. This allows us to scan the WAL backwards.
 struct Record {
   struct CompressedHeader;
+
+  static constexpr std::uint8_t alignment = 8;
+  static_assert(std::has_single_bit(alignment),
+                "alignment must be a power of 2");
 
   struct Header {
     Header() = default;
@@ -47,7 +62,7 @@ struct Record {
 
     std::uint64_t index = 0;
     std::uint64_t term = 0;
-    std::uint16_t tag = 0;  // reserved for future use
+    std::uint16_t reserved = 0;
     RecordType type;
     std::uint64_t payloadSize = 0;
   };
@@ -57,34 +72,35 @@ struct Record {
     explicit CompressedHeader(Header);
 
     std::uint64_t index;
-    std::uint64_t termTagAndType;
+    std::uint64_t termAndType;
     std::uint64_t payloadSize;
 
     static constexpr unsigned indexBits = 64;
     static constexpr unsigned termBits = 44;
-    static constexpr unsigned tagBits = 16;
+    static constexpr unsigned reservedBits = 16;
     static constexpr unsigned typeBits = 4;
     static constexpr unsigned payloadSizeBits = 64;
 
-    static_assert(termBits + tagBits + typeBits == 64);
-    static_assert(indexBits + termBits + tagBits + typeBits + payloadSizeBits ==
+    static_assert(termBits + reservedBits + typeBits == 64);
+    static_assert(indexBits + termBits + reservedBits + typeBits +
+                      payloadSizeBits ==
                   192);
 
     std::uint64_t term() const noexcept {
-      return termTagAndType >> (tagBits + typeBits);
+      return termAndType >> (reservedBits + typeBits);
     }
-    std::uint16_t tag() const noexcept {
-      return (termTagAndType >> typeBits) & ((1 << tagBits) - 1);
+    std::uint16_t reserved() const noexcept {
+      return (termAndType >> typeBits) & ((1 << reservedBits) - 1);
     }
     RecordType type() const noexcept {
-      return static_cast<RecordType>(termTagAndType & ((1 << typeBits) - 1));
+      return static_cast<RecordType>(termAndType & ((1 << typeBits) - 1));
     }
   };
   static_assert(sizeof(CompressedHeader) == 24);
 
   static std::uint64_t paddedPayloadSize(std::uint64_t size) {
     // we round to the next multiple of 8
-    return (size + 7) & ~7;
+    return (size + alignment - 1) & ~(alignment - 1);
   }
 
   struct Footer {
@@ -97,14 +113,25 @@ struct Record {
 inline Record::Header::Header(CompressedHeader h)
     : index(h.index),
       term(h.term()),
-      tag(h.tag()),
+      reserved(h.reserved()),
       type(h.type()),
-      payloadSize(h.payloadSize) {}
+      payloadSize(h.payloadSize) {
+  // in preparation for future use the unit tests actually test that the
+  // reserved bits are compressed/decompressed correctly
+#ifndef RECORD_UNIT_TEST
+  TRI_ASSERT(reserved == 0);
+#endif
+}
 
 inline Record::CompressedHeader::CompressedHeader(Header h)
     : index(h.index),
-      termTagAndType((h.term << (tagBits + typeBits)) | (h.tag << typeBits) |
-                     static_cast<std::uint64_t>(h.type)),
-      payloadSize(h.payloadSize) {}
+      termAndType((h.term << (reservedBits + typeBits)) |
+                  (h.reserved << typeBits) |
+                  static_cast<std::uint64_t>(h.type)),
+      payloadSize(h.payloadSize) {
+#ifndef RECORD_UNIT_TEST
+  TRI_ASSERT(h.reserved == 0);
+#endif
+}
 
 }  // namespace arangodb::replication2::storage::wal
