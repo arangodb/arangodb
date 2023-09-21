@@ -35,6 +35,7 @@ var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
+var isCluster = internal.isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -217,17 +218,23 @@ function optimizerRuleTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleConditions : function () {
+      let addPrefetch = (rules) => {
+        if (!isCluster) {
+          return rules.concat("async-prefetch");
+        }
+        return rules;
+      };
       var query = "FOR v IN " + colName + " FILTER v.d == 'foo' || v.d == 'bar' RETURN v";
       var result = AQL_EXPLAIN(query);
-      assertEqual([ "async-prefetch", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "use-indexes", "replace-or-with-in" ].sort(),  
-        removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
+      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "use-indexes", "replace-or-with-in" ]).sort(),  
+      removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasNoFilterNode(result);
       hasIndexNodeWithRanges(result);
       
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z && 'bar' IN v.z RETURN v";
       result = AQL_EXPLAIN(query);
       // should optimize away one part of the filter
-      assertEqual([ "async-prefetch", "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate" ].sort(),  
+      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate" ]).sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasIndexNodeWithRanges(result);
       
@@ -241,7 +248,7 @@ function optimizerRuleTestSuite() {
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z[*] && 'bar' IN v.z[*] RETURN v";
       result = AQL_EXPLAIN(query);
       // should optimize away one part of the filter
-      assertEqual([ "async-prefetch", "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate" ].sort(),  
+      assertEqual(addPrefetch([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate" ]).sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasIndexNodeWithRanges(result);
       
