@@ -1415,24 +1415,16 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
 }
 
 template<typename ExecutionTraits>
-bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
-  TRI_ASSERT(this->_filter != nullptr);
-  size_t const atMost = ctx.outputRow.numRowsLeft();
-  TRI_ASSERT(this->_indexReadBuffer.empty());
-  this->_isMaterialized = false;
-  this->_indexReadBuffer.reset();
-  this->_indexReadBuffer.preAllocateStoredValuesBuffer(
-      atMost, this->_infos.getScoreRegisters().size(),
-      this->_infos.getOutNonMaterializedViewRegs().size());
-  size_t const count = this->_reader->size();
-  bool gotData{false};
+bool IResearchViewExecutor<ExecutionTraits>::readSegment(size_t readerOffset,
+                                                         size_t atMost) {
+  bool gotData = false;
   auto reset = [&] {
     ++_readerOffset;
     _currentSegmentPos = 0;
     _itr.reset();
     _doc = nullptr;
   };
-  for (; _readerOffset < count;) {
+  while (atMost) {
     if (!_itr) {
       if (!this->_indexReadBuffer.empty()) {
         // We may not reset the iterator and continue with the next reader if
@@ -1449,7 +1441,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       // segment is constant until the next resetIterator().
       // save it to don't have to look it up every time.
       if constexpr (Base::isMaterialized) {
-        _segment = &this->_reader->segment(_readerOffset);
+        _segment = &this->_reader->segment(readerOffset);
       }
       this->_isMaterialized = false;
       this->_indexReadBuffer.reset();
@@ -1468,33 +1460,29 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       // The iterator is exhausted, we need to continue with the next
       // reader.
       reset();
-      if (gotData) {
-        // Here we have at least one document in _indexReadBuffer, so we may not
-        // add documents from a new reader.
-        break;
-      }
-      continue;
+      break;
     }
     if constexpr (Base::isMaterialized) {
       // The collection must stay the same for all documents in the buffer
-      TRI_ASSERT(_segment == &this->_reader->segment(_readerOffset));
+      TRI_ASSERT(_segment == &this->_reader->segment(readerOffset));
       if (!documentId.isSet()) {
         // No document read, we cannot write it.
         continue;
       }
     }
     if constexpr (Base::isLateMaterialized) {
-      this->_indexReadBuffer.pushValue(this->_reader->segment(_readerOffset),
+      this->_indexReadBuffer.pushValue(this->_reader->segment(readerOffset),
                                        _doc->value);
     } else {
       this->_indexReadBuffer.pushValue(documentId);
     }
+    --atMost;
     gotData = true;
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
       this->_indexReadBuffer.pushSearchDoc(
-          _doc->value, this->_reader->segment(_readerOffset));
+          _doc->value, this->_reader->segment(readerOffset));
     }
 
     // in the ordered case we have to write scores as well as a document
@@ -1518,7 +1506,26 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       // add documents from a new reader.
       break;
     }
-    if (this->_indexReadBuffer.size() >= atMost) {
+  }
+  return gotData;
+}
+
+template<typename ExecutionTraits>
+bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
+  TRI_ASSERT(this->_filter != nullptr);
+  size_t const atMost = ctx.outputRow.numRowsLeft();
+  TRI_ASSERT(this->_indexReadBuffer.empty());
+  this->_isMaterialized = false;
+  this->_indexReadBuffer.reset();
+  this->_indexReadBuffer.preAllocateStoredValuesBuffer(
+      atMost, this->_infos.getScoreRegisters().size(),
+      this->_infos.getOutNonMaterializedViewRegs().size());
+  size_t const count = this->_reader->size();
+  bool gotData = false;
+  for (; _readerOffset < count;) {
+    gotData =
+        readSegment(_readerOffset, atMost - this->_indexReadBuffer.size());
+    if (gotData) {
       break;
     }
   }

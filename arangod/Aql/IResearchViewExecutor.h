@@ -640,6 +640,8 @@ class IResearchViewExecutor
 
   bool fillBuffer(ReadContext& ctx);
 
+  bool readSegment(size_t readerOffset, size_t atMost);
+
   bool writeRow(ReadContext& ctx, size_t idx);
 
   bool resetIterator();
