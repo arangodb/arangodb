@@ -58,6 +58,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBIndexingDisabler.h"
 #include "RocksDBEngine/RocksDBIterators.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -349,7 +350,10 @@ RocksDBCollection::~RocksDBCollection() {
 void RocksDBCollection::deferDropCollection(
     std::function<bool(LogicalCollection&)> const& cb) {
   RocksDBMetaCollection::deferDropCollection(cb);
+  freeMemory();
+}
 
+void RocksDBCollection::freeMemory() noexcept {
   if (useCache()) {
     try {
       destroyCache();
@@ -357,31 +361,40 @@ void RocksDBCollection::deferDropCollection(
     }
   }
 
-  // remove all indexes from the collection object.
-  // we do this because the objects of deleted collections will be
-  // retained in memory until the server is shut down.
-  // deleting the collection's attached index objects saves
-  // memory for caches etc.
-  // when we get here, the code in RocksDBEngine::dropCollection()
-  // will have already called `drop()` on each index object.
-  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  auto it = _indexes.begin();
-  while (it != _indexes.end()) {
-    auto const& idx = (*it);
-    // unloading drops any potential caches
-    idx->unload();
+  {
+    // remove all indexes from the collection object.
+    // we do this because the objects of deleted collections will be
+    // retained in memory until the server is shut down.
+    // deleting the collection's attached index objects saves
+    // memory for caches etc.
+    // when we get here, the code in RocksDBEngine::dropCollection()
+    // will have already called `drop()` on each index object.
+    RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    auto it = _indexes.begin();
+    while (it != _indexes.end()) {
+      auto const& idx = (*it);
+      // unloading drops any potential caches
+      idx->unload();
 
-    if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-      // we keep the primary index object around, because it can
-      // be referred to by the collection object with a pointer.
-      ++it;
-    } else {
-      // all other index types we simply delete, so that the
-      // underlying objects will be garbage-collected and memory
-      // be freed.
-      it = _indexes.erase(it);
+      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        // we keep the primary index object around, because it can
+        // be referred to by the collection object with a pointer.
+        ++it;
+      } else {
+        // all other index types we simply delete, so that the
+        // underlying objects will be garbage-collected and memory
+        // be freed.
+        it = _indexes.erase(it);
+      }
     }
   }
+
+  RocksDBMetaCollection::freeMemory();
+
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  engine.removeCollectionMapping(objectId());
 }
 
 Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
@@ -880,9 +893,9 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
   }
 
   // push our current transaction on the stack
-  state->beginQuery(true);
+  state->beginQuery(/*resourceMonitor*/ nullptr, /*isModificationQuery*/ true);
   auto stateGuard = scopeGuard([state, prvICC]() noexcept {
-    state->endQuery(true);
+    state->endQuery(/*isModificationQuery*/ true);
     // reset to previous value after truncate is finished
     state->options().intermediateCommitCount = prvICC;
   });
@@ -1047,7 +1060,7 @@ Result RocksDBCollection::readFromSnapshot(
   }
 
   return lookupDocumentVPack(
-      trx, token, cb, /*withCache*/ true, readOwnWrites,
+      trx, token, cb, /*withCache*/ false, readOwnWrites,
       basics::downCast<RocksDBEngine::RocksDBSnapshot>(&snapshot));
 }
 
@@ -2004,14 +2017,12 @@ Result RocksDBCollection::lookupDocumentVPack(
 
   RocksDBMethods* mthd =
       RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
+  auto* family = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
   rocksdb::Status s =
-      snapshot ? mthd->GetFromSnapshot(
-                     RocksDBColumnFamilyManager::get(
-                         RocksDBColumnFamilyManager::Family::Documents),
-                     key->string(), &ps, readOwnWrites, snapshot->getSnapshot())
-               : mthd->Get(RocksDBColumnFamilyManager::get(
-                               RocksDBColumnFamilyManager::Family::Documents),
-                           key->string(), &ps, readOwnWrites);
+      snapshot
+          ? mthd->SingleGet(snapshot->getSnapshot(), *family, key->string(), ps)
+          : mthd->Get(family, key->string(), &ps, readOwnWrites);
 
   if (!s.ok()) {
     return rocksutils::convertStatus(s);

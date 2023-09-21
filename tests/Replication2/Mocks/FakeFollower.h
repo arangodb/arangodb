@@ -49,7 +49,6 @@ struct FakeFollower final : replicated_log::ILogFollower,
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
 
-  auto release(LogIndex doneWithIdx) -> Result override;
   auto compact() -> ResultT<
       arangodb::replication2::replicated_log::CompactionResult> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

@@ -26,6 +26,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/OperationOrigin.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/LogicalCollection.h"
@@ -63,10 +64,6 @@ RestStatus RestSimpleQueryHandler::execute() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSA_put_api_simple_all
-////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = false;
@@ -151,7 +148,8 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-  return registerQueryOrCursor(data.slice());
+  return registerQueryOrCursor(
+      data.slice(), transaction::OperationOriginREST{"fetching all documents"});
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -218,7 +216,8 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice());
+  return registerQueryOrCursor(data.slice(), transaction::OperationOriginREST{
+                                                 "fetching all document keys"});
 }
 
 static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
@@ -315,5 +314,6 @@ RestStatus RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
-  return registerQueryOrCursor(data.slice());
+  return registerQueryOrCursor(
+      data.slice(), transaction::OperationOriginREST{"querying by example"});
 }

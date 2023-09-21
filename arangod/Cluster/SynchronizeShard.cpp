@@ -58,6 +58,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -302,10 +303,12 @@ static arangodb::Result addShardFollower(
         // yet applied to the tree. additionally, writes may go on
         // on the leader so there is no good way to determine which
         // revision tree state to use and compare on the leader.
-        auto context =
-            transaction::StandaloneContext::Create(collection->vocbase());
+        auto origin =
+            transaction::OperationOriginInternal{"fetching revision tree data"};
+        auto context = transaction::StandaloneContext::create(
+            collection->vocbase(), origin);
         SingleCollectionTransaction trx(context, *collection,
-                                        AccessMode::Type::READ, {});
+                                        AccessMode::Type::READ);
 
         auto res = trx.begin();
         if (res.ok()) {

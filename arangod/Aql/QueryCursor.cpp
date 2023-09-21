@@ -33,7 +33,6 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
@@ -141,9 +140,9 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // QueryStreamCursor class
 // .............................................................................
 
-QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
-                                     size_t batchSize, double ttl,
-                                     bool isRetriable)
+QueryStreamCursor::QueryStreamCursor(
+    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
+    bool isRetriable, transaction::OperationOrigin operationOrigin)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false,
              isRetriable),
       _query(std::move(q)),

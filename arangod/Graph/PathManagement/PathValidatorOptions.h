@@ -113,7 +113,7 @@ class PathValidatorOptions {
   /**
    * @brief Get the Expression a vertex needs to hold if defined on the given
    * depth. It may return a nullptr if all vertices are valid.
-   * Caller does NOT take responsibilty. Do not delete this pointer.
+   * Caller does NOT take responsibility. Do not delete this pointer.
    */
   aql::Expression* getVertexExpression(uint64_t depth) const;
 

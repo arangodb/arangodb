@@ -26,8 +26,10 @@
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/AsioSocket.h"
 
-namespace arangodb {
-namespace rest {
+#include <memory>
+#include <mutex>
+
+namespace arangodb::rest {
 
 class AcceptorUnixDomain final : public Acceptor {
  public:
@@ -45,7 +47,6 @@ class AcceptorUnixDomain final : public Acceptor {
   asio_ns::local::stream_protocol::acceptor _acceptor;
   /// @brief protects the _asioSocket
   std::mutex _mutex;
-  std::unique_ptr<AsioSocket<SocketType::Unix>> _asioSocket;
+  std::shared_ptr<AsioSocket<SocketType::Unix>> _asioSocket;
 };
-}  // namespace rest
-}  // namespace arangodb
+}  // namespace arangodb::rest

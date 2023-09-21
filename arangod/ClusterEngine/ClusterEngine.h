@@ -69,7 +69,8 @@ class ClusterEngine final : public StorageEngine {
       transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId tid,
-      transaction::Options const& options) override;
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -157,7 +158,7 @@ class ClusterEngine final : public StorageEngine {
     return {};
   }
 
-  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
+  void waitForEstimatorSync() override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
       arangodb::CreateDatabaseInfo&& info, bool isUpgrade) override;

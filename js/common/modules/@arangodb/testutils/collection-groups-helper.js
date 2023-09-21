@@ -47,6 +47,7 @@ const createCollectionTarget = function (gid, cid) {
     isDisjoint: false,
     cacheEnabled: false,
     shardKeys: ["_key"],
+    shardingStrategy: "hash",
     type: 2,
     keyOptions: {
       allowUserKeys: true,

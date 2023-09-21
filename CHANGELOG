@@ -1,5 +1,255 @@
 devel
 -----
+    
+* FE-365: fix query import breaking due to extra fields.
+
+* Fixed BTS-1239: Restoring a single server dump with system collections
+  into a cluster caused some of those system collections to lose the
+  `distributeShardsLike` setting and also changed the `shardingStrategy` to
+  `enterprise-compat`.
+  Now system collections in the cluster are always restored with
+  `distributeShardsLike` and `shardingStrategy` set to the correct
+  default values.
+
+* Removed DocuBlocks and obsolete documentation tooling.
+  The HTTP API descriptions are now in the `arangodb/docs-hugo` repository.
+
+* Added the following server startup options that can be used to limit
+  the resource usage of parallel arangodump invocations:
+
+  - `--dump.max-memory-usage`: Maximum memory usage (in bytes) to be 
+    used by the server-side parts of all ongoing arangodump invocations.
+    This option can be used to limit the amount of memory for prefetching
+    and keeping results on the server side when arangodump is invoked
+    with the `--parallel-dump` option. It does not have an effect for
+    arangodump invocations that did not use the `--parallel-dump` option.
+    Note that the memory usage limit is not exact and that it can be 
+    slightly exceeded in some situations to guarantee progress.
+  - `--dump.max-docs-per-batch`: Maximum number of documents per batch 
+    that can be used in a dump. If an arangodump invocation requests
+    higher values than configured here, the value will automatically be
+    capped to this value. Will only be followed for arangodump invocations
+    that use the `--parallel-dump` option.
+  - `--dump.max-batch-size`: Maximum batch size value (in bytes) that 
+    can be used in a dump. If an arangodump invocation requests larger
+    batch sizes than configured here, the actual batch sizes will be capped
+    to this value. Will only be followed for arangodump invocations that
+    use the `--parallel-dump` option.
+  - `--dump.max-parallelism`: Maximum parallelism (number of server-side
+    threads) that can be used in a dump. If an arangodump invocation requests
+    a higher number of prefetch threads than configured here, the actual 
+    number of server-side prefetch threads will be capped to this value. 
+    Will only be followed for arangodump invocations that use the 
+    `--parallel-dump` option.
+
+* Added the following metrics to observe the behavior of parallel
+  arangodump on the server:
+
+  - `arangodb_dump_memory_usage`: Current memory usage of all ongoing 
+    arangodump operations on the server.
+  - `arangodb_dump_ongoing`: Number of currently ongoing arangodump 
+    operations on the server.
+  - `arangodb_dump_threads_blocked_total`: Number of times a server-side 
+    dump thread was blocked because it honored the server-side memory 
+    limit for dumps.
+
+* When dropping a database, immediately also mark all collections of the
+  database as dropped. This has the advantage that ongoing operations on these
+  collections can be stopped earlier, and memory for the underlying collections
+  and indexes can be reclaimed sooner.
+
+  This changes the behavior for some operations, for example:
+  ```
+  db._createDatabase("testDatabase");
+  db._useDatabase("testDatabase");
+
+  let c = db._create("testCollection");
+
+  db._useDatabase("_system");
+  db._dropDatabase("testDatabase");
+
+  // the following operation will now return "collection not found".
+  // in previous versions, it could still be executed.
+  print(c.count()); 
+  ```
+
+  The new behavior is more consistent with dropping collections, after which
+  operations on the dropped collection also fail immediately.
+
+* Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump
+  to the Single server database.
+
+* Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where
+  the inner amount of a limit in the LimitExecutor is set to a wrong
+  value which lead to some data rows not being returned to the client.
+
+* Updated ArangoDB Starter to 0.17.1.
+
+* Fixed BTS-1489: Race condition in AsioSocket shutdown when using SSL.
+          
+* Added startup option `--transaction.streaming-max-transaction-size` to make
+  the maximum size of streaming transactions configurable.
+  Previously the maximum size of streaming transactions was hard-coded to
+  128 MiB. This value is also used as default value for the option now.
+
+* Track memory usage for write operations in AQL queries. The memory usage of
+  write operations in AQL queries was previously not tracked and not accounted
+  for in AQL queries' own memory usage. The memory used for write operations
+  also was not accounted for when setting a memory limit for the query. The
+  memory used for write operations is now properly tracked, including in-memory
+  write batches and locked keys in RocksDB (for conflict checking).
+  With that change, the memory usage reported for AQL queries that perform
+  write operations will be significantly higher than before, but the values
+  now will reflect the reality a lot better. This has the consequence that
+  previously working AQL write queries can now fail because their actual memory
+  hits the configured per-query or global memory limit threshold.
+  In these cases it is useful to either revisit the per-query and/or global
+  memory limit settings, turn on intermediate commits for the query, or adjust
+  the query so that it uses less memory.
+
+* Added metrics for tracking the memory usage of write operations outside AQL:
+  * `arangodb_transactions_rest_memory_usage`: memory of user-initiated write
+    operations.
+  * `arangodb_transactions_internal_memory_usage`: memory usage of internal
+    operations, such as background statistics, TTL index maintenance, 
+    replication etc.
+    
+* Fixed BTS-1531: Async cancel Job returns different error messages.
+  Unify error messages for canceled jobs (error code 21) to "request canceled".
+  Previously, the server could return different messages, either "request
+  canceled", "request has been canceled by user" or "handler canceled".
+
+* Fixed BTS-1543:
+  - client tools (e.g. arangoexport) don't refuse to start up with the error
+    `output directory ... is not empty, use --overwrite true to overwrite the
+    data in it if the output directory *only* contains the `ENCRYPTION` file.
+    This is a special case, which can easily occur when invoking any of the
+    client tools with wrong arguments. In this case no harm is done when 
+    allowing the tool to run anyway, even without the `--overwrite true` flag.
+    This will potentially clobber the `ENCRYPTION` file, but it is safe to do
+    because we restrict this to the situation when the directory *only*
+    contains the `ENCRYPTION` file.
+  - allow invoking client tools and arangod with `https://`- and `http://`-
+    prefixed endpoints. 
+    This is more user-friendly than the previously supported `ssl://`- and
+    `tcp://`-prefixed endpoints. End users are familiar with using `https://`
+    and `http://` than our `ssl://` or `tcp://` endpoints.
+    Internally, `https://` will be converted to `ssl://`, and `http://` will
+    be converted to `tcp://`.
+
+* Improve Pregel garbage collection for dropped databases.
+
+* Refuse server startup with outdated little-endian on-disk format.
+  The little-endian on-disk format was used for deployments that were created
+  with either ArangoDB 3.2 or 3.3 when using the RocksDB storage engine.
+  Since ArangoDB 3.4, a big-endian on-disk format was used for the RocksDB
+  storage engine, which is more performant.
+  Deployments that were set up with the RocksDB storage engine using ArangoDB
+  3.2 or 3.3 and that have been upgraded since then will still use the old
+  format. This should not affect many users, because the default storage
+  engine in ArangoDB 3.2 and 3.3 was the MMFiles storage engine. Furthermore,
+  deployments that have been recreated from an arangodump since ArangoDB 3.4
+  will not be affected, because restoring an arangodump into a fresh 
+  deployment will also make ArangoDB use the big-endian on-disk format.
+
+  When the outdated little-endian on-disk format is detected at startup, the
+  server will bail out with a descriptive error message. The recommend way to
+  migrate the database from the little-endian storage format to the big-endian
+  storage format is to
+
+  1. create a full logical backup of the database using arangodump
+  2. stop the database servers in the deployment
+  3. wipe the existing database directories
+  4. restart the servers in the deployment
+  5. restore the logical dump into the deployment
+
+  It will not be sufficient to take a hot backup of a little-endian dataset
+  and restore it, because when restoring a hot backup, the original database
+  format will be restored as it was at time of the backup.
+
+* BTS-1380: Added traversal order (dfs, bfs, weighted) to explain output.
+
+* arangodump and arangorestore will now try to bump up the limit for the number
+  of open file descriptors at startup, on Linux and macOS. This way the tools
+  are allowed to open more files concurrently, which can be useful when
+  dump/restore with many threads.
+
+* Added startup option `--descriptors-minimum` to arangodump and arangorestore.
+  This option can be used to set a lower bound value for the open file 
+  descriptors limit that is required to invoke arangodump/arangorestore.
+  Setting the option to a value of 0 makes arangodump/arangorestore start
+  regardless of the actual limit for the number of open file descriptors.
+
+  This option is available on Linux and macOS only.
+
+* Fixed a loophole in COLLECT variable name validation: in COLLECT INTO 
+  expressions it was possible to refer to variables that the COLLECT just
+  introduced. This was undefined behavior and not caught by the previous
+  version of COLLECT's variable checking.
+
+* Fixed BTS-1541: Old legacy little endian key format for RocksDB database
+  (created in ArangoDB 3.2 and 3.3) showed wrong behavior on newer
+  versions. This fixes a persistent index corruption bug with the old
+  format.
+
+* Updated ArangoDB Starter to 0.17.1-preview-1.
+
+* Renamed arangodump startup option `--use-experimental-dump` to
+  `--parallel-dump`.
+
+* Improved experimental dump functionality in arangodump to work in single
+  server mode and to support transport compression and dumping velocypack data.
+
+* Obsolete the following options of arangodump:
+  - `--envelope`: setting this option to true previously wrapped every dumped
+    document into a {data, type} envelope. This was useful for the MMFiles
+    storage engine, where dumps could also include document removals. With the
+    RocksDB storage engine, the envelope only caused overhead and increased the
+    size of the dumps. The default value of `--envelope` was changed to `false`
+    in ArangoDB 3.9 already, so by default all arangodump invocations since
+    then created non-envelope dumps. With the option being removed now, all
+    arangodump invocations will unconditionally create non-envelope dumps.
+  - `--tick-start`: setting this option allowed to restrict the dumped data
+    to some time range with the MMFiles storage engine. It had no effect for
+    the RocksDB storage engine and so it is removed now.
+  - `--tick-end`: setting this option allowed to restrict the dumped data
+    to some time range with the MMFiles storage engine. It had no effect for
+    the RocksDB storage engine and so it is removed now.
+
+* Added experimental options to arangodump:
+  - `--compress-transfer`: setting this option enables gzip-compression for the
+    server responses to dump requests. Enabling it can significantly reduce
+    traffic volume from the server back to arangodump, in exchange for some CPU
+    overhead for compression on the server and decompression in arangodump.
+    The default value for this option is false. Setting this option only
+    affects the transfer, but not the on-disk format of dumps.
+  - `--dump-vpack`: setting this option will dump data in raw velocypack
+    format. This will make arangodump operate faster and create smaller dumps.
+    The default value for this option is false, as enabling it would
+    incompatibly change the on-disk format of dumps.
+
+* FE-300: Implement new Views list UI.
+
+* Fix a timeout discrepancy between HeartbeatThread and DBServerAgencySync
+  during shutdown.
+  The HeartbeatThread on DB servers waited for at most 65 seconds for the
+  DBServerAgencySync to complete, but DBServerAgencySync could make requests
+  to the agency with a timeout of 120 seconds.
+  The timeouts have now been unified, so that the request timeout is 60 seconds
+  and that the HeartbeatThread waits for at most 65 seconds (as before).
+
+* BTS-1598: fix race in agency.
+
+* BTS-842: make the error message for edge document validation slightly
+  clearer
+
+* ES-1727: Fix `UPDATE`, `REPLACE`, and `UPSERT ... UPDATE/REPLACE` failing with
+  "conflict, _rev values do not match" for non-local edges in Smart- and
+  EnterpriseGraphs, when `OPTIONS { ignoreRevs: false }` is supplied.
+
+* Upgraded Swagger-UI to v5.4.1
+
+* FE-248: Improve collections list UI.
 
 * Updated JavaScript dependencies:
 
@@ -9346,8 +9596,6 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.environment-variables-whitelist`: control environment variables visible in JavaScript
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
-
-  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 

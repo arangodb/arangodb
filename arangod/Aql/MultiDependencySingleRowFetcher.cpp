@@ -26,11 +26,8 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ShadowAqlItemRow.h"
-#include "Logger/LogMacros.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-
-#include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -119,7 +116,7 @@ void MultiDependencySingleRowFetcher::initDependencies() {
   }
 }
 
-size_t MultiDependencySingleRowFetcher::numberDependencies() {
+size_t MultiDependencySingleRowFetcher::numberDependencies() const noexcept {
   return _dependencyInfos.size();
 }
 
@@ -141,8 +138,8 @@ bool MultiDependencySingleRowFetcher::isDone(
   return info._upstreamState == ExecutionState::DONE;
 }
 
-auto MultiDependencySingleRowFetcher::executeForDependency(size_t dependency,
-                                                           AqlCallStack& stack)
+auto MultiDependencySingleRowFetcher::executeForDependency(
+    size_t dependency, AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
   auto [state, skipped, block] =
       _dependencyProxy->executeForDependency(dependency, stack);
@@ -316,12 +313,13 @@ auto MultiDependencySingleRowFetcher::initialize(size_t subqueryDepth) -> void {
 
 AqlCallStack MultiDependencySingleRowFetcher::adjustStackWithSkipReport(
     AqlCallStack const& callStack, size_t dependency) {
-  // Copy the original
-  AqlCallStack stack = callStack;
   TRI_ASSERT(dependency < _dependencySkipReports.size());
 
-  auto const localReport = _dependencySkipReports[dependency];
-  for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
+  // Copy the original
+  AqlCallStack stack = callStack;
+
+  auto const& localReport = _dependencySkipReports[dependency];
+  for (size_t i = 0; i < callStack.subqueryLevel(); ++i) {
     /*
      * Here we need to adjust the inbound call.
      * We have the following situation:
@@ -364,7 +362,7 @@ AqlCallStack MultiDependencySingleRowFetcher::adjustStackWithSkipReport(
 
 void MultiDependencySingleRowFetcher::reportSkipForDependency(
     AqlCallStack const& originalStack, SkipResult const& skipRes,
-    const size_t dependency) {
+    size_t dependency) {
   if (skipRes.nothingSkipped()) {
     // Nothing to report
     return;

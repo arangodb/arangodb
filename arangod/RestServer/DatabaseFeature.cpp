@@ -58,6 +58,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/OperationOrigin.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
@@ -828,12 +829,26 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
     bool result = vocbase->markAsDropped();
     TRI_ASSERT(result);
 
+    // mark all collections in this database as deleted, too.
+    try {
+      auto collections = vocbase->collections(/*includeDeleted*/ false);
+      for (auto& c : collections) {
+        c->setDeleted();
+        c->deferDropCollection(TRI_vocbase_t::dropCollectionCallback);
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("1f096", WARN, Logger::FIXME)
+          << "error while dropping collections in database '" << vocbase->name()
+          << "': " << ex.what();
+    }
+
     // invalidate all entries for the database
     aql::QueryCache::instance()->invalidate(vocbase);
 
     if (server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
       server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(
-          *vocbase);
+          *vocbase,
+          transaction::OperationOriginInternal{"invalidating analyzers"});
     }
     auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry != nullptr) {

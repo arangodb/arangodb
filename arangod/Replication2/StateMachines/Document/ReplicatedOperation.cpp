@@ -93,6 +93,22 @@ auto ReplicatedOperation::buildDropShardOperation(
       std::in_place, DropShard{std::move(shard), std::move(collection)}};
 }
 
+auto ReplicatedOperation::buildCreateIndexOperation(
+    ShardID shard, std::shared_ptr<VPackBuilder> properties,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+    -> ReplicatedOperation {
+  return ReplicatedOperation{
+      std::in_place, CreateIndex{std::move(shard), std::move(properties),
+                                 CreateIndex::Parameters{std::move(progress)}}};
+}
+
+auto ReplicatedOperation::buildDropIndexOperation(
+    ShardID shard, velocypack::SharedSlice index) noexcept
+    -> ReplicatedOperation {
+  return ReplicatedOperation{std::in_place,
+                             DropIndex{std::move(shard), std::move(index)}};
+}
+
 auto ReplicatedOperation::buildDocumentOperation(
     TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
     velocypack::SharedSlice payload) noexcept -> ReplicatedOperation {

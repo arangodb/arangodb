@@ -98,7 +98,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
              QueryString queryString,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
              std::shared_ptr<SharedQueryState> sharedState)
-    : QueryContext(ctx->vocbase(), id),
+    : QueryContext(ctx->vocbase(), ctx->operationOrigin(), id),
       _itemBlockManager(_resourceMonitor),
       _queryString(std::move(queryString)),
       _transactionContext(std::move(ctx)),
@@ -426,6 +426,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
+
   // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
@@ -498,8 +499,8 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             if (cacheEntry->currentUserHasPermissions()) {
               // we don't have yet a transaction when we're here, so let's
               // create a mimimal context to build the result
-              queryResult.context =
-                  transaction::StandaloneContext::Create(_vocbase);
+              queryResult.context = transaction::StandaloneContext::create(
+                  _vocbase, operationOrigin());
               TRI_ASSERT(cacheEntry->_queryResult != nullptr);
               queryResult.data = cacheEntry->_queryResult;
               queryResult.extra = cacheEntry->_stats;
@@ -725,8 +726,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         if (cacheEntry->currentUserHasPermissions()) {
           // we don't have yet a transaction when we're here, so let's create
           // a mimimal context to build the result
-          queryResult.context =
-              transaction::StandaloneContext::Create(_vocbase);
+          queryResult.context = transaction::StandaloneContext::create(
+              _vocbase, operationOrigin());
           v8::Handle<v8::Value> values =
               TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(),
                             queryResult.context->getVPackOptions());
@@ -855,7 +856,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 
     if (useQueryCache && _warnings.empty()) {
       auto dataSources = _queryDataSources;
-
       _trx->state()->allCollections(  // collect transaction DataSources
           [&dataSources](TransactionCollection& trxCollection) -> bool {
             auto const& c = trxCollection.collection();
@@ -1238,9 +1238,9 @@ void Query::init(bool createProfile) {
 }
 
 void Query::registerQueryInTransactionState() {
-  // register ourselves in the TransactionState
   TRI_ASSERT(!_registeredQueryInTrx);
-  _trx->state()->beginQuery(isModificationQuery());
+  // register ourselves in the TransactionState
+  _trx->state()->beginQuery(&resourceMonitor(), isModificationQuery());
   _registeredQueryInTrx = true;
 }
 

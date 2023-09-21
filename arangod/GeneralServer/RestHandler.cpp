@@ -456,8 +456,7 @@ void RestHandler::prepareEngine() {
   if (_canceled) {
     _state = HandlerState::FAILED;
 
-    Exception err(TRI_ERROR_REQUEST_CANCELED,
-                  "request has been canceled by user", __FILE__, __LINE__);
+    Exception err(TRI_ERROR_REQUEST_CANCELED, __FILE__, __LINE__);
     handleError(err);
     return;
   }

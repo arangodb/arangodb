@@ -26,6 +26,7 @@
 #include "Basics/UnshackledMutex.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/ShardProperties.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <shared_mutex>
 
@@ -47,6 +48,12 @@ struct IDocumentStateShardHandler {
   virtual auto dropAllShards() -> Result = 0;
   virtual auto isShardAvailable(ShardID const& shard) -> bool = 0;
   virtual auto getShardMap() -> ShardMap = 0;
+  virtual auto ensureIndex(
+      ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress)
+      -> Result = 0;
+  virtual auto dropIndex(ShardID shard, velocypack::SharedSlice index)
+      -> Result = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
@@ -72,6 +79,12 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
   auto dropAllShards() -> Result override;
   auto isShardAvailable(ShardID const& shardId) -> bool override;
   auto getShardMap() -> ShardMap override;
+  auto ensureIndex(ShardID shard,
+                   std::shared_ptr<VPackBuilder> const& properties,
+                   std::shared_ptr<methods::Indexes::ProgressTracker> progress)
+      -> Result override;
+  auto dropIndex(ShardID shard, velocypack::SharedSlice index)
+      -> Result override;
 
  private:
   GlobalLogIdentifier _gid;

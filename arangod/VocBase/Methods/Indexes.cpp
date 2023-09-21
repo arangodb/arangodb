@@ -31,6 +31,7 @@
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterIndexMethods.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -44,7 +45,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
-#include "Transaction/Hints.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
@@ -65,13 +66,13 @@
 #include <string>
 #include <string_view>
 
-#include <absl/strings/str_cat.h>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
 
 namespace {
+constexpr std::string_view moduleName("index administration");
+
 /// @brief checks if argument is an index name
 Result extractIndexName(velocypack::Slice arg, bool extendedNames,
                         std::string& collectionName, std::string& name) {
@@ -263,8 +264,9 @@ arangodb::Result Indexes::getAll(
       trx = std::shared_ptr<transaction::Methods>(inputTrx,
                                                   [](transaction::Methods*) {});
     } else {
+      auto origin = transaction::OperationOriginREST{::moduleName};
       trx = std::make_shared<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(collection.vocbase()),
+          transaction::StandaloneContext::create(collection.vocbase(), origin),
           collection, AccessMode::Type::READ);
 
       Result res = trx->begin();
@@ -391,8 +393,7 @@ arangodb::Result Indexes::getAll(
 
 static Result EnsureIndexLocal(
     arangodb::LogicalCollection& collection, VPackSlice definition, bool create,
-    VPackBuilder& output,
-    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
+    VPackBuilder& output, std::shared_ptr<Indexes::ProgressTracker> progress) {
   return arangodb::basics::catchVoidToResult([&]() -> void {
     bool created = false;
     std::shared_ptr<arangodb::Index> idx;
@@ -428,15 +429,14 @@ Result Indexes::ensureIndexCoordinator(
     bool create, velocypack::Builder& resultBuilder) {
   auto& cluster = collection.vocbase().server().getFeature<ClusterFeature>();
 
-  return cluster.clusterInfo().ensureIndexCoordinator(  // create index
+  return ClusterIndexMethods::ensureIndexCoordinator(  // create index
       collection, indexDef, create, resultBuilder,
       cluster.indexCreationTimeout());
 }
 
-Result Indexes::ensureIndex(
-    LogicalCollection& collection, VPackSlice input, bool create,
-    VPackBuilder& output,
-    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
+Result Indexes::ensureIndex(LogicalCollection& collection, VPackSlice input,
+                            bool create, VPackBuilder& output,
+                            std::shared_ptr<ProgressTracker> progress) {
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;
   // always log a message at the end of index creation
   auto logResultToAuditLog = scopeGuard([&]() noexcept {
@@ -719,8 +719,7 @@ Result Indexes::drop(LogicalCollection& collection,
       }
 
       VPackSlice idSlice = builder.slice().get(StaticStrings::IndexId);
-      Result res =
-          Indexes::extractHandle(collection, resolver, idSlice, iid, name);
+      res = Indexes::extractHandle(collection, resolver, idSlice, iid, name);
 
       if (!res.ok()) {
         events::DropIndex(collection.vocbase().name(), collection.name(), "",
@@ -744,24 +743,19 @@ Result Indexes::drop(LogicalCollection& collection,
 #ifdef USE_ENTERPRISE
     res = Indexes::dropCoordinatorEE(collection, iid);
 #else
-    auto& ci = collection.vocbase()
-                   .server()
-                   .getFeature<ClusterFeature>()
-                   .clusterInfo();
-    res = ci.dropIndexCoordinator(  // drop index
-        collection.vocbase().name(), std::to_string(collection.id().id()), iid,
-        0.0  // args
-    );
+    res = ClusterIndexMethods::dropIndexCoordinator(collection, iid, 0.0);
 #endif
     return res;
   } else {
+    auto origin = transaction::OperationOriginREST{::moduleName};
     READ_LOCKER(readLocker, collection.vocbase()._inventoryLock);
 
     transaction::Options trxOpts;
     trxOpts.requiresReplication = false;
-    SingleCollectionTransaction trx(
-        transaction::V8Context::CreateWhenRequired(collection.vocbase(), false),
-        collection, AccessMode::Type::EXCLUSIVE, trxOpts);
+    SingleCollectionTransaction trx(transaction::V8Context::createWhenRequired(
+                                        collection.vocbase(), origin, false),
+                                    collection, AccessMode::Type::EXCLUSIVE,
+                                    trxOpts);
     Result res = trx.begin();
 
     if (!res.ok()) {

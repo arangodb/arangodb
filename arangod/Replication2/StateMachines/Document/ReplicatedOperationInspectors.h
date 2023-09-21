@@ -79,6 +79,18 @@ auto inspect(Inspector& f, ReplicatedOperation::DropShard& x) {
 }
 
 template<class Inspector>
+auto inspect(Inspector& f, ReplicatedOperation::CreateIndex& x) {
+  return f.object(x).fields(f.field("shard", x.shard),
+                            f.field("properties", x.properties));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, ReplicatedOperation::DropIndex& x) {
+  return f.object(x).fields(f.field("shard", x.shard),
+                            f.field("index", x.index));
+}
+
+template<class Inspector>
 auto inspect(Inspector& f, ReplicatedOperation::Insert& x) {
   return f.object(x).fields(
       f.template embedFields<ReplicatedOperation::DocumentOperation>(x));
@@ -117,6 +129,8 @@ auto inspect(Inspector& f, ReplicatedOperation& x) {
           inspection::type<ReplicatedOperation::CreateShard>("CreateShard"),
           inspection::type<ReplicatedOperation::ModifyShard>("ModifyShard"),
           inspection::type<ReplicatedOperation::DropShard>("DropShard"),
+          inspection::type<ReplicatedOperation::CreateIndex>("CreateIndex"),
+          inspection::type<ReplicatedOperation::DropIndex>("DropIndex"),
           inspection::type<ReplicatedOperation::Insert>("Insert"),
           inspection::type<ReplicatedOperation::Update>("Update"),
           inspection::type<ReplicatedOperation::Replace>("Replace"),

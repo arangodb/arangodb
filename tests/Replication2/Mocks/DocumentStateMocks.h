@@ -173,8 +173,8 @@ struct MockDocumentStateHandlersFactory
       createNetworkHandler, (GlobalLogIdentifier), (override));
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IMaintenanceActionExecutor>,
-      createMaintenanceActionExecutor, (GlobalLogIdentifier, ServerID),
-      (override));
+      createMaintenanceActionExecutor,
+      (TRI_vocbase_t&, GlobalLogIdentifier, ServerID), (override));
 
   auto makeUniqueDatabaseSnapshotFactory()
       -> std::unique_ptr<replicated_state::document::IDatabaseSnapshotFactory>;
@@ -244,6 +244,12 @@ struct MockMaintenanceActionExecutor
               (override));
   MOCK_METHOD(Result, executeDropCollectionAction, (ShardID, CollectionID),
               (override));
+  MOCK_METHOD(Result, executeCreateIndex,
+              (ShardID, std::shared_ptr<VPackBuilder> const&,
+               std::shared_ptr<methods::Indexes::ProgressTracker>),
+              (override));
+  MOCK_METHOD(Result, executeDropIndex, (ShardID, velocypack::SharedSlice),
+              (override));
   MOCK_METHOD(void, addDirty, (), (override));
 };
 
@@ -258,6 +264,12 @@ struct MockDocumentStateShardHandler
                std::string followersToDrop),
               (override));
   MOCK_METHOD(ResultT<bool>, dropShard, (ShardID const&), (override));
+  MOCK_METHOD(Result, ensureIndex,
+              (ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
+               std::shared_ptr<methods::Indexes::ProgressTracker> progress),
+              (override));
+  MOCK_METHOD(Result, dropIndex, (ShardID, velocypack::SharedSlice),
+              (override));
   MOCK_METHOD(Result, dropAllShards, (), (override));
   MOCK_METHOD(bool, isShardAvailable, (ShardID const&), (override));
   MOCK_METHOD(replicated_state::document::ShardMap, getShardMap, (),

@@ -816,7 +816,7 @@ bool IndexExecutor::needsUniquenessCheck() const noexcept {
   return _infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions();
 }
 
-[[nodiscard]] auto IndexExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto IndexExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (_infos.getCount()) {

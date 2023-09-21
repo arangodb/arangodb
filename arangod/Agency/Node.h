@@ -186,8 +186,7 @@ class Node : public std::enable_shared_from_this<Node> {
   using Children = ::immer::map<StringType, NodePtr, TransparentHash,
                                 TransparentEqual, AccountingMemoryPolicy>;
 
-  using Array =
-      ::immer::flex_vector<velocypack::String, AccountingMemoryPolicy>;
+  using Array = ::immer::flex_vector<VPackStringType, AccountingMemoryPolicy>;
 
   using VariantType = std::variant<Children, Array, VPackStringType>;
 

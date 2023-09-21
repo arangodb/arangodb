@@ -1146,6 +1146,10 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     TRI_ASSERT(variable != nullptr);
     builder.add("name", VPackValue(variable->name));
     builder.add("id", VPackValue(variable->id));
+    if (type == NODE_TYPE_REFERENCE) {
+      builder.add("subqueryReference",
+                  VPackValue(hasFlag(FLAG_SUBQUERY_REFERENCE)));
+    }
   }
 
   if (type == NODE_TYPE_EXPANSION) {

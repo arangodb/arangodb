@@ -23,10 +23,17 @@
 
 #include "RocksDBBatchedMethods.h"
 
+#include "Basics/Exceptions.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
+
 using namespace arangodb;
 
-RocksDBBatchedMethods::RocksDBBatchedMethods(rocksdb::WriteBatch* wb)
-    : RocksDBMethods(), _wb(wb) {}
+RocksDBBatchedMethods::RocksDBBatchedMethods(
+    rocksdb::WriteBatch* wb, RocksDBMethodsMemoryTracker& memoryTracker)
+    : RocksDBBatchedBaseMethods(memoryTracker), _wb(wb) {
+  TRI_ASSERT(_wb != nullptr);
+}
 
 rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
@@ -48,7 +55,13 @@ rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& val,
                                            bool assume_tracked) {
   TRI_ASSERT(cf != nullptr);
-  return _wb->Put(cf, key.string(), val);
+  std::uint64_t beforeSize = currentWriteBatchSize();
+  rocksdb::Status s = _wb->Put(cf, key.string(), val);
+  if (s.ok()) {
+    // size of WriteBatch got increased. track memory usage of WriteBatch
+    _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
+  }
+  return s;
 }
 
 rocksdb::Status RocksDBBatchedMethods::PutUntracked(
@@ -60,15 +73,34 @@ rocksdb::Status RocksDBBatchedMethods::PutUntracked(
 rocksdb::Status RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                               RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
-  return _wb->Delete(cf, key.string());
+  std::uint64_t beforeSize = currentWriteBatchSize();
+  rocksdb::Status s = _wb->Delete(cf, key.string());
+  if (s.ok()) {
+    // size of WriteBatch got increased. track memory usage of WriteBatch
+    _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
+  }
+  return s;
 }
 
 rocksdb::Status RocksDBBatchedMethods::SingleDelete(
     rocksdb::ColumnFamilyHandle* cf, RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
-  return _wb->SingleDelete(cf, key.string());
+  std::uint64_t beforeSize = currentWriteBatchSize();
+  rocksdb::Status s = _wb->SingleDelete(cf, key.string());
+  if (s.ok()) {
+    // size of WriteBatch got increased. track memory usage of WriteBatch
+    _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
+  }
+  return s;
 }
 
 void RocksDBBatchedMethods::PutLogData(rocksdb::Slice const& blob) {
+  std::uint64_t beforeSize = currentWriteBatchSize();
   _wb->PutLogData(blob);
+  // size of WriteBatch got increased. track memory usage of WriteBatch
+  _memoryTracker.increaseMemoryUsage(currentWriteBatchSize() - beforeSize);
+}
+
+size_t RocksDBBatchedMethods::currentWriteBatchSize() const noexcept {
+  return _wb->GetWriteBatch()->Data().capacity();
 }
