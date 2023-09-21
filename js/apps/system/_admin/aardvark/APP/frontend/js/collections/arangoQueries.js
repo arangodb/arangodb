@@ -153,8 +153,8 @@
       }
 
       if (frontendConfig.ldapEnabled) {
+        var reader = new FileReader();
         if (file) {
-          var reader = new FileReader();
           reader.readAsText(file, 'UTF-8');
           reader.onload = function (evt) {
             try {
@@ -183,7 +183,6 @@
           };
         }
       } else {
-        var reader = new FileReader();
         reader.readAsText(file);
         reader.onload = async () => {
           var data = reader.result;
