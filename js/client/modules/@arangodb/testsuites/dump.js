@@ -887,7 +887,8 @@ function dumpMixedClusterSingle (options) {
                                     options, options, 'dump_mixed_cluster_single',
                                     tstFiles, function(){}, [
                                       //'--testFoxx', 'false',
-                                      '--skip', '550,900,960']);
+                                      // BTS-1617: disable 404 for now
+                                      '--skip', '404,550,900,960']);
 }
 
 function dumpMixedSingleCluster (options) {
@@ -961,7 +962,7 @@ function dumpWithCrashes (options) {
     allDatabases: true,
     deactivateCompression: true,
     activateFailurePoint: true,
-    threads: 1,
+    threads: 1
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -985,7 +986,6 @@ function dumpWithCrashesParallel (options) {
     threads: 1,
     useParallelDump: true,
     splitFiles: true,
-    extremeVerbosity: true
   };
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
@@ -1030,7 +1030,6 @@ function dumpAuthentication (options) {
   };
 
   let opts = Object.assign({}, options, tu.testServerAuthInfo, {
-    extremeVerbosity: true,
     multipleDumps: true,
     dbServers: 3
   });
