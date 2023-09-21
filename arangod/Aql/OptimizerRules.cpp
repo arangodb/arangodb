@@ -8509,6 +8509,9 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
     AsyncPrefetchEnabler enabler;
     plan->root()->walk(enabler);
     modified = enabler.modified;
+    if (modified) {
+      plan->getAst()->setContainsAsyncPrefetch();
+    }
   }
   opt->addPlan(std::move(plan), rule, modified);
 }

@@ -1507,13 +1507,16 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
   TRI_ASSERT(_transactionContext != nullptr);
   TRI_ASSERT(_trx != nullptr);
 
-  if (_ast->canApplyParallelism()) {
+  if (_ast->canApplyParallelism() || _ast->containsAsyncPrefetch()) {
+    // some degree of parallel execution. nodes should better not
+    // share the transaction context, but create their own, non-shared
+    // objects.
     TRI_ASSERT(!_ast->containsModificationNode());
     return _transactionContext->clone();
   }
-  // TODO: make this cheaper!
-  return _transactionContext->clone();
-  // return _transactionContext;
+  // no parallelism in this query. all parts can use the same
+  // transaction context
+  return _transactionContext;
 }
 
 velocypack::Options const& Query::vpackOptions() const {
