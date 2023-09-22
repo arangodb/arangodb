@@ -63,8 +63,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
 
   auto const readLimit =
       [](velocypack::Slice slice) -> ResultT<AqlCall::Limit> {
-    auto type = slice.type();
-    if (type == velocypack::ValueType::String &&
+    if (slice.isString() &&
         slice.isEqualString(StaticStrings::AqlRemoteInfinity)) {
       return AqlCall::Limit{AqlCall::Infinity{}};
     }
