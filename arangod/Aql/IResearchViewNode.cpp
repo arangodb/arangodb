@@ -61,6 +61,7 @@
 #include "types.h"
 
 #include <absl/strings/str_cat.h>
+#include "utils/misc.hpp"
 #include <frozen/map.h>
 #include <velocypack/Iterator.h>
 
@@ -2100,46 +2101,52 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto const executorIdx =
       getExecutorIndex(sorted, ordered, heapsort, emitSearchDoc);
-
-  switch (materializeType) {
-    case MaterializeType::NotMaterialize:
-      return kExecutors<false, MaterializeType::NotMaterialize>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::LateMaterialize:
-      return kExecutors<false, MaterializeType::LateMaterialize>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::Materialize:
-      return kExecutors<false, MaterializeType::Materialize>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
+  return irs::ResolveBool(_options.parallelism > 1, [&]<bool copyStored>() {
+    switch (materializeType) {
+      case MaterializeType::NotMaterialize:
+        return kExecutors<copyStored,
+                          MaterializeType::NotMaterialize>[executorIdx](
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      case MaterializeType::LateMaterialize:
+        return kExecutors<copyStored,
+                          MaterializeType::LateMaterialize>[executorIdx](
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      case MaterializeType::Materialize:
+        return kExecutors<copyStored,
+                          MaterializeType::Materialize>[executorIdx](
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
-      if (encrypted) {
-        return kExecutors<true,
+        if (encrypted) {
+          return kExecutors<true,
+                            MaterializeType::NotMaterialize |
+                                MaterializeType::UseStoredValues>[executorIdx](
+              &engine, this, std::move(registerInfos),
+              std::move(executorInfos));
+        }
+#endif
+        return kExecutors<copyStored,
                           MaterializeType::NotMaterialize |
                               MaterializeType::UseStoredValues>[executorIdx](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
-      }
-#endif
-      return kExecutors<false,
-                        MaterializeType::NotMaterialize |
-                            MaterializeType::UseStoredValues>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
+      case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
-      if (encrypted) {
-        return kExecutors<true,
+        if (encrypted) {
+          return kExecutors<true,
+                            MaterializeType::LateMaterialize |
+                                MaterializeType::UseStoredValues>[executorIdx](
+              &engine, this, std::move(registerInfos),
+              std::move(executorInfos));
+        }
+#endif
+        return kExecutors<copyStored,
                           MaterializeType::LateMaterialize |
                               MaterializeType::UseStoredValues>[executorIdx](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
-      }
-#endif
-      return kExecutors<false,
-                        MaterializeType::LateMaterialize |
-                            MaterializeType::UseStoredValues>[executorIdx](
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
-    default:
-      ADB_UNREACHABLE;
-  }
+      default:
+        ADB_UNREACHABLE;
+    }
+  });
 }
 
 #if defined(__GNUC__)
