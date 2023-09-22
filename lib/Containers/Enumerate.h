@@ -90,7 +90,7 @@ auto enumerate_iterator<T, C>::operator*() const -> reference {
 template<typename T, typename C>
 struct enumerate_wrapper {
   using I = typename std::decay_t<T>::iterator;
-  T _t;
+  T const& _t;
   C _c;
 
   auto begin() { return enumerate_iterator(_t.begin(), _c); }
