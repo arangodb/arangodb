@@ -27,6 +27,11 @@
 
 namespace arangodb {
 
+struct IndexStreamOptions {
+  std::vector<std::size_t> usedKeyFields;
+  std::vector<std::size_t> projectedFields;
+};
+
 template<typename SliceType, typename DocIdType>
 struct IndexStreamIterator {
   virtual ~IndexStreamIterator() = default;
@@ -135,7 +140,7 @@ struct IndexMerger {
 };
 
 namespace velocypack {
-struct Slice;
+class Slice;
 }
 
 struct VPackSliceComparator;
@@ -145,5 +150,6 @@ extern template struct IndexMerger<velocypack::Slice, LocalDocumentId,
                                    VPackSliceComparator>;
 using AqlIndexMerger =
     IndexMerger<velocypack::Slice, LocalDocumentId, VPackSliceComparator>;
+struct AqlIndexStreamInterface : AqlIndexMerger::StreamIteratorType {};
 
 }  // namespace arangodb

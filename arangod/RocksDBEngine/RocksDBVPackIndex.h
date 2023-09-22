@@ -131,6 +131,13 @@ class RocksDBVPackIndex : public RocksDBIndex {
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       int) override;
 
+  bool supportsStreamInterface(
+      IndexStreamOptions const&) const noexcept override;
+
+  virtual std::unique_ptr<AqlIndexStreamInterface> streamForCondition(
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      IndexStreamOptions const&, ReadOwnWrites readOwnWrites) override;
+
   void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
                       transaction::Methods* trx) final;
 

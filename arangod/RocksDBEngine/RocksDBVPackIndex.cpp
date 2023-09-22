@@ -62,6 +62,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "Aql/IndexMerger.h"
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
@@ -2856,6 +2857,35 @@ void RocksDBVPackIndex::warmupInternal(transaction::Methods* trx) {
   }
 
   LOG_TOPIC("499c4", DEBUG, Logger::ENGINES) << "loaded n: " << n;
+}
+
+std::unique_ptr<AqlIndexStreamInterface> RocksDBVPackIndex::streamForCondition(
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    IndexStreamOptions const&, ReadOwnWrites readOwnWrites) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+bool RocksDBVPackIndex::supportsStreamInterface(
+    IndexStreamOptions const& streamOpts) const noexcept {
+  if (unique()) {
+    return false;
+  }
+
+  // TODO expand this for fixed values that can be moved into the index
+  // TODO expand this for projections
+  if (!streamOpts.projectedFields.empty()) {
+    return false;
+  }
+  // for persisted indexes, we can only use a prefix of the indexed keys
+  std::size_t idx = 0;
+  for (auto keyIdx : streamOpts.usedKeyFields) {
+    if (keyIdx != idx) {
+      return false;
+    }
+    idx += 1;
+  }
+
+  return true;
 }
 
 }  // namespace arangodb
