@@ -79,12 +79,10 @@ auto ReplicatedOperation::buildCreateShardOperation(
 
 auto ReplicatedOperation::buildModifyShardOperation(
     ShardID shard, CollectionID collection,
-    std::shared_ptr<VPackBuilder> properties,
-    std::string followersToDrop) noexcept -> ReplicatedOperation {
+    velocypack::SharedSlice properties) noexcept -> ReplicatedOperation {
   return ReplicatedOperation{
-      std::in_place,
-      ModifyShard{std::move(shard), std::move(collection),
-                  std::move(properties), std::move(followersToDrop), true}};
+      std::in_place, ModifyShard{std::move(shard), std::move(collection),
+                                 std::move(properties)}};
 }
 
 auto ReplicatedOperation::buildDropShardOperation(
