@@ -1,6 +1,9 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* Fixed issue with `keepNull=false` updates not being properly replicated
+  to followers.
+
 * Updated JavaScript dependencies:
 
   qs: 6.11.0 -> 6.11.2
