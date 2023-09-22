@@ -347,6 +347,97 @@ function isEnabledWindowsMonitor(options, instanceInfo, pid, cmd) {
   return false;
 }
 
+function filterWindowsStack(stack, filters) {
+  if (stack.length === 0) {
+    return;
+  }
+  let normalize = (s) => {
+    s = s.trim(); 
+    if (s.substr(-3) === "...") {
+      s = s.substr(0, s.length - 3);
+    }
+    return s;
+  };
+  let lineEqual = (a, b) => {
+    a = normalize(a);
+    b = normalize(b);
+    if (a.length > b.length) {
+      return a.substr(0, b.length) === b;
+    }
+    return b.substr(0, a.length) === a;
+  };
+
+  let filtered = false;
+  filters.forEach(filter => {
+    if (stack.length === filter.length) {
+      filtered = filtered || filter.every((filterLine, i) => {
+        return lineEqual(filterLine, stack[i]);
+      });
+    }
+  });
+  return filtered;
+}
+function readCdbFileFiltered(cdbOutputFile) {
+  try {
+    const filters = JSON.parse(fs.read(
+      fs.join(pu.JS_DIR,
+              'js/client/modules/@arangodb/testutils', 
+              'filter_cdb_stacks.json')));
+    const buf = fs.readBuffer(cdbOutputFile);
+    let lineStart = 0;
+    let maxBuffer = buf.length;
+    let inStack = false;
+    let stack = [];
+    let longStack = [];
+    for (let j = 0; j < maxBuffer; j++) {
+      if (buf[j] === 10) { // \n
+        var line = buf.asciiSlice(lineStart, j);
+        lineStart = j + 1;
+
+        if (line.search('RetAddr') === 0) {
+          inStack = true;
+        }
+        if (inStack) {
+          if ((line.search(' 000') !== -1) ||
+              (line.search('--------') !== -1)) {
+            // cut off left part with addresses:
+            line = line.substring(98);
+            longStack.push(line);
+            // cut off arguments only for filter string::
+            let plusPos = line.search('\\+');
+            if (plusPos > 0) {
+              line = line.substring(0, plusPos);
+            }
+            if (line.length > 1) {
+              stack.push(line);
+            }
+          }
+          if (line.length === 0) {
+            if (!filterWindowsStack(stack)) {
+              print("not filtered this stack: ");
+              print(stack);
+              longStack.forEach(line => {
+                GDB_OUTPUT += line.trim() + '\n';
+              });
+            }
+            
+            stack = [];
+            longStack = [];
+            inStack = false;
+          }
+        } else {
+          if (line.search('NatVis') === -1) {
+            GDB_OUTPUT += line.trim() + '\n';
+          }
+        }
+      }
+    }
+  } catch (ex) {
+    let err="failed to read " + cdbOutputFile + " -> " + ex;
+    print(err);
+  }
+}
+
 const core_rx = new RegExp('core_.*_.*.dmp');
 function analyzeCoreDumpWindows (instanceInfo) {
   let cdbOutputFile = fs.getTempFile();
@@ -392,7 +483,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
   GDB_OUTPUT += `--------------------------------------------------------------------------------
 Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
   // cdb will output to stdout anyways, so we can't turn this off here.
-  GDB_OUTPUT += fs.read(cdbOutputFile);
+  readCdbFileFiltered(cdbOutputFile);
   return 'cdb ' + args.join(' ');
 }
 
