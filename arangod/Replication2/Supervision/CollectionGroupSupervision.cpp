@@ -421,8 +421,8 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
         << "the collection " << cid << " is listed in Target/CollectionGroups/"
         << group.target.id.id() << " but does not exist in Target/Collections";
 
-    if (not group.planCollections.contains(cid)) {
-      ADB_PROD_ASSERT(not group.plan->collections.contains(cid))
+    if (not group.plan->collections.contains(cid)) {
+      ADB_PROD_ASSERT(not group.planCollections.contains(cid))
           << "the target collection " << cid
           << " is not listed in Plan/CollectionGroup/" << group.target.id.id()
           << ", but exists in Plan/Collections.";

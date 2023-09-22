@@ -953,13 +953,19 @@ const replicatedStateDocumentShardsSuite = function () {
    * Helper for create-drop index tests. Uses the same code for unique and non-unique indexes.
    * First, the CreateIndex part is checked. Then, the index is dropped.
    */
-  const indexTestHelper = function (unique) {
+  const indexTestHelper = function (unique, inBackground) {
     return () => {
       let collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 2, replicationFactor: 3});
       let {logs} = dh.getCollectionShardsAndLogs(db, collection);
 
       // Create an index.
-      let index = collection.ensureIndex({name: "hund", type: "persistent", fields: ["_key", "value"], unique: unique});
+      let index = collection.ensureIndex({
+        name: "hund",
+        type: "persistent",
+        fields: ["_key", "value"],
+        unique: unique,
+        inBackground: inBackground
+      });
       assertEqual(index.name, "hund");
       assertEqual(index.isNewlyCreated, true);
       if (unique) {
@@ -970,7 +976,7 @@ const replicatedStateDocumentShardsSuite = function () {
       for (let log of logs) {
         const logContents = log.head(1000);
         assertTrue(dh.getOperationsByType(logContents, "CreateIndex").length > 0,
-          `Log contents for log ${log.id()}: ${JSON.stringify(logContents)}`);
+          `CreateIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`);
       }
 
       const indexId = index.id.split('/')[1];
@@ -1004,11 +1010,19 @@ const replicatedStateDocumentShardsSuite = function () {
       // Drop the index.
       assertTrue(collection.dropIndex(index));
 
+      // Wait for the index to removed from Current. This is how we know that the leader dropped the index.
+      lh.waitFor(() => {
+        if (dh.isIndexInCurrent(database, collection._id, indexId)) {
+          return Error(`Index ${indexId} still in Current`);
+        }
+        return true;
+      });
+
       // Check if the DropIndex operation appears in the log.
       for (let log of logs) {
         const logContents = log.head(1000);
         assertTrue(dh.getOperationsByType(logContents, "DropIndex").length > 0,
-          `Log contents for log ${log.id()}: ${JSON.stringify(logContents)}`);
+          `DropIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`);
       }
 
       // Check that the index is dropped on all participants.
@@ -1120,8 +1134,10 @@ const replicatedStateDocumentShardsSuite = function () {
       }
     },
 
-    testCreateDropIndex: indexTestHelper(false),
-    testCreateDropUniqueIndex: indexTestHelper(true),
+    testCreateDropIndex: indexTestHelper(false, false),
+    testCreateDropIndexInBackground: indexTestHelper(false, true),
+    testCreateDropUniqueIndex: indexTestHelper(true, false),
+    testCreateDropUniqueIndexInBackground: indexTestHelper(true, true),
   };
 };
 

@@ -308,9 +308,10 @@ static Result fillIndex(
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
-  // When we begin the trx on Replication two we try to load the leader state
-  // for index creation on the follower, as we are doing here, we cannot load
-  // the leader state. Using this hint we prevent loading the leaderState.
+  // When we begin the trx on Replication2 we try to load the leader state.
+  // This behavior is not desired for index creation on the follower, as it
+  // will result in an error. Using this hint we prevent loading the
+  // leaderState.
   // The same is for background indexes.
   trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
 
@@ -638,9 +639,10 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
-  // When we begin the trx on Replication two we try to load the leader state
-  // for index creation on the follower, as we are doing here, we cannot load
-  // the leader state. Using this hint we prevent loading the leaderState.
+  // When we begin the trx on Replication2 we try to load the leader state.
+  // This behavior is not desired for index creation on the follower, as it
+  // will result in an error. Using this hint we prevent loading the
+  // leaderState.
   // The same is for foreground indexes.
   trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
   Result res = trx.begin();

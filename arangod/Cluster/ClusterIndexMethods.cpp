@@ -62,8 +62,8 @@ inline auto pathCollectionInTarget(std::string_view databaseName,
       ->collection(std::string{cid});
 }
 
-inline auto pathCollectionIndexesInPlan(std::string_view databaseName,
-                                        std::string_view cid) {
+inline auto pathCollectionInPlan(std::string_view databaseName,
+                                 std::string_view cid) {
   return paths::plan()
       ->collections()
       ->database(std::string{databaseName})
@@ -119,7 +119,7 @@ static std::string extractErrorMessage(std::string_view shardId,
   return msg;
 }
 
-// Read the collection from Plan; this is an object to have a valid VPack
+// Read the collection from Target; this is an object to have a valid VPack
 // around to read from and to not have to carry around vpack builders.
 // Might want to do the error handling with throw/catch?
 class TargetCollectionReader {
@@ -368,6 +368,13 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
   std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
   // Search for the right index to delete
   for (VPackSlice indexSlice : VPackArrayIterator(indexes)) {
+    if (!indexSlice.isObject()) {
+      LOG_TOPIC("b67bc", DEBUG, Logger::CLUSTER)
+          << "Found non-object index slice in " << databaseName << "/"
+          << collectionID << " while searching for index " << iid.id();
+      continue;
+    }
+
     auto idSlice = indexSlice.get(arangodb::StaticStrings::IndexId);
 
     if (!idSlice.isString()) {
@@ -387,16 +394,16 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
         return Result(TRI_ERROR_FORBIDDEN);
       }
 
-      if (!indexSlice.isObject()) {
-        LOG_TOPIC("95fe7", DEBUG, Logger::CLUSTER)
-            << "Failed to find index " << databaseName << "/" << collectionID
-            << "/" << iid.id();
-        return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-      }
       indexToRemove = indexSlice;
-
       break;
     }
+  }
+
+  if (!indexToRemove.isObject()) {
+    LOG_TOPIC("95fe7", DEBUG, Logger::CLUSTER)
+        << "Failed to find index " << databaseName << "/" << collectionID << "/"
+        << iid.id();
+    return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
   auto report = std::make_shared<CurrentWatcher>();
@@ -429,7 +436,7 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
       return true;
     };
 
-    report->addWatchPath(pathCollectionIndexesInPlan(databaseName, collectionID)
+    report->addWatchPath(pathCollectionInPlan(databaseName, collectionID)
                              ->str(arangodb::cluster::paths::SkipComponents(1)),
                          std::string{idString}, watcherCallback);
   }
@@ -463,8 +470,7 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
     if (r.fail()) {
       return r;
     }
-    callbackList.emplace_back(
-        std::make_pair(std::move(agencyCallback), identifier));
+    callbackList.emplace_back(std::move(agencyCallback), identifier);
   }
   report->clearCallbacks();
 
@@ -532,7 +538,7 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
           // We got woken up by waittime, not by  callback.
           // Let us check if we skipped other callbacks as well
           for (auto& [cb2, cid2] : callbackList) {
-            if (report->hasReported(cid2)) {
+            if (!report->hasReported(cid2)) {
               // Only re check those where we have not yet found a
               // result.
               cb2->refetchAndUpdate(true, false);
@@ -851,8 +857,8 @@ auto ensureIndexCoordinatorReplication2Inner(
     };
 
     report->addWatchPath(
-        pathCollectionIndexesInPlan(collection.vocbase().name(),
-                                    std::to_string(collection.id().id()))
+        pathCollectionInPlan(collection.vocbase().name(),
+                             std::to_string(collection.id().id()))
             ->str(arangodb::cluster::paths::SkipComponents(1)),
         std::string{idString}, watcherCallback);
   }
@@ -885,8 +891,7 @@ auto ensureIndexCoordinatorReplication2Inner(
     if (r.fail()) {
       return r;
     }
-    callbackList.emplace_back(
-        std::make_pair(std::move(agencyCallback), identifier));
+    callbackList.emplace_back(std::move(agencyCallback), identifier);
   }
   report->clearCallbacks();
 
@@ -965,7 +970,7 @@ auto ensureIndexCoordinatorReplication2Inner(
           // We got woken up by waittime, not by  callback.
           // Let us check if we skipped other callbacks as well
           for (auto& [cb2, cid2] : callbackList) {
-            if (report->hasReported(cid2)) {
+            if (!report->hasReported(cid2)) {
               // Only re check those where we have not yet found a
               // result.
               cb2->refetchAndUpdate(true, false);
