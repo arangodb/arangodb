@@ -96,13 +96,6 @@ bool UpdateCollection::first() {
     DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
 
-    if (vocbase.replicationVersion() == replication::Version::TWO &&
-        from == "maintenance") {
-      // Replication2 leader code
-      return updateReplication2Shard(collection, shard, followersToDrop,
-                                     vocbase);
-    }
-
     std::shared_ptr<LogicalCollection> coll;
     Result found = methods::Collections::lookup(vocbase, shard, coll);
     if (found.ok()) {
@@ -130,8 +123,17 @@ bool UpdateCollection::first() {
           followers->remove(s);
         }
       }
-      OperationOptions options(ExecContext::current());
-      res.reset(Collections::updateProperties(*coll, props, options));
+
+      res.reset(std::invoke([&, coll = std::move(coll)]() mutable -> Result {
+        if (vocbase.replicationVersion() == replication::Version::TWO) {
+          return updateCollectionReplication2(
+              shard, collection, _description.properties()->sharedSlice(),
+              std::move(coll));
+        }
+
+        OperationOptions options(ExecContext::current());
+        return Collections::updateProperties(*coll, props, options);
+      }));
       result(res);
 
       if (!res.ok()) {
@@ -173,22 +175,15 @@ void UpdateCollection::setState(ActionState state) {
   ActionBase::setState(state);
 }
 
-bool UpdateCollection::updateReplication2Shard(
-    CollectionID const& collection, ShardID const& shard,
-    std::string const& followersToDrop, TRI_vocbase_t& vocbase) const {
-  std::shared_ptr<LogicalCollection> coll;
-  Result found = methods::Collections::lookup(vocbase, shard, coll);
-
-  if (found.ok()) {
-    auto result = coll->getDocumentStateLeader()
-                      ->modifyShard(shard, collection,
-                                    _description.properties(), followersToDrop)
-                      .get();
-    if (result.fail()) {
-      LOG_TOPIC("76955", ERR, Logger::MAINTENANCE)
-          << "failed to modify shard " << result;
-    }
-  }
-
-  return false;
+auto UpdateCollection::updateCollectionReplication2(
+    ShardID const& shard, CollectionID const& collection,
+    velocypack::SharedSlice props,
+    std::shared_ptr<LogicalCollection> coll) const noexcept -> Result {
+  return basics::catchToResult([coll = std::move(coll),
+                                props = std::move(props), &collection,
+                                &shard]() mutable {
+    return coll->getDocumentStateLeader()
+        ->modifyShard(shard, collection, std::move(props))
+        .get();
+  });
 }
