@@ -359,9 +359,7 @@ static void handlePlanShard(
                   {COLLECTION, colname},
                   {SHARD, shname},
                   {SERVER_ID, serverId},
-                  {FOLLOWERS_TO_DROP, followersToDropString},
-                  {"from",
-                   "maintenance"}},  // parameter used on replication2 leader
+                  {FOLLOWERS_TO_DROP, followersToDropString}},
               HIGHER_PRIORITY, true, std::move(properties));
           makeDirty.insert(dbname);
           callNotify = true;

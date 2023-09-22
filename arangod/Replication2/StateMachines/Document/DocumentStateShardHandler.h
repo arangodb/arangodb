@@ -26,7 +26,9 @@
 #include "Basics/UnshackledMutex.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/ShardProperties.h"
+#include "VocBase/AccessMode.h"
 #include "VocBase/Methods/Indexes.h"
+#include "Transaction/OperationOrigin.h"
 
 #include <shared_mutex>
 
@@ -42,8 +44,7 @@ struct IDocumentStateShardHandler {
                            std::shared_ptr<VPackBuilder> properties)
       -> ResultT<bool> = 0;
   virtual auto modifyShard(ShardID shard, CollectionID collection,
-                           std::shared_ptr<VPackBuilder> properties,
-                           std::string followersToDrop) -> ResultT<bool> = 0;
+                           velocypack::SharedSlice properties) -> Result = 0;
   virtual auto dropShard(ShardID const& shard) -> ResultT<bool> = 0;
   virtual auto dropAllShards() -> Result = 0;
   virtual auto isShardAvailable(ShardID const& shard) -> bool = 0;
@@ -54,17 +55,12 @@ struct IDocumentStateShardHandler {
       -> Result = 0;
   virtual auto dropIndex(ShardID shard, velocypack::SharedSlice index)
       -> Result = 0;
+  virtual auto lockShard(ShardID const& shard, AccessMode::Type accessType,
+                         transaction::OperationOrigin origin)
+      -> ResultT<std::unique_ptr<transaction::Methods>> = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
- public:
-  explicit DocumentStateShardHandler(
-      GlobalLogIdentifier gid,
-      std::shared_ptr<IMaintenanceActionExecutor> maintenance)
-      : _gid(std::move(gid)), _maintenance(std::move(maintenance)) {}
-#endif
-
  public:
   explicit DocumentStateShardHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
@@ -73,8 +69,7 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
                    std::shared_ptr<VPackBuilder> properties)
       -> ResultT<bool> override;
   auto modifyShard(ShardID shard, CollectionID collection,
-                   std::shared_ptr<VPackBuilder> properties,
-                   std::string followersToDrop) -> ResultT<bool> override;
+                   velocypack::SharedSlice properties) -> Result override;
   auto dropShard(ShardID const& shard) -> ResultT<bool> override;
   auto dropAllShards() -> Result override;
   auto isShardAvailable(ShardID const& shardId) -> bool override;
@@ -85,10 +80,14 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
       -> Result override;
   auto dropIndex(ShardID shard, velocypack::SharedSlice index)
       -> Result override;
+  auto lockShard(ShardID const& shard, AccessMode::Type accessType,
+                 transaction::OperationOrigin origin)
+      -> ResultT<std::unique_ptr<transaction::Methods>> override;
 
  private:
   GlobalLogIdentifier _gid;
   std::shared_ptr<IMaintenanceActionExecutor> _maintenance;
+  TRI_vocbase_t& _vocbase;
   struct {
     ShardMap shards;
     std::shared_mutex mutex;
