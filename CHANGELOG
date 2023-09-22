@@ -1,5 +1,8 @@
 devel
 -----
+
+* Fixed issue with `keepNull=false` updates not being properly replicated
+  to followers.
     
 * FE-365: fix query import breaking due to extra fields.
 
