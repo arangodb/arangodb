@@ -121,6 +121,22 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// response was received or if something went wrong)
     arangodb::Result _res;
 
+    /// @brief the callback to execute
+    std::function<void()> _cb;
+
+    /// @brief id of the current callback to execute. this is necessary
+    /// because if we post a job to the scheduler and then execute it
+    /// ourselves before the scheduler has a chance to do so, we need a
+    /// way to abort the scheduler callback, so it does not execute the
+    /// old job once more. we do so by posting the job's original id
+    /// along with the job to the scheduler, and check in the scheduler
+    /// callback if the stored id is still the same as the posted one.
+    uint64_t _id;
+
+    /// @brief id of the last job posted (will be increased whenever a new
+    /// job is posted)
+    uint64_t _nextId;
+
     /// @brief the response received by the job (nullptr if no response
     /// received)
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> _response;

@@ -76,15 +76,13 @@ class DatabaseInitialSyncer : public InitialSyncer {
     /// @brief replication applier config (from the base Syncer)
     ReplicationApplierConfiguration const& applier;
     /// @brief the dump batch state (from the base InitialSyncer)
-    replutils::BatchInfo& batch;  // TODO worker safety
+    replutils::BatchInfo& batch;
     /// @brief the client connection (from the base Syncer)
     replutils::Connection& connection;
-    /// @brief whether or not we have flushed the WAL on the remote server
-    bool flushed;  // TODO worker safety
     /// @brief info about leader node (from the base Syncer)
     replutils::LeaderInfo& leader;
     /// @brief the progress info (from the base InitialSyncer)
-    replutils::ProgressInfo& progress;  // TODO worker safety
+    replutils::ProgressInfo& progress;
     /// @brief the syncer state (from the base Syncer)
     SyncerState& state;
     /// @brief the database to dump

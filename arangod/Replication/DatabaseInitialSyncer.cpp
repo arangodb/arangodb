@@ -557,7 +557,6 @@ DatabaseInitialSyncer::Configuration::Configuration(
     : applier{a},
       batch{bat},
       connection{c},
-      flushed{f},
       leader{l},
       progress{p},
       state{s},
@@ -1010,14 +1009,6 @@ void DatabaseInitialSyncer::fetchDumpChunk(
     // assemble URL to call
     std::string url =
         absl::StrCat(baseUrl, "&from=", fromTick, "&chunkSize=", chunkSize);
-
-    if (_config.flushed) {
-      url += "&flush=false";
-    } else {
-      // only flush WAL once
-      url += "&flush=true";
-      _config.flushed = true;
-    }
 
     bool isVPack = false;
     auto headers = replutils::createHeaders();
