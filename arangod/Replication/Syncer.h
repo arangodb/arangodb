@@ -33,6 +33,8 @@
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
 
+#include <function2.hpp>
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -87,7 +89,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief post an async request to the scheduler
     /// this will increase the number of inflight jobs, and count it down
     /// when the posted request has finished
-    void request(std::function<void()> const& cb);
+    void request(fu2::unique_function<void()> cb);
 
     /// @brief notifies that a job was posted
     /// returns false if job counter could not be increased (e.g. because
@@ -122,7 +124,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     arangodb::Result _res;
 
     /// @brief the callback to execute
-    std::function<void()> _cb;
+    fu2::unique_function<void()> _cb;
 
     /// @brief id of the current callback to execute. this is necessary
     /// because if we post a job to the scheduler and then execute it

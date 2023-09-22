@@ -990,8 +990,8 @@ Result DatabaseInitialSyncer::parseCollectionDump(
 /// @brief order a new chunk from the /dump API
 void DatabaseInitialSyncer::fetchDumpChunk(
     std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-    std::string const& baseUrl, LogicalCollection* coll,
-    std::string const& leaderColl, int batch, TRI_voc_tick_t fromTick,
+    std::string_view baseUrl, LogicalCollection* coll,
+    std::string_view leaderColl, int batch, TRI_voc_tick_t fromTick,
     uint64_t chunkSize) {
   if (isAborted()) {
     sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));

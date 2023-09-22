@@ -33,6 +33,8 @@
 
 #include <chrono>
 #include <memory>
+#include <string>
+#include <string_view>
 
 struct TRI_vocbase_t;
 
@@ -183,8 +185,8 @@ class DatabaseInitialSyncer : public InitialSyncer {
 
   /// @brief order a new chunk from the /dump API
   void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-                      std::string const& baseUrl, LogicalCollection* coll,
-                      std::string const& leaderColl, int batch,
+                      std::string_view baseUrl, LogicalCollection* coll,
+                      std::string_view leaderColl, int batch,
                       TRI_voc_tick_t fromTick, uint64_t chunkSize);
 
   /// @brief fetch the server's inventory

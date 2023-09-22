@@ -201,11 +201,10 @@ Result DatabaseTailingSyncer::inheritFromInitialSyncer(
 }
 
 Result DatabaseTailingSyncer::registerOnLeader() {
-  std::string const url = tailingBaseUrl("tail") + "chunkSize=1024" +
-                          "&from=" + StringUtils::itoa(_initialTick) +
-                          "&trackOnly=true" +
-                          "&serverId=" + _state.localServerIdString +
-                          "&syncerId=" + syncerId().toString();
+  std::string const url =
+      absl::StrCat(tailingBaseUrl("tail"), "chunkSize=1024&from=", _initialTick,
+                   "&trackOnly=true&serverId=", _state.localServerIdString,
+                   "&syncerId=", syncerId().toString());
   LOG_TOPIC("41510", DEBUG, Logger::REPLICATION)
       << "registering tailing syncer on leader, url: " << url;
 
@@ -228,9 +227,9 @@ void DatabaseTailingSyncer::unregisterFromLeader(bool hard) {
     try {
       _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
         std::unique_ptr<httpclient::SimpleHttpResult> response;
-        std::string url = tailingBaseUrl("tail") +
-                          "serverId=" + _state.localServerIdString +
-                          "&syncerId=" + syncerId().toString();
+        std::string url = absl::StrCat(tailingBaseUrl("tail"),
+                                       "serverId=", _state.localServerIdString,
+                                       "&syncerId=", syncerId().toString());
         LOG_TOPIC("22640", DEBUG, Logger::REPLICATION)
             << "unregistering tailing syncer from leader, url: " << url;
 
@@ -254,7 +253,7 @@ void DatabaseTailingSyncer::unregisterFromLeader(bool hard) {
 /// @brief order a new chunk from the /tail API
 void DatabaseTailingSyncer::fetchWalChunk(
     std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-    std::string const& baseUrl, std::string const& collectionName,
+    std::string_view baseUrl, std::string_view collectionName,
     TRI_voc_tick_t fromTick, TRI_voc_tick_t lastScannedTick) {
   if (vocbase()->server().isStopping()) {
     sharedStatus->gotResponse(Result(TRI_ERROR_SHUTTING_DOWN));

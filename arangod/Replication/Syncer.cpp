@@ -400,7 +400,7 @@ Result Syncer::JobSynchronizer::waitForResponse(
   }
 }
 
-void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
+void Syncer::JobSynchronizer::request(fu2::unique_function<void()> cb) {
   TRI_ASSERT(cb);
 
   // by indicating that we have posted an async job, the caller
@@ -415,12 +415,12 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
     std::unique_lock guard{_condition.mutex};
     id = ++_nextId;
     _id = id;
-    _cb = cb;
+    _cb = std::move(cb);
   }
 
   SchedulerFeature::SCHEDULER->queue(
       RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), id]() {
-        std::function<void()> cb;
+        fu2::unique_function<void()> cb;
 
         {
           std::unique_lock guard{_condition.mutex};
