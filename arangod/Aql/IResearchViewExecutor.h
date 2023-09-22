@@ -92,7 +92,8 @@ class IResearchViewExecutorInfos {
           outNonMaterializedViewRegs,
       iresearch::CountApproximate, iresearch::FilterOptimization,
       std::vector<iresearch::HeapSortElement> const& heapSort,
-      size_t heapSortLimit, iresearch::SearchMeta const* meta);
+      size_t heapSortLimit, iresearch::SearchMeta const* meta,
+      size_t parallelism);
 
   auto getDocumentRegister() const noexcept { return _documentOutReg; }
 
@@ -150,6 +151,8 @@ class IResearchViewExecutorInfos {
 
   auto const* meta() const noexcept { return _meta; }
 
+  auto parallelism() const noexcept { return _parallelism; }
+
  private:
   RegisterId _searchDocOutReg;
   RegisterId _documentOutReg;
@@ -172,6 +175,7 @@ class IResearchViewExecutorInfos {
   iresearch::FilterOptimization _filterOptimization;
   std::vector<iresearch::HeapSortElement> const& _heapSort;
   size_t _heapSortLimit;
+  size_t _parallelism;
   iresearch::SearchMeta const* _meta;
   int const _depth;
   bool _filterConditionIsEmpty;

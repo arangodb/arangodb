@@ -216,7 +216,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
     std::vector<iresearch::HeapSortElement> const& heapSort,
-    size_t heapSortLimit, iresearch::SearchMeta const* meta)
+    size_t heapSortLimit, iresearch::SearchMeta const* meta, size_t parallelism)
     : _searchDocOutReg{searchDocRegister},
       _documentOutReg{outRegister},
       _scoreRegisters{std::move(scoreRegisters)},
@@ -238,6 +238,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _filterOptimization{filterOptimization},
       _heapSort{heapSort},
       _heapSortLimit{heapSortLimit},
+      _parallelism{parallelism},
       _meta{meta},
       _depth{depth},
       _filterConditionIsEmpty{
