@@ -610,6 +610,17 @@ auto DocumentFollowerState::GuardedData::applyEntry(
 auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::ModifyShard const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
+  // Note that locking the shard is not necessary on the follower. However, we
+  // still do it for safety reasons.
+  auto shardHandler = core->getShardHandler();
+  auto origin =
+      transaction::OperationOriginREST{"follower collection properties update"};
+  auto trxLock = shardHandler->lockShard(op.shard, AccessMode::Type::EXCLUSIVE,
+                                         std::move(origin));
+  if (trxLock.fail()) {
+    return trxLock.result();
+  }
+
   return applyAndRelease(op, index);
 }
 

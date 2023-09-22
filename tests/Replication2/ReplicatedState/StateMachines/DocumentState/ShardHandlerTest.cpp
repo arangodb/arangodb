@@ -33,8 +33,8 @@
 #include "Inspection/VPack.h"
 #include "Mocks/Servers.h"
 #include "Replication2/Mocks/DocumentStateMocks.h"
+#include "Replication2/Mocks/MockVocbase.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
-#include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "velocypack/Value.h"
 #include "gmock/gmock.h"
 
@@ -45,7 +45,14 @@ using namespace arangodb::replication2::tests;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
 
-TEST(ShardHandlerTest, ensureShard_all_cases) {
+struct ShardHandlerTest : testing::Test {
+  arangodb::tests::mocks::MockServer mockServer =
+      arangodb::tests::mocks::MockServer();
+  MockVocbase vocbaseMock =
+      MockVocbase(mockServer.server(), "shardHandlerTestDb", 1);
+};
+
+TEST_F(ShardHandlerTest, ensureShard_all_cases) {
   using namespace testing;
 
   auto gid = GlobalLogIdentifier{"db", LogId{1}};
@@ -53,7 +60,7 @@ TEST(ShardHandlerTest, ensureShard_all_cases) {
       std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
   auto shardHandler =
       std::make_shared<replicated_state::document::DocumentStateShardHandler>(
-          gid, maintenance);
+          vocbaseMock, gid, maintenance);
 
   auto shardId = ShardID{"s1000"};
   auto collectionId = CollectionID{"c1000"};
@@ -105,7 +112,7 @@ TEST(ShardHandlerTest, ensureShard_all_cases) {
   }
 }
 
-TEST(ShardHandlerTest, dropShard_all_cases) {
+TEST_F(ShardHandlerTest, dropShard_all_cases) {
   using namespace testing;
 
   auto gid = GlobalLogIdentifier{"db", LogId{1}};
@@ -113,7 +120,7 @@ TEST(ShardHandlerTest, dropShard_all_cases) {
       std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
   auto shardHandler =
       std::make_shared<replicated_state::document::DocumentStateShardHandler>(
-          gid, maintenance);
+          vocbaseMock, gid, maintenance);
 
   auto shardId = ShardID{"s1000"};
   auto collectionId = CollectionID{"c1000"};
@@ -184,7 +191,7 @@ TEST(ShardHandlerTest, dropShard_all_cases) {
   }
 }
 
-TEST(ShardHandlerTest, dropAllShards_test) {
+TEST_F(ShardHandlerTest, dropAllShards_test) {
   using namespace testing;
 
   auto gid = GlobalLogIdentifier{"db", LogId{1}};
@@ -192,7 +199,7 @@ TEST(ShardHandlerTest, dropAllShards_test) {
       std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
   auto shardHandler =
       std::make_shared<replicated_state::document::DocumentStateShardHandler>(
-          gid, maintenance);
+          vocbaseMock, gid, maintenance);
 
   auto collectionId = CollectionID{"c1000"};
   auto properties = std::make_shared<VPackBuilder>();
@@ -228,7 +235,7 @@ TEST(ShardHandlerTest, dropAllShards_test) {
   ASSERT_EQ(shardMap.size(), 0);
 }
 
-TEST(ShardHandlerTest, modifyShard_all_cases) {
+TEST_F(ShardHandlerTest, modifyShard_all_cases) {
   using namespace testing;
 
   auto gid = GlobalLogIdentifier{"db", LogId{1}};
@@ -236,38 +243,31 @@ TEST(ShardHandlerTest, modifyShard_all_cases) {
       std::make_shared<NiceMock<MockMaintenanceActionExecutor>>();
   auto shardHandler =
       std::make_shared<replicated_state::document::DocumentStateShardHandler>(
-          gid, maintenance);
+          vocbaseMock, gid, maintenance);
 
   auto shardId = ShardID{"s1000"};
   auto collectionId = CollectionID{"c1000"};
-  auto properties = std::make_shared<VPackBuilder>();
-  std::string followersToDrop = "hund,katze";
-
   {
     // Create the shard
-    auto res = shardHandler->ensureShard(shardId, collectionId, properties);
+    auto res = shardHandler->ensureShard(shardId, collectionId,
+                                         std::make_shared<VPackBuilder>());
     ASSERT_TRUE(res.ok());
     ASSERT_TRUE(res.get());
   }
 
+  // Modify shard properties
+  VPackBuilder b;
+  std::unordered_map<std::string, std::string> newProperties{{"hund", "katze"}};
+  velocypack::serialize(b, newProperties);
+  auto properties = b.sharedSlice();
   {
-    // Modify shard properties
-    VPackBuilder b;
-    std::unordered_map<std::string, std::string> newProperties{
-        {"hund", "katze"}};
-    velocypack::serialize(b, newProperties);
-    properties = std::make_shared<VPackBuilder>(std::move(b));
-
     EXPECT_CALL(*maintenance,
-                executeModifyCollectionAction(shardId, collectionId, properties,
-                                              followersToDrop))
+                executeModifyCollectionAction(shardId, collectionId, _))
         .Times(1);
     EXPECT_CALL(*maintenance, addDirty()).Times(1);
 
-    auto res = shardHandler->modifyShard(shardId, collectionId, properties,
-                                         followersToDrop);
+    auto res = shardHandler->modifyShard(shardId, collectionId, properties);
     ASSERT_TRUE(res.ok());
-    ASSERT_TRUE(res.get());
     Mock::VerifyAndClearExpectations(maintenance.get());
     auto shardMap = shardHandler->getShardMap();
     ASSERT_EQ(shardMap.size(), 1);
@@ -275,10 +275,9 @@ TEST(ShardHandlerTest, modifyShard_all_cases) {
 
   {
     // Failure to modify shard is propagated
-    ON_CALL(*maintenance, executeModifyCollectionAction(_, _, _, _))
+    ON_CALL(*maintenance, executeModifyCollectionAction(_, _, _))
         .WillByDefault(Return(Result{TRI_ERROR_WAS_ERLAUBE}));
-    auto res = shardHandler->modifyShard(shardId, collectionId, properties,
-                                         followersToDrop);
+    auto res = shardHandler->modifyShard(shardId, collectionId, properties);
     ASSERT_TRUE(res.fail());
     Mock::VerifyAndClearExpectations(maintenance.get());
     auto shardMap = shardHandler->getShardMap();
@@ -289,15 +288,12 @@ TEST(ShardHandlerTest, modifyShard_all_cases) {
     // Failure to modify non-existing shard
     shardId = ShardID{"s1001"};
     EXPECT_CALL(*maintenance,
-                executeModifyCollectionAction(shardId, collectionId, properties,
-                                              followersToDrop))
+                executeModifyCollectionAction(shardId, collectionId, _))
         .Times(0);
     EXPECT_CALL(*maintenance, addDirty()).Times(0);
 
-    auto res = shardHandler->modifyShard(shardId, collectionId, properties,
-                                         followersToDrop);
+    auto res = shardHandler->modifyShard(shardId, collectionId, properties);
     ASSERT_TRUE(res.ok());
-    ASSERT_FALSE(res.get());
     Mock::VerifyAndClearExpectations(maintenance.get());
     auto shardMap = shardHandler->getShardMap();
     ASSERT_EQ(shardMap.size(), 1);
