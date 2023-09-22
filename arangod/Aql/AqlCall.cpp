@@ -26,7 +26,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
-#include "Containers/FlatHashMap.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
@@ -35,6 +34,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <array>
 #include <iostream>
 #include <string_view>
 
@@ -50,11 +50,11 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   }
 
   auto expectedPropertiesFound =
-      containers::FlatHashMap<std::string_view, bool>{};
-  expectedPropertiesFound.emplace(StaticStrings::AqlRemoteLimit, false);
-  expectedPropertiesFound.emplace(StaticStrings::AqlRemoteLimitType, false);
-  expectedPropertiesFound.emplace(StaticStrings::AqlRemoteFullCount, false);
-  expectedPropertiesFound.emplace(StaticStrings::AqlRemoteOffset, false);
+      std::array<std::pair<std::string_view, bool>, 4>{
+          {{StaticStrings::AqlRemoteLimit, false},
+           {StaticStrings::AqlRemoteLimitType, false},
+           {StaticStrings::AqlRemoteFullCount, false},
+           {StaticStrings::AqlRemoteOffset, false}}};
 
   auto limit = AqlCall::Limit{};
   auto limitType = std::optional<AqlCall::LimitType>{};
@@ -154,12 +154,10 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     }
     auto key = keySlice.stringView();
 
-    if (auto propIt = expectedPropertiesFound.find(key);
+    if (auto propIt = std::find_if(
+            expectedPropertiesFound.begin(), expectedPropertiesFound.end(),
+            [&key](auto const& epf) { return epf.first == key; });
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
-      if (ADB_UNLIKELY(propIt->second)) {
-        return Result(TRI_ERROR_TYPE_ERROR,
-                      "When deserializing AqlCall: Encountered duplicate key");
-      }
       propIt->second = true;
     }
 
