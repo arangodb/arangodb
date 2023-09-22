@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WalManager.h"
+#include <unistd.h>
 #include <filesystem>
 
 #include "Basics/Exceptions.h"
@@ -34,17 +35,32 @@ namespace arangodb::replication2::storage::wal {
 
 WalManager::WalManager(std::string folderPath)
     : _folderPath(std::move(folderPath)) {
-  std::filesystem::create_directories(_folderPath);
+  createDirectories(_folderPath);
 }
 
 auto WalManager::createFileManager(LogId log) -> std::unique_ptr<IFileManager> {
   auto path = getLogPath(log);
-  std::filesystem::create_directories(path);
+  createDirectories(path);
   return std::make_unique<FileManager>(std::move(path));
 }
 
 auto WalManager::getLogPath(LogId log) const -> std::filesystem::path {
   return _folderPath / to_string(log);
+}
+
+void WalManager::createDirectories(std::filesystem::path const& path) {
+  std::filesystem::create_directories(path);
+#ifdef __linux__
+  for (auto& elem : path) {
+    auto fd = ::open(elem.c_str(), O_DIRECTORY | O_RDONLY);
+    ADB_PROD_ASSERT(fd >= 0) << "failed to open directory " << elem
+                             << " with error " << strerror(errno);
+    ADB_PROD_ASSERT(fsync(fd) == 0) << "failed to fsync directory " << elem
+                                    << " with error " << strerror(errno);
+    ::close(fd);
+  }
+}
+#endif
 }
 
 }  // namespace arangodb::replication2::storage::wal

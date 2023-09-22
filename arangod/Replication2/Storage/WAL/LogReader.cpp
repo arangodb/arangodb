@@ -27,11 +27,14 @@
 #include "Basics/ResultT.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/voc-errors.h"
+
 #include "Replication2/Storage/WAL/IFileReader.h"
 #include "Replication2/Storage/WAL/FileHeader.h"
 #include "Replication2/Storage/WAL/Record.h"
 
 #include <absl/crc/crc32c.h>
+#include <velocypack/Validator.h>
+
 #include <string>
 
 namespace arangodb::replication2::storage::wal {
@@ -88,7 +91,6 @@ auto LogReader::seekLogIndexForward(LogIndex index)
            sizeof(Record::Footer);
     _reader->seek(pos);
   }
-  // TODO - use proper error code
   return ResultT<Record::CompressedHeader>::error(
       TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, "log index not found");
 }
@@ -99,7 +101,7 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
 
   if (_reader->size() <= minFileSize) {
     return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,
-                     "log is empty");
+                     "log file " + _reader->path() + " is empty");
   }
 
   Record::Footer footer;
@@ -107,10 +109,13 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
   auto pos = _reader->position();
   ADB_PROD_ASSERT(pos % Record::alignment == 0)
       << "file " << _reader->path() << " - pos: " << pos;
-  if (pos < sizeof(Record::Footer)) {
-    // TODO - file is corrupt - write log message
+  if (pos < minFileSize) {
     return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,
-                     "log is corrupt");
+                     "found corrupt log while searching backwards for index " +
+                         to_string(index) + " - cannot read record from file " +
+                         _reader->path() + " at position " +
+                         std::to_string(pos) +
+                         " because it is too small for a single record");
   }
   _reader->seek(pos - sizeof(Record::Footer));
 
@@ -138,18 +143,23 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
       _reader->seek(pos);
       return RT::success(compressedHeader);
     } else if (idx < index.value) {
+      return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,
+                       "found index (" + std::to_string(idx) +
+                           ") lower than start index (" + to_string(index) +
+                           ") while searching backwards");
+    } else if (pos <= minFileSize) {
       return RT::error(
           TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,
-          "found index lower than start index while searching backwards");
-    } else if (pos <= minFileSize) {
-      // TODO - file is corrupt - write log message
-      return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT,
-                       "log is corrupt");
+          "found corrupt log while searching backwards for index " +
+              to_string(index) + " - cannot read record from file " +
+              _reader->path() + " at position " + std::to_string(pos) +
+              " because it is less than the minimum file size");
     }
     _reader->seek(pos - sizeof(Record::Footer));
   }
   return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-                   "log index not found");
+                   "log index " + to_string(index) + " not found in file " +
+                       _reader->path());
 }
 
 auto LogReader::getFirstRecordHeader() -> ResultT<Record::CompressedHeader> {
@@ -220,6 +230,19 @@ auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
 
   auto entry = [&]() -> LogEntry {
     if (header.type == RecordType::wMeta) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      velocypack::Validator validator;
+      try {
+        validator.validate(buffer.data(), buffer.size(), true);
+      } catch (std::exception const& ex) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_FAILED,
+            "error processing velocypack data for log index " +
+                std::to_string(header.index) + " at position " +
+                std::to_string(startPos) + " from input file '" +
+                _reader->path() + ": " + ex.what());
+      }
+#endif
       auto payload =
           LogMetaPayload::fromVelocyPack(velocypack::Slice(buffer.data()));
       return LogEntry(LogTerm(header.term), LogIndex(header.index),

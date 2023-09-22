@@ -36,14 +36,18 @@ namespace arangodb::replication2::storage::wal {
 #ifndef _WIN32
 FileWriterImplPosix::FileWriterImplPosix(std::string path)
     : _path(std::move(path)) {
-  _file = ::open(_path.c_str(), O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+  _file = ::open(_path.c_str(), O_CREAT | O_RDWR | O_APPEND,
+                 S_IRUSR | S_IWUSR | O_CLOEXEC);
   ADB_PROD_ASSERT(_file >= 0) << "failed to open replicated log file" << path
                               << " for writing with error " << strerror(errno);
 }
 
 FileWriterImplPosix::~FileWriterImplPosix() {
   if (_file >= 0) {
-    ::close(_file);
+    sync();
+    ADB_PROD_ASSERT(::close(_file) == 0)
+        << "failed to close replicated log file" << _path << " with error "
+        << strerror(errno);
   }
 }
 
