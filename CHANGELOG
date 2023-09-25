@@ -1,6 +1,11 @@
 devel
 -----
-    
+
+* Extend the internal state of ReadWriteLocks from 32-bit to 64-bit to prevent
+  potential overflows. Previously creating more than 64k streaming transactions
+  at the same time could produce an overflow that would effectively result in
+  undefined behavior.
+
 * FE-365: fix query import breaking due to extra fields.
 
 * Fixed BTS-1239: Restoring a single server dump with system collections
