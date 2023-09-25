@@ -101,12 +101,6 @@ class ExecutionEngine {
   auto executeForClient(AqlCallStack const& stack, std::string const& clientId)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
-  /// @brief getSome
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost);
-
-  /// @brief skipSome
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost);
-
   /// @brief whether or not initializeCursor was called
   bool initializeCursorCalled() const;
 

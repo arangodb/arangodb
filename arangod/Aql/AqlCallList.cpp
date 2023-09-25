@@ -30,6 +30,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -110,10 +111,10 @@ void AqlCallList::createEquivalentFetchAllRowsCall() {
 
 auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
   if (ADB_UNLIKELY(!slice.isObject())) {
-    using namespace std::string_literals;
-    return Result(TRI_ERROR_TYPE_ERROR,
-                  "When deserializating AqlCallList: Expected object, got "s +
-                      slice.typeName());
+    return Result(
+        TRI_ERROR_TYPE_ERROR,
+        absl::StrCat("When deserializing AqlCallList: Expected object, got ",
+                     slice.typeName()));
   }
 
   // we only have 2 different keys to check. using an std::map requires
@@ -127,23 +128,20 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
   auto const readSpecific =
       [](velocypack::Slice slice) -> ResultT<std::vector<AqlCall>> {
     if (ADB_UNLIKELY(!slice.isArray())) {
-      auto message = std::string{"When deserializating AqlCall: When reading " +
-                                 StaticStrings::AqlCallListSpecific +
-                                 ": "
-                                 "Unexpected type "};
-      message += slice.typeName();
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+      return Result(TRI_ERROR_TYPE_ERROR,
+                    absl::StrCat("When deserializing AqlCall: When reading ",
+                                 StaticStrings::AqlCallListSpecific,
+                                 ": Unexpected type ", slice.typeName()));
     }
     std::vector<AqlCall> res;
     res.reserve(slice.length());
     for (VPackSlice c : VPackArrayIterator(slice)) {
       auto maybeAqlCall = AqlCall::fromVelocyPack(c);
       if (ADB_UNLIKELY(maybeAqlCall.fail())) {
-        auto message = std::string{"When deserializing AqlCallList: entry "};
-        message += std::to_string(res.size());
-        message += ": ";
-        message += maybeAqlCall.errorMessage();
-        return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+        return Result(
+            TRI_ERROR_TYPE_ERROR,
+            absl::StrCat("When deserializing AqlCallList: entry ", res.size(),
+                         ": ", maybeAqlCall.errorMessage()));
       }
       res.emplace_back(std::move(maybeAqlCall.get()));
     }
@@ -156,26 +154,24 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
       return {std::nullopt};
     }
     if (ADB_UNLIKELY(!slice.isObject())) {
-      auto message =
-          std::string{"When deserializating AqlCallList: When reading " +
-                      StaticStrings::AqlCallListDefault +
-                      ": "
-                      "Unexpected type "};
-      message += slice.typeName();
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+      return Result(
+          TRI_ERROR_TYPE_ERROR,
+          absl::StrCat("When deserializing AqlCallList: When reading ",
+                       StaticStrings::AqlCallListDefault, ": Unexpected type ",
+                       slice.typeName()));
     }
     auto maybeAqlCall = AqlCall::fromVelocyPack(slice);
     if (ADB_UNLIKELY(maybeAqlCall.fail())) {
-      auto message = std::string{"When deserializing AqlCallList: default "};
-      message += maybeAqlCall.errorMessage();
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+      return Result(TRI_ERROR_TYPE_ERROR,
+                    absl::StrCat("When deserializing AqlCallList: default ",
+                                 maybeAqlCall.errorMessage()));
     }
     return {std::move(maybeAqlCall.get())};
   };
 
   AqlCallList result{AqlCall{}};
 
-  for (auto const it : velocypack::ObjectIterator(slice)) {
+  for (auto it : velocypack::ObjectIterator(slice)) {
     auto key = it.key.stringView();
 
     if (auto propIt = std::find_if(
@@ -191,13 +187,13 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
       if (maybeCalls.fail()) {
         return std::move(maybeCalls).result();
       }
-      result._specificCalls = maybeCalls.get();
+      result._specificCalls = std::move(maybeCalls.get());
     } else if (key == StaticStrings::AqlCallListDefault) {
       auto maybeCall = readDefault(it.value);
       if (maybeCall.fail()) {
         return std::move(maybeCall).result();
       }
-      result._defaultCall = maybeCall.get();
+      result._defaultCall = std::move(maybeCall.get());
     } else {
       LOG_TOPIC("c30c1", WARN, Logger::AQL)
           << "When deserializating AqlCallList: Encountered unexpected key "
@@ -210,9 +206,9 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
 
   for (auto const& it : expectedPropertiesFound) {
     if (ADB_UNLIKELY(!it.second)) {
-      auto message = std::string{"When deserializating AqlCall: missing key "};
-      message += it.first;
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+      return Result(
+          TRI_ERROR_TYPE_ERROR,
+          absl::StrCat("When deserializing AqlCall: missing key ", it.first));
     }
   }
 
