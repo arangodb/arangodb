@@ -1,0 +1,130 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+////////////////////////////////////////////////////////////////////////////////
+
+#pragma once
+
+#include <memory>
+#include <vector>
+
+#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
+#include "Aql/types.h"
+#include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
+#include "Transaction/Methods.h"
+
+namespace arangodb {
+
+namespace aql {
+struct Collection;
+class Condition;
+class ExecutionBlock;
+class ExecutionEngine;
+class ExecutionPlan;
+
+// not yet supported:
+// - projections
+// - post-filtering
+// - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache, waitForSync,
+// limit, lookahead
+// - reverse iteration
+// - support from GatherNodes
+// - producesResult
+// - read own writes
+// - proper cost estimates
+// - profile output in explainer
+// - serialization/deserialization
+// - snippet production distribution to shards in cluster
+// - executor
+class JoinNode : public ExecutionNode {
+  friend class ExecutionBlock;
+
+ public:
+  struct IndexInfo {
+    aql::Collection const* collection;
+    Variable const* outVariable;
+    std::unique_ptr<Condition> condition;
+    transaction::Methods::IndexHandle index;
+  };
+
+  JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
+           std::vector<IndexInfo> indexInfos, IndexIteratorOptions const&);
+
+  JoinNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+
+  ~JoinNode() override;
+
+  /// @brief return the type of the node
+  NodeType getType() const override final;
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
+  /// @brief whether or not all indexes are accessed in reverse order
+  IndexIteratorOptions options() const;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
+
+  /// @brief replaces variables in the internals of the execution node
+  /// replacements are { old variable id => new variable }
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
+
+  /// @brief getVariablesSetHere
+  std::vector<Variable const*> getVariablesSetHere() const override final;
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(VarSet& vars) const override final;
+
+  /// @brief estimateCost
+  CostEstimate estimateCost() const override final;
+
+  /// @brief getIndexesInfos, hand out the index infos
+  std::vector<IndexInfo> const& getIndexInfos() const;
+
+  /// TODO: check if this is adequate
+  bool isDeterministic() override final { return true; }
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
+
+ private:
+  Index::FilterCosts costsForIndexInfo(IndexInfo const& info) const;
+
+  /// @brief the index infos
+  std::vector<IndexInfo> _indexInfos;
+
+  /// @brief the index iterator options - same for all indexes
+  IndexIteratorOptions _options;
+};
+
+}  // namespace aql
+}  // namespace arangodb

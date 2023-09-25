@@ -42,6 +42,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
+#include "Aql/JoinNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -5019,6 +5020,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::INDEX:
+        case EN::JOIN:
         case EN::TRAVERSAL:
         case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
@@ -7603,6 +7605,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
@@ -9069,6 +9072,13 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
   bool modified = false;
   if (nodes.size() >= 2) {
+    // not yet supported:
+    // - projections
+    // - post-filtering
+    // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache,
+    // waitForSync, limit, lookahead
+    // - reverse iteration
+    // - support from GatherNodes
     auto nodeQualifies = [](IndexNode const& indexNode) {
       if (indexNode.filter() != nullptr) {
         // IndexNode has post-filter condition
@@ -9077,6 +9087,11 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
       if (indexNode.condition() == nullptr) {
         // IndexNode does not have an index lookup condition
+        return false;
+      }
+
+      if (!indexNode.options().ascending) {
+        // reverse sort not yet supported
         return false;
       }
 
@@ -9227,10 +9242,22 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
           }
 
           if (eligible) {
-            LOG_DEVEL << "WILL MERGE:";
+            std::vector<JoinNode::IndexInfo> indexInfos;
+            indexInfos.reserve(candidates.size());
             for (auto* c : candidates) {
-              LOG_DEVEL << "- " << c->id();
+              indexInfos.emplace_back(
+                  JoinNode::IndexInfo{.collection = c->collection(),
+                                      .outVariable = c->outVariable(),
+                                      .condition = c->condition()->clone(),
+                                      .index = c->getIndexes()[0]});
               handled.emplace(c);
+            }
+            JoinNode* jn = plan->createNode<JoinNode>(
+                plan.get(), plan->nextId(), std::move(indexInfos),
+                IndexIteratorOptions{});
+            plan->replaceNode(candidates[0], jn);
+            for (size_t i = 1; i < candidates.size(); ++i) {
+              plan->unlinkNode(candidates[i]);
             }
             modified = true;
           }

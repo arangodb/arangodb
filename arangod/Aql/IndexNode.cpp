@@ -55,7 +55,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-/// @brief constructor
 IndexNode::IndexNode(
     ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
     Variable const* outVariable,

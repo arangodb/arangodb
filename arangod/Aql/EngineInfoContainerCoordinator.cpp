@@ -92,7 +92,8 @@ EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() = default;
 
 void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
   TRI_ASSERT(node->getType() != ExecutionNode::INDEX &&
-             node->getType() != ExecutionNode::ENUMERATE_COLLECTION);
+             node->getType() != ExecutionNode::ENUMERATE_COLLECTION &&
+             node->getType() != ExecutionNode::JOIN);
 
   TRI_ASSERT(!_engines.empty());
   TRI_ASSERT(!_engineStack.empty());

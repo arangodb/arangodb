@@ -84,6 +84,7 @@ add_library(arango_aql STATIC
   IndexNodeOptimizerRules.cpp
   InputAqlItemRow.cpp
   InsertModifier.cpp
+  JoinNode.cpp
   LateMaterializedExpressionContext.cpp
   LateMaterializedOptimizerRulesCommon.cpp
   LimitExecutor.cpp
