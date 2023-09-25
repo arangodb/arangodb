@@ -887,11 +887,13 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
     // fallthrough to returning queryResult below...
   } catch (Exception const& ex) {
+    LOG_DEVEL << "EX: " << ex.code() << ", " << ex.what();
     queryResult.reset(Result(
         ex.code(), "AQL: " + ex.message() +
                        QueryExecutionState::toStringWithPrefix(_execState)));
     cleanupPlanAndEngine(ex.code(), /*sync*/ true);
   } catch (std::bad_alloc const&) {
+    LOG_DEVEL << "OOM";
     queryResult.reset(
         Result(TRI_ERROR_OUT_OF_MEMORY,
                StringUtils::concatT(
@@ -899,11 +901,13 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
                    QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/ true);
   } catch (std::exception const& ex) {
+    LOG_DEVEL << "STD: " << ex.what();
     queryResult.reset(Result(
         TRI_ERROR_INTERNAL,
         ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   } catch (...) {
+    LOG_DEVEL << "UNKNOWN";
     queryResult.reset(
         Result(TRI_ERROR_INTERNAL,
                StringUtils::concatT(

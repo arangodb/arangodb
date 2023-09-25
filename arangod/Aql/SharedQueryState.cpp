@@ -139,6 +139,7 @@ void SharedQueryState::queueHandler() {
 
   bool queued = _scheduler->tryBoundedQueue(
       lane, [self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
+        TRI_ASSERT(cb);
         std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
         do {
