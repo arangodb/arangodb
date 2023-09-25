@@ -71,24 +71,24 @@ class DocumentProducingNode {
   virtual void setFilter(std::unique_ptr<Expression> filter);
 
   /// @brief return the early pruning condition for the node
-  Expression* filter() const { return _filter.get(); }
+  Expression* filter() const noexcept { return _filter.get(); }
 
   arangodb::aql::Projections const& filterProjections() const noexcept;
 
   /// @brief whether or not the node has an early pruning filter condition
-  bool hasFilter() const { return _filter != nullptr; }
+  bool hasFilter() const noexcept { return _filter != nullptr; }
 
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     unsigned flags) const;
 
-  void setCountFlag() { _count = true; }
+  void setCountFlag() noexcept { _count = true; }
 
-  void copyCountFlag(DocumentProducingNode const* other) {
+  void copyCountFlag(DocumentProducingNode const* other) noexcept {
     _count = other->_count;
   }
 
-  /// @brief wheter or not the node can be used for counting
-  bool doCount() const;
+  /// @brief whether or not the node can be used for counting
+  bool doCount() const noexcept;
 
   [[nodiscard]] bool useCache() const noexcept { return _useCache; }
 
