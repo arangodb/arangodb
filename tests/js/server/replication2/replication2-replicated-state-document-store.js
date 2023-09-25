@@ -955,7 +955,7 @@ const replicatedStateDocumentShardsSuite = function () {
    */
   const indexTestHelper = function (unique, inBackground) {
     return () => {
-      let collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 2, replicationFactor: 3});
+      let collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 3, replicationFactor: 3});
       let {logs} = dh.getCollectionShardsAndLogs(db, collection);
 
       // Create an index.
@@ -986,8 +986,9 @@ const replicatedStateDocumentShardsSuite = function () {
       for (const [shard, log] of Object.entries(shardsToLogs)) {
         const participants = lhttp.listLogs(lh.coordinators[0], database).result[log];
         for (let pid of participants) {
+          const serverUrl = lh.getServerUrl(pid);
           lh.waitFor(() => {
-            let res = dh.getLocalIndex(lh.getServerUrl(pid), database, `${shard}/${indexId}`);
+            let res = dh.getLocalIndex(serverUrl, database, `${shard}/${indexId}`);
             if (res.error) {
               return Error(`Error while getting index ${shard}/${indexId} ` +
                 `from server ${pid} of log ${log}: ${JSON.stringify(res)}`);
@@ -996,14 +997,20 @@ const replicatedStateDocumentShardsSuite = function () {
           });
 
           // Check that all indexes are available (there should be two: primary and hund)
-          let res = dh.getAllLocalIndexes(lh.getServerUrl(pid), database, shard);
-          assertFalse(res.error,
-            `Error while getting all indexes from server ${pid} of log ${log}, shard ${shard}: ${JSON.stringify(res)}`);
-          assertEqual(res.indexes.length, 2, `Expected 2 indexes, got ${JSON.stringify(res)}`);
-          for (let index of res.indexes) {
-            assertTrue(["primary", "hund"].includes(index.name),
-              `Unexpected index name ${index.name} in ${JSON.stringify(res)}`);
-          }
+          lh.waitFor(() => {
+            let res = dh.getAllLocalIndexes(serverUrl, database, shard);
+            if (res.error) {
+              return Error(`Error while getting all indexes from server ${pid} of log ${log}, shard ${shard}: ${JSON.stringify(res)}`);
+            }
+            if (res.indexes.length !== 2) {
+              return Error(`Expected 2 indexes, got ${JSON.stringify(res)}`);
+            }
+            for (let index of res.indexes) {
+              assertTrue(["primary", "hund"].includes(index.name),
+                `Unexpected index name ${index.name} in ${JSON.stringify(res)}`);
+            }
+            return true;
+          });
         }
       }
 
