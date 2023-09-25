@@ -82,6 +82,8 @@ void (*uint16ToPersistent)(std::string& p, uint16_t value) = nullptr;
 void (*uint32ToPersistent)(std::string& p, uint32_t value) = nullptr;
 void (*uint64ToPersistent)(std::string& p, uint64_t value) = nullptr;
 
+void (*uint64ToPersistentRaw)(char* p, uint64_t value) = nullptr;
+
 RocksDBEndianness getRocksDBKeyFormatEndianness() noexcept {
   return rocksDBEndianness;
 }
@@ -97,6 +99,7 @@ void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
     uint16ToPersistent = &uint16ToPersistentLE;
     uint32ToPersistent = &uint32ToPersistentLE;
     uint64ToPersistent = &uint64ToPersistentLE;
+    uint64ToPersistentRaw = &uintToPersistentRawLE<uint64_t>;
     return;
   } else if (e == RocksDBEndianness::Big) {
     LOG_TOPIC("5e446", DEBUG, Logger::ENGINES) << "using big-endian keys";
@@ -106,6 +109,7 @@ void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
     uint16ToPersistent = &uint16ToPersistentBE;
     uint32ToPersistent = &uint32ToPersistentBE;
     uint64ToPersistent = &uint64ToPersistentBE;
+    uint64ToPersistentRaw = &uintToPersistentRawBE<uint64_t>;
     return;
   }
   LOG_TOPIC("b8243", FATAL, Logger::ENGINES) << "Invalid key endianness";

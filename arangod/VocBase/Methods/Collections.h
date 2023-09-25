@@ -25,6 +25,7 @@
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
+#include "Transaction/Hints.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/RevisionId.h"
@@ -99,7 +100,8 @@ struct Collections {
       bool createWaitsForSyncReplication,             // replication wait flag
       bool enforceReplicationFactor,                  // replication factor flag
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
-      bool isRestore = false);  // whether this is being called during restore
+      bool isRestore = false);  // whether this is being called
+                                // during restore
 
   /// Create shard, can only be used on DBServers.
   /// Should only be called by Maintenance.
@@ -108,7 +110,7 @@ struct Collections {
       OperationOptions const& options,
       std::string const& name,                 // shard name
       TRI_col_type_e collectionType,           // shard type
-      arangodb::velocypack::Slice properties,  // shard properties
+      velocypack::Slice properties,            // shard properties
       std::shared_ptr<LogicalCollection>& ret  // ReturnValue: created Shard
   );
 

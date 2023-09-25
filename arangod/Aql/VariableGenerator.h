@@ -52,7 +52,6 @@ class VariableGenerator {
   /// @brief destroy the generator
   ~VariableGenerator() = default;
 
- public:
   /// @brief visit all variables
   void visit(std::function<void(Variable*)> const&);
 
@@ -101,7 +100,6 @@ class VariableGenerator {
   /// @brief returns the next variable id
   VariableId nextId() noexcept;
 
- private:
   /// @brief all variables created
   std::unordered_map<VariableId, std::unique_ptr<Variable>> _variables;
 

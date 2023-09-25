@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/voc-types.h"
 
 #include <atomic>
@@ -70,7 +71,9 @@ class QueryContext {
   QueryContext& operator=(QueryContext const&) = delete;
 
  public:
-  explicit QueryContext(TRI_vocbase_t& vocbase, QueryId id = 0);
+  explicit QueryContext(TRI_vocbase_t& vocbase,
+                        transaction::OperationOrigin operationOrigin,
+                        QueryId id = 0);
 
   virtual ~QueryContext();
 
@@ -81,7 +84,9 @@ class QueryContext {
   }
 
   /// @brief get the vocbase
-  TRI_vocbase_t& vocbase() const { return _vocbase; }
+  TRI_vocbase_t& vocbase() const noexcept;
+
+  transaction::OperationOrigin operationOrigin() const noexcept;
 
   Collections& collections();
   Collections const& collections() const;
@@ -93,7 +98,7 @@ class QueryContext {
   virtual std::string const& user() const;
 
   /// warnings access is thread safe
-  QueryWarnings& warnings() { return _warnings; }
+  QueryWarnings& warnings();
 
   /// @brief look up a graph in the _graphs collection
   ResultT<graph::Graph const*> lookupGraphByName(std::string const& name);
@@ -184,6 +189,8 @@ class QueryContext {
   /// @brief current state the query is in (used for profiling and error
   /// messages)
   std::atomic<QueryExecutionState::ValueType> _execState;
+
+  transaction::OperationOrigin const _operationOrigin;
 
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines

@@ -104,6 +104,14 @@ struct DocumentFollowerState
         -> ResultT<std::optional<LogIndex>>;
     auto applyEntry(ReplicatedOperation::CreateShard const&, LogIndex)
         -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::CreateIndex const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+    auto applyEntry(ReplicatedOperation::DropIndex const&, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
+
+    template<class T>
+    auto applyAndRelease(T const& op, LogIndex)
+        -> ResultT<std::optional<LogIndex>>;
 
     std::unique_ptr<DocumentCore> core;
     std::uint64_t currentSnapshotVersion;

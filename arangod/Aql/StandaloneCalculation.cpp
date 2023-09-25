@@ -36,7 +36,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Hints.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
@@ -54,9 +53,10 @@ namespace {
 /// statuses to keep ASSERT happy
 class CalculationTransactionState final : public arangodb::TransactionState {
  public:
-  explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
+  explicit CalculationTransactionState(TRI_vocbase_t& vocbase,
+                                       transaction::OperationOrigin trxType)
       : TransactionState(vocbase, arangodb::TransactionId(0),
-                         arangodb::transaction::Options()) {
+                         arangodb::transaction::Options(), trxType) {
     updateStatus(arangodb::transaction::Status::RUNNING);  // always running to
                                                            // make ASSERTS happy
   }
@@ -145,11 +145,12 @@ class CalculationTransactionState final : public arangodb::TransactionState {
 /// @brief Dummy transaction context which just gives dummy state
 struct CalculationTransactionContext final
     : public arangodb::transaction::SmartContext {
-  explicit CalculationTransactionContext(TRI_vocbase_t& vocbase)
+  explicit CalculationTransactionContext(
+      TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin)
       : SmartContext(vocbase,
                      arangodb::transaction::Context::makeTransactionId(),
-                     nullptr),
-        _calculationTransactionState(vocbase) {}
+                     nullptr, operationOrigin),
+        _calculationTransactionState(vocbase, operationOrigin) {}
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<arangodb::TransactionState> acquireState(
@@ -175,10 +176,11 @@ struct CalculationTransactionContext final
 
 class CalculationQueryContext final : public arangodb::aql::QueryContext {
  public:
-  explicit CalculationQueryContext(TRI_vocbase_t& vocbase)
-      : QueryContext(vocbase),
+  explicit CalculationQueryContext(TRI_vocbase_t& vocbase,
+                                   transaction::OperationOrigin operationOrigin)
+      : QueryContext(vocbase, operationOrigin),
         _resolver(vocbase),
-        _transactionContext(vocbase) {
+        _transactionContext(vocbase, operationOrigin) {
     _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
     _trx = AqlTransaction::create(newTrxContext(), _collections,
                                   _queryOptions.transactionOptions,
@@ -254,17 +256,16 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
 namespace arangodb::aql {
 
 std::unique_ptr<QueryContext> StandaloneCalculation::buildQueryContext(
-    TRI_vocbase_t& vocbase) {
-  return std::make_unique<::CalculationQueryContext>(vocbase);
+    TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin) {
+  return std::make_unique<::CalculationQueryContext>(vocbase, operationOrigin);
 }
 
-Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
-                                            std::string_view queryString,
-                                            std::string_view parameterName,
-                                            std::string_view errorContext,
-                                            bool isComputedValue) {
+Result StandaloneCalculation::validateQuery(
+    TRI_vocbase_t& vocbase, std::string_view queryString,
+    std::string_view parameterName, std::string_view errorContext,
+    transaction::OperationOrigin operationOrigin, bool isComputedValue) {
   try {
-    CalculationQueryContext queryContext(vocbase);
+    CalculationQueryContext queryContext(vocbase, operationOrigin);
     auto ast = queryContext.ast();
     TRI_ASSERT(ast);
     auto qs = arangodb::aql::QueryString(queryString);

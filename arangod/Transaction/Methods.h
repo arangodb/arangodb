@@ -35,6 +35,7 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -69,12 +70,6 @@ struct AstNode;
 struct Variable;
 }  // namespace aql
 
-namespace transaction {
-struct BatchOptions;
-class Context;
-struct Options;
-}  // namespace transaction
-
 class CollectionNameResolver;
 class DataSourceId;
 class Index;
@@ -92,6 +87,9 @@ class TransactionState;
 class TransactionCollection;
 
 namespace transaction {
+struct BatchOptions;
+class Context;
+struct Options;
 
 class Methods {
  public:
@@ -108,7 +106,7 @@ class Methods {
 
   /// @brief create the transaction
   explicit Methods(
-      std::shared_ptr<transaction::Context> const& ctx,
+      std::shared_ptr<transaction::Context> ctx,
       transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, and add a collection to it.
@@ -117,7 +115,7 @@ class Methods {
           std::string const& collectionName, AccessMode::Type type);
 
   /// @brief create the transaction, used to be UserTransaction
-  Methods(std::shared_ptr<transaction::Context> const& ctx,
+  Methods(std::shared_ptr<transaction::Context> ctx,
           std::vector<std::string> const& readCollections,
           std::vector<std::string> const& writeCollections,
           std::vector<std::string> const& exclusiveCollections,
@@ -190,21 +188,19 @@ class Methods {
   }
 
   // is this instance responsible for commit / abort
-  bool isMainTransaction() const { return _mainTransaction; }
+  bool isMainTransaction() const noexcept;
 
   /// @brief add a transaction hint
-  void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
+  void addHint(transaction::Hints::Hint hint) noexcept;
 
   /// @brief whether or not the transaction consists of a single operation only
-  bool isSingleOperationTransaction() const;
+  bool isSingleOperationTransaction() const noexcept;
 
   /// @brief get the status of the transaction
-  Status status() const;
+  Status status() const noexcept;
 
   /// @brief get the status of the transaction, as a string
-  char const* statusString() const {
-    return transaction::statusString(status());
-  }
+  std::string_view statusString() const noexcept;
 
   /// @brief options used, not dump options
   TEST_VIRTUAL velocypack::Options const& vpackOptions() const;
@@ -423,6 +419,13 @@ class Methods {
   TransactionCollection* trxCollection(
       DataSourceId cid, AccessMode::Type type = AccessMode::Type::READ) const;
 
+  Future<Result> replicateOperations(
+      TransactionCollection& collection,
+      std::shared_ptr<const std::vector<std::string>> const& followers,
+      OperationOptions const& options,
+      velocypack::Builder const& replicationData,
+      TRI_voc_document_operation_e operation);
+
  private:
   // perform a (deferred) intermediate commit if required
   futures::Future<Result> performIntermediateCommitIfRequired(
@@ -563,18 +566,10 @@ class Methods {
   /// @brief the transaction context
   std::shared_ptr<transaction::Context> _transactionContext;
 
-  bool _mainTransaction;
-
- public:
-  Future<Result> replicateOperations(
-      TransactionCollection& collection,
-      std::shared_ptr<const std::vector<std::string>> const& followers,
-      OperationOptions const& options,
-      velocypack::Builder const& replicationData,
-      TRI_voc_document_operation_e operation);
-
   /// @brief transaction hints
   transaction::Hints _localHints;
+
+  bool _mainTransaction;
 
   /// @brief name-to-cid lookup cache for last collection seen
   struct {

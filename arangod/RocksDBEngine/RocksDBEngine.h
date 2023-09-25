@@ -177,7 +177,8 @@ class RocksDBEngine final : public StorageEngine {
       transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
-      transaction::Options const& options) override;
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -251,7 +252,7 @@ class RocksDBEngine final : public StorageEngine {
   /// flushing column families becomes a separate API.
   Result flushWal(bool waitForSync = false,
                   bool flushColumnFamilies = false) override;
-  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
+  void waitForEstimatorSync() override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(CreateDatabaseInfo&& info,
                                                       bool isUpgrade) override;
@@ -337,18 +338,20 @@ class RocksDBEngine final : public StorageEngine {
                                      velocypack::Slice slice,
                                      RocksDBLogValue&& logValue);
 
-  void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);
-  std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> collectionMappings()
-      const;
-  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t, DataSourceId,
-                       IndexId);
-  void removeIndexMapping(uint64_t);
+  void addCollectionMapping(uint64_t objectId, TRI_voc_tick_t dbId,
+                            DataSourceId cid);
+  std::vector<std::tuple<uint64_t, TRI_voc_tick_t, DataSourceId>>
+  collectionMappings() const;
+  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t dbId, DataSourceId cid,
+                       IndexId iid);
+  void removeIndexMapping(uint64_t objectId);
 
   // Identifies a collection
-  typedef std::pair<TRI_voc_tick_t, DataSourceId> CollectionPair;
-  typedef std::tuple<TRI_voc_tick_t, DataSourceId, IndexId> IndexTriple;
-  CollectionPair mapObjectToCollection(uint64_t) const;
-  IndexTriple mapObjectToIndex(uint64_t) const;
+  using CollectionPair = std::pair<TRI_voc_tick_t, DataSourceId>;
+  using IndexTriple = std::tuple<TRI_voc_tick_t, DataSourceId, IndexId>;
+  CollectionPair mapObjectToCollection(uint64_t objectId) const;
+  IndexTriple mapObjectToIndex(uint64_t objectId) const;
+  void removeCollectionMapping(uint64_t objectId);
 
   /// @brief determine how many archived WAL files are available. this is called
   /// during the first few minutes after the instance start, when we don't want
@@ -586,6 +589,7 @@ class RocksDBEngine final : public StorageEngine {
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
 
   mutable basics::ReadWriteLock _mapLock;
+  // object id (of collection) => { database id, data source id }
   std::unordered_map<uint64_t, CollectionPair> _collectionMap;
   std::unordered_map<uint64_t, IndexTriple> _indexMap;
 
@@ -734,6 +738,8 @@ class RocksDBEngine final : public StorageEngine {
   // minimum number of live WAL files that need to be present to trigger
   // an auto-flush
   uint64_t _autoFlushMinWalFiles;
+
+  bool _forceLittleEndianKeys;  // force new database to use old format
 
   metrics::Gauge<uint64_t>& _metricsIndexEstimatorMemoryUsage;
   metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;

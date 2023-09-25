@@ -22,25 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-pregel.h"
-#include "Pregel/ExecutionNumber.h"
-#include "Pregel/PregelOptions.h"
-#include "v8-vocbaseprivate.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
-
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/Conductor.h"
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/PregelOptions.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Pregel/Worker/Worker.h"
-
+#include "Utils/OperationResult.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-
-#include "Utils/OperationResult.h"
-#include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "V8Server/v8-vocbaseprivate.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

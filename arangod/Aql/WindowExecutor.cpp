@@ -203,7 +203,7 @@ auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
           upstreamCall};
 }
 
-[[nodiscard]] auto AccuWindowExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto AccuWindowExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (input.finalState() == MainQueryState::DONE) {
@@ -440,7 +440,7 @@ WindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {state, NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
-[[nodiscard]] auto WindowExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto WindowExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (input.finalState() == MainQueryState::DONE) {

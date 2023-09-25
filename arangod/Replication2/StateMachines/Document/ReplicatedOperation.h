@@ -27,6 +27,7 @@
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
 #include "VocBase/Identifiers/TransactionId.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <variant>
 
@@ -98,15 +99,13 @@ struct ReplicatedOperation {
   struct ModifyShard {
     ShardID shard;
     CollectionID collection;
-    std::shared_ptr<VPackBuilder> properties;
+    velocypack::SharedSlice properties;
 
-    // The following two fields are temporary and will be removed eventually
-    // from replication 2.0.
-    std::string followersToDrop;
-    bool ignoreFollowersToDrop;
-
-    friend auto operator==(ModifyShard const&, ModifyShard const&)
-        -> bool = default;
+    friend auto operator==(ModifyShard const& lhs, ModifyShard const& rhs)
+        -> bool {
+      return lhs.shard == rhs.shard && lhs.collection == rhs.collection &&
+             lhs.properties.binaryEquals(rhs.properties.slice());
+    }
   };
 
   struct DropShard {
@@ -115,6 +114,33 @@ struct ReplicatedOperation {
 
     friend auto operator==(DropShard const&, DropShard const&)
         -> bool = default;
+  };
+
+  struct CreateIndex {
+    ShardID shard;
+    std::shared_ptr<VPackBuilder> properties;
+
+    // Parameters attached to the operation, but not replicated, because they
+    // make sense only locally.
+    struct Parameters {
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress;
+
+      friend auto operator==(Parameters const&, Parameters const&)
+          -> bool = default;
+    } params;
+
+    friend auto operator==(CreateIndex const&, CreateIndex const&)
+        -> bool = default;
+  };
+
+  struct DropIndex {
+    ShardID shard;
+    velocypack::SharedSlice index;
+
+    friend auto operator==(DropIndex const& lhs, DropIndex const& rhs) -> bool {
+      return lhs.shard == rhs.shard &&
+             lhs.index.binaryEquals(rhs.index.slice());
+    }
   };
 
   struct Insert : DocumentOperation {};
@@ -128,8 +154,8 @@ struct ReplicatedOperation {
  public:
   using OperationType =
       std::variant<AbortAllOngoingTrx, Commit, IntermediateCommit, Abort,
-                   Truncate, CreateShard, ModifyShard, DropShard, Insert,
-                   Update, Replace, Remove>;
+                   Truncate, CreateShard, ModifyShard, DropShard, CreateIndex,
+                   DropIndex, Insert, Update, Replace, Remove>;
   OperationType operation;
 
   static auto fromOperationType(OperationType op) noexcept
@@ -149,10 +175,16 @@ struct ReplicatedOperation {
       std::shared_ptr<VPackBuilder> properties) noexcept -> ReplicatedOperation;
   static auto buildModifyShardOperation(
       ShardID shard, CollectionID collection,
-      std::shared_ptr<VPackBuilder> properties,
-      std::string followersToDrop) noexcept -> ReplicatedOperation;
+      velocypack::SharedSlice properties) noexcept -> ReplicatedOperation;
   static auto buildDropShardOperation(ShardID shard,
                                       CollectionID collection) noexcept
+      -> ReplicatedOperation;
+  static auto buildCreateIndexOperation(
+      ShardID shard, std::shared_ptr<VPackBuilder> properties,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress =
+          nullptr) noexcept -> ReplicatedOperation;
+  static auto buildDropIndexOperation(ShardID shard,
+                                      velocypack::SharedSlice index) noexcept
       -> ReplicatedOperation;
   static auto buildDocumentOperation(TRI_voc_document_operation_e const& op,
                                      TransactionId tid, ShardID shard,

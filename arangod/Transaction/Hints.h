@@ -33,25 +33,26 @@ class Hints {
  public:
   using ValueType = std::uint32_t;
 
-  /// @brief individual hint flags that can be used for transactions
+  /// @brief individual hint flags that can be used for transactions.
+  /// note: these values are not persisted anywhere and should not be
+  /// persistend anywhere, at least not in numeric form.
   enum class Hint : ValueType {
     NONE = 0,
     SINGLE_OPERATION = 1,
     LOCK_NEVER = 2,
-    NO_DLD = 8,        // disable deadlock detection, unsupported in RocksDB
-    NO_INDEXING = 16,  // use DisableIndexing for RocksDB
-    INTERMEDIATE_COMMITS = 32,  // enable intermediate commits in rocksdb
-    ALLOW_RANGE_DELETE = 64,    // enable range-delete in rocksdb
-    FROM_TOPLEVEL_AQL = 128,    // transaction is only runnning one AQL query
-    GLOBAL_MANAGED = 256,       // transaction with externally managed lifetime
-    INDEX_CREATION = 512,       // transaction is for creating index on existing
+    NO_INDEXING = 4,           // use DisableIndexing for RocksDB
+    INTERMEDIATE_COMMITS = 8,  // enable intermediate commits in rocksdb
+    ALLOW_RANGE_DELETE = 16,   // enable range-delete in rocksdb
+    FROM_TOPLEVEL_AQL = 32,    // transaction is only runnning one AQL query
+    GLOBAL_MANAGED = 64,       // transaction with externally managed lifetime
+    INDEX_CREATION = 128,      // transaction is for creating index on existing
                            // collection (many inserts, no removes, index will
                            // be deleted on any failure anyway)
     IS_FOLLOWER_TRX =
-        1024,  // transaction used to replicate something on a follower
+        256,  // transaction used to replicate something on a follower
     ALLOW_FAST_LOCK_ROUND_CLUSTER =
-        2048,  // allow the coordinator to try a fast-lock path (parallel on all
-               // DBServers), and if that fails revert to slow-lock path
+        512  // allow the coordinator to try a fast-lock path (parallel on all
+             // DBServers), and if that fails revert to slow-lock path
   };
 
   Hints() noexcept : _value(0) {}

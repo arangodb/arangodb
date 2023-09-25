@@ -77,9 +77,10 @@ class QueryLateMaterialization : public QueryTest {
       OperationOptions opt;
       static std::vector<std::string> const kEmpty;
       transaction::Methods trx(
-          transaction::StandaloneContext::Create(vocbase()), kEmpty,
-          {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          transaction::Options());
+          transaction::StandaloneContext::create(
+              vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+          kEmpty, transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
       // insert into collection_1
       {

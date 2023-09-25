@@ -42,6 +42,29 @@ const getLocalValue = function (endpoint, db, col, key) {
 };
 
 /**
+ * Lookup a particular index on a server.
+ */
+const getLocalIndex = function (endpoint, db, indexId) {
+  let res = request.get({
+    url: `${endpoint}/_db/${db}/_api/index/${indexId}`,
+  });
+  lh.checkRequestResult(res, true);
+  return res.json;
+};
+
+/**
+ * Returns all indexes available locally on a server.
+ */
+const getAllLocalIndexes = function (endpoint, db, shard) {
+  let res = request.get({
+    url: `${endpoint}/_db/${db}/_api/index?collection=${shard}`,
+  });
+  lh.checkRequestResult(res, true);
+  return res.json;
+};
+
+
+/**
  * Verify that a key is available (or not) on a server.
  * If available is set to false, the key must not exist.
  * Otherwise, the value at that key must be equal to the given value.
@@ -169,6 +192,10 @@ const getOperationPayload = function(entry) {
   return op.payload;
 };
 
+const getOperationsByType = function(entries, opType) {
+  return entries.filter(entry => getOperationType(entry) === opType);
+};
+
 /**
  * Returns the first entry with the same key and type as provided.
  * If no key is provided, all entries of the specified type are returned.
@@ -260,7 +287,16 @@ const getSingleLogId = function (database, collection) {
   return {logId, shardId};
 };
 
+const getCollectionShardsAndLogs = function (db, collection) {
+  const shards = collection.shards();
+  const shardsToLogs = lh.getShardsToLogsMapping(db._name(), collection._id);
+  const logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+  return {shards, shardsToLogs, logs};
+};
+
 exports.getLocalValue = getLocalValue;
+exports.getLocalIndex = getLocalIndex;
+exports.getAllLocalIndexes = getAllLocalIndexes;
 exports.localKeyStatus = localKeyStatus;
 exports.checkFollowersValue = checkFollowersValue;
 exports.getBulkDocuments = getBulkDocuments;
@@ -268,6 +304,7 @@ exports.mergeLogs = mergeLogs;
 exports.getOperation = getOperation;
 exports.getOperationType = getOperationType;
 exports.getOperationPayload = getOperationPayload;
+exports.getOperationsByType = getOperationsByType;
 exports.getDocumentEntries = getDocumentEntries;
 exports.searchDocs = searchDocs;
 exports.getArrayElements = getArrayElements;
@@ -278,3 +315,4 @@ exports.getNextSnapshotBatch = getNextSnapshotBatch;
 exports.finishSnapshot = finishSnapshot;
 exports.allSnapshotsStatus = allSnapshotsStatus;
 exports.getSingleLogId = getSingleLogId;
+exports.getCollectionShardsAndLogs = getCollectionShardsAndLogs;

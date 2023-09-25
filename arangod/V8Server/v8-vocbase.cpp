@@ -513,8 +513,9 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const queryString(TRI_ObjectToString(isolate, args[0]));
   // If we execute an AQL query from V8 we need to unset the nolock headers
+  auto origin = transaction::OperationOriginAQL{"parsing query"};
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(vocbase, true),
+      transaction::V8Context::create(vocbase, origin, true),
       aql::QueryString(queryString), nullptr);
   auto parseResult = query->parse();
 
@@ -659,8 +660,9 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // bind parameters will be freed by the query later
+  auto origin = transaction::OperationOriginAQL{"explaining query"};
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(vocbase, true),
+      transaction::V8Context::create(vocbase, origin, true),
       aql::QueryString(std::move(queryString)), std::move(bindVars),
       aql::QueryOptions(options.slice()));
   auto queryResult = query->explain();
@@ -769,8 +771,9 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     queryId = TRI_NewServerSpecificTick();
   }
 
+  auto origin = transaction::OperationOriginAQL{"executing query from JSON"};
   auto query = arangodb::aql::ClusterQuery::create(
-      queryId, transaction::V8Context::Create(vocbase, true),
+      queryId, transaction::V8Context::create(vocbase, origin, true),
       aql::QueryOptions(options.slice()));
 
   VPackSlice collections = queryBuilder.slice().get("collections");
@@ -897,7 +900,8 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  auto v8Context = transaction::V8Context::Create(vocbase, true);
+  auto origin = transaction::OperationOriginAQL{"executing query"};
+  auto v8Context = transaction::V8Context::create(vocbase, origin, true);
   if (v8g->_transactionContext != nullptr) {
     if (v8g->_transactionContext->isTransactionJS()) {
       v8Context->setJStransaction();
@@ -1318,10 +1322,6 @@ static v8::Handle<v8::Object> WrapVocBase(v8::Isolate* isolate,
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionDatabaseCollectionName
-////////////////////////////////////////////////////////////////////////////////
-
 static void MapGetVocBase(v8::Local<v8::Name> const name,
                           v8::PropertyCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -1519,10 +1519,6 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseVersion
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1544,10 +1540,6 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databasePath
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1573,10 +1565,6 @@ static void JS_VersionFilenameDatabase(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseId
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1585,10 +1573,6 @@ static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_tick_t>(isolate, vocbase.id()));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseName
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1599,10 +1583,6 @@ static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_STD_STRING(n);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseIsSystem
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsSystemDatabase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1623,10 +1603,6 @@ static void JS_FakeFlushCache(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseUseDatabase
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1670,10 +1646,6 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseListDatabase
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1709,10 +1681,6 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseCreateDatabase
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1778,10 +1746,6 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseDropDatabase
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1810,10 +1774,6 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseListDatabase
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DBProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);

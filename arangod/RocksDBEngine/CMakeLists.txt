@@ -19,12 +19,15 @@ add_library(arango_rocksdb STATIC
   RocksDBIndexCacheRefillFeature.cpp
   RocksDBIndexCacheRefillThread.cpp
   RocksDBIndexFactory.cpp
+  RocksDBIndexingDisabler.cpp
   RocksDBIterators.cpp
   RocksDBKey.cpp
   RocksDBKeyBounds.cpp
   RocksDBLogValue.cpp
   RocksDBMetaCollection.cpp
   RocksDBMetadata.cpp
+  RocksDBMethods.cpp
+  RocksDBMethodsMemoryTracker.cpp
   RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
   RocksDBOptionsProvider.cpp

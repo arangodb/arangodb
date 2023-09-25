@@ -37,7 +37,7 @@ function dumpIntegrationSuite () {
   return {
     testDumpCompressed: function () {
       let tree = fs.listTree(dumpDir);
-      assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
+      assertNotEqual(-1, tree.indexOf("ENCRYPTION"), dumpDir);
       let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION")).toString();
       assertEqual("none", data);
       const prefix = "UnitTestsDumpEdges_8a31b923e9407ab76b6ca41131b8acf1";
@@ -51,17 +51,21 @@ function dumpIntegrationSuite () {
       assertNotEqual(-1, tree.indexOf(structure));
       data = JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)).toString());
       assertEqual(cn, data.parameters.name);
-      
-      assertNotEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
-      assertEqual(-1, tree.indexOf(prefix + ".data.json"));
-      data = fs.readGzip(fs.join(dumpDir, prefix + ".data.json.gz")).toString().trim().split('\n');
-      assertEqual(10, data.length);
-      data.forEach(function(line) {
-        line = JSON.parse(line);
-        assertEqual(2300, line.type);
-        assertTrue(line.data.hasOwnProperty('_key'));
-        assertTrue(line.data.hasOwnProperty('_rev'));
+     
+      let files = tree.filter((f) => f.startsWith(prefix) && f.match(/(\.\d+)?\.data\.json\.gz$/));
+      assertNotEqual(0, files.length, files);
+      files.forEach((file) => {
+        data = fs.readGzip(fs.join(dumpDir, file)).toString().trim().split('\n');
+        assertEqual(10, data.length);
+        data.forEach(function(line) {
+          line = JSON.parse(line);
+          assertTrue(line.hasOwnProperty('_key'));
+          assertTrue(line.hasOwnProperty('_rev'));
+        });
       });
+      
+      files = tree.filter((f) => f.startsWith(prefix) && f.match(/(\.\d+)?\.data\.json$/));
+      assertEqual(0, files.length, files);
     }
   };
 }

@@ -454,8 +454,8 @@ _Enterprise Edition only_
 ### RocksDB
 
 * Name: RocksDB
-* Version: 8.6
-* Date: 2023-08-21 13:25:04 -0700
+* Version: 8.8
+* Date: 2023-09-23 11:02:19 -0700
 * GitHub: https://github.com/arangodb/rocksdb
 * License: https://github.com/arangodb/rocksdb/blob/main/README.md
 * License Name: Apache License 2.0
@@ -894,7 +894,7 @@ License Id: -
 #### Swagger UI
 
 * Name: swagger-ui
-* Version: 3.25.1
+* Version: 5.4.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
 * License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE

@@ -29,18 +29,18 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
-#include "Containers/FlatHashMap.h"
+#include "Aql/MultiGet.h"
 #include "Indexes/IndexIterator.h"
 #include "IResearch/SearchDoc.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <iosfwd>
+#include <utils/empty.hpp>
+
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 struct AqlCall;
 class AqlItemBlockInputRange;
@@ -49,13 +49,11 @@ class RegisterInfos;
 template<BlockPassthrough>
 class SingleRowFetcher;
 
-// two storage variants as we need
-// collection name to be stored only
-// when needed.
-class NoCollectionNameHolder {};
-class StringCollectionNameHolder {
+template<typename T>
+class CollectionNameHolder {
  public:
-  StringCollectionNameHolder(std::string_view name) : _collectionSource(name) {}
+  explicit CollectionNameHolder(std::string_view name) noexcept
+      : _collectionSource{name} {}
 
   auto collectionSource() const { return _collectionSource; }
 
@@ -63,18 +61,16 @@ class StringCollectionNameHolder {
   std::string_view _collectionSource;
 };
 
-template<typename T>
-using MaterializerExecutorInfosBase =
-    std::conditional_t<std::is_same_v<T, std::string const&>,
-                       StringCollectionNameHolder, NoCollectionNameHolder>;
+template<>
+class CollectionNameHolder<void> {};
 
 template<typename T>
-class MaterializerExecutorInfos : public MaterializerExecutorInfosBase<T> {
+class MaterializerExecutorInfos : public CollectionNameHolder<T> {
  public:
   template<class... _Types>
   MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
                             aql::QueryContext& query, _Types&&... Args)
-      : MaterializerExecutorInfosBase<T>(Args...),
+      : CollectionNameHolder<T>(Args...),
         _inNonMaterializedDocRegId(inNmDocId),
         _outMaterializedDocumentRegId(outDocRegId),
         _query(query) {}
@@ -110,8 +106,6 @@ class MaterializeExecutor {
     // FIXME(gnusi): enable?
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    // TODO this could be set to true!
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = MaterializerExecutorInfos<T>;
@@ -141,51 +135,60 @@ class MaterializeExecutor {
 
   void initializeCursor() noexcept {
     // Does nothing but prevents the whole executor to be re-created.
-    if constexpr (isSingleCollection) {
-      _collection = nullptr;
-    }
+    _collection = {};
   }
 
- protected:
-  static constexpr bool isSingleCollection =
-      std::is_same_v<T, std::string const&>;
+ private:
+  static constexpr bool isSingleCollection = !std::is_void_v<T>;
 
   class ReadContext {
    public:
-    explicit ReadContext(Infos& infos)
-        : _infos(&infos),
-          _inputRow(nullptr),
-          _outputRow(nullptr),
-          _callback(copyDocumentCallback(*this)) {}
+    explicit ReadContext(Infos& infos);
 
-    ReadContext(ReadContext&&) = default;
+    ReadContext(ReadContext&& other) = default;
 
-    const Infos* _infos;
-    const arangodb::aql::InputAqlItemRow* _inputRow;
-    arangodb::aql::OutputAqlItemRow* _outputRow;
-    arangodb::IndexIterator::DocumentCallback const _callback;
+    void moveInto(std::unique_ptr<uint8_t[]> data);
 
-   private:
-    static arangodb::IndexIterator::DocumentCallback copyDocumentCallback(
-        ReadContext& ctx);
+    Infos const* infos;
+    InputAqlItemRow const* inputRow{};
+    OutputAqlItemRow* outputRow{};
+    IndexIterator::DocumentCallback callback;
   };
 
-  void fillBuffer(AqlItemBlockInputRange& inputRange);
-  using BufferRecord = std::tuple<iresearch::SearchDoc, LocalDocumentId,
-                                  LogicalCollection const*>;
-  using BufferedRecordsContainer = std::vector<BufferRecord>;
-  BufferedRecordsContainer _bufferedDocs;
+  static constexpr size_t kInvalidRecord = std::numeric_limits<size_t>::max();
+
+  struct Buffer {
+    explicit Buffer(ResourceMonitor& monitor) noexcept : scope{monitor} {}
+
+    void fill(AqlItemBlockInputRange& inputRange, ReadContext& ctx);
+
+    struct Record {
+      explicit Record(iresearch::SearchDoc doc) noexcept
+          : segment{doc.segment()}, search{doc.doc()} {}
+
+      iresearch::ViewSegment const* segment;
+
+      union {
+        irs::doc_id_t search;
+        LocalDocumentId storage;
+        size_t executor;
+      };
+    };
+
+    ResourceUsageScope scope;
+    std::vector<Record> docs;
+    std::vector<Record*> order;
+  };
+
+  IRS_NO_UNIQUE_ADDRESS
+  irs::utils::Need<!localDocumentId, Buffer> _buffer;
+  IRS_NO_UNIQUE_ADDRESS
+  irs::utils::Need<!localDocumentId, MultiGetContext> _getCtx;
 
   transaction::Methods _trx;
-  ReadContext _readDocumentContext;
-  Infos const& _infos;
-
-  ResourceUsageScope _memoryTracker;
-  std::conditional_t<
-      isSingleCollection, LogicalCollection const*,
-      containers::FlatHashMap<DataSourceId, LogicalCollection const*>>
-      _collection;
+  ReadContext _readCtx;
+  IRS_NO_UNIQUE_ADDRESS
+  irs::utils::Need<localDocumentId, PhysicalCollection*> _collection{};
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

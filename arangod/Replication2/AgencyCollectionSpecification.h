@@ -94,7 +94,6 @@ struct CollectionGroupCurrentSpecification {
  */
 
 struct Collection {
-  // TODO: Fill Attributes.
   CollectionGroupId groupId;
 
   struct MutableProperties {
@@ -105,6 +104,8 @@ struct Collection {
     // TODO: This can be optimized into it's own struct.
     // Did a short_cut here to avoid concatenated changes
     std::optional<arangodb::velocypack::Builder> schema{std::nullopt};
+
+    bool operator==(MutableProperties other) const noexcept;
   };
 
   MutableProperties mutableProperties;
@@ -118,6 +119,7 @@ struct Collection {
     bool isSmart{false};
     bool isDisjoint{false};
     bool cacheEnabled{false};
+    std::string shardingStrategy{""};
     std::vector<std::string> shardKeys{};
     inspection::NonNullOptional<std::string> smartJoinAttribute{std::nullopt};
     inspection::NonNullOptional<std::string> smartGraphAttribute{std::nullopt};

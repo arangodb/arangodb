@@ -115,13 +115,13 @@ function testSuite() {
       // Now slowly read the cursor through:
       for (let i = 0; i < 8; ++i) {
         wait(2);
-        let next = arango.PUT("/_api/cursor/" + resp.id,{});
+        let next = arango.PUT("/_api/cursor/" + resp.id, {});
         console.warn("Read document:", next);
         assertTrue(next.hasMore);
       }
       // And the last one:
       wait(2);
-      let next = arango.PUT("/_api/cursor/" + resp.id,{});
+      let next = arango.PUT("/_api/cursor/" + resp.id, {});
       console.warn("Read last document:", next, "awaiting shutdown...");
       assertFalse(next.hasMore);
       assertFalse(next.error);
@@ -156,13 +156,13 @@ function testSuite() {
       // Now slowly read the cursor through:
       for (let i = 0; i < 8; ++i) {
         wait(2);
-        let next = arango.PUT("/_api/cursor/" + resp.id,{});
+        let next = arango.PUT("/_api/cursor/" + resp.id, {});
         console.warn("Read document:", next);
         assertTrue(next.hasMore);
       }
       // Instead of the last one, now delete the cursor:
       wait(2);
-      let next = arango.DELETE("/_api/cursor/" + resp.id,{});
+      let next = arango.DELETE("/_api/cursor/" + resp.id, {});
       console.warn("Deleted cursor:", next, "awaiting shutdown...");
       assertFalse(next.hasMore);
       assertFalse(next.error);

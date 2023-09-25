@@ -1004,7 +1004,7 @@ function check_edge_operationSuite () {
       let doc = replace_edge(sync, graph_name, friend_collection, key, {"type2": "divorced", "_from": "1", "_to": "2"});
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertTrue(doc.parsedBody['error']);
-      assertMatch(/.*edge attribute missing or invalid.*/, doc.parsedBody['errorMessage'], doc);
+      assertMatch(/.*expecting both `_from` and `_to` attributes to be defined.*/, doc.parsedBody['errorMessage'], doc);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
@@ -1215,7 +1215,7 @@ function check400 (doc) {
   assertTrue(doc.parsedBody['error']);
   assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
   // puts doc.parsedBody['errorMessage'];
-  assertMatch(/.*edge attribute missing or invalid.*/, doc.parsedBody['errorMessage'], doc);
+  assertMatch(/.*expecting both `_from` and `_to` attributes to be defined.*/, doc.parsedBody['errorMessage'], doc);
 }
 
 function check404Edge (doc) {
@@ -1286,7 +1286,7 @@ function check400_edge_missing (doc) {
   assertTrue(doc.parsedBody['error']);
   assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
   assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
-  assertMatch(/.*edge attribute missing or invalid.*/, doc.parsedBody['errorMessage'], doc);
+  assertMatch(/.*expecting both `_from` and `_to` attributes to be defined.*/, doc.parsedBody['errorMessage'], doc);
 }
 
 function check404_graph_not_found (doc) {
