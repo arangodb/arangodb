@@ -899,7 +899,7 @@ function optimizerRuleTestSuite() {
       nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           seen = true;
-          assertFalse(node.reverse);
+          assertTrue(node.ascending);
         }
       });
       assertTrue(seen);
@@ -921,7 +921,7 @@ function optimizerRuleTestSuite() {
       nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           seen = true;
-          assertTrue(node.reverse);
+          assertFalse(node.ascending);
         }
       });
       assertTrue(seen);
@@ -940,7 +940,7 @@ function optimizerRuleTestSuite() {
         assertNotEqual("SortNode", node.type);
         if (node.type === "IndexNode") {
           seen = true;
-          assertFalse(node.reverse);
+          assertTrue(node.ascending);
         }
       });
       assertTrue(seen);
@@ -959,7 +959,7 @@ function optimizerRuleTestSuite() {
         assertNotEqual("SortNode", node.type);
         if (node.type === "IndexNode") {
           seen = true;
-          assertFalse(node.reverse);
+          assertTrue(node.ascending);
         }
       });
       assertTrue(seen);
@@ -978,7 +978,7 @@ function optimizerRuleTestSuite() {
         assertNotEqual("SortNode", node.type);
         if (node.type === "IndexNode") {
           seen = true;
-          assertFalse(node.reverse);
+          assertTrue(node.ascending);
         }
       });
       assertTrue(seen);
@@ -997,7 +997,7 @@ function optimizerRuleTestSuite() {
         assertNotEqual("SortNode", node.type);
         if (node.type === "IndexNode") {
           seen = true;
-          assertFalse(node.reverse);
+          assertTrue(node.ascending);
         }
       });
       assertTrue(seen);
@@ -1016,7 +1016,7 @@ function optimizerRuleTestSuite() {
         assertNotEqual("SortNode", node.type);
         if (node.type === "IndexNode") {
           seen = true;
-          assertFalse(node.reverse); // forward or backward does not matter here
+          assertTrue(node.ascending); // forward or backward does not matter here
         }
       });
       assertTrue(seen);
@@ -1035,7 +1035,7 @@ function optimizerRuleTestSuite() {
         assertNotEqual("SortNode", node.type);
         if (node.type === "IndexNode") {
           seen = true;
-          assertTrue(node.reverse); 
+          assertFalse(node.ascending); 
         }
       });
       assertTrue(seen);
@@ -1060,7 +1060,7 @@ function optimizerRuleTestSuite() {
       // ...and one IndexNode...
       assertEqual(1, indexNodes.length);
       // ...which is not reversed.
-      assertFalse(indexNodes[0].reverse);
+      assertTrue(indexNodes[0].ascending);
     },
     
     testSortDescWithFilterSplicedSubquery : function () {
@@ -1082,7 +1082,7 @@ function optimizerRuleTestSuite() {
       // ...and one IndexNode...
       assertTrue(indexNodes.length === 1);
       // ...which is reversed.
-      assertTrue(indexNodes[0].reverse);
+      assertFalse(indexNodes[0].ascending);
     },
 
     testSortDescWithFilterNonConst : function () {
@@ -1098,7 +1098,7 @@ function optimizerRuleTestSuite() {
         assertNotEqual("SortNode", node.type);
         if (node.type === "IndexNode") {
           seen = true;
-          assertFalse(node.reverse); // forward or backward does not matter here
+          assertTrue(node.ascending); // forward or backward does not matter here
         }
       });
       assertTrue(seen);
@@ -1117,7 +1117,7 @@ function optimizerRuleTestSuite() {
         assertNotEqual("SortNode", node.type);
         if (node.type === "IndexNode") {
           seen = true;
-          assertTrue(node.reverse); 
+          assertFalse(node.ascending); 
         }
       });
       assertTrue(seen);
@@ -1135,7 +1135,7 @@ function optimizerRuleTestSuite() {
       nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           ++seen;
-          assertFalse(node.reverse);
+          assertTrue(node.ascending);
         } else if (node.type === "SortNode") {
           ++seen;
           assertEqual(2, node.elements.length);
@@ -1158,7 +1158,7 @@ function optimizerRuleTestSuite() {
           assertEqual(1, node.indexes.length);
           assertEqual(["foo.bar"], node.indexes[0].fields);
           seen = true;
-          assertFalse(node.reverse); 
+          assertTrue(node.ascending); 
         }
       });
       assertTrue(seen);
@@ -1178,7 +1178,7 @@ function optimizerRuleTestSuite() {
           assertEqual(1, node.indexes.length);
           assertEqual(["foo.bar"], node.indexes[0].fields);
           seen = true;
-          assertTrue(node.reverse); 
+          assertFalse(node.ascending); 
         }
       });
       assertTrue(seen);
@@ -1198,7 +1198,7 @@ function optimizerRuleTestSuite() {
           assertEqual(1, node.indexes.length);
           assertEqual(["foo.bar.baz"], node.indexes[0].fields);
           seen = true;
-          assertFalse(node.reverse); 
+          assertTrue(node.ascending); 
         }
       });
       assertTrue(seen);

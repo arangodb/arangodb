@@ -1,6 +1,13 @@
 devel
 -----
 
+* Remove "database" attribute from the serialized version of AQL IndexNodes,
+  EnumerateCollectionNodes, EnumerateViewNodes, GraphNodes and RemoteNodes.
+  That attribute was never read back.
+
+  Also removed the "reverse" attribute from the serialized version of AQL 
+  IndexNodes, because it was also not read back except from tests.
+
 * Make replication WAL tailing schedule prefetch requests via the global
   scheduler, in the same way as the initial dump phase does. In the best
   case, this can speed up the getting-in-sync phase when getting shards in
