@@ -280,10 +280,9 @@ auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  AqlCall upstreamCall{};
   // We cannot forward anything, no skip, no limit.
   // Need to request all from upstream.
-  return {returnState(), NoStats{}, upstreamCall};
+  return {returnState(), NoStats{}, AqlCall{}};
 }
 
 /**

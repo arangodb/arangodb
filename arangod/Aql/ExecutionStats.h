@@ -24,11 +24,10 @@
 #pragma once
 
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/ExecutionNodeStats.h"
 
 #include <cstdint>
 #include <map>
-
-#include "Aql/ExecutionNodeStats.h"
 
 namespace arangodb {
 namespace velocypack {
