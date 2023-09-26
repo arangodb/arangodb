@@ -61,6 +61,9 @@ devel
   same way as other operations do. The more capacity the server's scheduler
   still has, the more likely it is that query parts can actually run 
   concurrently.
+
+* Fixed issue with `keepNull=false` updates not being properly replicated
+  to followers.
     
 * FE-376: Fix Query UI crash on null values.
 
