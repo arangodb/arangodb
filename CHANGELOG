@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-375: Adds document counts to collection info screen.
+
 * Make replication WAL tailing schedule prefetch requests via the global
   scheduler, in the same way as the initial dump phase does. In the best
   case, this can speed up the getting-in-sync phase when getting shards in
