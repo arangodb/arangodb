@@ -28,10 +28,10 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/QueryContext.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "QueryContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -169,6 +169,6 @@ void DocumentProducingNode::setProjections(
   _projections = std::move(projections);
 }
 
-bool DocumentProducingNode::doCount() const {
+bool DocumentProducingNode::doCount() const noexcept {
   return _count && (_filter == nullptr);
 }
