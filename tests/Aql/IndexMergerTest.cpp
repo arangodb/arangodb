@@ -46,7 +46,6 @@ struct MyVectorIterator : MyIndexStreamIterator {
 
   void cacheCurrentKey(std::span<MyKeyValue> cache) override {
     cache[0] = *current;
-    return cache;
   }
 
   bool next(std::span<MyKeyValue> key, MyDocumentId& doc,

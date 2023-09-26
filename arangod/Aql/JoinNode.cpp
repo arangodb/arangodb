@@ -34,6 +34,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexExecutor.h"
+#include "Aql/JoinExecutor.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
@@ -176,8 +177,11 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, "createBlock not yet implemented for JoinNode");
+  auto registerInfos = createRegisterInfos({}, {});
+  JoinExecutorInfos infos;
+
+  return std::make_unique<ExecutionBlockImpl<JoinExecutor>>(
+      &engine, this, registerInfos, infos);
 }
 
 ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
