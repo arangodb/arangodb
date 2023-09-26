@@ -48,7 +48,7 @@ LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
 LimitExecutor::~LimitExecutor() = default;
 
 auto LimitExecutor::limitFulfilled() const noexcept -> bool {
-  return (remainingOffset() == 0 && remainingLimit() == 0);
+  return remainingOffset() == 0 && remainingLimit() == 0;
 }
 
 auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const
