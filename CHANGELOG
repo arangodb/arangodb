@@ -1,3 +1,11 @@
+v3.11.3.1 (XXXX-XX-XX)
+----------------------
+
+* Improve performance of the in-memory cache's memory reclamation procedure.
+  The previous implementation acquired too many locks, which could drive
+  system CPU time up.
+
+
 v3.11.3 (2023-08-17)
 --------------------
 
