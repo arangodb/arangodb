@@ -129,13 +129,17 @@ bool AqlValue::isNone() const noexcept {
     case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
+      TRI_ASSERT(!VPackSlice(_data.inlineSliceMeta.slice).isExternal());
       return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isNone();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
+      TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
       return VPackSlice(_data.pointerMeta.pointer).isNone();
     }
     case VPACK_MANAGED_SLICE: {
+      TRI_ASSERT(
+          !VPackSlice(_data.managedSliceMeta.managedPointer).isExternal());
       return VPackSlice(_data.managedSliceMeta.managedPointer)
           .resolveExternal()
           .isNone();
@@ -158,16 +162,19 @@ bool AqlValue::isNull(bool emptyIsNull) const noexcept {
       return false;
     case VPACK_INLINE: {
       VPackSlice s(_data.inlineSliceMeta.slice);
+      TRI_ASSERT(!s.isExternal());
       s = s.resolveExternal();
       return (s.isNull() || (emptyIsNull && s.isNone()));
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
       VPackSlice s(_data.pointerMeta.pointer);
+      TRI_ASSERT(!s.isExternal());
       return (s.isNull() || (emptyIsNull && s.isNone()));
     }
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(_data.managedSliceMeta.managedPointer);
+      TRI_ASSERT(!s.isExternal());
       s = s.resolveExternal();
       return (s.isNull() || (emptyIsNull && s.isNone()));
     }
@@ -188,15 +195,19 @@ bool AqlValue::isBoolean() const noexcept {
     case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
+      TRI_ASSERT(!VPackSlice(_data.inlineSliceMeta.slice).isExternal());
       return VPackSlice(_data.inlineSliceMeta.slice)
           .resolveExternal()
           .isBoolean();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
+      TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
       return VPackSlice(_data.pointerMeta.pointer).isBoolean();
     }
     case VPACK_MANAGED_SLICE: {
+      TRI_ASSERT(
+          !VPackSlice(_data.managedSliceMeta.managedPointer).isExternal());
       return VPackSlice(_data.managedSliceMeta.managedPointer)
           .resolveExternal()
           .isBoolean();
@@ -218,15 +229,19 @@ bool AqlValue::isNumber() const noexcept {
     case VPACK_INLINE_DOUBLE:
       return true;
     case VPACK_INLINE: {
+      TRI_ASSERT(!VPackSlice(_data.inlineSliceMeta.slice).isExternal());
       return VPackSlice(_data.inlineSliceMeta.slice)
           .resolveExternal()
           .isNumber();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
+      TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
       return VPackSlice(_data.pointerMeta.pointer).isNumber();
     }
     case VPACK_MANAGED_SLICE: {
+      TRI_ASSERT(
+          !VPackSlice(_data.managedSliceMeta.managedPointer).isExternal());
       return VPackSlice(_data.managedSliceMeta.managedPointer)
           .resolveExternal()
           .isNumber();
@@ -248,15 +263,19 @@ bool AqlValue::isString() const noexcept {
     case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
+      TRI_ASSERT(!VPackSlice(_data.inlineSliceMeta.slice).isExternal());
       return VPackSlice(_data.inlineSliceMeta.slice)
           .resolveExternal()
           .isString();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
+      TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
       return VPackSlice(_data.pointerMeta.pointer).isString();
     }
     case VPACK_MANAGED_SLICE: {
+      TRI_ASSERT(
+          !VPackSlice(_data.managedSliceMeta.managedPointer).isExternal());
       return VPackSlice(_data.managedSliceMeta.managedPointer)
           .resolveExternal()
           .isString();
@@ -278,15 +297,19 @@ bool AqlValue::isObject() const noexcept {
     case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
+      TRI_ASSERT(!VPackSlice(_data.inlineSliceMeta.slice).isExternal());
       return VPackSlice(_data.inlineSliceMeta.slice)
           .resolveExternal()
           .isObject();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
+      TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
       return VPackSlice(_data.pointerMeta.pointer).isObject();
     }
     case VPACK_MANAGED_SLICE: {
+      TRI_ASSERT(
+          !VPackSlice(_data.managedSliceMeta.managedPointer).isExternal());
       return VPackSlice(_data.managedSliceMeta.managedPointer)
           .resolveExternal()
           .isObject();
@@ -309,15 +332,19 @@ bool AqlValue::isArray() const noexcept {
     case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
+      TRI_ASSERT(!VPackSlice(_data.inlineSliceMeta.slice).isExternal());
       return VPackSlice(_data.inlineSliceMeta.slice)
           .resolveExternal()
           .isArray();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
+      TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
       return VPackSlice(_data.pointerMeta.pointer).isArray();
     }
     case VPACK_MANAGED_SLICE: {
+      TRI_ASSERT(
+          !VPackSlice(_data.managedSliceMeta.managedPointer).isExternal());
       return VPackSlice(_data.managedSliceMeta.managedPointer)
           .resolveExternal()
           .isArray();
@@ -359,12 +386,16 @@ std::string_view AqlValue::getTypeString() const noexcept {
     case VPACK_INLINE_DOUBLE:
       return "number";
     case VPACK_INLINE:
+      TRI_ASSERT(!velocypack::Slice(_data.inlineSliceMeta.slice).isExternal());
       return get(velocypack::Slice(_data.inlineSliceMeta.slice)
                      .resolveExternal()
                      .type());
     case VPACK_SLICE_POINTER:
+      TRI_ASSERT(!velocypack::Slice(_data.pointerMeta.pointer).isExternal());
       return get(velocypack::Slice(_data.pointerMeta.pointer).type());
     case VPACK_MANAGED_SLICE:
+      TRI_ASSERT(!velocypack::Slice(_data.managedSliceMeta.managedPointer)
+                      .isExternal());
       return get(velocypack::Slice(_data.managedSliceMeta.managedPointer)
                      .resolveExternal()
                      .type());
@@ -387,6 +418,7 @@ size_t AqlValue::length() const {
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
+      TRI_ASSERT(!slice(t).isExternal());
       return static_cast<size_t>(slice(t).length());
     }
     case RANGE: {
@@ -408,6 +440,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
     case VPACK_INLINE:
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       if (s.isArray()) {
         int64_t const n = static_cast<int64_t>(s.length());
         if (position < 0) {
@@ -463,12 +496,14 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy,
       [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       if (s.isArray()) {
         if (position < 0) {
           // a negative position is allowed
           position = static_cast<int64_t>(n) + position;
         }
         if (position >= 0 && position < static_cast<int64_t>(n)) {
+          TRI_ASSERT(!s.at(position).isExternal());
           if (doCopy) {
             mustDestroy = true;
             return AqlValue(s.at(position));
@@ -516,6 +551,7 @@ AqlValue AqlValue::getKeyAttribute(bool& mustDestroy, bool doCopy) const {
       [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       if (s.isObject()) {
         VPackSlice found = transaction::helpers::extractKeyFromDocument(s);
         if (!found.isNone()) {
@@ -557,6 +593,7 @@ AqlValue AqlValue::getIdAttribute(CollectionNameResolver const& resolver,
       [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       if (s.isObject()) {
         VPackSlice found = transaction::helpers::extractIdFromDocument(s);
         if (found.isCustom()) {
@@ -603,6 +640,7 @@ AqlValue AqlValue::getFromAttribute(bool& mustDestroy, bool doCopy) const {
       [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       if (s.isObject()) {
         VPackSlice found = transaction::helpers::extractFromFromDocument(s);
         if (!found.isNone()) {
@@ -643,6 +681,7 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
       [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       if (s.isObject()) {
         VPackSlice found = transaction::helpers::extractToFromDocument(s);
         if (!found.isNone()) {
@@ -685,6 +724,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
       [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       if (s.isObject()) {
         VPackSlice found(s.get(name));
         if (found.isCustom()) {
@@ -737,15 +777,19 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
       [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       if (s.isObject()) {
         s = s.resolveExternal();
+        TRI_ASSERT(!s.isExternal());
         VPackSlice prev;
         size_t const n = names.size();
         for (size_t i = 0; i < n; ++i) {
           // fetch subattribute
           prev = s;
           s = s.get(names[i]);
+          TRI_ASSERT(!s.isExternal());
           s = s.resolveExternal();
+          TRI_ASSERT(!s.isExternal());
 
           if (s.isNone()) {
             // not found
@@ -804,6 +848,7 @@ bool AqlValue::hasKey(std::string_view name) const {
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       return (s.isObject() && s.hasKey(name));
     }
     case RANGE: {
@@ -844,6 +889,7 @@ double AqlValue::toDouble(bool& failed) const {
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       if (s.isNull()) {
         return 0.0;
       }
@@ -918,6 +964,7 @@ int64_t AqlValue::toInt64() const {
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       if (s.isNumber()) {
         return s.getNumber<int64_t>();
       }
@@ -982,6 +1029,7 @@ bool AqlValue::toBoolean() const {
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
+      TRI_ASSERT(!s.isExternal());
       if (s.isBoolean()) {
         return s.getBoolean();
       }
@@ -1055,6 +1103,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
     case VPACK_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
+      TRI_ASSERT(!slice(t).isExternal());
       return TRI_VPackToV8(isolate, slice(t), options);
     }
     case RANGE: {
@@ -1093,6 +1142,7 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
   switch (t) {
     case VPACK_SLICE_POINTER:
       if (!resolveExternals && isManagedDocument()) {
+        TRI_ASSERT(false);
         builder.addExternal(_data.pointerMeta.pointer);
         break;
       }
@@ -1110,6 +1160,7 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
             slice(t), VPackSlice::noneSlice(), builder, options,
             sanitizeExternals, sanitizeCustom, allowUnindexed);
       } else {
+        TRI_ASSERT(!slice(t).isExternal());
         builder.add(slice(t));
       }
       break;
@@ -1167,6 +1218,7 @@ AqlValue AqlValue::clone() const {
     case VPACK_INLINE: {
       // copy internal data
       VPackSlice s(_data.inlineSliceMeta.slice);
+      TRI_ASSERT(!s.isExternal());
       if (!s.isExternal()) {
         return AqlValue(*this);
       }
@@ -1175,6 +1227,7 @@ AqlValue AqlValue::clone() const {
     case VPACK_SLICE_POINTER: {
       if (isManagedDocument()) {
         // copy from externally managed document. this will not copy the data
+        TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
         return AqlValue(
             AqlValueHintSliceNoCopy(VPackSlice(_data.pointerMeta.pointer)));
       }
@@ -1184,6 +1237,8 @@ AqlValue AqlValue::clone() const {
     case VPACK_MANAGED_SLICE: {
       // byte size is stored in the first 6 bytes of the second uint64_t value
       VPackValueLength length = _data.managedSliceMeta.getLength();
+      TRI_ASSERT(
+          !VPackSlice(_data.managedSliceMeta.managedPointer).isExternal());
       return AqlValue(VPackSlice(_data.managedSliceMeta.managedPointer),
                       length);
     }
@@ -1241,12 +1296,16 @@ VPackSlice AqlValue::slice(AqlValueType type) const {
     case VPACK_INLINE_DOUBLE:
       return VPackSlice(_data.longNumberMeta.data.slice.slice);
     case VPACK_INLINE: {
+      TRI_ASSERT(!VPackSlice(_data.inlineSliceMeta.slice).isExternal());
       return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal();
     }
     case VPACK_SLICE_POINTER: {
+      TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
       return VPackSlice(_data.pointerMeta.pointer);
     }
     case VPACK_MANAGED_SLICE: {
+      TRI_ASSERT(
+          !VPackSlice(_data.managedSliceMeta.managedPointer).isExternal());
       return VPackSlice(_data.managedSliceMeta.managedPointer)
           .resolveExternal();
     }
@@ -1322,6 +1381,8 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
+      TRI_ASSERT(!left.slice(leftType).isExternal());
+      TRI_ASSERT(!right.slice(rightType).isExternal());
       return arangodb::basics::VelocyPackHelper::compare(
           left.slice(leftType), right.slice(rightType), compareUtf8, options);
     }
@@ -1361,6 +1422,7 @@ AqlValue::AqlValue(std::unique_ptr<uint8_t[]> data) noexcept {
   velocypack::Slice slice{data.get()};
   setManagedSliceData(MemoryOriginType::New, slice.byteSize());
   _data.managedSliceMeta.managedPointer = data.release();
+  TRI_ASSERT(!VPackSlice(_data.managedSliceMeta.managedPointer).isExternal());
 }
 
 AqlValue::AqlValue(uint8_t const* pointer) noexcept {
@@ -1384,10 +1446,13 @@ AqlValue::AqlValue(AqlValue const& other, void* data) noexcept {
       _data.managedSliceMeta.lengthOrigin =
           other._data.managedSliceMeta.lengthOrigin;
       _data.managedSliceMeta.managedPointer = static_cast<uint8_t*>(data);
+      TRI_ASSERT(
+          !VPackSlice(_data.managedSliceMeta.managedPointer).isExternal());
       break;
     case VPACK_SLICE_POINTER:
       _data.pointerMeta.isManagedDoc = other._data.pointerMeta.isManagedDoc;
       _data.pointerMeta.pointer = static_cast<uint8_t*>(data);
+      TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
       break;
     case RANGE:
       _data.rangeMeta.range = static_cast<Range*>(data);
@@ -1552,6 +1617,7 @@ AqlValue::AqlValue(AqlValueHintEmptyObject) noexcept {
 }
 
 AqlValue::AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer) {
+  TRI_ASSERT(!VPackSlice(buffer.data()).isExternal());
   // intentionally do not resolve externals here
   VPackValueLength length = buffer.length();
   if (length < sizeof(AqlValue)) {
@@ -1663,6 +1729,7 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice,
   //   // recursively resolve externals
   //   slice = slice.resolveExternals();
   // }
+  TRI_ASSERT(!slice.isExternal());
   TRI_ASSERT(length > 0);
   TRI_ASSERT(slice.byteSize() == length);
   if (length <= sizeof(_data.inlineSliceMeta.slice)) {
