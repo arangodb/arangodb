@@ -64,6 +64,14 @@ auto makeMetaLogEntry(std::uint64_t term, std::uint64_t index,
                       LogMetaPayload payload) {
   return InMemoryLogEntry{LogEntry{LogTerm{term}, LogIndex{index}, payload}};
 }
+
+auto paddedPayloadSize(std::size_t payloadSize) -> std::size_t {
+  // we intentionally use a different implementation to calculate the padded
+  // size to implicitly test the other paddedPayloadSize implementation
+  using arangodb::replication2::storage::wal::Record;
+  return ((payloadSize + Record::alignment - 1) / 8) * 8;
+}
+
 }  // namespace
 
 namespace arangodb::replication2::storage::wal::test {
@@ -122,10 +130,9 @@ struct LogPersistorTest : ::testing::Test {
       payloadSlice = builder.slice();
     }
 
-    auto expectedSize =
-        sizeof(Record::CompressedHeader) +
-        Record::paddedPayloadSize(payloadSlice.byteSize())  // payload
-        + sizeof(Record::Footer);
+    auto expectedSize = sizeof(Record::CompressedHeader) +
+                        ::paddedPayloadSize(payloadSlice.byteSize())  // payload
+                        + sizeof(Record::Footer);
     ASSERT_EQ(dataSize, expectedSize);
 
     auto compressedHeader = reader.read<Record::CompressedHeader>();
@@ -140,7 +147,7 @@ struct LogPersistorTest : ::testing::Test {
                        payloadSlice.byteSize()) == 0)
         << "Payload mismatch";
 
-    auto paddedSize = Record::paddedPayloadSize(header.payloadSize);
+    auto paddedSize = ::paddedPayloadSize(header.payloadSize);
     reader.skip(paddedSize);
 
     auto footer = reader.read<Record::Footer>();

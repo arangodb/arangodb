@@ -34,12 +34,21 @@
 
 namespace arangodb::replication2::storage::wal {
 #ifndef _WIN32
-FileWriterImplPosix::FileWriterImplPosix(std::string path)
+FileWriterImplPosix::FileWriterImplPosix(std::filesystem::path path)
     : _path(std::move(path)) {
   _file = ::open(_path.c_str(), O_CREAT | O_RDWR | O_APPEND,
                  S_IRUSR | S_IWUSR | O_CLOEXEC);
   ADB_PROD_ASSERT(_file >= 0) << "failed to open replicated log file" << path
                               << " for writing with error " << strerror(errno);
+
+  // we also need to fsync the directory to ensure that the file is visible!
+  auto dir = path.parent_path();
+  auto fd = ::open(dir.c_str(), O_DIRECTORY | O_RDONLY);
+  ADB_PROD_ASSERT(fd >= 0) << "failed to open directory " << dir.string()
+                           << " with error " << strerror(errno);
+  ADB_PROD_ASSERT(fsync(fd) == 0)
+      << "failed to fsync directory " << dir.string() << " with error "
+      << strerror(errno);
 }
 
 FileWriterImplPosix::~FileWriterImplPosix() {
@@ -54,9 +63,9 @@ FileWriterImplPosix::~FileWriterImplPosix() {
 auto FileWriterImplPosix::append(std::string_view data) -> Result {
   auto n = ::write(_file, data.data(), data.size());
   if (n < 0) {
-    return Result(
-        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-        "failed to write to log file " + _path + ": " + strerror(errno));
+    return Result(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+                  "failed to write to log file " + _path.string() + ": " +
+                      strerror(errno));
   }
   if (static_cast<std::size_t>(n) != data.size()) {
     return Result(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
@@ -83,9 +92,9 @@ auto FileWriterImplPosix::getReader() const -> std::unique_ptr<IFileReader> {
 
 #else
 
-FileWriterImplWindows::FileWriterImplWindows(std::string path)
+FileWriterImplWindows::FileWriterImplWindows(std::filesystem::path path)
     : _path(std::move(path)) {
-  _file = CreateFileA(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+  _file = CreateFileA(_path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
                       OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
   ADB_PROD_ASSERT(_file != INVALID_HANDLE_VALUE)
@@ -105,7 +114,7 @@ auto FileWriterImplWindows::append(std::string_view data) -> Result {
   if (WriteFile(_file, data.data(), static_cast<DWORD>(data.size()), &written,
                 nullptr) == FALSE) {
     return Result(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-                  "failed to write to log file " + _path + ": " +
+                  "failed to write to log file " + _path.string() + ": " +
                       std::to_string(GetLastError()));
   }
   if (static_cast<std::size_t>(written) != data.size()) {

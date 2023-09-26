@@ -32,7 +32,7 @@ namespace arangodb::replication2::storage::wal {
 struct IFileReader {
   virtual ~IFileReader() = default;
 
-  virtual auto path() const -> std::string const& = 0;
+  virtual auto path() const -> std::string = 0;
 
   template<typename T>
   [[nodiscard]] auto read(T& result) -> bool {

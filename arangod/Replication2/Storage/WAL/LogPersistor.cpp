@@ -119,8 +119,7 @@ struct BufferWriter {
       std::uint32_t payloadSize) {  // write zeroed out padding bytes
     auto numPaddingBytes = Record::paddedPayloadSize(payloadSize) - payloadSize;
     TRI_ASSERT(numPaddingBytes < Record::alignment);
-    std::uint64_t const zero = 0;
-    static_assert(sizeof(zero) == Record::alignment);
+    constexpr std::uint8_t zero[Record::alignment]{};
     _buffer.append(&zero, numPaddingBytes);
   }
 

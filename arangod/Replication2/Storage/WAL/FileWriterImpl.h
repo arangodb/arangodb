@@ -26,7 +26,7 @@
 #include "Replication2/Storage/WAL/IFileWriter.h"
 
 #include <cstdio>
-#include <string_view>
+#include <filesystem>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -40,10 +40,10 @@ namespace arangodb::replication2::storage::wal {
 #ifndef _WIN32
 
 struct FileWriterImplPosix final : IFileWriter {
-  FileWriterImplPosix(std::string path);
+  FileWriterImplPosix(std::filesystem::path path);
   ~FileWriterImplPosix();
 
-  auto path() const -> std::string const& override { return _path; }
+  auto path() const -> std::string override { return _path.string(); }
 
   auto append(std::string_view data) -> Result override;
 
@@ -54,7 +54,7 @@ struct FileWriterImplPosix final : IFileWriter {
   auto getReader() const -> std::unique_ptr<IFileReader> override;
 
  private:
-  std::string _path;
+  std::filesystem::path _path;
   int _file = 0;
 };
 
@@ -63,10 +63,10 @@ using FileWriterImpl = FileWriterImplPosix;
 #else  // _WIN32
 
 struct FileWriterImplWindows final : IFileWriter {
-  FileWriterImplWindows(std::string path);
+  FileWriterImplWindows(std::filesystem::path path path);
   ~FileWriterImplWindows();
 
-  auto path() const -> std::string const& override { return _path; }
+  auto path() const -> std::string override { return _path.string(); }
 
   auto append(std::string_view data) -> Result override;
 
@@ -77,7 +77,7 @@ struct FileWriterImplWindows final : IFileWriter {
   auto getReader() const -> std::unique_ptr<IFileReader> override;
 
  private:
-  std::string _path;
+  std::filesystem::path _path;
   HANDLE _file = INVALID_HANDLE_VALUE;
 };
 using FileWriterImpl = FileWriterImplWindows;

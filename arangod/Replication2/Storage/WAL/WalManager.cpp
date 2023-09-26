@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WalManager.h"
-#include <unistd.h>
+
 #include <filesystem>
 
 #include "Basics/Exceptions.h"
@@ -53,13 +53,13 @@ void WalManager::createDirectories(std::filesystem::path const& path) {
 #ifdef __linux__
   for (auto& elem : path) {
     auto fd = ::open(elem.c_str(), O_DIRECTORY | O_RDONLY);
-    ADB_PROD_ASSERT(fd >= 0) << "failed to open directory " << elem
+    ADB_PROD_ASSERT(fd >= 0) << "failed to open directory " << elem.string()
                              << " with error " << strerror(errno);
-    ADB_PROD_ASSERT(fsync(fd) == 0) << "failed to fsync directory " << elem
-                                    << " with error " << strerror(errno);
+    ADB_PROD_ASSERT(fsync(fd) == 0)
+        << "failed to fsync directory " << elem.string() << " with error "
+        << strerror(errno);
     ::close(fd);
   }
-}
 #endif
 }
 

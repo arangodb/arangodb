@@ -24,6 +24,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <string_view>
 
 #include "Basics/Result.h"
@@ -39,7 +40,7 @@ struct IFileReader;
 struct IFileWriter {
   virtual ~IFileWriter() = default;
 
-  virtual auto path() const -> std::string const& = 0;
+  virtual auto path() const -> std::string = 0;
 
   template<typename T>
   [[nodiscard]] Result append(T const& v) {

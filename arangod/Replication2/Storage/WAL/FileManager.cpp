@@ -67,7 +67,14 @@ auto FileManager::createWriter(std::string const& filename)
 void FileManager::removeAll() {
   LOG_TOPIC("dae4e", INFO, Logger::REPLICATED_WAL)
       << "Removing all files in " << _folderPath.string();
-  std::filesystem::remove_all(_folderPath);
+  try {
+    std::filesystem::remove_all(_folderPath);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("7d944", ERR, Logger::REPLICATED_WAL)
+        << "Failed to remove folder  " << _folderPath.string() << ": "
+        << ex.what();
+    throw;
+  }
 }
 
 }  // namespace arangodb::replication2::storage::wal
