@@ -5,6 +5,9 @@ devel
   remote-to-remote copies. Tolerate deletion of old backups during
   incremental upload.
 
+* Remove special handling for backups taken with ArangoDB 3.5 in hot backup
+  restore.
+
 * Extend the internal state of ReadWriteLocks from 32-bit to 64-bit to prevent
   potential overflows. Previously creating more than 64k streaming transactions
   at the same time could produce an overflow that would effectively result in
