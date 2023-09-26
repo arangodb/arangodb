@@ -129,7 +129,6 @@ class SortExecutor {
     static constexpr bool preservesOrder = false;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortExecutorInfos;

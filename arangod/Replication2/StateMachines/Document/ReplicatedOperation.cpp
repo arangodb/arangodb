@@ -79,12 +79,10 @@ auto ReplicatedOperation::buildCreateShardOperation(
 
 auto ReplicatedOperation::buildModifyShardOperation(
     ShardID shard, CollectionID collection,
-    std::shared_ptr<VPackBuilder> properties,
-    std::string followersToDrop) noexcept -> ReplicatedOperation {
+    velocypack::SharedSlice properties) noexcept -> ReplicatedOperation {
   return ReplicatedOperation{
-      std::in_place,
-      ModifyShard{std::move(shard), std::move(collection),
-                  std::move(properties), std::move(followersToDrop), true}};
+      std::in_place, ModifyShard{std::move(shard), std::move(collection),
+                                 std::move(properties)}};
 }
 
 auto ReplicatedOperation::buildDropShardOperation(
@@ -100,6 +98,13 @@ auto ReplicatedOperation::buildCreateIndexOperation(
   return ReplicatedOperation{
       std::in_place, CreateIndex{std::move(shard), std::move(properties),
                                  CreateIndex::Parameters{std::move(progress)}}};
+}
+
+auto ReplicatedOperation::buildDropIndexOperation(
+    ShardID shard, velocypack::SharedSlice index) noexcept
+    -> ReplicatedOperation {
+  return ReplicatedOperation{std::in_place,
+                             DropIndex{std::move(shard), std::move(index)}};
 }
 
 auto ReplicatedOperation::buildDocumentOperation(

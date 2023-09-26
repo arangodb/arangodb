@@ -1071,32 +1071,35 @@ Result Collections::updateProperties(LogicalCollection& collection,
     return rv;
 
   } else {
-    auto origin =
-        transaction::OperationOriginREST{"collection properties update"};
-    auto ctx = transaction::V8Context::createWhenRequired(collection.vocbase(),
-                                                          origin, false);
-
-    // We must not replicate this transaction for replication2, because
-    // the following code is executed on both leader and followers.
-    transaction::Options replication2Options;
-    replication2Options.requiresReplication = false;
-
-    SingleCollectionTransaction trx(std::move(ctx), collection,
-                                    AccessMode::Type::EXCLUSIVE,
-                                    replication2Options);
-    Result res = trx.begin();
-
-    if (res.ok()) {
-      // try to write new parameter to file
-      res = collection.properties(props);
+    // The following lambda isolates the core of the update operation. This
+    // stays the same, regardless of replication version.
+    auto doUpdate = [&]() -> Result {
+      auto res = collection.properties(props);
       if (res.ok()) {
         velocypack::Builder builder(props);
         OperationResult result(res, builder.steal(), options);
         events::PropertyUpdateCollection(collection.vocbase().name(),
                                          collection.name(), result);
       }
+      return res;
+    };
+
+    if (collection.replicationVersion() == replication::Version::TWO) {
+      // In replication2, the exclusive lock is already acquired.
+      return doUpdate();
     }
 
+    auto origin =
+        transaction::OperationOriginREST{"collection properties update"};
+    auto ctx = transaction::V8Context::createWhenRequired(collection.vocbase(),
+                                                          origin, false);
+
+    SingleCollectionTransaction trx(std::move(ctx), collection,
+                                    AccessMode::Type::EXCLUSIVE);
+    Result res = trx.begin();
+    if (res.ok()) {
+      return doUpdate();
+    }
     return res;
   }
 }

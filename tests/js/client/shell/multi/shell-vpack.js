@@ -35,6 +35,7 @@ var expect = require('chai').expect;
 
 function RequestSuite() {
   return {
+    testCursorAPI: cursorAPI,
     testVersionJsonJson: versionJsonJson,
     testVersionVpackJson: versionVpackJson,
     testVersionJsonVpack: versionJsonVpack,
@@ -46,6 +47,41 @@ function RequestSuite() {
   };
 };
 
+function cursorAPI() {
+  const cn = "UnitTestsCollection";
+
+  const path = '/_api/cursor';
+  const headers = {
+    'content-type': 'application/x-velocypack',
+    'accept': 'application/x-velocypack'
+  };
+
+  let db = require("@arangodb").db;
+
+  let c = db._create(cn);
+  c.insert({ _key: "test", value: 1 });
+
+  try {
+    [
+      "doc", "ATTRIBUTES(doc)", 
+      "UNSET(doc, ['_key'])", 
+      "UNSET(doc, ['_id'])", 
+      "UNSET(doc, ['_key', '_rev'])", 
+      "UNSET (doc, ['_key', '_id'])"
+    ].forEach((what) => {
+      const body = V8_TO_VPACK({
+        query: "FOR doc IN " + cn + " RETURN " + what
+      });
+      const res = arango.POST_RAW(path, body, headers);
+
+      expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
+      const obj = VPACK_TO_V8(res.body);
+      expect(obj.result).to.be.instanceOf(Array);
+    });
+  } finally {
+    db._drop(cn);
+  }
+};
 
 function versionJsonJson() {
   const path = '/_api/version';

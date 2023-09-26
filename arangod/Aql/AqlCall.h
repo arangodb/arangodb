@@ -31,7 +31,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <iosfwd>
-#include <tuple>
 #include <variant>
 
 namespace arangodb::velocypack {
@@ -189,12 +188,11 @@ struct AqlCall {
     return skippedRows;
   }
 
-  // TODO this is the same as shouldSkip(), remove one of them.
   [[nodiscard]] bool needSkipMore() const noexcept {
     return (0 < getOffset()) || (getLimit() == 0 && needsFullCount());
   }
 
-  void didProduce(std::size_t n) {
+  void didProduce(std::size_t n) noexcept {
     auto minus = overload{
         [n](size_t& i) {
           TRI_ASSERT(n <= i);
@@ -219,11 +217,6 @@ struct AqlCall {
   }
 
   bool needsFullCount() const noexcept { return fullCount; }
-
-  // TODO this is the same as needSkipMore(), remove one of them.
-  bool shouldSkip() const noexcept {
-    return getOffset() > 0 || (getLimit() == 0 && needsFullCount());
-  }
 
   auto requestLessDataThan(AqlCall const& other) const noexcept -> bool;
 };
@@ -314,10 +307,10 @@ constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
 }
 
 auto operator<<(std::ostream& out,
-                const arangodb::aql::AqlCall::LimitPrinter& limit)
+                arangodb::aql::AqlCall::LimitPrinter const& limit)
     -> std::ostream&;
 
-auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call)
+auto operator<<(std::ostream& out, arangodb::aql::AqlCall const& call)
     -> std::ostream&;
 
 }  // namespace arangodb::aql

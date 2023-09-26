@@ -74,13 +74,16 @@ struct DocumentLeaderState
                    std::shared_ptr<VPackBuilder> properties)
       -> futures::Future<Result>;
   auto modifyShard(ShardID shard, CollectionID collectionId,
-                   std::shared_ptr<VPackBuilder> properties,
-                   std::string followersToDrop) -> futures::Future<Result>;
+                   velocypack::SharedSlice properties)
+      -> futures::Future<Result>;
   auto dropShard(ShardID shard, CollectionID collectionId)
       -> futures::Future<Result>;
 
   auto createIndex(LogicalCollection& col, VPackSlice indexInfo,
                    std::shared_ptr<methods::Indexes::ProgressTracker> progress)
+      -> futures::Future<Result>;
+
+  auto dropIndex(LogicalCollection& col, velocypack::SharedSlice indexInfo)
       -> futures::Future<Result>;
 
   auto getActiveTransactionsCount() const noexcept -> std::size_t {
