@@ -219,7 +219,7 @@ auto ShortestPathExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
                                  ShortestPathExecutorInfos<FinderType>::EDGE),
                              _inputRow, edgeGuard);
       } else {
-        AqlValue e{edgesSlice.at(_posInPath - 1)};
+        AqlValue e{edgesSlice.at(_posInPath - 1).resolveExternal()};
         AqlValueGuard edgeGuard{e, true};
 
         output.moveValueInto(_infos.getOutputRegister(
