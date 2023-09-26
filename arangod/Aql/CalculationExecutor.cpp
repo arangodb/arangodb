@@ -85,13 +85,11 @@ CalculationExecutor<calculationType>::produceRows(
   TRI_IF_FAILURE("CalculationExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  ExecutorState state = ExecutorState::HASMORE;
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.
     TRI_ASSERT(!output.isFull());
-    std::tie(state, input) =
+    auto [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
 

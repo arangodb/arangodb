@@ -36,6 +36,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
@@ -354,18 +355,13 @@ void AqlItemBlock::shrink(size_t numRows) {
 
   if (ADB_UNLIKELY(numRows > _numRows)) {
     // cannot use shrink() to increase the size of the block
-    std::string errorMessage("cannot use shrink() to increase block");
-    errorMessage.append(". numRows: ");
-    errorMessage.append(std::to_string(numRows));
-    errorMessage.append(". _numRows: ");
-    errorMessage.append(std::to_string(_numRows));
-    errorMessage.append(". _numRegisters: ");
-    errorMessage.append(std::to_string(_numRegisters));
-    errorMessage.append(". _maxModifiedRowIndex: ");
-    errorMessage.append(std::to_string(_maxModifiedRowIndex));
-    errorMessage.append(". _rowIndex: ");
-    errorMessage.append(std::to_string(_rowIndex));
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMessage);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(
+            "cannot use shrink() to increase block. numRows: ", numRows,
+            ". _numRows: ", _numRows, ". _numRegisters: ", _numRegisters,
+            ". _maxModifiedRowIndex: ", _maxModifiedRowIndex,
+            ". _rowIndex: ", _rowIndex));
   }
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_numRows - numRows) * _numRegisters);
