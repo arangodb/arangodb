@@ -163,7 +163,6 @@ void RemoteNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   DistributeConsumerNode::doToVelocyPack(nodes, flags);
 
-  nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("server", VPackValue(_server));
   nodes.add("queryId", VPackValue(_queryId));
 }
