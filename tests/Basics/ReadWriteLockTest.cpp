@@ -618,7 +618,7 @@ TEST(ReadWriteLockTest, testLockWriteAttempted) {
 }
 
 TEST(ReadWriteLockTest, readerOverflow) {
-  // this is a regression test for the old version where we only used 16-bits
+  // this is a regression test for the old version where we only used 16 bits
   // for the reader counter. Since we can have many more readers than threads,
   // this limit could easily be reached. Note that we have no similar test for a
   // writer overflow since we would actually need 2^15 threads to reach that
