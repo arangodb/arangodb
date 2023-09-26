@@ -99,15 +99,13 @@ struct ReplicatedOperation {
   struct ModifyShard {
     ShardID shard;
     CollectionID collection;
-    std::shared_ptr<VPackBuilder> properties;
+    velocypack::SharedSlice properties;
 
-    // The following two fields are temporary and will be removed eventually
-    // from replication 2.0.
-    std::string followersToDrop;
-    bool ignoreFollowersToDrop;
-
-    friend auto operator==(ModifyShard const&, ModifyShard const&)
-        -> bool = default;
+    friend auto operator==(ModifyShard const& lhs, ModifyShard const& rhs)
+        -> bool {
+      return lhs.shard == rhs.shard && lhs.collection == rhs.collection &&
+             lhs.properties.binaryEquals(rhs.properties.slice());
+    }
   };
 
   struct DropShard {
@@ -177,8 +175,7 @@ struct ReplicatedOperation {
       std::shared_ptr<VPackBuilder> properties) noexcept -> ReplicatedOperation;
   static auto buildModifyShardOperation(
       ShardID shard, CollectionID collection,
-      std::shared_ptr<VPackBuilder> properties,
-      std::string followersToDrop) noexcept -> ReplicatedOperation;
+      velocypack::SharedSlice properties) noexcept -> ReplicatedOperation;
   static auto buildDropShardOperation(ShardID shard,
                                       CollectionID collection) noexcept
       -> ReplicatedOperation;
