@@ -29,8 +29,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/IoContext.h"
 
-namespace arangodb {
-namespace rest {
+namespace arangodb::rest {
 
 /// Abstract class handling the socket acceptor
 class Acceptor {
@@ -62,5 +61,4 @@ class Acceptor {
   bool _open;
   size_t _acceptFailures;
 };
-}  // namespace rest
-}  // namespace arangodb
+}  // namespace arangodb::rest

@@ -167,11 +167,11 @@ Result ClusterInfo::checkCollectionPreconditions(
     // Validate that there is no view with this name either
     {
       // check against planned views as well
-      AllViews::const_iterator it = _plannedViews.find(databaseName);
+      auto it = _plannedViews.find(databaseName);
       if (it != _plannedViews.end()) {
-        DatabaseViews::const_iterator it2 = (*it).second.find(info.name);
+        auto it2 = it->second.find(info.name);
 
-        if (it2 != (*it).second.end()) {
+        if (it2 != it->second.end()) {
           // view already exists!
           events::CreateCollection(databaseName, info.name,
                                    TRI_ERROR_ARANGO_DUPLICATE_NAME);

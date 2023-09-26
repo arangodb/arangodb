@@ -992,10 +992,6 @@ static void JS_BinaryDocumentVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionDrop
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
@@ -1052,10 +1048,6 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsCollectionExists
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ExistsVocbaseVPack(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1064,10 +1056,6 @@ static void JS_ExistsVocbaseVPack(
   // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionFigures
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FiguresVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1157,10 +1145,6 @@ static void JS_GetResponsibleShardVocbaseCol(
 
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionLoad
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1254,10 +1238,6 @@ static void JS_PlanIdVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionProperties
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_PropertiesVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1320,10 +1300,6 @@ static void JS_RemoveVocbaseCol(
   // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionRename
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RenameVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1583,8 +1559,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsCollectionReplace
-/// Replace a document, collection method
+/// @brief Replace a document, collection method
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReplaceVocbaseCol(
@@ -1593,10 +1568,6 @@ static void JS_ReplaceVocbaseCol(
   ModifyVocbaseCol(TRI_VOC_DOCUMENT_OPERATION_REPLACE, args);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsCollectionUpdate
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UpdateVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1712,29 +1683,17 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentReplace
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ReplaceVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   ModifyVocbase(TRI_VOC_DOCUMENT_OPERATION_REPLACE, args);
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentUpdate
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_UpdateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   ModifyVocbase(TRI_VOC_DOCUMENT_OPERATION_UPDATE, args);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionRevision
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RevisionVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -2169,10 +2128,6 @@ static void JS_TruncateVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionType
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -2205,10 +2160,6 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(v8::Number::New(isolate, (int)type));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionUnload
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UnloadVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -2246,10 +2197,6 @@ static void JS_VersionVocbaseCol(
       v8::Number::New(isolate, static_cast<uint32_t>(collection->version())));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionDatabaseName
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CollectionVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -2290,10 +2237,6 @@ static void JS_CollectionVocbase(
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionDatabaseNameAll
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CollectionsVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -2457,20 +2400,12 @@ static void JS_CompletionsVocbase(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentRemove
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   RemoveVocbase(args);
   // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentName
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DocumentVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -2479,10 +2414,6 @@ static void JS_DocumentVocbase(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentExists
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ExistsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ExistsVocbaseVPack(false, args);
@@ -2490,10 +2421,6 @@ static void JS_ExistsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionCount
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CountVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {

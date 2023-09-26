@@ -385,8 +385,7 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
                               if (file.empty() || file[0] == '.') {
                                 return true;
                               }
-                              if (file.size() >= 4 &&
-                                  file.substr(file.size() - 4, 4) == ".tmp") {
+                              if (file.ends_with(".tmp")) {
                                 return true;
                               }
                               auto p = basics::FileUtils::buildFilename(

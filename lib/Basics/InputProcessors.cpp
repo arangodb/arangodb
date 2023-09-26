@@ -52,9 +52,9 @@ velocypack::Slice InputProcessorJSONL::value() {
 
   _builder.clear();
   // will throw on error
-  auto length = _parser.parse(_data.data() + _position, p - q);
+  _parser.parse(_data.data() + _position, p - q);
+  _position += p - q;
 
-  _position = p - q + length;
   consumeWhitespace();
   return _builder.slice();
 }
@@ -64,10 +64,12 @@ void InputProcessorJSONL::consumeWhitespace() {
   char const* e = _data.data() + _data.size();
   TRI_ASSERT(p <= e);
 
-  while (p < e && (*p == '\t' || *p == ' ')) {
+  while (p < e && (*p == '\t' || *p == ' ' || *p == '\r' || *p == '\n')) {
     ++p;
   }
 
+  TRI_ASSERT(static_cast<ptrdiff_t>(p - _data.data()) >=
+             static_cast<ptrdiff_t>(_position));
   _position = p - _data.data();
 }
 

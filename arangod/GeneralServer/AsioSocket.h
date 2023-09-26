@@ -26,18 +26,24 @@
 #include "GeneralServer/IoContext.h"
 #include "GeneralServer/SslServerFeature.h"
 
-namespace arangodb {
-namespace rest {
+#include <memory>
+
+namespace arangodb::rest {
 
 enum class SocketType { Tcp = 1, Ssl = 2, Unix = 3 };
 
 /// Wrapper class that contains sockets / ssl-stream
-/// and the corrsponding peer endpoint
+/// and the corrsponding peer endpoint.
+/// note: only create subclasses of this type via std::make_shared()!
+/// this is important because we may need to pass a shared_pointer
+/// to the AsioSocket into lambdas to guarantee that the AsioSocket
+/// is still valid once the lambda executes.
 template<SocketType T>
 struct AsioSocket {};
 
 template<>
-struct AsioSocket<SocketType::Tcp> {
+struct AsioSocket<SocketType::Tcp>
+    : public std::enable_shared_from_this<AsioSocket<SocketType::Tcp>> {
   explicit AsioSocket(arangodb::rest::IoContext& ctx)
       : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
     context.incClients();
@@ -87,7 +93,8 @@ struct AsioSocket<SocketType::Tcp> {
 };
 
 template<>
-struct AsioSocket<SocketType::Ssl> {
+struct AsioSocket<SocketType::Ssl>
+    : public std::enable_shared_from_this<AsioSocket<SocketType::Ssl>> {
   AsioSocket(arangodb::rest::IoContext& ctx,
              SslServerFeature::SslContextList sslContexts)
       : context(ctx),
@@ -128,21 +135,22 @@ struct AsioSocket<SocketType::Ssl> {
     if (socket.lowest_layer().is_open()) {
       // a graceful SSL shutdown performs a write & read
       timer.expires_after(std::chrono::seconds(3));
-      timer.async_wait([this](asio_ns::error_code ec) {
+      timer.async_wait([self = shared_from_this()](asio_ns::error_code ec) {
         if (!ec) {
-          socket.lowest_layer().close(ec);
+          self->socket.lowest_layer().close(ec);
         }
       });
-      socket.async_shutdown([cb(std::forward<F>(cb)), this](auto const& ec) {
-        timer.cancel();
+      socket.async_shutdown(
+          [cb(std::forward<F>(cb)), self = shared_from_this()](auto const& ec) {
+            self->timer.cancel();
 #ifndef _WIN32
-        if (!ec || ec == asio_ns::error::basic_errors::not_connected) {
-          asio_ns::error_code ec2;
-          socket.lowest_layer().close(ec2);
-        }
+            if (!ec || ec == asio_ns::error::basic_errors::not_connected) {
+              asio_ns::error_code ec2;
+              self->socket.lowest_layer().close(ec2);
+            }
 #endif
-        cb(ec);
-      });
+            cb(ec);
+          });
     } else {
       std::forward<F>(cb)(asio_ns::error_code{});
     }
@@ -158,7 +166,8 @@ struct AsioSocket<SocketType::Ssl> {
 
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(ASIO_HAS_LOCAL_SOCKETS)
 template<>
-struct AsioSocket<SocketType::Unix> {
+struct AsioSocket<SocketType::Unix>
+    : public std::enable_shared_from_this<AsioSocket<SocketType::Unix>> {
   AsioSocket(arangodb::rest::IoContext& ctx)
       : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
     context.incClients();
@@ -204,5 +213,4 @@ struct AsioSocket<SocketType::Unix> {
 };
 #endif  // ASIO_HAS_LOCAL_SOCKETS
 
-}  // namespace rest
-}  // namespace arangodb
+}  // namespace arangodb::rest

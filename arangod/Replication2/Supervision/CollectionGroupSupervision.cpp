@@ -149,6 +149,11 @@ auto createCollectionPlanSpec(
     std::unordered_map<LogId, ag::Log> const& logs, UniqueIdProvider& uniqid)
     -> ag::CollectionPlanSpecification {
   std::vector<ShardID> shardList;
+  if (collection.immutableProperties.shadowCollections.has_value()) {
+    auto mapping = PlanShardToServerMapping{};
+    return ag::CollectionPlanSpecification{collection, std::move(shardList),
+                                           std::move(mapping)};
+  }
   shardList.reserve(target.attributes.immutableAttributes.numberOfShards);
   std::generate_n(std::back_inserter(shardList),
                   target.attributes.immutableAttributes.numberOfShards, [&] {
@@ -369,6 +374,20 @@ auto checkCollectionGroupConverged(CollectionGroup const& group) -> Action {
 
     // check collection is in current
     for (auto const& [cid, coll] : group.target.collections) {
+      {
+        auto it = group.targetCollections.find(cid);
+        // It should be guaranteed that the collection is in targetCollections
+        // as we are iterating over the target collections.
+        // Nevertheless, handle this gratefully here
+        if (ADB_LIKELY(it != group.targetCollections.end())) {
+          if (it->second.immutableProperties.shadowCollections.has_value()) {
+            // This Collection is virtual and does not need to be in current
+            // Go to next collection.
+            continue;
+          }
+        }
+      }
+
       if (not group.currentCollections.contains(cid)) {
         return NoActionPossible{basics::StringUtils::concatT(
             "collection  ", cid, " not yet in current.")};
@@ -422,9 +441,12 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
       return DropCollectionPlan{cid};
     }
 
-    // TODO compare mutable properties and update if necessary
+    if (collection.mutableProperties != iter->second.mutableProperties) {
+      return UpdateCollectionPlan{cid, iter->second.mutableProperties};
+    }
 
-    {  // TODO remove deprecatedShardMap comparison
+    if (!collection.immutableProperties.shadowCollections.has_value()) {
+      // TODO remove deprecatedShardMap comparison
       auto expectedShardMap = computeShardList(
           group.logs, group.plan->shardSheaves, collection.shardList);
       if (collection.deprecatedShardMap.shards != expectedShardMap.shards) {
@@ -578,6 +600,32 @@ struct TransactionBuilder {
               .precs()
               .isNotEmpty(basics::StringUtils::concatT(
                   "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .end();
+  }
+
+  void operator()(UpdateCollectionPlan const& action) {
+    auto tmp = env.write();
+    auto allProps = velocypack::serialize(action.spec);
+    ADB_PROD_ASSERT(allProps.isObject());
+    for (auto const& it : VPackObjectIterator(allProps.slice())) {
+      tmp = std::move(tmp).emplace_object(
+          basics::StringUtils::concatT("/arango/Plan/Collections/", database,
+                                       "/", action.cid, "/",
+                                       it.key.stringView()),
+          [&](VPackBuilder& builder) {
+            velocypack::serialize(builder, it.value);
+          });
+    }
+    // Special handling for Schema, which can be nullopt and should be removed
+    if (!action.spec.schema.has_value()) {
+      tmp = std::move(tmp).remove(basics::StringUtils::concatT(
+          "/arango/Plan/Collections/", database, "/", action.cid, "/schema"));
+    }
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
               .end();
   }
 

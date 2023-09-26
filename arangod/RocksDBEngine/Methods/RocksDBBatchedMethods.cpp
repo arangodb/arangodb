@@ -102,5 +102,5 @@ void RocksDBBatchedMethods::PutLogData(rocksdb::Slice const& blob) {
 }
 
 size_t RocksDBBatchedMethods::currentWriteBatchSize() const noexcept {
-  return _wb->GetWriteBatch()->GetDataSize();
+  return _wb->GetWriteBatch()->Data().capacity();
 }

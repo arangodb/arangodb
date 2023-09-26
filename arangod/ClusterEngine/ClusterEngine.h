@@ -158,7 +158,7 @@ class ClusterEngine final : public StorageEngine {
     return {};
   }
 
-  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
+  void waitForEstimatorSync() override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
       arangodb::CreateDatabaseInfo&& info, bool isUpgrade) override;

@@ -230,7 +230,7 @@ const isAllowed = (res, collname, input) => {
 
 const validatePropertiesDoNotExist = (colName, illegalProperties) => {
   const col = db._collection(colName);
-  const props = col.properties(true);
+  const props = col.properties();
   for (const key of illegalProperties) {
     assertFalse(props.hasOwnProperty(key), `Property ${key} should not exist`);
   }
@@ -1099,6 +1099,41 @@ function RestoreCollectionsSuite() {
       // We do not want to change any properties
       validateProperties(propsBeforeRestore, systemName, 2);
       assertEqual(idBeforeRestore, idAfterRestore, `Did drop the collection, not just truncated`);
+    },
+
+    testRestoreSystemCollectionOverwrite: function () {
+      const systemName = "_pregel_queries";
+      const idBeforeRestore = getCollectionId(systemName);
+      const propsBeforeRestore = db._collection(systemName).properties();
+      // since we are really dropping and recreating the collection, the globallyUniqueId will actually change
+      delete propsBeforeRestore.globallyUniqueId;
+      const res = tryRestore({name: systemName, isSystem: true}, { overwrite: true });
+      const idAfterRestore = getCollectionId(systemName);
+      assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+      // We do not want to change any of the other properties
+      validateProperties(propsBeforeRestore, systemName, 2);
+      assertNotEqual(idBeforeRestore, idAfterRestore, `Did truncate the collection, not drop it`);
+    },
+
+    testRestoreSystemCollectionInUserDBOverwrite: function () {
+      db._createDatabase("UnitTestDB");
+      try {
+        db._useDatabase("UnitTestDB");
+        const systemName = "_pregel_queries";
+        const idBeforeRestore = getCollectionId(systemName);
+        const propsBeforeRestore = db._collection(systemName).properties();
+        // since we are really dropping and recreating the collection, the globallyUniqueId will actually change
+        delete propsBeforeRestore.globallyUniqueId;
+        const res = tryRestore({name: systemName, isSystem: true}, { overwrite: true });
+        const idAfterRestore = getCollectionId(systemName);
+        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
+        // We do not want to change any of the other properties
+        validateProperties(propsBeforeRestore, systemName, 2);
+        assertNotEqual(idBeforeRestore, idAfterRestore, `Did truncate the collection, not drop it`);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase("UnitTestDB");
+      }
     },
 
     testRestoreLeadingSystemCollection: function () {

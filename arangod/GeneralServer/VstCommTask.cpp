@@ -61,7 +61,7 @@ using namespace arangodb::rest;
 
 template<SocketType T>
 VstCommTask<T>::VstCommTask(GeneralServer& server, ConnectionInfo info,
-                            std::unique_ptr<AsioSocket<T>> so,
+                            std::shared_ptr<AsioSocket<T>> so,
                             fuerte::vst::VSTVersion v)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
       _writeLoopActive(false),

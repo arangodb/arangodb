@@ -254,7 +254,10 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice options, bool extractId,
     _replicationFactor = vocopts.replicationFactor;
     _writeConcern = vocopts.writeConcern;
     _sharding = vocopts.sharding;
-    _replicationVersion = vocopts.replicationVersion;
+    if (!ServerState::instance()->isSingleServer()) {
+      // Just ignore Replication2 for SingleServers
+      _replicationVersion = vocopts.replicationVersion;
+    }
 
     if (extractName) {
       auto nameSlice = options.get(StaticStrings::DatabaseName);

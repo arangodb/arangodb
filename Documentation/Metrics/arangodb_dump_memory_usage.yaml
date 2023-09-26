@@ -1,0 +1,41 @@
+name: arangodb_dump_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Current memory usage of all ongoing arangodump operations on the
+  server.
+unit: bytes
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - single
+  - agent
+description: |
+  This metric shows the current memory usage of all ongoing parallel 
+  arangodump operations that are ongoing on the server. It will
+  be increased whenever the server-side part of arangodump requests
+  a large block of memory for storing dump results. It will only be
+  increased on servers that host at least one of the collections/shards
+  that is part of the dump.
+  The value will be decreased whenever a dump result was successfully
+  transfered to arangodump and arangodump has acknowledged its reception.
+  The value will also go down when the server-side part of an abandoned 
+  arangodump operation time out and all its data is removed from memory.
+  
+  This metric will have a value of 0 on coordinators. The metric will
+  not be increased for any arangodump invocations that did not use the
+  `--parallel-dump` option.
+troubleshoot: |
+  If the peak values reported by this metric are close to the memory
+  limit configured via the startup option `--dump.max-memory-usage`,
+  this indicates that dumps could operate faster when given more
+  memory resources. In this case either increase the value of the
+  startup option, which allows the server-side part of arangodump to
+  buffer more results in memory, or reduce the number of batches to 
+  prefetch when invoking arangodump. 
+    
+  Note also that values reported by this metric may temporarily be
+  slightly above the configured memory usage limit to guarantee
+  progress of dump operations.

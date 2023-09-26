@@ -64,149 +64,109 @@ function ahuacatlProfilerTestSuite () {
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
 
-  // TODO Test with different shard counts, if only to test both minelement and
-  //  heap SortingGather.
-  const numberOfShards = 5;
   const cn = 'AqlProfilerClusterTestCol';
-  let col;
-
-  // Example documents, grouped by the shard that would be responsible.
-  let exampleDocumentsByShard;
 
   // helper functions
   const optimalNonEmptyBatches = rows => Math.ceil(rows / defaultBatchSize);
   const optimalBatches = rows => Math.max(1, optimalNonEmptyBatches(rows));
-  const mmfilesBatches = (rows) => Math.max(1, optimalNonEmptyBatches(rows) + (rows % defaultBatchSize === 0 ? 1 : 0));
 
   const totalItems = (rowsPerShard) =>
     _.sum(_.values(rowsPerShard));
-  const dbServerBatches = (rowsPerClient, fuzzy = false) => {
+  const dbServerBatches = (rowsPerClient) => {
     return _.sum(
       _.values(rowsPerClient)
-        .map(fuzzy ? mmfilesBatches : optimalBatches)
+        .map(optimalBatches)
     );
   };
-  const dbServerBatch = (rows, fuzzy = false) => {
-    return (fuzzy ? mmfilesBatches : optimalBatches)(rows);
+  const dbServerBatch = (rows) => {
+    return optimalBatches(rows);
   };
   const dbServerOptimalBatches = (rowsPerClient) =>
     _.sum(
       _.values(rowsPerClient)
         .map(optimalBatches)
     );
-  const groupedBatches = (rowsPerClient, fuzzy) => {
+  const groupedBatches = (rowsPerClient) => {
     const callInfo = {calls: 0, overhead: 0};
 
     for (const [shard, rows] of Object.entries(rowsPerClient)) {
       const testHere = rows + callInfo.overhead;
-      callInfo.calls += dbServerBatch(testHere, fuzzy);
+      callInfo.calls += dbServerBatch(testHere);
       callInfo.overhead = testHere % defaultBatchSize;
     }
     return callInfo.calls;
   };
 
-  return {
+  const createCollection = (numberOfShards) => {
+    let col = db._create(cn, {numberOfShards});
+    const maxRowsPerShard = _.max(defaultTestRowCounts);
+    const shards = col.shards();
+    assert.assertEqual(numberOfShards, shards.length);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    // Create an array of size numberOfShards, each entry an empty array.
+    let exampleDocumentsByShard = _.fromPairs(shards.map(id => [id, []]));
 
-    setUp : function () {
-    },
+    const allShardsFull = () =>
+      _.values(exampleDocumentsByShard)
+        .map(elt => elt.length)
+        .every(n => n >= maxRowsPerShard);
+    let i = 0;
+    while (!allShardsFull()) {
+      const doc = {_key: i.toString(), i};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up all
-////////////////////////////////////////////////////////////////////////////////
-
-    setUpAll : function () {
-      col = db._create(cn, {numberOfShards});
-      const maxRowsPerShard = _.max(defaultTestRowCounts);
-      const shards = col.shards();
-      assert.assertEqual(numberOfShards, shards.length);
-
-      // Create an array of size numberOfShards, each entry an empty array.
-      exampleDocumentsByShard = _.fromPairs(shards.map(id => [id, []]));
-
-      const allShardsFull = () =>
-        _.values(exampleDocumentsByShard)
-          .map(elt => elt.length)
-          .every(n => n >= maxRowsPerShard);
-      let i = 0;
-      while (!allShardsFull()) {
-        const doc = {_key: i.toString(), i};
-
-        const shard = col.getResponsibleShard(doc);
-        if (exampleDocumentsByShard[shard].length < maxRowsPerShard) {
-          // shard needs more docs
-          exampleDocumentsByShard[shard].push(doc);
-        }
-
-        ++i;
+      const shard = col.getResponsibleShard(doc);
+      if (exampleDocumentsByShard[shard].length < maxRowsPerShard) {
+        // shard needs more docs
+        exampleDocumentsByShard[shard].push(doc);
       }
-    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down all
-////////////////////////////////////////////////////////////////////////////////
+      ++i;
+    }
 
-    tearDownAll : function () {
+    return [col, exampleDocumentsByShard];
+  };
+
+  return {
+    tearDown : function () {
       db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test RemoteBlock and UnsortingGatherBlock
 ////////////////////////////////////////////////////////////////////////////////
-
+    
     testRemoteAndUnsortingGatherBlock : function () {
-      const query = `FOR doc IN ${cn} RETURN doc`;
+      // TODO: add tests with different shard numbers
+      let shards = [5];
+      shards.forEach((numberOfShards) => {
+        const query = `FOR doc IN ${cn} RETURN doc`;
+      
+        const genNodeList = (rowsPerShard, rowsPerServer, rowCount) => { 
+          let enumCalls = rowCount.reduce((value, c) => {
+            return value + Math.max(1, Math.ceil(c / defaultBatchSize));
+          }, 0);
 
-      // Number of local getSome calls that do not return WAITING.
-      // This is at least 1.
-      // DONE can only be returned when the last shard is asked, so iff the last
-      // asked shard is empty, there is one more call (the last call returns
-      // DONE without any results).
-      // As there is no guaranteed order in which the shards are processed, we
-      // have to allow a range.
-      const localCalls = (rowsPerShard) => {
-        const batches = optimalNonEmptyBatches(_.sum(_.values(rowsPerShard)));
-        return [
-          Math.max(1, batches),
-          Math.max(1, batches+1)
-        ];
-      };
+          // the following heuristics are rather fragile and should be reworked.
+          // unfortunately the actual number of calls depends partly on randomness,
+          // so we specify a lower and an upper bound for the number of calls made.
+          let remoteCalls = _.max(rowCount.map((rc) => 1 + Math.max(1, Math.ceil(rc / defaultBatchSize)))) * numberOfShards;
+          let gatherCalls = numberOfShards + _.sum(rowCount.map((rc) => Math.floor(rc/ defaultBatchSize)));
 
-
-      // If we figure out that we are done depends on randomness.
-      // In some cases we get the full batch on last shard, in this case the DBServer knows it is done.
-      // In other cases we get the full batch on an early shard, but 0 documents later, in this case the DBServer does
-      // not know it is done in advance.
-      const fuzzyDBServerBatches = rowsPerServer => [
-        groupedBatches(rowsPerServer, false),
-        groupedBatches(rowsPerServer, true)
-      ];
-
-      const coordinatorBatches = (rowsPerShard) => addIntervals(fuzzyDBServerBatches(rowsPerShard), localCalls(rowsPerShard));
-
-      const genNodeList = (rowsPerShard, rowsPerServer) => [
-        { type : SingletonBlock, calls : numberOfShards, items : numberOfShards, filtered: 0 },
-        { type : EnumerateCollectionBlock, calls : groupedBatches(rowsPerShard), items : totalItems(rowsPerShard), filtered: 0 },
-        // Twice the number due to WAITING, fuzzy, because the Gather does not know
-        { type : RemoteBlock, calls : fuzzyDBServerBatches(rowsPerServer).map(i => i * 2), items : totalItems(rowsPerShard), filtered: 0 },
-        // We get dbServerBatches(rowsPerShard) times WAITING, plus the non-waiting getSome calls.
-        { type : UnsortingGatherBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard), filtered: 0 },
-        { type : ReturnBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard), filtered: 0 }
-      ];
-      const options = {optimizer: { rules: ["-parallelize-gather"] } };
-      profHelper.runClusterChecks({col, exampleDocumentsByShard, query, genNodeList, options});
+          return [
+            { type : SingletonBlock, calls : numberOfShards, items : numberOfShards, filtered: 0 },
+            { type : EnumerateCollectionBlock, calls : enumCalls, items : totalItems(rowsPerShard), filtered: 0 },
+            { type : RemoteBlock, calls : [remoteCalls / 2, remoteCalls * 2], items : totalItems(rowsPerShard), filtered: 0 },
+            { type : UnsortingGatherBlock, calls : [gatherCalls / 2 , gatherCalls * 2], items : totalItems(rowsPerShard), filtered: 0 },
+            { type : ReturnBlock, calls : [gatherCalls / 2, gatherCalls * 2], items : totalItems(rowsPerShard), filtered: 0 }
+          ]; 
+        };
+        const options = {optimizer: { rules: ["-parallelize-gather"] } };
+        let [col, exampleDocumentsByShard] = createCollection(numberOfShards);
+        profHelper.runClusterChecks({col, exampleDocumentsByShard, query, genNodeList, options});
+        col.drop();
+      });
     },
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test RemoteBlock and SortingGatherBlock
 ////////////////////////////////////////////////////////////////////////////////

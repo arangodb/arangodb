@@ -1294,6 +1294,43 @@ function testOpenDiamondDfsLabelVariableForwarding(testGraph) {
   }
 }
 
+function testOpenDiamondPathVarOptimization(testGraph, mode) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+
+  const buildQuery = (returnFormat) => {
+    return `
+      FOR v,e,p IN 1..3 ANY "${testGraph.vertex('A')}"
+      GRAPH "${testGraph.name()}" OPTIONS {order: "${mode}"}
+      RETURN ${returnFormat}
+    `;
+  };
+
+  // With that list of return 'formats' we do expect that the optimizer-rule:
+  // "remove-redundant-path-var" is being executed.
+  const returnFormatsRuleShouldAppear = [
+    '[v]', '[e]', '[v, e]', '[e, v]'
+  ];
+  const optimizerRuleToDeactivate = ["-optimize-traversals"];
+
+  let queryList = [];
+  for (const returnFormat of returnFormatsRuleShouldAppear) {
+    queryList.push(buildQuery(returnFormat));
+  }
+
+  for (const query of queryList) {
+    const optPlans = AQL_EXPLAIN(query, {}, { optimizer: { rules: optimizerRuleToDeactivate } }).plan;
+    assertTrue(optPlans.rules.includes("remove-redundant-path-var"));
+  }
+
+  // Now return p, to make sure the rule is not being executed.
+  const optPlans = AQL_EXPLAIN(buildQuery('[p]'), {}, { optimizer: { rules: optimizerRuleToDeactivate } }).plan;
+  assertFalse(optPlans.rules.includes("remove-redundant-path-var"));
+}
+
+const testOpenDiamondDfsPathVarOptimization = (testGraph) => testOpenDiamondPathVarOptimization(testGraph, "dfs");
+const testOpenDiamondBfsPathVarOptimization = (testGraph) => testOpenDiamondPathVarOptimization(testGraph, "bfs");
+const testOpenDiamondWeightedPathVarOptimization = (testGraph) => testOpenDiamondPathVarOptimization(testGraph, "weighted");
+
 function testOpenDiamondLabelVariableForwardingIndexed(testGraph, mode) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
 
@@ -6675,6 +6712,9 @@ const testsByGraph = {
     testOpenDiamondDfsUniqueEdgesUniqueVerticesPath,
     testOpenDiamondDfsUniqueEdgesUniqueVerticesNone,
     testOpenDiamondDfsLabelVariableForwarding,
+    testOpenDiamondDfsPathVarOptimization,
+    testOpenDiamondBfsPathVarOptimization,
+    testOpenDiamondWeightedPathVarOptimization,
     testOpenDiamondDfsLabelVariableForwardingIndexed,
     testOpenDiamondDfsLabelVariableForwardingIndexedLowerBoundRange,
     testOpenDiamondDfsLabelVariableForwardingIndexedUpperBoundRange,
