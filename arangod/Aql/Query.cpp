@@ -775,12 +775,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       // iterate over result, return it and optionally store it in query cache
       builder->openArray();
 
-      AqlCallStack compatibilityStack{
-          AqlCallList{AqlCall{/*offset*/ 0,
-                              /*softLimit*/ ExecutionBlock::DefaultBatchSize,
-                              /*hardLimit*/ AqlCall::Infinity{},
-                              /*fullCount*/ false}}};
-
       // iterate over result and return it
       auto context = TRI_IGETC;
       uint32_t j = 0;
@@ -788,13 +782,34 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       SkipResult skipped;
       SharedAqlItemBlockPtr value;
       while (state != ExecutionState::DONE) {
-        std::tie(state, skipped, value) = engine->execute(compatibilityStack);
-        // We cannot trigger a skip operation from here
-        TRI_ASSERT(skipped.nothingSkipped());
+        bool callEngine = true;
+        if (!engine->initializeCursorCalled()) {
+          auto res = engine->initializeCursor(nullptr, 0);
+          if (res.first == ExecutionState::WAITING) {
+            state = res.first;
+            value = nullptr;
+            callEngine = false;
+          }
+        }
+        if (callEngine) {
+          std::tie(state, skipped, value) = engine->execute(::defaultStack);
+          // We cannot trigger a skip operation from here
+          TRI_ASSERT(skipped.nothingSkipped());
+        }
         while (state == ExecutionState::WAITING) {
           ss->waitForAsyncWakeup();
-          std::tie(state, skipped, value) = engine->execute(compatibilityStack);
-          TRI_ASSERT(skipped.nothingSkipped());
+          if (!engine->initializeCursorCalled()) {
+            auto res = engine->initializeCursor(nullptr, 0);
+            if (res.first == ExecutionState::WAITING) {
+              state = res.first;
+              value = nullptr;
+              callEngine = false;
+            }
+          }
+          if (callEngine) {
+            std::tie(state, skipped, value) = engine->execute(::defaultStack);
+            TRI_ASSERT(skipped.nothingSkipped());
+          }
         }
 
         // value == nullptr => state == DONE
