@@ -439,6 +439,9 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalCollection> createCollectionObjectForStorage(
       arangodb::velocypack::Slice parameters);
 
+  /// @brief callback for collection dropping
+  static bool dropCollectionCallback(arangodb::LogicalCollection& collection);
+
  private:
   /// @brief adds further SmartGraph-specific sub-collections to the vector of
   /// collections if collection is a SmartGraph edge collection that requires
@@ -457,9 +460,6 @@ struct TRI_vocbase_t {
   /// so it can later be looked up and found by name, guid etc.
   void persistCollection(
       std::shared_ptr<arangodb::LogicalCollection> const& collection);
-
-  /// @brief callback for collection dropping
-  static bool dropCollectionCallback(arangodb::LogicalCollection& collection);
 
   /// @brief check some invariants on the various lists of collections
   void checkCollectionInvariants() const noexcept;

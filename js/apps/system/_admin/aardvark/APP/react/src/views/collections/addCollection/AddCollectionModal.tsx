@@ -25,7 +25,7 @@ const INITIAL_VALUES = {
   distributeShardsLike: "",
   isSatellite: false,
   smartJoinAttribute: ""
-} satisfies Partial<CreateCollectionOptions> & Record<string, any>;
+} as Partial<CreateCollectionOptions> & Record<string, any>;
 
 const minReplicationFactor = window.frontendConfig.minReplicationFactor ?? 1;
 const maxReplicationFactor = window.frontendConfig.maxReplicationFactor ?? 10;
@@ -136,7 +136,7 @@ export const AddCollectionModal = ({
       isSatellite,
       ...extra
     } = values;
-    const clusterOptions: Partial<CreateCollectionOptions> = window.App
+    const clusterOptions = window.App
       .isCluster
       ? distributeShardsLike
         ? { distributeShardsLike, ...extra }

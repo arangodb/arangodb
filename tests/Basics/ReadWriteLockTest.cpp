@@ -616,3 +616,18 @@ TEST(ReadWriteLockTest, testLockWriteAttempted) {
   ASSERT_FALSE(lock.isLockedRead());
   ASSERT_FALSE(lock.isLockedWrite());
 }
+
+TEST(ReadWriteLockTest, readerOverflow) {
+  // this is a regression test for the old version where we only used 16 bits
+  // for the reader counter. Since we can have many more readers than threads,
+  // this limit could easily be reached. Note that we have no similar test for a
+  // writer overflow since we would actually need 2^15 threads to reach that
+  // limit.
+  ReadWriteLock lock;
+
+  for (unsigned i = 0; i < (1 << 16); ++i) {
+    ASSERT_TRUE(lock.tryLockRead()) << "tryLockRead failed at iteration " << i;
+  }
+  ASSERT_FALSE(lock.tryLockWrite())
+      << "tryLockWrite succeeded even though we have active readers";
+}

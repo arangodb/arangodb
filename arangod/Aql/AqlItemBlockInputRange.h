@@ -41,7 +41,7 @@ class AqlItemBlockInputRange {
                                   std::size_t skipped = 0);
 
   AqlItemBlockInputRange(MainQueryState, std::size_t skipped,
-                         arangodb::aql::SharedAqlItemBlockPtr,
+                         SharedAqlItemBlockPtr,
                          std::size_t startIndex) noexcept;
 
   void reset() noexcept { _block.reset(nullptr); }
@@ -55,15 +55,14 @@ class AqlItemBlockInputRange {
 
   bool hasDataRow() const noexcept;
 
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow() const;
+  std::pair<ExecutorState, InputAqlItemRow> peekDataRow() const;
 
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow();
+  std::pair<ExecutorState, InputAqlItemRow> nextDataRow();
 
   /// @brief optimized version of nextDataRow, only to be used when it is known
   /// that there is a next data row (i.e. if a previous call to hasDataRow()
   /// returned true)
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(
-      HasDataRow);
+  std::pair<ExecutorState, InputAqlItemRow> nextDataRow(HasDataRow);
 
   /// @brief moves the row index one forward if we are at a row right now
   void advanceDataRow() noexcept;
@@ -72,11 +71,11 @@ class AqlItemBlockInputRange {
 
   bool hasShadowRow() const noexcept;
 
-  arangodb::aql::ShadowAqlItemRow peekShadowRow() const;
+  ShadowAqlItemRow peekShadowRow() const;
 
-  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
+  std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
 
-  size_t skipAllRemainingDataRows();
+  size_t skipAllRemainingDataRows() noexcept;
 
   // depthOffset is added to depth, except it won't underflow.
   template<int depthOffset>
@@ -111,7 +110,9 @@ class AqlItemBlockInputRange {
    * @brief Skip over all remaining data rows until the next shadow row.
    * Count how many rows are skipped
    */
-  [[nodiscard]] auto countAndSkipAllRemainingDataRows() -> std::size_t;
+  [[nodiscard]] auto countAndSkipAllRemainingDataRows() noexcept -> std::size_t;
+
+  [[nodiscard]] auto numRowsLeft() const noexcept -> std::size_t;
 
  private:
   bool isIndexValid(std::size_t index) const noexcept;
@@ -123,7 +124,7 @@ class AqlItemBlockInputRange {
   template<LookAhead doPeek, RowType type>
   ExecutorState nextState() const noexcept;
 
-  arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
+  SharedAqlItemBlockPtr _block{nullptr};
   std::size_t _rowIndex{};
   MainQueryState _finalState{MainQueryState::HASMORE};
   // How many rows were skipped upstream

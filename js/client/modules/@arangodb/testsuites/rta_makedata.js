@@ -90,12 +90,6 @@ function makeDataWrapper (options) {
     }
     runOneTest(file) {
       let res = {'total':0, 'duration':0.0, 'status':true, message: '', 'failed': 0};
-      let tests = [
-        fs.join(this.options.rtasource, 'test_data', 'makedata.js'),
-        fs.join(this.options.rtasource, 'test_data', 'checkdata.js'),
-        fs.join(this.options.rtasource, 'test_data', 'checkdata.js'),
-        fs.join(this.options.rtasource, 'test_data', 'cleardata.js'),
-      ];
       let messages = [
         "initially create the test data",
         "revalidate the test data for the first time",
@@ -104,41 +98,17 @@ function makeDataWrapper (options) {
       ];
       let count = 0;
       let counters = { nonAgenciesCount: 1};
-      tests.forEach(file => {
-        print('\n' + (new Date()).toISOString() + GREEN + " [============] Makedata : Trying " + file + '\n ' + messages[count] + ' ... ' + count, RESET);
+      [
+        0, // makedata
+        1, // checkdata
+        1, // checkdata (with resillience test - instances stopped)
+        2  // clear data
+      ].forEach(testCount => {
+        let moreargv = [];
         count += 1;
-        let args = pu.makeArgs.arangosh(this.options);
-        args['server.endpoint'] = this.instanceManager.findEndpoint();
-        args['log.file'] = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
-        args['javascript.execute'] = file;
-        if (this.options.forceJson) {
-          args['server.force-json'] = true;
-        }
-        args['log.level'] = ['warning', 'httpclient=debug', 'V8=debug'];
-        if (this.addArgs !== undefined) {
-          args = Object.assign(args, this.addArgs);
-        }
-        let argv = toArgv(args);
-        argv = argv.concat(['--',
-                            '--minReplicationFactor', '2',
-                            '--progress', 'true',
-                            '--oldVersion', db._version()
-                           ]);
-        if (this.options.hasOwnProperty('makedata_args')) {
-          argv = argv.concat(toArgv(this.options['makedata_args']));
-        }
         if (this.options.cluster) {
           if (count === 2) {
-            args['javascript.execute'] = fs.join(this.options.rtasource, 'test_data','run_in_arangosh.js');
-            let myargs = toArgv(args).concat([
-              '--javascript.module-directory',
-              fs.join(this.options.rtasource, 'test_data'),
-              '--',
-              fs.join(this.options.rtasource, 'test_data', 'tests', 'js', 'server', 'cluster', 'wait_for_shards_in_sync.js'),
-              '--args',
-              'true'
-            ]);
-            let rc = pu.executeAndWait(pu.ARANGOSH_BIN, myargs, this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
+            pu.run.rtaWaitShardsInSync(this.options, this.instanceManager);
           }
 
           if (count === 3) {
@@ -151,21 +121,19 @@ function makeDataWrapper (options) {
                   ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
             stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
             stoppedDbServerInstance.waitForExit();
-            argv = argv.concat([ '--disabledDbserverUUID', stoppedDbServerInstance.id]);
+            moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
           }
         }
+        let logFile = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
         require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
-        if (this.options.extremeVerbosity !== 'silence') {
-          print(argv);
-        }
-        let rc = pu.executeAndWait(pu.ARANGOSH_BIN, argv, this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
+        let rc = pu.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
         if (!rc.status) {
           let rx = new RegExp(/\\n/g);
-          res.message += file + ':\n' + fs.read(args['log.file']).replace(rx, '\n');
+          res.message += file + ':\n' + fs.read(logFile).replace(rx, '\n');
           res.status = false;
           res.failed += 1;
         } else {
-          fs.remove(args['log.file']);
+          fs.remove(logFile);
         }
         res.total++;
         res.duration += rc.duration;
@@ -192,7 +160,6 @@ function makeDataWrapper (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['rta_makedata'] = makeDataWrapper;
-  opts['rtasource'] = fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata'));
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };
