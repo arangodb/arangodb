@@ -104,7 +104,7 @@ class ReadWriteLock {
 
   static constexpr uint64_t WRITE_LOCK = 1;
 
-  static constexpr uint64_t READER_INC = 1ul << 32;
+  static constexpr uint64_t READER_INC = std::uint64_t{1} << 32;
   static constexpr uint64_t READER_MASK = ~(READER_INC - 1);
 
   static constexpr uint64_t QUEUED_WRITER_INC = 1 << 1;
