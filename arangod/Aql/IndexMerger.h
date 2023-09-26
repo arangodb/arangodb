@@ -48,16 +48,14 @@ struct IndexStreamIterator {
   // load the current position into the span.
   // returns false if either the index is exhausted or the next element has a
   // different key set. In that case `key` is updated with the found key.
-  // returns true if a entry with key was found. LocalDocumentId and
+  // returns true if an entry with key was found. LocalDocumentId and
   // projections are loaded.
+  virtual bool next(std::span<SliceType> key, DocIdType&,
+                    std::span<SliceType> projections) = 0;
 
-  enum class NextResult {
-    kHasMore,
-    kRangeExhausted,
-    kIteratorExhausted,
-  };
-  virtual NextResult next(std::span<SliceType> key, DocIdType&,
-                          std::span<SliceType> projections) = 0;
+  // cache the current key. The span has to stay valid until this function
+  // is called again.
+  virtual void cacheCurrentKey(std::span<SliceType>) = 0;
 };
 
 struct DefaultComparator {
@@ -103,6 +101,8 @@ struct IndexMerger {
   struct IndexStreamCompare {
     static std::weak_ordering cmp(IndexStreamData const& left,
                                   IndexStreamData const& right);
+    static std::weak_ordering cmp(std::span<SliceType> left,
+                                  std::span<SliceType> right);
 
     bool operator()(IndexStreamData* left, IndexStreamData* right) const;
   };
@@ -119,6 +119,7 @@ struct IndexMerger {
 
   std::vector<DocIdType> documentIds;
   std::vector<SliceType> sliceBuffer;
+  std::vector<SliceType> currentKeySet;
 
   IndexMinHeap minHeap;
   IndexStreamData* maxIter = nullptr;

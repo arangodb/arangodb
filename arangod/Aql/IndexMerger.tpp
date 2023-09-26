@@ -23,7 +23,7 @@
 #include "Aql/IndexMerger.h"
 #include "Logger/LogMacros.h"
 
-#define LOG_INDEX_MERGER LOG_DEVEL_IF(false)
+#define LOG_INDEX_MERGER LOG_DEVEL_IF(true)
 
 namespace arangodb {
 
@@ -35,8 +35,15 @@ IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
     return std::weak_ordering::less;
   }
 
-  for (std::size_t k = 0; k < left._position.size(); k++) {
-    auto v = KeyCompare{}(left._position[k], right._position[k]);
+  return cmp(left._position, right._position);
+}
+
+template<typename SliceType, typename DocIdType, typename KeyCompare>
+std::weak_ordering
+IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
+    std::span<SliceType> left, std::span<SliceType> right) {
+  for (std::size_t k = 0; k < left.size(); k++) {
+    auto v = KeyCompare{}(left[k], right[k]);
     if (v > 0) {
       return std::weak_ordering::greater;
     } else if (v < 0) {
@@ -78,9 +85,7 @@ void IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamData::seekTo(
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 bool IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamData::next() {
-  auto result = _iter->next(_position, _docId, _projections);
-  exhausted = result == StreamIteratorType ::NextResult::kIteratorExhausted;
-  return result != StreamIteratorType ::NextResult::kHasMore;
+  return exhausted = !_iter->next(_position, _docId, _projections);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
@@ -88,6 +93,7 @@ IndexMerger<SliceType, DocIdType, KeyCompare>::IndexMerger(
     std::vector<IndexDescriptor> descs, std::size_t numKeyComponents) {
   indexes.reserve(descs.size());
   documentIds.resize(descs.size());
+  currentKeySet.resize(numKeyComponents);
 
   std::size_t bufferSize = 0;
   for (auto const& desc : descs) {
@@ -176,7 +182,24 @@ bool IndexMerger<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
     auto& idx = indexes[where];
     bool exhausted = idx.next();
     if (!exhausted) {
-      break;
+      LOG_INDEX_MERGER << "at position " << where;
+      for (auto k : indexes[where]._position) {
+        LOG_INDEX_MERGER << k;
+      }
+
+      LOG_INDEX_MERGER << "at rbegin ";
+      for (auto k : indexes.rbegin()->_position) {
+        LOG_INDEX_MERGER << k;
+      }
+
+      LOG_INDEX_MERGER << "diff = "
+                       << (0 == IndexStreamCompare{}.cmp(
+                                    indexes[where]._position, currentKeySet));
+
+      if (0 ==
+          IndexStreamCompare{}.cmp(indexes[where]._position, currentKeySet)) {
+        break;
+      }
     }
 
     where += 1;
@@ -185,8 +208,12 @@ bool IndexMerger<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
   while (where > 0) {
     where -= 1;
     auto& idx = indexes[where];
-
-    idx.seekTo(indexes.rbegin()->_position);
+    LOG_INDEX_MERGER << "seeking iterator at " << where << " to";
+    for (auto k : currentKeySet) {
+      LOG_INDEX_MERGER << k;
+    }
+    idx.seekTo(currentKeySet);
+    documentIds[where] = idx._iter->load(idx._projections);
   }
 
   return true;
@@ -219,6 +246,7 @@ void IndexMerger<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
     auto& index = indexes[i];
     documentIds[i] = index._iter->load(index._projections);
   }
+  indexes.rbegin()->_iter->cacheCurrentKey(currentKeySet);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>

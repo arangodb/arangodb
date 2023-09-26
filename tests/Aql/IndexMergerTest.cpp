@@ -44,20 +44,21 @@ struct MyVectorIterator : MyIndexStreamIterator {
     return *current;
   }
 
-  NextResult next(std::span<MyKeyValue> key, MyDocumentId& doc,
-                  std::span<MyKeyValue> projections) override {
+  void cacheCurrentKey(std::span<MyKeyValue> cache) override {
+    cache[0] = *current;
+    return cache;
+  }
+
+  bool next(std::span<MyKeyValue> key, MyDocumentId& doc,
+            std::span<MyKeyValue> projections) override {
     current = current + 1;
     if (current == end) {
-      return NextResult::kIteratorExhausted;
+      return false;
     }
 
-    if (*current != key[0]) {
-      key[0] = *current;
-      return NextResult::kRangeExhausted;
-    }
-
+    key[0] = *current;
     doc = *current;
-    return NextResult::kHasMore;
+    return true;
   }
 
   using Container = std::span<MyKeyValue>;
