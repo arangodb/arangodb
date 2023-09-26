@@ -356,7 +356,7 @@ function gatherBlockTestSuite () {
       // must have no sort but a gather node
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
       let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
-      assertFalse(indexNode.reverse);
+      assertTrue(indexNode.ascending);
       assertEqual(-1, nodeTypes.indexOf("SortNode"));
       assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
       let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
@@ -379,7 +379,7 @@ function gatherBlockTestSuite () {
       // must have no sort but a gather node
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
       let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
-      assertTrue(indexNode.reverse);
+      assertFalse(indexNode.ascending);
       assertEqual(-1, nodeTypes.indexOf("SortNode"));
       assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
       let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
@@ -446,7 +446,7 @@ function gatherBlockTestSuite () {
       // must have no sort but a gather node
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
       let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
-      assertFalse(indexNode.reverse);
+      assertTrue(indexNode.ascending);
       assertEqual(-1, nodeTypes.indexOf("SortNode"));
       assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
       let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
@@ -471,7 +471,7 @@ function gatherBlockTestSuite () {
       // must have no sort but a gather node
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
       let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
-      assertTrue(indexNode.reverse);
+      assertFalse(indexNode.ascending);
       assertEqual(-1, nodeTypes.indexOf("SortNode"));
       assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
       let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
