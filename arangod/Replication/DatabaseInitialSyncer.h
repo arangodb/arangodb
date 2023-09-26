@@ -33,6 +33,8 @@
 
 #include <chrono>
 #include <memory>
+#include <string>
+#include <string_view>
 
 struct TRI_vocbase_t;
 
@@ -76,15 +78,13 @@ class DatabaseInitialSyncer : public InitialSyncer {
     /// @brief replication applier config (from the base Syncer)
     ReplicationApplierConfiguration const& applier;
     /// @brief the dump batch state (from the base InitialSyncer)
-    replutils::BatchInfo& batch;  // TODO worker safety
+    replutils::BatchInfo& batch;
     /// @brief the client connection (from the base Syncer)
     replutils::Connection& connection;
-    /// @brief whether or not we have flushed the WAL on the remote server
-    bool flushed;  // TODO worker safety
     /// @brief info about leader node (from the base Syncer)
     replutils::LeaderInfo& leader;
     /// @brief the progress info (from the base InitialSyncer)
-    replutils::ProgressInfo& progress;  // TODO worker safety
+    replutils::ProgressInfo& progress;
     /// @brief the syncer state (from the base Syncer)
     SyncerState& state;
     /// @brief the database to dump
@@ -185,8 +185,8 @@ class DatabaseInitialSyncer : public InitialSyncer {
 
   /// @brief order a new chunk from the /dump API
   void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-                      std::string const& baseUrl, LogicalCollection* coll,
-                      std::string const& leaderColl, int batch,
+                      std::string_view baseUrl, LogicalCollection* coll,
+                      std::string_view leaderColl, int batch,
                       TRI_voc_tick_t fromTick, uint64_t chunkSize);
 
   /// @brief fetch the server's inventory

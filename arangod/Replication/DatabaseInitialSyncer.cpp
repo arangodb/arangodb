@@ -557,7 +557,6 @@ DatabaseInitialSyncer::Configuration::Configuration(
     : applier{a},
       batch{bat},
       connection{c},
-      flushed{f},
       leader{l},
       progress{p},
       state{s},
@@ -991,8 +990,8 @@ Result DatabaseInitialSyncer::parseCollectionDump(
 /// @brief order a new chunk from the /dump API
 void DatabaseInitialSyncer::fetchDumpChunk(
     std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-    std::string const& baseUrl, LogicalCollection* coll,
-    std::string const& leaderColl, int batch, TRI_voc_tick_t fromTick,
+    std::string_view baseUrl, LogicalCollection* coll,
+    std::string_view leaderColl, int batch, TRI_voc_tick_t fromTick,
     uint64_t chunkSize) {
   if (isAborted()) {
     sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
@@ -1010,14 +1009,6 @@ void DatabaseInitialSyncer::fetchDumpChunk(
     // assemble URL to call
     std::string url =
         absl::StrCat(baseUrl, "&from=", fromTick, "&chunkSize=", chunkSize);
-
-    if (_config.flushed) {
-      url += "&flush=false";
-    } else {
-      // only flush WAL once
-      url += "&flush=true";
-      _config.flushed = true;
-    }
 
     bool isVPack = false;
     auto headers = replutils::createHeaders();
