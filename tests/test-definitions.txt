@@ -77,6 +77,7 @@ restart !mac priority=1000 size=small cluster -- --dumpAgencyOnError true --forc
 load_balancing priority=500 size=small cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
 
+
 resilience_analyzers priority=500 size=small cluster -- --dumpAgencyOnError true
 resilience_failover priority=1200 size=small buckets=2 cluster -- --dumpAgencyOnError true
 resilience_move priority=600 size=medium buckets=2 cluster -- --dumpAgencyOnError true
@@ -113,12 +114,18 @@ server_parameters priority=1000 parallelity=5 buckets=6 size=small cluster -- --
 server_permissions,server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 
 # Dump Tests
-dump,dump_authentication,dump_jwt,dump_multiple,dump_no_envelope,dump_parallel name=dump -- --dumpAgencyOnError true
-dump_maskings,dump_encrypted enterprise -- --dumpAgencyOnError true
-dump_mixed_cluster_single,dump_mixed_single_cluster name=dump_mixed -- --dumpAgencyOnError true
+dump size=medium -- --dumpAgencyOnError true
+dump_authentication size=medium -- --dumpAgencyOnError true
+dump_jwt size=medium -- --dumpAgencyOnError true
+dump_multiple size=medium -- --dumpAgencyOnError true
+dump_parallel size=medium -- --dumpAgencyOnError true
+dump_maskings  enterprise size=medium -- --dumpAgencyOnError true
+dump_encrypted enterprise size=medium -- --dumpAgencyOnError true
+dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true
+dump_mixed_single_cluster size=large -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
-dump_with_crashes !mac parallelity=1 priority=2000 -- --dumpAgencyOnError true 
-dump_with_crashes_parallel !mac parallelity=1 priority=2000 cluster -- --dumpAgencyOnError true 
+dump_with_crashes !mac size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
+dump_with_crashes_parallel !mac size=medium parallelity=1 priority=2000 cluster -- --dumpAgencyOnError true 
 
 # Audit Tests
 audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
