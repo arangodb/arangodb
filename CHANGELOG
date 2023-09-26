@@ -62,6 +62,11 @@ devel
   still has, the more likely it is that query parts can actually run 
   concurrently.
 
+* Extend the internal state of ReadWriteLocks from 32-bit to 64-bit to prevent
+  potential overflows. Previously creating more than 64k streaming transactions
+  at the same time could produce an overflow that would effectively result in
+  undefined behavior.
+
 * Remove "database" attribute from the serialized version of AQL IndexNodes,
   EnumerateCollectionNodes, EnumerateViewNodes, GraphNodes and RemoteNodes.
   That attribute was never read back.
