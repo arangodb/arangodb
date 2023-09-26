@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded bundled version of RocksDB to 8.8.
+
 * Remove special handling for backups taken with ArangoDB 3.5 in hot backup
   restore.
 
@@ -279,8 +281,6 @@ devel
 * FE-248: Improve collections list UI.
 
 * BTS-1124: wait for license to be applied locally before responding to the request.
-
-* Upgraded bundled version of RocksDB to 8.6.
 
 * BTS-1566: remove redundant responsibility for creating local databases on
   coordinators.
