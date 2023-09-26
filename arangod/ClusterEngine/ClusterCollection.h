@@ -112,7 +112,7 @@ class ClusterCollection final : public PhysicalCollection {
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites) const override;
 
-  Result read(transaction::Methods* trx, LocalDocumentId const& token,
+  Result read(transaction::Methods* trx, LocalDocumentId token,
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites) const override;
 

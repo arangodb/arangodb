@@ -111,7 +111,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(
   EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
   collection->getPhysical()->read(
       _trx, etkn.localDocumentId(),
-      [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+      [&](LocalDocumentId, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
         if (_trx->skipInaccessible()) {
           // TODO: we only need to check one of these
@@ -198,8 +198,7 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
       if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
         bool operationSuccessful = false;
         cursor->nextCovering(
-            [&](LocalDocumentId const& token,
-                IndexIteratorCoveringData& covering) {
+            [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
               TRI_ASSERT(covering.isArray());
               VPackSlice edge = covering.at(coveringPosition);
               TRI_ASSERT(edge.isString());
@@ -233,7 +232,7 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
       } else {
         _cache.clear();
         bool tmp = cursor->next(
-            [&](LocalDocumentId const& token) {
+            [&](LocalDocumentId token) {
               if (token.isSet()) {
                 // Document found
                 _cache.emplace_back(token);
@@ -271,27 +270,27 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
         // thanks AppleClang for having to declare this extra variable!
         uint16_t cv = coveringPosition;
 
-        cursor->allCovering([&](LocalDocumentId const& token,
-                                IndexIteratorCoveringData& covering) {
-          TRI_ASSERT(covering.isArray());
-          VPackSlice edge = covering.at(cv);
-          TRI_ASSERT(edge.isString());
+        cursor->allCovering(
+            [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
+              TRI_ASSERT(covering.isArray());
+              VPackSlice edge = covering.at(cv);
+              TRI_ASSERT(edge.isString());
 
 #ifdef USE_ENTERPRISE
-          if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
-            return false;
-          }
+              if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
+                return false;
+              }
 #endif
-          _opts->cache()->incrDocuments();
-          callback(EdgeDocumentToken(cid, token), edge, cursorId);
-          return true;
-        });
+              _opts->cache()->incrDocuments();
+              callback(EdgeDocumentToken(cid, token), edge, cursorId);
+              return true;
+            });
       } else {
-        cursor->all([&](LocalDocumentId const& token) {
+        cursor->all([&](LocalDocumentId token) {
           return collection->getPhysical()
               ->read(
                   _trx, token,
-                  [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+                  [&](LocalDocumentId, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
                     if (_trx->skipInaccessible()) {
                       // TODO: we only need to check one of these

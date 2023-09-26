@@ -244,7 +244,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
                     transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments(
-      [&resultBuilder, &memoryScope](LocalDocumentId const&, VPackSlice slice) {
+      [&resultBuilder, &memoryScope](LocalDocumentId, VPackSlice slice) {
         auto const& buffer = resultBuilder.bufferRef();
         size_t memoryUsageOld = buffer.size();
         resultBuilder.add(slice);

@@ -297,7 +297,7 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
   bool called = false;
   auto result = col->getPhysical()->read(
       trx.get(), std::string_view{edgeKey},
-      [&fetchedDocumentId, &called, &edgeKey](LocalDocumentId const& ldid,
+      [&fetchedDocumentId, &called, &edgeKey](LocalDocumentId ldid,
                                               VPackSlice edgeDocument) {
         fetchedDocumentId = ldid.id();
         called = true;

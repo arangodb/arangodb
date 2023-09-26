@@ -271,7 +271,7 @@ Result ClusterCollection::read(transaction::Methods* /*trx*/,
 
 // read using a token!
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
-                               LocalDocumentId const& /*documentId*/,
+                               LocalDocumentId /*documentId*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
                                ReadOwnWrites /*readOwnWrites*/) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};

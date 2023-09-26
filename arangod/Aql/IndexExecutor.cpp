@@ -522,7 +522,7 @@ bool IndexExecutor::CursorReader::readIndex(
     case Type::Count: {
       uint64_t counter = 0;
       if (_checkUniqueness) {
-        _cursor->all([&](LocalDocumentId const& token) -> bool {
+        _cursor->all([&](LocalDocumentId token) -> bool {
           if (_context.checkUniqueness(token)) {
             counter++;
           }

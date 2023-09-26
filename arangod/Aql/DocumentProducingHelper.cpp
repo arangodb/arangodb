@@ -48,7 +48,7 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice slice) {
+  return [&context](LocalDocumentId token, VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -93,7 +93,7 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice slice) {
+  return [&context](LocalDocumentId token, VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -132,7 +132,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
     if (!context.getProduceResult()) {
       // This callback is disallowed use getNullCallback instead
       TRI_ASSERT(false);
-      return [](LocalDocumentId const&, VPackSlice /*slice*/) -> bool {
+      return [](LocalDocumentId, VPackSlice /*slice*/) -> bool {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
       };
     }
@@ -157,7 +157,7 @@ IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
     DocumentProducingFunctionContext& context) {
   TRI_ASSERT(!context.hasFilter());
 
-  return [&context](LocalDocumentId const& token) {
+  return [&context](LocalDocumentId token) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -357,8 +357,7 @@ ReadOwnWrites DocumentProducingFunctionContext::getReadOwnWrites()
   return _readOwnWrites;
 }
 
-bool DocumentProducingFunctionContext::checkUniqueness(
-    LocalDocumentId const& token) {
+bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId token) {
   TRI_ASSERT(_checkUniqueness);
   if (!_isLastIndex) {
     // insert & check for duplicates in one go
@@ -448,7 +447,7 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token,
+  return [&context](LocalDocumentId token,
                     IndexIteratorCoveringData& covering) {
     TRI_ASSERT(context.getAllowCoveringIndexOptimization());
     if constexpr (checkUniqueness) {
@@ -497,75 +496,75 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token,
-                    IndexIteratorCoveringData& covering) {
-    // this must only be used if we have a filter!
-    TRI_ASSERT(context.hasFilter());
-    TRI_ASSERT(context.getAllowCoveringIndexOptimization());
-    if constexpr (checkUniqueness) {
-      if (!context.checkUniqueness(token)) {
-        // Document already found, skip it
-        return false;
-      }
-    }
-
-    context.incrScanned();
-
-    // recycle our Builder object
-    VPackBuilder& objectBuilder = context.getBuilder();
-    objectBuilder.clear();
-    objectBuilder.openObject(true);
-
-    // projections from the index for the filter condition
-    context.getFilterProjections().toVelocyPackFromIndex(
-        objectBuilder, covering, context.getTrxPtr());
-
-    objectBuilder.close();
-
-    if (!context.checkFilter(objectBuilder.slice())) {
-      context.incrFiltered();
-      return false;
-    }
-
-    if constexpr (!skip) {
-      // read the full document from the storage engine only now,
-      // after checking the filter condition
-      context.getPhysical().read(
-          context.getTrxPtr(), token,
-          [&](LocalDocumentId const&, VPackSlice s) -> bool {
-            OutputAqlItemRow& output = context.getOutputRow();
-            TRI_ASSERT(!output.isFull());
-
-            RegisterId registerId = context.getOutputRegister();
-            InputAqlItemRow const& input = context.getInputRow();
-
-            if (context.getProjections().empty()) {
-              output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId,
-                                                                input, s);
-            } else {
-              objectBuilder.clear();
-              objectBuilder.openObject(true);
-
-              // projections from the index for the filter condition
-              context.getProjections().toVelocyPackFromDocument(
-                  objectBuilder, s, context.getTrxPtr());
-
-              objectBuilder.close();
-
-              VPackSlice projectedSlice = objectBuilder.slice();
-              output.moveValueInto<InputAqlItemRow, VPackSlice>(
-                  registerId, input, projectedSlice);
-            }
-
-            TRI_ASSERT(output.produced());
-            output.advanceRow();
+  return
+      [&context](LocalDocumentId token, IndexIteratorCoveringData& covering) {
+        // this must only be used if we have a filter!
+        TRI_ASSERT(context.hasFilter());
+        TRI_ASSERT(context.getAllowCoveringIndexOptimization());
+        if constexpr (checkUniqueness) {
+          if (!context.checkUniqueness(token)) {
+            // Document already found, skip it
             return false;
-          },
-          context.getReadOwnWrites());
-    }
+          }
+        }
 
-    return true;
-  };
+        context.incrScanned();
+
+        // recycle our Builder object
+        VPackBuilder& objectBuilder = context.getBuilder();
+        objectBuilder.clear();
+        objectBuilder.openObject(true);
+
+        // projections from the index for the filter condition
+        context.getFilterProjections().toVelocyPackFromIndex(
+            objectBuilder, covering, context.getTrxPtr());
+
+        objectBuilder.close();
+
+        if (!context.checkFilter(objectBuilder.slice())) {
+          context.incrFiltered();
+          return false;
+        }
+
+        if constexpr (!skip) {
+          // read the full document from the storage engine only now,
+          // after checking the filter condition
+          context.getPhysical().read(
+              context.getTrxPtr(), token,
+              [&](LocalDocumentId, VPackSlice s) -> bool {
+                OutputAqlItemRow& output = context.getOutputRow();
+                TRI_ASSERT(!output.isFull());
+
+                RegisterId registerId = context.getOutputRegister();
+                InputAqlItemRow const& input = context.getInputRow();
+
+                if (context.getProjections().empty()) {
+                  output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId,
+                                                                    input, s);
+                } else {
+                  objectBuilder.clear();
+                  objectBuilder.openObject(true);
+
+                  // projections from the index for the filter condition
+                  context.getProjections().toVelocyPackFromDocument(
+                      objectBuilder, s, context.getTrxPtr());
+
+                  objectBuilder.close();
+
+                  VPackSlice projectedSlice = objectBuilder.slice();
+                  output.moveValueInto<InputAqlItemRow, VPackSlice>(
+                      registerId, input, projectedSlice);
+                }
+
+                TRI_ASSERT(output.produced());
+                output.advanceRow();
+                return false;
+              },
+              context.getReadOwnWrites());
+        }
+
+        return true;
+      };
 }
 
 template IndexIterator::CoveringCallback aql::getCallback<false, false>(

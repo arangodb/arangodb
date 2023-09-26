@@ -262,7 +262,7 @@ class RDBNearIterator final : public IndexIterator {
           if (!_collection->getPhysical()
                    ->read(
                        _trx, gdoc.token,
-                       [&](LocalDocumentId const&, VPackSlice doc) {
+                       [&](LocalDocumentId, VPackSlice doc) {
                          geo::FilterType const ft = _near.filterType();
                          if (ft != geo::FilterType::NONE) {  // expensive test
                            geo::ShapeContainer const& filter =
@@ -306,7 +306,7 @@ class RDBNearIterator final : public IndexIterator {
             if (!_collection->getPhysical()
                      ->read(
                          _trx, gdoc.token,
-                         [&](LocalDocumentId const&, VPackSlice doc) {
+                         [&](LocalDocumentId, VPackSlice doc) {
                            geo::ShapeContainer test;
                            Result res = _index->shape(doc, test);
                            TRI_ASSERT(res.ok());  // this should never fail here
@@ -478,12 +478,12 @@ class RDBCoveringIterator final : public IndexIterator {
 
   bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
     return nextToken(
-        [this, &cb](LocalDocumentId const& docid) -> bool {
+        [this, &cb](LocalDocumentId docid) -> bool {
           bool result = true;  // this is updated by the callback
           if (!_collection->getPhysical()
                    ->read(
                        _trx, docid,
-                       [&](LocalDocumentId const&, VPackSlice doc) {
+                       [&](LocalDocumentId, VPackSlice doc) {
                          geo::FilterType const ft = _covering.filterType();
                          geo::ShapeContainer const& filter =
                              _covering.filterShape();
@@ -516,7 +516,7 @@ class RDBCoveringIterator final : public IndexIterator {
 
   bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     return nextToken(
-        [this, &cb](LocalDocumentId const& docid) -> bool {
+        [this, &cb](LocalDocumentId docid) -> bool {
           geo::FilterType const ft = _covering.filterType();
           if (ft != geo::FilterType::NONE) {
             geo::ShapeContainer const& filter = _covering.filterShape();
@@ -525,7 +525,7 @@ class RDBCoveringIterator final : public IndexIterator {
             if (!_collection->getPhysical()
                      ->read(
                          _trx, docid,
-                         [&](LocalDocumentId const&, VPackSlice doc) {
+                         [&](LocalDocumentId, VPackSlice doc) {
                            geo::ShapeContainer test;
                            Result res = _index->shape(doc, test);
                            TRI_ASSERT(res.ok());  // this should never fail here
@@ -817,7 +817,7 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 
 /// internal insert function, set batch or trx before calling
 Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
-                               LocalDocumentId const& documentId,
+                               LocalDocumentId documentId,
                                velocypack::Slice doc,
                                arangodb::OperationOptions const& /*options*/,
                                bool /*performChecks*/) {
@@ -867,7 +867,7 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 
 /// internal remove function, set batch or trx before calling
 Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
-                               LocalDocumentId const& documentId,
+                               LocalDocumentId documentId,
                                velocypack::Slice doc,
                                OperationOptions const& /*options*/) {
   // covering and centroid of coordinate / polygon / ...

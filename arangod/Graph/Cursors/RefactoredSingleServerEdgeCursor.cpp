@@ -331,38 +331,38 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
     if (!_requiresFullDocument &&
         aql::Projections::isCoveringIndexPosition(coveringPosition)) {
       // use covering index and projections
-      cursor.allCovering([&](LocalDocumentId const& token,
-                             IndexIteratorCoveringData& covering) {
-        stats.incrScannedIndex(1);
+      cursor.allCovering(
+          [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
+            stats.incrScannedIndex(1);
 
-        TRI_ASSERT(covering.isArray());
-        VPackSlice edge = covering.at(coveringPosition);
-        TRI_ASSERT(edge.isString());
+            TRI_ASSERT(covering.isArray());
+            VPackSlice edge = covering.at(coveringPosition);
+            TRI_ASSERT(edge.isString());
 
 #ifdef USE_ENTERPRISE
-        if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
-          return false;
-        }
+            if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
+              return false;
+            }
 #endif
 
-        EdgeDocumentToken edgeToken(cid, token);
-        // evaluate expression if available
-        if (expression != nullptr &&
-            !evaluateEdgeExpressionHelper(expression, edgeToken, edge)) {
-          stats.incrFiltered();
-          return false;
-        }
+            EdgeDocumentToken edgeToken(cid, token);
+            // evaluate expression if available
+            if (expression != nullptr &&
+                !evaluateEdgeExpressionHelper(expression, edgeToken, edge)) {
+              stats.incrFiltered();
+              return false;
+            }
 
-        callback(std::move(edgeToken), edge, cursorID);
-        return true;
-      });
+            callback(std::move(edgeToken), edge, cursorID);
+            return true;
+          });
     } else {
       // fetch full documents
-      cursor.all([&](LocalDocumentId const& token) {
+      cursor.all([&](LocalDocumentId token) {
         return collection->getPhysical()
             ->read(
                 _trx, token,
-                [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+                [&](LocalDocumentId, VPackSlice edgeDoc) {
                   stats.incrScannedIndex(1);
 #ifdef USE_ENTERPRISE
                   if (_trx->skipInaccessible()) {

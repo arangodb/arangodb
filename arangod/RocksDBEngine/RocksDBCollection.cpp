@@ -281,8 +281,8 @@ struct TruncateTimeTracker final : public TimeTracker {
 
 void reportPrimaryIndexInconsistencyIfNotFound(
     Result const& res, LogicalCollection const& collection,
-    std::string_view key, LocalDocumentId const& rev,
-    ReadOwnWrites readOwnWrites, RocksDBTransactionState const* state) {
+    std::string_view key, LocalDocumentId rev, ReadOwnWrites readOwnWrites,
+    RocksDBTransactionState const* state) {
   TRI_ASSERT(res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
   // Scandal! A primary index entry is pointing to nowhere! Let's report
   // this to the authorities immediately:
@@ -1046,7 +1046,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
 }
 
 Result RocksDBCollection::readFromSnapshot(
-    transaction::Methods* trx, LocalDocumentId const& token,
+    transaction::Methods* trx, LocalDocumentId token,
     IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites,
     StorageSnapshot const& snapshot) const {
   ::ReadTimeTracker timeTracker(
@@ -1091,11 +1091,8 @@ Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
           std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
 
-    res = lookupDocumentVPack(trx, documentId, ps, /*withCache*/ true,
-                              /*fillCache*/ true, readOwnWrites);
-    if (res.ok()) {
-      cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
-    }
+    res = lookupDocumentVPack(trx, documentId, cb, /*withCache*/ true,
+                              readOwnWrites);
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->ensureSnapshot());
   if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -1108,7 +1105,7 @@ Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
 
 // read using a local document id
 Result RocksDBCollection::read(transaction::Methods* trx,
-                               LocalDocumentId const& documentId,
+                               LocalDocumentId documentId,
                                IndexIterator::DocumentCallback const& cb,
                                ReadOwnWrites readOwnWrites) const {
   ::ReadTimeTracker timeTracker(
@@ -1930,67 +1927,8 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
   return {};
 }
 
-/// @brief lookup document in cache and / or rocksdb
-arangodb::Result RocksDBCollection::lookupDocumentVPack(
-    transaction::Methods* trx, LocalDocumentId const& documentId,
-    rocksdb::PinnableSlice& ps, bool withCache, bool fillCache,
-    ReadOwnWrites readOwnWrites) const {
-  TRI_ASSERT(trx->state()->isRunning());
-  TRI_ASSERT(objectId() != 0);
-  Result res;
-
-  RocksDBKeyLeaser key(trx);
-  key->constructDocument(objectId(), documentId);
-
-  bool lockTimeout = false;
-  std::shared_ptr<cache::Cache> cache;
-  if (withCache && (cache = useCache())) {
-    TRI_ASSERT(cache != nullptr);
-    // check cache first for fast path
-    auto f = cache->find(key->string().data(),
-                         static_cast<uint32_t>(key->string().size()));
-    if (f.found()) {  // copy finding into buffer
-      ps.PinSelf(
-          rocksdb::Slice(reinterpret_cast<char const*>(f.value()->value()),
-                         f.value()->valueSize()));
-      // TODO we could potentially use the PinSlice method ?!
-      return {};  // all good
-    }
-    if (f.result() == TRI_ERROR_LOCK_TIMEOUT) {
-      // assuming someone is currently holding a write lock, which
-      // is why we cannot access the TransactionalBucket.
-      lockTimeout = true;  // we skip the insert in this case
-    }
-  }
-
-  RocksDBMethods* mthd =
-      RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
-  rocksdb::Status s =
-      mthd->Get(RocksDBColumnFamilyManager::get(
-                    RocksDBColumnFamilyManager::Family::Documents),
-                key->string(), &ps, readOwnWrites);
-
-  if (!s.ok()) {
-    LOG_TOPIC("f63dd", DEBUG, Logger::ENGINES)
-        << "NOT FOUND rev: " << documentId.id()
-        << " trx: " << trx->state()->id().id() << " objectID " << objectId()
-        << " name: " << _logicalCollection.name();
-    return rocksutils::convertStatus(s, rocksutils::document);
-  }
-
-  if (fillCache && cache != nullptr && !lockTimeout) {
-    // write entry back to cache
-    cache::Cache::SimpleInserter<DocumentCacheType>{
-        static_cast<DocumentCacheType&>(*cache), key->string().data(),
-        static_cast<uint32_t>(key->string().size()), ps.data(),
-        static_cast<uint64_t>(ps.size())};
-  }
-
-  return {};
-}
-
 Result RocksDBCollection::lookupDocumentVPack(
-    transaction::Methods* trx, LocalDocumentId const& documentId,
+    transaction::Methods* trx, LocalDocumentId documentId,
     IndexIterator::DocumentCallback const& cb, bool withCache,
     ReadOwnWrites readOwnWrites,
     RocksDBEngine::RocksDBSnapshot const* snapshot /*= nullptr*/) const {

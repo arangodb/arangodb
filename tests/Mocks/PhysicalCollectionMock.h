@@ -90,7 +90,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
 
   arangodb::Result readFromSnapshot(
       arangodb::transaction::Methods* trx,
-      arangodb::LocalDocumentId const& token,
+      arangodb::LocalDocumentId token,
       arangodb::IndexIterator::DocumentCallback const& cb,
       arangodb::ReadOwnWrites readOwnWrites,
       arangodb::StorageSnapshot const&) const override {
@@ -101,7 +101,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                         arangodb::IndexIterator::DocumentCallback const& cb,
                         arangodb::ReadOwnWrites) const override;
   arangodb::Result read(arangodb::transaction::Methods* trx,
-                        arangodb::LocalDocumentId const& token,
+                        arangodb::LocalDocumentId token,
                         arangodb::IndexIterator::DocumentCallback const& cb,
                         arangodb::ReadOwnWrites) const override;
   arangodb::Result lookupDocument(

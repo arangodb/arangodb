@@ -983,7 +983,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                 rocksValue);  // we want probably to do this instead
             physical->read(
                 trx.get(), documentId,
-                [&docRev](LocalDocumentId const&, VPackSlice doc) {
+                [&docRev](LocalDocumentId, VPackSlice doc) {
                   docRev = RevisionId::fromSlice(doc);
                   return true;
                 },

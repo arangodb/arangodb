@@ -495,7 +495,7 @@ class IResearchInvertedIndexIterator final
 
   bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
     return nextImpl(
-        [this, &cb](LocalDocumentId const& token) {
+        [this, &cb](LocalDocumentId token) {
           // we use here just first snapshot as they are all the same here.
           // iterator operates only one iresearch datastore
           // TODO(MBkkt) use MultiGet

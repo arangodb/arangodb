@@ -261,7 +261,7 @@ class EdgeIndexMock final : public arangodb::Index {
   }
 
   arangodb::Result insert(arangodb::transaction::Methods& trx,
-                          arangodb::LocalDocumentId const& documentId,
+                          arangodb::LocalDocumentId documentId,
                           arangodb::velocypack::Slice doc) {
     if (!doc.isObject()) {
       return {TRI_ERROR_INTERNAL};
@@ -288,7 +288,7 @@ class EdgeIndexMock final : public arangodb::Index {
   }
 
   arangodb::Result remove(arangodb::transaction::Methods& trx,
-                          arangodb::LocalDocumentId const&,
+                          arangodb::LocalDocumentId,
                           arangodb::velocypack::Slice doc,
                           arangodb::IndexOperationMode) {
     if (!doc.isObject()) {
@@ -479,7 +479,7 @@ class HashIndexMap {
     return slice;
   }
 
-  void insertSlice(arangodb::LocalDocumentId const& documentId,
+  void insertSlice(arangodb::LocalDocumentId documentId,
                    arangodb::velocypack::Slice const& slice, size_t i) {
     VPackBuilder builder;
     if (slice.isNone() || slice.isNull()) {
@@ -497,7 +497,7 @@ class HashIndexMap {
     TRI_ASSERT(!_fields.empty());
   }
 
-  void insert(arangodb::LocalDocumentId const& documentId,
+  void insert(arangodb::LocalDocumentId documentId,
               arangodb::velocypack::Slice const& doc) {
     VPackBuilder builder;
     builder.openArray();
@@ -581,7 +581,7 @@ class HashIndexMap {
     _docIndexMap.try_emplace(documentId, std::move(builder));
   }
 
-  bool remove(arangodb::LocalDocumentId const& documentId,
+  bool remove(arangodb::LocalDocumentId documentId,
               arangodb::velocypack::Slice doc) {
     size_t i = 0;
     auto documentRemoved = false;
@@ -768,7 +768,7 @@ class HashIndexMock final : public arangodb::Index {
   }
 
   arangodb::Result insert(arangodb::transaction::Methods&,
-                          arangodb::LocalDocumentId const& documentId,
+                          arangodb::LocalDocumentId documentId,
                           arangodb::velocypack::Slice const doc) {
     if (!doc.isObject()) {
       return {TRI_ERROR_INTERNAL};
@@ -780,7 +780,7 @@ class HashIndexMock final : public arangodb::Index {
   }
 
   arangodb::Result remove(arangodb::transaction::Methods&,
-                          arangodb::LocalDocumentId const& documentId,
+                          arangodb::LocalDocumentId documentId,
                           arangodb::velocypack::Slice doc,
                           arangodb::OperationOptions const& /*options*/) {
     if (!doc.isObject()) {
@@ -1308,7 +1308,7 @@ arangodb::Result PhysicalCollectionMock::read(
 }
 
 arangodb::Result PhysicalCollectionMock::read(
-    arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token,
+    arangodb::transaction::Methods* trx, arangodb::LocalDocumentId token,
     arangodb::IndexIterator::DocumentCallback const& cb,
     arangodb::ReadOwnWrites) const {
   before();

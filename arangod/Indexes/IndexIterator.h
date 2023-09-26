@@ -180,13 +180,13 @@ class IndexIterator {
   };
 
   using LocalDocumentIdCallback =
-      CallbackImpl<bool(LocalDocumentId const& token) const>;
+      CallbackImpl<bool(LocalDocumentId token) const>;
 
-  using DocumentCallback = CallbackImpl<bool(LocalDocumentId const& token,
+  using DocumentCallback = CallbackImpl<bool(LocalDocumentId token,
                                              velocypack::Slice doc) const>;
 
   using CoveringCallback =
-      CallbackImpl<bool(LocalDocumentId const& token,
+      CallbackImpl<bool(LocalDocumentId token,
                         IndexIteratorCoveringData& covering) const,
                    bool(aql::AqlValue&& searchDoc,
                         IndexIteratorCoveringData& covering) const>;

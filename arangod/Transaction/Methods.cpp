@@ -588,7 +588,7 @@ struct GetDocumentProcessor
       bool conflict = false;
       res = _collection.getPhysical()->read(
           &_methods, key,
-          [&](LocalDocumentId const&, VPackSlice doc) {
+          [&](LocalDocumentId, VPackSlice doc) {
             if (!_options.ignoreRevs && value.isObject()) {
               RevisionId expectedRevision = RevisionId::fromSlice(value);
               if (expectedRevision.isSet()) {
@@ -1970,7 +1970,7 @@ OperationResult transaction::Methods::anyLocal(
                 ReadOwnWrites::no);
 
   iterator->nextDocument(
-      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
+      [&resultBuilder](LocalDocumentId /*token*/, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
       },
@@ -2113,7 +2113,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   return collection->getPhysical()->read(
       this, key,
-      [&](LocalDocumentId const&, VPackSlice doc) {
+      [&](LocalDocumentId, VPackSlice doc) {
         result.add(doc);
         return true;
       },
@@ -2609,7 +2609,7 @@ OperationResult transaction::Methods::allLocal(
                 ReadOwnWrites::no);
 
   iterator->allDocuments(
-      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
+      [&resultBuilder](LocalDocumentId /*token*/, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
       });

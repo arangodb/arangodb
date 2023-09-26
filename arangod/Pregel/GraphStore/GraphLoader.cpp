@@ -205,7 +205,7 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
   }
 
   std::string documentId;  // temp buffer for _id of vertex
-  auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
+  auto cb = [&](LocalDocumentId token, VPackSlice slice) {
     Vertex<V, E> ventry;
     auto keySlice = transaction::helpers::extractKeyFromDocument(slice);
     auto key = keySlice.copyString();
@@ -269,8 +269,7 @@ void GraphLoader<V, E>::loadEdges(transaction::Methods& trx,
   if (graphFormat->estimatedEdgeSize() == 0) {
     // use covering index optimization
     while (cursor->nextCovering(
-        [&](LocalDocumentId const& /*token*/,
-            IndexIteratorCoveringData& covering) {
+        [&](LocalDocumentId /*token*/, IndexIteratorCoveringData& covering) {
           TRI_ASSERT(covering.isArray());
           std::string_view toValue =
               covering.at(info.coveringPosition()).stringView();
@@ -283,7 +282,7 @@ void GraphLoader<V, E>::loadEdges(transaction::Methods& trx,
     }
   } else {
     while (cursor->nextDocument(
-        [&](LocalDocumentId const& /*token*/, VPackSlice slice) {
+        [&](LocalDocumentId /*token*/, VPackSlice slice) {
           slice = slice.resolveExternal();
           std::string_view toValue =
               transaction::helpers::extractToFromDocument(slice).stringView();

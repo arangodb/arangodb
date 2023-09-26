@@ -125,7 +125,7 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
       col->getPhysical()
           ->read(
               _trx, idToken.localDocumentId(),
-              [&](LocalDocumentId const&, VPackSlice edge) -> bool {
+              [&](LocalDocumentId, VPackSlice edge) -> bool {
                 if (readType == EdgeReadType::ONLYID) {
                   if constexpr (std::is_same_v<ResultType, std::string>) {
                     // If we want to expose the ID, we need to translate the
@@ -239,7 +239,7 @@ bool RefactoredTraverserCache::appendVertex(
       Result res = _trx->documentFastPathLocal(
           collectionName,
           id.substr(collectionNameResult.get().second + 1).stringView(),
-          [&](LocalDocumentId const&, VPackSlice doc) -> bool {
+          [&](LocalDocumentId, VPackSlice doc) -> bool {
             stats.incrScannedIndex(1);
             // copying...
             if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
