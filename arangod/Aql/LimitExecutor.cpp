@@ -144,38 +144,23 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         stats.incrFullCountBy(didSkip);
       }
     } else if (!output.isFull()) {
+      TRI_ASSERT(inputRange.hasDataRow());
+      // This block is passthrough.
+      static_assert(
+          Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
+          "For LIMIT with passthrough to work, there must be "
+          "exactly enough space for all input in the output.");
       auto numRowsWritten = size_t{0};
-
-      if (_infos.getOffset() == 0 && inputRange.hasDataRow()) {
+      if (inputRange.hasDataRow()) {
         auto const& [_, inputRow] = inputRange.peekDataRow();
         size_t rows = inputRange.countAndSkipAllRemainingDataRows();
         output.fastForwardAllRows(inputRow, rows);
         numRowsWritten = rows;
-      } else {
-        while (inputRange.hasDataRow()) {
-          // This block is passthrough.
-          static_assert(
-              Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
-              "For LIMIT with passthrough to work, there must be "
-              "exactly enough space for all input in the output.");
-          // So there will always be enough place for all inputRows within
-          // the output.
-          TRI_ASSERT(!output.isFull());
-          // Also this number can be at most remainingOffset.
-          TRI_ASSERT(remainingLimit() > numRowsWritten);
-          output.copyRow(
-              inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{})
-                  .second);
-          output.advanceRow();
-          numRowsWritten++;
-        }
       }
-      if (numRowsWritten > 0) {
-        _didProduceRows = true;
-        _counter += numRowsWritten;
-        if (infos().isFullCountEnabled()) {
-          stats.incrFullCountBy(numRowsWritten);
-        }
+      _didProduceRows = numRowsWritten > 0;
+      _counter += numRowsWritten;
+      if (infos().isFullCountEnabled()) {
+        stats.incrFullCountBy(numRowsWritten);
       }
     } else if (call.needsFullCount()) {
       // We are done with producing.
