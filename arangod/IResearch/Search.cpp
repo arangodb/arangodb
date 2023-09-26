@@ -675,11 +675,8 @@ Result Search::dropImpl() {
 }
 
 Result Search::renameImpl(std::string const& oldName) {
-  if (ServerState::instance()->isSingleServer()) {
-    return storage_helper::rename(*this, oldName);
-  }
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-  return {TRI_ERROR_CLUSTER_UNSUPPORTED};
+  TRI_ASSERT(ServerState::instance()->isSingleServer());
+  return storage_helper::rename(*this, oldName);
 }
 
 Result Search::updateProperties(CollectionNameResolver& resolver,

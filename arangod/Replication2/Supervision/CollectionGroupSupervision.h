@@ -71,18 +71,21 @@ struct RemoveParticipantFromLog {
   LogId logId;
   ParticipantId participant;
 };
+struct UpdateCollectionPlan {
+  CollectionID cid;
+  agency::Collection::MutableProperties spec;
+};
 struct NoActionRequired {};
 struct NoActionPossible {
   std::string reason;
 };
 }  // namespace actions
 
-using Action =
-    std::variant<NoActionRequired, NoActionPossible, UpdateReplicatedLogConfig,
-                 UpdateConvergedVersion, DropCollectionPlan,
-                 DropCollectionGroup, AddCollectionToPlan,
-                 AddCollectionGroupToPlan, UpdateCollectionShardMap,
-                 AddParticipantToLog, RemoveParticipantFromLog>;
+using Action = std::variant<
+    NoActionRequired, NoActionPossible, UpdateReplicatedLogConfig,
+    UpdateConvergedVersion, DropCollectionPlan, DropCollectionGroup,
+    AddCollectionToPlan, AddCollectionGroupToPlan, UpdateCollectionShardMap,
+    AddParticipantToLog, RemoveParticipantFromLog, UpdateCollectionPlan>;
 
 struct CollectionGroup {
   agency::CollectionGroupTargetSpecification target;

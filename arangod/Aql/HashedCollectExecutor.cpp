@@ -280,10 +280,9 @@ auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  AqlCall upstreamCall{};
   // We cannot forward anything, no skip, no limit.
   // Need to request all from upstream.
-  return {returnState(), NoStats{}, upstreamCall};
+  return {returnState(), NoStats{}, AqlCall{}};
 }
 
 /**
@@ -410,7 +409,7 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   return result;
 }
 
-[[nodiscard]] auto HashedCollectExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto HashedCollectExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (!_isInitialized) {

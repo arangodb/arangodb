@@ -1330,10 +1330,6 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Exists
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_Exists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1365,10 +1361,6 @@ static void JS_Exists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Chmod
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1433,10 +1425,6 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Size
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_SizeFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1498,10 +1486,6 @@ static void JS_Getline(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_GetTempPath
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1525,10 +1509,6 @@ static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_GetTempFile
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1583,10 +1563,6 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_IsDirectory
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_IsDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1620,10 +1596,6 @@ static void JS_IsDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_IsFile
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_IsFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1656,10 +1628,6 @@ static void JS_IsFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_MakeAbsolute
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1702,10 +1670,6 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_List
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1746,10 +1710,6 @@ static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_ListTree
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1787,10 +1747,6 @@ static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_MakeDirectory
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MakeDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1830,10 +1786,6 @@ static void JS_MakeDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_MakeDirectoryRecursive
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_MakeDirectoryRecursive(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1872,10 +1824,6 @@ static void JS_MakeDirectoryRecursive(
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Unzip
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1936,10 +1884,6 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_THROW_EXCEPTION_MESSAGE(res, errMsg);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Zip
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2517,10 +2461,6 @@ static void JS_MarkNonce(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_MTime
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -2552,10 +2492,6 @@ static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(mtime)));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_MoveFile
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2617,10 +2553,6 @@ static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_CopyDirectoryRecursive
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2694,10 +2626,6 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_CopyFile
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -2757,10 +2685,6 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_CopyFile
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LinkFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2923,9 +2847,7 @@ static void JS_Output(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ///
 /// - virtualSize: Virtual memory size in bytes.
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{internalStatistics}
-///   require("internal").processStat();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @example require("internal").processStat();
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessStatisticsToV8(
@@ -3083,10 +3005,6 @@ static void JS_Rand(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Read
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -3128,10 +3046,6 @@ static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Read
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -3168,10 +3082,6 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Read
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_WritePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
@@ -3240,10 +3150,6 @@ static void JS_ClosePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_ReadBuffer
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -3280,10 +3186,6 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(v8::Local<v8::Object>::New(isolate, buffer->_handle));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_ReadGzip
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
@@ -3324,10 +3226,6 @@ static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 #ifdef USE_ENTERPRISE
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_ReadGzip
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ReadDecrypt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -3381,10 +3279,6 @@ static void JS_ReadDecrypt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Read64
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
@@ -3608,10 +3502,6 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_Remove
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -3645,10 +3535,6 @@ static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_RemoveDirectory
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveDirectory(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -3692,10 +3578,6 @@ static void JS_RemoveDirectory(
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JS_RemoveDirectoryRecursive
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveRecursiveDirectory(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -4737,7 +4619,9 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (historicStatus.has_value()) {
     external = *historicStatus;
   } else {
-    external = TRI_CheckExternalProcess(pid, wait, timeoutms);
+    external = TRI_CheckExternalProcess(pid, wait, timeoutms, [&]() {
+      return isExecutionDeadlineReached(isolate);
+    });
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -4947,7 +4831,9 @@ static void JS_ExecuteExternalAndWait(
   ExternalId pid;
   pid._pid = external._pid;
 
-  auto external_status = TRI_CheckExternalProcess(pid, true, timeoutms);
+  auto external_status = TRI_CheckExternalProcess(pid, true, timeoutms, [&]() {
+    return isExecutionDeadlineReached(isolate);
+  });
 
   convertStatusToV8(args, result, external_status, external);
 

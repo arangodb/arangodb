@@ -56,6 +56,13 @@
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction_db.h>
 
+// It's not atomic because it shouldn't change after initilization.
+// And initialization should happen before rocksdb initialization.
+static bool ioUringEnabled = true;
+
+// weak symbol from rocksdb
+extern "C" bool RocksDbIOUringEnable() { return ioUringEnabled; }
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -1490,6 +1497,19 @@ this can lead to a very high number of .sst files, with the potential
 of outgrowing the maximum number of file descriptors the ArangoDB process 
 can open. Thus the option should only be enabled on deployments with a
 limited number of edge collections/shards/indexes.)");
+
+  options
+      ->addOption(
+          "--rocksdb.use-io_uring",
+          "Check for existence of io_uring at startup and use it if available. "
+          "Should be set to false only to opt out of using io_uring.",
+          new BooleanParameter(&ioUringEnabled),
+          arangodb::options::makeFlags(arangodb::options::Flags::Uncommon,
+                                       arangodb::options::Flags::OsLinux,
+                                       arangodb::options::Flags::OnAgent,
+                                       arangodb::options::Flags::OnDBServer,
+                                       arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(3'12'00);
 
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now

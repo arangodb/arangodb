@@ -33,10 +33,10 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Buffer.h>
 
-#include <Logger/LogMacros.h>
 #include <utility>
 
 // Set this to true to activate devel logging
@@ -283,7 +283,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
   output.advanceRow();
 }
 
-[[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (input.finalState() == MainQueryState::DONE) {

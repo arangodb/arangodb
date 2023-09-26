@@ -2,10 +2,6 @@
 /*global fail, assertTrue, assertFalse, assertEqual, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the server-side database interface
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,14 +24,14 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
+const jsunity = require("jsunity");
+const internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: dropping databases while holding references
 ////////////////////////////////////////////////////////////////////////////////
 
-var logLevel;
+let logLevel;
 function DatabaseSuite () {
   'use strict';
   return {
@@ -142,45 +138,51 @@ function DatabaseSuite () {
     testDropDatabaseCollectionReferences : function () {
       assertEqual("_system", internal.db._name());
 
-      try {
-        internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
-      }
-
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
 
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
 
       // insert 1000 docs and hold a reference on the data
-      var c = internal.db._create("test");
-      for (var i = 0; i < 1000; ++i) {
-        c.save({ "_key": "test" + i, "value" : i });
+      let c = internal.db._create("test");
+      for (let i = 0; i < 1000; ++i) {
+        c.insert({ "_key": "test" + i, "value" : i });
       }
       assertEqual(1000, c.count());
 
       internal.db._useDatabase("_system");
       assertEqual(1000, c.count());
 
+      let cid = c._id;
+
       // drop the database
       internal.db._dropDatabase("UnitTestsDatabase0");
       // should be dropped
-      internal.db._databases().forEach(function (d) {
-        if (d === "UnitTestsDatabase0") {
-          fail();
-        }
-      });
+      assertFalse(internal.db._databases().includes("UnitTestsDatabase0"));
 
-      // collection should still be there
-      assertEqual(1000, c.count());
+      // collection should not be there anymore for counting and properties calls
+      try {
+        c.count();
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+      
+      try {
+        c.properties();
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+
+      // but the name function still works...
       assertEqual("test", c.name());
-
-      internal.wait(5, false);
-      // still...
-      assertEqual(1000, c.count());
-
-      c = null;
+      
+      // same for status
+      assertEqual(5, c.status());
+      
+      // and for id
+      assertEqual(cid, c._id);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,26 +192,20 @@ function DatabaseSuite () {
     testDropDatabaseDocumentReferences : function () {
       assertEqual("_system", internal.db._name());
 
-      try {
-        internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
-      }
-
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
 
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
 
       // insert docs and hold a reference on the data
-      var c = internal.db._create("test");
-      for (var i = 0; i < 10; ++i) {
-        c.save({ "_key": "test" + i, "value" : i });
+      let c = internal.db._create("test");
+      for (let i = 0; i < 10; ++i) {
+        c.insert({ "_key": "test" + i, "value" : i });
       }
 
-      var d0 = c.document("test0");
-      var d4 = c.document("test4");
-      var d9 = c.document("test9");
+      let d0 = c.document("test0");
+      let d4 = c.document("test4");
+      let d9 = c.document("test9");
 
       c = null;
 
@@ -218,38 +214,15 @@ function DatabaseSuite () {
       // drop the database
       internal.db._dropDatabase("UnitTestsDatabase0");
       // should be dropped
-      internal.db._databases().forEach(function (d) {
-        if (d === "UnitTestsDatabase0") {
-          fail();
-        }
-      });
+      assertFalse(internal.db._databases().includes("UnitTestsDatabase0"));
 
       assertEqual(0, d0.value);
       assertEqual(4, d4.value);
       assertEqual(9, d9.value);
-
-      internal.wait(5, false);
-
-      assertEqual(0, d0.value);
-      assertEqual(4, d4.value);
-      assertEqual(9, d9.value);
-
-      d0 = null;
-      d4 = null;
-
-      internal.wait(3, false);
-      assertEqual(9, d9.value);
-
-      d9 = null;
     },
 
   };
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(DatabaseSuite);
 

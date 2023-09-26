@@ -359,6 +359,27 @@ function BaseChaosSuite(testOpts) {
     testRunChaos: function () {
       let code = (testOpts) => {
         const pid = require("internal").getPid();
+        
+        const generateAttributes = (n) => {
+          let attrs = "";
+          // start letter
+          let s = 65 + Math.floor(Math.random() * 20);
+          for (let i = 0; i < n; ++i) {
+            if (attrs !== "") {
+              attrs += ", ";
+            }
+            attrs += String.fromCharCode(s + i) + ": ";
+            if (Math.random() > 0.66) {
+              attrs += Math.random().toFixed(8);
+            } else if (Math.random() >= 0.33) {
+              attrs += '"' + require('internal').genRandomAlphaNumbers(Math.floor(Math.random() * 100) + 1) + '"';
+            } else {
+              attrs += "null";
+            }
+          }
+          // returns "a: null, b: 24.534, c: "abhtr"
+          return attrs;
+        };
         // The idea here is to use the birthday paradox and have a certain amount of collisions.
         // The babies API is supposed to go through and report individual collisions. Same with
         // removes,so we intentionally try to remove lots of documents which are not actually there.
@@ -378,7 +399,7 @@ function BaseChaosSuite(testOpts) {
         };
 
         let c = db._collection(testOpts.collection);
-        const opts = (length) => {
+        const opts = (length, keepNull = false) => {
           let result = {};
           if (testOpts.withIntermediateCommits) {
             if (Math.random() <= 0.5) {
@@ -398,6 +419,10 @@ function BaseChaosSuite(testOpts) {
             } else if (r >= 0.25) {
               result.overwriteMode = "ignore";
             } 
+          }
+
+          if (keepNull && Math.random() >= 0.5) {
+            result.keepNull = true;
           }
           return result;
         };
@@ -440,11 +465,18 @@ function BaseChaosSuite(testOpts) {
               let o = opts(limit);
               log(`RUNNING AQL REMOVE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit REMOVE doc IN " + c.name(), {limit}, o);
-            } else if (d >= 0.7) {
+            } else if (d >= 0.75) {
               const limit = Math.floor(Math.random() * 2000);
               let o = opts(limit);
               log(`RUNNING AQL REPLACE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
-              query("FOR doc IN " + c.name() + " LIMIT @limit REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {limit}, o);
+              // generate random attribute values for random attribures
+              query("FOR doc IN " + c.name() + " LIMIT @limit REPLACE doc WITH { pfihg: 434, fjgjg: RAND(), " + generateAttributes(3) + " } IN " + c.name(), {limit}, o);
+            } else if (d >= 0.70) {
+              const limit = Math.floor(Math.random() * 2000);
+              let o = opts(limit, /*keepNull*/ true);
+              log(`RUNNING AQL UPDATE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
+              // generate random attribute values for random attribures
+              query("FOR doc IN " + c.name() + " LIMIT @limit UPDATE doc WITH { pfihg: RAND(), " + generateAttributes(3) + " } IN " + c.name(), {limit}, o);
             } else if (d >= 0.68) {
               const limit = Math.floor(Math.random() * 10) + 1;
               log(`RUNNING DOCUMENT SINGLE LOOKUP QUERY WITH LIMIT=${limit}`);
