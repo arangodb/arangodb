@@ -1,8 +1,8 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
-* Fixed issue with `keepNull=false` updates not being properly replicated
-  to followers.
+* Fixed issue with `keepNull=false` updates not being properly replicated to
+  followers.
 
 * Updated JavaScript dependencies:
 
@@ -88,15 +88,13 @@ v3.11.4 (XXXX-XX-XX)
 * Fixed BTS-1556: Potential shutdown race, when the server is shutting down and
   still AgencyCommunication was going on it could use the scheduler which was
   already deleted, causing a crash right before a normal shutdown.
+
+* Fixed BTS-1556: Potential shutdown race, when the server is shutting down
+  and still AgencyCommunication was going on it could use the scheduler
+  which was already deleted, causing a crash right before a normal shutdown.
+
   This should not have any negative effect, as all state preserving operations
   are done by then, it just wasn't a clean exit.
-
-* Fix issue #19630: wildcard automaton sometime accepts more symbols than 
-  required.
-
-* Fix BTS-1583: search-alias view sometimes was unavailable in cluster.
-
-* Fix BTS-1379: add inverted index to collection figures.
 
 * Updated ArangoDB Starter to 0.17.1.
 
@@ -127,8 +125,6 @@ v3.11.4 (XXXX-XX-XX)
 
 v3.11.3 (2023-08-17)
 --------------------
-
-* FE-365: fix query import breaking due to extra fields.
 
 * Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where the inner
   amount of a limit in the LimitExecutor is set to a wrong value which lead to
@@ -10314,6 +10310,8 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.environment-variables-whitelist`: control environment variables visible in JavaScript
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
+
+  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 
