@@ -43,6 +43,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -116,11 +117,13 @@ Result DatabaseTailingSyncer::syncCollectionCatchup(
       // that we don't block WAL pruning
       unregisterFromLeader(false);
     }
+    _stats.publish();
     return res;
   } catch (std::exception const& ex) {
     // when we leave this method, we must unregister ourselves from the leader,
     // otherwise the leader may keep WAL logs around for us for too long
     unregisterFromLeader(false);
+    _stats.publish();
     return {TRI_ERROR_INTERNAL, ex.what()};
   }
 }
@@ -198,11 +201,10 @@ Result DatabaseTailingSyncer::inheritFromInitialSyncer(
 }
 
 Result DatabaseTailingSyncer::registerOnLeader() {
-  std::string const url = tailingBaseUrl("tail") + "chunkSize=1024" +
-                          "&from=" + StringUtils::itoa(_initialTick) +
-                          "&trackOnly=true" +
-                          "&serverId=" + _state.localServerIdString +
-                          "&syncerId=" + syncerId().toString();
+  std::string const url =
+      absl::StrCat(tailingBaseUrl("tail"), "chunkSize=1024&from=", _initialTick,
+                   "&trackOnly=true&serverId=", _state.localServerIdString,
+                   "&syncerId=", syncerId().toString());
   LOG_TOPIC("41510", DEBUG, Logger::REPLICATION)
       << "registering tailing syncer on leader, url: " << url;
 
@@ -225,9 +227,9 @@ void DatabaseTailingSyncer::unregisterFromLeader(bool hard) {
     try {
       _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
         std::unique_ptr<httpclient::SimpleHttpResult> response;
-        std::string url = tailingBaseUrl("tail") +
-                          "serverId=" + _state.localServerIdString +
-                          "&syncerId=" + syncerId().toString();
+        std::string url = absl::StrCat(tailingBaseUrl("tail"),
+                                       "serverId=", _state.localServerIdString,
+                                       "&syncerId=", syncerId().toString());
         LOG_TOPIC("22640", DEBUG, Logger::REPLICATION)
             << "unregistering tailing syncer from leader, url: " << url;
 
@@ -245,6 +247,51 @@ void DatabaseTailingSyncer::unregisterFromLeader(bool hard) {
       // this must be exception-safe, but if an exception occurs, there is not
       // much we can do
     }
+  }
+}
+
+/// @brief order a new chunk from the /tail API
+void DatabaseTailingSyncer::fetchWalChunk(
+    std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+    std::string_view baseUrl, std::string_view collectionName,
+    TRI_voc_tick_t fromTick, TRI_voc_tick_t lastScannedTick) {
+  if (vocbase()->server().isStopping()) {
+    sharedStatus->gotResponse(Result(TRI_ERROR_SHUTTING_DOWN));
+    return;
+  }
+
+  try {
+    // assemble URL to call
+    std::string url = absl::StrCat(baseUrl, "&from=", fromTick,
+                                   "&lastScanned=", lastScannedTick);
+
+    LOG_TOPIC("066a8", DEBUG, Logger::REPLICATION)
+        << "tailing WAL for collection '" << collectionName
+        << "', url: " << url;
+
+    double t = TRI_microtime();
+
+    // send request
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(
+          client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+    });
+
+    t = TRI_microtime() - t;
+
+    if (replutils::hasFailed(response.get())) {
+      sharedStatus->gotResponse(
+          replutils::buildHttpError(response.get(), url, _state.connection), t);
+      return;
+    }
+
+    // success!
+    sharedStatus->gotResponse(std::move(response), t);
+  } catch (basics::Exception const& ex) {
+    sharedStatus->gotResponse(Result(ex.code(), ex.what()));
+  } catch (std::exception const& ex) {
+    sharedStatus->gotResponse(Result(TRI_ERROR_INTERNAL, ex.what()));
   }
 }
 
@@ -302,16 +349,46 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
         << fromTick;
   }
 
+  double t = TRI_microtime();
+
   VPackBuilder builder;  // will be recycled for every batch
 
   auto clock = std::chrono::steady_clock();
   auto startTime = clock.now();
 
-  while (true) {
-    if (vocbase()->server().isStopping()) {
-      return Result(TRI_ERROR_SHUTTING_DOWN);
-    }
+  std::string baseUrl =
+      absl::StrCat(tailingBaseUrl("tail"),
+                   "collection=", StringUtils::urlEncode(collectionName),
+                   "&chunkSize=", _state.applier._chunkSize,
+                   "&serverId=", _state.localServerIdString);
 
+  if (syncerId().value > 0) {
+    // we must only send the syncerId along if it is != 0, otherwise we will
+    // trigger an error on the leader
+    baseUrl += "&syncerId=" + syncerId().toString();
+  }
+  if (hard) {
+    baseUrl += "&withHardLock=true";
+  }
+
+  // optional upper bound for tailing (used to stop tailing if we have the
+  // exclusive lock on the leader and can be sure that no writes can happen on
+  // the leader)
+  if (_toTick > 0) {
+    baseUrl += "&to=" + StringUtils::itoa(_toTick);
+  }
+
+  // the shared status will wait in its destructor until all posted
+  // requests have been completed/canceled!
+  auto self = shared_from_this();
+  auto sharedStatus = std::make_shared<Syncer::JobSynchronizer>(self);
+
+  // order initial chunk. this will block until the initial response
+  // has arrived
+  fetchWalChunk(sharedStatus, baseUrl, collectionName, fromTick,
+                lastScannedTick);
+
+  while (true) {
     if (_checkCancellation) {
       // execute custom check for abortion only every few seconds, in case
       // it is expensive
@@ -332,47 +409,18 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
       }
     }
 
-    std::string url =
-        tailingBaseUrl("tail") +
-        "collection=" + StringUtils::urlEncode(collectionName) +
-        "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
-        "&chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
-        "&from=" + StringUtils::itoa(fromTick) +
-        "&serverId=" + _state.localServerIdString;
-
-    if (syncerId().value > 0) {
-      // we must only send the syncerId along if it is != 0, otherwise we will
-      // trigger an error on the leader
-      url += "&syncerId=" + syncerId().toString();
-    }
-    if (hard) {
-      url += "&withHardLock=true";
-    }
-
-    // optional upper bound for tailing (used to stop tailing if we have the
-    // exclusive lock on the leader and can be sure that no writes can happen on
-    // the leader)
-    if (_toTick > 0) {
-      url += "&to=" + StringUtils::itoa(_toTick);
-    }
-
-    LOG_TOPIC("066a8", DEBUG, Logger::REPLICATION)
-        << "tailing WAL for collection '" << collectionName
-        << "', url: " << url;
-
-    // send request
-    double start = TRI_microtime();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
-    _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      ++_stats.numTailingRequests;
-      response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
-    });
 
-    _stats.waitedForTailing += TRI_microtime() - start;
+    // block until we either got a response or were shut down
+    r = sharedStatus->waitForResponse(response);
 
-    if (replutils::hasFailed(response.get())) {
+    ++_stats.numTailingRequests;
+    _stats.waitedForTailing += sharedStatus->time();
+
+    if (r.fail()) {
       until = fromTick;
-      return replutils::buildHttpError(response.get(), url, _state.connection);
+      // no response or error or shutdown
+      return r;
     }
 
     if (response->getHttpReturnCode() == 204) {
@@ -405,10 +453,10 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     if (!found) {
       until = fromTick;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                        _state.leader.endpoint + ": required header " +
-                        StaticStrings::ReplicationHeaderLastIncluded +
-                        " is missing");
+                    absl::StrCat("got invalid response from leader at ",
+                                 _state.leader.endpoint, ": required header ",
+                                 StaticStrings::ReplicationHeaderLastIncluded,
+                                 " is missing"));
     }
     TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
 
@@ -425,24 +473,16 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
       ++_stats.numFollowTickNotPresent;
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
-          std::string("required follow tick value '") +
-              StringUtils::itoa(lastIncludedTick) +
-              "' is not present (anymore?) on leader at " +
-              _state.leader.endpoint + ". Last tick available on leader is '" +
-              StringUtils::itoa(lastIncludedTick) +
+          absl::StrCat(
+              "required follow tick value '", lastIncludedTick,
+              "' is not present (anymore?) on leader at ",
+              _state.leader.endpoint, ". Last tick available on leader is '",
+              lastIncludedTick,
               "'. It may be required to do a full resync and increase the "
-              "number of historic logfiles on the leader.");
+              "number of historic logfiles on the leader."));
     }
 
-    builder.clear();
-
-    ApplyStats applyStats;
-    uint64_t ignoreCount = 0;
-    r = applyLog(response.get(), fromTick, applyStats, builder, ignoreCount);
-    if (r.fail()) {
-      until = fromTick;
-      return r;
-    }
+    TRI_voc_tick_t oldFromTick = fromTick;
 
     // update the tick from which we will fetch in the next round
     if (lastIncludedTick > fromTick) {
@@ -456,6 +496,26 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
       LOG_TOPIC("098be", WARN, Logger::REPLICATION)
           << "we got the same tick again, "
           << "this indicates we're at the end";
+    }
+
+    if (checkMore) {
+      // already fetch next batch in the background, by posting the
+      // request to the scheduler, which can run it asynchronously
+      sharedStatus->request([this, self, baseUrl, sharedStatus, collectionName,
+                             fromTick, lastScannedTick]() {
+        fetchWalChunk(sharedStatus, baseUrl, collectionName, fromTick,
+                      lastScannedTick);
+      });
+    }
+
+    builder.clear();
+
+    ApplyStats applyStats;
+    uint64_t ignoreCount = 0;
+    r = applyLog(response.get(), oldFromTick, applyStats, builder, ignoreCount);
+    if (r.fail()) {
+      until = fromTick;
+      return r;
     }
 
     // If this is non-hard, we employ some heuristics to stop early:
@@ -490,7 +550,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
           << ", last fromTick: " << fromTick
           << ", toTick: " << (_toTick > 0 ? std::to_string(_toTick) : "")
           << ", tailing requests: " << _stats.numTailingRequests
-          << ", waited for tailing: " << _stats.waitedForTailing << "s";
+          << ", waited for tailing: " << _stats.waitedForTailing
+          << "s, total catchup time: " << (TRI_microtime() - t) << "s";
 
       return r;
     }
@@ -498,8 +559,6 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     LOG_TOPIC("2598f", DEBUG, Logger::REPLICATION)
         << "Fetching more data, fromTick: " << fromTick
         << ", lastScannedTick: " << lastScannedTick;
-
-    _stats.publish();
   }
 }
 
