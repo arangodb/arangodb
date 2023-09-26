@@ -126,6 +126,10 @@ RestControlPregelHandler::forwardingTarget() {
 namespace {
 auto extractPregelOptions(VPackSlice body) -> ResultT<pregel::PregelOptions> {
   // emulate 3.10 pregel API
+  // A switch between running pregel with or without actors
+  // Can be deleted if we finished refactoring to use only actors
+  auto withActors =
+      basics::VelocyPackHelper::getBooleanValue(body, "actors", true);
   // algorithm
   std::string algorithm =
       VelocyPackHelper::getStringValue(body, "algorithm", StaticStrings::Empty);
@@ -158,7 +162,8 @@ auto extractPregelOptions(VPackSlice body) -> ResultT<pregel::PregelOptions> {
         .graphSource = {{pregel::GraphCollectionNames{
                             .vertexCollections = vertexCollections,
                             .edgeCollections = edgeCollections}},
-                        {}}};
+                        {}},
+        .useActors = withActors};
   } else {
     auto gs = VelocyPackHelper::getStringValue(body, "graphName", "");
     if ("" == gs) {
@@ -167,7 +172,8 @@ auto extractPregelOptions(VPackSlice body) -> ResultT<pregel::PregelOptions> {
     return pregel::PregelOptions{
         .algorithm = algorithm,
         .userParameters = parameterBuilder,
-        .graphSource = {{pregel::GraphName{.graph = gs}}, {}}};
+        .graphSource = {{pregel::GraphName{.graph = gs}}, {}},
+        .useActors = withActors};
   }
 
   // this should be used for a more restrictive pregel API
