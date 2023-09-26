@@ -27,6 +27,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Collection.h"
 #include "Aql/QueryContext.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb::aql;
 
@@ -49,11 +50,16 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     hasMore = _merger->next([&](std::span<LocalDocumentId> docIds,
                                 std::span<VPackSlice> projections) -> bool {
       for (std::size_t k = 0; k < docIds.size(); k++) {
-        AqlValue value{AqlValueHintUInt{docIds[k].id()}};
-        AqlValueGuard guard(value, false);
-
-        output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                             _currentRow, guard);
+        _infos.indexes[k].collection->getCollection()->getPhysical()->read(
+            &_trx, docIds[k],
+            [&](LocalDocumentId token, VPackSlice document) {
+              AqlValue value{AqlValueHintSliceCopy{document}};
+              AqlValueGuard guard(value, false);
+              output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                   _currentRow, guard);
+              return true;
+            },
+            ReadOwnWrites::no);
       }
 
       output.advanceRow();

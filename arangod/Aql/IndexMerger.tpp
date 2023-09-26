@@ -24,7 +24,7 @@
 #include "Logger/LogMacros.h"
 #include <velocypack/Slice.h>
 
-#define LOG_INDEX_MERGER LOG_DEVEL_IF(true)
+#define LOG_INDEX_MERGER LOG_DEVEL_IF(false)
 
 namespace arangodb {
 
