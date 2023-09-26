@@ -22,6 +22,7 @@
 #pragma once
 #include "Aql/IndexMerger.h"
 #include "Logger/LogMacros.h"
+#include <velocypack/Slice.h>
 
 #define LOG_INDEX_MERGER LOG_DEVEL_IF(true)
 
@@ -247,6 +248,10 @@ void IndexMerger<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
     documentIds[i] = index._iter->load(index._projections);
   }
   indexes.rbegin()->_iter->cacheCurrentKey(currentKeySet);
+}
+
+std::ostream& operator<<(std::ostream& os, velocypack::Slice slice) {
+  return os << slice.toJson();
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>

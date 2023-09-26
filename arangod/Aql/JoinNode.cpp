@@ -177,11 +177,25 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto registerInfos = createRegisterInfos({}, {});
+  RegIdSet writableOutputRegisters;
+
   JoinExecutorInfos infos;
+  infos.query = &engine.getQuery();
+  infos.indexes.reserve(_indexInfos.size());
+  for (auto const& idx : _indexInfos) {
+    auto documentOutputRegister = variableToRegisterId(idx.outVariable);
+    writableOutputRegisters.emplace(documentOutputRegister);
+
+    auto& data = infos.indexes.emplace_back();
+    data.documentOutputRegister = documentOutputRegister;
+    data.index = idx.index;
+    data.collection = idx.collection;
+  }
+
+  auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
 
   return std::make_unique<ExecutionBlockImpl<JoinExecutor>>(
-      &engine, this, registerInfos, infos);
+      &engine, this, registerInfos, std::move(infos));
 }
 
 ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,

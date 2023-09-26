@@ -461,8 +461,7 @@ class Index {
   }
 
   virtual std::unique_ptr<AqlIndexStreamInterface> streamForCondition(
-      ResourceMonitor& monitor, transaction::Methods* trx,
-      IndexStreamOptions const&, ReadOwnWrites readOwnWrites);
+      transaction::Methods* trx, IndexStreamOptions const&);
 
   virtual bool canWarmup() const noexcept;
   virtual Result warmup();

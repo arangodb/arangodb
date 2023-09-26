@@ -2957,8 +2957,7 @@ struct RocksDBVPackStreamIterator : AqlIndexStreamInterface {
 }  // namespace
 
 std::unique_ptr<AqlIndexStreamInterface> RocksDBVPackIndex::streamForCondition(
-    ResourceMonitor& monitor, transaction::Methods* trx,
-    IndexStreamOptions const& opts, ReadOwnWrites) {
+    transaction::Methods* trx, IndexStreamOptions const& opts) {
   if (!supportsStreamInterface(opts)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }

@@ -60,11 +60,23 @@ struct AstNode;
 struct Collection;
 struct NonConstExpression;
 
-class JoinExecutorInfos {
- public:
-  std::vector<AqlIndexMerger::IndexDescriptor> indexes;
+struct JoinExecutorInfos {
+  struct IndexInfo {
+    // Register to load the document into
+    RegisterId documentOutputRegister;
+    // Sorted lists of registers to load the projections into, pointing into
+    // `registers`.
+    std::span<RegisterId> projectionOutputRegisters;
+
+    // Associated document collection for this index
+    Collection const* collection;
+    // Index handle
+    transaction::Methods::IndexHandle index;
+  };
+
+  std::vector<IndexInfo> indexes;
   std::vector<RegisterId> registers;
-  std::vector<JoinNode::IndexInfo> infos;
+  QueryContext* query;
 };
 
 /**
@@ -95,9 +107,16 @@ class JoinExecutor {
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  private:
+  void constructMerger();
+
   Fetcher& _fetcher;
   Infos& _infos;
   std::unique_ptr<AqlIndexMerger> _merger;
+
+  transaction::Methods _trx;
+
+  InputAqlItemRow _currentRow{CreateInvalidInputRowHint()};
+  ExecutorState _currentRowState;
 };
 
 }  // namespace aql

@@ -26,31 +26,48 @@
 #include "Aql/IndexMerger.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Collection.h"
+#include "Aql/QueryContext.h"
 
 using namespace arangodb::aql;
 
 JoinExecutor::~JoinExecutor() = default;
 
 JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher), _infos(infos) {
-  _merger = std::make_unique<AqlIndexMerger>(std::move(infos.indexes), 1);
-}
+    : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {}
 
 auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  TRI_ASSERT(!output.isFull());
-
-  _merger->next([&](std::span<LocalDocumentId> docIds,
-                    std::span<VPackSlice> projections) -> bool {
-    for (std::size_t k = 0; k < docIds.size(); k++) {
-      auto reg = _infos.registers[k];
+  bool hasMore = false;
+  while (inputRange.hasDataRow() && !output.isFull()) {
+    if (_merger == nullptr) {
+      std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
+      constructMerger();
     }
 
-    return !output.isFull();
-  });
+    TRI_ASSERT(_merger != nullptr);
+    hasMore = _merger->next([&](std::span<LocalDocumentId> docIds,
+                                std::span<VPackSlice> projections) -> bool {
+      for (std::size_t k = 0; k < docIds.size(); k++) {
+        AqlValue value{AqlValueHintUInt{docIds[k].id()}};
+        AqlValueGuard guard(value, false);
 
-  return {ExecutorState::DONE, Stats{}, AqlCall{}};
+        output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                             _currentRow, guard);
+      }
+
+      output.advanceRow();
+      return !output.isFull();
+    });
+
+    if (!hasMore) {
+      _merger.reset();
+    }
+
+    inputRange.advanceDataRow();
+  }
+
+  return {inputRange.upstreamState(), Stats{}, AqlCall{}};
 }
 
 auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
@@ -59,4 +76,25 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   (void)_fetcher;
   (void)_infos;
   return {ExecutorState::DONE, Stats{}, 0, AqlCall{}};
+}
+
+void JoinExecutor::constructMerger() {
+  std::vector<AqlIndexMerger::IndexDescriptor> indexDescription;
+
+  for (auto const& idx : _infos.indexes) {
+    IndexStreamOptions options;
+    // TODO right now we only support the first indexed field
+    options.usedKeyFields = {0};
+    auto stream = idx.index->streamForCondition(&_trx, options);
+    TRI_ASSERT(stream != nullptr);
+
+    auto& desc = indexDescription.emplace_back();
+    desc.iter = std::move(stream);
+    desc.numProjections = idx.projectionOutputRegisters.size();
+  }
+
+  // TODO actually we want to have different strategies, like hash join and
+  // special implementations for n = 2, 3, ...
+  // TODO maybe make this an template parameter
+  _merger = std::make_unique<AqlIndexMerger>(std::move(indexDescription), 1);
 }

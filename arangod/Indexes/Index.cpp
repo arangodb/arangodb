@@ -1090,8 +1090,7 @@ std::vector<std::vector<basics::AttributeName>> Index::mergeFields(
 }
 
 std::unique_ptr<AqlIndexStreamInterface> Index::streamForCondition(
-    ResourceMonitor& monitor, transaction::Methods* trx,
-    IndexStreamOptions const&, ReadOwnWrites readOwnWrites) {
+    transaction::Methods* trx, IndexStreamOptions const&) {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,

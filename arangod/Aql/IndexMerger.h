@@ -71,11 +71,12 @@ struct IndexMerger {
   using StreamIteratorType = IndexStreamIterator<SliceType, DocIdType>;
 
   struct IndexDescriptor {
+    IndexDescriptor() = default;
     explicit IndexDescriptor(std::unique_ptr<StreamIteratorType> iter,
                              std::size_t numProjections)
         : iter(std::move(iter)), numProjections(numProjections) {}
     std::unique_ptr<StreamIteratorType> iter;
-    std::size_t numProjections;
+    std::size_t numProjections{0};
   };
 
   IndexMerger(std::vector<IndexDescriptor> descs, std::size_t numKeyComponents);
