@@ -55,7 +55,7 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const
     -> AqlCall {
   auto upstreamCall = AqlCall{};
 
-  auto remaining = remainingLimit();
+  auto const remaining = remainingLimit();
 
   auto const limitedClientOffset = std::min(clientCall.getOffset(), remaining);
 
@@ -133,7 +133,7 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   auto call = output.getClientCall();
   TRI_ASSERT(call.getOffset() == 0);
   while (inputRange.skippedInFlight() > 0 || inputRange.hasDataRow()) {
-    if (auto remaining = remainingOffset(); remaining > 0) {
+    if (auto const remaining = remainingOffset(); remaining > 0) {
       // First we skip in the input row until we fullfill our local offset.
       auto const didSkip = inputRange.skip(remaining);
       // Need to forward the
