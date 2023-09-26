@@ -776,27 +776,12 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       builder->openArray();
 
       // iterate over result and return it
+      auto context = TRI_IGETC;
       uint32_t j = 0;
       ExecutionState state = ExecutionState::HASMORE;
-      auto context = TRI_IGETC;
-#if 0
       SkipResult skipped;
       SharedAqlItemBlockPtr value;
-#endif
       while (state != ExecutionState::DONE) {
-#if 1
-        if (killed()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-        }
-        auto res = engine->getSome(ExecutionBlock::DefaultBatchSize);
-        state = res.first;
-        while (state == ExecutionState::WAITING) {
-          ss->waitForAsyncWakeup();
-          res = engine->getSome(ExecutionBlock::DefaultBatchSize);
-          state = res.first;
-        }
-        SharedAqlItemBlockPtr value = std::move(res.second);
-#else
         std::tie(state, skipped, value) = engine->execute(::defaultStack);
         // We cannot trigger a skip operation from here
         TRI_ASSERT(skipped.nothingSkipped());
@@ -806,7 +791,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           std::tie(state, skipped, value) = engine->execute(::defaultStack);
           TRI_ASSERT(skipped.nothingSkipped());
         }
-#endif
+
         // value == nullptr => state == DONE
         TRI_ASSERT(value != nullptr || state == ExecutionState::DONE);
 

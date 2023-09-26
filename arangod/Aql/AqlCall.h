@@ -108,11 +108,6 @@ struct AqlCall {
 
   auto toString() const -> std::string;
 
-  static AqlCall SimulateGetSome(std::size_t atMost) {
-    return AqlCall{/*offset*/ 0, /*softLimit*/ atMost,
-                   /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
-  }
-
   std::size_t offset{0};
   // TODO: The defaultBatchSize function could move into this file instead
   // TODO We must guarantee that at most one of those is not Infinity.
