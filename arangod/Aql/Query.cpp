@@ -335,8 +335,9 @@ void Query::prepareQuery() {
         _queryOptions.profile >= ProfileLevel::Blocks &&
         ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
     if (keepPlan) {
-      unsigned flags =
-          ExecutionPlan::buildSerializationFlags(false, false, false);
+      unsigned flags = ExecutionPlan::buildSerializationFlags(
+          /*verbose*/ false, /*includeInternals*/ false,
+          /*explainRegisters*/ false);
       _planSliceCopy = std::make_unique<VPackBufferUInt8>();
       VPackBuilder b(*_planSliceCopy);
       plan->toVelocyPack(b, _ast.get(), flags);
@@ -775,21 +776,20 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       builder->openArray();
 
       // iterate over result and return it
+      auto context = TRI_IGETC;
       uint32_t j = 0;
       ExecutionState state = ExecutionState::HASMORE;
-      auto context = TRI_IGETC;
+      SkipResult skipped;
+      SharedAqlItemBlockPtr value;
       while (state != ExecutionState::DONE) {
-        if (killed()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-        }
-        auto res = engine->getSome(ExecutionBlock::DefaultBatchSize);
-        state = res.first;
+        std::tie(state, skipped, value) = engine->execute(::defaultStack);
+        // We cannot trigger a skip operation from here
+        TRI_ASSERT(skipped.nothingSkipped());
         while (state == ExecutionState::WAITING) {
           ss->waitForAsyncWakeup();
-          res = engine->getSome(ExecutionBlock::DefaultBatchSize);
-          state = res.first;
+          std::tie(state, skipped, value) = engine->execute(::defaultStack);
+          TRI_ASSERT(skipped.nothingSkipped());
         }
-        SharedAqlItemBlockPtr value = std::move(res.second);
 
         // value == nullptr => state == DONE
         TRI_ASSERT(value != nullptr || state == ExecutionState::DONE);

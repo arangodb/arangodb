@@ -4,6 +4,15 @@ devel
 * Fixed issue with `keepNull=false` updates not being properly replicated
   to followers.
     
+* FE-376: Fix Query UI crash on null values.
+
+* FE-375: Adds document counts to collection info screen.
+
+* Make replication WAL tailing schedule prefetch requests via the global
+  scheduler, in the same way as the initial dump phase does. In the best
+  case, this can speed up the getting-in-sync phase when getting shards in
+  sync.
+
 * FE-365: fix query import breaking due to extra fields.
 
 * Fixed BTS-1239: Restoring a single server dump with system collections
