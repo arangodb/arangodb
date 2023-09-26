@@ -29,7 +29,8 @@
 #include "Aql/Ast.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/IndexNode.h"
+#include "Aql/IndexMerger.h"
+#include "Aql/JoinNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/RegisterInfos.h"
@@ -59,7 +60,12 @@ struct AstNode;
 struct Collection;
 struct NonConstExpression;
 
-class JoinExecutorInfos {};
+class JoinExecutorInfos {
+ public:
+  std::vector<AqlIndexMerger::IndexDescriptor> indexes;
+  std::vector<RegisterId> registers;
+  std::vector<JoinNode::IndexInfo> infos;
+};
 
 /**
  * @brief Implementation of Join Node
@@ -91,6 +97,7 @@ class JoinExecutor {
  private:
   Fetcher& _fetcher;
   Infos& _infos;
+  std::unique_ptr<AqlIndexMerger> _merger;
 };
 
 }  // namespace aql

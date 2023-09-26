@@ -23,19 +23,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/JoinExecutor.h"
+#include "Aql/IndexMerger.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/Collection.h"
 
 using namespace arangodb::aql;
 
 JoinExecutor::~JoinExecutor() = default;
 
 JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher), _infos(infos) {}
+    : _fetcher(fetcher), _infos(infos) {
+  _merger = std::make_unique<AqlIndexMerger>(std::move(infos.indexes), 1);
+}
 
 auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  (void)_fetcher;
-  (void)_infos;
+  TRI_ASSERT(!output.isFull());
+
+  _merger->next([&](std::span<LocalDocumentId> docIds,
+                    std::span<VPackSlice> projections) -> bool {
+    for (std::size_t k = 0; k < docIds.size(); k++) {
+      auto reg = _infos.registers[k];
+    }
+
+    return !output.isFull();
+  });
+
   return {ExecutorState::DONE, Stats{}, AqlCall{}};
 }
 
