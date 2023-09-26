@@ -1149,7 +1149,16 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         // if no overwriteMode is specified we default to Conflict
         _overwriteMode(options.isOverwriteModeSet()
                            ? options.overwriteMode
-                           : OperationOptions::OverwriteMode::Conflict) {}
+                           : OperationOptions::OverwriteMode::Conflict) {
+    if (_replicationType == Methods::ReplicationType::FOLLOWER &&
+        _overwriteMode == OperationOptions::OverwriteMode::Update) {
+      // we must turn any INSERT with overwriteMode UPDATE to overwriteMode
+      // REPLACE on followers. the reason is that the replication sends the full
+      // document as inserted on the leader, but it does not send any null
+      // attributes that were removed from the document during the UPDATE.
+      _overwriteMode = OperationOptions::OverwriteMode::Replace;
+    }
+  }
 
   auto processValue(VPackSlice value, bool isArray) -> Result {
     TRI_IF_FAILURE("insertLocal::fakeResult1") {  //
@@ -3272,17 +3281,22 @@ Future<Result> Methods::replicateOperations(
             opName = "insert w/ overwriteMode ingore";
           }
         }
-        if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
-          // extra parameters only required for update
-          reqOpts.param(StaticStrings::KeepNullString,
-                        options.keepNull ? "true" : "false");
-          reqOpts.param(StaticStrings::MergeObjectsString,
-                        options.mergeObjects ? "true" : "false");
-        }
       }
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-      requestType = arangodb::fuerte::RestVerb::Patch;
+      // intentionally turn UPDATE operations on the leader into REPLACE
+      // operations on the follower.
+      // we need to do this because we are replicating the (full) document
+      // that we have written on the leader, but this does not include any
+      // removed attributes anymore. However, an UPDATE operation on the
+      // follower would merge what we have written on the leader with the
+      // existing document on the follower, which could silently cause
+      // data drift.
+      // by replicating the document as it was written on the leader and
+      // replicating the operation as a REPLACE, we ensure that we write
+      // the same document on the follower as we did on the leader.
+      requestType =
+          arangodb::fuerte::RestVerb::Put;  // this will make it a REPLACE
       opName = "update";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:

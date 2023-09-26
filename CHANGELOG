@@ -8,6 +8,9 @@ devel
   Also removed the "reverse" attribute from the serialized version of AQL 
   IndexNodes, because it was also not read back except from tests.
 
+* Fixed issue with `keepNull=false` updates not being properly replicated
+  to followers.
+
 * FE-376: Fix Query UI crash on null values.
 
 * FE-375: Adds document counts to collection info screen.
