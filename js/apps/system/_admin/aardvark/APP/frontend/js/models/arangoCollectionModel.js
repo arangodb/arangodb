@@ -82,7 +82,6 @@
           propertiesCallback(true);
         } else {
           var figures = data;
-          figures.totalDocCount = data.count;
           if (isCluster) {
             self.getShards(function (error, data) {
               if (error) {
