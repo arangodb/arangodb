@@ -2873,27 +2873,36 @@ struct RocksDBVPackStreamIterator : AqlIndexStreamInterface {
   RocksDBVPackStreamOptions _options;
   VPackBuilder _builder;
   VPackString _cache;
+  RocksDBKeyBounds _bounds;
+  rocksdb::Slice _end;
 
   RocksDBVPackStreamIterator(RocksDBVPackIndex const* index,
                              transaction::Methods* trx,
                              RocksDBVPackStreamOptions options)
-      : _index(index), _options(std::move(options)) {
-    RocksDBKey prefix;
-    prefix.constructUniqueVPackIndexValue(index->objectId(),
-                                          VPackSlice ::emptyArraySlice());
-
+      : _index(index),
+        _options(std::move(options)),
+        _bounds(
+            isUnique
+                ? RocksDBKeyBounds::UniqueVPackIndex(index->objectId(), false)
+                : RocksDBKeyBounds::VPackIndex(index->objectId(), false)) {
+    _end = _bounds.end();
     RocksDBTransactionMethods* mthds =
         RocksDBTransactionState::toMethods(trx, index->collection().id());
     _iterator = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
       TRI_ASSERT(opts.prefix_same_as_start);
+      opts.iterate_upper_bound = &_end;
     });
-    _iterator->Seek(prefix.string());
+    _iterator->Seek(_bounds.start());
   }
 
   bool position(std::span<VPackSlice> span) const override {
     if (!_iterator->Valid()) {
       return false;
     }
+
+    TRI_ASSERT(RocksDBKey::objectId(_iterator->key()) == _index->objectId())
+        << RocksDBKey::objectId(_iterator->key())
+        << " actual = " << _index->objectId();
 
     auto keySlice = RocksDBKey::indexedVPack(_iterator->key());
     storeKey(span, keySlice);

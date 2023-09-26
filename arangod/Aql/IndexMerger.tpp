@@ -250,10 +250,6 @@ void IndexMerger<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
   indexes.rbegin()->_iter->cacheCurrentKey(currentKeySet);
 }
 
-std::ostream& operator<<(std::ostream& os, velocypack::Slice slice) {
-  return os << slice.toJson();
-}
-
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 bool IndexMerger<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
   LOG_INDEX_MERGER << "find common position";
