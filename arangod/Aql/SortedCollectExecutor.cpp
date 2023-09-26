@@ -33,10 +33,10 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Buffer.h>
 
-#include <Logger/LogMacros.h>
 #include <utility>
 
 // Set this to true to activate devel logging
