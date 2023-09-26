@@ -289,8 +289,15 @@ bool TransactionalCache<Hasher>::freeMemoryWhile(
   for (std::size_t i = 0; i < n; ++i) {
     std::uint64_t index = (offset + i) % n;
 
-    auto [status, guard] = getBucket(Table::BucketId{index}, Cache::triesFast,
-                                     /*singleOperation*/ false);
+    // we can do a lot of iterations from here. don't check for
+    // shutdown in every iteration, but only in every 1000th.
+    if (index % 1024 == 0 && ADB_UNLIKELY(isShutdown())) {
+      break;
+    }
+
+    auto [status, guard] =
+        getBucket(table.get(), Table::BucketId{index}, Cache::triesFast,
+                  /*singleOperation*/ false);
 
     if (status != TRI_ERROR_NO_ERROR) {
       continue;
@@ -445,17 +452,30 @@ TransactionalCache<Hasher>::getBucket(Table::HashOrId bucket,
   if (ADB_UNLIKELY(isShutdown() || table == nullptr)) {
     status = TRI_ERROR_SHUTTING_DOWN;
   } else {
-    if (singleOperation) {
-      _manager->reportAccess(_id);
-    }
+    std::tie(status, guard) =
+        getBucket(table.get(), bucket, maxTries, singleOperation);
+  }
 
-    std::uint64_t term = _manager->_transactions.term();
-    guard = table->fetchAndLockBucket(bucket, maxTries);
-    if (guard.isLocked()) {
-      guard.bucket<TransactionalBucket>().updateBanishTerm(term);
-    } else {
-      status = TRI_ERROR_LOCK_TIMEOUT;
-    }
+  return std::make_tuple(status, std::move(guard));
+}
+
+template<typename Hasher>
+std::tuple<::ErrorCode, Table::BucketLocker>
+TransactionalCache<Hasher>::getBucket(Table* table, Table::HashOrId bucket,
+                                      std::uint64_t maxTries,
+                                      bool singleOperation) {
+  ::ErrorCode status = TRI_ERROR_NO_ERROR;
+
+  if (singleOperation) {
+    _manager->reportAccess(_id);
+  }
+
+  std::uint64_t term = _manager->_transactions.term();
+  Table::BucketLocker guard = table->fetchAndLockBucket(bucket, maxTries);
+  if (guard.isLocked()) {
+    guard.bucket<TransactionalBucket>().updateBanishTerm(term);
+  } else {
+    status = TRI_ERROR_LOCK_TIMEOUT;
   }
 
   return std::make_tuple(status, std::move(guard));
