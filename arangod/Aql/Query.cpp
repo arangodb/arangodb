@@ -782,34 +782,14 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       SkipResult skipped;
       SharedAqlItemBlockPtr value;
       while (state != ExecutionState::DONE) {
-        bool callEngine = true;
-        if (!engine->initializeCursorCalled()) {
-          auto res = engine->initializeCursor(nullptr, 0);
-          if (res.first == ExecutionState::WAITING) {
-            state = res.first;
-            value = nullptr;
-            callEngine = false;
-          }
-        }
-        if (callEngine) {
-          std::tie(state, skipped, value) = engine->execute(::defaultStack);
-          // We cannot trigger a skip operation from here
-          TRI_ASSERT(skipped.nothingSkipped());
-        }
+        std::tie(state, skipped, value) = engine->execute(::defaultStack);
+        // We cannot trigger a skip operation from here
+        TRI_ASSERT(skipped.nothingSkipped());
+
         while (state == ExecutionState::WAITING) {
           ss->waitForAsyncWakeup();
-          if (!engine->initializeCursorCalled()) {
-            auto res = engine->initializeCursor(nullptr, 0);
-            if (res.first == ExecutionState::WAITING) {
-              state = res.first;
-              value = nullptr;
-              callEngine = false;
-            }
-          }
-          if (callEngine) {
-            std::tie(state, skipped, value) = engine->execute(::defaultStack);
-            TRI_ASSERT(skipped.nothingSkipped());
-          }
+          std::tie(state, skipped, value) = engine->execute(::defaultStack);
+          TRI_ASSERT(skipped.nothingSkipped());
         }
 
         // value == nullptr => state == DONE
