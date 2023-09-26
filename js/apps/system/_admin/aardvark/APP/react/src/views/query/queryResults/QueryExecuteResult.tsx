@@ -220,6 +220,10 @@ export const getAllowCSVDownload = (queryResult: QueryResultType) => {
   }
   let allowCSVDownload = true;
   queryResult.result.forEach((row: any) => {
+    if (!row) {
+      allowCSVDownload = false;
+      return;
+    }
     if (typeof row === "object") {
       Object.keys(row).forEach(key => {
         if (typeof row[key] === "object") {
