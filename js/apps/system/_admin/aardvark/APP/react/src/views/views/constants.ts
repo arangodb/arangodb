@@ -62,6 +62,9 @@ export type LinkProperties = {
   storeValues?: 'none' | 'id';
   inBackground?: boolean;
   cache?: boolean;
+  nested?: {
+    [attributeName: string]: LinkProperties;
+  };
 };
 
 type BaseFormState = {
@@ -99,6 +102,16 @@ export const linksSchema = {
         }
       }
     },
+    nested: {
+      type: 'object',
+      nullable: true,
+      patternProperties: {
+        '.+': {
+          $recursiveRef: '#'
+        }
+      }
+    }
+    ,
     includeAllFields: {
       type: 'boolean',
       nullable: false
