@@ -1,6 +1,17 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* Added the following metrics to improve observability of in-memory cache
+  subsystem:
+  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
+    tasks scheduled
+  - `rocksdb_cache_migrate_tasks_total`: total number of `migrate` tasks
+    scheduled
+  - `rocksdb_cache_free_memory_tasks_duration_total`: total time (microseconds)
+    spent in `freeMemory` tasks
+  - `rocksdb_cache_migrate_tasks_duration_total`: total time (microseconds)
+    spent in `migrate` tasks
+
 * Improve performance of the in-memory cache's memory reclamation procedure.
   The previous implementation acquired too many locks, which could drive system
   CPU time up.

@@ -1,0 +1,17 @@
+name: rocksdb_cache_free_memory_tasks_duration_total
+introducedIn: "3.10.11"
+help: |
+  Total amount of time spent in 'free memory' tasks of the in-memory 
+  cache subsystem.
+unit: us
+type: counter
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Total amount of time spent inside 'free memory' tasks of the in-memory
+  cache subsystem. 'free memory' tasks are scheduled by the cache subsystem
+  to free up memory in existing cache hash tables.
