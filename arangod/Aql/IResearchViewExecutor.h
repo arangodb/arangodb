@@ -306,9 +306,19 @@ class IndexReadBuffer {
     _keyBuffer.emplace_back(std::forward<Args>(args)...);
   }
 
+  template<typename... Args>
+  void setValue(size_t idx, StorageSnapshot const& snapshot, Args&&... args) {
+    _keyBuffer[idx] = BufferValueType(snapshot, std::forward<Args>(args)...);
+  }
+
   void pushSearchDoc(irs::doc_id_t docId,
                      iresearch::ViewSegment const& segment) {
     _searchDocs.emplace_back(segment, docId);
+  }
+
+  void setSearchDoc(size_t idx, iresearch::ViewSegment const& segment,
+                    irs::doc_id_t docId) {
+    _searchDocs[idx] = iresearch::SearchDoc{segment, docId};
   }
 
   template<typename ColumnReaderProvider>
@@ -327,6 +337,8 @@ class IndexReadBuffer {
   }
 
   void clear() noexcept;
+
+  void seal() noexcept { _keyBaseIdx = _keyBuffer.size(); }
 
   size_t size() const noexcept;
 
@@ -355,6 +367,16 @@ class IndexReadBuffer {
     }
     return res;
   }
+
+  void setForParallelAccess(size_t atMost, size_t scores, size_t stored) {
+    _keyBuffer.resize(atMost);
+    _searchDocs.resize(atMost);
+    _scoreBuffer.resize(atMost * scores,
+                        std::numeric_limits<float_t>::quiet_NaN());
+    _storedValuesBuffer.resize(atMost * stored);
+  }
+
+  irs::score_t* getScoreBuffer(size_t idx) { return _scoreBuffer.data() + idx; }
 
   void preAllocateStoredValuesBuffer(size_t atMost, size_t scores,
                                      size_t stored) {
@@ -582,9 +604,12 @@ class IResearchViewExecutorBase {
   bool writeStoredValue(ReadContext& ctx, irs::bytes_view storedValue,
                         FieldRegisters const& fieldsRegs);
 
-  void readStoredValues(irs::document const& doc, size_t index);
+  template<bool parallel>
+  void readStoredValues(irs::document const& doc, size_t index, size_t bufferIndex = 0);
 
-  void pushStoredValues(irs::document const& doc, size_t storedValuesIndex = 0);
+  template<bool parallel>
+  void pushStoredValues(irs::document const& doc, size_t storedValuesIndex = 0,
+                        size_t bufferIndex = 0);
 
   bool getStoredValuesReaders(irs::SubReader const& segmentReader,
                               size_t storedValuesIndex = 0);
@@ -637,50 +662,68 @@ class IResearchViewExecutor
   friend Base;
   using ReadContext = typename Base::ReadContext;
 
+  struct SegmentReader {
+    ColumnIterator pkReader;  // current primary key reader
+    irs::doc_iterator::ptr itr;
+    irs::document const* doc{};
+    size_t readerOffset{0};
+    size_t currentSegmentPos{0};           // current document iterator position in segment
+    size_t totalPos{0};  // total position for full snapshot
+    size_t numScores{0};
+    size_t bufferOffset{0};
+    size_t numFilled{0};
+    size_t atMost{0};
+    LogicalCollection const* collection{};
+    iresearch::ViewSegment const* segment{};
+    irs::score const* scr{&irs::score::kNoScore};
+  }; 
+
   size_t skip(size_t toSkip, IResearchViewStats&);
   size_t skipAll(IResearchViewStats&);
 
-  void saveCollection();
-
   bool fillBuffer(ReadContext& ctx);
 
-  bool readSegment(size_t readerOffset, size_t atMost);
+  template<bool parallel>
+  bool readSegment(SegmentReader& reader, size_t readerIndex,
+                   std::atomic<size_t>& bufferIdxGlobal);
 
   bool writeRow(ReadContext& ctx, size_t idx);
 
-  bool resetIterator();
+  bool resetIterator(SegmentReader& reader);
 
   void reset(bool needFullCount);
 
   // Returns true unless the iterator is exhausted. documentId will always be
   // written. It will always be unset when readPK returns false, but may also be
   // unset if readPK returns true.
-  bool readPK(LocalDocumentId& documentId);
+  bool readPK(LocalDocumentId& documentId, SegmentReader& reader);
 
-  ColumnIterator _pkReader;  // current primary key reader
-  irs::doc_iterator::ptr _itr;
-  irs::document const* _doc{};
-  size_t _readerOffset;
-  size_t _currentSegmentPos;  // current document iterator position in segment
-  size_t _totalPos;           // total position for full snapshot
-  iresearch::ViewSegment const* _segment{};
+  std::vector<SegmentReader> _segmentReaders;
 
-  // case ordered only:
-  irs::score const* _scr;
-  size_t _numScores;
+  size_t _segmentOffset;
 };
 
 struct DocumentValue {
   explicit DocumentValue(LocalDocumentId id) noexcept : id{id} {}
-
-  auto const& value() const noexcept { return *this; }
-
-  void translate(size_t i) noexcept { result = i; }
-
   union {
     LocalDocumentId id;
     size_t result;
   };
+};
+
+struct ExecutorValue {
+  explicit ExecutorValue(
+      LocalDocumentId id, iresearch::ViewSegment const& segment) noexcept
+      : _value{id}, _segment{&segment} {}
+
+  auto const& value() const noexcept { return _value; }
+  auto const* segment() const noexcept { return _segment; }
+
+  void translate(size_t i) noexcept { _value.result = i; }
+
+ private:
+  DocumentValue _value;
+  iresearch::ViewSegment const* _segment;
 };
 
 template<typename ExecutionTraits>
@@ -689,7 +732,7 @@ struct IResearchViewExecutorTraits<IResearchViewExecutor<ExecutionTraits>> {
       std::conditional_t<(ExecutionTraits::MaterializeType &
                           iresearch::MaterializeType::LateMaterialize) ==
                              iresearch::MaterializeType::LateMaterialize,
-                         iresearch::SearchDoc, DocumentValue>;
+                         iresearch::SearchDoc, ExecutorValue>;
   static constexpr bool ExplicitScanned = false;
 };
 
@@ -770,20 +813,7 @@ class IResearchViewMergeExecutor
   irs::ExternalMergeIterator<MinHeapContext> _heap_it;
 };
 
-struct MergeSortExecutorValue {
-  explicit MergeSortExecutorValue(
-      LocalDocumentId id, iresearch::ViewSegment const& segment) noexcept
-      : _value{id}, _segment{&segment} {}
 
-  auto const& value() const noexcept { return _value; }
-  auto const* segment() const noexcept { return _segment; }
-
-  void translate(size_t i) noexcept { _value.result = i; }
-
- private:
-  DocumentValue _value;
-  iresearch::ViewSegment const* _segment;
-};
 
 template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<
@@ -792,7 +822,7 @@ struct IResearchViewExecutorTraits<
       std::conditional_t<(ExecutionTraits::MaterializeType &
                           iresearch::MaterializeType::LateMaterialize) ==
                              iresearch::MaterializeType::LateMaterialize,
-                         iresearch::SearchDoc, MergeSortExecutorValue>;
+                         iresearch::SearchDoc, ExecutorValue>;
   static constexpr bool ExplicitScanned = false;
 };
 
