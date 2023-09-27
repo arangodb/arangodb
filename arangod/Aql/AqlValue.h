@@ -123,7 +123,6 @@ struct AqlValueHintEmptyObject {
 };
 
 // TODO(MBkkt) Remove VPACK_INLINE_INT48
-// TODO(MBkkt) Remove external slice handling
 struct AqlValue final {
   friend struct std::hash<aql::AqlValue>;
   friend struct std::equal_to<aql::AqlValue>;

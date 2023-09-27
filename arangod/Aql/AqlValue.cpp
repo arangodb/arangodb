@@ -127,14 +127,11 @@ bool AqlValue::isNone() const noexcept {
   auto t = type();
   switch (t) {
     case VPACK_INLINE:
-      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isNone();
+      return VPackSlice(_data.inlineSliceMeta.slice).isNone();
     case VPACK_SLICE_POINTER:
-      // not resolving externals here
       return VPackSlice(_data.slicePointerMeta.pointer).isNone();
     case VPACK_MANAGED_SLICE:
-      return VPackSlice(_data.managedSliceMeta.pointer)
-          .resolveExternal()
-          .isNone();
+      return VPackSlice(_data.managedSliceMeta.pointer).isNone();
     default:
       return false;
   }
@@ -144,17 +141,16 @@ bool AqlValue::isNull(bool emptyIsNull) const noexcept {
   auto t = type();
   switch (t) {
     case VPACK_INLINE: {
-      auto s = VPackSlice{_data.inlineSliceMeta.slice}.resolveExternal();
-      return (s.isNull() || (emptyIsNull && s.isNone()));
+      VPackSlice s{_data.inlineSliceMeta.slice};
+      return s.isNull() || (emptyIsNull && s.isNone());
     }
     case VPACK_SLICE_POINTER: {
-      // not resolving externals here
-      VPackSlice s(_data.slicePointerMeta.pointer);
-      return (s.isNull() || (emptyIsNull && s.isNone()));
+      VPackSlice s{_data.slicePointerMeta.pointer};
+      return s.isNull() || (emptyIsNull && s.isNone());
     }
     case VPACK_MANAGED_SLICE: {
-      auto s = VPackSlice{_data.managedSliceMeta.pointer}.resolveExternal();
-      return (s.isNull() || (emptyIsNull && s.isNone()));
+      VPackSlice s{_data.managedSliceMeta.pointer};
+      return s.isNull() || (emptyIsNull && s.isNone());
     }
     default:
       return false;
@@ -165,16 +161,11 @@ bool AqlValue::isBoolean() const noexcept {
   auto t = type();
   switch (t) {
     case VPACK_INLINE:
-      return VPackSlice(_data.inlineSliceMeta.slice)
-          .resolveExternal()
-          .isBoolean();
+      return VPackSlice{_data.inlineSliceMeta.slice}.isBoolean();
     case VPACK_SLICE_POINTER:
-      // not resolving externals here
-      return VPackSlice(_data.slicePointerMeta.pointer).isBoolean();
+      return VPackSlice{_data.slicePointerMeta.pointer}.isBoolean();
     case VPACK_MANAGED_SLICE:
-      return VPackSlice(_data.managedSliceMeta.pointer)
-          .resolveExternal()
-          .isBoolean();
+      return VPackSlice{_data.managedSliceMeta.pointer}.isBoolean();
     default:
       return false;
   }
@@ -189,16 +180,11 @@ bool AqlValue::isNumber() const noexcept {
     case VPACK_INLINE_DOUBLE:
       return true;
     case VPACK_INLINE:
-      return VPackSlice(_data.inlineSliceMeta.slice)
-          .resolveExternal()
-          .isNumber();
+      return VPackSlice{_data.inlineSliceMeta.slice}.isNumber();
     case VPACK_SLICE_POINTER:
-      // not resolving externals here
-      return VPackSlice(_data.slicePointerMeta.pointer).isNumber();
+      return VPackSlice{_data.slicePointerMeta.pointer}.isNumber();
     case VPACK_MANAGED_SLICE:
-      return VPackSlice(_data.managedSliceMeta.pointer)
-          .resolveExternal()
-          .isNumber();
+      return VPackSlice{_data.managedSliceMeta.pointer}.isNumber();
     default:
       return false;
   }
@@ -208,16 +194,11 @@ bool AqlValue::isString() const noexcept {
   auto t = type();
   switch (t) {
     case VPACK_INLINE:
-      return VPackSlice(_data.inlineSliceMeta.slice)
-          .resolveExternal()
-          .isString();
+      return VPackSlice{_data.inlineSliceMeta.slice}.isString();
     case VPACK_SLICE_POINTER:
-      // not resolving externals here
-      return VPackSlice(_data.slicePointerMeta.pointer).isString();
+      return VPackSlice{_data.slicePointerMeta.pointer}.isString();
     case VPACK_MANAGED_SLICE:
-      return VPackSlice(_data.managedSliceMeta.pointer)
-          .resolveExternal()
-          .isString();
+      return VPackSlice{_data.managedSliceMeta.pointer}.isString();
     case VPACK_MANAGED_STRING:
       return _data.managedStringMeta.toSlice().isString();
     default:
@@ -229,16 +210,11 @@ bool AqlValue::isObject() const noexcept {
   auto t = type();
   switch (t) {
     case VPACK_INLINE:
-      return VPackSlice(_data.inlineSliceMeta.slice)
-          .resolveExternal()
-          .isObject();
+      return VPackSlice{_data.inlineSliceMeta.slice}.isObject();
     case VPACK_SLICE_POINTER:
-      // not resolving externals here
-      return VPackSlice(_data.slicePointerMeta.pointer).isObject();
+      return VPackSlice{_data.slicePointerMeta.pointer}.isObject();
     case VPACK_MANAGED_SLICE:
-      return VPackSlice(_data.managedSliceMeta.pointer)
-          .resolveExternal()
-          .isObject();
+      return VPackSlice{_data.managedSliceMeta.pointer}.isObject();
     case VPACK_MANAGED_STRING:
       return _data.managedStringMeta.toSlice().isObject();
     default:
@@ -250,16 +226,11 @@ bool AqlValue::isArray() const noexcept {
   auto t = type();
   switch (t) {
     case VPACK_INLINE:
-      return VPackSlice(_data.inlineSliceMeta.slice)
-          .resolveExternal()
-          .isArray();
+      return VPackSlice{_data.inlineSliceMeta.slice}.isArray();
     case VPACK_SLICE_POINTER:
-      // not resolving externals here
-      return VPackSlice(_data.slicePointerMeta.pointer).isArray();
+      return VPackSlice{_data.slicePointerMeta.pointer}.isArray();
     case VPACK_MANAGED_SLICE:
-      return VPackSlice(_data.managedSliceMeta.pointer)
-          .resolveExternal()
-          .isArray();
+      return VPackSlice{_data.managedSliceMeta.pointer}.isArray();
     case VPACK_MANAGED_STRING:
       return _data.managedStringMeta.toSlice().isArray();
     case RANGE:
@@ -270,7 +241,7 @@ bool AqlValue::isArray() const noexcept {
 }
 
 std::string_view AqlValue::getTypeString() const noexcept {
-  auto t = velocypack::ValueType::None;
+  VPackSlice s;
   switch (type()) {
     case VPACK_INLINE_INT48:
     case VPACK_INLINE_INT64:
@@ -278,21 +249,21 @@ std::string_view AqlValue::getTypeString() const noexcept {
     case VPACK_INLINE_DOUBLE:
       return "number";
     case VPACK_INLINE:
-      t = VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().type();
+      s = VPackSlice{_data.inlineSliceMeta.slice};
       break;
     case VPACK_SLICE_POINTER:
-      t = VPackSlice(_data.slicePointerMeta.pointer).type();
+      s = VPackSlice{_data.slicePointerMeta.pointer};
       break;
     case VPACK_MANAGED_SLICE:
-      t = VPackSlice(_data.managedSliceMeta.pointer).resolveExternal().type();
+      s = VPackSlice{_data.managedSliceMeta.pointer};
       break;
     case VPACK_MANAGED_STRING:
-      t = _data.managedStringMeta.toSlice().type();
+      s = _data.managedStringMeta.toSlice();
       break;
     case RANGE:
       return "array";
   }
-  switch (t) {
+  switch (s.type()) {
     case velocypack::ValueType::Null:
       return "null";
     case velocypack::ValueType::Bool:
@@ -599,6 +570,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
           // fetch subattribute
           prev = s;
           s = s.get(names[i]);
+          // TODO(MBkkt) Is it needed?
           s = s.resolveExternal();
 
           if (s.isNone()) {
@@ -895,6 +867,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
 
 void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
                             bool resolveExternals, bool allowUnindexed) const {
+  // TODO(MBkkt) remove resolveExternals?
   auto t = type();
   switch (t) {
     case VPACK_SLICE_POINTER:
@@ -951,11 +924,6 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
 AqlValue AqlValue::clone() const {
   auto t = type();
   switch (t) {
-    case VPACK_INLINE:
-      if (VPackSlice s{_data.inlineSliceMeta.slice}; s.isExternal()) {
-        return AqlValue{s.resolveExternal()};
-      }
-      break;
     case VPACK_SLICE_POINTER:
       if (isManagedDocument()) {
         return AqlValue{AqlValueHintSliceNoCopy{
@@ -1005,17 +973,17 @@ VPackSlice AqlValue::slice() const { return this->slice(type()); }
 VPackSlice AqlValue::slice(AqlValueType type) const {
   switch (type) {
     case VPACK_INLINE_INT48:
-      return VPackSlice(_data.shortNumberMeta.data.slice.slice);
+      return VPackSlice{_data.shortNumberMeta.data.slice.slice};
     case VPACK_INLINE_INT64:
     case VPACK_INLINE_UINT64:
     case VPACK_INLINE_DOUBLE:
-      return VPackSlice(_data.longNumberMeta.data.slice.slice);
+      return VPackSlice{_data.longNumberMeta.data.slice.slice};
     case VPACK_INLINE:
-      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal();
+      return VPackSlice{_data.inlineSliceMeta.slice};
     case VPACK_SLICE_POINTER:
-      return VPackSlice(_data.slicePointerMeta.pointer);
+      return VPackSlice{_data.slicePointerMeta.pointer};
     case VPACK_MANAGED_SLICE:
-      return VPackSlice(_data.managedSliceMeta.pointer).resolveExternal();
+      return VPackSlice{_data.managedSliceMeta.pointer};
     case VPACK_MANAGED_STRING:
       return _data.managedStringMeta.toSlice();
     default:
@@ -1106,32 +1074,27 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
 
 AqlValue::AqlValue() noexcept { erase(); }
 
-AqlValue::AqlValue(std::unique_ptr<std::string>& string) noexcept {
-  TRI_ASSERT(string);
-  auto const size = string->size();
+AqlValue::AqlValue(std::unique_ptr<std::string>& data) noexcept {
+  TRI_ASSERT(data);
+  auto size = data->size();
   TRI_ASSERT(size >= 1);
-  velocypack::Slice data{reinterpret_cast<uint8_t const*>(string->data())};
-  TRI_ASSERT(!data.isExternal());
-  TRI_ASSERT(size == data.byteSize());
+  VPackSlice slice{reinterpret_cast<uint8_t const*>(data->data())};
+  TRI_ASSERT(size == slice.byteSize());
+  TRI_ASSERT(!slice.isExternal());
   if (size < sizeof(AqlValue)) {
-    initFromSlice(data, size);
+    initFromSlice(slice, size);
   } else {
     setType(AqlValueType::VPACK_MANAGED_STRING);
-    _data.managedStringMeta.pointer = string.release();
+    _data.managedStringMeta.pointer = data.release();
   }
 }
 
 AqlValue::AqlValue(uint8_t const* pointer) noexcept {
+  // TODO(MBkkt) Is external possible here?
   // we must get rid of Externals first here, because all
   // methods that use VPACK_SLICE_POINTER expect its contents
   // to be non-Externals
-  if (*pointer == '\x1d') {
-    // an external
-    setPointer<false>(VPackSlice(pointer).resolveExternals().begin());
-  } else {
-    setPointer<false>(pointer);
-  }
-  TRI_ASSERT(!VPackSlice(_data.slicePointerMeta.pointer).isExternal());
+  setPointer<false>(VPackSlice{pointer}.resolveExternals().begin());
 }
 
 AqlValue::AqlValue(AqlValue const& other, void const* data) noexcept {
@@ -1302,30 +1265,33 @@ AqlValue::AqlValue(AqlValueHintEmptyObject) noexcept {
 }
 
 AqlValue::AqlValue(velocypack::Buffer<uint8_t>&& buffer) {
-  // intentionally do not resolve externals here
-  VPackValueLength length = buffer.length();
-  if (length < sizeof(AqlValue)) {
+  auto size = buffer.size();
+  TRI_ASSERT(size >= 1);
+  VPackSlice slice{buffer.data()};
+  TRI_ASSERT(size == slice.byteSize());
+  TRI_ASSERT(!slice.isExternal());
+  if (size < sizeof(AqlValue)) {
     // Use inline value
-    initFromSlice(VPackSlice(buffer.data()), buffer.length());
+    initFromSlice(slice, size);
     buffer.clear();  // for move semantics
   } else {
     // Use managed slice
     if (buffer.usesLocalMemory()) {
-      setManagedSliceData(MemoryOriginType::New, length);
-      _data.managedSliceMeta.pointer = new uint8_t[length];
-      memcpy(_data.managedSliceMeta.pointer, buffer.data(), length);
+      setManagedSliceData(MemoryOriginType::New, size);
+      _data.managedSliceMeta.pointer = new uint8_t[size];
+      memcpy(_data.managedSliceMeta.pointer, buffer.data(), size);
       buffer.clear();  // for move semantics
     } else {
       // steal dynamic memory from the Buffer
-      setManagedSliceData(MemoryOriginType::Malloc, length);
+      setManagedSliceData(MemoryOriginType::Malloc, size);
       _data.managedSliceMeta.pointer = buffer.steal();
     }
   }
 }
 
 AqlValue::AqlValue(AqlValueHintSliceNoCopy v) noexcept {
+  TRI_ASSERT(!v.slice.isExternal());
   setPointer<true>(v.slice.start());
-  TRI_ASSERT(!VPackSlice(_data.slicePointerMeta.pointer).isExternal());
 }
 
 AqlValue::AqlValue(AqlValueHintSliceCopy v) {
@@ -1408,11 +1374,7 @@ size_t AqlValue::memoryUsage() const noexcept {
 }
 
 void AqlValue::initFromSlice(VPackSlice slice, VPackValueLength length) {
-  // intentionally do not resolve externals here
-  // if (slice.isExternal()) {
-  //   // recursively resolve externals
-  //   slice = slice.resolveExternals();
-  // }
+  TRI_ASSERT(!slice.isExternal());
   TRI_ASSERT(length > 0);
   TRI_ASSERT(slice.byteSize() == length);
   if (length <= sizeof(_data.inlineSliceMeta.slice)) {
