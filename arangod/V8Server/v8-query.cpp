@@ -242,8 +242,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto iterator =
       trx.indexScan(monitor, collectionName,
                     transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
-
-  iterator->allDocuments(
+  auto cb = IndexIterator::makeDocumentCallbackF(
       [&resultBuilder, &memoryScope](LocalDocumentId, VPackSlice slice) {
         auto const& buffer = resultBuilder.bufferRef();
         size_t memoryUsageOld = buffer.size();
@@ -252,6 +251,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
         memoryScope.increase(buffer.size() - memoryUsageOld);
         return true;
       });
+  iterator->allDocuments(cb);
 
   resultBuilder.close();
 

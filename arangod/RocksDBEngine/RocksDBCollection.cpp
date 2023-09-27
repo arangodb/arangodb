@@ -1896,8 +1896,10 @@ Result RocksDBCollection::lookupDocumentVPack(
         static_cast<uint64_t>(ps.size())};
   }
 
+  // TODO(MBkkt) in case of exception data will be destroyed
+  //  We can avoid it (and return to the buffer instead), but is it worth?
   auto data = buffer.release();
-  cb(token, std::move(data));
+  cb(token, data);
   buffer.acquire(std::move(data));
 
   return {};

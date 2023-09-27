@@ -345,8 +345,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           auto [documentId, revisionId] = lookupResult;
 
           tempBuilder->clear();
-          auto r =
-              physical->lookup(trx, documentId, callback,
+          r = physical->lookup(trx, documentId, callback,
                                {.fillCache = false, .readOwnWrites = true});
 
           if (r.ok()) {
@@ -888,9 +887,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
               tempBuilder.clear();
               r = physical->lookup(trx.get(), documentId, callback,
-                                   {.readCache = true,
-                                    .fillCache = false,
-                                    .readOwnWrites = true});
+                                   {.fillCache = false, .readOwnWrites = true});
 
               if (r.ok()) {
                 TRI_ASSERT(tempBuilder.slice().isObject());

@@ -127,7 +127,7 @@ IndexIterator::DocumentCallback aql::getCallback(
   return {[&](LocalDocumentId token, VPackSlice doc) {
             return cb(token, doc, doc);
           },
-          [&](LocalDocumentId token, std::unique_ptr<std::string>&& doc) {
+          [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
             VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
             return cb(token, &doc, slice);
           }};
@@ -572,7 +572,7 @@ IndexIterator::CoveringCallback aql::getCallback(
               [&](LocalDocumentId token, VPackSlice doc) {
                 return cb(doc, doc);
               },
-              [&](LocalDocumentId token, std::unique_ptr<std::string>&& doc) {
+              [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
                 VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
                 return cb(&doc, slice);
               }},

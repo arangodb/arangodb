@@ -311,7 +311,7 @@ struct AqlValue final {
   // note: this is the default constructor and should be as cheap as possible
   AqlValue() noexcept;
 
-  explicit AqlValue(std::unique_ptr<std::string>& string) noexcept;
+  explicit AqlValue(std::unique_ptr<std::string>& data) noexcept;
 
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer) noexcept;

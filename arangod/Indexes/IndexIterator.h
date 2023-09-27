@@ -195,7 +195,7 @@ class IndexIterator {
 
   using DocumentCallback = CallbackImplStrict<
       bool(LocalDocumentId token, velocypack::Slice doc) const,
-      bool(LocalDocumentId token, std::unique_ptr<std::string>&& doc) const>;
+      bool(LocalDocumentId token, std::unique_ptr<std::string>& doc) const>;
 
   static DocumentCallback makeDocumentCallback(velocypack::Builder& builder) {
     struct Read2Builder {
@@ -205,7 +205,7 @@ class IndexIterator {
       }
 
       bool operator()(LocalDocumentId,
-                      std::unique_ptr<std::string>&& doc) const {
+                      std::unique_ptr<std::string>& doc) const {
         TRI_ASSERT(doc);
         VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
         builder.add(slice);
@@ -224,7 +224,7 @@ class IndexIterator {
       return func(token, doc);
     }
     bool operator()(LocalDocumentId token,
-                    std::unique_ptr<std::string>&& doc) const {
+                    std::unique_ptr<std::string>& doc) const {
       TRI_ASSERT(doc);
       VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
       return func(token, slice);
