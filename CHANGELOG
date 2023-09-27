@@ -1,4 +1,4 @@
-v3.10.9.1 (XXXX-XX-XX)
+v3.10.9.1 (2023-09-27)
 ----------------------
 
 * Improve performance of the in-memory cache's memory reclamation procedure.
