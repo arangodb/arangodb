@@ -180,10 +180,51 @@ class IndexIterator {
   };
 
   using LocalDocumentIdCallback =
-      CallbackImpl<bool(LocalDocumentId token) const>;
+      fu2::function<bool(LocalDocumentId token) const>;
 
-  using DocumentCallback = CallbackImpl<bool(LocalDocumentId token,
-                                             velocypack::Slice doc) const>;
+  using DocumentCallback =
+      CallbackImpl<bool(LocalDocumentId token, velocypack::Slice doc) const,
+                   bool(LocalDocumentId token,
+                        std::unique_ptr<std::string>&& doc) const>;
+
+  static DocumentCallback makeDocumentCallback(velocypack::Builder& builder) {
+    struct Read2Builder {
+      bool operator()(LocalDocumentId id, velocypack::Slice doc) {
+        builder.add(doc);
+        return true;
+      }
+
+      bool operator()(LocalDocumentId id, std::unique_ptr<std::string>&& doc) {
+        TRI_ASSERT(doc);
+        VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
+        builder.add(slice);
+        return true;
+      }
+
+      VPackBuilder& builder;
+    };
+
+    return {Read2Builder{builder}};
+  }
+
+  template<typename Func>
+  struct SingleFunc2MultiFunc {
+    bool operator()(LocalDocumentId id, velocypack::Slice doc) {
+      return func(id, doc);
+    }
+    bool operator()(LocalDocumentId id, std::unique_ptr<std::string>&& doc) {
+      TRI_ASSERT(doc);
+      VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
+      return func(id, slice);
+    }
+
+    Func func;
+  };
+
+  template<typename Func>
+  static DocumentCallback makeDocumentCallbackFromFunc(Func&& func) {
+    return {SingleFunc2MultiFunc<std::decay_t<Func>>{std::forward<Func>(func)}};
+  }
 
   using CoveringCallback =
       CallbackImpl<bool(LocalDocumentId token,

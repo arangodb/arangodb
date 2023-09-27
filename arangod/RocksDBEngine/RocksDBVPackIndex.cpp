@@ -1093,7 +1093,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
             } else {
               options.iterate_upper_bound = &_rangeBound;
             }
-            options.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+            options.readOwnWrites = static_cast<bool>(canReadOwnWrites());
           });
       TRI_ASSERT(_mustSeek);
 
@@ -1651,11 +1651,9 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
         }
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         // find conflicting document's key
-        auto readResult = _collection.getPhysical()->read(
-            &trx, docId,
+        auto callback = IndexIterator::makeDocumentCallbackFromFunc(
             [&](LocalDocumentId, VPackSlice doc) {
-              VPackSlice key =
-                  transaction::helpers::extractKeyFromDocument(doc);
+              auto key = transaction::helpers::extractKeyFromDocument(doc);
               if (mode == IndexOperationMode::internal) {
                 // in this error mode, we return the conflicting document's key
                 // inside the error message string (and nothing else)!
@@ -1665,10 +1663,11 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
                 addErrorMsg(res, key.copyString());
               }
               return true;  // return value does not matter here
-            },
-            ReadOwnWrites::yes);  // modifications always need to observe all
-                                  // changes in order to validate uniqueness
-                                  // constraints
+            });
+        // modifications always need to observe all changes
+        // in order to validate uniqueness constraints
+        auto readResult = _collection.getPhysical()->lookup(
+            &trx, docId, callback, {.readOwnWrites = true});
         if (readResult.fail()) {
           addErrorMsg(readResult);
           THROW_ARANGO_EXCEPTION(readResult);
@@ -1783,8 +1782,7 @@ Result RocksDBVPackIndex::insertUnique(
     if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
       // find conflicting document's key
       LocalDocumentId docId = RocksDBValue::documentId(existing);
-      auto readResult = _collection.getPhysical()->read(
-          &trx, docId,
+      auto callback = IndexIterator::makeDocumentCallbackFromFunc(
           [&](LocalDocumentId, VPackSlice doc) {
             IndexOperationMode mode = options.indexOperationMode;
             VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
@@ -1797,10 +1795,11 @@ Result RocksDBVPackIndex::insertUnique(
               addErrorMsg(res, key.copyString());
             }
             return true;  // return value does not matter here
-          },
-          ReadOwnWrites::yes);  // modifications always need to observe all
-                                // changes in order to validate uniqueness
-                                // constraints
+          });
+      // modifications always need to observe all changes
+      // in order to validate uniqueness constraints
+      auto readResult = _collection.getPhysical()->lookup(
+          &trx, docId, callback, {.readOwnWrites = true});
       if (readResult.fail()) {
         addErrorMsg(readResult);
         THROW_ARANGO_EXCEPTION(readResult);

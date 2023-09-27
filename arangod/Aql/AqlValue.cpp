@@ -730,7 +730,7 @@ int64_t AqlValue::toInt64() const {
   switch (t) {
     case VPACK_INLINE_INT48:
       // no check for overflow here as we have 48 bit value - it will fit
-      return static_cast<int64_t>(_data.shortNumberMeta.data.int48.val);
+      return _data.shortNumberMeta.data.int48.val;
     case VPACK_INLINE_INT64:
       return basics::littleToHost(
           _data.longNumberMeta.data.intLittleEndian.val);
@@ -1106,11 +1106,19 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
 
 AqlValue::AqlValue() noexcept { erase(); }
 
-AqlValue::AqlValue(std::unique_ptr<uint8_t[]> data) noexcept {
-  TRI_ASSERT(data);
-  VPackSlice slice{data.get()};
-  setManagedSliceData(MemoryOriginType::New, slice.byteSize());
-  _data.managedSliceMeta.pointer = data.release();
+AqlValue::AqlValue(std::unique_ptr<std::string>& string) noexcept {
+  TRI_ASSERT(string);
+  auto const size = string->size();
+  TRI_ASSERT(size >= 1);
+  velocypack::Slice data{reinterpret_cast<uint8_t const*>(string->data())};
+  TRI_ASSERT(!data.isExternal());
+  TRI_ASSERT(size == data.byteSize());
+  if (size < sizeof(AqlValue)) {
+    initFromSlice(data, size);
+  } else {
+    setType(AqlValueType::VPACK_MANAGED_STRING);
+    _data.managedStringMeta.pointer = string.release();
+  }
 }
 
 AqlValue::AqlValue(uint8_t const* pointer) noexcept {

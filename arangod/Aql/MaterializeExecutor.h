@@ -147,7 +147,7 @@ class MaterializeExecutor {
 
     ReadContext(ReadContext&& other) = default;
 
-    void moveInto(std::unique_ptr<uint8_t[]> data);
+    void moveInto(std::unique_ptr<std::string> data);
 
     Infos const* infos;
     InputAqlItemRow const* inputRow{};

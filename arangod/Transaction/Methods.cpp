@@ -586,8 +586,7 @@ struct GetDocumentProcessor
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     } else {
       bool conflict = false;
-      res = _collection.getPhysical()->read(
-          &_methods, key,
+      auto cb = IndexIterator::makeDocumentCallbackFromFunc(
           [&](LocalDocumentId, VPackSlice doc) {
             if (!_options.ignoreRevs && value.isObject()) {
               RevisionId expectedRevision = RevisionId::fromSlice(value);
@@ -612,8 +611,8 @@ struct GetDocumentProcessor
               _resultBuilder.add(VPackSlice::nullSlice());
             }
             return true;
-          },
-          ReadOwnWrites::no);
+          });
+      res = _collection.getPhysical()->lookup(&_methods, key, cb, {});
 
       if (conflict) {
         res.reset(TRI_ERROR_ARANGO_CONFLICT);
@@ -916,9 +915,10 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
     if (_needToFetchOldDocument) {
       // need to read the full document, so that we can remove all
       // secondary index entries for it
-      res = _collection.getPhysical()->lookupDocument(
-          _methods, oldDocumentId, *_previousDocumentBuilder,
-          /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+      auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
+      res = _collection.getPhysical()->lookup(
+          &_methods, oldDocumentId, cb,
+          {.fillCache = false, .readOwnWrites = true});
 
       if (res.fail()) {
         return res;
@@ -1290,9 +1290,10 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         // in case of unique constraint violation: (partially) update existing
         // document.
         previousDocumentBuilder->clear();
-        res = _collection.getPhysical()->lookupDocument(
-            _methods, oldDocumentId, *previousDocumentBuilder,
-            /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+        auto cb = IndexIterator::makeDocumentCallback(*previousDocumentBuilder);
+        res = _collection.getPhysical()->lookup(
+            &_methods, oldDocumentId, cb,
+            {.fillCache = false, .readOwnWrites = true});
 
         if (res.ok()) {
           TRI_ASSERT(previousDocumentBuilder->slice().isObject());
@@ -1499,9 +1500,10 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     if (_needToFetchOldDocument) {
       // need to read the full document, so that we can remove all
       // secondary index entries for it
-      res = _collection.getPhysical()->lookupDocument(
-          _methods, oldDocumentId, *_previousDocumentBuilder,
-          /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+      auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
+      res = _collection.getPhysical()->lookup(
+          &_methods, oldDocumentId, cb,
+          {.fillCache = false, .readOwnWrites = true});
 
       if (res.fail()) {
         return res;
@@ -2110,14 +2112,8 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   if (collection == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
-
-  return collection->getPhysical()->read(
-      this, key,
-      [&](LocalDocumentId, VPackSlice doc) {
-        result.add(doc);
-        return true;
-      },
-      ReadOwnWrites::no);
+  auto cb = IndexIterator::makeDocumentCallback(result);
+  return collection->getPhysical()->lookup(this, key, cb, {});
 }
 
 /// @brief return one document from a collection, fast path
@@ -2151,7 +2147,7 @@ Result transaction::Methods::documentFastPathLocal(
 
   // We never want to see our own writes here, otherwise we could observe
   // documents which have been inserted by a currently running query.
-  return collection->getPhysical()->read(this, key, cb, ReadOwnWrites::no);
+  return collection->getPhysical()->lookup(this, key, cb, {});
 }
 
 namespace {

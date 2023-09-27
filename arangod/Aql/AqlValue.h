@@ -122,6 +122,8 @@ struct AqlValueHintEmptyObject {
   constexpr AqlValueHintEmptyObject() noexcept = default;
 };
 
+// TODO(MBkkt) Remove VPACK_INLINE_INT48
+// TODO(MBkkt) Remove external slice handling
 struct AqlValue final {
   friend struct std::hash<aql::AqlValue>;
   friend struct std::equal_to<aql::AqlValue>;
@@ -310,23 +312,7 @@ struct AqlValue final {
   // note: this is the default constructor and should be as cheap as possible
   AqlValue() noexcept;
 
-  template<typename Deleter>
-  explicit AqlValue(std::unique_ptr<std::string, Deleter>& string) noexcept {
-    TRI_ASSERT(string);
-    auto const size = string->size();
-    TRI_ASSERT(size >= 1);
-    velocypack::Slice data{reinterpret_cast<uint8_t const*>(string->data())};
-    TRI_ASSERT(!data.isExternal());
-    TRI_ASSERT(size == data.byteSize());
-    if (size < sizeof(AqlValue)) {
-      return initFromSlice(data, size);
-    }
-    setType(AqlValueType::VPACK_MANAGED_STRING);
-    _data.managedStringMeta.pointer = string.release();
-  }
-
-  // construct from owning pointer to slice data, move only
-  explicit AqlValue(std::unique_ptr<uint8_t[]> data) noexcept;
+  explicit AqlValue(std::unique_ptr<std::string>& string) noexcept;
 
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer) noexcept;

@@ -500,8 +500,11 @@ class IResearchInvertedIndexIterator final
           // iterator operates only one iresearch datastore
           // TODO(MBkkt) use MultiGet
           return _collection->getPhysical()
-              ->readFromSnapshot(_trx, token, cb, canReadOwnWrites(),
-                                 _snapshot.snapshot(0))
+              ->lookup(_trx, token, cb,
+                       {.readCache = false,
+                        .fillCache = false,
+                        .readOwnWrites = static_cast<bool>(canReadOwnWrites())},
+                       &_snapshot.snapshot(0))
               .ok();
         },
         limit);

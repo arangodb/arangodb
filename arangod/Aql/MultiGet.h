@@ -45,7 +45,7 @@ class MultiGetContext {
 
   RocksDBTransactionMethods* methods{};
   StorageSnapshot const* snapshot{};
-  using ValueType = std::unique_ptr<uint8_t[]>;  // null mean was error
+  using ValueType = std::unique_ptr<std::string>;  // null mean was error
   std::vector<ValueType> values;
 
   template<typename Func>
@@ -58,15 +58,13 @@ class MultiGetContext {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     auto* physical = dynamic_cast<RocksDBMetaCollection*>(base);
     if (ADB_UNLIKELY(physical == nullptr)) {
-      base->readFromSnapshot(
+      base->lookup(
           &trx, id,
-          [&](const LocalDocumentId& /*id*/, VPackSlice slice) {
-            const auto size = slice.byteSize();
-            values[_global] = ValueType{new uint8_t[size]};
-            memcpy(values[_global].get(), slice.start(), size);
+          [&](LocalDocumentId, ValueType&& doc) {
+            values[_global] = std::move(doc);
             return true;
           },
-          ReadOwnWrites::no, *snapshot);
+          {.readCache = false, .fillCache = false}, snapshot);
       return _global++;
     }
 #else
@@ -147,12 +145,7 @@ void MultiGetContext::multiGet(size_t expected, Func&& func) {
       if (!_statuses[c].ok()) {
         continue;
       }
-      // TODO(MBkkt) Maybe we can avoid call byteSize() and rely on size()?
-      auto const* data = _values[c].data();
-      VPackSlice slice{reinterpret_cast<uint8_t const*>(data)};
-      const auto size = slice.byteSize();
-      *it = ValueType{new uint8_t[size]};
-      memcpy(it->get(), data, size);
+      *it = std::make_unique<std::string>(std::move(*_values[c].GetSelf()));
     }
     _local = 0;
   }

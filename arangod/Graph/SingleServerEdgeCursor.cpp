@@ -109,8 +109,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(
     IndexIterator* cursor, EdgeCursor::Callback const& callback) {
   auto collection = cursor->collection();
   EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
-  collection->getPhysical()->read(
-      _trx, etkn.localDocumentId(),
+  auto cb = IndexIterator::makeDocumentCallbackFromFunc(
       [&](LocalDocumentId, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
         if (_trx->skipInaccessible()) {
@@ -132,8 +131,8 @@ void SingleServerEdgeCursor::getDocAndRunCallback(
           callback(std::move(etkn), edgeDoc, _currentCursor);
         }
         return true;
-      },
-      ReadOwnWrites::no);
+      });
+  collection->getPhysical()->lookup(_trx, etkn.localDocumentId(), cb, {});
 }
 
 bool SingleServerEdgeCursor::advanceCursor(
@@ -286,31 +285,27 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
               return true;
             });
       } else {
-        cursor->all([&](LocalDocumentId token) {
-          return collection->getPhysical()
-              ->read(
-                  _trx, token,
-                  [&](LocalDocumentId, VPackSlice edgeDoc) {
+        auto cb = IndexIterator::makeDocumentCallbackFromFunc(
+            [&](LocalDocumentId token, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
-                    if (_trx->skipInaccessible()) {
-                      // TODO: we only need to check one of these
-                      VPackSlice from =
-                          transaction::helpers::extractFromFromDocument(
-                              edgeDoc);
-                      VPackSlice to =
-                          transaction::helpers::extractToFromDocument(edgeDoc);
-                      if (CheckInaccessible(_trx, from) ||
-                          CheckInaccessible(_trx, to)) {
-                        return false;
-                      }
-                    }
+              if (_trx->skipInaccessible()) {
+                // TODO: we only need to check one of these
+                VPackSlice from =
+                    transaction::helpers::extractFromFromDocument(edgeDoc);
+                VPackSlice to =
+                    transaction::helpers::extractToFromDocument(edgeDoc);
+                if (CheckInaccessible(_trx, from) ||
+                    CheckInaccessible(_trx, to)) {
+                  return false;
+                }
+              }
 #endif
-                    _opts->cache()->incrDocuments();
-                    callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
-                    return true;
-                  },
-                  ReadOwnWrites::no)
-              .ok();
+              _opts->cache()->incrDocuments();
+              callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
+              return true;
+            });
+        cursor->all([&](LocalDocumentId token) {
+          return collection->getPhysical()->lookup(_trx, token, cb, {}).ok();
         });
       }
 

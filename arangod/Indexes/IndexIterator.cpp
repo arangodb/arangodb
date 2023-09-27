@@ -115,7 +115,8 @@ bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb,
   return nextImpl(
       [this, &cb](LocalDocumentId token) {
         return _collection->getPhysical()
-            ->read(_trx, token, cb, _readOwnWrites)
+            ->lookup(_trx, token, cb,
+                     {.readOwnWrites = static_cast<bool>(_readOwnWrites)})
             .ok();
       },
       limit);

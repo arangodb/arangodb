@@ -81,7 +81,7 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     TRI_ASSERT(!output.isFull());
     VPackSlice s = objectBuilder.slice();
-    output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId, input, s);
+    output.moveValueInto(registerId, input, s);
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -483,7 +483,7 @@ IndexIterator::CoveringCallback aql::getCallback(
       RegisterId registerId = context.getOutputRegister();
       TRI_ASSERT(!output.isFull());
       VPackSlice s = objectBuilder.slice();
-      output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId, input, s);
+      output.moveValueInto(registerId, input, s);
       TRI_ASSERT(output.produced());
       output.advanceRow();
     }
@@ -496,75 +496,79 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context) {
-  return
-      [&context](LocalDocumentId token, IndexIteratorCoveringData& covering) {
-        // this must only be used if we have a filter!
-        TRI_ASSERT(context.hasFilter());
-        TRI_ASSERT(context.getAllowCoveringIndexOptimization());
-        if constexpr (checkUniqueness) {
-          if (!context.checkUniqueness(token)) {
-            // Document already found, skip it
-            return false;
-          }
+  return [&context](LocalDocumentId token,
+                    IndexIteratorCoveringData& covering) {
+    // this must only be used if we have a filter!
+    TRI_ASSERT(context.hasFilter());
+    TRI_ASSERT(context.getAllowCoveringIndexOptimization());
+    if constexpr (checkUniqueness) {
+      if (!context.checkUniqueness(token)) {
+        // Document already found, skip it
+        return false;
+      }
+    }
+
+    context.incrScanned();
+
+    // recycle our Builder object
+    VPackBuilder& objectBuilder = context.getBuilder();
+    objectBuilder.clear();
+    objectBuilder.openObject(true);
+
+    // projections from the index for the filter condition
+    context.getFilterProjections().toVelocyPackFromIndex(
+        objectBuilder, covering, context.getTrxPtr());
+
+    objectBuilder.close();
+
+    if (!context.checkFilter(objectBuilder.slice())) {
+      context.incrFiltered();
+      return false;
+    }
+
+    if constexpr (!skip) {
+      // read the full document from the storage engine only now,
+      // after checking the filter condition
+      auto callback = [&](auto v, velocypack::Slice s) {
+        OutputAqlItemRow& output = context.getOutputRow();
+        TRI_ASSERT(!output.isFull());
+
+        RegisterId registerId = context.getOutputRegister();
+        InputAqlItemRow const& input = context.getInputRow();
+
+        if (context.getProjections().empty()) {
+          output.moveValueInto(registerId, input, v);
+        } else {
+          objectBuilder.clear();
+          objectBuilder.openObject(true);
+
+          // projections from the index for the filter condition
+          context.getProjections().toVelocyPackFromDocument(
+              objectBuilder, s, context.getTrxPtr());
+
+          objectBuilder.close();
+
+          VPackSlice projectedSlice = objectBuilder.slice();
+          output.moveValueInto(registerId, input, projectedSlice);
         }
 
-        context.incrScanned();
-
-        // recycle our Builder object
-        VPackBuilder& objectBuilder = context.getBuilder();
-        objectBuilder.clear();
-        objectBuilder.openObject(true);
-
-        // projections from the index for the filter condition
-        context.getFilterProjections().toVelocyPackFromIndex(
-            objectBuilder, covering, context.getTrxPtr());
-
-        objectBuilder.close();
-
-        if (!context.checkFilter(objectBuilder.slice())) {
-          context.incrFiltered();
-          return false;
-        }
-
-        if constexpr (!skip) {
-          // read the full document from the storage engine only now,
-          // after checking the filter condition
-          context.getPhysical().read(
-              context.getTrxPtr(), token,
-              [&](LocalDocumentId, VPackSlice s) -> bool {
-                OutputAqlItemRow& output = context.getOutputRow();
-                TRI_ASSERT(!output.isFull());
-
-                RegisterId registerId = context.getOutputRegister();
-                InputAqlItemRow const& input = context.getInputRow();
-
-                if (context.getProjections().empty()) {
-                  output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId,
-                                                                    input, s);
-                } else {
-                  objectBuilder.clear();
-                  objectBuilder.openObject(true);
-
-                  // projections from the index for the filter condition
-                  context.getProjections().toVelocyPackFromDocument(
-                      objectBuilder, s, context.getTrxPtr());
-
-                  objectBuilder.close();
-
-                  VPackSlice projectedSlice = objectBuilder.slice();
-                  output.moveValueInto<InputAqlItemRow, VPackSlice>(
-                      registerId, input, projectedSlice);
-                }
-
-                TRI_ASSERT(output.produced());
-                output.advanceRow();
-                return false;
-              },
-              context.getReadOwnWrites());
-        }
-
-        return true;
+        TRI_ASSERT(output.produced());
+        output.advanceRow();
+        return false;
       };
+      context.getPhysical().lookup(
+          context.getTrxPtr(), token,
+          IndexIterator::DocumentCallback{
+              [&](LocalDocumentId, VPackSlice v) { return callback(v, v); },
+              [&](LocalDocumentId, std::unique_ptr<std::string>&& v) {
+                VPackSlice slice{reinterpret_cast<uint8_t const*>(v->data())};
+                return callback(&v, slice);
+              }},
+          {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
+    }
+
+    return true;
+  };
 }
 
 template IndexIterator::CoveringCallback aql::getCallback<false, false>(

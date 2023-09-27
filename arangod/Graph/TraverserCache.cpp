@@ -114,10 +114,9 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   }
 
   _docBuilder.clear();
+  auto cb = IndexIterator::makeDocumentCallback(_docBuilder);
   if (col->getPhysical()
-          ->lookupDocument(*_trx, idToken.localDocumentId(), _docBuilder,
-                           /*readCache*/ true, /*fillCache*/ true,
-                           ReadOwnWrites::no)
+          ->lookup(_trx, idToken.localDocumentId(), cb, {})
           .fail()) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("3acb3", ERR, arangodb::Logger::GRAPHS)

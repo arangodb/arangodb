@@ -358,41 +358,37 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
           });
     } else {
       // fetch full documents
-      cursor.all([&](LocalDocumentId token) {
-        return collection->getPhysical()
-            ->read(
-                _trx, token,
-                [&](LocalDocumentId, VPackSlice edgeDoc) {
-                  stats.incrScannedIndex(1);
+      auto cb = IndexIterator::makeDocumentCallbackFromFunc(
+          [&](LocalDocumentId token, VPackSlice edgeDoc) {
+            stats.incrScannedIndex(1);
 #ifdef USE_ENTERPRISE
-                  if (_trx->skipInaccessible()) {
-                    // TODO: we only need to check one of these
-                    VPackSlice from =
-                        transaction::helpers::extractFromFromDocument(edgeDoc);
-                    VPackSlice to =
-                        transaction::helpers::extractToFromDocument(edgeDoc);
-                    if (CheckInaccessible(_trx, from) ||
-                        CheckInaccessible(_trx, to)) {
-                      return false;
-                    }
-                  }
+            if (_trx->skipInaccessible()) {
+              // TODO: we only need to check one of these
+              VPackSlice from =
+                  transaction::helpers::extractFromFromDocument(edgeDoc);
+              VPackSlice to =
+                  transaction::helpers::extractToFromDocument(edgeDoc);
+              if (CheckInaccessible(_trx, from) ||
+                  CheckInaccessible(_trx, to)) {
+                return false;
+              }
+            }
 #endif
-                  // eval depth-based expression first if available
-                  EdgeDocumentToken edgeToken(cid, token);
+            // eval depth-based expression first if available
+            EdgeDocumentToken edgeToken(cid, token);
 
-                  // evaluate expression if available
-                  if (expression != nullptr &&
-                      !evaluateEdgeExpressionHelper(expression, edgeToken,
-                                                    edgeDoc)) {
-                    stats.incrFiltered();
-                    return false;
-                  }
+            // evaluate expression if available
+            if (expression != nullptr &&
+                !evaluateEdgeExpressionHelper(expression, edgeToken, edgeDoc)) {
+              stats.incrFiltered();
+              return false;
+            }
 
-                  callback(std::move(edgeToken), edgeDoc, cursorID);
-                  return true;
-                },
-                ReadOwnWrites::no)
-            .ok();
+            callback(std::move(edgeToken), edgeDoc, cursorID);
+            return true;
+          });
+      cursor.all([&](LocalDocumentId token) {
+        return collection->getPhysical()->lookup(_trx, token, cb, {}).ok();
       });
     }
 

@@ -55,17 +55,13 @@ MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext(Infos& infos)
 
 template<typename T, bool localDocumentId>
 void MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext::
-    moveInto(std::unique_ptr<uint8_t[]> data) {
+    moveInto(std::unique_ptr<std::string> data) {
   TRI_ASSERT(infos);
   TRI_ASSERT(outputRow);
   TRI_ASSERT(inputRow);
   TRI_ASSERT(inputRow->isInitialized());
-  AqlValue value{std::move(data)};
-  bool mustDestroy = true;
-  AqlValueGuard guard{value, mustDestroy};
-  // TODO(MBkkt) add moveValueInto overload for std::unique_ptr<uint8_t[]>
   outputRow->moveValueInto(infos->outputMaterializedDocumentRegId(), *inputRow,
-                           guard);
+                           &data);
 }
 
 template<typename T, bool localDocumentId>
@@ -232,7 +228,7 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
     if constexpr (localDocumentId) {
       static_assert(isSingleCollection);
       LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
-      written = _collection->read(&_trx, id, callback, ReadOwnWrites::no).ok();
+      written = _collection->lookup(&_trx, id, callback, {}).ok();
     } else if (it != end) {
       if (it->executor != kInvalidRecord) {
         if (auto& value = _getCtx.values[it->executor]; value) {
