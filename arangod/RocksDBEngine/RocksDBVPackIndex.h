@@ -188,8 +188,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
                       OperationOptions const& options, bool performChecks);
 
   Result insertNonUnique(transaction::Methods& trx, RocksDBMethods* mthds,
-                         LocalDocumentId documentId,
-                         velocypack::Slice doc,
+                         LocalDocumentId documentId, velocypack::Slice doc,
                          containers::SmallVector<RocksDBKey, 4> const& elements,
                          containers::SmallVector<uint64_t, 4> hashes,
                          OperationOptions const& options);
@@ -245,16 +244,16 @@ class RocksDBVPackIndex : public RocksDBIndex {
                  std::vector<int>* expanding);
 
   /// @brief helper function to insert a document into any index type
-  ErrorCode fillElement(velocypack::Builder& leased,
-                        LocalDocumentId documentId, VPackSlice doc,
+  ErrorCode fillElement(velocypack::Builder& leased, LocalDocumentId documentId,
+                        VPackSlice doc,
                         containers::SmallVector<RocksDBKey, 4>& elements,
                         containers::SmallVector<uint64_t, 4>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void addIndexValue(velocypack::Builder& leased,
-                     LocalDocumentId documentId, VPackSlice document,
+  void addIndexValue(velocypack::Builder& leased, LocalDocumentId documentId,
+                     VPackSlice document,
                      containers::SmallVector<RocksDBKey, 4>& elements,
                      containers::SmallVector<uint64_t, 4>& hashes,
                      std::span<VPackSlice const> sliceStack);
@@ -264,8 +263,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @param elements vector of resulting index entries
   /// @param sliceStack working list of values to insert into the index
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void buildIndexValues(velocypack::Builder& leased,
-                        LocalDocumentId documentId,
+  void buildIndexValues(velocypack::Builder& leased, LocalDocumentId documentId,
                         VPackSlice const document, size_t level,
                         containers::SmallVector<RocksDBKey, 4>& elements,
                         containers::SmallVector<uint64_t, 4>& hashes,

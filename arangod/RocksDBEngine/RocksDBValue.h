@@ -162,8 +162,7 @@ class RocksDBValue {
   explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, LocalDocumentId docId,
                RevisionId revision);
-  RocksDBValue(RocksDBEntryType type, LocalDocumentId docId,
-               VPackSlice data);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId docId, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, std::string_view data);
   RocksDBValue(RocksDBEntryType type, replication2::LogEntry const&);

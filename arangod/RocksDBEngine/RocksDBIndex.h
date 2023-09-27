@@ -143,8 +143,7 @@ class RocksDBIndex : public Index {
   virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId oldDocumentId,
                         arangodb::velocypack::Slice oldDoc,
-                        LocalDocumentId newDocumentId,
-                        velocypack::Slice newDoc,
+                        LocalDocumentId newDocumentId, velocypack::Slice newDoc,
                         OperationOptions const& options, bool performChecks);
 
   virtual void refillCache(transaction::Methods& trx,
