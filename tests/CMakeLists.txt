@@ -68,6 +68,8 @@ add_subdirectory(IResearch)
 
 
 set(ARANGODB_TESTS_SOURCES
+  ${ARANGODB_IRESEARCH_TESTS_SOURCES}
+  ${RCFILE}
   Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
@@ -83,7 +85,6 @@ set(ARANGODB_TESTS_SOURCES
   Agency/StoreTestAPI.cpp
   Agency/SupervisionTest.cpp
   Agency/TransactionBuilderTests.cpp
-  Aql/AsyncExecutorTest.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
   Aql/AqlHelper.cpp
@@ -95,41 +96,45 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlValueMemoryLayoutTest.cpp
   Aql/AstNodeTest.cpp
   Aql/AstResourcesTest.cpp
+  Aql/AsyncExecutorTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BitFunctionsTest.cpp
   Aql/BlockCollector.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
-  Aql/FixedOutputExecutionBlockMock.cpp
-  Aql/InRangeFunctionTest.cpp
-  Aql/MinHashFunctionsTest.cpp
-  Aql/JaccardFunctionTest.cpp
-  Aql/LevenshteinMatchFunctionTest.cpp
+  Aql/DecaysFunctionTest.cpp
   Aql/DependencyProxyMock.cpp
+  Aql/DistanceFunctionTest.cpp
   Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/EnumerateCollectionExecutorTest.cpp
   Aql/EnumerateListExecutorTest.cpp
+  Aql/EnumeratePathsExecutorTest.cpp
+  Aql/EnumeratePathsNodeTest.cpp
   Aql/ExecutionBlockImplTest.cpp
   Aql/ExecutionNodeTest.cpp
   Aql/ExecutorTestHelper.cpp
   Aql/FilterExecutorTest.cpp
+  Aql/FixedOutputExecutionBlockMock.cpp
   Aql/GatherExecutorCommonTest.cpp
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
+  Aql/InRangeFunctionTest.cpp
   Aql/IndexNodeTest.cpp
   Aql/InputRangeTest.cpp
   Aql/InsertExecutorTest.cpp
-  Aql/EnumeratePathsExecutorTest.cpp
-  Aql/EnumeratePathsNodeTest.cpp
+  Aql/JaccardFunctionTest.cpp
+  Aql/JoinStrategy/GenericJoinTest.cpp
+  Aql/LevenshteinMatchFunctionTest.cpp
   Aql/LimitExecutorTest.cpp
+  Aql/MinHashFunctionsTest.cpp
   Aql/MockTypedNode.cpp
   Aql/NgramMatchFunctionTest.cpp
-  Aql/NgramSimilarityFunctionTest.cpp
   Aql/NgramPosSimilarityFunctionTest.cpp
-  Aql/NodeWalkerTest.cpp
+  Aql/NgramSimilarityFunctionTest.cpp
   Aql/NoResultsExecutorTest.cpp
+  Aql/NodeWalkerTest.cpp
   Aql/ProjectionsTest.cpp
   Aql/QueryCursorTest.cpp
   Aql/QueryHelper.cpp
@@ -144,9 +149,9 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ShortestPathExecutorTest.cpp
   Aql/ShortestPathNodeTest.cpp
   Aql/SkipResultTest.cpp
-  Aql/SortedCollectExecutorTest.cpp
   Aql/SortExecutorTest.cpp
   Aql/SortLimitTest.cpp
+  Aql/SortedCollectExecutorTest.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SplicedSubqueryIntegrationTest.cpp
   Aql/SubqueryEndExecutorTest.cpp
@@ -158,11 +163,9 @@ set(ARANGODB_TESTS_SOURCES
   Aql/UpsertExecutorTest.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Aql/WindowExecutorTest.cpp
-  Aql/DecaysFunctionTest.cpp
-  Aql/DistanceFunctionTest.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
-  Auth/UserManagerTest.cpp
   Auth/UserManagerClusterTest.cpp
+  Auth/UserManagerTest.cpp
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
@@ -173,20 +176,21 @@ set(ARANGODB_TESTS_SOURCES
   Cache/PlainCache.cpp
   Cache/Rebalancer.cpp
   Cache/Table.cpp
+  Cache/TransactionManager.cpp
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
   Cache/TransactionalCacheVPackKeyHasher.cpp
   Cache/TransactionalStore.cpp
-  Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
   Cluster/EvenDistributionTest.cpp
-  Cluster/PlanCollectionToAgencyWriterTest.cpp
   Cluster/PlanCollectionEntryTest.cpp
+  Cluster/PlanCollectionToAgencyWriterTest.cpp
   Cluster/QueryAnalyzerRevisionsTest.cpp
   Cluster/RebootTrackerTest.cpp
+  Cluster/ShardAutoRebalancerTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -199,14 +203,12 @@ set(ARANGODB_TESTS_SOURCES
   Geo/ShapeContainerTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp
-  ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
-  ${RCFILE}
-  Metrics/MetricsTest.cpp
   Metrics/MetricsFeatureTest.cpp
   Metrics/MetricsServerTest.cpp
+  Metrics/MetricsTest.cpp
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
@@ -226,15 +228,15 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/CachedCollectionNameTest.cpp
   RocksDBEngine/ChecksumCalculatorTest.cpp
   RocksDBEngine/ChecksumHelperTest.cpp
-  RocksDBEngine/EndianTest.cpp
-  RocksDBEngine/KeyTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp
+  RocksDBEngine/EndianTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
+  RocksDBEngine/KeyTest.cpp
   RocksDBEngine/MemoryUsageTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
-  SimpleHttpClient/HttpResponseCheckerTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
+  SimpleHttpClient/HttpResponseCheckerTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/ContextTest.cpp
   Transaction/CountCacheTest.cpp
@@ -252,7 +254,7 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalViewTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
-  Cluster/ShardAutoRebalancerTest.cpp)
+)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

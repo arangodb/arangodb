@@ -44,6 +44,8 @@ class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
 struct ResourceMonitor;
+struct AqlIndexStreamIterator;
+struct IndexStreamOptions;
 
 namespace velocypack {
 class Builder;
@@ -452,6 +454,14 @@ class Index {
       aql::AstNode const* access, aql::AstNode const* other,
       aql::AstNode const* op, aql::Variable const* reference,
       containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
+
+  virtual bool supportsStreamInterface(
+      IndexStreamOptions const&) const noexcept {
+    return false;
+  }
+
+  virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
+      transaction::Methods* trx, IndexStreamOptions const&);
 
   virtual bool canWarmup() const noexcept;
   virtual Result warmup();
