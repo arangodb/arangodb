@@ -164,15 +164,15 @@ bool TraverserCache::appendVertex(std::string_view id,
   try {
     transaction::AllowImplicitCollectionsSwitcher disallower(
         _trx->state()->options(), _allowImplicitCollections);
-
+    auto cb = IndexIterator::makeDocumentCallbackF(
+        [&](LocalDocumentId, VPackSlice doc) {
+          ++_insertedDocuments;
+          // copying...
+          result.add(doc);
+          return true;
+        });
     Result res =
-        _trx->documentFastPathLocal(collectionName, id.substr(pos + 1),
-                                    [&](LocalDocumentId, VPackSlice doc) {
-                                      ++_insertedDocuments;
-                                      // copying...
-                                      result.add(doc);
-                                      return true;
-                                    });
+        _trx->documentFastPathLocal(collectionName, id.substr(pos + 1), cb);
 
     if (res.ok()) {
       return true;
@@ -238,14 +238,18 @@ bool TraverserCache::appendVertex(std::string_view id,
     transaction::AllowImplicitCollectionsSwitcher disallower(
         _trx->state()->options(), _allowImplicitCollections);
 
-    Result res =
-        _trx->documentFastPathLocal(collectionName, id.substr(pos + 1),
-                                    [&](LocalDocumentId, VPackSlice doc) {
-                                      ++_insertedDocuments;
-                                      // copying...
-                                      result = arangodb::aql::AqlValue(doc);
-                                      return true;
-                                    });
+    Result res = _trx->documentFastPathLocal(
+        collectionName, id.substr(pos + 1),
+        {[&](LocalDocumentId, VPackSlice doc) {
+           ++_insertedDocuments;
+           result = aql::AqlValue(doc);
+           return true;
+         },
+         [&](LocalDocumentId, std::unique_ptr<std::string>& doc) {
+           ++_insertedDocuments;
+           result = aql::AqlValue(doc);
+           return true;
+         }});
 
     if (res.ok()) {
       return true;

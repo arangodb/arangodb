@@ -228,38 +228,38 @@ bool RefactoredTraverserCache::appendVertex(
       transaction::AllowImplicitCollectionsSwitcher disallower(
           _trx->state()->options(), _allowImplicitCollections);
 
+      auto cb = IndexIterator::makeDocumentCallbackF([&](LocalDocumentId,
+                                                         VPackSlice doc) {
+        stats.incrScannedIndex(1);
+        // copying...
+        if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+          if (!_vertexProjections.empty()) {
+            // TODO: This does one unnecessary copy.
+            // We should be able to move the Projection into the
+            // AQL value.
+            transaction::BuilderLeaser builder(_trx);
+            {
+              VPackObjectBuilder guard(builder.get());
+              _vertexProjections.toVelocyPackFromDocument(*builder, doc, _trx);
+            }
+            result = aql::AqlValue(builder->slice());
+          } else {
+            // TODO(MBkkt) speedup this case
+            result = aql::AqlValue(doc);
+          }
+        } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+          if (!_vertexProjections.empty()) {
+            VPackObjectBuilder guard(&result);
+            _vertexProjections.toVelocyPackFromDocument(result, doc, _trx);
+          } else {
+            result.add(doc);
+          }
+        }
+        return true;
+      });
       Result res = _trx->documentFastPathLocal(
           collectionName,
-          id.substr(collectionNameResult.get().second + 1).stringView(),
-          [&](LocalDocumentId, VPackSlice doc) -> bool {
-            stats.incrScannedIndex(1);
-            // copying...
-            if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-              if (!_vertexProjections.empty()) {
-                // TODO: This does one unnecessary copy.
-                // We should be able to move the Projection into the
-                // AQL value.
-                transaction::BuilderLeaser builder(_trx);
-                {
-                  VPackObjectBuilder guard(builder.get());
-                  _vertexProjections.toVelocyPackFromDocument(*builder, doc,
-                                                              _trx);
-                }
-                result = aql::AqlValue(builder->slice());
-              } else {
-                result = aql::AqlValue(doc);
-              }
-            } else if constexpr (std::is_same_v<ResultType,
-                                                velocypack::Builder>) {
-              if (!_vertexProjections.empty()) {
-                VPackObjectBuilder guard(&result);
-                _vertexProjections.toVelocyPackFromDocument(result, doc, _trx);
-              } else {
-                result.add(doc);
-              }
-            }
-            return true;
-          });
+          id.substr(collectionNameResult.get().second + 1).stringView(), cb);
       if (res.ok()) {
         return true;
       }

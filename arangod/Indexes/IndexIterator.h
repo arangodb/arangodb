@@ -150,6 +150,8 @@ class IndexIterator {
     velocypack::ValueLength _storedValuesLength;
   };
 
+  // TODO(MBkkt) move callback stuff to separate header
+  // TODO(MBkkt) try to use view/move_only options
   template<typename... Funcs>
   class CallbackImplStrict : fu2::function<Funcs...> {
     using Base = fu2::function<Funcs...>;
@@ -170,7 +172,7 @@ class IndexIterator {
   };
 
   template<typename... Funcs>
-  class CallbackImplWeak : public CallbackImplStrict<Funcs...> {
+  class CallbackImplWeak : CallbackImplStrict<Funcs...> {
     using Base = CallbackImplStrict<Funcs...>;
 
     struct DummyRetval {
@@ -182,6 +184,13 @@ class IndexIterator {
     };
 
    public:
+    using Base::operator();
+    using Base::operator bool;
+
+    bool operator==(std::nullptr_t) { return !bool(*this); }
+
+    bool operator!=(std::nullptr_t) { return bool(*this); }
+
     CallbackImplWeak() noexcept = default;
 
     template<typename... Fs>
@@ -193,6 +202,7 @@ class IndexIterator {
   using LocalDocumentIdCallback =
       fu2::function<bool(LocalDocumentId token) const>;
 
+  // TODO(MBkkt) Try to replace bool with void, or explain it purpose here
   using DocumentCallback = CallbackImplStrict<
       bool(LocalDocumentId token, velocypack::Slice doc) const,
       bool(LocalDocumentId token, std::unique_ptr<std::string>& doc) const>;
