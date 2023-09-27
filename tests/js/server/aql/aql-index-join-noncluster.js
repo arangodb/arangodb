@@ -29,7 +29,7 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require('internal');
 
-function IndexJoinTestSuite() {
+const IndexJoinTestSuite = function () {
 
   const fillCollection = function (name, generator) {
     const collection = db[name] || db._create(name);
@@ -66,7 +66,7 @@ function IndexJoinTestSuite() {
   const runAndCheckQuery = function (query) {
     const opts = {
       optimizer: {
-        rules: ["+join-index-nodes", "-move-calculations-up", "-move-calculations-up-2", "-interchange-adjacent-enumerations"]
+        rules: ["+join-index-nodes"]
       },
       maxNumberOfPlans: 1
     };
@@ -175,7 +175,7 @@ function IndexJoinTestSuite() {
       }
     },
 /*
-    testMultipleJoins: function() {
+    testMultipleJoins: function () {
       const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => x));
       A.ensureIndex({type: "persistent", fields: ["x"]});
       const B = fillCollection("B", singleAttributeGenerator(1000, "x", x => x));

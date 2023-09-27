@@ -2875,6 +2875,7 @@ struct RocksDBVPackStreamIterator : AqlIndexStreamIterator {
   VPackString _cache;
   RocksDBKeyBounds _bounds;
   rocksdb::Slice _end;
+  RocksDBKey _rocksdbKey;
 
   RocksDBVPackStreamIterator(RocksDBVPackIndex const* index,
                              transaction::Methods* trx,
@@ -2930,9 +2931,9 @@ struct RocksDBVPackStreamIterator : AqlIndexStreamIterator {
 
   bool seek(std::span<VPackSlice> span) override {
     loadKey(span);
-    RocksDBKey rkey;
-    rkey.constructUniqueVPackIndexValue(_index->objectId(), _builder.slice());
-    _iterator->Seek(rkey.string());
+    _rocksdbKey.constructUniqueVPackIndexValue(_index->objectId(),
+                                               _builder.slice());
+    _iterator->Seek(_rocksdbKey.string());
     return position(span);
   }
 
@@ -2973,7 +2974,9 @@ struct RocksDBVPackStreamIterator : AqlIndexStreamIterator {
 std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
     transaction::Methods* trx, IndexStreamOptions const& opts) {
   if (!supportsStreamInterface(opts)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "RocksDBVPackIndex streamForCondition was "
+                                   "called with unsupported options.");
   }
 
   RocksDBVPackStreamOptions streamOptions;
