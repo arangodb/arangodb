@@ -64,7 +64,7 @@ function IndexJoinTestSuite() {
   };
 
   const runAndCheckQuery = function (query) {
-    opts = {
+    const opts = {
       optimizer: {
         rules: ["+join-index-nodes", "-move-calculations-up", "-move-calculations-up-2", "-interchange-adjacent-enumerations"]
       },
