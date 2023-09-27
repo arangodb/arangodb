@@ -1296,7 +1296,7 @@ arangodb::IndexEstMap PhysicalCollectionMock::clusterIndexEstimates(
 arangodb::Result PhysicalCollectionMock::lookup(
     arangodb::transaction::Methods* trx, std::string_view key,
     arangodb::IndexIterator::DocumentCallback const& cb,
-    LookupOptions options) {
+    LookupOptions options) const {
   before();
   auto it = _documents.find(key);
   if (it != _documents.end()) {
@@ -1308,7 +1308,7 @@ arangodb::Result PhysicalCollectionMock::lookup(
 arangodb::Result PhysicalCollectionMock::lookup(
     arangodb::transaction::Methods* trx, arangodb::LocalDocumentId token,
     arangodb::IndexIterator::DocumentCallback const& cb, LookupOptions options,
-    arangodb::StorageSnapshot const* snapshot) {
+    arangodb::StorageSnapshot const* snapshot) const {
   before();
   for (auto const& entry : _documents) {
     auto& doc = entry.second;
