@@ -1,6 +1,10 @@
 devel
 -----
 
+* Improve performance of AQL LimitExecutor for higher limit values.
+  The LimitExecutor now fast-forwards all input rows instead of working on the
+  individual input rows.
+
 * Remove special handling for backups taken with ArangoDB 3.5 in hot backup
   restore.
 
