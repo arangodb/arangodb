@@ -1232,7 +1232,7 @@ function processQuery(query, explain, planIndex) {
   };
 
   const iterateIndexes = function (idx, i, node, types, variable) {
-    let what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan';
+    let what = (!node.ascending ? 'reverse ' : '') + idx.type + ' index scan';
     if (node.producesResult || !node.hasOwnProperty('producesResult')) {
       if (node.indexCoversProjections) {
         what += ', index only';

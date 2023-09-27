@@ -775,7 +775,6 @@ IResearchViewStoredValues const& storedValues(
   return viewImpl.storedValues();
 }
 
-char const* kNodeDatabaseParam = "database";
 char const* kNodeViewNameParam = "view";
 char const* kNodeViewIdParam = "viewId";
 char const* kNodeOutVariableParam = "outVariable";
@@ -1504,7 +1503,6 @@ void const* IResearchViewNode::getSnapshotKey() const noexcept {
 void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
                                        unsigned flags) const {
   // system info
-  nodes.add(kNodeDatabaseParam, VPackValue(_vocbase.name()));
   TRI_ASSERT(_view);
   TRI_ASSERT(_meta || _view->type() != ViewType::kSearchAlias);
   // need 'view' field to correctly print view name in JS explanation

@@ -1294,9 +1294,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
 
     auto outVar = ast->variables()->createTemporaryVariable();
     auto expression = std::make_unique<Expression>(ast, sorted);
-    ExecutionNode* calculationNode = new CalculationNode(
+    ExecutionNode* calculationNode = plan->createNode<CalculationNode>(
         plan.get(), plan->nextId(), std::move(expression), outVar);
-    plan->registerNode(calculationNode);
 
     // make the new node a parent of the original calculation node
     TRI_ASSERT(setter != nullptr);
@@ -2204,9 +2203,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
                 v.outVar, true, plan->getAst()->query().resourceMonitor()});
           }
 
-          auto sortNode =
-              new SortNode(plan.get(), plan->nextId(), sortElements, false);
-          plan->registerNode(sortNode);
+          auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
+                                                     sortElements, false);
 
           TRI_ASSERT(collectNode->hasParent());
           auto parent = collectNode->getFirstParent();
@@ -2243,9 +2241,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
               v.outVar, true, plan->getAst()->query().resourceMonitor()});
         }
 
-        auto sortNode =
-            new SortNode(newPlan.get(), newPlan->nextId(), sortElements, false);
-        newPlan->registerNode(sortNode);
+        auto sortNode = newPlan->createNode<SortNode>(
+            newPlan.get(), newPlan->nextId(), sortElements, false);
 
         TRI_ASSERT(newCollectNode->hasParent());
         auto parent = newCollectNode->getFirstParent();
@@ -2292,9 +2289,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
             v.inVar, true, plan->getAst()->query().resourceMonitor()});
       }
 
-      auto sortNode =
-          new SortNode(plan.get(), plan->nextId(), sortElements, true);
-      plan->registerNode(sortNode);
+      auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
+                                                 sortElements, true);
 
       TRI_ASSERT(collectNode->hasDependency());
       auto dep = collectNode->getFirstDependency();
@@ -3260,18 +3256,16 @@ struct SortToIndexNode final
         IndexIteratorOptions opts;
         opts.ascending = sortCondition.isAscending();
         opts.useCache = false;
-        auto newNode = std::make_unique<IndexNode>(
+        auto n = _plan->createNode<IndexNode>(
             _plan, _plan->nextId(), enumerateCollectionNode->collection(),
             outVariable, usedIndexes,
             false,  // here we could always assume false as there is no lookup
                     // condition here
             std::move(condition), opts);
 
-        auto n = newNode.release();
         enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
         enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan, *n);
 
-        _plan->registerNode(n);
         _plan->replaceNode(enumerateCollectionNode, n);
         _modified = true;
 
@@ -4665,13 +4659,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             aggregateVariables.emplace_back(AggregateVarInfo{
                 outVariable, collectNode->aggregateVariables()[0].inVar,
                 "LENGTH"});
-            auto dbCollectNode = new CollectNode(
+            auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 collectNode->groupVariables(), aggregateVariables, nullptr,
                 nullptr, std::vector<Variable const*>(),
                 collectNode->variableMap(), false);
-
-            plan->registerNode(dbCollectNode);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -4701,13 +4693,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             std::vector<GroupVarInfo> const groupVariables{
                 GroupVarInfo{out, groupVars[0].inVar}};
 
-            auto dbCollectNode = new CollectNode(
+            auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 groupVariables, collectNode->aggregateVariables(), nullptr,
                 nullptr, std::vector<Variable const*>(),
                 collectNode->variableMap(), true);
-
-            plan->registerNode(dbCollectNode);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -4762,13 +4752,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               outVars.emplace_back(GroupVarInfo{out, it.inVar});
             }
 
-            auto dbCollectNode = new CollectNode(
+            auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(), outVars,
                 dbServerAggVars, nullptr, nullptr,
                 std::vector<Variable const*>(), collectNode->variableMap(),
                 false);
-
-            plan->registerNode(dbCollectNode);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -5994,10 +5982,9 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      ExecutionNode* newNode = new CalculationNode(plan.get(), plan->nextId(),
-                                                   std::move(expr), outVar);
+      ExecutionNode* newNode = plan->createNode<CalculationNode>(
+          plan.get(), plan->nextId(), std::move(expr), outVar);
 
-      plan->registerNode(newNode);
       plan->replaceNode(cn, newNode);
       modified = true;
     }
@@ -6168,9 +6155,8 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
       auto astNode = remover.createReplacementNode(plan->getAst());
 
       auto expr = std::make_unique<Expression>(plan->getAst(), astNode);
-      ExecutionNode* newNode = new CalculationNode(plan.get(), plan->nextId(),
-                                                   std::move(expr), outVar);
-      plan->registerNode(newNode);
+      ExecutionNode* newNode = plan->createNode<CalculationNode>(
+          plan.get(), plan->nextId(), std::move(expr), outVar);
       plan->replaceNode(cn, newNode);
       modified = true;
     }
@@ -7429,14 +7415,13 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   opts.limit = limit;
   opts.evaluateFCalls = false;  // workaround to avoid evaluating "doc.geo"
   std::unique_ptr<Condition> condition(buildGeoCondition(plan, info));
-  auto inode = new IndexNode(plan, plan->nextId(), info.collection,
-                             info.collectionNodeOutVar,
-                             std::vector<transaction::Methods::IndexHandle>{
-                                 transaction::Methods::IndexHandle{info.index}},
-                             false,  // here we are not using inverted index so
-                                     // for sure no "whole" coverage
-                             std::move(condition), opts);
-  plan->registerNode(inode);
+  auto inode = plan->createNode<IndexNode>(
+      plan, plan->nextId(), info.collection, info.collectionNodeOutVar,
+      std::vector<transaction::Methods::IndexHandle>{
+          transaction::Methods::IndexHandle{info.index}},
+      false,  // here we are not using inverted index so
+              // for sure no "whole" coverage
+      std::move(condition), opts);
   plan->replaceNode(info.collectionNodeToReplace, inode);
 
   // remove expressions covered by our index
@@ -7890,9 +7875,8 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
         auto expr =
             std::make_unique<Expression>(ast, ast->createNodeValueBool(true));
         Variable* outVariable = ast->variables()->createTemporaryVariable();
-        auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
-                                            std::move(expr), outVariable);
-        plan->registerNode(calcNode);
+        auto calcNode = plan->createNode<CalculationNode>(
+            plan.get(), plan->nextId(), std::move(expr), outVariable);
         plan->insertAfter(f, calcNode);
         // change the result value of the existing Return node
         TRI_ASSERT(root->getType() == EN::RETURN);
@@ -7907,8 +7891,8 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
         continue;
       }
 
-      auto limitNode = new LimitNode(plan.get(), plan->nextId(), 0, limitValue);
-      plan->registerNode(limitNode);
+      auto limitNode = plan->createNode<LimitNode>(plan.get(), plan->nextId(),
+                                                   0, limitValue);
       plan->insertAfter(f, limitNode);
       modified = true;
     }

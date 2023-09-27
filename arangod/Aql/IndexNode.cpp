@@ -101,12 +101,6 @@ IndexNode::IndexNode(ExecutionPlan* plan,
   _options.lookahead = basics::VelocyPackHelper::getNumericValue(
       base, StaticStrings::IndexLookahead, IndexIteratorOptions{}.lookahead);
 
-  if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
-    // legacy
-    _options.sorted = true;
-    _options.ascending = !base.get("reverse").getBool();
-  }
-
   VPackSlice indexes = base.get("indexes");
 
   if (!indexes.isArray()) {
@@ -214,8 +208,10 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
-  // Now put info about vocbase and cid in there
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
+
+  // this attribute is never read back by arangod, but it is used a lot
+  // in tests, so it can't be removed easily
   builder.add("indexCoversProjections",
               VPackValue(_projections.usesCoveringIndex()));
 
@@ -233,7 +229,6 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // IndexIteratorOptions
   builder.add("sorted", VPackValue(_options.sorted));
   builder.add("ascending", VPackValue(_options.ascending));
-  builder.add("reverse", VPackValue(!_options.ascending));  // legacy
   builder.add("evalFCalls", VPackValue(_options.evaluateFCalls));
   builder.add(StaticStrings::UseCache, VPackValue(_options.useCache));
   builder.add(StaticStrings::WaitForSyncString,
@@ -423,9 +418,9 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
     outNonMaterializedIndVars = _outNonMaterializedIndVars;
   }
 
-  auto c = std::make_unique<IndexNode>(
-      plan, _id, collection(), outVariable, _indexes, _allCoveredByOneIndex,
-      std::unique_ptr<Condition>(_condition->clone()), _options);
+  auto c = std::make_unique<IndexNode>(plan, _id, collection(), outVariable,
+                                       _indexes, _allCoveredByOneIndex,
+                                       _condition->clone(), _options);
 
   c->_projections = _projections;
   c->_filterProjections = _filterProjections;
