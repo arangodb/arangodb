@@ -1365,7 +1365,9 @@ size_t AqlValue::memoryUsage() const noexcept {
     case VPACK_MANAGED_SLICE:
       return _data.managedSliceMeta.getLength();
     case VPACK_MANAGED_STRING:
-      return sizeof(std::string) + _data.managedStringMeta.getLength();
+      // It's over-reported in case of sso for libc++, but it's ok
+      return sizeof(std::string) + 1 +
+             _data.managedStringMeta.pointer->capacity();
     case RANGE:
       return sizeof(Range);
     default:
