@@ -32,7 +32,7 @@ const internal = require('internal');
 function IndexJoinTestSuite() {
 
   const fillCollection = function (name, generator) {
-    const collection = db._create(name);
+    const collection = db[name] || db._create(name);
     let docs = [];
     while (true) {
       let v = generator();
@@ -76,9 +76,10 @@ function IndexJoinTestSuite() {
       return node.type;
     });
 
-    // TODO maybe just assert that a JoinNode is present
-    assertEqual("SingletonNode", planNodes[0]);
-    assertEqual("JoinNode", planNodes[1]);
+    if (planNodes.indexOf("JoinNode") === -1) {
+      db._explain(query, null, opts);
+    }
+    assertNotEqual(planNodes.indexOf("JoinNode"), -1);
 
     const result = AQL_EXECUTE(query, null, opts);
     return result.json;
@@ -103,13 +104,6 @@ function IndexJoinTestSuite() {
       const B = fillCollection("B", singleAttributeGenerator(1000, "x", x => 2 * x));
       B.ensureIndex({type: "persistent", fields: ["x"]});
 
-      opts = {
-        optimizer: {
-          rules: ["+join-index-nodes", "-move-calculations-up", "-move-calculations-up-2", "-interchange-adjacent-enumerations"]
-        },
-        maxNumberOfPlans: 1
-      };
-
       const result = runAndCheckQuery(`
         FOR doc1 IN A
           SORT doc1.x
@@ -124,15 +118,8 @@ function IndexJoinTestSuite() {
     testEveryOtherMatch: function () {
       const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => x));
       A.ensureIndex({type: "persistent", fields: ["x"]});
-      const B = fillCollection("B", singleAttributeGenerator(5000, "x", x => 2 * x));
+      const B = fillCollection("B", singleAttributeGenerator(500, "x", x => 2 * x));
       B.ensureIndex({type: "persistent", fields: ["x"]});
-
-      opts = {
-        optimizer: {
-          rules: ["+join-index-nodes", "-move-calculations-up", "-move-calculations-up-2", "-interchange-adjacent-enumerations"]
-        },
-        maxNumberOfPlans: 1
-      };
 
       const result = runAndCheckQuery(`
         FOR doc1 IN A
@@ -146,7 +133,66 @@ function IndexJoinTestSuite() {
       for (const [a, b] of result) {
         assertEqual(a.x, b.x);
       }
+    },
+
+    testEveryMultipleMatches: function () {
+      const A = fillCollection("A", singleAttributeGenerator(100, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(1000, "x", x => x % 100));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 1000);
+      for (const [a, b] of result) {
+        assertEqual(a.x % 100, b.x);
+      }
+    },
+
+    testFullProduct: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10, "x", x => 0));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(10, "x", x => 0));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 100);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+      }
+    },
+/*
+    testMultipleJoins: function() {
+      const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(1000, "x", x => x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const result = runAndCheckQuery(`
+        FOR i IN 1..2
+          FOR doc1 IN A
+            SORT doc1.x
+            FOR doc2 IN B
+                FILTER doc1.x == doc2.x
+                RETURN [i, doc1, doc2]
+      `);
+
+      print(result);
     }
+*/
   };
 };
 
