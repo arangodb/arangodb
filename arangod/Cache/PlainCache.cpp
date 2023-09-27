@@ -253,8 +253,9 @@ bool PlainCache<Hasher>::freeMemoryWhile(
       break;
     }
 
-    auto [status, guard] = getBucket(Table::BucketId{index}, Cache::triesFast,
-                                     /*singleOperation*/ false);
+    auto [status, guard] =
+        getBucket(table.get(), Table::BucketId{index}, Cache::triesFast,
+                  /*singleOperation*/ false);
 
     if (status != TRI_ERROR_NO_ERROR) {
       continue;
