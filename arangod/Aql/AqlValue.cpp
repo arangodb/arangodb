@@ -287,19 +287,10 @@ std::string_view AqlValue::getTypeString() const noexcept {
 size_t AqlValue::length() const {
   auto t = type();
   switch (t) {
-    case VPACK_INLINE_INT48:
-    case VPACK_INLINE_INT64:
-    case VPACK_INLINE_UINT64:
-    case VPACK_INLINE_DOUBLE:
-      // values above will immediately throw in Slice::length - let it be for
-      // consistency (one place of throwing)
-    case VPACK_INLINE:
-    case VPACK_SLICE_POINTER:
-    case VPACK_MANAGED_SLICE:
-    case VPACK_MANAGED_STRING:
-      return slice(t).length();
     case RANGE:
       return range()->size();
+    default:
+      return slice(t).length();
   }
 }
 
@@ -1487,6 +1478,7 @@ size_t std::hash<AqlValue>::operator()(AqlValue const& x) const noexcept {
     case AqlValue::RANGE:
       return std::hash<void const*>()(x._data.rangeMeta.range);
   }
+  return 0;
 }
 
 bool std::equal_to<AqlValue>::operator()(AqlValue const& a,
@@ -1522,4 +1514,5 @@ bool std::equal_to<AqlValue>::operator()(AqlValue const& a,
     case AqlValue::RANGE:
       return a._data.rangeMeta.range == b._data.rangeMeta.range;
   }
+  return false;
 }
