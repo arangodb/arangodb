@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/JoinExecutor.h"
-#include "Aql/IndexMerger.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Collection.h"
 #include "Aql/QueryContext.h"
@@ -34,22 +33,28 @@ using namespace arangodb::aql;
 JoinExecutor::~JoinExecutor() = default;
 
 JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {}
+    : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {
+  constructStrategy();
+}
 
 auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   bool hasMore = false;
   while (inputRange.hasDataRow() && !output.isFull()) {
-    if (_merger == nullptr) {
+    if (!_currentRow) {
       std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
-      constructMerger();
+      _strategy->reset();
     }
 
-    TRI_ASSERT(_merger != nullptr);
-    hasMore = _merger->next([&](std::span<LocalDocumentId> docIds,
-                                std::span<VPackSlice> projections) -> bool {
+    hasMore = _strategy->next([&](std::span<LocalDocumentId> docIds,
+                                  std::span<VPackSlice> projections) -> bool {
+      // TODO post filtering based on projections
+      // TODO store projections in registers
+
       for (std::size_t k = 0; k < docIds.size(); k++) {
+        // TODO post filter based on document value
+        // TODO implement document projections
         _infos.indexes[k].collection->getCollection()->getPhysical()->read(
             &_trx, docIds[k],
             [&](LocalDocumentId token, VPackSlice document) {
@@ -67,7 +72,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     });
 
     if (!hasMore) {
-      _merger.reset();
+      _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
     }
 
     inputRange.advanceDataRow();
@@ -79,13 +84,37 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                  AqlCall& clientCall)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  (void)_fetcher;
-  (void)_infos;
-  return {ExecutorState::DONE, Stats{}, 0, AqlCall{}};
+  bool hasMore = false;
+  while (inputRange.hasDataRow() && clientCall.needSkipMore()) {
+    if (!_currentRow) {
+      std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
+      _strategy->reset();
+    }
+
+    hasMore = _strategy->next([&](std::span<LocalDocumentId> docIds,
+                                  std::span<VPackSlice> projections) -> bool {
+      // TODO post filtering based on projections
+      for (std::size_t k = 0; k < docIds.size(); k++) {
+        // TODO post filter based on document value
+      }
+
+      clientCall.didSkip(1);
+      return clientCall.needSkipMore();
+    });
+
+    if (!hasMore) {
+      _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+    }
+
+    inputRange.advanceDataRow();
+  }
+
+  return {inputRange.upstreamState(), Stats{}, clientCall.getSkipCount(),
+          AqlCall{}};
 }
 
-void JoinExecutor::constructMerger() {
-  std::vector<AqlIndexMerger::IndexDescriptor> indexDescription;
+void JoinExecutor::constructStrategy() {
+  std::vector<IndexJoinStrategyFactory::Descriptor> indexDescription;
 
   for (auto const& idx : _infos.indexes) {
     IndexStreamOptions options;
@@ -96,11 +125,12 @@ void JoinExecutor::constructMerger() {
 
     auto& desc = indexDescription.emplace_back();
     desc.iter = std::move(stream);
-    desc.numProjections = idx.projectionOutputRegisters.size();
+    desc.numProjections = 0;  // idx.projectionOutputRegisters.size();
   }
 
   // TODO actually we want to have different strategies, like hash join and
   // special implementations for n = 2, 3, ...
   // TODO maybe make this an template parameter
-  _merger = std::make_unique<AqlIndexMerger>(std::move(indexDescription), 1);
+  _strategy =
+      IndexJoinStrategyFactory{}.createStrategy(std::move(indexDescription), 1);
 }

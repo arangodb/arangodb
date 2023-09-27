@@ -1,17 +1,13 @@
 #include <functional>
 #include <memory>
-#include <queue>
 #include <span>
 #include <vector>
-#include <iostream>
-#include <random>
 
 #include <gtest/gtest.h>
 
 #include "Logger/LogMacros.h"
 
-#include "Aql/IndexMerger.h"
-#include "Aql/IndexMerger.tpp"
+#include "Aql/IndexJoin/GenericMerge.h"
 
 using namespace arangodb;
 
@@ -19,7 +15,10 @@ namespace {
 using MyKeyValue = std::size_t;
 using MyDocumentId = std::size_t;
 
-using MyIndexStreamIterator = IndexStreamIterator<MyKeyValue, MyDocumentId>;
+using Strategy = arangodb::aql::GenericMergeJoin<MyKeyValue, MyDocumentId>;
+using MyIndexStreamIterator = Strategy::StreamIteratorType;
+
+using Desc = Strategy::Descriptor;
 
 struct MyVectorIterator : MyIndexStreamIterator {
   bool position(std::span<MyKeyValue> sp) const override {
@@ -48,6 +47,14 @@ struct MyVectorIterator : MyIndexStreamIterator {
     cache[0] = *current;
   }
 
+  bool reset(std::span<MyKeyValue> span) override {
+    current = begin;
+    if (current != end) {
+      span[0] = *current;
+    }
+    return current != end;
+  }
+
   bool next(std::span<MyKeyValue> key, MyDocumentId& doc,
             std::span<MyKeyValue> projections) override {
     current = current + 1;
@@ -70,8 +77,6 @@ struct MyVectorIterator : MyIndexStreamIterator {
       : begin(c.begin()), current(begin), end(c.end()) {}
 };
 
-using MyIndexMerger = IndexMerger<MyKeyValue, MyDocumentId>;
-using Desc = typename MyIndexMerger::IndexDescriptor;
 }  // namespace
 
 TEST(IndexMerger, no_results) {
@@ -90,7 +95,7 @@ TEST(IndexMerger, no_results) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0);
 
-  MyIndexMerger merger{std::move(iters), 1};
+  Strategy merger{std::move(iters), 1};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -118,7 +123,7 @@ TEST(IndexMerger, some_results) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0);
 
-  MyIndexMerger merger{std::move(iters), 1};
+  Strategy merger{std::move(iters), 1};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -142,7 +147,7 @@ TEST(IndexMerger, product_result) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0);
 
-  MyIndexMerger merger{std::move(iters), 1};
+  Strategy merger{std::move(iters), 1};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -167,7 +172,7 @@ TEST(IndexMerger, two_phase_product_result) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0);
 
-  MyIndexMerger merger{std::move(iters), 1};
+  Strategy merger{std::move(iters), 1};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -192,7 +197,7 @@ TEST(IndexMerger, two_phase_product_result_two_streaks) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0);
 
-  MyIndexMerger merger{std::move(iters), 1};
+  Strategy merger{std::move(iters), 1};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -226,7 +231,7 @@ TEST(IndexMerger, three_iterators) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0);
   iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0);
 
-  MyIndexMerger merger{std::move(iters), 1};
+  Strategy merger{std::move(iters), 1};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -261,7 +266,7 @@ TEST(IndexMerger, three_iterators_2) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0);
   iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0);
 
-  MyIndexMerger merger{std::move(iters), 1};
+  Strategy merger{std::move(iters), 1};
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -286,7 +291,7 @@ TEST(IndexMerger, one_iterator_corner_case) {
   std::vector<Desc> iters;
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0);
 
-  MyIndexMerger merger{std::move(iters), 1};
+  Strategy merger{std::move(iters), 1};
 
   bool hasMore = true;
   std::size_t count = 0;

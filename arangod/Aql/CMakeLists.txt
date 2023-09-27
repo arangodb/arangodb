@@ -78,8 +78,7 @@ add_library(arango_aql STATIC
   InAndOutRowExpressionContext.cpp
   IndexExecutor.cpp
   IndexHint.cpp
-  IndexMerger.cpp
-  IndexMerger.h
+  IndexJoinStrategy.cpp
   IndexNode.cpp
   IndexNodeOptimizerRules.cpp
   InputAqlItemRow.cpp

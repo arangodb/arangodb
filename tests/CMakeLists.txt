@@ -121,11 +121,11 @@ set(ARANGODB_TESTS_SOURCES
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
   Aql/InRangeFunctionTest.cpp
-  Aql/IndexMergerTest.cpp
   Aql/IndexNodeTest.cpp
   Aql/InputRangeTest.cpp
   Aql/InsertExecutorTest.cpp
   Aql/JaccardFunctionTest.cpp
+  Aql/JoinStrategy/GenericJoinTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MinHashFunctionsTest.cpp

@@ -1089,7 +1089,7 @@ std::vector<std::vector<basics::AttributeName>> Index::mergeFields(
   return result;
 }
 
-std::unique_ptr<AqlIndexStreamInterface> Index::streamForCondition(
+std::unique_ptr<AqlIndexStreamIterator> Index::streamForCondition(
     transaction::Methods* trx, IndexStreamOptions const&) {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(

@@ -17,23 +17,29 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
 ////////////////////////////////////////////////////////////////////////////////
-
-#include "IndexMerger.h"
-#include "IndexMerger.tpp"
-
-#include "VocBase/Identifiers/LocalDocumentId.h"
-#include "Basics/VelocyPackHelper.h"
+#include <memory>
 
 #include <velocypack/Slice.h>
+#include "Basics/VelocyPackHelper.h"
 
-namespace arangodb {
+#include "IndexJoinStrategy.h"
+#include "Aql/IndexJoin/GenericMerge.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
+
+using namespace arangodb::aql;
+
+namespace {
 struct VPackSliceComparator {
   auto operator()(VPackSlice left, VPackSlice right) {
-    return basics::VelocyPackHelper::compare(left, right, true) <=> 0;
+    return arangodb::basics::VelocyPackHelper::compare(left, right, true) <=> 0;
   }
 };
-
-template struct IndexMerger<VPackSlice, LocalDocumentId, VPackSliceComparator>;
-}  // namespace arangodb
+}  // namespace
+auto IndexJoinStrategyFactory::createStrategy(std::vector<Descriptor> desc,
+                                              std::size_t numKeyComponents)
+    -> std::unique_ptr<AqlIndexJoinStrategy> {
+  return std::make_unique<GenericMergeJoin<velocypack::Slice, LocalDocumentId,
+                                           VPackSliceComparator>>(
+      std::move(desc), numKeyComponents);
+}

@@ -62,7 +62,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "Aql/IndexMerger.h"
+#include "Aql/IndexStreamIterator.h"
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
@@ -2866,7 +2866,7 @@ struct RocksDBVPackStreamOptions {
 };
 
 template<bool isUnique>
-struct RocksDBVPackStreamIterator : AqlIndexStreamInterface {
+struct RocksDBVPackStreamIterator : AqlIndexStreamIterator {
   RocksDBVPackIndex const* _index;
   std::unique_ptr<rocksdb::Iterator> _iterator;
 
@@ -2961,11 +2961,16 @@ struct RocksDBVPackStreamIterator : AqlIndexStreamInterface {
     _cache = VPackString{RocksDBKey::indexedVPack(_iterator->key())};
     storeKey(cache, _cache);
   }
+
+  bool reset(std::span<VPackSlice> span) override {
+    _iterator->Seek(_bounds.start());
+    return position(span);
+  }
 };
 
 }  // namespace
 
-std::unique_ptr<AqlIndexStreamInterface> RocksDBVPackIndex::streamForCondition(
+std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
     transaction::Methods* trx, IndexStreamOptions const& opts) {
   if (!supportsStreamInterface(opts)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -2974,7 +2979,7 @@ std::unique_ptr<AqlIndexStreamInterface> RocksDBVPackIndex::streamForCondition(
   RocksDBVPackStreamOptions streamOptions;
   streamOptions.keyPrefixSize = opts.usedKeyFields.size();
 
-  auto stream = [&]() -> std::unique_ptr<AqlIndexStreamInterface> {
+  auto stream = [&]() -> std::unique_ptr<AqlIndexStreamIterator> {
     if (unique()) {
       return std::make_unique<RocksDBVPackStreamIterator<true>>(this, trx,
                                                                 streamOptions);

@@ -44,7 +44,7 @@ class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
 struct ResourceMonitor;
-struct AqlIndexStreamInterface;
+struct AqlIndexStreamIterator;
 struct IndexStreamOptions;
 
 namespace velocypack {
@@ -460,7 +460,7 @@ class Index {
     return false;
   }
 
-  virtual std::unique_ptr<AqlIndexStreamInterface> streamForCondition(
+  virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
       transaction::Methods* trx, IndexStreamOptions const&);
 
   virtual bool canWarmup() const noexcept;

@@ -29,7 +29,7 @@
 #include "Aql/Ast.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/IndexMerger.h"
+#include "Aql/IndexJoinStrategy.h"
 #include "Aql/JoinNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpressionContainer.h"
@@ -64,9 +64,6 @@ struct JoinExecutorInfos {
   struct IndexInfo {
     // Register to load the document into
     RegisterId documentOutputRegister;
-    // Sorted lists of registers to load the projections into, pointing into
-    // `registers`.
-    std::span<RegisterId> projectionOutputRegisters;
 
     // Associated document collection for this index
     Collection const* collection;
@@ -75,7 +72,7 @@ struct JoinExecutorInfos {
   };
 
   std::vector<IndexInfo> indexes;
-  std::vector<RegisterId> registers;
+  std::vector<RegisterId> projectionOutputRegisters;
   QueryContext* query;
 };
 
@@ -92,7 +89,7 @@ class JoinExecutor {
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = JoinExecutorInfos;
-  using Stats = IndexStats;
+  using Stats = NoStats;
 
   JoinExecutor() = delete;
   JoinExecutor(JoinExecutor&&) = delete;
@@ -107,16 +104,16 @@ class JoinExecutor {
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  private:
-  void constructMerger();
+  void constructStrategy();
 
   Fetcher& _fetcher;
   Infos& _infos;
-  std::unique_ptr<AqlIndexMerger> _merger;
+  std::unique_ptr<AqlIndexJoinStrategy> _strategy;
 
   transaction::Methods _trx;
 
   InputAqlItemRow _currentRow{CreateInvalidInputRowHint()};
-  ExecutorState _currentRowState;
+  ExecutorState _currentRowState{ExecutorState::HASMORE};
 };
 
 }  // namespace aql

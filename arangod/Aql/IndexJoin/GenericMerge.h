@@ -17,20 +17,107 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "Aql/IndexMerger.h"
+#include <memory>
+#include <queue>
+
 #include "Logger/LogMacros.h"
-#include <velocypack/Slice.h>
+#include "Aql/IndexStreamIterator.h"
+#include "Aql/IndexJoinStrategy.h"
+
+namespace arangodb::aql {
+
+struct DefaultComparator {
+  template<typename U, typename V>
+  auto operator()(U&& left, V&& right) const {
+    return left <=> right;
+  }
+};
+
+template<typename SliceType, typename DocIdType,
+         typename KeyCompare = DefaultComparator>
+struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
+  using StreamIteratorType = IndexStreamIterator<SliceType, DocIdType>;
+  using Descriptor = IndexDescriptor<SliceType, DocIdType>;
+
+  GenericMergeJoin(std::vector<Descriptor> descs, std::size_t numKeyComponents);
+
+  bool next(std::function<bool(std::span<DocIdType>,
+                               std::span<SliceType>)> const& cb) override;
+
+  void reset() override;
+
+ private:
+  struct IndexStreamData {
+    std::unique_ptr<StreamIteratorType> _iter;
+    std::span<SliceType> _position;
+    std::span<SliceType> _projections;
+    DocIdType& _docId;
+    bool exhausted{false};
+
+    IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
+                    std::span<SliceType> position,
+                    std::span<SliceType> projections, DocIdType& docId);
+    void seekTo(std::span<SliceType> target);
+    bool next();
+    void reset();
+  };
+
+  struct IndexStreamCompare {
+    static std::weak_ordering cmp(IndexStreamData const& left,
+                                  IndexStreamData const& right);
+    static std::weak_ordering cmp(std::span<SliceType> left,
+                                  std::span<SliceType> right);
+
+    bool operator()(IndexStreamData* left, IndexStreamData* right) const;
+  };
+
+  struct IndexMinHeap
+      : std::priority_queue<IndexStreamData*, std::vector<IndexStreamData*>,
+                            IndexStreamCompare> {
+    void clear() { this->c.clear(); }
+  };
+
+  std::vector<IndexStreamData> indexes;
+
+  bool positionAligned = false;
+
+  std::vector<DocIdType> documentIds;
+  std::vector<SliceType> sliceBuffer;
+  std::vector<SliceType> currentKeySet;
+
+  IndexMinHeap minHeap;
+  IndexStreamData* maxIter = nullptr;
+
+  void updateHeap();
+  bool advanceIndexes();
+
+  struct ProduceProductResult {
+    bool readMore;  // user want to read more data
+    bool hasMore;   // iterator has more data
+  };
+
+  ProduceProductResult produceCrossProduct(
+      std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const&
+          cb);
+
+  void fillInitialMatch();
+  bool findCommonPosition();
+};
 
 #define LOG_INDEX_MERGER LOG_DEVEL_IF(false)
 
-namespace arangodb {
+template<typename SliceType, typename DocIdType, typename KeyCompare>
+void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::reset() {
+  for (auto& idx : indexes) {
+    idx.reset();
+  }
+}
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::weak_ordering
-IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
+GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
     IndexStreamData const& left, IndexStreamData const& right) {
   if (!left.exhausted && right.exhausted) {
     return std::weak_ordering::less;
@@ -41,7 +128,7 @@ IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 std::weak_ordering
-IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
+GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
     std::span<SliceType> left, std::span<SliceType> right) {
   for (std::size_t k = 0; k < left.size(); k++) {
     auto v = KeyCompare{}(left[k], right[k]);
@@ -56,15 +143,16 @@ IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::cmp(
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::
+bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamCompare::
 operator()(IndexStreamData* left, IndexStreamData* right) const {
   return cmp(*left, *right) == std::weak_ordering::greater;
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamData::IndexStreamData(
-    std::unique_ptr<StreamIteratorType> iter, std::span<SliceType> position,
-    std::span<SliceType> projections, DocIdType& docId)
+GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
+    IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
+                    std::span<SliceType> position,
+                    std::span<SliceType> projections, DocIdType& docId)
     : _iter(std::move(iter)),
       _position(position),
       _projections(projections),
@@ -74,8 +162,8 @@ IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamData::IndexStreamData(
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamData::seekTo(
-    std::span<SliceType> target) {
+void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
+    seekTo(std::span<SliceType> target) {
   LOG_INDEX_MERGER << "iterator seeking to " << target[0];
   std::copy(target.begin(), target.end(), _position.begin());
   exhausted = !_iter->seek(_position);
@@ -85,13 +173,20 @@ void IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamData::seekTo(
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool IndexMerger<SliceType, DocIdType, KeyCompare>::IndexStreamData::next() {
+void GenericMergeJoin<SliceType, DocIdType,
+                      KeyCompare>::IndexStreamData::reset() {
+  exhausted = !_iter->reset(_position);
+}
+
+template<typename SliceType, typename DocIdType, typename KeyCompare>
+bool GenericMergeJoin<SliceType, DocIdType,
+                      KeyCompare>::IndexStreamData::next() {
   return exhausted = !_iter->next(_position, _docId, _projections);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-IndexMerger<SliceType, DocIdType, KeyCompare>::IndexMerger(
-    std::vector<IndexDescriptor> descs, std::size_t numKeyComponents) {
+GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
+    std::vector<Descriptor> descs, std::size_t numKeyComponents) {
   indexes.reserve(descs.size());
   documentIds.resize(descs.size());
   currentKeySet.resize(numKeyComponents);
@@ -132,7 +227,7 @@ IndexMerger<SliceType, DocIdType, KeyCompare>::IndexMerger(
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool IndexMerger<SliceType, DocIdType, KeyCompare>::next(
+bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::next(
     const std::function<bool(std::span<DocIdType>, std::span<SliceType>)>& cb) {
   while (true) {
     if (positionAligned) {
@@ -158,7 +253,7 @@ bool IndexMerger<SliceType, DocIdType, KeyCompare>::next(
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void IndexMerger<SliceType, DocIdType, KeyCompare>::updateHeap() {
+void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::updateHeap() {
   // clear and rebuild heap
   minHeap.clear();
   for (auto& idx : indexes) {
@@ -170,7 +265,7 @@ void IndexMerger<SliceType, DocIdType, KeyCompare>::updateHeap() {
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool IndexMerger<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
+bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
   std::size_t where = 0;
 
   while (true) {
@@ -221,7 +316,7 @@ bool IndexMerger<SliceType, DocIdType, KeyCompare>::advanceIndexes() {
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-auto IndexMerger<SliceType, DocIdType, KeyCompare>::produceCrossProduct(
+auto GenericMergeJoin<SliceType, DocIdType, KeyCompare>::produceCrossProduct(
     const std::function<bool(std::span<DocIdType>, std::span<SliceType>)>& cb)
     -> ProduceProductResult {
   bool readMore = true;
@@ -242,7 +337,7 @@ auto IndexMerger<SliceType, DocIdType, KeyCompare>::produceCrossProduct(
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void IndexMerger<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
+void GenericMergeJoin<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
   for (std::size_t i = 0; i < indexes.size(); i++) {
     auto& index = indexes[i];
     documentIds[i] = index._iter->load(index._projections);
@@ -251,7 +346,7 @@ void IndexMerger<SliceType, DocIdType, KeyCompare>::fillInitialMatch() {
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool IndexMerger<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
+bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
   LOG_INDEX_MERGER << "find common position";
   while (true) {
     // get the minimum
@@ -302,4 +397,4 @@ bool IndexMerger<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
   return true;
 }
 
-}  // namespace arangodb
+}  // namespace arangodb::aql
