@@ -58,13 +58,16 @@ class MultiGetContext {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     auto* physical = dynamic_cast<RocksDBMetaCollection*>(base);
     if (ADB_UNLIKELY(physical == nullptr)) {
-      base->lookup(
-          &trx, id,
-          [&](LocalDocumentId, ValueType&& doc) {
-            values[_global] = std::move(doc);
-            return true;
-          },
-          {.readCache = false, .fillCache = false}, snapshot);
+      base->lookup(&trx, id,
+                   {[&](LocalDocumentId, ValueType& doc) {
+                      values[_global] = std::move(doc);
+                      return true;
+                    },
+                    [&](LocalDocumentId, VPackSlice) {
+                      TRI_ASSERT(false);
+                      return true;
+                    }},
+                   {.readCache = false, .fillCache = false}, snapshot);
       return _global++;
     }
 #else
