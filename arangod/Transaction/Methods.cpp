@@ -1971,12 +1971,8 @@ OperationResult transaction::Methods::anyLocal(
       indexScan(monitor, collectionName, transaction::Methods::CursorType::ANY,
                 ReadOwnWrites::no);
 
-  iterator->nextDocument(
-      [&resultBuilder](LocalDocumentId /*token*/, VPackSlice slice) {
-        resultBuilder.add(slice);
-        return true;
-      },
-      1);
+  auto cb = IndexIterator::makeDocumentCallback(resultBuilder);
+  iterator->nextDocument(cb, 1);
 
   resultBuilder.close();
 
@@ -2604,11 +2600,8 @@ OperationResult transaction::Methods::allLocal(
       indexScan(monitor, collectionName, transaction::Methods::CursorType::ALL,
                 ReadOwnWrites::no);
 
-  iterator->allDocuments(
-      [&resultBuilder](LocalDocumentId /*token*/, VPackSlice slice) {
-        resultBuilder.add(slice);
-        return true;
-      });
+  auto cb = IndexIterator::makeDocumentCallback(resultBuilder);
+  iterator->allDocuments(cb);
 
   resultBuilder.close();
 

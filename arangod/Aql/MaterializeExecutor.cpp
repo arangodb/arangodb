@@ -41,15 +41,25 @@ template<typename T, bool localDocumentId>
 MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext(Infos& infos)
     : infos{&infos} {
   if constexpr (localDocumentId) {
-    callback = [this](LocalDocumentId /*id*/, VPackSlice doc) {
-      TRI_ASSERT(this->infos);
-      TRI_ASSERT(outputRow);
-      TRI_ASSERT(inputRow);
-      TRI_ASSERT(inputRow->isInitialized());
-      outputRow->moveValueInto(this->infos->outputMaterializedDocumentRegId(),
-                               *inputRow, doc);
-      return true;
-    };
+    callback = {
+        [this](LocalDocumentId /*id*/, VPackSlice doc) {
+          TRI_ASSERT(this->infos);
+          TRI_ASSERT(outputRow);
+          TRI_ASSERT(inputRow);
+          TRI_ASSERT(inputRow->isInitialized());
+          outputRow->moveValueInto(
+              this->infos->outputMaterializedDocumentRegId(), *inputRow, doc);
+          return true;
+        },
+        [this](LocalDocumentId /*id*/, std::unique_ptr<std::string>& doc) {
+          TRI_ASSERT(this->infos);
+          TRI_ASSERT(outputRow);
+          TRI_ASSERT(inputRow);
+          TRI_ASSERT(inputRow->isInitialized());
+          outputRow->moveValueInto(
+              this->infos->outputMaterializedDocumentRegId(), *inputRow, &doc);
+          return true;
+        }};
   }
 }
 
