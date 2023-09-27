@@ -1164,50 +1164,6 @@ function processQuery(query, explain, planIndex) {
     var boundValue = bound.isConstant ? value(JSON.stringify(bound.bound)) : buildExpression(bound.bound);
     return attribute(attr) + ' ' + operators[bound.include ? 1 : 0] + ' ' + boundValue;
   };
-/*
-  var buildRanges = function (ranges) {
-    var results = [];
-    ranges.forEach(function (range) {
-      var attr = range.attr;
-
-      if (range.lowConst.hasOwnProperty('bound') && range.highConst.hasOwnProperty('bound') &&
-        JSON.stringify(range.lowConst.bound) === JSON.stringify(range.highConst.bound)) {
-        range.equality = true;
-      }
-
-      if (range.equality) {
-        if (range.lowConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, ['==', '=='], range.lowConst));
-        } else if (range.hasOwnProperty('lows')) {
-          range.lows.forEach(function (bound) {
-            results.push(buildBound(attr, ['==', '=='], bound));
-          });
-        }
-      } else {
-        if (range.lowConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, ['>', '>='], range.lowConst));
-        }
-        if (range.highConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, ['<', '<='], range.highConst));
-        }
-        if (range.hasOwnProperty('lows')) {
-          range.lows.forEach(function (bound) {
-            results.push(buildBound(attr, ['>', '>='], bound));
-          });
-        }
-        if (range.hasOwnProperty('highs')) {
-          range.highs.forEach(function (bound) {
-            results.push(buildBound(attr, ['<', '<='], bound));
-          });
-        }
-      }
-    });
-    if (results.length > 1) {
-      return '(' + results.join(' && ') + ')';
-    }
-    return results[0];
-  };
-*/  
 
   const projections = function (value, attributeName, label) {
     if (value && value.hasOwnProperty(attributeName) && value[attributeName].length > 0) {
@@ -2167,13 +2123,10 @@ function processQuery(query, explain, planIndex) {
       node.indexInfos.forEach((info) => {
         let line = nodePrefix(node);
         if (profileMode) {
-          // TODO
-          /*
-          line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
-            pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
-            pad(1 + maxFilteredLen - String(node.filtered).length) + value(node.filtered) + '   ' +
-            pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ';
-            */
+          line += pad(1 + maxCallsLen) +  '   ' +
+            pad(1 + maxItemsLen) + '   ' +
+            pad(1 + maxFilteredLen) + '   ' +
+            pad(1 + maxRuntimeLen) + '   ';
         } else {
           line += pad(1 + maxEstimateLen - String(info.estimatedNrItems).length) + value(info.estimatedNrItems) + '   ';
         }
