@@ -481,6 +481,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         current->getType() == ExecutionNode::SHORTEST_PATH ||
         current->getType() == ExecutionNode::ENUMERATE_PATHS ||
         current->getType() == ExecutionNode::INDEX ||
+        current->getType() == ExecutionNode::JOIN ||
         current->getType() == ExecutionNode::COLLECT) {
       // any of these node types will lead to more/less results in the output,
       // and may as well change the sort order, so let's better abort here
@@ -565,6 +566,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
           current->getType() == ExecutionNode::SHORTEST_PATH ||
           current->getType() == ExecutionNode::ENUMERATE_PATHS ||
           current->getType() == ExecutionNode::INDEX ||
+          current->getType() == ExecutionNode::JOIN ||
           current->getType() == ExecutionNode::COLLECT ||
           current->getType() == ExecutionNode::SORT) {
         // any of these node types will lead to more/less results in the
