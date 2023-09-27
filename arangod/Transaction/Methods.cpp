@@ -586,7 +586,7 @@ struct GetDocumentProcessor
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     } else {
       bool conflict = false;
-      auto cb = IndexIterator::makeDocumentCallbackFromFunc(
+      auto cb = IndexIterator::makeDocumentCallbackF(
           [&](LocalDocumentId, VPackSlice doc) {
             if (!_options.ignoreRevs && value.isObject()) {
               RevisionId expectedRevision = RevisionId::fromSlice(value);

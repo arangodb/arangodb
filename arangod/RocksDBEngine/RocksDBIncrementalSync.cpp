@@ -972,7 +972,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     uint64_t documentsFound = 0;
     auto iterator = createPrimaryIndexIterator(trx.get(), col);
     RevisionId docRev;
-    auto callbackFunc = IndexIterator::makeDocumentCallbackFromFunc(
+    auto callbackFunc = IndexIterator::makeDocumentCallbackF(
         [&](LocalDocumentId, VPackSlice doc) {
           docRev = RevisionId::fromSlice(doc);
           return true;

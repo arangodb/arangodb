@@ -120,7 +120,7 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
     TRI_ASSERT(col != nullptr);  // for maintainer mode
     return false;
   }
-  auto cb = IndexIterator::makeDocumentCallbackFromFunc(
+  auto cb = IndexIterator::makeDocumentCallbackF(
       [&](LocalDocumentId, VPackSlice edge) -> bool {
         if (readType == EdgeReadType::ONLYID) {
           if constexpr (std::is_same_v<ResultType, std::string>) {

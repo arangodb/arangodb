@@ -48,7 +48,7 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId token, VPackSlice slice) {
+  auto cb = [&context](LocalDocumentId token, VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -87,13 +87,14 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     return true;
   };
+  return IndexIterator::makeDocumentCallbackF(cb);
 }
 
 template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId token, VPackSlice slice) {
+  auto cb = [&](LocalDocumentId token, auto v, velocypack::Slice s) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -103,7 +104,7 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     context.incrScanned();
 
-    if (context.hasFilter() && !context.checkFilter(slice)) {
+    if (context.hasFilter() && !context.checkFilter(s)) {
       context.incrFiltered();
       return false;
     }
@@ -117,12 +118,19 @@ IndexIterator::DocumentCallback aql::getCallback(
     RegisterId registerId = context.getOutputRegister();
 
     TRI_ASSERT(!output.isFull());
-    output.moveValueInto(registerId, input, slice);
+    output.moveValueInto(registerId, input, v);
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
     return true;
   };
+  return {[&](LocalDocumentId token, VPackSlice doc) {
+            return cb(token, doc, doc);
+          },
+          [&](LocalDocumentId token, std::unique_ptr<std::string>&& doc) {
+            VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
+            return cb(token, &doc, slice);
+          }};
 }
 
 template<bool checkUniqueness, bool skip>
@@ -132,9 +140,11 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
     if (!context.getProduceResult()) {
       // This callback is disallowed use getNullCallback instead
       TRI_ASSERT(false);
-      return [](LocalDocumentId, VPackSlice /*slice*/) -> bool {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
-      };
+      return IndexIterator::makeDocumentCallbackF(
+          [](LocalDocumentId, VPackSlice /*slice*/) -> bool {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                           "invalid callback");
+          });
     }
   }
 
@@ -529,7 +539,7 @@ IndexIterator::CoveringCallback aql::getCallback(
     if constexpr (!skip) {
       // read the full document from the storage engine only now,
       // after checking the filter condition
-      auto callback = [&](auto v, velocypack::Slice s) {
+      auto cb = [&](auto v, velocypack::Slice s) {
         OutputAqlItemRow& output = context.getOutputRow();
         TRI_ASSERT(!output.isFull());
 
@@ -559,10 +569,12 @@ IndexIterator::CoveringCallback aql::getCallback(
       context.getPhysical().lookup(
           context.getTrxPtr(), token,
           IndexIterator::DocumentCallback{
-              [&](LocalDocumentId, VPackSlice v) { return callback(v, v); },
-              [&](LocalDocumentId, std::unique_ptr<std::string>&& v) {
-                VPackSlice slice{reinterpret_cast<uint8_t const*>(v->data())};
-                return callback(&v, slice);
+              [&](LocalDocumentId token, VPackSlice doc) {
+                return cb(doc, doc);
+              },
+              [&](LocalDocumentId token, std::unique_ptr<std::string>&& doc) {
+                VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
+                return cb(&doc, slice);
               }},
           {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
     }

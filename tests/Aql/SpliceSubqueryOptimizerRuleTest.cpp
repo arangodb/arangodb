@@ -503,7 +503,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
       std::move(ctx), readCollection, noCollections, noCollections, opts);
   ASSERT_EQ(1, collection->getPhysical()->numberDocuments(trx.get()));
   bool called = false;
-  auto cb = IndexIterator::makeDocumentCallbackFromFunc(
+  auto cb = IndexIterator::makeDocumentCallbackF(
       [&](LocalDocumentId, VPackSlice document) {
         called = true;
         EXPECT_TRUE(document.isObject());

@@ -150,10 +150,28 @@ class IndexIterator {
     velocypack::ValueLength _storedValuesLength;
   };
 
-  // TODO: Move to iresearch
   template<typename... Funcs>
-  class CallbackImpl : private fu2::function<Funcs...> {
+  class CallbackImplStrict : fu2::function<Funcs...> {
     using Base = fu2::function<Funcs...>;
+
+   public:
+    using Base::operator();
+    using Base::operator bool;
+
+    bool operator==(std::nullptr_t) { return !bool(*this); }
+
+    bool operator!=(std::nullptr_t) { return bool(*this); }
+
+    CallbackImplStrict() noexcept = default;
+
+    template<typename... Fs>
+    CallbackImplStrict(Fs&&... fs)
+        : Base{fu2::overload(std::forward<Fs>(fs)...)} {}
+  };
+
+  template<typename... Funcs>
+  class CallbackImplWeak : public CallbackImplStrict<Funcs...> {
+    using Base = CallbackImplStrict<Funcs...>;
 
     struct DummyRetval {
       template<typename T>
@@ -164,37 +182,30 @@ class IndexIterator {
     };
 
    public:
-    using Base::operator();
-    using Base::operator bool;
-
-    bool operator==(std::nullptr_t) { return !bool(*this); }
-
-    bool operator!=(std::nullptr_t) { return bool(*this); }
-
-    CallbackImpl() noexcept = default;
+    CallbackImplWeak() noexcept = default;
 
     template<typename... Fs>
-    CallbackImpl(Fs&&... fs)
-        : Base{fu2::overload(std::forward<Fs>(fs)...,
-                             [](auto&&...) { return DummyRetval{}; })} {}
+    CallbackImplWeak(Fs&&... fs)
+        : Base{std::forward<Fs>(fs)...,
+               [](auto&&...) { return DummyRetval{}; }} {}
   };
 
   using LocalDocumentIdCallback =
       fu2::function<bool(LocalDocumentId token) const>;
 
-  using DocumentCallback =
-      CallbackImpl<bool(LocalDocumentId token, velocypack::Slice doc) const,
-                   bool(LocalDocumentId token,
-                        std::unique_ptr<std::string>&& doc) const>;
+  using DocumentCallback = CallbackImplStrict<
+      bool(LocalDocumentId token, velocypack::Slice doc) const,
+      bool(LocalDocumentId token, std::unique_ptr<std::string>&& doc) const>;
 
   static DocumentCallback makeDocumentCallback(velocypack::Builder& builder) {
     struct Read2Builder {
-      bool operator()(LocalDocumentId id, velocypack::Slice doc) {
+      bool operator()(LocalDocumentId, velocypack::Slice doc) const {
         builder.add(doc);
         return true;
       }
 
-      bool operator()(LocalDocumentId id, std::unique_ptr<std::string>&& doc) {
+      bool operator()(LocalDocumentId,
+                      std::unique_ptr<std::string>&& doc) const {
         TRI_ASSERT(doc);
         VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
         builder.add(slice);
@@ -209,28 +220,29 @@ class IndexIterator {
 
   template<typename Func>
   struct SingleFunc2MultiFunc {
-    bool operator()(LocalDocumentId id, velocypack::Slice doc) {
-      return func(id, doc);
+    bool operator()(LocalDocumentId token, velocypack::Slice doc) const {
+      return func(token, doc);
     }
-    bool operator()(LocalDocumentId id, std::unique_ptr<std::string>&& doc) {
+    bool operator()(LocalDocumentId token,
+                    std::unique_ptr<std::string>&& doc) const {
       TRI_ASSERT(doc);
       VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
-      return func(id, slice);
+      return func(token, slice);
     }
 
     Func func;
   };
 
   template<typename Func>
-  static DocumentCallback makeDocumentCallbackFromFunc(Func&& func) {
+  static DocumentCallback makeDocumentCallbackF(Func&& func) {
     return {SingleFunc2MultiFunc<std::decay_t<Func>>{std::forward<Func>(func)}};
   }
 
   using CoveringCallback =
-      CallbackImpl<bool(LocalDocumentId token,
-                        IndexIteratorCoveringData& covering) const,
-                   bool(aql::AqlValue&& searchDoc,
-                        IndexIteratorCoveringData& covering) const>;
+      CallbackImplWeak<bool(LocalDocumentId token,
+                            IndexIteratorCoveringData& covering) const,
+                       bool(aql::AqlValue&& searchDoc,
+                            IndexIteratorCoveringData& covering) const>;
 
  public:
   IndexIterator(IndexIterator const&) = delete;

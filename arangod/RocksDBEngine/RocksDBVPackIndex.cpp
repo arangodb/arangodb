@@ -1651,7 +1651,7 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
         }
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         // find conflicting document's key
-        auto callback = IndexIterator::makeDocumentCallbackFromFunc(
+        auto callback = IndexIterator::makeDocumentCallbackF(
             [&](LocalDocumentId, VPackSlice doc) {
               auto key = transaction::helpers::extractKeyFromDocument(doc);
               if (mode == IndexOperationMode::internal) {
@@ -1782,7 +1782,7 @@ Result RocksDBVPackIndex::insertUnique(
     if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
       // find conflicting document's key
       LocalDocumentId docId = RocksDBValue::documentId(existing);
-      auto callback = IndexIterator::makeDocumentCallbackFromFunc(
+      auto callback = IndexIterator::makeDocumentCallbackF(
           [&](LocalDocumentId, VPackSlice doc) {
             IndexOperationMode mode = options.indexOperationMode;
             VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);

@@ -295,7 +295,7 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
 
   std::uint64_t fetchedDocumentId = 0;
   bool called = false;
-  auto cb = IndexIterator::makeDocumentCallbackFromFunc(
+  auto cb = IndexIterator::makeDocumentCallbackF(
       [&](LocalDocumentId ldid, VPackSlice edgeDocument) {
         fetchedDocumentId = ldid.id();
         called = true;
