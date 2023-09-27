@@ -55,16 +55,20 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       for (std::size_t k = 0; k < docIds.size(); k++) {
         // TODO post filter based on document value
         // TODO implement document projections
-        _infos.indexes[k].collection->getCollection()->getPhysical()->read(
+        // TODO do we really want to check/populate cache?
+        _infos.indexes[k].collection->getCollection()->getPhysical()->lookup(
             &_trx, docIds[k],
-            [&](LocalDocumentId token, VPackSlice document) {
-              AqlValue value{AqlValueHintSliceCopy{document}};
-              AqlValueGuard guard(value, false);
-              output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                   _currentRow, guard);
-              return true;
-            },
-            ReadOwnWrites::no);
+            {[&](LocalDocumentId token, VPackSlice doc) {
+               output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                    _currentRow, doc);
+               return true;
+             },
+             [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
+               output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                    _currentRow, &doc);
+               return true;
+             }},
+            {});
       }
 
       output.advanceRow();
