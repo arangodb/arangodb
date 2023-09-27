@@ -1,3 +1,10 @@
+v3.10.9.1 (XXXX-XX-XX)
+----------------------
+
+* Fixed issue with `keepNull=false` updates not being properly replicated to
+  followers.
+
+
 v3.10.9 (2023-06-30)
 --------------------
 
