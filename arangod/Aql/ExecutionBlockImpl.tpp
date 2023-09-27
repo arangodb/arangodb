@@ -83,6 +83,7 @@ class ConstFetcher;
 template<class UsedFetcher>
 class IdExecutor;
 class IndexExecutor;
+class JoinExecutor;
 template<typename T, bool localDocumentId>
 class MaterializeExecutor;
 template<typename FetcherType, typename ModifierType>
@@ -777,7 +778,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   EnumeratePathsExecutor<WeightedKShortestPathsTracer>,
                   EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
                   EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
-                  ParallelUnsortedGatherExecutor,
+                  ParallelUnsortedGatherExecutor, JoinExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,
                   AccuWindowExecutor, WindowExecutor, IndexExecutor,

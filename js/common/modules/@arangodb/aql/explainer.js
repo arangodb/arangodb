@@ -438,11 +438,9 @@ function printIndexes(indexes) {
       }
       var storedValues = '[ ' + storedValuesFields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
       var storedValuesLen = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      var ranges;
+      let ranges = '';
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
-      } else {
-        ranges = '[ ' + indexes[i].ranges + ' ]';
       }
 
       let estimate;
@@ -836,18 +834,15 @@ function processQuery(query, explain, planIndex) {
         parents[d].push(node.id);
       });
 
-      if (String(node.id).length > maxIdLen) {
-        maxIdLen = String(node.id).length;
-      }
-      if (String(node.type).length > maxTypeLen) {
-        maxTypeLen = String(node.type).length;
-      }
-      if (String(node.site).length > maxSiteLen) {
-        maxSiteLen = String(node.site).length;
-      }
+      maxIdLen = Math.max(maxIdLen, String(node.id).length);
+      maxTypeLen = Math.max(maxTypeLen, String(node.type).length);
+      maxSiteLen = Math.max(maxSiteLen, String(node.site).length);
       if (!profileMode) { // not shown when we got actual runtime stats
-        if (String(node.estimatedNrItems).length > maxEstimateLen) {
-          maxEstimateLen = String(node.estimatedNrItems).length;
+        maxEstimateLen = Math.max(maxEstimateLen, String(node.estimatedNrItems).length);
+        if (node.type === 'JoinNode') {
+          node.indexInfos.forEach((info) => {
+            maxEstimateLen = Math.max(maxEstimateLen, String(info.estimatedNrItems).length);
+          });
         }
       }
     });
@@ -916,7 +911,7 @@ function processQuery(query, explain, planIndex) {
     isConst = true,
     currentNode = null;
 
-  var variableName = function (node) {
+  const variableName = function (node) {
     try {
       if (/^[0-9_]/.test(node.name)) {
         return variable('#' + node.name);
@@ -933,7 +928,7 @@ function processQuery(query, explain, planIndex) {
     return variable(node.name);
   };
 
-  var lateVariableCallback = function () {
+  const lateVariableCallback = function () {
     return (node) => variableName(node);
   };
 
@@ -1143,20 +1138,20 @@ function processQuery(query, explain, planIndex) {
       case 'datasource parameter':
         return value('@' + node.name);
       default:
-        return 'unhandled node type (' + node.type + ')';
+        return 'unhandled node type in buildExpression (' + node.type + ')';
     }
   };
 
   var buildSimpleExpression = function (simpleExpressions) {
-    var rc = '';
+    let rc = '';
 
-    for (var indexNo in simpleExpressions) {
+    for (let indexNo in simpleExpressions) {
       if (simpleExpressions.hasOwnProperty(indexNo)) {
         if (rc.length > 0) {
           rc += ' AND ';
         }
-        for (var i = 0; i < simpleExpressions[indexNo].length; i++) {
-          var item = simpleExpressions[indexNo][i];
+        for (let i = 0; i < simpleExpressions[indexNo].length; i++) {
+          let item = simpleExpressions[indexNo][i];
           rc += attribute('Path') + '.';
           if (item.isEdgeAccess) {
             rc += attribute('edges');
@@ -1176,49 +1171,6 @@ function processQuery(query, explain, planIndex) {
   var buildBound = function (attr, operators, bound) {
     var boundValue = bound.isConstant ? value(JSON.stringify(bound.bound)) : buildExpression(bound.bound);
     return attribute(attr) + ' ' + operators[bound.include ? 1 : 0] + ' ' + boundValue;
-  };
-
-  var buildRanges = function (ranges) {
-    var results = [];
-    ranges.forEach(function (range) {
-      var attr = range.attr;
-
-      if (range.lowConst.hasOwnProperty('bound') && range.highConst.hasOwnProperty('bound') &&
-        JSON.stringify(range.lowConst.bound) === JSON.stringify(range.highConst.bound)) {
-        range.equality = true;
-      }
-
-      if (range.equality) {
-        if (range.lowConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, ['==', '=='], range.lowConst));
-        } else if (range.hasOwnProperty('lows')) {
-          range.lows.forEach(function (bound) {
-            results.push(buildBound(attr, ['==', '=='], bound));
-          });
-        }
-      } else {
-        if (range.lowConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, ['>', '>='], range.lowConst));
-        }
-        if (range.highConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, ['<', '<='], range.highConst));
-        }
-        if (range.hasOwnProperty('lows')) {
-          range.lows.forEach(function (bound) {
-            results.push(buildBound(attr, ['>', '>='], bound));
-          });
-        }
-        if (range.hasOwnProperty('highs')) {
-          range.highs.forEach(function (bound) {
-            results.push(buildBound(attr, ['<', '<='], bound));
-          });
-        }
-      }
-    });
-    if (results.length > 1) {
-      return '(' + results.join(' && ') + ')';
-    }
-    return results[0];
   };
 
   const projections = function (value, attributeName, label) {
@@ -1243,7 +1195,7 @@ function processQuery(query, explain, planIndex) {
     return '';
   };
 
-  var iterateIndexes = function (idx, i, node, types, variable) {
+  const iterateIndexes = function (idx, i, node, types, variable) {
     let what = (!node.ascending ? 'reverse ' : '') + idx.type + ' index scan';
     if (node.producesResult || !node.hasOwnProperty('producesResult')) {
       if (node.indexCoversProjections) {
@@ -1411,6 +1363,17 @@ function processQuery(query, explain, planIndex) {
         return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') +
                view(node.view) + condition + sortCondition + scorers + viewVariables +
                scorersSort + '   ' + annotation(viewAnnotation);
+      case 'JoinNode':
+        node.indexInfos.forEach((info) => {
+          collectionVariables[info.outVariable.id] = info.collection;
+          let condition = '';
+          if (info.condition && info.condition.hasOwnProperty('type')) {
+            condition = buildExpression(info.condition);
+          }
+          info.index.condition = condition;
+          iterateIndexes(info.index, 0, {id: node.id, collection: info.collection}, types, false); 
+        });
+        return keyword('JOIN'); 
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         if (node.filter) {
@@ -1844,7 +1807,7 @@ function processQuery(query, explain, planIndex) {
         (node.functions || []).forEach(function (f) {
           functions[f.name] = f;
         });
-        return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */');
+        return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */') + variablesUsed() + constNess();
       case 'FilterNode':
         return keyword('FILTER') + ' ' + variableName(node.inVariable);
       case 'AggregateNode': /* old-style COLLECT node */
@@ -2135,11 +2098,22 @@ function processQuery(query, explain, planIndex) {
   };
 
   var level = 0, subqueries = [], subqueryCallbacks = [];
-  var indent = function (level, isRoot) {
+  const indent = function (level, isRoot) {
     return pad(1 + level + level) + (isRoot ? '* ' : '- ');
   };
 
-  var preHandle = function (node) {
+  const nodePrefix = (node) => {
+    let line = ' ' +
+      pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
+      keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
+
+    if (isCoord) {
+      line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + '  ';
+    }
+    return line;
+  };
+
+  const preHandle = function (node) {
     usedVariables = {};
     currentNode = node.id;
     isConst = true;
@@ -2152,11 +2126,33 @@ function processQuery(query, explain, planIndex) {
     }
   };
 
-  var postHandle = function (node) {
+  const postHandle = function (node) {
+    if (node.type === 'JoinNode') {
+      ++level;
+      node.indexInfos.forEach((info) => {
+        let line = nodePrefix(node);
+        if (profileMode) {
+          line += pad(1 + maxCallsLen) +  '   ' +
+            pad(1 + maxItemsLen) + '   ' +
+            pad(1 + maxFilteredLen) + '   ' +
+            pad(1 + maxRuntimeLen) + '   ';
+        } else {
+          line += pad(1 + maxEstimateLen - String(info.estimatedNrItems).length) + value(info.estimatedNrItems) + '   ';
+        }
+        let label = keyword('FOR ') + variableName(info.outVariable) + keyword(' IN ') + collection(info.collection);
+        let filter = '';
+        if (info.condition && info.condition.hasOwnProperty('type')) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(info.condition);
+        }
+        line += indent(level, false) + label + filter;
+        stringBuilder.appendLine(line);
+      });
+      --level;
+    }
     if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
       level = subqueries.pop();
     }
-    var isLeafNode = !parents.hasOwnProperty(node.id);
+    const isLeafNode = !parents.hasOwnProperty(node.id);
 
     if (['EnumerateCollectionNode',
       'EnumerateListNode',
@@ -2180,16 +2176,16 @@ function processQuery(query, explain, planIndex) {
     return '';
   };
 
-  var constNess = function () {
+  const constNess = function () {
     if (isConst) {
       return '   ' + annotation('/* const assignment */');
     }
     return '';
   };
 
-  var variablesUsed = function () {
-    var used = [];
-    for (var a in usedVariables) {
+  const variablesUsed = function () {
+    let used = [];
+    for (let a in usedVariables) {
       if (usedVariables.hasOwnProperty(a)) {
         used.push(variable(a) + ' : ' + collection(usedVariables[a]));
       }
@@ -2202,32 +2198,23 @@ function processQuery(query, explain, planIndex) {
 
   const isCoord = isCoordinator();
 
-  var printNode = function (node) {
+  const printNode = function (node) {
     preHandle(node);
-    var line = ' ' +
-      pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
-      keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
-
-    if (isCoord) {
-      line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + '  ';
-    }
+    let line = nodePrefix(node); 
 
     if (profileMode) {
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxParallelLen - String(node.parallel).length) + value(node.parallel) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
         pad(1 + maxFilteredLen - String(node.filtered).length) + value(node.filtered) + '   ' +
-        pad(1 + maxRuntimeLen - node.runtime.length) + value(node.runtime) + '   ' +
-        indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
+        pad(1 + maxRuntimeLen - node.runtime.length) + value(node.runtime) + '   ';
     } else {
       line += pad('Par'.length) + value(node.isAsyncPrefetchEnabled ? '✓' : ' ') + '   ' +
         pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
         indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
     }
+    line += indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
 
-    if (node.type === 'CalculationNode') {
-      line += variablesUsed() + constNess();
-    }
     stringBuilder.appendLine(line);
     postHandle(node);
   };
