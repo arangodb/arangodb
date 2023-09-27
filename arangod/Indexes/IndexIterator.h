@@ -196,6 +196,8 @@ class IndexIterator {
   using DocumentCallback = CallbackImplStrict<
       bool(LocalDocumentId token, velocypack::Slice doc) const,
       bool(LocalDocumentId token, std::unique_ptr<std::string>& doc) const>;
+  // makeDocumentCallback* is marker for code readers
+  // that code potentially make unneecessary copy in case of unique_ptr
 
   static DocumentCallback makeDocumentCallback(velocypack::Builder& builder) {
     struct Read2Builder {
