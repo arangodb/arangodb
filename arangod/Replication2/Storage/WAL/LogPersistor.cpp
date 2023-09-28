@@ -116,7 +116,7 @@ struct BufferWriter {
   }
 
   void writePaddingBytes(
-      std::uint32_t payloadSize) {  // write zeroed out padding bytes
+      std::uint64_t payloadSize) {  // write zeroed out padding bytes
     auto numPaddingBytes = Record::paddedPayloadSize(payloadSize) - payloadSize;
     TRI_ASSERT(numPaddingBytes < Record::alignment);
     constexpr std::uint8_t zero[Record::alignment]{};
@@ -128,7 +128,7 @@ struct BufferWriter {
     Record::Footer footer{
         .crc32 = static_cast<std::uint32_t>(absl::ComputeCrc32c(
             {reinterpret_cast<char const*>(_buffer.data() + startPos), size})),
-        .size = static_cast<std::uint32_t>(size + sizeof(Record::Footer))};
+        .size = size + sizeof(Record::Footer)};
     TRI_ASSERT(footer.size % Record::alignment == 0);
     _buffer.append(footer);
   }
