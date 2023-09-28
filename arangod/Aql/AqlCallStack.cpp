@@ -241,3 +241,10 @@ auto AqlCallStack::requestLessDataThan(AqlCallStack const& other) const noexcept
   }
   return true;
 }
+
+AqlCallStack::AqlCallStack(std::initializer_list<AqlCallList> calls)
+    : _operations{std::move(calls)} {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  validateNoCallHasSkippedRows();
+#endif
+}

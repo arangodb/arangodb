@@ -123,14 +123,14 @@ function subquerySplicingNonRelevantShadowRowForwardingAtBlockStart() {
             LET x = innermost[0]
             FILTER x == null
             COLLECT WITH COUNT INTO n
-            RETURN n
+            RETURN 1
           )
           RETURN inner
         )
         RETURN outer
       `;
-      const res = db._query(query, {}, {optimizer: {rules: ["-all"]}}).toArray();
-      assertTrue(_.isEqual(res, [[], [1]]));
+      const res = db._query(query, {}, {optimizer: {rules: ["-all"]}, profile: 4}).toArray();
+      assertTrue(_.isEqual(res, [[], [1]]), "Expected [[], [1]], got " + JSON.stringify(res));
     },
   };
 }

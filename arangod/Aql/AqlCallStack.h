@@ -58,6 +58,11 @@ class AqlCallStack {
   AqlCallStack(AqlCallStack const& other) = default;
   AqlCallStack(AqlCallStack&& other) noexcept = default;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // For tests
+  explicit AqlCallStack(std::initializer_list<AqlCallList> calls);
+#endif
+
   AqlCallStack& operator=(AqlCallStack const& other) = default;
   AqlCallStack& operator=(AqlCallStack&& other) noexcept = default;
 

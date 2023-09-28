@@ -1204,7 +1204,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
 
   TRI_ASSERT(_outputItemRow->produced());
   _outputItemRow->advanceRow();
-  // The stack in used here contains all calls for within the subquery.
+  // The stack in use here contains all calls for within the subquery.
   // Hence any inbound subquery needs to be counted on its level
 
   countShadowRowProduced(stack, shadowRow.getDepth());
@@ -2135,7 +2135,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
                ctx.stack.subqueryLevel() /*we injected a call*/);
   } else {
     TRI_ASSERT(skipped.subqueryDepth() ==
-               ctx.stack.subqueryLevel() + 1 /*we took our call*/);
+               ctx.stack.subqueryLevel() + 1 /*we took our call*/)
+        << printBlockInfo()
+        << " skipped.subqueryDepth() = " << skipped.subqueryDepth()
+        << ", ctx.stack.subqueryLevel() + 1 = "
+        << ctx.stack.subqueryLevel() + 1;
   }
 #endif
   _skipped.reset();
