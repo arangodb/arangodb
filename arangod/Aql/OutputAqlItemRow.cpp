@@ -299,7 +299,7 @@ size_t OutputAqlItemRow::numRowsWritten() const noexcept {
   //   return lastWrittenIndex + 1;
 }
 
-void OutputAqlItemRow::advanceRow() {
+void OutputAqlItemRow::advanceRow() noexcept {
   // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(produced());
   // cppcheck-suppress ignoredReturnValue
@@ -364,6 +364,10 @@ SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
   }
 
   return block;
+}
+
+size_t OutputAqlItemRow::blockNumRows() const noexcept {
+  return _block == nullptr ? 0 : _block->numRows();
 }
 
 void OutputAqlItemRow::setBaseIndex(std::size_t index) noexcept {
@@ -568,7 +572,7 @@ auto constexpr OutputAqlItemRow::depthDelta(AdaptRowDepth adaptRowDepth)
   return static_cast<std::underlying_type_t<AdaptRowDepth>>(adaptRowDepth);
 }
 
-RegisterCount OutputAqlItemRow::getNumRegisters() const {
+RegisterCount OutputAqlItemRow::getNumRegisters() const noexcept {
   return block().numRegisters();
 }
 

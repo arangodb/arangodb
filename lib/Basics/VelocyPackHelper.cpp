@@ -787,10 +787,15 @@ bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals,
   } else if (input.isCustom()) {
     return checkCustom;
   } else if (input.isObject()) {
-    for (auto it : VPackObjectIterator(input, true)) {
-      if (hasNonClientTypes(it.value, checkExternals, checkCustom)) {
+    auto it = VPackObjectIterator(input, true);
+    while (it.valid()) {
+      if (!it.key(/*translate*/ false).isString()) {
         return true;
       }
+      if (hasNonClientTypes(it.value(), checkExternals, checkCustom)) {
+        return true;
+      }
+      it.next();
     }
   } else if (input.isArray()) {
     for (VPackSlice it : VPackArrayIterator(input)) {
@@ -824,9 +829,7 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input, VPackSlice base,
   } else if (input.isObject()) {
     output.openObject(allowUnindexed);
     for (auto it : VPackObjectIterator(input, true)) {
-      VPackValueLength l;
-      char const* p = it.key.getString(l);
-      output.add(VPackValuePair(p, l, VPackValueType::String));
+      output.add(VPackValue(it.key.stringView()));
       sanitizeNonClientTypes(it.value, input, output, options,
                              sanitizeExternals, sanitizeCustom, allowUnindexed);
     }

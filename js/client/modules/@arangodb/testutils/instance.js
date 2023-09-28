@@ -363,6 +363,10 @@ class instance {
       'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
+
+    if (require("@arangodb/test-helper").isEnterprise()) {
+      this.args['arangosearch.columns-cache-limit'] = '100000';
+    }
     if (this.options.auditLoggingEnabled) {
       this.args['audit.output'] = 'file://' + fs.join(this.rootDir, 'audit.log');
       this.args['server.statistics'] = false;

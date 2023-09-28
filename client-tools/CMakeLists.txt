@@ -1,5 +1,7 @@
 # -*- mode: CMAKE; -*-
 
+include(InstallArangoDBJSClient)
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
 add_compile_warnings_flags()
@@ -402,6 +404,10 @@ target_link_libraries(${BIN_ARANGOSH}
   arango_shell
 )
 
+install(FILES ${ICU_DT}
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME ${ICU_DT_DEST})
+
 install(
   TARGETS ${BIN_ARANGOSH}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -485,3 +491,17 @@ install_command_alias(${BIN_ARANGOSH}
   arangoinspect)
 
 install_config(arangoinspect)
+
+add_custom_target(client-tools
+    DEPENDS arangosh
+            arangodump
+            arangoexport
+            arangoimport
+            arangorestore
+            arangobench
+            arangovpack)
+
+if (USE_ENTERPRISE)
+  add_dependencies(client-tools arangobackup)
+endif ()
+
