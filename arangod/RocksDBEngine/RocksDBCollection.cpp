@@ -1849,6 +1849,7 @@ Result RocksDBCollection::lookupDocumentVPack(
     transaction::Methods* trx, LocalDocumentId token,
     IndexIterator::DocumentCallback const& cb, LookupOptions options,
     StorageSnapshot const* snapshot) const {
+  TRI_ASSERT(options.readCache || !options.fillCache);
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(objectId() != 0);
 
@@ -1894,6 +1895,12 @@ Result RocksDBCollection::lookupDocumentVPack(
         static_cast<DocumentCacheType&>(*cache), key->string().data(),
         static_cast<uint32_t>(key->string().size()), ps.data(),
         static_cast<uint64_t>(ps.size())};
+  }
+  cache.reset();
+
+  if (ps.IsPinned()) {
+    cb(token, VPackSlice{reinterpret_cast<uint8_t const*>(ps.data())});
+    return {};
   }
 
   // TODO(MBkkt) in case of exception data will be destroyed
