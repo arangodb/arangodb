@@ -787,3 +787,79 @@ exports.AQL_EXECUTE = function(query, bindVars, options) {
     plan: extra.plan,
     cached: cursor.cached};
 };
+exports.insertManyDocumentsIntoCollection 
+  = function(db, coll, maker, limit, batchSize) {
+  // This function uses the asynchronous API of `arangod` to quickly
+  // insert a lot of documents into a collection. You can control which
+  // documents to insert with the `maker` function. The arguments are:
+  //  db - name of the database (string)
+  //  coll - name of the collection, must already exist (string)
+  //  maker - a callback function to produce documents, it is called
+  //          with a single integer, the first time with 0, then with 1 
+  //          and so on. The callback function should return an object 
+  //          or a list of objects, which will be inserted into the
+  //          collection. You can either specify the `_key` attribute or 
+  //          not. Once you return either `null` or `false`, no more 
+  //          callbacks will be done.
+  //  limit - an integer, if `limit` documents have been received, no more 
+  //          callbacks are issued.
+  //  batchSize - an integer, this function will use this number as batch 
+  //              size.
+  // Example:
+  //   insertManyDocumentsIntoCollection("_system", "coll",
+  //       i => {Hallo:i}, 1000000, 1000);
+  // will insert 1000000 documents into the collection "coll" in the 
+  // `_system` database in batches of 1000. The documents will all have 
+  // the `Hallo` attribute set to one of the numbers from 0 to 999999.
+  // This is useful to quickly generate test data. Be careful, this can
+  // create a lot of parallel load!
+  let done = false;
+  let l = [];
+  let jobs = [];
+  let counter = 0;
+  let documentCount = 0;
+  while (true) {
+    if (!done) {
+      while (l.length < batchSize) {
+        let d = maker(counter); 
+        if (d === null || d === false) {
+          done = true;
+          break;
+        }
+        if (Array.isArray(d)) {
+          l = l.concat(d);
+          documentCount += d.length;
+        } else if (typeof(d) === "object") {
+          l.push(d);
+          documentCount += 1;
+        }
+        counter += 1;
+        if (documentCount >= limit) {
+          done = true;
+        }
+      }
+    }
+    if ((done && l.length > 0) || l.length >= batchSize) {
+      jobs.push(arango.POST_RAW(`/_db/${db}/_api/document/${coll}`,
+                                l, {"x-arango-async": "store"})
+         .headers["x-arango-async-id"]);
+      l = [];
+    }
+    let i = 0;
+    while (i < jobs.length) {
+      let r = arango.PUT_RAW(`/_api/job/${jobs[i]}`, {});
+      if (r.code === 204) {
+        i += 1;
+      } else if (r.code === 202) {
+        jobs = jobs.slice(0, i).concat(jobs.slice(i+1));
+      }
+    }
+    if (done) {
+      if (jobs.length === 0) {
+        break;
+      }
+      require("internal").wait(0.5);
+    }
+  }
+};
+
