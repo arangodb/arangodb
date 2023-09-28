@@ -3456,7 +3456,7 @@ std::vector<std::string> lockPath =
 arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
                                       std::string const& backupId,
                                       std::vector<ServerID> const& servers,
-                                      double const& lockWait,
+                                      double lockWait,
                                       std::vector<ServerID>& lockedServers) {
   using namespace std::chrono;
 
@@ -3470,7 +3470,8 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
     VPackObjectBuilder o(&lock);
     lock.add("id", VPackValue(backupId));
     lock.add("timeout", VPackValue(lockWait));
-    lock.add("unlockTimeout", VPackValue(5.0 + lockWait));
+    // unlock timeout for commit lock on coordinator
+    lock.add("unlockTimeout", VPackValue(30.0 + lockWait));
   }
 
   LOG_TOPIC("707ed", DEBUG, Logger::BACKUP)
@@ -3484,10 +3485,9 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
   std::vector<Future<network::Response>> futures;
   futures.reserve(servers.size());
 
-  for (auto const& dbServer : servers) {
-    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
-                                                   fuerte::RestVerb::Post, url,
-                                                   body, reqOpts));
+  for (auto const& server : servers) {
+    futures.emplace_back(network::sendRequestRetry(
+        pool, "server:" + server, fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
   // Now listen to the results and report the aggregated final result:
@@ -4183,6 +4183,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
       std::this_thread::sleep_for(milliseconds(300));
     }
 
+    // TODO: the force attribute is still present and offered by arangobackup,
+    // but it can likely be removed nowadays.
     if (!result.ok() && force) {
       // About this code:
       // it first creates async requests to lock all coordinators.
