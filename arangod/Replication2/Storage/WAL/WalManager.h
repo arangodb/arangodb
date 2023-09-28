@@ -39,7 +39,7 @@ struct WalManager {
   auto createFileManager(LogId) -> std::unique_ptr<IFileManager>;
 
  private:
-  void createDirectories(std::filesystem::path const& path);
+  void createDirectories(std::filesystem::path path);
   auto getLogPath(LogId log) const -> std::filesystem::path;
   std::filesystem::path _folderPath;
 };

@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
+#include "Logger/LogMacros.h"
 #include "Replication2/Storage/WAL/FileManager.h"
 #include "Replication2/Storage/WAL/IFileManager.h"
 
@@ -48,18 +49,21 @@ auto WalManager::getLogPath(LogId log) const -> std::filesystem::path {
   return _folderPath / to_string(log);
 }
 
-void WalManager::createDirectories(std::filesystem::path const& path) {
+void WalManager::createDirectories(std::filesystem::path path) {
   std::filesystem::create_directories(path);
+
 #ifdef __linux__
-  for (auto& elem : path) {
-    auto fd = ::open(elem.c_str(), O_DIRECTORY | O_RDONLY);
-    ADB_PROD_ASSERT(fd >= 0) << "failed to open directory " << elem.string()
+  do {
+    LOG_DEVEL << path.string();
+    auto fd = ::open(path.c_str(), O_DIRECTORY | O_RDONLY);
+    ADB_PROD_ASSERT(fd >= 0) << "failed to open directory " << path.string()
                              << " with error " << strerror(errno);
     ADB_PROD_ASSERT(fsync(fd) == 0)
-        << "failed to fsync directory " << elem.string() << " with error "
+        << "failed to fsync directory " << path.string() << " with error "
         << strerror(errno);
     ::close(fd);
-  }
+    path = path.parent_path();
+  } while (path.has_relative_path());
 #endif
 }
 
