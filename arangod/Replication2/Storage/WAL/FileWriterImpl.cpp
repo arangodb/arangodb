@@ -61,8 +61,8 @@ FileWriterImplPosix::~FileWriterImplPosix() {
   if (_file >= 0) {
     sync();
     ADB_PROD_ASSERT(::close(_file) == 0)
-        << "failed to close replicated log file" << _path << " with error "
-        << strerror(errno);
+        << "failed to close replicated log file" << _path.string()
+        << " with error " << strerror(errno);
   }
 }
 
@@ -75,7 +75,7 @@ auto FileWriterImplPosix::append(std::string_view data) -> Result {
     // try to revert the partial write. this is only best effort - we have to
     // abort anyway!
     ::ftruncate(_file, _size);
-    ADB_PROD_ASSERT(false) << "write to log file " << _path
+    ADB_PROD_ASSERT(false) << "write to log file " << _path.string()
                            << " was incomplete; could only write " << n
                            << " of " << data.size() << " bytes - "
                            << strerror(errno);
@@ -87,13 +87,13 @@ auto FileWriterImplPosix::append(std::string_view data) -> Result {
 
 void FileWriterImplPosix::truncate(std::uint64_t size) {
   ADB_PROD_ASSERT(::ftruncate(_file, size) == 0)
-      << "failed to truncate file" << _path << " to size " << size << ": "
-      << strerror(errno);
+      << "failed to truncate file" << _path.string() << " to size " << size
+      << ": " << strerror(errno);
 }
 
 void FileWriterImplPosix::sync() {
   ADB_PROD_ASSERT(fdatasync(_file) == 0)
-      << "failed to flush file " << _path << ": " << strerror(errno);
+      << "failed to flush file " << _path.string() << ": " << strerror(errno);
 }
 
 auto FileWriterImplPosix::getReader() const -> std::unique_ptr<IFileReader> {
