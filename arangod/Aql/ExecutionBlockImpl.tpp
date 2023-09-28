@@ -957,25 +957,47 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
           _prefetchTask->waitFor();
           LOG_DEVEL << (void*)_prefetchTask.get()
                     << ": INVOKE FINSIHED WAITING FOR PREFETCH TASK";
-          return _prefetchTask->stealResult();
+          auto x = _prefetchTask->stealResult();
+          LOG_DEVEL << (void*)_prefetchTask.get() << ": RESULT STOLEN";
+          return x;
         }
 
         // we have claimed the task, but we are executing the fetcher
         // ourselves. so let's reset the task's internals properly.
         _prefetchTask->discard(/*isFinished*/ false);
       }
-      return fetcher().execute(ctx.stack);
+      if (_prefetchTask) {
+        LOG_DEVEL << (void*)_prefetchTask.get()
+                  << ": EXECUTING FETCHER OURSELVES";
+      }
+      auto x = fetcher().execute(ctx.stack);
+      if (_prefetchTask) {
+        LOG_DEVEL << (void*)_prefetchTask.get()
+                  << ": EXECUTING FETCHER OURSELVES DONE";
+      }
+      return x;
     });
+
+    if (_prefetchTask) {
+      LOG_DEVEL << (void*)_prefetchTask.get()
+                << ": RESULT IS THERE. EXECUTIONSTATE IS "
+                << std::get<0>(result);
+    }
 
     // note: SCHEDULER is a nullptr in unit tests
     if (SchedulerFeature::SCHEDULER != nullptr &&
         std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
         _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
+      LOG_DEVEL << (void*)_prefetchTask.get()
+                << ": HAVE PREFETCH TASK AND EXECUTION STATE IS "
+                << std::get<0>(result);
       if (_prefetchTask == nullptr) {
         _prefetchTask = std::make_shared<PrefetchTask>();
         LOG_DEVEL << (void*)_prefetchTask.get()
                   << ": CREATED NEW PREFETCH TASK";
       } else {
+        LOG_DEVEL << (void*)_prefetchTask.get()
+                  << ": RESETTING EXISTING PREFETCH TASK";
         _prefetchTask->reset();
       }
 
@@ -984,8 +1006,10 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
 
       // we can safely ignore the result here, because we will try to
       // claim the task ourselves anyway.
+      LOG_DEVEL << (void*)_prefetchTask.get()
+                << ": SCHEDULING NEW PREFETCH TASK";
 
-      SchedulerFeature::SCHEDULER->queue(
+      bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
           RequestLane::INTERNAL_LOW,
           [block = this, task = _prefetchTask, stack = ctx.stack]() mutable {
             if (!task->tryClaim()) {
@@ -1023,6 +1047,13 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                 block->getPlanNode()->getTypeString(), "]")});
             }
           });
+      LOG_DEVEL << (void*)_prefetchTask.get()
+                << ": SCHEDULING NEW PREFETCH TASK DONE. SUCCESS: " << queued;
+
+      if (!queued) {
+        // clear prefetch task
+        _prefetchTask.reset();
+      }
     }
 
     if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
