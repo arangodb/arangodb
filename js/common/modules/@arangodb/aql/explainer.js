@@ -2096,8 +2096,7 @@ function processQuery(query, explain, planIndex) {
         pad(1 + maxRuntimeLen - node.runtime.length) + value(node.runtime) + '   ';
     } else {
       line += pad('Par'.length) + value(node.isAsyncPrefetchEnabled ? '✓' : ' ') + '   ' +
-        pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
-        indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
+        pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ';
     }
     line += indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
 
