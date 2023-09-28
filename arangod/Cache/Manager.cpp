@@ -93,7 +93,10 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _peakGlobalAllocation(_fixedAllocation),
       _activeTables(0),
       _spareTables(0),
-      _transactions(),
+      _migrateTasks(0),
+      _freeMemoryTasks(0),
+      _migrateTasksDuration(0),
+      _freeMemoryTasksDuration(0),
       _schedulerPost(std::move(schedulerPost)),
       _resizeAttempt(0),
       _outstandingTasks(0),
@@ -273,7 +276,10 @@ Manager::MemoryStats Manager::memoryStats() const noexcept {
   result.spareAllocation = _spareTableAllocation;
   result.activeTables = _activeTables;
   result.spareTables = _spareTables;
-
+  result.migrateTasks = _migrateTasks;
+  result.freeMemoryTasks = _freeMemoryTasks;
+  result.migrateTasksDuration = _migrateTasksDuration;
+  result.freeMemoryTasksDuration = _freeMemoryTasksDuration;
   return result;
 }
 
@@ -661,6 +667,18 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
   }
 }
 
+// track duration of migrate task, in micros
+void Manager::trackMigrateTaskDuration(std::uint64_t duration) noexcept {
+  SpinLocker guard(SpinLocker::Mode::Write, _lock);
+  _migrateTasksDuration += duration;
+}
+
+// track duration of free memory task, in micros
+void Manager::trackFreeMemoryTaskDuration(std::uint64_t duration) noexcept {
+  SpinLocker guard(SpinLocker::Mode::Write, _lock);
+  _freeMemoryTasksDuration += duration;
+}
+
 void Manager::freeUnusedTables() {
   TRI_ASSERT(_lock.isLockedWrite());
   constexpr std::size_t tableEntries =
@@ -740,6 +758,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     TRI_ASSERT(metadata.isResizing());
     metadata.toggleResizing();
     TRI_ASSERT(!metadata.isResizing());
+  } else {
+    ++_freeMemoryTasks;
   }
 }
 
@@ -773,6 +793,8 @@ void Manager::migrateCache(Manager::TaskEnvironment environment,
     TRI_ASSERT(metadata.isMigrating());
     metadata.toggleMigrating();
     TRI_ASSERT(!metadata.isMigrating());
+  } else {
+    ++_migrateTasks;
   }
 }
 
