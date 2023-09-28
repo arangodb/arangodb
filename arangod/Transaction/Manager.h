@@ -42,7 +42,6 @@
 #include <absl/hash/hash.h>
 
 #include <atomic>
-#include <chrono>
 #include <functional>
 #include <memory>
 #include <unordered_map>
@@ -230,8 +229,6 @@ class Manager final : public IManager {
         LOG_TOPIC("eeddb", TRACE, Logger::TRANSACTIONS)
             << "Got write lock to hold transactions.";
         _hotbackupCommitLockHeld = true;
-        _hotbackupCommitLockExpireStamp =
-            std::chrono::steady_clock::now() + hotBackupCommitLockExpireTime;
       } else {
         LOG_TOPIC("eeddc", TRACE, Logger::TRANSACTIONS)
             << "Did not get write lock to hold transactions.";
@@ -242,8 +239,6 @@ class Manager final : public IManager {
 
   // remove the block
   void releaseTransactions() noexcept;
-
-  void cancelExpiredHotbackupLock() noexcept;
 
   using TransactionCommitGuard = basics::ReadLocker<basics::ReadWriteLock>;
 
@@ -321,12 +316,6 @@ class Manager final : public IManager {
                                // the same time.
   basics::ReadWriteLock _hotbackupCommitLock;
   bool _hotbackupCommitLockHeld;
-  // the time the lock taken for hot backup expires, if
-  // _hotbackupCommitLockHeld is set
-  std::chrono::time_point<std::chrono::steady_clock>
-      _hotbackupCommitLockExpireStamp;
-
-  static constexpr auto hotBackupCommitLockExpireTime = std::chrono::hours(4);
 
   double _streamingLockTimeout;
 

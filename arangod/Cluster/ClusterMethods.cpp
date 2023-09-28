@@ -4185,7 +4185,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
 
     if (!result.ok() && force) {
       // About this code:
-      // it first creates async requests to lock all dbservers.
+      // it first creates async requests to lock all coordinators.
       //    the corresponding lock ids are stored int the map lockJobIds.
       // Then we continously abort all trx while checking all the above jobs
       //    for completion.
@@ -4268,7 +4268,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
       result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
           StringUtils::concatT(
-              "failed to acquire global transaction lock on all db servers: ",
+              "failed to acquire global transaction lock on all coordinators: ",
               result.errorMessage()));
       LOG_TOPIC("b7d09", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
@@ -4288,7 +4288,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
       releaseAgencyLock.fire();
       result.reset(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
-          StringUtils::concatT("failed to hot backup on all db servers: ",
+          StringUtils::concatT("failed to hot backup on all coordinators: ",
                                result.errorMessage()));
       LOG_TOPIC("6b333", ERR, Logger::BACKUP) << result.errorMessage();
       removeLocalBackups(pool, backupId, dbServers, dummy);

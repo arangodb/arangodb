@@ -113,22 +113,6 @@ void Manager::releaseTransactions() noexcept {
         << "Releasing write lock to hold transactions.";
     _hotbackupCommitLock.unlockWrite();
     _hotbackupCommitLockHeld = false;
-    _hotbackupCommitLockExpireStamp = {};
-  }
-}
-
-void Manager::cancelExpiredHotbackupLock() noexcept {
-  std::unique_lock<std::mutex> guard(_hotbackupMutex);
-  if (_hotbackupCommitLockHeld &&
-      _hotbackupCommitLockExpireStamp < std::chrono::steady_clock::now()) {
-    // the hot backup lock is still taken, but it already expired.
-    // we now unlock it, so that subsequent hot backups can make progress
-    LOG_TOPIC("f73cb", INFO, Logger::TRANSACTIONS)
-        << "Abandoning seemingly expired transactions lock acquired for hot "
-           "backup";
-    _hotbackupCommitLock.unlockWrite();
-    _hotbackupCommitLockHeld = false;
-    _hotbackupCommitLockExpireStamp = {};
   }
 }
 
@@ -1262,8 +1246,6 @@ void Manager::iterateManagedTrx(
 
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
-  cancelExpiredHotbackupLock();
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // clear transaction history as well
   if (_history != nullptr) {
