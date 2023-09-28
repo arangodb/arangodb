@@ -55,6 +55,7 @@ struct FileWriterImplPosix final : IFileWriter {
 
  private:
   std::filesystem::path _path;
+  std::uint64_t _size = 0;
   int _file = 0;
 };
 

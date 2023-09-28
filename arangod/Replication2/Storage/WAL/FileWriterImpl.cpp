@@ -38,11 +38,15 @@ FileWriterImplPosix::FileWriterImplPosix(std::filesystem::path path)
     : _path(std::move(path)) {
   _file = ::open(_path.c_str(), O_CREAT | O_RDWR | O_APPEND,
                  S_IRUSR | S_IWUSR | O_CLOEXEC);
-  ADB_PROD_ASSERT(_file >= 0) << "failed to open replicated log file" << path
+  ADB_PROD_ASSERT(_file >= 0) << "failed to open replicated log file" << _path
                               << " for writing with error " << strerror(errno);
+  auto off = ::lseek(_file, 0, SEEK_END);
+  ADB_PROD_ASSERT(off >= 0) << "failed to obtain file size for file " << _path
+                            << " with error " << strerror(errno);
+  _size = off;
 
   // we also need to fsync the directory to ensure that the file is visible!
-  auto dir = path.parent_path();
+  auto dir = _path.parent_path();
   auto fd = ::open(dir.c_str(), O_DIRECTORY | O_RDONLY);
   ADB_PROD_ASSERT(fd >= 0) << "failed to open directory " << dir.string()
                            << " with error " << strerror(errno);
@@ -62,16 +66,20 @@ FileWriterImplPosix::~FileWriterImplPosix() {
 
 auto FileWriterImplPosix::append(std::string_view data) -> Result {
   auto n = ::write(_file, data.data(), data.size());
-  if (n < 0) {
-    return Result(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-                  "failed to write to log file " + _path.string() + ": " +
-                      strerror(errno));
-  }
+  ADB_PROD_ASSERT(n < 0) << "failed to write to log file " + _path.string() +
+                                ": " + strerror(errno);
+
   if (static_cast<std::size_t>(n) != data.size()) {
-    return Result(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-                  "write to log file was incomplete");
+    // try to revert the partial write. this is only best effort - we have to
+    // abort anyway!
+    ::ftruncate(_file, _size);
+    ADB_PROD_ASSERT(false) << "write to log file " << _path
+                           << " was incomplete; could only write " << n
+                           << " of " << data.size() << " bytes - "
+                           << strerror(errno);
   }
 
+  _size += n;
   return Result{};
 }
 
