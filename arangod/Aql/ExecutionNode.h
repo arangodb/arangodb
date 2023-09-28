@@ -1195,14 +1195,14 @@ class MaterializeNode : public ExecutionNode {
   Variable const* _outVariable;
 };
 
-class MaterializeMultiNode : public MaterializeNode {
+class MaterializeSearchNode : public MaterializeNode {
  public:
-  MaterializeMultiNode(ExecutionPlan* plan, ExecutionNodeId id,
-                       aql::Variable const& inDocId,
-                       aql::Variable const& outVariable);
+  MaterializeSearchNode(ExecutionPlan* plan, ExecutionNodeId id,
+                        aql::Variable const& inDocId,
+                        aql::Variable const& outVariable);
 
-  MaterializeMultiNode(ExecutionPlan* plan,
-                       arangodb::velocypack::Slice const& base);
+  MaterializeSearchNode(ExecutionPlan* plan,
+                        arangodb::velocypack::Slice const& base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
