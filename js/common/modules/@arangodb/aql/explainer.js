@@ -880,21 +880,11 @@ function processQuery(query, explain, planIndex) {
         nodes[n.id].filtered = String(n.filtered || 0);
         nodes[n.id].runtime = runtime.toFixed(5);
 
-        if (String(nodes[n.id].calls).length > maxCallsLen) {
-          maxCallsLen = String(nodes[n.id].calls).length;
-        }
-        if (String(nodes[n.id].parallel).length > maxParallelLen) {
-          maxParallelLen = String(nodes[n.id].parallel).length;
-        }
-        if (String(nodes[n.id].items).length > maxItemsLen) {
-          maxItemsLen = String(nodes[n.id].items).length;
-        }
-        if (String(nodes[n.id].filtered).length > maxFilteredLen) {
-          maxFilteredLen = String(nodes[n.id].filtered).length;
-        }
-        if (nodes[n.id].runtime.length > maxRuntimeLen) {
-          maxRuntimeLen = nodes[n.id].runtime.length;
-        }
+        maxCallsLen = Math.max(maxCallsLen, String(nodes[n.id].calls).length);
+        maxParallelLen = Math.max(maxParallelLen, String(nodes[n.id].parallel).length);
+        maxItemsLen = Math.max(maxItemsLen, String(nodes[n.id].items).length);
+        maxFilteredLen = Math.max(maxFilteredLen, String(nodes[n.id].filtered).length);
+        maxRuntimeLen = Math.max(maxRuntimeLen, nodes[n.id].runtime.length);
       }
     });
   }
@@ -1244,7 +1234,7 @@ function processQuery(query, explain, planIndex) {
       for (i = 0; i < node.edgeCollections.length; ++i) {
         d = node.directions[i];
         // base indexes
-        var ix = node.indexes.base[i];
+        let ix = node.indexes.base[i];
         ix.collection = node.edgeCollections[i];
         ix.condition = keyword("base " + translate[d]);
         ix.level = -1;
@@ -1278,6 +1268,69 @@ function processQuery(query, explain, planIndex) {
       });
 
       return allIndexes;
+    };
+
+    const handleGraphDefinition = (node) => { 
+      if (node.hasOwnProperty('graphDefinition')) {
+        let v = [];
+        let vNames = [];
+        if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+          node.options.vertexCollections.forEach(function (vcn) {
+            v.push(collection(vcn));
+            vNames.push(vcn);
+          });
+        } else {
+          node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
+            v.push(collection(vcn));
+            vNames.push(vcn);
+          });
+        }
+        node.vertexCollectionNameStr = v.join(', ');
+        node.vertexCollectionNameStrLen = vNames.join(', ').length;
+
+        let e = [];
+        let eNames = [];
+        if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+          node.options.edgeCollections.forEach(function (ecn) {
+            e.push(collection(ecn));
+            eNames.push(ecn);
+          });
+        } else {
+          node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
+            e.push(collection(ecn));
+            eNames.push(ecn);
+          });
+        }
+        node.edgeCollectionNameStr = e.join(', ');
+        node.edgeCollectionNameStrLen = eNames.join(', ').length;
+      } else {
+        let e = [];
+        let eNames = [];
+        if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+          node.options.edgeCollections.forEach(function (ecn) {
+            e.push(collection(ecn));
+            eNames.push(ecn);
+          });
+        } else {
+          edgeCols = node.graph || [];
+          edgeCols.forEach(function (ecn) {
+            e.push(collection(ecn));
+            eNames.push(ecn);
+          });
+        }
+        node.edgeCollectionNameStr = e.join(', ');
+        node.edgeCollectionNameStrLen = eNames.join(', ').length;
+        node.graph = '<anonymous>';
+
+        if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+          let v = [];
+          node.options.vertexCollections.forEach(function (vcn) {
+            v.push(collection(vcn));
+          });
+          node.vertexCollectionNameStr = v.join(', ');
+          node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
+        }
+      }
     };
 
     switch (node.type) {
@@ -1493,64 +1546,7 @@ function processQuery(query, explain, planIndex) {
           node.PruneConditionStr = buildExpression(node.expression);
         }
 
-        e = [];
-        eNames = [];
-        if (node.hasOwnProperty('graphDefinition')) {
-          v = [];
-          vNames = [];
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          } else {
-            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          }
-          node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = vNames.join(', ').length;
-
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-        } else {
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            edgeCols = node.graph || [];
-            edgeCols.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-          node.graph = '<anonymous>';
-
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            v = [];
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-            });
-            node.vertexCollectionNameStr = v.join(', ');
-            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
-          }
-        }
+        handleGraphDefinition(node);
 
         indexes.push(...getGraphNodeIndexes(node));
 
@@ -1600,18 +1596,18 @@ function processQuery(query, explain, planIndex) {
         if (Array.isArray(node.graph)) {
           directions = [];
           for (i = 0; i < node.edgeCollections.length; ++i) {
-              isLast = (i + 1 === node.edgeCollections.length);
-              d = node.directions[i];
-              if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
-                  // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
-                  // on the same collection
-                  d = 0; // ANY
-                  ++i;
-              }
-              directions.push({ collection: node.edgeCollections[i], direction: d });
+            isLast = (i + 1 === node.edgeCollections.length);
+            d = node.directions[i];
+            if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+              // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+              // on the same collection
+              d = 0; // ANY
+              ++i;
+            }
+            directions.push({ collection: node.edgeCollections[i], direction: d });
           }
           rc += directions.map(function (g, index) {
-            var tmp = '';
+            let tmp = '';
             if (g.direction !== defaultDirection) {
               tmp += keyword(translate[g.direction]);
               tmp += ' ';
@@ -1623,63 +1619,8 @@ function processQuery(query, explain, planIndex) {
         }
 
         shortestPathDetails.push(node);
-        e = [];
-        eNames = [];
-        if (node.hasOwnProperty('graphDefinition')) {
-          v = [];
-          vNames = [];
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          } else {
-            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          }
-          node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = vNames.join(', ').length;
 
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-        } else {
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            edgeCols = node.graph || [];
-            edgeCols.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-          node.graph = '<anonymous>';
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            v = [];
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-            });
-            node.vertexCollectionNameStr = v.join(', ');
-            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
-          }
-        }
+        handleGraphDefinition(node);
 
         indexes.push(...getGraphNodeIndexes(node));
 
@@ -1718,18 +1659,18 @@ function processQuery(query, explain, planIndex) {
         if (Array.isArray(node.graph)) {
           directions = [];
           for (i = 0; i < node.edgeCollections.length; ++i) {
-              isLast = (i + 1 === node.edgeCollections.length);
-              d = node.directions[i];
-              if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
-                  // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
-                  // on the same collection
-                  d = 0; // ANY
-                  ++i;
-              }
-              directions.push({ collection: node.edgeCollections[i], direction: d });
+            isLast = (i + 1 === node.edgeCollections.length);
+            d = node.directions[i];
+            if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+              // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+              // on the same collection
+              d = 0; // ANY
+              ++i;
+            }
+            directions.push({ collection: node.edgeCollections[i], direction: d });
           }
           rc += directions.map(function (g, index) {
-            var tmp = '';
+            let tmp = '';
             if (g.direction !== defaultDirection) {
               tmp += keyword(translate[g.direction]);
               tmp += ' ';
@@ -1741,63 +1682,8 @@ function processQuery(query, explain, planIndex) {
         }
 
         kShortestPathsDetails.push(node);
-        e = [];
-        eNames = [];
-        if (node.hasOwnProperty('graphDefinition')) {
-          v = [];
-          vNames = [];
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          } else {
-            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          }
-          node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = vNames.join(', ').length;
-
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-        } else {
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            edgeCols = node.graph || [];
-            edgeCols.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-          node.graph = '<anonymous>';
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            v = [];
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-            });
-            node.vertexCollectionNameStr = v.join(', ');
-            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
-          }
-        }
+        
+        handleGraphDefinition(node);
 
         indexes.push(...getGraphNodeIndexes(node));
 
