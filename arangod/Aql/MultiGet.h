@@ -148,7 +148,11 @@ void MultiGetContext::multiGet(size_t expected, Func&& func) {
       if (!_statuses[c].ok()) {
         continue;
       }
-      *it = std::make_unique<std::string>(std::move(*_values[c].GetSelf()));
+      if (_values[c].IsPinned()) {
+        *it = std::make_unique<std::string>(_values[c].ToStringView());
+      } else {
+        *it = std::make_unique<std::string>(std::move(*_values[c].GetSelf()));
+      }
     }
     _local = 0;
   }
