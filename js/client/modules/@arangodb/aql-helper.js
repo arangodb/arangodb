@@ -33,7 +33,7 @@
 // / @brief normalize a single row result
 // //////////////////////////////////////////////////////////////////////////////
 
-let isEqual = require("@arangodb/test-helper").isEqual;
+let isEqual = require("@arangodb/test-helper-common").isEqual;
 
 exports.isEqual = isEqual;
 

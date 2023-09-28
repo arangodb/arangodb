@@ -34,7 +34,7 @@ var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
 const isEnterprise = require("internal").isEnterprise();
 var assertQueryError = helper.assertQueryError;
-const isCluster = require("@arangodb/cluster").isCluster();
+const isCluster = require("internal").isCluster();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 function viewCountOptimization(isSearchAlias) {
