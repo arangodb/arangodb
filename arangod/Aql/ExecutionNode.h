@@ -1218,17 +1218,16 @@ class MaterializeSearchNode : public MaterializeNode {
                       unsigned flags) const override final;
 };
 
-template<bool localDocumentId>
-class MaterializeSingleNode : public MaterializeNode,
-                              public CollectionAccessingNode {
+class MaterializeRocksDBNode : public MaterializeNode,
+                               public CollectionAccessingNode {
  public:
-  MaterializeSingleNode(ExecutionPlan* plan, ExecutionNodeId id,
-                        aql::Collection const* collection,
-                        aql::Variable const& inDocId,
-                        aql::Variable const& outVariable);
+  MaterializeRocksDBNode(ExecutionPlan* plan, ExecutionNodeId id,
+                         aql::Collection const* collection,
+                         aql::Variable const& inDocId,
+                         aql::Variable const& outVariable);
 
-  MaterializeSingleNode(ExecutionPlan* plan,
-                        arangodb::velocypack::Slice const& base);
+  MaterializeRocksDBNode(ExecutionPlan* plan,
+                         arangodb::velocypack::Slice const& base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

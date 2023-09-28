@@ -342,7 +342,7 @@ void arangodb::aql::lateDocumentMaterializationRule(
             return std::make_unique<materialize::MaterializeSearchNode>(
                 plan.get(), plan->nextId(), *localDocIdTmp, *var);
           }
-          return std::make_unique<materialize::MaterializeSingleNode<true>>(
+          return std::make_unique<materialize::MaterializeRocksDBNode>(
               plan.get(), plan->nextId(), indexNode->collection(),
               *localDocIdTmp, *var);
         };
