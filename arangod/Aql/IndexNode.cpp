@@ -108,6 +108,11 @@ IndexNode::IndexNode(ExecutionPlan* plan,
     _options.ascending = !base.get("reverse").getBool();
   }
 
+  if (auto indexCoversProjections = base.get("indexCoversProjections");
+      indexCoversProjections.isBool()) {
+    _indexCoversProjections = indexCoversProjections.getBool();
+  }
+
   VPackSlice indexes = base.get("indexes");
 
   if (!indexes.isArray()) {
@@ -575,7 +580,17 @@ void IndexNode::prepareProjections() {
     return;
   }
 
-  if (idx->covers(_projections)) {
+  auto coversProjections = std::invoke([&]() {
+    if (_indexCoversProjections.has_value()) {
+      // On a DBServer, already got this information from the Coordinator.
+      return *_indexCoversProjections;
+    } else {
+      // On the Coordinator, let's check.
+      return idx->covers(_projections);
+    }
+  });
+
+  if (coversProjections) {
     _projections.setCoveringContext(collection()->id(), idx);
   } else if (this->hasFilter()) {
     // if we have a covering index and a post-filter condition,
