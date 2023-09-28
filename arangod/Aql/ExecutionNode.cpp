@@ -2869,7 +2869,7 @@ MaterializeNode* materialize::createMaterializeNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const base) {
   auto isMulti = base.get(kMaterializeNodeMultiNodeParam);
   if (isMulti.isBoolean() && isMulti.getBoolean()) {
-    return new MaterializeMultiNode(plan, base);
+    return new MaterializeSearchNode(plan, base);
   }
   auto inLocalDocId = base.get(kMaterializeNodeInLocalDocIdParam);
   if (inLocalDocId.isBoolean() && inLocalDocId.getBoolean()) {
@@ -2924,24 +2924,24 @@ std::vector<Variable const*> MaterializeNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
 }
 
-MaterializeMultiNode::MaterializeMultiNode(ExecutionPlan* plan,
-                                           ExecutionNodeId id,
-                                           aql::Variable const& inDocId,
-                                           aql::Variable const& outVariable)
+MaterializeSearchNode::MaterializeSearchNode(ExecutionPlan* plan,
+                                             ExecutionNodeId id,
+                                             aql::Variable const& inDocId,
+                                             aql::Variable const& outVariable)
     : MaterializeNode(plan, id, inDocId, outVariable) {}
 
-MaterializeMultiNode::MaterializeMultiNode(
+MaterializeSearchNode::MaterializeSearchNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : MaterializeNode(plan, base) {}
 
-void MaterializeMultiNode::doToVelocyPack(velocypack::Builder& nodes,
-                                          unsigned flags) const {
+void MaterializeSearchNode::doToVelocyPack(velocypack::Builder& nodes,
+                                           unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
   nodes.add(kMaterializeNodeMultiNodeParam, velocypack::Value(true));
 }
 
-std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
+std::unique_ptr<ExecutionBlock> MaterializeSearchNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
@@ -2972,9 +2972,9 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan,
-                                           bool withDependencies,
-                                           bool withProperties) const {
+ExecutionNode* MaterializeSearchNode::clone(ExecutionPlan* plan,
+                                            bool withDependencies,
+                                            bool withProperties) const {
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
@@ -2986,7 +2986,7 @@ ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan,
         plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
   }
 
-  auto c = std::make_unique<MaterializeMultiNode>(
+  auto c = std::make_unique<MaterializeSearchNode>(
       plan, _id, *inNonMaterializedDocId, *outVariable);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
