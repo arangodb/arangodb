@@ -49,7 +49,7 @@ class RegisterInfos;
 template<BlockPassthrough>
 class SingleRowFetcher;
 
-template<typename T>
+template<bool T>
 class CollectionNameHolder {
  public:
   explicit CollectionNameHolder(std::string_view name) noexcept
@@ -62,15 +62,15 @@ class CollectionNameHolder {
 };
 
 template<>
-class CollectionNameHolder<void> {};
+class CollectionNameHolder<false> {};
 
-template<typename T>
-class MaterializerExecutorInfos : public CollectionNameHolder<T> {
+template<bool localDocumentId>
+class MaterializerExecutorInfos : public CollectionNameHolder<localDocumentId> {
  public:
   template<class... _Types>
   MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
                             aql::QueryContext& query, _Types&&... Args)
-      : CollectionNameHolder<T>(Args...),
+      : CollectionNameHolder<localDocumentId>(Args...),
         _inNonMaterializedDocRegId(inNmDocId),
         _outMaterializedDocumentRegId(outDocRegId),
         _query(query) {}
@@ -98,7 +98,7 @@ class MaterializerExecutorInfos : public CollectionNameHolder<T> {
   aql::QueryContext& _query;
 };
 
-template<typename T, bool localDocumentId>
+template<bool localDocumentId>
 class MaterializeExecutor {
  public:
   struct Properties {
@@ -108,7 +108,7 @@ class MaterializeExecutor {
         BlockPassthrough::Disable;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = MaterializerExecutorInfos<T>;
+  using Infos = MaterializerExecutorInfos<localDocumentId>;
   using Stats = MaterializeStats;
 
   MaterializeExecutor(MaterializeExecutor&&) = default;
@@ -139,7 +139,7 @@ class MaterializeExecutor {
   }
 
  private:
-  static constexpr bool isSingleCollection = !std::is_void_v<T>;
+  static constexpr bool isSingleCollection = localDocumentId;
 
   class ReadContext {
    public:
