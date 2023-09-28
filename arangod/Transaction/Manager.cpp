@@ -120,7 +120,7 @@ void Manager::releaseTransactions() noexcept {
 void Manager::cancelExpiredHotbackupLock() noexcept {
   std::unique_lock<std::mutex> guard(_hotbackupMutex);
   if (_hotbackupCommitLockHeld &&
-      _hotbackupCommitLockExpireTime < std::chrono::steady_clock::now()) {
+      _hotbackupCommitLockExpireStamp < std::chrono::steady_clock::now()) {
     // the hot backup lock is still taken, but it already expired.
     // we now unlock it, so that subsequent hot backups can make progress
     LOG_TOPIC("f73cb", INFO, Logger::TRANSACTIONS)
@@ -128,7 +128,7 @@ void Manager::cancelExpiredHotbackupLock() noexcept {
            "backup";
     _hotbackupCommitLock.unlockWrite();
     _hotbackupCommitLockHeld = false;
-    _hotbackupCommitLockExpireTime = {};
+    _hotbackupCommitLockExpireStamp = {};
   }
 }
 
