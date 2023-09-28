@@ -696,7 +696,13 @@ class instance {
         process.env[key] = oneSet;
       }
     }
+    if (this.useableMemory === undefined) {
+      throw new Error(`${this.name} don't have planned memory though its configured!`);
+    }
     if (this.useableMemory !== 0) {
+      if (this.options.extremeVerbosity) {
+        print(`appointed ${this.name} memory: ${this.useableMemory}`);
+      }
       process.env['ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY'] = this.useableMemory;
     }
     process.env['ARANGODB_SERVER_DIR'] = this.rootDir;

@@ -194,6 +194,8 @@ class instanceManager {
         // Distribute 20% agency, 80% singles
         this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (20/100) / this.options.agencySize);
         this.memlayout[instanceRole.failover] = Math.round(this.options.memory * (80/100) / this.options.singles);
+      } else if (this.options.agency) {
+        this.memlayout[instanceRole.agent] = Math.round(this.options.memory / this.options.agencySize);
       } else {
         this.memlayout[instanceRole.single] = Math.round(this.options.memory / this.options.singles);
       }
