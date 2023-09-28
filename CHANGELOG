@@ -1,7 +1,7 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
-* Added the following metrics to improve observability of in-memory cache
+* Added the following metrics to improve observability of the in-memory cache
   subsystem:
   - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
     tasks scheduled
