@@ -38,11 +38,13 @@ FileWriterImplPosix::FileWriterImplPosix(std::filesystem::path path)
     : _path(std::move(path)) {
   _file = ::open(_path.c_str(), O_CREAT | O_RDWR | O_APPEND,
                  S_IRUSR | S_IWUSR | O_CLOEXEC);
-  ADB_PROD_ASSERT(_file >= 0) << "failed to open replicated log file" << _path
-                              << " for writing with error " << strerror(errno);
+  ADB_PROD_ASSERT(_file >= 0)
+      << "failed to open replicated log file" << _path.string()
+      << " for writing with error " << strerror(errno);
   auto off = ::lseek(_file, 0, SEEK_END);
-  ADB_PROD_ASSERT(off >= 0) << "failed to obtain file size for file " << _path
-                            << " with error " << strerror(errno);
+  ADB_PROD_ASSERT(off >= 0)
+      << "failed to obtain file size for file " << _path.string()
+      << " with error " << strerror(errno);
   _size = off;
 
   // we also need to fsync the directory to ensure that the file is visible!
@@ -106,7 +108,7 @@ FileWriterImplWindows::FileWriterImplWindows(std::filesystem::path path)
                       OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
   ADB_PROD_ASSERT(_file != INVALID_HANDLE_VALUE)
-      << "failed to open replicated log file" << path
+      << "failed to open replicated log file" << path.string()
       << " for writing with error " << GetLastError();
 }
 

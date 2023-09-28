@@ -64,7 +64,7 @@ using FileWriterImpl = FileWriterImplPosix;
 #else  // _WIN32
 
 struct FileWriterImplWindows final : IFileWriter {
-  FileWriterImplWindows(std::filesystem::path path path);
+  FileWriterImplWindows(std::filesystem::path path);
   ~FileWriterImplWindows();
 
   auto path() const -> std::string override { return _path.string(); }
