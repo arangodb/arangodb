@@ -33,6 +33,7 @@
 #include "Aql/ConstFetcher.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
@@ -43,7 +44,7 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
-#include "Aql/EnumeratePathsNode.h"
+#include "Aql/JoinNode.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
@@ -127,6 +128,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
     {static_cast<int>(ExecutionNode::OFFSET_INFO_MATERIALIZE),
      "OffsetMaterializeNode"},
+    {static_cast<int>(ExecutionNode::JOIN), "JoinNode"},
 };
 
 }  // namespace
@@ -395,6 +397,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new NoResultsNode(plan, slice);
     case INDEX:
       return new IndexNode(plan, slice);
+    case JOIN:
+      return new JoinNode(plan, slice);
     case REMOTE:
       return new RemoteNode(plan, slice);
     case GATHER: {
@@ -1601,6 +1605,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case UPSERT:
     case TRAVERSAL:
     case INDEX:
+    case JOIN:
     case SHORTEST_PATH:
     case ENUMERATE_PATHS:
     case REMOTESINGLE:
@@ -2320,6 +2325,7 @@ bool SubqueryNode::mayAccessCollections() {
       ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
       ExecutionNode::ENUMERATE_COLLECTION,
       ExecutionNode::INDEX,
+      ExecutionNode::JOIN,
       ExecutionNode::INSERT,
       ExecutionNode::UPDATE,
       ExecutionNode::REPLACE,

@@ -3299,6 +3299,14 @@ DECLARE_GAUGE(rocksdb_cache_unused_memory, uint64_t,
               "rocksdb_cache_unused_memory");
 DECLARE_GAUGE(rocksdb_cache_unused_tables, uint64_t,
               "rocksdb_cache_unused_tables");
+DECLARE_COUNTER(rocksdb_cache_migrate_tasks_total,
+                "rocksdb_cache_migrate_tasks_total");
+DECLARE_COUNTER(rocksdb_cache_free_memory_tasks_total,
+                "rocksdb_cache_free_memory_tasks_total");
+DECLARE_COUNTER(rocksdb_cache_migrate_tasks_duration_total,
+                "rocksdb_cache_migrate_tasks_duration_total");
+DECLARE_COUNTER(rocksdb_cache_free_memory_tasks_duration_total,
+                "rocksdb_cache_free_memory_tasks_duration_total");
 DECLARE_GAUGE(rocksdb_actual_delayed_write_rate, uint64_t,
               "rocksdb_actual_delayed_write_rate");
 DECLARE_GAUGE(rocksdb_background_errors, uint64_t, "rocksdb_background_errors");
@@ -3427,9 +3435,17 @@ void RocksDBEngine::getStatistics(std::string& result) const {
         // prepend name with "rocksdb_"
         name = absl::StrCat(kEngineName, "_", name);
       }
-      result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
-                             " gauge\n", name, " ",
-                             a.value.getNumber<uint64_t>(), "\n");
+      if (name.ends_with("_total")) {
+        // counter
+        result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
+                               " counter\n", name, " ",
+                               a.value.getNumber<uint64_t>(), "\n");
+      } else {
+        // gauge
+        result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
+                               " gauge\n", name, " ",
+                               a.value.getNumber<uint64_t>(), "\n");
+      }
     }
   }
 }
@@ -3594,10 +3610,12 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     cache::Manager* manager =
         server().getFeature<CacheManagerFeature>().manager();
 
+    std::pair<double, double> rates;
     std::optional<cache::Manager::MemoryStats> stats;
     if (manager != nullptr) {
       // cache turned on
       stats = manager->memoryStats(cache::Cache::triesFast);
+      rates = manager->globalHitRates();
     }
     if (!stats.has_value()) {
       stats = cache::Manager::MemoryStats{};
@@ -3611,6 +3629,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     builder.add("cache.active-tables", VPackValue(stats->activeTables));
     builder.add("cache.unused-memory", VPackValue(stats->spareAllocation));
     builder.add("cache.unused-tables", VPackValue(stats->spareTables));
+    builder.add("cache.migrate-tasks-total", VPackValue(stats->migrateTasks));
+    builder.add("cache.free-memory-tasks-total",
+                VPackValue(stats->freeMemoryTasks));
+    builder.add("cache.migrate-tasks-duration-total",
+                VPackValue(stats->migrateTasksDuration));
+    builder.add("cache.free-memory-tasks-duration-total",
+                VPackValue(stats->freeMemoryTasksDuration));
 
     // edge cache compression ratio
     double compressionRatio = 0.0;
@@ -3621,15 +3646,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                                          static_cast<double>(initial)));
     }
     builder.add("cache.edge-compression-ratio", VPackValue(compressionRatio));
-    builder.add("cache.edge-inserts",
-                VPackValue(_metricsEdgeCacheInserts.load()));
-    builder.add("cache.edge-compressed-inserts",
-                VPackValue(_metricsEdgeCacheCompressedInserts.load()));
 
-    std::pair<double, double> rates;
-    if (manager != nullptr) {
-      rates = manager->globalHitRates();
-    }
     // handle NaN
     builder.add("cache.hit-rate-lifetime",
                 VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
