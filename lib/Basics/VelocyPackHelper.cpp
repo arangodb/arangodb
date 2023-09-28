@@ -21,6 +21,25 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "VelocyPackHelper.h"
+
+#include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
+#include "Basics/memory.h"
+#include "Basics/operating-system.h"
+#include "Basics/system-compiler.h"
+#include "Logger/LogMacros.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include <fcntl.h>
 #include <string.h>
 #include <sys/types.h>
@@ -38,26 +57,6 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
-
-#include "Basics/operating-system.h"
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#include "VelocyPackHelper.h"
-
-#include "Basics/Exceptions.h"
-#include "Basics/NumberUtils.h"
-#include "Basics/ScopeGuard.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/error.h"
-#include "Basics/files.h"
-#include "Basics/memory.h"
-#include "Basics/system-compiler.h"
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
@@ -302,17 +301,17 @@ bool VelocyPackHelper::AttributeSorterBinaryStringView::operator()(
   return false;
 }
 
-size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
+size_t VelocyPackHelper::VPackHash::operator()(VPackSlice slice) const {
   return static_cast<size_t>(slice.normalizedHash());
 }
 
 size_t VelocyPackHelper::VPackStringHash::operator()(
-    VPackSlice const& slice) const noexcept {
+    VPackSlice slice) const noexcept {
   return static_cast<size_t>(slice.hashString());
 }
 
-bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
-                                              VPackSlice const& rhs) const {
+bool VelocyPackHelper::VPackEqual::operator()(VPackSlice lhs,
+                                              VPackSlice rhs) const {
   return VelocyPackHelper::equal(lhs, rhs, false, _options);
 }
 
@@ -327,7 +326,7 @@ again:
 }
 
 bool VelocyPackHelper::VPackStringEqual::operator()(
-    VPackSlice const& lhs, VPackSlice const& rhs) const noexcept {
+    VPackSlice lhs, VPackSlice rhs) const noexcept {
   auto const lh = lhs.head();
   auto const rh = rhs.head();
 
@@ -415,51 +414,36 @@ int VelocyPackHelper::compareStringValues(char const* left, VPackValueLength nl,
 
 /// @brief returns a string sub-element, or throws if <name> does not exist
 /// or it is not a string
-std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
-                                                     char const* name) {
+std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice slice,
+                                                     std::string_view name) {
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
-    std::string msg =
-        "The attribute '" + std::string(name) + "' was not found.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("attribute '", name, "' was not found"));
   }
-  VPackSlice const sub = slice.get(name);
+  VPackSlice sub = slice.get(name);
   if (!sub.isString()) {
-    std::string msg =
-        "The attribute '" + std::string(name) + "' is not a string.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("attribute '", name, "' is not a string"));
   }
   return sub.copyString();
 }
 
-/// @brief returns a string sub-element, or throws if <name> does not exist
-/// or it is not a string
-std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
-                                                     std::string const& name) {
+void VelocyPackHelper::ensureStringValue(VPackSlice slice,
+                                         std::string_view name) {
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
-    std::string msg = "The attribute '" + name + "' was not found.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("attribute '", name, "' was not found"));
   }
-  VPackSlice const sub = slice.get(name);
+  VPackSlice sub = slice.get(name);
   if (!sub.isString()) {
-    std::string msg = "The attribute '" + name + "' is not a string.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
-  }
-  return sub.copyString();
-}
-
-void VelocyPackHelper::ensureStringValue(VPackSlice const& slice,
-                                         std::string const& name) {
-  TRI_ASSERT(slice.isObject());
-  if (!slice.hasKey(name)) {
-    std::string msg = "The attribute '" + name + "' was not found.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
-  }
-  VPackSlice const sub = slice.get(name);
-  if (!sub.isString()) {
-    std::string msg = "The attribute '" + name + "' is not a string.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("attribute '", name, "' is not a string"));
   }
 }
 
