@@ -61,8 +61,10 @@
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
 #include "VocBase/vocbase.h"
+#ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -671,8 +673,10 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     // handle global changes to Sync/UserVersion
     handleUserVersionChange(result);
 
+#ifdef USE_V8
     // handle global changes to Sync/FoxxQueueVersion
     handleFoxxQueueVersionChange(result);
+#endif
 
     versionSlice = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Current", "Version"}));
@@ -754,6 +758,7 @@ void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
   }
 }
 
+#ifdef USE_V8
 void HeartbeatThread::handleFoxxQueueVersionChange(
     VPackSlice foxxQueueVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
@@ -778,6 +783,7 @@ void HeartbeatThread::handleFoxxQueueVersionChange(
     }
   }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop, single server version
@@ -1037,6 +1043,7 @@ void HeartbeatThread::runSingleServer() {
 
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
+#ifdef USE_V8
         auto prv = ServerState::setServerMode(ServerState::Mode::DEFAULT);
         if (prv == ServerState::Mode::REDIRECT) {
           auto& sysDbFeature =
@@ -1050,6 +1057,9 @@ void HeartbeatThread::runSingleServer() {
               << "Successful leadership takeover: "
               << "All your base are belong to us";
         }
+#else
+        ServerState::setServerMode(ServerState::Mode::DEFAULT);
+#endif
 
         // server is now responsible for expiring outdated documents
         ttlFeature.allowRunning(true);

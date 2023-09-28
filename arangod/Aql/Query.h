@@ -31,14 +31,18 @@
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResult.h"
+#ifdef USE_V8
 #include "Aql/QueryResultV8.h"
+#endif
 #include "Aql/QueryString.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
 #include "Scheduler/SchedulerFeature.h"
+#ifdef USE_V8
 #include "V8Server/V8Context.h"
+#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -60,6 +64,9 @@ namespace transaction {
 
 class Context;
 class Methods;
+#ifndef USE_V8
+class V8Context;
+#endif
 
 }  // namespace transaction
 namespace aql {
@@ -152,9 +159,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   ///        need to wait.
   QueryResult executeSync();
 
+#ifdef USE_V8
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
   QueryResultV8 executeV8(v8::Isolate* isolate);
+#endif
 
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
@@ -313,7 +322,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   std::shared_ptr<SharedQueryState> _sharedState;
 
   /// @brief the currently used V8 context
-  V8Context* _v8Context;
+  transaction::V8Context* _v8Context;
 
   /// @brief bind parameters for the query
   BindParameters _bindParameters;

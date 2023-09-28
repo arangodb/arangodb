@@ -63,7 +63,9 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
+#ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
+#endif
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -1590,8 +1592,10 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     // all operations failed with a local error
   }
 
+#ifdef USE_V8
   bool const isJobsCollection =
       coll.system() && coll.name() == StaticStrings::JobsCollection;
+#endif
 
   Future<Result> f = makeFuture(Result());
   bool const isManaged =
@@ -1692,6 +1696,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
       futures.emplace_back(std::move(future));
     }
 
+#ifdef USE_V8
     // track that we have done a local insert into a Foxx queue.
     // this information will be broadcasted to other coordinators
     // in the cluster eventually via the agency.
@@ -1703,6 +1708,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     if (isJobsCollection && trx.vocbase().server().hasFeature<FoxxFeature>()) {
       trx.vocbase().server().getFeature<FoxxFeature>().trackLocalQueueInsert();
     }
+#endif
 
     // Now compute the result
     if (!useMultiple) {  // single-shard fast track

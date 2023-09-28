@@ -359,11 +359,15 @@ CommTask::Flow CommTask::prepareExecution(
   }
 
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
+#ifdef USE_V8
     auto& ff = _server.server().getFeature<FoxxFeature>();
-    if (!ff.foxxEnabled() &&
-        !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
-          path.starts_with(::pathPrefixApi) ||
-          path.starts_with(::pathPrefixOpen))) {
+    bool foxxEnabled = ff.foxxEnabled();
+#else
+    constexpr bool foxxEnabled = false;
+#endif
+    if (!foxxEnabled && !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
+                          path.starts_with(::pathPrefixApi) ||
+                          path.starts_with(::pathPrefixOpen))) {
       sendErrorResponse(rest::ResponseCode::FORBIDDEN,
                         req.contentTypeResponse(), req.messageId(),
                         TRI_ERROR_FORBIDDEN,

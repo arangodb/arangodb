@@ -192,10 +192,14 @@ using ArangodFeaturesList = TypeList<
     ClusterFeaturePhase,
     DatabaseFeaturePhase,
     FinalFeaturePhase,
+#ifdef USE_V8
     FoxxFeaturePhase,
+#endif
     GreetingsFeaturePhase,
     ServerFeaturePhase,
+#ifdef USE_V8
     V8FeaturePhase,
+#endif
     // Adding the features
     metrics::MetricsFeature, // metrics::MetricsFeature must go first
     metrics::ClusterMetricsFeature,
@@ -210,7 +214,9 @@ using ArangodFeaturesList = TypeList<
     ClusterFeature,
     ClusterUpgradeFeature,
     ConfigFeature,
+#ifdef USE_V8
     ConsoleFeature,
+#endif
     CpuUsageFeature,
     DatabaseFeature,
     DatabasePathFeature,
@@ -220,8 +226,10 @@ using ArangodFeaturesList = TypeList<
     FileSystemFeature,
     FlushFeature,
     FortuneFeature,
+#ifdef USE_V8
     FoxxFeature,
     FrontendFeature,
+#endif
     GeneralServerFeature,
     GreetingsFeature,
     InitDatabaseFeature,
@@ -244,7 +252,9 @@ using ArangodFeaturesList = TypeList<
     ReplicationMetricsFeature,
     ReplicationTimeoutFeature,
     SchedulerFeature,
+#ifdef USE_V8
     ScriptFeature,
+#endif
     ServerFeature,
     ServerIdFeature,
     ServerSecurityFeature,
@@ -261,9 +271,11 @@ using ArangodFeaturesList = TypeList<
     TemporaryStorageFeature,
     TtlFeature,
     UpgradeFeature,
+#ifdef USE_V8
     V8DealerFeature,
     V8PlatformFeature,
     V8SecurityFeature,
+#endif
     transaction::ManagerFeature,
     ViewTypesFeature,
     aql::AqlFunctionFeature,

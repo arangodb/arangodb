@@ -51,13 +51,17 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "Transaction/V8Context.h"
+#endif
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#ifdef USE_V8
 #include "V8Server/V8Context.h"
+#endif
 #include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
@@ -415,8 +419,12 @@ Collections::Context::~Context() {
 transaction::Methods* Collections::Context::trx(AccessMode::Type const& type,
                                                 bool embeddable) {
   if (_responsibleForTrx && _trx == nullptr) {
+#ifdef USE_V8
     auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(),
                                                           embeddable);
+#else
+    auto ctx = transaction::StandaloneContext::Create(_coll->vocbase());
+#endif
     auto trx = std::make_unique<SingleCollectionTransaction>(ctx, *_coll, type);
 
     Result res = trx->begin();
@@ -947,8 +955,12 @@ Result Collections::updateProperties(LogicalCollection& collection,
     return rv;
 
   } else {
+#ifdef USE_V8
     auto ctx =
         transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
+#else
+    auto ctx = transaction::StandaloneContext::Create(collection.vocbase());
+#endif
     SingleCollectionTransaction trx(ctx, collection,
                                     AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
@@ -1193,8 +1205,12 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
 
+#ifdef USE_V8
   auto ctx =
       transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
+#else
+  auto ctx = transaction::StandaloneContext::Create(collection.vocbase());
+#endif
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
   Result res = trx.begin();
 

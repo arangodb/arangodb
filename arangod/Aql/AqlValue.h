@@ -438,9 +438,11 @@ struct AqlValue final {
   /// @brief return the range value
   Range const* range() const;
 
+#ifdef USE_V8
   /// @brief construct a V8 value as input for the expression execution in V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate,
                              arangodb::velocypack::Options const*) const;
+#endif
 
   /// @brief materializes a value into the builder
   void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&,

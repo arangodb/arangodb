@@ -34,6 +34,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -223,7 +224,11 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
 
   setOptional(false);
+#ifdef USE_V8
   startsAfter<V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
 
   auto properties = arangodb::aql::QueryCache::instance()->properties();
   _queryCacheMaxResultsCount = properties.maxResultsCount;

@@ -51,7 +51,9 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
+#ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
+#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AgencyMock.h"
 #include "IResearch/ExpressionContextMock.h"
@@ -79,7 +81,9 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -2530,7 +2534,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     newServer.addFeature<arangodb::QueryRegistryFeature>();
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
     newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
     newServer.addFeature<
         arangodb::application_features::CommunicationFeaturePhase>();
     auto& feature =
@@ -2611,7 +2617,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     newServer.addFeature<arangodb::QueryRegistryFeature>();
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
     newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
     newServer.addFeature<
         arangodb::application_features::CommunicationFeaturePhase>();
     auto& feature =
@@ -3088,7 +3096,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sharding = newServer.addFeature<arangodb::ShardingFeature>();
   auto& systemdb = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
   newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
 
   auto cleanup = arangodb::scopeGuard([&dbfeature, this]() noexcept {
     dbfeature.unprepare();
@@ -4147,7 +4157,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   newServer.addFeature<arangodb::metrics::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
   newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
 
   // create system vocbase (before feature start)
   {
@@ -4472,7 +4484,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   newServer.addFeature<arangodb::metrics::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
   newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
   auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>().prepare();
@@ -4605,7 +4619,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   newServer.addFeature<arangodb::metrics::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
   newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
   auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>()

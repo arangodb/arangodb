@@ -32,7 +32,10 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+
+#ifdef USE_V8
 #include "V8/v8-vpack.h"
+#endif
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
@@ -1046,6 +1049,7 @@ void AqlValue::setManagedSliceData(MemoryOriginType mot,
   TRI_ASSERT(memoryUsage() == length);
 }
 
+#ifdef USE_V8
 /// @brief construct a V8 value as input for the expression execution in V8
 v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
                                      velocypack::Options const* options) const {
@@ -1089,6 +1093,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
   // we shouldn't get here
   return v8::Null(isolate);
 }
+#endif
 
 /// @brief materializes a value into the builder
 void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,

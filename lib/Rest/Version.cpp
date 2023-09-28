@@ -398,10 +398,14 @@ std::string Version::getRocksDBVersion() {
 
 // get V8 version
 std::string Version::getV8Version() {
+#ifdef USE_V8
 #ifdef ARANGODB_V8_VERSION
   return std::string(ARANGODB_V8_VERSION);
 #else
   return std::string();
+#endif
+#else
+  return "none";
 #endif
 }
 
@@ -555,7 +559,10 @@ std::string Version::getVerboseVersionString() {
   version << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
-          << "V8 " << getV8Version() << ", " << getOpenSSLVersion(false);
+#ifdef USE_V8
+          << "V8 " << getV8Version() << ", "
+#endif
+          << getOpenSSLVersion(false);
 
   return version.str();
 }

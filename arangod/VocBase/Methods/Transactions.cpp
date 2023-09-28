@@ -25,7 +25,6 @@
 #include "Transactions.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "V8/V8SecurityFeature.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
@@ -35,6 +34,7 @@
 #include "Transaction/Options.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CursorRepository.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-helper.h"
 #include "V8/v8-vpack.h"

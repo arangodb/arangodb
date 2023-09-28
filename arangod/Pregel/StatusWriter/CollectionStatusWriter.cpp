@@ -26,7 +26,10 @@
 #include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Hints.h"
+#include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "Transaction/V8Context.h"
+#endif
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/AccessMode.h"
@@ -285,8 +288,12 @@ auto CollectionStatusWriter::handleOperationResult(
 
 auto CollectionStatusWriter::ctx()
     -> std::shared_ptr<transaction::Context> const {
+#ifdef USE_V8
   return transaction::V8Context::CreateWhenRequired(_vocbaseGuard.database(),
                                                     false);
+#else
+  return transaction::StandaloneContext::Create(_vocbaseGuard.database());
+#endif
 }
 
 }  // namespace arangodb::pregel::statuswriter

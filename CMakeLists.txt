@@ -196,6 +196,15 @@ if (STATIC_EXECUTABLES)
   endif ()
 endif()
 
+# enable V8 in executables. 
+# note that V8 will always be built, regardless of the value of this option.
+# if set to OFF, V8 will not be linked to arangod, and V8 integration code
+# for arangod will not be compiled. additionally, arangosh will not be built.
+option(USE_V8 OFF)
+if (USE_V8)
+  add_definitions("-DUSE_V8=1")
+endif ()
+
 # enable dtrace
 option(USE_DTRACE "enable dtrace probes" OFF)
 if (USE_DTRACE)
@@ -1295,7 +1304,9 @@ add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoexport  zlibstatic)
 add_dependencies(arangoimport  zlibstatic)
 add_dependencies(arangorestore zlibstatic)
-add_dependencies(arangosh      zlibstatic)
+if (USE_V8)
+  add_dependencies(arangosh      zlibstatic)
+endif ()
 
 if (UNIX)
   add_dependencies(arangobench   man)
@@ -1307,7 +1318,9 @@ if (UNIX)
   add_dependencies(arangoexport  man)
   add_dependencies(arangoimport  man)
   add_dependencies(arangorestore man)
-  add_dependencies(arangosh      man)
+  if (USE_V8) 
+    add_dependencies(arangosh      man)
+  endif ()
 endif ()
 
 if (NOT USE_PRECOMPILED_V8)
@@ -1322,7 +1335,9 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoexport  v8_build)
   add_dependencies(arangoimport  v8_build)
   add_dependencies(arangorestore v8_build)
-  add_dependencies(arangosh      v8_build)
+  if (USE_V8)
+    add_dependencies(arangosh      v8_build)
+  endif ()
   if (USE_GOOGLE_TESTS)
     add_dependencies(arangodbtests v8_build)
   endif ()

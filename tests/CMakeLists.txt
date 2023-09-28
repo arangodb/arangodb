@@ -236,9 +236,6 @@ set(ARANGODB_TESTS_SOURCES
   Utils/CollectionNameResolverTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
-  V8Server/V8AnalyzersTest.cpp
-  V8Server/V8UsersTest.cpp
-  V8Server/V8ViewsTest.cpp
   VocBase/ComputedValuesTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
@@ -247,6 +244,13 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
   Cluster/ShardAutoRebalancerTest.cpp)
+
+if (USE_V8)
+  set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
+    V8Server/V8AnalyzersTest.cpp
+    V8Server/V8UsersTest.cpp
+    V8Server/V8ViewsTest.cpp)
+endif()
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
