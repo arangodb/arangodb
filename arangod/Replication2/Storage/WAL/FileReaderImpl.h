@@ -26,15 +26,15 @@
 #include "Replication2/Storage/WAL/IFileReader.h"
 
 #include <cstdio>
-#include <filesystem>
+#include <string>
 
 namespace arangodb::replication2::storage::wal {
 
 struct FileReaderImpl final : IFileReader {
-  FileReaderImpl(std::filesystem::path path);
+  FileReaderImpl(std::string path);
   ~FileReaderImpl();
 
-  auto path() const -> std::string override { return _path.string(); }
+  auto path() const -> std::string override { return _path; }
 
   auto read(void* buffer, std::size_t n) -> Result override;
 
@@ -45,7 +45,7 @@ struct FileReaderImpl final : IFileReader {
   auto size() const -> std::uint64_t override;
 
  private:
-  std::filesystem::path _path;
+  std::string _path;
   std::FILE* _file = nullptr;
 };
 

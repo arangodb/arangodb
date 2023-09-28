@@ -104,7 +104,7 @@ auto FileWriterImplPosix::getReader() const -> std::unique_ptr<IFileReader> {
 
 FileWriterImplWindows::FileWriterImplWindows(std::filesystem::path path)
     : _path(std::move(path)) {
-  _file = CreateFileA(_path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+  _file = CreateFileW(_path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
                       OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
   ADB_PROD_ASSERT(_file != INVALID_HANDLE_VALUE)
@@ -139,20 +139,20 @@ void FileWriterImplWindows::truncate(std::uint64_t size) {
   TRI_ASSERT(size < std::numeric_limits<DWORD>::max());
   ADB_PROD_ASSERT(SetFilePointer(_file, static_cast<DWORD>(size), nullptr,
                                  FILE_BEGIN) != INVALID_SET_FILE_POINTER)
-      << "failed to set file" << _path << " to position" << size << ": "
-      << GetLastError();
+      << "failed to set file" << _path.string() << " to position" << size
+      << ": " << GetLastError();
   ADB_PROD_ASSERT(SetEndOfFile(_file))
-      << "failed to truncate file" << _path << " to size " << size << ": "
-      << GetLastError();
+      << "failed to truncate file" << _path.string() << " to size " << size
+      << ": " << GetLastError();
 }
 
 void FileWriterImplWindows::sync() {
   ADB_PROD_ASSERT(FlushFileBuffers(_file))
-      << "failed to flush file " << _path << ": " << GetLastError();
+      << "failed to flush file " << _path.string() << ": " << GetLastError();
 }
 
 auto FileWriterImplWindows::getReader() const -> std::unique_ptr<IFileReader> {
-  return std::make_unique<FileReaderImpl>(_path);
+  return std::make_unique<FileReaderImpl>(_path.string());
 }
 
 #endif
