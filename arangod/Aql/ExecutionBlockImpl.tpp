@@ -81,7 +81,7 @@ template<class UsedFetcher>
 class IdExecutor;
 class IndexExecutor;
 class JoinExecutor;
-template<typename T, bool localDocumentId>
+template<bool localDocumentId>
 class MaterializeExecutor;
 template<typename FetcherType, typename ModifierType>
 class ModificationExecutor;
@@ -795,9 +795,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   MultipleRemoteModificationExecutor, SortExecutor,
                   // only available in Enterprise
                   arangodb::iresearch::OffsetMaterializeExecutor,
-                  MaterializeExecutor<void, false>,
-                  MaterializeExecutor<std::string const&, true>,
-                  MaterializeExecutor<std::string const&, false>>) ||
+                  MaterializeExecutor<false>, MaterializeExecutor<true>>) ||
           IsSearchExecutor<Executor>::value,
       "Unexpected executor for SkipVariants::EXECUTOR");
 

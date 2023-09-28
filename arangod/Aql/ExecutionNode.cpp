@@ -2965,10 +2965,10 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
-  auto executorInfos = MaterializerExecutorInfos<void>(
+  auto executorInfos = MaterializerExecutorInfos<false>(
       inNmDocIdRegId, outDocumentRegId, engine.getQuery());
 
-  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<void, false>>>(
+  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<false>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
@@ -3042,10 +3042,18 @@ MaterializeSingleNode<localDocumentId>::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
-  auto executorInfos = MaterializerExecutorInfos<decltype(name)>(
-      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), name);
+  auto executorInfos = [&] {
+    if constexpr (localDocumentId) {
+      return MaterializerExecutorInfos<localDocumentId>(
+          inNmDocIdRegId, outDocumentRegId, engine.getQuery(), name);
+    } else {
+      return MaterializerExecutorInfos<localDocumentId>(
+          inNmDocIdRegId, outDocumentRegId, engine.getQuery());
+    }
+  }();
+
   return std::make_unique<
-      ExecutionBlockImpl<MaterializeExecutor<decltype(name), localDocumentId>>>(
+      ExecutionBlockImpl<MaterializeExecutor<localDocumentId>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
@@ -3069,5 +3077,5 @@ ExecutionNode* MaterializeSingleNode<localDocumentId>::clone(
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-template class arangodb::aql::materialize::MaterializeSingleNode<false>;
 template class arangodb::aql::materialize::MaterializeSingleNode<true>;
+template class arangodb::aql::materialize::MaterializeSingleNode<false>;
