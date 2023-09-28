@@ -110,8 +110,7 @@ export const linksSchema = {
           $recursiveRef: '#'
         }
       }
-    }
-    ,
+    },
     includeAllFields: {
       type: 'boolean',
       nullable: false
