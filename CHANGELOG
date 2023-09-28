@@ -1,6 +1,9 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* Fixed BTS-1618: Buggy AQL query returning empty results, due to incorrect
+  use of index projections.
+
 * Improve performance of the in-memory cache's memory reclamation procedure.
   The previous implementation acquired too many locks, which could drive system
   CPU time up.
