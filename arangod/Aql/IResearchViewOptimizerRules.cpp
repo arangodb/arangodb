@@ -1053,7 +1053,7 @@ void lateDocumentMaterializationArangoSearchRule(
         viewNode.setLateMaterialized(*localDocIdTmp);
         // insert a materialize node
         auto* materializeNode = plan->registerNode(
-            std::make_unique<materialize::MaterializeMultiNode>(
+            std::make_unique<materialize::MaterializeSearchNode>(
                 plan.get(), plan->nextId(), *localDocIdTmp, var));
         TRI_ASSERT(materializeNode);
 
