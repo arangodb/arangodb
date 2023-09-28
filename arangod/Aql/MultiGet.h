@@ -59,14 +59,13 @@ class MultiGetContext {
     auto* physical = dynamic_cast<RocksDBMetaCollection*>(base);
     if (ADB_UNLIKELY(physical == nullptr)) {
       base->lookup(&trx, id,
-                   {[&](LocalDocumentId, ValueType& doc) {
-                      values[_global] = std::move(doc);
-                      return true;
-                    },
-                    [&](LocalDocumentId, VPackSlice) {
-                      TRI_ASSERT(false);
-                      return true;
-                    }},
+                   IndexIterator::makeDocumentCallbackF(
+                       [&](LocalDocumentId, VPackSlice slice) {
+                         values[_global] =
+                             std::make_unique<std::string>(std::string_view{
+                                 slice.startAs<char>(), slice.byteSize()});
+                         return true;
+                       }),
                    {.readCache = false, .fillCache = false}, snapshot);
       return _global++;
     }
