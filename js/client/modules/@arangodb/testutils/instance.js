@@ -706,10 +706,10 @@ class instance {
         process.env[key] = oneSet;
       }
     }
-    if (this.useableMemory === undefined) {
+    if ((this.useableMemory === undefined) && (this.options.memory !== undefined)){
       throw new Error(`${this.name} don't have planned memory though its configured!`);
     }
-    if (this.useableMemory !== 0) {
+    if ((this.useableMemory !== 0) && (this.options.memory !== undefined)) {
       if (this.options.extremeVerbosity) {
         print(`appointed ${this.name} memory: ${this.useableMemory}`);
       }
