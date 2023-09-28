@@ -36,7 +36,7 @@ struct FileReaderImpl final : IFileReader {
 
   auto path() const -> std::string override { return _path.string(); }
 
-  auto read(void* buffer, std::size_t n) -> std::size_t override;
+  auto read(void* buffer, std::size_t n) -> Result override;
 
   void seek(std::uint64_t pos) override;
 

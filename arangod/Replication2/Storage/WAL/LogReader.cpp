@@ -47,10 +47,12 @@ constexpr auto minFileSize =
 LogReader::LogReader(std::unique_ptr<IFileReader> reader)
     : _reader(std::move(reader)) {
   FileHeader header;
-  if (!_reader->read(header)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-        "failed to read header from log file " + _reader->path());
+  auto res = _reader->read(header);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+                                   "failed to read header from log file " +
+                                       _reader->path() + " - " +
+                                       std::string(res.errorMessage()));
   }
   if (header.magic != wMagicFileType) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -81,7 +83,16 @@ auto LogReader::seekLogIndexForward(LogIndex index)
   auto pos = _reader->position();
 
   Record::CompressedHeader header;
-  while (_reader->read(header)) {
+  while (true) {
+    auto res = _reader->read(header);
+    if (res.fail()) {
+      if (res.errorNumber() == TRI_ERROR_END_OF_FILE) {
+        return ResultT<Record::CompressedHeader>::error(TRI_ERROR_END_OF_FILE,
+                                                        "log index not found");
+      }
+      return ResultT<Record::CompressedHeader>::error(
+          TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, res.errorMessage());
+    }
     if (header.index >= index.value) {
       _reader->seek(pos);  // reset to start of entry
       return ResultT<Record::CompressedHeader>::success(header);
@@ -91,8 +102,6 @@ auto LogReader::seekLogIndexForward(LogIndex index)
            sizeof(Record::Footer);
     _reader->seek(pos);
   }
-  return ResultT<Record::CompressedHeader>::error(
-      TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, "log index not found");
 }
 
 auto LogReader::seekLogIndexBackward(LogIndex index)
@@ -119,7 +128,11 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
   }
   _reader->seek(pos - sizeof(Record::Footer));
 
-  while (_reader->read(footer)) {
+  while (true) {
+    auto res = _reader->read(footer);
+    ADB_PROD_ASSERT(res.ok())
+        << "failed to read footer - " << res.errorMessage();
+
     // calculate the max entry size based on our current position
     auto maxEntrySize = pos - sizeof(FileHeader);
     ADB_PROD_ASSERT(footer.size % Record::alignment == 0 &&
@@ -130,7 +143,9 @@ auto LogReader::seekLogIndexBackward(LogIndex index)
     pos -= footer.size;
     // seek to beginning of entry
     _reader->seek(pos);
-    ADB_PROD_ASSERT(_reader->read(compressedHeader));
+    res = _reader->read(compressedHeader);
+    ADB_PROD_ASSERT(res.ok())
+        << "failed to read header - " << res.errorMessage();
 
     auto idx = compressedHeader.index;
     if (idx == index.value) {
@@ -167,9 +182,11 @@ auto LogReader::getFirstRecordHeader() -> ResultT<Record::CompressedHeader> {
   auto guard = scopeGuard([&]() noexcept { _reader->seek(pos); });
   _reader->seek(_firstEntry);
   Record::CompressedHeader header;
-  if (!_reader->read(header)) {
+  auto res = _reader->read(header);
+  if (res.fail()) {
     return ResultT<Record::CompressedHeader>::error(
-        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, "failed to read header");
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+        "failed to read header" + std::string(res.errorMessage()));
   }
   return ResultT<Record::CompressedHeader>::success(header);
 }
@@ -184,9 +201,11 @@ auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
   }
   _reader->seek(fileSize - sizeof(Record::Footer));
   Record::Footer footer;
-  if (!_reader->read(footer)) {
+  auto res = _reader->read(footer);
+  if (res.fail()) {
     return ResultT<Record::CompressedHeader>::error(
-        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, "failed to read footer");
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+        "failed to read footer" + std::string(res.errorMessage()));
   }
   ADB_PROD_ASSERT(footer.size % Record::alignment == 0 &&
                   footer.size <= fileSize - sizeof(FileHeader))
@@ -194,9 +213,11 @@ auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
       << "; fileSize: " << fileSize;
   _reader->seek(fileSize - footer.size);
   Record::CompressedHeader header;
-  if (!_reader->read(header)) {
+  res = _reader->read(header);
+  if (res.fail()) {
     return ResultT<Record::CompressedHeader>::error(
-        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, "failed to read header");
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+        "failed to read header" + std::string(res.errorMessage()));
   }
   return ResultT<Record::CompressedHeader>::success(header);
 }
@@ -207,18 +228,24 @@ auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
   auto startPos = _reader->position();
 
   Record::CompressedHeader compressedHeader;
-  if (!_reader->read(compressedHeader)) {
-    return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-                     "failed to read header");
+  auto res = _reader->read(compressedHeader);
+  if (res.fail()) {
+    auto error = res.errorNumber() == TRI_ERROR_END_OF_FILE
+                     ? TRI_ERROR_END_OF_FILE
+                     : TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR;
+    return RT::error(
+        error, "failed to read header - " + std::string(res.errorMessage()));
   }
 
   auto header = Record::Header{compressedHeader};
 
   auto paddedSize = Record::paddedPayloadSize(header.payloadSize);
   velocypack::UInt8Buffer buffer(paddedSize);
-  if (_reader->read(buffer.data(), paddedSize) != paddedSize) {
-    return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-                     "failed to read payload");
+  res = _reader->read(buffer.data(), paddedSize);
+  if (res.fail()) {
+    return RT::error(
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+        "failed to read payload - " + std::string(res.errorMessage()));
   }
   buffer.resetTo(header.payloadSize);
 
@@ -255,9 +282,11 @@ auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
   }();
 
   Record::Footer footer;
-  if (!_reader->read(footer)) {
-    return RT::error(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-                     "failed to read footer");
+  res = _reader->read(footer);
+  if (res.fail()) {
+    return RT::error(
+        TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
+        "failed to read footer - " + std::string(res.errorMessage()));
   }
 
   ADB_PROD_ASSERT(static_cast<std::uint32_t>(payloadCrc) == footer.crc32)
@@ -278,7 +307,8 @@ auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
 void LogReader::skipEntry() {
   auto pos = _reader->position();
   Record::CompressedHeader header;
-  ADB_PROD_ASSERT(_reader->read(header));
+  auto res = _reader->read(header);
+  ADB_PROD_ASSERT(res.ok()) << "failed to read header - " << res.errorMessage();
   pos += sizeof(Record::CompressedHeader) +
          Record::paddedPayloadSize(header.payloadSize) + sizeof(Record::Footer);
   _reader->seek(pos);

@@ -339,7 +339,7 @@ TEST_F(LogPersistorTest, removeBack) {
 TEST_F(LogPersistorTest, removeBack_fails_no_matching_entry_found) {
   auto res = persistor->removeBack(LogIndex{2}, {}).get();
   ASSERT_TRUE(res.fail());
-  EXPECT_EQ("log is empty", res.errorMessage());
+  EXPECT_EQ("log file in-memory file is empty", res.errorMessage());
 }
 
 TEST_F(LogPersistorTest, removeBack_fails_if_log_file_corrupt) {
@@ -376,8 +376,9 @@ TEST_F(LogPersistorTest, removeBack_fails_if_start_index_too_large) {
 
   auto res = persistor->removeBack(LogIndex{8}, {}).get();
   ASSERT_TRUE(res.fail());
-  EXPECT_EQ("found index lower than start index while searching backwards",
-            res.errorMessage());
+  EXPECT_EQ(
+      "found index (5) lower than start index (7) while searching backwards",
+      res.errorMessage());
 }
 
 }  // namespace arangodb::replication2::storage::wal::test

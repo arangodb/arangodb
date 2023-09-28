@@ -26,6 +26,7 @@
 #include <cstring>
 #include "Assertions/Assert.h"
 #include "Basics/Result.h"
+#include "Basics/voc-errors.h"
 #include "Replication2/Storage/WAL/IFileReader.h"
 #include "Replication2/Storage/WAL/IFileWriter.h"
 
@@ -36,11 +37,13 @@ struct InMemoryFileReader : IFileReader {
 
   auto path() const -> std::string override { return _path; }
 
-  auto read(void* buffer, std::size_t n) -> std::size_t override {
-    n = std::min(n, _buffer.size() - _position);
+  auto read(void* buffer, std::size_t n) -> Result override {
+    if (_buffer.size() - _position < n) {
+      return Result{TRI_ERROR_END_OF_FILE, "end of file reached"};
+    }
     memcpy(buffer, _buffer.data() + _position, n);
     _position += n;
-    return n;
+    return {};
   }
 
   void seek(std::uint64_t pos) override {

@@ -39,6 +39,7 @@ ERROR_DISABLED,36,"disabled","Will be raised when a requested resource is not en
 ERROR_MALFORMED_JSON,37,"malformed json","Will be raised when a JSON string could not be parsed."
 ERROR_STARTING_UP,38,"startup ongoing","Will be raised when a call cannot succeed because the server startup phase is still in progress."
 ERROR_DESERIALIZE,39,"error during deserialization","Will be raised when a data structure cannot be deserialized, e.g. because the input is invalid."
+ERROR_END_OF_FILE,40,"reached end of file","Will be raised when a read operation reaches the end of the file."
 
 ################################################################################
 ## HTTP error status codes

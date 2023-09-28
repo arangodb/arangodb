@@ -24,6 +24,7 @@
 #include "FileReaderImpl.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
 
 namespace arangodb::replication2::storage::wal {
@@ -45,8 +46,18 @@ FileReaderImpl::~FileReaderImpl() {
   }
 }
 
-auto FileReaderImpl::read(void* buffer, std::size_t n) -> std::size_t {
-  return std::fread(buffer, 1, n, _file);
+auto FileReaderImpl::read(void* buffer, std::size_t n) -> Result {
+  auto numRead = std::fread(buffer, 1, n, _file);
+  if (numRead != n) {
+    if (std::feof(_file)) {
+      return Result{TRI_ERROR_END_OF_FILE, "end of file reached"};
+    }
+    if (std::ferror(_file)) {
+      return Result{TRI_ERROR_CANNOT_READ_FILE,
+                    std::string("error reading file: ") + strerror(errno)};
+    }
+  }
+  return {};
 }
 
 void FileReaderImpl::seek(std::uint64_t pos) {

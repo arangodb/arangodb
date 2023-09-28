@@ -27,6 +27,8 @@
 #include <string>
 #include <type_traits>
 
+#include "Basics/Result.h"
+
 namespace arangodb::replication2::storage::wal {
 
 struct IFileReader {
@@ -35,13 +37,12 @@ struct IFileReader {
   virtual auto path() const -> std::string = 0;
 
   template<typename T>
-  [[nodiscard]] auto read(T& result) -> bool {
+  [[nodiscard]] auto read(T& result) -> Result {
     static_assert(std::is_trivially_copyable_v<T>);
-    return read(&result, sizeof(T)) == sizeof(T);
+    return read(&result, sizeof(T));
   }
 
-  [[nodiscard]] virtual auto read(void* buffer, std::size_t n)
-      -> std::size_t = 0;
+  [[nodiscard]] virtual auto read(void* buffer, std::size_t n) -> Result = 0;
 
   virtual void seek(std::uint64_t pos) = 0;
 
