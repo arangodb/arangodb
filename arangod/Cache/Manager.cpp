@@ -97,6 +97,8 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _spareTables(0),
       _migrateTasks(0),
       _freeMemoryTasks(0),
+      _migrateTasksDuration(0),
+      _freeMemoryTasksDuration(0),
       _schedulerPost(std::move(schedulerPost)),
       _outstandingTasks(0),
       _rebalancingTasks(0),
@@ -334,6 +336,8 @@ std::optional<Manager::MemoryStats> Manager::memoryStats(
     result.spareTables = _spareTables;
     result.migrateTasks = _migrateTasks;
     result.freeMemoryTasks = _freeMemoryTasks;
+    result.migrateTasksDuration = _migrateTasksDuration;
+    result.freeMemoryTasksDuration = _freeMemoryTasksDuration;
     return result;
   }
 
@@ -743,6 +747,18 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment,
 
     ++i;
   }
+}
+
+// track duration of migrate task, in micros
+void Manager::trackMigrateTaskDuration(std::uint64_t duration) noexcept {
+  SpinLocker guard(SpinLocker::Mode::Write, _lock);
+  _migrateTasksDuration += duration;
+}
+
+// track duration of free memory task, in micros
+void Manager::trackFreeMemoryTaskDuration(std::uint64_t duration) noexcept {
+  SpinLocker guard(SpinLocker::Mode::Write, _lock);
+  _freeMemoryTasksDuration += duration;
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
