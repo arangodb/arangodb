@@ -288,7 +288,6 @@ jobs:
               --cluster << parameters.cluster >> \
               --extraArgs " << parameters.extraArgs >>" \
               --definition tests/test-definitions.txt
-          no_output_timeout: 16m
       - run:
           name: Copy test results
           when: always
