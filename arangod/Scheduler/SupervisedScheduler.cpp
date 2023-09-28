@@ -346,9 +346,6 @@ bool SupervisedScheduler::queueItem(RequestLane lane,
 
   _metricsQueueLengths[queueNo].get() += 1;
 
-  // queue now has ownership for the WorkItemBase
-  (void)work.release();  // intentionally ignore return value
-
   if (approxQueueLength > _maxFifoSizes[3] / 2) {
     if ((::queueWarningTick++ & 0xFFu) == 0) {
       auto const& now = std::chrono::steady_clock::now();
