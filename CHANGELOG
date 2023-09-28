@@ -1,6 +1,12 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* Slightly extended hot backup release lock timeout on coordinators from 
+  `timeout + 5` seconds to `timeout + 30` seconds, to prevent premature release
+  of hot backup commit locks on coordinators.
+
+* Improve logging in case hot backup locks cannot be taken on coordinators.
+
 * Added the following metrics to improve observability of the in-memory cache
   subsystem:
   - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
