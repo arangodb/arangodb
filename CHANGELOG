@@ -62,6 +62,10 @@ devel
   still has, the more likely it is that query parts can actually run 
   concurrently.
 
+* Speed up incremental hotbackup upload by parallelization of
+  remote-to-remote copies. Tolerate deletion of old backups during
+  incremental upload.
+
 * Added the following metrics to improve observability of in-memory cache
   subsystem:
   - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
