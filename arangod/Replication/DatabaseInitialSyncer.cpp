@@ -279,9 +279,6 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
     queueSize = 1;
   }
 
-  velocypack::Builder docBuilder;
-  callback = IndexIterator::makeDocumentCallback(docBuilder);
-
   while (current < toFetch.size() || !futures.empty()) {
     // Send some requests off if not enough in flight and something to go
     while (futures.size() < queueSize && current < toFetch.size()) {
@@ -413,10 +410,12 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
 
           // conflicting documents (that we just inserted), as documents may be
           // replicated in unexpected order.
-          docBuilder.clear();
           if (physical
-                  ->lookup(&trx, LocalDocumentId{rid.id()}, callback,
-                           {.readOwnWrites = true})
+                  ->lookup(
+                      &trx, LocalDocumentId{rid.id()},
+                      IndexIterator::makeDocumentCallbackF(
+                          [](LocalDocumentId, VPackSlice) { return true; }),
+                      {.readOwnWrites = true})
                   .ok()) {
             // already have exactly this revision. no need to insert
             sl.erase(rid);

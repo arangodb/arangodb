@@ -721,9 +721,10 @@ int64_t AqlValue::toInt64() const {
         return s.getBool() ? 1 : 0;
       }
       if (s.isString()) {
-        auto v = s.stringView();
-        if (int64_t r; absl::SimpleAtoi(v, &r)) {
-          return r;
+        try {
+          auto v = s.copyString();
+          return static_cast<int64_t>(std::stoll(s.copyString()));
+        } catch (...) {
         }
       } else if (s.isArray()) {
         if (auto const length = s.length(); length == 1) {
