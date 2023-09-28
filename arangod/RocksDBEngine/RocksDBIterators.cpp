@@ -125,6 +125,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
     TRI_ASSERT(limit > 0);
 
     do {
+      // TODO(MBkkt) optimize it, extract value from rocksdb
       cb(RocksDBKey::documentId(_iterator->key()),
          VPackSlice(
              reinterpret_cast<uint8_t const*>(_iterator->value().data())));

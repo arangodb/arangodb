@@ -31,6 +31,7 @@
 #include "Aql/LateMaterializedExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Basics/DownCast.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "Transaction/Helpers.h"
@@ -43,6 +44,29 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+namespace {
+
+template<typename Func>
+struct MultiFunc2MultiFunc {
+  bool operator()(LocalDocumentId token, velocypack::Slice doc) const {
+    return func(token, doc, doc);
+  }
+  bool operator()(LocalDocumentId token,
+                  std::unique_ptr<std::string>& doc) const {
+    TRI_ASSERT(doc);
+    VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
+    return func(token, &doc, slice);
+  }
+
+  Func func;
+};
+
+template<typename Func>
+IndexIterator::DocumentCallback makeDocumentCallback(Func&& func) {
+  return {MultiFunc2MultiFunc<std::decay_t<Func>>{std::forward<Func>(func)}};
+}
+
+}  // namespace
 
 template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
@@ -94,43 +118,37 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context) {
-  auto cb = [&](LocalDocumentId token, auto v, velocypack::Slice s) {
-    if constexpr (checkUniqueness) {
-      if (!context.checkUniqueness(token)) {
-        // Document already found, skip it
-        return false;
-      }
-    }
+  return makeDocumentCallback(
+      [&](LocalDocumentId token, auto v, velocypack::Slice s) {
+        if constexpr (checkUniqueness) {
+          if (!context.checkUniqueness(token)) {
+            // Document already found, skip it
+            return false;
+          }
+        }
 
-    context.incrScanned();
+        context.incrScanned();
 
-    if (context.hasFilter() && !context.checkFilter(s)) {
-      context.incrFiltered();
-      return false;
-    }
+        if (context.hasFilter() && !context.checkFilter(s)) {
+          context.incrFiltered();
+          return false;
+        }
 
-    if constexpr (skip) {
-      return true;
-    }
+        if constexpr (skip) {
+          return true;
+        }
 
-    InputAqlItemRow const& input = context.getInputRow();
-    OutputAqlItemRow& output = context.getOutputRow();
-    RegisterId registerId = context.getOutputRegister();
+        InputAqlItemRow const& input = context.getInputRow();
+        OutputAqlItemRow& output = context.getOutputRow();
+        RegisterId registerId = context.getOutputRegister();
 
-    TRI_ASSERT(!output.isFull());
-    output.moveValueInto(registerId, input, v);
-    TRI_ASSERT(output.produced());
-    output.advanceRow();
+        TRI_ASSERT(!output.isFull());
+        output.moveValueInto(registerId, input, v);
+        TRI_ASSERT(output.produced());
+        output.advanceRow();
 
-    return true;
-  };
-  return {[&](LocalDocumentId token, VPackSlice doc) {
-            return cb(token, doc, doc);
-          },
-          [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
-            VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
-            return cb(token, &doc, slice);
-          }};
+        return true;
+      });
 }
 
 template<bool checkUniqueness, bool skip>
@@ -399,8 +417,7 @@ bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
   TRI_ASSERT(!_expressionContext->isLateMaterialized());
 #endif
 
-  DocumentExpressionContext& ctx =
-      *static_cast<DocumentExpressionContext*>(_expressionContext.get());
+  auto& ctx = basics::downCast<DocumentExpressionContext>(*_expressionContext);
   ctx.setCurrentDocument(slice);
   return checkFilter(ctx);
 }
@@ -413,9 +430,8 @@ bool DocumentProducingFunctionContext::checkFilter(
   TRI_ASSERT(_expressionContext->isLateMaterialized());
 #endif
 
-  LateMaterializedExpressionContext& ctx =
-      *static_cast<LateMaterializedExpressionContext*>(
-          _expressionContext.get());
+  auto& ctx =
+      basics::downCast<LateMaterializedExpressionContext>(*_expressionContext);
   ctx.setCurrentCoveringData(covering);
   return checkFilter(ctx);
 }
@@ -506,8 +522,7 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId token,
-                    IndexIteratorCoveringData& covering) {
+  return [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
     // this must only be used if we have a filter!
     TRI_ASSERT(context.hasFilter());
     TRI_ASSERT(context.getAllowCoveringIndexOptimization());
@@ -539,43 +554,36 @@ IndexIterator::CoveringCallback aql::getCallback(
     if constexpr (!skip) {
       // read the full document from the storage engine only now,
       // after checking the filter condition
-      auto cb = [&](auto v, velocypack::Slice s) {
-        OutputAqlItemRow& output = context.getOutputRow();
-        TRI_ASSERT(!output.isFull());
+      auto cb = makeDocumentCallback(
+          [&](LocalDocumentId token, auto v, VPackSlice s) {
+            OutputAqlItemRow& output = context.getOutputRow();
+            TRI_ASSERT(!output.isFull());
 
-        RegisterId registerId = context.getOutputRegister();
-        InputAqlItemRow const& input = context.getInputRow();
+            RegisterId registerId = context.getOutputRegister();
+            InputAqlItemRow const& input = context.getInputRow();
 
-        if (context.getProjections().empty()) {
-          output.moveValueInto(registerId, input, v);
-        } else {
-          objectBuilder.clear();
-          objectBuilder.openObject(true);
+            if (context.getProjections().empty()) {
+              output.moveValueInto(registerId, input, v);
+            } else {
+              objectBuilder.clear();
+              objectBuilder.openObject(true);
 
-          // projections from the index for the filter condition
-          context.getProjections().toVelocyPackFromDocument(
-              objectBuilder, s, context.getTrxPtr());
+              // projections from the index for the filter condition
+              context.getProjections().toVelocyPackFromDocument(
+                  objectBuilder, s, context.getTrxPtr());
 
-          objectBuilder.close();
+              objectBuilder.close();
 
-          VPackSlice projectedSlice = objectBuilder.slice();
-          output.moveValueInto(registerId, input, projectedSlice);
-        }
+              VPackSlice projectedSlice = objectBuilder.slice();
+              output.moveValueInto(registerId, input, projectedSlice);
+            }
 
-        TRI_ASSERT(output.produced());
-        output.advanceRow();
-        return false;
-      };
+            TRI_ASSERT(output.produced());
+            output.advanceRow();
+            return false;
+          });
       context.getPhysical().lookup(
-          context.getTrxPtr(), token,
-          IndexIterator::DocumentCallback{
-              [&](LocalDocumentId token, VPackSlice doc) {
-                return cb(doc, doc);
-              },
-              [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
-                VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
-                return cb(&doc, slice);
-              }},
+          context.getTrxPtr(), token, cb,
           {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
     }
 
