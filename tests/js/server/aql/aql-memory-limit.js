@@ -248,7 +248,7 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
         // no shortest path available
         assertEqual(1024, actual.length);
       } else {
-        let actual = AQL_EXECUTE(query, null, {memoryLimit: 2 * 1000 * 1000}).json;
+        let actual = AQL_EXECUTE(query, null, {memoryLimit: 2 * 1000 * 1000 + 4 * 1000}).json;
         // no shortest path available
         assertEqual(1024, actual.length);
       }

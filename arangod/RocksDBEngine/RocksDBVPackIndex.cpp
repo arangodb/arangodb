@@ -62,6 +62,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "Aql/IndexStreamIterator.h"
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
@@ -2856,6 +2857,160 @@ void RocksDBVPackIndex::warmupInternal(transaction::Methods* trx) {
   }
 
   LOG_TOPIC("499c4", DEBUG, Logger::ENGINES) << "loaded n: " << n;
+}
+
+namespace {
+
+struct RocksDBVPackStreamOptions {
+  std::size_t keyPrefixSize;
+};
+
+template<bool isUnique>
+struct RocksDBVPackStreamIterator : AqlIndexStreamIterator {
+  RocksDBVPackIndex const* _index;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+
+  RocksDBVPackStreamOptions _options;
+  VPackBuilder _builder;
+  VPackString _cache;
+  RocksDBKeyBounds _bounds;
+  rocksdb::Slice _end;
+  RocksDBKey _rocksdbKey;
+
+  RocksDBVPackStreamIterator(RocksDBVPackIndex const* index,
+                             transaction::Methods* trx,
+                             RocksDBVPackStreamOptions options)
+      : _index(index),
+        _options(std::move(options)),
+        _bounds(
+            isUnique
+                ? RocksDBKeyBounds::UniqueVPackIndex(index->objectId(), false)
+                : RocksDBKeyBounds::VPackIndex(index->objectId(), false)) {
+    _end = _bounds.end();
+    RocksDBTransactionMethods* mthds =
+        RocksDBTransactionState::toMethods(trx, index->collection().id());
+    _iterator = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+      TRI_ASSERT(opts.prefix_same_as_start);
+      opts.iterate_upper_bound = &_end;
+    });
+    _iterator->Seek(_bounds.start());
+  }
+
+  bool position(std::span<VPackSlice> span) const override {
+    if (!_iterator->Valid()) {
+      return false;
+    }
+
+    TRI_ASSERT(RocksDBKey::objectId(_iterator->key()) == _index->objectId())
+        << RocksDBKey::objectId(_iterator->key())
+        << " actual = " << _index->objectId();
+
+    auto keySlice = RocksDBKey::indexedVPack(_iterator->key());
+    storeKey(span, keySlice);
+    return true;
+  }
+
+  void loadKey(std::span<VPackSlice> span) {
+    _builder.clear();
+    _builder.openArray();
+    for (auto k : span) {
+      _builder.add(k);
+    }
+    _builder.close();
+  }
+
+  void storeKey(std::span<VPackSlice> into, VPackSlice keySlice) const {
+    std::size_t idx = 0;
+    for (auto k : VPackArrayIterator(keySlice)) {
+      if (idx >= _options.keyPrefixSize) {
+        break;
+      }
+      into[idx] = k;
+    }
+  }
+
+  bool seek(std::span<VPackSlice> span) override {
+    loadKey(span);
+    _rocksdbKey.constructUniqueVPackIndexValue(_index->objectId(),
+                                               _builder.slice());
+    _iterator->Seek(_rocksdbKey.string());
+    return position(span);
+  }
+
+  LocalDocumentId load(std::span<VPackSlice> projections) const override {
+    // TODO implement projections
+    if constexpr (isUnique) {
+      return RocksDBValue::documentId(_iterator->key());
+    } else {
+      return RocksDBKey::indexDocumentId(_iterator->key());
+    }
+  }
+
+  bool next(std::span<VPackSlice> key, LocalDocumentId& docId,
+            std::span<VPackSlice> projections) override {
+    _iterator->Next();
+    if (!_iterator->Valid()) {
+      return false;
+    }
+
+    storeKey(key, RocksDBKey::indexedVPack(_iterator->key()));
+    docId = load(projections);
+    return true;
+  }
+
+  void cacheCurrentKey(std::span<VPackSlice> cache) override {
+    _cache = VPackString{RocksDBKey::indexedVPack(_iterator->key())};
+    storeKey(cache, _cache);
+  }
+
+  bool reset(std::span<VPackSlice> span) override {
+    _iterator->Seek(_bounds.start());
+    return position(span);
+  }
+};
+
+}  // namespace
+
+std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
+    transaction::Methods* trx, IndexStreamOptions const& opts) {
+  if (!supportsStreamInterface(opts)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "RocksDBVPackIndex streamForCondition was "
+                                   "called with unsupported options.");
+  }
+
+  RocksDBVPackStreamOptions streamOptions;
+  streamOptions.keyPrefixSize = opts.usedKeyFields.size();
+
+  auto stream = [&]() -> std::unique_ptr<AqlIndexStreamIterator> {
+    if (unique()) {
+      return std::make_unique<RocksDBVPackStreamIterator<true>>(this, trx,
+                                                                streamOptions);
+    }
+    return std::make_unique<RocksDBVPackStreamIterator<false>>(this, trx,
+                                                               streamOptions);
+  }();
+
+  return stream;
+}
+
+bool RocksDBVPackIndex::supportsStreamInterface(
+    IndexStreamOptions const& streamOpts) const noexcept {
+  // TODO expand this for fixed values that can be moved into the index
+  // TODO expand this for projections
+  if (!streamOpts.projectedFields.empty()) {
+    return false;
+  }
+  // for persisted indexes, we can only use a prefix of the indexed keys
+  std::size_t idx = 0;
+  for (auto keyIdx : streamOpts.usedKeyFields) {
+    if (keyIdx != idx) {
+      return false;
+    }
+    idx += 1;
+  }
+
+  return true;
 }
 
 }  // namespace arangodb
