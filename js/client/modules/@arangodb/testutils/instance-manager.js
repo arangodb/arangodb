@@ -201,13 +201,12 @@ class instanceManager {
         this.memlayout[instanceRole.single] = Math.round(this.options.memory / this.options.singles);
       }
     } else {
+      // no memory limits
       if (this.options.cluster) {
-        // Distribute 10 % agency, 20% coordinator, 70% dbservers
         this.memlayout[instanceRole.agent] = 0;
         this.memlayout[instanceRole.dbServer] = 0;
         this.memlayout[instanceRole.coordinator] = 0;
       } else if (this.options.activefailover) {
-        // Distribute 20% agency, 80% singles
         this.memlayout[instanceRole.agent] = 0;
         this.memlayout[instanceRole.failover] = 0;
       } else if (this.options.agency) {
