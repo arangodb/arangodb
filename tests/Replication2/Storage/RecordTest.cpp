@@ -64,7 +64,7 @@ TEST(WalRecordTest, index_compress_decompress_roundtrip) {
 
 TEST(WalRecordTest, term_compress_decompress_roundtrip) {
   Record::Header expected{};
-  expected.term = (1ul << Record::CompressedHeader::termBits) - 1;
+  expected.term = (std::uint64_t{1} << Record::CompressedHeader::termBits) - 1;
 
   auto actual = Record::Header{Record::CompressedHeader{expected}};
   compareHeaders(expected, actual);
@@ -72,7 +72,8 @@ TEST(WalRecordTest, term_compress_decompress_roundtrip) {
 
 TEST(WalRecordTest, reserved_compress_decompress_roundtrip) {
   Record::Header expected{};
-  expected.reserved = (1ul << Record::CompressedHeader::reservedBits) - 1;
+  expected.reserved =
+      (std::uint64_t{1} << Record::CompressedHeader::reservedBits) - 1;
 
   auto actual = Record::Header{Record::CompressedHeader{expected}};
   compareHeaders(expected, actual);
@@ -80,7 +81,8 @@ TEST(WalRecordTest, reserved_compress_decompress_roundtrip) {
 
 TEST(WalRecordTest, type_compress_decompress_roundtrip) {
   Record::Header expected{};
-  expected.type = RecordType((1ul << Record::CompressedHeader::typeBits) - 1);
+  expected.type =
+      RecordType((std::uint64_t{1} << Record::CompressedHeader::typeBits) - 1);
 
   auto actual = Record::Header{Record::CompressedHeader{expected}};
   compareHeaders(expected, actual);
@@ -97,12 +99,14 @@ TEST(WalRecordTest, size_compress_decompress_roundtrip) {
 
 TEST(WalRecordTest, full_compress_decompress_roundtrip) {
   Record::Header expected{};
-  expected.index = (1ul << (Record::CompressedHeader::indexBits - 1)) + 1;
-  expected.term = (1ul << (Record::CompressedHeader::termBits - 1)) + 1;
+  expected.index =
+      (std::uint64_t{1} << (Record::CompressedHeader::indexBits - 1)) + 1;
+  expected.term =
+      (std::uint64_t{1} << (Record::CompressedHeader::termBits - 1)) + 1;
   expected.type =
       RecordType((1ul << (Record::CompressedHeader::typeBits - 1)) + 1);
   expected.payloadSize =
-      (1ul << (Record::CompressedHeader::payloadSizeBits - 1)) + 1;
+      (std::uint64_t{1} << (Record::CompressedHeader::payloadSizeBits - 1)) + 1;
 
   auto actual = Record::Header{Record::CompressedHeader{expected}};
   compareHeaders(expected, actual);
