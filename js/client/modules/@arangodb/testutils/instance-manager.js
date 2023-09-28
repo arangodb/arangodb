@@ -209,6 +209,8 @@ class instanceManager {
         // Distribute 20% agency, 80% singles
         this.memlayout[instanceRole.agent] = 0;
         this.memlayout[instanceRole.failover] = 0;
+      } else if (this.options.agency) {
+        this.memlayout[instanceRole.agent] = 0;
       } else {
         this.memlayout[instanceRole.single] = 0;
       }
