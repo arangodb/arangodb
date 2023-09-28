@@ -539,6 +539,10 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     LOG_QUERY("7289a", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
+    if (_prefetchTask) {
+      LOG_DEVEL << (void*)_prefetchTask.get() << ": CAUGHT: " << ex.what()
+                << ", IS CONSUMED: " << _prefetchTask->isConsumed();
+    }
     if (_prefetchTask && !_prefetchTask->isConsumed()) {
       _prefetchTask->waitFor();
     }
@@ -552,6 +556,10 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     LOG_QUERY("2bbd5", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
+    if (_prefetchTask) {
+      LOG_DEVEL << (void*)_prefetchTask.get() << ": CAUGHT: " << ex.what()
+                << ", IS CONSUMED: " << _prefetchTask->isConsumed();
+    }
     if (_prefetchTask && !_prefetchTask->isConsumed()) {
       _prefetchTask->waitFor();
     }
@@ -932,7 +940,11 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
 
     auto const result = std::invoke([&]() {
       if (_prefetchTask && !_prefetchTask->isConsumed()) {
+        LOG_DEVEL << (void*)_prefetchTask.get()
+                  << ": HAVING AN UNCONSUMED PREFETCH TASK";
         if (!_prefetchTask->tryClaim()) {
+          LOG_DEVEL << (void*)_prefetchTask.get()
+                    << ": UNABLE TO CLAIM UNCONSUMED PREFETCH TASK";
           TRI_ASSERT(!_dependencies.empty());
           if (_profileLevel >= ProfileLevel::Blocks) {
             // count the parallel invocation
@@ -940,7 +952,11 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
           }
           // some other thread is currently executing our prefetch task
           // -> wait till it has finished.
+          LOG_DEVEL << (void*)_prefetchTask.get()
+                    << ": INVOKE WAITING FOR PREFETCH TASK";
           _prefetchTask->waitFor();
+          LOG_DEVEL << (void*)_prefetchTask.get()
+                    << ": INVOKE FINSIHED WAITING FOR PREFETCH TASK";
           return _prefetchTask->stealResult();
         }
 
@@ -956,9 +972,9 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
         std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
         _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
       if (_prefetchTask == nullptr) {
-        LOG_DEVEL << (void*)_prefetchTask.get()
-                  << ": CREATING NEW PREFETCH TASK";
         _prefetchTask = std::make_shared<PrefetchTask>();
+        LOG_DEVEL << (void*)_prefetchTask.get()
+                  << ": CREATED NEW PREFETCH TASK";
       } else {
         _prefetchTask->reset();
       }
@@ -2393,6 +2409,8 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
 
 template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
+  LOG_DEVEL << (void*)this << ": TRYCLAIM. STATE: "
+            << (int)_state.load(std::memory_order_relaxed);
   auto expected = State::Pending;
   return _state.load(std::memory_order_relaxed) == expected &&
          _state.compare_exchange_strong(expected, State::InProgress,
@@ -2401,7 +2419,7 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::reset() noexcept {
-  LOG_DEVEL << (void*)this << ": RESETTING PREFETCH TASK";
+  LOG_DEVEL << (void*)this << ": RESETTING PREFETCH TASK TO PENDING";
   TRI_ASSERT(!_result);
   _state.store(State::Pending);
   // intentionally do not reset _firstFailure
@@ -2411,6 +2429,7 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
   // (1) - this acquire-load synchronizes with the release-store (3)
   if (_state.load(std::memory_order_acquire) == State::Finished) {
+    LOG_DEVEL << (void*)this << ": WAIT FOR. PREFETCH TASK ALREADY FINISHED";
     return;
   }
   LOG_DEVEL << (void*)this << ": ENTERING WAITING FOR PREFETCH TASK";
@@ -2464,7 +2483,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute(
 
     _result = block.fetcher().execute(stack);
 
-    LOG_DEVEL << (void*)this << ": EXECUTEDG PREFETCH TASK";
+    LOG_DEVEL << (void*)this << ": EXECUTED PREFETCH TASK";
 
     TRI_ASSERT(_result.has_value());
 
