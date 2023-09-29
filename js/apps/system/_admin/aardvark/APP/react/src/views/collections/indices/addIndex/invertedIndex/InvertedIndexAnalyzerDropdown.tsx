@@ -60,7 +60,7 @@ export const InvertedIndexAnalyzerDropdown = ({
       });
       setOptions(tempOptions);
     }
-  }, [analyzersList]);
+  }, [analyzerName, analyzersList, field.isDisabled]);
   return (
     <>
       <FormLabel htmlFor={field.name}>{field.label}</FormLabel>
