@@ -85,6 +85,10 @@ class Manager {
     std::uint64_t spareAllocation = 0;
     std::uint64_t activeTables = 0;
     std::uint64_t spareTables = 0;
+    std::uint64_t migrateTasks = 0;
+    std::uint64_t freeMemoryTasks = 0;
+    std::uint64_t migrateTasksDuration = 0;     // total, micros
+    std::uint64_t freeMemoryTasksDuration = 0;  // total, micros
   };
 
   static constexpr std::uint64_t kMinSize = 1024 * 1024;
@@ -194,6 +198,11 @@ class Manager {
 
   SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
 
+  // track duration of migrate task, in ms
+  void trackMigrateTaskDuration(std::uint64_t duration) noexcept;
+  // track duration of free memory task, in ms
+  void trackFreeMemoryTaskDuration(std::uint64_t duration) noexcept;
+
  private:
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
   // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
@@ -244,6 +253,10 @@ class Manager {
   std::uint64_t _peakGlobalAllocation;
   std::uint64_t _activeTables;
   std::uint64_t _spareTables;
+  std::uint64_t _migrateTasks;
+  std::uint64_t _freeMemoryTasks;
+  std::uint64_t _migrateTasksDuration;     // total, micros
+  std::uint64_t _freeMemoryTasksDuration;  // total, micros
 
   // transaction management
   TransactionManager _transactions;

@@ -269,10 +269,10 @@ bool PlainCache<Hasher>::freeMemoryWhile(
       bucket.evict(candidate);
       freeValue(candidate);
       maybeMigrate |= guard.source()->slotEmptied();
-    }
 
-    if (!cb(reclaimed)) {
-      break;
+      if (!cb(reclaimed)) {
+        break;
+      }
     }
   }
 
