@@ -503,16 +503,16 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
       std::move(ctx), readCollection, noCollections, noCollections, opts);
   ASSERT_EQ(1, collection->getPhysical()->numberDocuments(trx.get()));
   bool called = false;
-  auto result = collection->getPhysical()->read(
-      trx.get(), std::string_view{"myKey"},
-      [&](LocalDocumentId const&, VPackSlice document) {
+  auto cb = IndexIterator::makeDocumentCallbackF(
+      [&](LocalDocumentId, VPackSlice document) {
         called = true;
         EXPECT_TRUE(document.isObject());
         EXPECT_TRUE(document.get("_key").isString());
         EXPECT_EQ(std::string{"myKey"}, document.get("_key").copyString());
         return true;
-      },
-      arangodb::ReadOwnWrites::no);
+      });
+  auto result = collection->getPhysical()->lookup(
+      trx.get(), std::string_view{"myKey"}, cb, {});
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
 }

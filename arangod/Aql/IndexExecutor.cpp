@@ -152,10 +152,10 @@ IndexIterator::CoveringCallback getCallback(
       TRI_ASSERT(token.isSet());
       AqlValue v(AqlValueHintUInt(token.id()));
       AqlValueGuard guard{v, false};
-      output.moveValueInto(registerId, input, guard);
+      output.moveValueInto(registerId, input, &guard);
     } else {
       AqlValueGuard guard{token, true};
-      output.moveValueInto(registerId, input, guard);
+      output.moveValueInto(registerId, input, &guard);
     }
 
     // hash/skiplist/persistent
@@ -169,7 +169,7 @@ IndexIterator::CoveringCallback getCallback(
         AqlValue v(s);
         AqlValueGuard guard{v, true};
         TRI_ASSERT(!output.isFull());
-        output.moveValueInto(indReg.second, input, guard);
+        output.moveValueInto(indReg.second, input, &guard);
       }
     } else {  // primary/edge
       auto indReg = outNonMaterializedIndRegs.second.cbegin();
@@ -180,7 +180,7 @@ IndexIterator::CoveringCallback getCallback(
       AqlValue v(covering.value());
       AqlValueGuard guard{v, true};
       TRI_ASSERT(!output.isFull());
-      output.moveValueInto(indReg->second, input, guard);
+      output.moveValueInto(indReg->second, input, &guard);
     }
 
     TRI_ASSERT(output.produced());
@@ -522,7 +522,7 @@ bool IndexExecutor::CursorReader::readIndex(
     case Type::Count: {
       uint64_t counter = 0;
       if (_checkUniqueness) {
-        _cursor->all([&](LocalDocumentId const& token) -> bool {
+        _cursor->all([&](LocalDocumentId token) -> bool {
           if (_context.checkUniqueness(token)) {
             counter++;
           }
@@ -537,7 +537,7 @@ bool IndexExecutor::CursorReader::readIndex(
       TRI_ASSERT(!output.isFull());
       AqlValue v((AqlValueHintUInt(counter)));
       AqlValueGuard guard{v, true};
-      output.moveValueInto(registerId, input, guard);
+      output.moveValueInto(registerId, input, &guard);
       TRI_ASSERT(output.produced());
       output.advanceRow();
       return false;
