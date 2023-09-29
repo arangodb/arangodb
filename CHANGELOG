@@ -11,8 +11,8 @@ devel
   The new startup option `--cluster.connectivity-check-interval` can be used
   to control the frequency of the connectivity check, in seconds.
   If set to a value greater than zero, the initial connectivity check is
-  performed 15 seconds after the instance start, and subsequent connectivity
-  checks are executed with the specified frequency.
+  performed approximately 15 seconds after the instance start, and subsequent 
+  connectivity checks are executed with the specified frequency.
   If set to a value of zero, connectivity checks are disabled.
 
 * Improve logging in case hot backup locks cannot be taken on coordinators.

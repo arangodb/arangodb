@@ -43,6 +43,7 @@
 #include "Network/Utils.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -444,7 +445,11 @@ clicked in the web interface. For backwards compatibility, the default value is
                       arangodb::options::Flags::OnDBServer))
       .setLongDescription(R"(Setting this option to a value greater than
 zero makes Coordinators and DB-Servers run period connectivity checks
-with the specified frequency. 
+with approximately the specified frequency. The first connectivity check
+is carried out approximately 15 seconds after server start.
+Note that a random delay is added to the interval on each server, so that
+different servers do not execute their connectivity checks all at the
+same time.
 Setting this option to a value of zero disables these connectivity checks.")")
       .setIntroducedIn(31104);
 }
@@ -610,6 +615,16 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       FATAL_ERROR_EXIT();
     }
     ServerState::instance()->setRole(_requestedRole);
+  }
+
+  constexpr std::uint32_t minConnectivityCheckInterval = 10;  // seconds
+  if (_connectivityCheckInterval > 0 &&
+      _connectivityCheckInterval < minConnectivityCheckInterval) {
+    _connectivityCheckInterval = minConnectivityCheckInterval;
+    LOG_TOPIC("08b46", WARN, Logger::CLUSTER)
+        << "configured value for `--cluster.connectivity-check-interval` is "
+           "too low and was automatically adjusted to minimum value "
+        << minConnectivityCheckInterval;
   }
 }
 
@@ -905,8 +920,11 @@ void ClusterFeature::start() {
       (role == ServerState::ROLE_COORDINATOR ||
        role == ServerState::ROLE_DBSERVER)) {
     // if connectivity checks are enabled, start the first one 15s after
-    // ClusterFeature start
-    scheduleConnectivityCheck(15);
+    // ClusterFeature start. we also add a bit of random noise to the start
+    // time offset so that when multiple servers are started at the same time,
+    // they don't execute their connectivity checks all at the same time
+    scheduleConnectivityCheck(15 +
+                              RandomGenerator::interval(std::uint32_t(15)));
   }
 }
 
@@ -1187,7 +1205,9 @@ void ClusterFeature::scheduleConnectivityCheck(std::uint32_t inSeconds) {
           runConnectivityCheck();
         }
         if (!this->server().isStopping()) {
-          scheduleConnectivityCheck(_connectivityCheckInterval);
+          scheduleConnectivityCheck(
+              _connectivityCheckInterval +
+              RandomGenerator::interval(std::uint32_t(3)));
         }
       });
 
