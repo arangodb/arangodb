@@ -2937,11 +2937,7 @@ MaterializeNode* materialize::createMaterializeNode(
   if (isMulti.isBoolean() && isMulti.getBoolean()) {
     return new MaterializeSearchNode(plan, base);
   }
-  auto inLocalDocId = base.get(kMaterializeNodeInLocalDocIdParam);
-  if (inLocalDocId.isBoolean() && inLocalDocId.getBoolean()) {
-    return new MaterializeSingleNode<true>(plan, base);
-  }
-  return new MaterializeSingleNode<false>(plan, base);
+  return new MaterializeRocksDBNode(plan, base);
 }
 
 MaterializeNode::MaterializeNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -3031,8 +3027,8 @@ std::unique_ptr<ExecutionBlock> MaterializeSearchNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
-  auto executorInfos = MaterializerExecutorInfos<false>(
-      inNmDocIdRegId, outDocumentRegId, engine.getQuery());
+  auto executorInfos = MaterializerExecutorInfos(
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr);
 
   return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<false>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -3057,32 +3053,27 @@ ExecutionNode* MaterializeSearchNode::clone(ExecutionPlan* plan,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-template<bool localDocumentId>
-MaterializeSingleNode<localDocumentId>::MaterializeSingleNode(
+MaterializeRocksDBNode::MaterializeRocksDBNode(
     ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
     aql::Variable const& inDocId, aql::Variable const& outVariable)
     : MaterializeNode(plan, id, inDocId, outVariable),
       CollectionAccessingNode(collection) {}
 
-template<bool localDocumentId>
-MaterializeSingleNode<localDocumentId>::MaterializeSingleNode(
+MaterializeRocksDBNode::MaterializeRocksDBNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : MaterializeNode(plan, base), CollectionAccessingNode(plan, base) {}
 
-template<bool localDocumentId>
-void MaterializeSingleNode<localDocumentId>::doToVelocyPack(
-    velocypack::Builder& nodes, unsigned flags) const {
+void MaterializeRocksDBNode::doToVelocyPack(velocypack::Builder& nodes,
+                                            unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(nodes, flags);
-  nodes.add(kMaterializeNodeInLocalDocIdParam, localDocumentId);
+  nodes.add(kMaterializeNodeInLocalDocIdParam, true);
 }
 
-template<bool localDocumentId>
-std::unique_ptr<ExecutionBlock>
-MaterializeSingleNode<localDocumentId>::createBlock(
+std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
@@ -3092,7 +3083,6 @@ MaterializeSingleNode<localDocumentId>::createBlock(
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     outDocumentRegId = it->second.registerId;
   }
-  auto const& name = collection()->name();
   RegisterId inNmDocIdRegId;
   {
     auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
@@ -3108,24 +3098,16 @@ MaterializeSingleNode<localDocumentId>::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
-  auto executorInfos = [&] {
-    if constexpr (localDocumentId) {
-      return MaterializerExecutorInfos<localDocumentId>(
-          inNmDocIdRegId, outDocumentRegId, engine.getQuery(), name);
-    } else {
-      return MaterializerExecutorInfos<localDocumentId>(
-          inNmDocIdRegId, outDocumentRegId, engine.getQuery());
-    }
-  }();
+  auto executorInfos = MaterializerExecutorInfos(
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), collection());
 
-  return std::make_unique<
-      ExecutionBlockImpl<MaterializeExecutor<localDocumentId>>>(
+  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<true>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-template<bool localDocumentId>
-ExecutionNode* MaterializeSingleNode<localDocumentId>::clone(
-    ExecutionPlan* plan, bool withDependencies, bool withProperties) const {
+ExecutionNode* MaterializeRocksDBNode::clone(ExecutionPlan* plan,
+                                             bool withDependencies,
+                                             bool withProperties) const {
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
@@ -3137,11 +3119,8 @@ ExecutionNode* MaterializeSingleNode<localDocumentId>::clone(
         plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
   }
 
-  auto c = std::make_unique<MaterializeSingleNode<localDocumentId>>(
+  auto c = std::make_unique<MaterializeRocksDBNode>(
       plan, _id, collection(), *inNonMaterializedDocId, *outVariable);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
-
-template class arangodb::aql::materialize::MaterializeSingleNode<true>;
-template class arangodb::aql::materialize::MaterializeSingleNode<false>;
