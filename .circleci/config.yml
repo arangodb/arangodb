@@ -55,11 +55,16 @@ jobs:
       - run:
           name: Generate config
           command: |
-            pip install pyyaml
-            python3 ".circleci/generate_config.py" -o generated_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+            CHANGED_DOCKER_FILES=$(curl https://api.github.com/repos/arangodb/arangodb/commits/$CIRCLE_SHA1 | jq '.files[]."filename"' | { grep "scripts/docker" || true; })
+            #if [ -n "$CHANGED_DOCKER_FILES" ]; then
+              cp .circleci/docker_build.yml continuation_config.yml
+            #else
+            #  pip install pyyaml
+            #  python3 ".circleci/generate_config.py" -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+            #fi            
 
       - continuation/continue:
-          configuration_path: generated_config.yml # use newly generated config to continue
+          configuration_path: continuation_config.yml
           parameters: '{"default-enterprise-branch": "<< parameters.default-enterprise-branch >>"}'
 
 # our single workflow, that triggers the setup job defined above
