@@ -100,7 +100,8 @@ struct MaterializeExecutorBase {
   Infos& _infos;
 };
 
-class MaterializeRocksDBExecutor : MaterializeExecutorBase {
+class MaterializeRocksDBExecutor : public MaterializeExecutorBase {
+ public:
   struct Properties {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
@@ -117,8 +118,7 @@ class MaterializeRocksDBExecutor : MaterializeExecutorBase {
   PhysicalCollection* _collection{};
 };
 
-template<bool localDocumentId>
-class MaterializeExecutor : MaterializeExecutorBase {
+class MaterializeSearchExecutor : public MaterializeExecutorBase {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
@@ -130,9 +130,7 @@ class MaterializeExecutor : MaterializeExecutorBase {
   using Infos = MaterializerExecutorInfos;
   using Stats = MaterializeStats;
 
-  MaterializeExecutor(MaterializeExecutor&&) = default;
-  MaterializeExecutor(MaterializeExecutor const&) = delete;
-  MaterializeExecutor(Fetcher&, Infos& infos);
+  MaterializeSearchExecutor(Fetcher&, Infos& infos);
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -144,19 +142,6 @@ class MaterializeExecutor : MaterializeExecutorBase {
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
 
  private:
-  class ReadContext {
-   public:
-    explicit ReadContext(Infos& infos);
-
-    ReadContext(ReadContext&& other) = default;
-
-    void moveInto(std::unique_ptr<uint8_t[]> data);
-
-    Infos const* infos;
-    InputAqlItemRow const* inputRow{};
-    OutputAqlItemRow* outputRow{};
-  };
-
   static constexpr size_t kInvalidRecord = std::numeric_limits<size_t>::max();
 
   struct Buffer {

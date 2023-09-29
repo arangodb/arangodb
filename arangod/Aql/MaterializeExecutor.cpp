@@ -37,25 +37,6 @@
 
 namespace arangodb::aql {
 
-template<bool localDocumentId>
-MaterializeExecutor<localDocumentId>::ReadContext::ReadContext(Infos& infos)
-    : infos{&infos} {}
-
-template<bool localDocumentId>
-void MaterializeExecutor<localDocumentId>::ReadContext::ReadContext::moveInto(
-    std::unique_ptr<uint8_t[]> data) {
-  TRI_ASSERT(infos);
-  TRI_ASSERT(outputRow);
-  TRI_ASSERT(inputRow);
-  TRI_ASSERT(inputRow->isInitialized());
-  AqlValue value{std::move(data)};
-  bool mustDestroy = true;
-  AqlValueGuard guard{value, mustDestroy};
-  // TODO(MBkkt) add moveValueInto overload for std::unique_ptr<uint8_t[]>
-  outputRow->moveValueInto(infos->outputMaterializedDocumentRegId(), *inputRow,
-                           guard);
-}
-
 MaterializeExecutorBase::MaterializeExecutorBase(Infos& infos)
     : _trx{infos.query().newTrxContext()}, _infos(infos) {}
 
@@ -99,7 +80,7 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         _collection
             ->read(
                 &_trx, id,
-                [&](LocalDocumentId /*id*/, VPackSlice doc) {
+                [&, &input = input](LocalDocumentId /*id*/, VPackSlice doc) {
                   TRI_ASSERT(input.isInitialized());
                   output.moveValueInto(_infos.outputMaterializedDocumentRegId(),
                                        input, doc);
@@ -118,16 +99,12 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
-template<bool localDocumentId>
-MaterializeExecutor<localDocumentId>::MaterializeExecutor(Fetcher&,
-                                                          Infos& infos)
+MaterializeSearchExecutor::MaterializeSearchExecutor(Fetcher&, Infos& infos)
     : MaterializeExecutorBase(infos),
       _buffer(infos.query().resourceMonitor()) {}
 
-template<bool localDocumentId>
-void MaterializeExecutor<localDocumentId>::Buffer::fill(
-    AqlItemBlockInputRange& inputRange, RegisterId searchDocRegId) {
-  TRI_ASSERT(!localDocumentId);
+void MaterializeSearchExecutor::Buffer::fill(AqlItemBlockInputRange& inputRange,
+                                             RegisterId searchDocRegId) {
   docs.clear();
 
   auto const block = inputRange.getBlock();
@@ -196,10 +173,9 @@ void MaterializeExecutor<localDocumentId>::Buffer::fill(
   }
 }
 
-template<bool localDocumentId>
 std::tuple<ExecutorState, MaterializeStats, AqlCall>
-MaterializeExecutor<localDocumentId>::produceRows(
-    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+MaterializeSearchExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                       OutputAqlItemRow& output) {
   MaterializeStats stats;
 
   AqlCall upstreamCall{};
@@ -307,8 +283,5 @@ MaterializeExecutorBase::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
   return {inputRange.upstreamState(), MaterializeStats{}, skipped, call};
 }
-
-template class MaterializeExecutor<false>;
-template class MaterializeExecutor<true>;
 
 }  // namespace arangodb::aql
