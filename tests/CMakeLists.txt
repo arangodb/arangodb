@@ -23,9 +23,11 @@ add_subdirectory(Futures)
 # Link directories
 # ----------------------------------------
 
-foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
-  link_directories("${LINK_DIR}")
-endforeach()
+if (USE_V8)
+  foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
+    link_directories("${LINK_DIR}")
+  endforeach()
+endif ()
 
 if (WINDOWS)
   set(RCFILE Maintenance/json.rc)
@@ -308,7 +310,6 @@ target_link_libraries(arangodbtests
   arango_agency
   arango_cluster_engine
   arango_rocksdb
-  arango_v8server
   arangoserver
   arango_restore
   fuerte
@@ -319,6 +320,10 @@ target_link_libraries(arangodbtests
   fmt
   velocypack_utils
 )
+
+if (USE_V8)
+  target_link_libraries(arangodbtests arango_v8server)
+endif ()
 
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
@@ -345,7 +350,9 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
 )
 
-target_link_libraries(arangodbtests v8_interface)
+if (USE_V8)
+  target_link_libraries(arangodbtests v8_interface)
+endif ()
 
 if (USE_JEMALLOC)
   add_dependencies(arangodbtests jemalloc_build)

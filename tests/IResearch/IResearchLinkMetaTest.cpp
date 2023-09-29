@@ -54,7 +54,9 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/Methods/Collections.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
