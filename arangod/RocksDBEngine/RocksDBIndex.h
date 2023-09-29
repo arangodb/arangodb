@@ -113,7 +113,7 @@ class RocksDBIndex : public Index {
   /// the default implementation does nothing. indexes can override this and
   /// perform useful checks (uniqueness checks etc.) here
   virtual Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
-                             LocalDocumentId const& documentId,
+                             LocalDocumentId documentId,
                              arangodb::velocypack::Slice doc,
                              OperationOptions const& options);
 
@@ -123,28 +123,27 @@ class RocksDBIndex : public Index {
   /// checks etc.) here
   virtual Result checkReplace(transaction::Methods& trx,
                               RocksDBMethods* methods,
-                              LocalDocumentId const& documentId,
+                              LocalDocumentId documentId,
                               arangodb::velocypack::Slice doc,
                               OperationOptions const& options);
 
   /// insert index elements into the specified write batch.
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
+                        LocalDocumentId documentId,
                         arangodb::velocypack::Slice doc,
                         OperationOptions const& options,
                         bool performChecks) = 0;
 
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
+                        LocalDocumentId documentId,
                         arangodb::velocypack::Slice doc,
                         OperationOptions const& options) = 0;
 
   virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& oldDocumentId,
+                        LocalDocumentId oldDocumentId,
                         arangodb::velocypack::Slice oldDoc,
-                        LocalDocumentId const& newDocumentId,
-                        velocypack::Slice newDoc,
+                        LocalDocumentId newDocumentId, velocypack::Slice newDoc,
                         OperationOptions const& options, bool performChecks);
 
   virtual void refillCache(transaction::Methods& trx,

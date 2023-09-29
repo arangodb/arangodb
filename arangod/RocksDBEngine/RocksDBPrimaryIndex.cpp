@@ -727,7 +727,7 @@ Result RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
 
 Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
                                         RocksDBMethods* mthd,
-                                        LocalDocumentId const& /*documentId*/,
+                                        LocalDocumentId /*documentId*/,
                                         velocypack::Slice slice,
                                         OperationOptions const& options) {
   // this is already handled earlier - nothing to do here!
@@ -736,7 +736,7 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
 
 Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
                                          RocksDBMethods* mthd,
-                                         LocalDocumentId const& /*documentId*/,
+                                         LocalDocumentId /*documentId*/,
                                          velocypack::Slice slice,
                                          OperationOptions const& options) {
   // this is already handled earlier - nothing to do here!
@@ -745,7 +745,7 @@ Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
 
 Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
                                    RocksDBMethods* mthd,
-                                   LocalDocumentId const& documentId,
+                                   LocalDocumentId documentId,
                                    velocypack::Slice slice,
                                    OperationOptions const& options,
                                    bool performChecks) {
@@ -781,8 +781,8 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
 
 Result RocksDBPrimaryIndex::update(
     transaction::Methods& trx, RocksDBMethods* mthd,
-    LocalDocumentId const& /*oldDocumentId*/, velocypack::Slice oldDoc,
-    LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
+    LocalDocumentId /*oldDocumentId*/, velocypack::Slice oldDoc,
+    LocalDocumentId newDocumentId, velocypack::Slice newDoc,
     OperationOptions const& /*options*/, bool /*performChecks*/) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
@@ -851,7 +851,7 @@ Result RocksDBPrimaryIndex::update(
 
 Result RocksDBPrimaryIndex::remove(transaction::Methods& trx,
                                    RocksDBMethods* /*mthd*/,
-                                   LocalDocumentId const& /*documentId*/,
+                                   LocalDocumentId /*documentId*/,
                                    velocypack::Slice slice,
                                    OperationOptions const& /*options*/) {
   Result res;

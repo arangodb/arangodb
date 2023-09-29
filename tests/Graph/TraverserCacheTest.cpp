@@ -295,18 +295,17 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
 
   std::uint64_t fetchedDocumentId = 0;
   bool called = false;
-  auto result = col->getPhysical()->read(
-      trx.get(), std::string_view{edgeKey},
-      [&fetchedDocumentId, &called, &edgeKey](LocalDocumentId const& ldid,
-                                              VPackSlice edgeDocument) {
+  auto cb = IndexIterator::makeDocumentCallbackF(
+      [&](LocalDocumentId ldid, VPackSlice edgeDocument) {
         fetchedDocumentId = ldid.id();
         called = true;
         EXPECT_TRUE(edgeDocument.isObject());
         EXPECT_TRUE(edgeDocument.get("_key").isString());
         EXPECT_EQ(edgeKey, edgeDocument.get("_key").copyString());
         return true;
-      },
-      arangodb::ReadOwnWrites::no);
+      });
+  auto result =
+      col->getPhysical()->lookup(trx.get(), std::string_view{edgeKey}, cb, {});
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
   ASSERT_NE(fetchedDocumentId, 0U);

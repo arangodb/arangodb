@@ -107,20 +107,14 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
                       RevisionId& revisionId, ReadOwnWrites) const;
 
-  Result read(transaction::Methods*, std::string_view key,
-              IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites readOwnWrites) const override;
+  Result lookup(transaction::Methods* trx, std::string_view key,
+                IndexIterator::DocumentCallback const& cb,
+                LookupOptions options) const override;
 
-  Result readFromSnapshot(transaction::Methods* trx,
-                          LocalDocumentId const& token,
-                          IndexIterator::DocumentCallback const& cb,
-                          ReadOwnWrites readOwnWrites,
-                          StorageSnapshot const& snapshot) const override;
-
-  /// @brief lookup with callback, not thread-safe on same transaction::Context
-  Result read(transaction::Methods* trx, LocalDocumentId const& token,
-              IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites readOwnWrites) const override;
+  Result lookup(transaction::Methods* trx, LocalDocumentId token,
+                IndexIterator::DocumentCallback const& cb,
+                LookupOptions options,
+                StorageSnapshot const* snapshot = nullptr) const override;
 
   Result insert(transaction::Methods& trx,
                 IndexesSnapshot const& indexesSnapshot,
@@ -155,14 +149,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   bool hasDocuments() override;
 
   void freeMemory() noexcept override;
-
-  /// @brief lookup document in cache and / or rocksdb
-  /// @param withCache attempt to read from cache
-  /// @param fillCache fill cache with found document
-  Result lookupDocument(transaction::Methods& trx, LocalDocumentId documentId,
-                        velocypack::Builder& builder, bool withCache,
-                        bool fillCache,
-                        ReadOwnWrites readOwnWrites) const override;
 
   // @brief return the primary index
   // WARNING: Make sure that this instance
@@ -217,19 +203,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                         RevisionId oldRevisionId, RevisionId newRevisionId,
                         OperationOptions const& options) const;
 
-  /// @brief lookup document in cache and / or rocksdb
-  /// @param withCache attempt to read from cache
-  /// @param fillCache fill cache with found document
-  Result lookupDocumentVPack(transaction::Methods* trx,
-                             LocalDocumentId const& documentId,
-                             rocksdb::PinnableSlice& ps, bool withCache,
-                             bool fillCache, ReadOwnWrites readOwnWrites) const;
-
-  Result lookupDocumentVPack(
-      transaction::Methods*, LocalDocumentId const& documentId,
-      IndexIterator::DocumentCallback const& cb, bool withCache,
-      ReadOwnWrites readOwnWrites,
-      RocksDBEngine::RocksDBSnapshot const* snapshot = nullptr) const;
+  Result lookupDocumentVPack(transaction::Methods* trx, LocalDocumentId token,
+                             IndexIterator::DocumentCallback const& cb,
+                             LookupOptions options,
+                             StorageSnapshot const* snapshot) const;
 
   /// @brief create hash-cache
   void setupCache() const;

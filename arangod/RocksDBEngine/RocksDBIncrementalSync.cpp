@@ -105,6 +105,7 @@ Result removeKeysOutsideRange(
   auto iterator = createPrimaryIndexIterator(&trx, coll);
 
   VPackBuilder builder;
+  auto callback = IndexIterator::makeDocumentCallback(builder);
 
   // remove everything from the beginning of the key range until the lowest
   // remote key
@@ -115,9 +116,10 @@ Result removeKeysOutsideRange(
           auto documentId = RocksDBValue::documentId(rocksValue);
 
           builder.clear();
-          Result r = physical->lookupDocument(
-              trx, documentId, builder, /*readCache*/ true,
-              /*fillCache*/ false, ReadOwnWrites::yes);
+
+          auto r =
+              physical->lookup(&trx, documentId, callback,
+                               {.fillCache = false, .readOwnWrites = true});
 
           if (r.ok()) {
             TRI_ASSERT(builder.slice().isObject());
@@ -161,9 +163,9 @@ Result removeKeysOutsideRange(
           LocalDocumentId documentId = RocksDBValue::documentId(rocksValue);
 
           builder.clear();
-          Result r = physical->lookupDocument(
-              trx, documentId, builder, /*readCache*/ true,
-              /*fillCache*/ false, ReadOwnWrites::yes);
+          auto r =
+              physical->lookup(&trx, documentId, callback,
+                               {.fillCache = false, .readOwnWrites = true});
 
           if (r.ok()) {
             TRI_ASSERT(builder.slice().isObject());
@@ -292,6 +294,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   // responseBody.toJson();
 
   transaction::BuilderLeaser tempBuilder(trx);
+  auto callback = IndexIterator::makeDocumentCallback(*tempBuilder);
   std::vector<size_t> toFetch;
   size_t i = 0;
   size_t nextStart = 0;
@@ -342,9 +345,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           auto [documentId, revisionId] = lookupResult;
 
           tempBuilder->clear();
-          r = physical->lookupDocument(*trx, documentId, *tempBuilder,
-                                       /*readCache*/ true, /*fillCache*/ false,
-                                       ReadOwnWrites::yes);
+          r = physical->lookup(trx, documentId, callback,
+                               {.fillCache = false, .readOwnWrites = true});
 
           if (r.ok()) {
             TRI_ASSERT(tempBuilder->slice().isObject());
@@ -410,9 +412,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
         auto [documentId, revisionId] = lookupResult;
 
         tempBuilder->clear();
-        r = physical->lookupDocument(*trx, documentId, *tempBuilder,
-                                     /*readCache*/ true, /*fillCache*/ false,
-                                     ReadOwnWrites::yes);
+        r = physical->lookup(trx, documentId, callback,
+                             {.fillCache = false, .readOwnWrites = true});
 
         if (r.ok()) {
           TRI_ASSERT(tempBuilder->slice().isObject());
@@ -578,9 +579,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           auto [documentId, revisionId] = lookupResult;
 
           tempBuilder->clear();
-          r = physical->lookupDocument(*trx, documentId, *tempBuilder,
-                                       /*readCache*/ true, /*fillCache*/ false,
-                                       ReadOwnWrites::yes);
+          r = physical->lookup(trx, documentId, callback,
+                               {.fillCache = false, .readOwnWrites = true});
 
           if (r.ok()) {
             TRI_ASSERT(tempBuilder->slice().isObject());
@@ -868,13 +868,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     // tempBuilder is reused inside compareChunk
     VPackBuilder tempBuilder;
+    auto callback = IndexIterator::makeDocumentCallback(tempBuilder);
 
     std::function<void(std::string, RevisionId)> compareChunk =
-        [&trx, &physical, &options, &foundLowKey, &markers, &localHash,
-         &hashString, &syncer, &currentChunkId, &numChunks, &keysId,
-         &resetChunk, &compareChunk, &lowKey, &highKey, &tempBuilder,
-         &indexesSnapshot,
-         &stats](std::string const& docKey, RevisionId docRev) {
+        [&](std::string const& docKey, RevisionId docRev) {
           int cmp1 = docKey.compare(lowKey);
 
           if (cmp1 < 0) {
@@ -889,9 +886,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
               auto [documentId, revisionId] = lookupResult;
 
               tempBuilder.clear();
-              r = physical->lookupDocument(
-                  *trx, documentId, tempBuilder, /*readCache*/ true,
-                  /*fillCache*/ false, ReadOwnWrites::yes);
+              r = physical->lookup(trx.get(), documentId, callback,
+                                   {.fillCache = false, .readOwnWrites = true});
 
               if (r.ok()) {
                 TRI_ASSERT(tempBuilder.slice().isObject());
@@ -972,22 +968,22 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     uint64_t documentsFound = 0;
     auto iterator = createPrimaryIndexIterator(trx.get(), col);
+    RevisionId docRev;
+    auto callbackFunc = IndexIterator::makeDocumentCallbackF(
+        [&](LocalDocumentId, VPackSlice doc) {
+          docRev = RevisionId::fromSlice(doc);
+          return true;
+        });
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           ++documentsFound;
           std::string docKey = std::string(RocksDBKey::primaryKey(rocksKey));
-          RevisionId docRev;
           if (!RocksDBValue::revisionId(rocksValue, docRev)) {
             // for collections that do not have the revisionId in the value
-            auto documentId = RocksDBValue::documentId(
-                rocksValue);  // we want probably to do this instead
-            physical->read(
-                trx.get(), documentId,
-                [&docRev](LocalDocumentId const&, VPackSlice doc) {
-                  docRev = RevisionId::fromSlice(doc);
-                  return true;
-                },
-                ReadOwnWrites::yes);
+            // we want probably to do this instead
+            auto documentId = RocksDBValue::documentId(rocksValue);
+            physical->lookup(trx.get(), documentId, callbackFunc,
+                             {.readOwnWrites = true});
           }
           compareChunk(docKey, docRev);
           return true;

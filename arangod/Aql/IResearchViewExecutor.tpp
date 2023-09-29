@@ -266,13 +266,9 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::ReadContext(
 
 template<typename Impl, typename ExecutionTraits>
 void IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::moveInto(
-    std::unique_ptr<uint8_t[]> data) noexcept {
+    std::unique_ptr<std::string> data) noexcept {
   static_assert(isMaterialized);
-  AqlValue value{std::move(data)};
-  bool mustDestroy = true;
-  AqlValueGuard guard{value, mustDestroy};
-  // TODO(MBkkt) add moveValueInto overload for std::unique_ptr<uint8_t[]>
-  outputRow.moveValueInto(documentOutReg, inputRow, guard);
+  outputRow.moveValueInto(documentOutReg, inputRow, &data);
 }
 
 ScoreIterator::ScoreIterator(std::span<float_t> scoreBuffer, size_t keyIdx,
@@ -898,7 +894,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::writeSearchDoc(
   TRI_ASSERT(doc.isValid());
   AqlValue value{doc.encode(_buf)};
   AqlValueGuard guard{value, true};
-  ctx.outputRow.moveValueInto(reg, ctx.inputRow, guard);
+  ctx.outputRow.moveValueInto(reg, ctx.inputRow, &guard);
 }
 
 // make overload with string_view as input that not depends on SV container type
@@ -916,6 +912,7 @@ template<typename Impl, typename ExecutionTraits>
 inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
     ReadContext& ctx, irs::bytes_view storedValue,
     FieldRegisters const& fieldsRegs) {
+  // TODO(MBkkt) optimize case bstring + single field
   TRI_ASSERT(!storedValue.empty());
   auto* start = storedValue.data();
   [[maybe_unused]] auto* end = start + storedValue.size();
