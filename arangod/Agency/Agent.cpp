@@ -147,6 +147,8 @@ Agent::Agent(ArangodServer& server, config_t const& config)
                                    notifySupervision);
   _spearhead.registerPrefixTrigger("/arango/Plan/CollectionGroups",
                                    notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Target/Collections",
+                                   notifySupervision);
   _spearhead.registerPrefixTrigger("/arango/Current/Collections",
                                    notifySupervision);
 }

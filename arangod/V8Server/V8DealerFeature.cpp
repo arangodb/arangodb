@@ -360,16 +360,14 @@ or teardown commands for execution on the server.)");
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(For certain types of ArangoDB instances, you can
-completely disable the V8 JavaScript engine. Be aware that this is an
-**highly experimental** feature and it is to be expected that certain
-functionality (e.g. API endpoints, the web interface, AQL functions, etc.) may
-be unavailable or dysfunctional. Nevertheless, you may wish to reduce the
-footprint of ArangoDB by disabling V8.
+      .setLongDescription(R"(By default, the V8 engine is enabled on single
+servers and Coordinators. It is disabled by default on Agents and DB-Servers.
 
-This option is expected to **only** work reliably on single servers, DB-Servers,
-and Agents. Do not try to use this feature on Coordinators or in Active Failover
-setups.)");
+It is possible to turn the V8 engine off also on the latter instance types to 
+reduce the footprint of ArangoDB. Turning the V8 engine off on single servers or
+Coordinators will automatically render certain functionality unavailable or
+dysfunctional. The affected functionality includes JavaScript transactions, Foxx, 
+AQL user-defined functions, the built-in web interface and some server APIs.)");
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

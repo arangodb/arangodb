@@ -229,7 +229,7 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 
 Result RocksDBFulltextIndex::insert(transaction::Methods& trx,
                                     RocksDBMethods* mthd,
-                                    LocalDocumentId const& documentId,
+                                    LocalDocumentId documentId,
                                     velocypack::Slice doc,
                                     OperationOptions const& /*options*/,
                                     bool /*performChecks*/) {
@@ -265,7 +265,7 @@ Result RocksDBFulltextIndex::insert(transaction::Methods& trx,
 
 Result RocksDBFulltextIndex::remove(transaction::Methods& trx,
                                     RocksDBMethods* mthd,
-                                    LocalDocumentId const& documentId,
+                                    LocalDocumentId documentId,
                                     velocypack::Slice doc,
                                     OperationOptions const& /*options*/) {
   Result res;

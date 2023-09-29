@@ -214,6 +214,17 @@ struct envelope {
       return std::move(*this);
     }
 
+    template<typename K, typename F>
+    write_trx push_object(K&& k, F&& f) {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      _builder->add("op", VPackValue("push"));
+      detail::add_to_builder(*_builder.get(), "new");
+      std::invoke(std::forward<F>(f), *_builder);
+      _builder->close();
+      return std::move(*this);
+    }
+
     template<typename K, typename V>
     write_trx set(K&& k, V&& v) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
@@ -229,6 +240,30 @@ struct envelope {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("op", VPackValue("delete"));
+      _builder->close();
+      return std::move(*this);
+    }
+
+    template<typename K, typename F>
+    write_trx erase_object(K&& k, F&& f) {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      _builder->add("op", VPackValue("erase"));
+      detail::add_to_builder(*_builder.get(), "val");
+      std::invoke(std::forward<F>(f), *_builder);
+      _builder->close();
+      return std::move(*this);
+    }
+
+    template<typename K, typename oldF, typename newF>
+    write_trx replace(K&& k, oldF&& old, newF&& next) {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      _builder->add("op", VPackValue("replace"));
+      detail::add_to_builder(*_builder.get(), "val");
+      std::invoke(std::forward<oldF>(old), *_builder);
+      detail::add_to_builder(*_builder.get(), "new");
+      std::invoke(std::forward<newF>(next), *_builder);
       _builder->close();
       return std::move(*this);
     }
