@@ -61,21 +61,6 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     auto const [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
-    TRI_IF_FAILURE("MaterializeExecutor::all_fail_and_count") {
-      stats.incrFiltered();
-      continue;
-    }
-
-    TRI_IF_FAILURE("MaterializeExecutor::all_fail") {
-      continue;  //
-    }
-
-    TRI_IF_FAILURE("MaterializeExecutor::only_one") {
-      if (output.numRowsWritten() > 0) {
-        continue;
-      }
-    }
-
     LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
     written =
         _collection
