@@ -49,7 +49,7 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 namespace {
-inline void copyValueOver(arangodb::containers::HashSet<void*>& cache,
+inline void copyValueOver(arangodb::containers::HashSet<void const*>& cache,
                           AqlValue const& a, size_t rowNumber,
                           RegisterId::value_t col, SharedAqlItemBlockPtr& res) {
   if (a.requiresDestruction()) {
@@ -495,9 +495,10 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
 
   auto const numModifiedRows = _maxModifiedRowIndex;
 
-  auto copyRows = [&](arangodb::containers::HashSet<void*>& cache, auto type) {
+  auto copyRows = [&](arangodb::containers::HashSet<void const*>& cache,
+                      auto type) {
     constexpr bool checkShadowRows =
-        std::is_same<decltype(type), WithShadowRows>::value;
+        std::is_same_v<decltype(type), WithShadowRows>;
     cache.reserve(_valueCount.size());
 
     for (size_t row = 0; row < numModifiedRows; row++) {
@@ -529,13 +530,13 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
     }
   };
 
-  arangodb::containers::HashSet<void*> cache;
+  arangodb::containers::HashSet<void const*> cache;
 
   if (hasShadowRows()) {
-    // optimized version for when no shadow rows exist
+    // at least one shadow row exists. this is the slow path
     copyRows(cache, WithShadowRows{});
   } else {
-    // at least one shadow row exists. this is the slow path
+    // optimized version for when no shadow rows exist
     copyRows(cache, WithoutShadowRows{});
   }
   TRI_ASSERT(res->numRows() == numRows);
@@ -586,7 +587,7 @@ auto AqlItemBlock::slice(std::span<std::pair<size_t, size_t> const> ranges)
     numRows += to - from;
   }
 
-  arangodb::containers::HashSet<void*> cache;
+  arangodb::containers::HashSet<void const*> cache;
   cache.reserve(numRows * _numRegisters / 4 + 1);
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(numRows, _numRegisters)};
@@ -614,7 +615,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(
     RegisterCount newNumRegisters) const {
   TRI_ASSERT(_numRegisters <= newNumRegisters);
 
-  arangodb::containers::HashSet<void*> cache;
+  arangodb::containers::HashSet<void const*> cache;
   SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNumRegisters)};
   for (auto const& col : registers) {
     TRI_ASSERT(col.isRegularRegister() && col < _numRegisters);
@@ -632,7 +633,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
                                           size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  arangodb::containers::HashSet<void*> cache;
+  arangodb::containers::HashSet<void const*> cache;
   cache.reserve((to - from) * _numRegisters / 4 + 1);
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _numRegisters)};

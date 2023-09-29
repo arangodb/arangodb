@@ -294,6 +294,11 @@ const getCollectionShardsAndLogs = function (db, collection) {
   return {shards, shardsToLogs, logs};
 };
 
+const isIndexInCurrent = function (database, collectionId, indexId) {
+  const shards = lh.readAgencyValueAt(`Current/Collections/${database}/${collectionId}`);
+  return Object.values(shards).every(shard => shard.indexes.some(index => index.id === indexId));
+};
+
 exports.getLocalValue = getLocalValue;
 exports.getLocalIndex = getLocalIndex;
 exports.getAllLocalIndexes = getAllLocalIndexes;
@@ -316,3 +321,4 @@ exports.finishSnapshot = finishSnapshot;
 exports.allSnapshotsStatus = allSnapshotsStatus;
 exports.getSingleLogId = getSingleLogId;
 exports.getCollectionShardsAndLogs = getCollectionShardsAndLogs;
+exports.isIndexInCurrent = isIndexInCurrent;

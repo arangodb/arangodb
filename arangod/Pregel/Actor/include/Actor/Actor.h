@@ -144,7 +144,6 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   }
 
   template<typename R, typename C, typename Inspector>
-  requires Actorable<R, C>
   friend auto inspect(Inspector& f, Actor<R, C>& x);
 
  private:
@@ -245,7 +244,6 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
 
 // TODO make queue inspectable
 template<typename Runtime, typename Config, typename Inspector>
-requires Actorable<Runtime, Config>
 auto inspect(Inspector& f, Actor<Runtime, Config>& x) {
   return f.object(x).fields(f.field("pid", x.pid), f.field("state", x.state),
                             f.field("batchsize", x.batchSize));

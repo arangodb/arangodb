@@ -220,7 +220,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
   if (_info._outputRegisterId.isValid()) {
     AqlValue value(outDocument);
     AqlValueGuard guard(value, true);
-    output.moveValueInto(_info._outputRegisterId, input, guard);
+    output.moveValueInto(_info._outputRegisterId, input, &guard);
   }
 
   // RETURN OLD: current unsupported
@@ -228,7 +228,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
     TRI_ASSERT(options.returnOld);
     AqlValue value(oldDocument);
     AqlValueGuard guard(value, true);
-    output.moveValueInto(_info._outputOldRegisterId, input, guard);
+    output.moveValueInto(_info._outputOldRegisterId, input, &guard);
   }
 
   // RETURN NEW: current unsupported
@@ -236,7 +236,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
     TRI_ASSERT(options.returnNew);
     AqlValue value(newDocument);
     AqlValueGuard guard(value, true);
-    output.moveValueInto(_info._outputNewRegisterId, input, guard);
+    output.moveValueInto(_info._outputNewRegisterId, input, &guard);
   }
 }
 }  // namespace arangodb::aql
