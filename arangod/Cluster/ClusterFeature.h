@@ -271,6 +271,8 @@ class ClusterFeature : public ArangodFeature {
 
   std::mutex _connectivityCheckMutex;
   Scheduler::WorkHandle _connectivityCheck;
+  metrics::Counter* _connectivityCheckFailsCoordinators = nullptr;
+  metrics::Counter* _connectivityCheckFailsDBServers = nullptr;
 };
 
 }  // namespace arangodb

@@ -15,6 +15,11 @@ devel
   connectivity checks are executed with the specified frequency.
   If set to a value of zero, connectivity checks are disabled.
 
+  This change also adds the metrics
+  `arangodb_network_connectivity_failures_coordinators` and
+  `arangodb_network_connectivity_failures_dbservers`, which can be monitored
+  for detecting temporary or permanent connectivity issues.
+
 * Improve logging in case hot backup locks cannot be taken on coordinators.
 
 * Speed up incremental hotbackup upload by parallelization of

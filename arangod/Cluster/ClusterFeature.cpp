@@ -759,6 +759,12 @@ DECLARE_COUNTER(arangodb_potentially_dirty_document_reads_total,
                 "Number of document reads which could be dirty");
 DECLARE_COUNTER(arangodb_dirty_read_queries_total,
                 "Number of queries which could be doing dirty reads");
+DECLARE_COUNTER(arangodb_network_connectivity_failures_coordinators_total,
+                "Number of times the cluster-internal connectivity check for "
+                "Coordinators failed.");
+DECLARE_COUNTER(arangodb_network_connectivity_failures_dbservers_total,
+                "Number of times the cluster-internal connectivity check for "
+                "DB-Servers failed.");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -840,6 +846,14 @@ void ClusterFeature::start() {
         &_metrics.add(arangodb_potentially_dirty_document_reads_total{});
     _dirtyReadQueriesCounter =
         &_metrics.add(arangodb_dirty_read_queries_total{});
+  }
+
+  if (role == ServerState::RoleEnum::ROLE_DBSERVER ||
+      role == ServerState::RoleEnum::ROLE_COORDINATOR) {
+    _connectivityCheckFailsCoordinators = &_metrics.add(
+        arangodb_network_connectivity_failures_coordinators_total{});
+    _connectivityCheckFailsDBServers =
+        &_metrics.add(arangodb_network_connectivity_failures_dbservers_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -1219,6 +1233,9 @@ void ClusterFeature::runConnectivityCheck() {
   TRI_ASSERT(ServerState::instance()->isCoordinator() ||
              ServerState::instance()->isDBServer());
 
+  TRI_ASSERT(_connectivityCheckFailsCoordinators != nullptr);
+  TRI_ASSERT(_connectivityCheckFailsDBServers != nullptr);
+
   NetworkFeature const& nf = server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (!pool) {
@@ -1261,14 +1278,33 @@ void ClusterFeature::runConnectivityCheck() {
       break;
     }
     network::Response const& r = f.get();
+    TRI_ASSERT(r.destination.starts_with("server:"));
 
     if (r.ok()) {
       LOG_TOPIC("803c0", DEBUG, Logger::CLUSTER)
           << "connectivity check for endpoint " << r.destination
           << " successful";
-    } else
+    } else {
       LOG_TOPIC("43fc0", WARN, Logger::CLUSTER)
           << "unable to connect to endpoint " << r.destination << " within "
           << timeout << " seconds: " << r.combinedResult().errorMessage();
+
+      auto ep = std::string_view(r.destination);
+      if (!ep.starts_with("server:")) {
+        TRI_ASSERT(false);
+        continue;
+      }
+      // strip "server:" prefix
+      ep = ep.substr(strlen("server:"));
+      if (ep.starts_with("PRMR-")) {
+        // DB-Server
+        _connectivityCheckFailsDBServers->count();
+      } else if (ep.starts_with("CRDN-")) {
+        _connectivityCheckFailsCoordinators->count();
+      } else {
+        // unknown server type!
+        TRI_ASSERT(false);
+      }
+    }
   }
 }
