@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -752,6 +752,23 @@ function projectionsExtractionTestSuite () {
         assertEqual(query[3], results);
       });
     },
+
+    testExtractSecondSubAttribute : function () {
+      // While the index is created on [p.s, p.k], the query filters by p.k but only extracts p.s.
+      c.ensureIndex({ type: "persistent", fields: ["p.s", "p.k"]});
+      c.insert({"p": {"s": 1234, "k": "hund"}});
+      c.insert({"p": {"s": 1235, "k": "katze"}});
+      c.insert({"p": {"s": 1236, "k": "schnecke"}});
+      c.insert({"p": {"s": 1237, "k": "kuh"}});
+      let bindVars = {'@coll': cn};
+      let q = "" +
+        "FOR doc in @@coll " +
+        "FILTER doc.p.k == 'hund' " +
+        "SORT doc.p.s DESC " +
+        "RETURN doc.p.s";
+      let result = AQL_EXECUTE(q, bindVars);
+      assertEqual(result.json, [1234]);
+    }
   };
 }
 
