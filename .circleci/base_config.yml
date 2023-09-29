@@ -181,7 +181,7 @@ jobs:
         type: string
         default: ""
     docker:
-      - image: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.2-e5e06cdaa21
+      - image: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.2-ce513565e2f
     resource_class: << parameters.resource-class >>
     environment:
       GIT_SSH_COMMAND: ssh
@@ -334,7 +334,7 @@ jobs:
 
   run-cppcheck:
     docker:
-      - image: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.2-e5e06cdaa21
+      - image: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.2-ce513565e2f
     resource_class: medium+
     steps:
       - run:
