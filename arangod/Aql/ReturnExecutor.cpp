@@ -92,7 +92,7 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     TRI_IF_FAILURE("ReturnBlock::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+    output.moveValueInto(_infos.getOutputRegisterId(), input, &guard);
     output.advanceRow();
     if (_infos.doCount()) {
       stats.incrCounted();

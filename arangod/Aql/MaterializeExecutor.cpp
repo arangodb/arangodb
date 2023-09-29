@@ -41,31 +41,37 @@ template<bool localDocumentId>
 MaterializeExecutor<localDocumentId>::ReadContext::ReadContext(Infos& infos)
     : infos{&infos} {
   if constexpr (localDocumentId) {
-    callback = [this](LocalDocumentId /*id*/, VPackSlice doc) {
-      TRI_ASSERT(this->infos);
-      TRI_ASSERT(outputRow);
-      TRI_ASSERT(inputRow);
-      TRI_ASSERT(inputRow->isInitialized());
-      outputRow->moveValueInto(this->infos->outputMaterializedDocumentRegId(),
-                               *inputRow, doc);
-      return true;
-    };
+    callback = {
+        [this](LocalDocumentId /*id*/, VPackSlice doc) {
+          TRI_ASSERT(this->infos);
+          TRI_ASSERT(outputRow);
+          TRI_ASSERT(inputRow);
+          TRI_ASSERT(inputRow->isInitialized());
+          outputRow->moveValueInto(
+              this->infos->outputMaterializedDocumentRegId(), *inputRow, doc);
+          return true;
+        },
+        [this](LocalDocumentId /*id*/, std::unique_ptr<std::string>& doc) {
+          TRI_ASSERT(this->infos);
+          TRI_ASSERT(outputRow);
+          TRI_ASSERT(inputRow);
+          TRI_ASSERT(inputRow->isInitialized());
+          outputRow->moveValueInto(
+              this->infos->outputMaterializedDocumentRegId(), *inputRow, &doc);
+          return true;
+        }};
   }
 }
 
 template<bool localDocumentId>
 void MaterializeExecutor<localDocumentId>::ReadContext::ReadContext::moveInto(
-    std::unique_ptr<uint8_t[]> data) {
+    std::unique_ptr<std::string> data) {
   TRI_ASSERT(infos);
   TRI_ASSERT(outputRow);
   TRI_ASSERT(inputRow);
   TRI_ASSERT(inputRow->isInitialized());
-  AqlValue value{std::move(data)};
-  bool mustDestroy = true;
-  AqlValueGuard guard{value, mustDestroy};
-  // TODO(MBkkt) add moveValueInto overload for std::unique_ptr<uint8_t[]>
   outputRow->moveValueInto(infos->outputMaterializedDocumentRegId(), *inputRow,
-                           guard);
+                           &data);
 }
 
 template<bool localDocumentId>
@@ -232,7 +238,7 @@ MaterializeExecutor<localDocumentId>::produceRows(
     if constexpr (localDocumentId) {
       static_assert(isSingleCollection);
       LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
-      written = _collection->read(&_trx, id, callback, ReadOwnWrites::no).ok();
+      written = _collection->lookup(&_trx, id, callback, {}).ok();
     } else if (it != end) {
       if (it->executor != kInvalidRecord) {
         if (auto& value = _getCtx.values[it->executor]; value) {

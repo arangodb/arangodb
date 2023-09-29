@@ -205,7 +205,8 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
   }
 
   std::string documentId;  // temp buffer for _id of vertex
-  auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
+  auto cb = IndexIterator::makeDocumentCallbackF([&](LocalDocumentId token,
+                                                     VPackSlice slice) {
     Vertex<V, E> ventry;
     auto keySlice = transaction::helpers::extractKeyFromDocument(slice);
     auto key = keySlice.copyString();
@@ -235,7 +236,7 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
     }
     result->emplace(std::move(ventry));
     return true;
-  };
+  });
 
   while (cursor->nextDocument(cb, batchSize)) {
     if (config->vocbase()->server().isStopping()) {
@@ -269,8 +270,7 @@ void GraphLoader<V, E>::loadEdges(transaction::Methods& trx,
   if (graphFormat->estimatedEdgeSize() == 0) {
     // use covering index optimization
     while (cursor->nextCovering(
-        [&](LocalDocumentId const& /*token*/,
-            IndexIteratorCoveringData& covering) {
+        [&](LocalDocumentId /*token*/, IndexIteratorCoveringData& covering) {
           TRI_ASSERT(covering.isArray());
           std::string_view toValue =
               covering.at(info.coveringPosition()).stringView();
@@ -282,8 +282,8 @@ void GraphLoader<V, E>::loadEdges(transaction::Methods& trx,
         1000)) { /* continue loading */
     }
   } else {
-    while (cursor->nextDocument(
-        [&](LocalDocumentId const& /*token*/, VPackSlice slice) {
+    auto cb = IndexIterator::makeDocumentCallbackF(
+        [&](LocalDocumentId /*token*/, VPackSlice slice) {
           slice = slice.resolveExternal();
           std::string_view toValue =
               transaction::helpers::extractToFromDocument(slice).stringView();
@@ -294,8 +294,8 @@ void GraphLoader<V, E>::loadEdges(transaction::Methods& trx,
               *trx.transactionContext()->getVPackOptions(), slice, edge.data());
           vertex.addEdge(std::move(edge));
           return true;
-        },
-        1000)) { /* continue loading */
+        });
+    while (cursor->nextDocument(cb, 1000)) { /* continue loading */
       // Might overcount a bit;
     }
   }
