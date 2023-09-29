@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -71,11 +72,13 @@ void SharedQueryState::waitForAsyncWakeup() {
   if (!_valid) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+  LOG_DEVEL << "ENTERING WAITFORASYNCWAKEUP";
 
   TRI_ASSERT(!_wakeupCb);
   _cv.wait(guard, [&] { return _numWakeups > 0 || !_valid; });
   TRI_ASSERT(_numWakeups > 0 || !_valid);
   _numWakeups--;
+  LOG_DEVEL << "LEAVING WAITFORASYNCWAKEUP";
 }
 
 /// @brief setter for the continue handler:
