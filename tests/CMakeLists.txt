@@ -346,9 +346,13 @@ target_include_directories(arangodbtests PRIVATE
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbtests SYSTEM PRIVATE
-  ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
 )
+
+if (USE_V8)
+  target_include_directories(arangodbtests SYSTEM PRIVATE
+    ${V8_INTERNAL_INCLUDE_DIR})
+endif ()
 
 if (USE_V8)
   target_link_libraries(arangodbtests v8_interface)
