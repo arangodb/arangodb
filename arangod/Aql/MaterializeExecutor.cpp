@@ -39,19 +39,7 @@ namespace arangodb::aql {
 
 template<bool localDocumentId>
 MaterializeExecutor<localDocumentId>::ReadContext::ReadContext(Infos& infos)
-    : infos{&infos} {
-  if constexpr (localDocumentId) {
-    callback = [this](LocalDocumentId /*id*/, VPackSlice doc) {
-      TRI_ASSERT(this->infos);
-      TRI_ASSERT(outputRow);
-      TRI_ASSERT(inputRow);
-      TRI_ASSERT(inputRow->isInitialized());
-      outputRow->moveValueInto(this->infos->outputMaterializedDocumentRegId(),
-                               *inputRow, doc);
-      return true;
-    };
-  }
-}
+    : infos{&infos} {}
 
 template<bool localDocumentId>
 void MaterializeExecutor<localDocumentId>::ReadContext::ReadContext::moveInto(
@@ -68,20 +56,77 @@ void MaterializeExecutor<localDocumentId>::ReadContext::ReadContext::moveInto(
                            guard);
 }
 
-template<bool localDocumentId>
-MaterializeExecutor<localDocumentId>::MaterializeExecutor(
-    MaterializeExecutor<localDocumentId>::Fetcher& /*fetcher*/, Infos& infos)
-    : _buffer{infos.query().resourceMonitor()},
-      _trx{infos.query().newTrxContext()},
-      _readCtx{infos} {
-  if constexpr (localDocumentId) {
-    _collection = infos.collection()->getCollection()->getPhysical();
+MaterializeExecutorBase::MaterializeExecutorBase(Infos& infos)
+    : _trx{infos.query().newTrxContext()}, _infos(infos) {}
+
+MaterializeRocksDBExecutor::MaterializeRocksDBExecutor(Fetcher&, Infos& infos)
+    : MaterializeExecutorBase(infos),
+      _collection(infos.collection()->getCollection()->getPhysical()) {
+  TRI_ASSERT(_collection != nullptr);
+}
+
+std::tuple<ExecutorState, MaterializeStats, AqlCall>
+MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                        OutputAqlItemRow& output) {
+  MaterializeStats stats;
+
+  AqlCall upstreamCall{};
+  upstreamCall.fullCount = output.getClientCall().fullCount;
+
+  auto docRegId = _infos.inputNonMaterializedDocRegId();
+  while (inputRange.hasDataRow() && !output.isFull()) {
+    bool written = false;
+    auto const [state, input] =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+
+    TRI_IF_FAILURE("MaterializeExecutor::all_fail_and_count") {
+      stats.incrFiltered();
+      continue;
+    }
+
+    TRI_IF_FAILURE("MaterializeExecutor::all_fail") {
+      continue;  //
+    }
+
+    TRI_IF_FAILURE("MaterializeExecutor::only_one") {
+      if (output.numRowsWritten() > 0) {
+        continue;
+      }
+    }
+
+    LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
+    written =
+        _collection
+            ->read(
+                &_trx, id,
+                [&](LocalDocumentId /*id*/, VPackSlice doc) {
+                  TRI_ASSERT(input.isInitialized());
+                  output.moveValueInto(_infos.outputMaterializedDocumentRegId(),
+                                       input, doc);
+                  return true;
+                },
+                ReadOwnWrites::no)
+            .ok();
+
+    if (written) {
+      output.advanceRow();  // document found
+    } else {
+      stats.incrFiltered();  // document not found
+    }
   }
+
+  return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
 template<bool localDocumentId>
+MaterializeExecutor<localDocumentId>::MaterializeExecutor(Fetcher&,
+                                                          Infos& infos)
+    : MaterializeExecutorBase(infos),
+      _buffer(infos.query().resourceMonitor()) {}
+
+template<bool localDocumentId>
 void MaterializeExecutor<localDocumentId>::Buffer::fill(
-    AqlItemBlockInputRange& inputRange, ReadContext& ctx) {
+    AqlItemBlockInputRange& inputRange, RegisterId searchDocRegId) {
   TRI_ASSERT(!localDocumentId);
   docs.clear();
 
@@ -104,7 +149,6 @@ void MaterializeExecutor<localDocumentId>::Buffer::fill(
 
   docs.reserve(numDataRows);
   irs::ResolveBool(numRows != numDataRows, [&]<bool HasShadowRows>() {
-    auto searchDocRegId = ctx.infos->inputNonMaterializedDocRegId();
     for (size_t i = 0; i != numRows; ++i) {
       if constexpr (HasShadowRows) {
         if (block->isShadowRow(i)) {
@@ -160,12 +204,10 @@ MaterializeExecutor<localDocumentId>::produceRows(
 
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
-  if constexpr (localDocumentId) {
-    TRI_ASSERT(_collection);
-  } else {
+  {
     // buffering all LocalDocumentIds to avoid memory ping-pong
     // between iresearch and storage engine
-    _buffer.fill(inputRange, _readCtx);
+    _buffer.fill(inputRange, _infos.inputNonMaterializedDocRegId());
     auto it = _buffer.order.begin();
     auto end = _buffer.order.end();
     // We cannot call MultiGet from different snapshots
@@ -198,21 +240,11 @@ MaterializeExecutor<localDocumentId>::produceRows(
     };
     _getCtx.multiGet(_buffer.order.size(), fillKeys);
   }
-  auto [it, end] = [&] {
-    if constexpr (localDocumentId) {
-      return std::pair{nullptr, nullptr};
-    } else {
-      return std::pair{_buffer.docs.begin(), _buffer.docs.end()};
-    }
-  }();
-  auto& callback = _readCtx.callback;
-  auto docRegId = _readCtx.infos->inputNonMaterializedDocRegId();
+  auto [it, end] = std::pair{_buffer.docs.begin(), _buffer.docs.end()};
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool written = false;
     auto const [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    _readCtx.inputRow = &input;
-    _readCtx.outputRow = &output;
 
     TRI_IF_FAILURE("MaterializeExecutor::all_fail_and_count") {
       stats.incrFiltered();
@@ -229,14 +261,16 @@ MaterializeExecutor<localDocumentId>::produceRows(
       }
     }
 
-    if constexpr (localDocumentId) {
-      static_assert(isSingleCollection);
-      LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
-      written = _collection->read(&_trx, id, callback, ReadOwnWrites::no).ok();
-    } else if (it != end) {
+    if (it != end) {
       if (it->executor != kInvalidRecord) {
         if (auto& value = _getCtx.values[it->executor]; value) {
-          _readCtx.moveInto(std::move(value));
+          TRI_ASSERT(input.isInitialized());
+          AqlValue data{std::move(value)};
+          AqlValueGuard guard{data, true};
+          // TODO(MBkkt) add moveValueInto overload for
+          // std::unique_ptr<uint8_t[]>
+          output.moveValueInto(_infos.outputMaterializedDocumentRegId(), input,
+                               guard);
           written = true;
         }
       }
@@ -253,10 +287,9 @@ MaterializeExecutor<localDocumentId>::produceRows(
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
-template<bool localDocumentId>
 std::tuple<ExecutorState, MaterializeStats, size_t, AqlCall>
-MaterializeExecutor<localDocumentId>::skipRowsRange(
-    AqlItemBlockInputRange& inputRange, AqlCall& call) {
+MaterializeExecutorBase::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                       AqlCall& call) {
   size_t skipped = 0;
 
   // hasDataRow may only occur during fullCount due to previous overfetching

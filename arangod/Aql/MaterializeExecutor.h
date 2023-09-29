@@ -86,8 +86,39 @@ class MaterializerExecutorInfos {
   Collection const* _collection;
 };
 
+struct MaterializeExecutorBase {
+  using Infos = MaterializerExecutorInfos;
+  using Stats = MaterializeStats;
+
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
+
+  explicit MaterializeExecutorBase(Infos& infos);
+
+ protected:
+  transaction::Methods _trx;
+  Infos& _infos;
+};
+
+class MaterializeRocksDBExecutor : MaterializeExecutorBase {
+  struct Properties {
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Enable;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
+
+  MaterializeRocksDBExecutor(Fetcher&, Infos& infos);
+
+  std::tuple<ExecutorState, MaterializeStats, AqlCall> produceRows(
+      AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
+
+ private:
+  PhysicalCollection* _collection{};
+};
+
 template<bool localDocumentId>
-class MaterializeExecutor {
+class MaterializeExecutor : MaterializeExecutorBase {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
@@ -112,23 +143,7 @@ class MaterializeExecutor {
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
 
-  /**
-   * @brief skip the next Row of Aql Values.
-   *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to
-   * upstream
-   */
-  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
-      AqlItemBlockInputRange& inputRange, AqlCall& call);
-
-  void initializeCursor() noexcept {
-    // Does nothing but prevents the whole executor to be re-created.
-    _collection = {};
-  }
-
  private:
-  static constexpr bool isSingleCollection = localDocumentId;
-
   class ReadContext {
    public:
     explicit ReadContext(Infos& infos);
@@ -140,7 +155,6 @@ class MaterializeExecutor {
     Infos const* infos;
     InputAqlItemRow const* inputRow{};
     OutputAqlItemRow* outputRow{};
-    IndexIterator::DocumentCallback callback;
   };
 
   static constexpr size_t kInvalidRecord = std::numeric_limits<size_t>::max();
@@ -148,7 +162,7 @@ class MaterializeExecutor {
   struct Buffer {
     explicit Buffer(ResourceMonitor& monitor) noexcept : scope{monitor} {}
 
-    void fill(AqlItemBlockInputRange& inputRange, ReadContext& ctx);
+    void fill(AqlItemBlockInputRange& inputRange, RegisterId searchDocRegId);
 
     struct Record {
       explicit Record(iresearch::SearchDoc doc) noexcept
@@ -168,15 +182,8 @@ class MaterializeExecutor {
     std::vector<Record*> order;
   };
 
-  IRS_NO_UNIQUE_ADDRESS
-  irs::utils::Need<!localDocumentId, Buffer> _buffer;
-  IRS_NO_UNIQUE_ADDRESS
-  irs::utils::Need<!localDocumentId, MultiGetContext> _getCtx;
-
-  transaction::Methods _trx;
-  ReadContext _readCtx;
-  IRS_NO_UNIQUE_ADDRESS
-  irs::utils::Need<localDocumentId, PhysicalCollection*> _collection{};
+  Buffer _buffer;
+  MultiGetContext _getCtx;
 };
 
 }  // namespace arangodb::aql
