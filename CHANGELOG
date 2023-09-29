@@ -1,6 +1,10 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* Speed up incremental hotbackup upload by parallelization of
+  remote-to-remote copies. Tolerate deletion of old backups during
+  incremental upload.
+
 * Added the following metrics to improve observability of the in-memory cache
   subsystem:
   - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
