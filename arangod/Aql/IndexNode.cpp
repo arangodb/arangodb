@@ -589,7 +589,16 @@ void IndexNode::prepareProjections() {
   auto coversProjections = std::invoke([&]() {
     if (_indexCoversProjections.has_value()) {
       // On a DBServer, already got this information from the Coordinator.
-      return *_indexCoversProjections;
+      if (*_indexCoversProjections) {
+        // Although we have the information, we still need to call covers() for
+        // its side effects, as it sets some _projections fields.
+        auto coveringResult = idx->covers(_projections);
+        TRI_ASSERT(coveringResult)
+            << "Coordinator thinks the index is covering the projections, but "
+               "the DBServer found that it is not.";
+        return coveringResult;
+      }
+      return false;
     } else {
       // On the Coordinator, let's check.
       return idx->covers(_projections);
