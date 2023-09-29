@@ -2,7 +2,7 @@
  * Proxy Configuration (see routes array for details)
  */
 
-const ARANGODB_HOST = process.env.ARANGODB_HOST || "0.0.0.0";
+const ARANGODB_HOST = process.env.ARANGODB_HOST || "localhost";
 const ARANGODB_PORT = process.env.ARANGODB_PORT || 8529;
 
 if (isNaN(ARANGODB_PORT)) {
