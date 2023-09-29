@@ -576,7 +576,8 @@ auto DocumentLeaderState::createIndex(
       col.name(), std::make_shared<VPackBuilder>(indexInfo),
       std::move(progress));
 
-  if (indexInfo.get("unique").getBoolean()) {
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(indexInfo, "unique",
+                                                          false)) {
     // An unique index is always constructed first on the leader, and then
     // replicated. This is because the leader has to check for uniqueness
     // before every insert. If a follower would create the index first, it
