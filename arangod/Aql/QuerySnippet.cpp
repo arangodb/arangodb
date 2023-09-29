@@ -312,6 +312,10 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       _expansions.emplace_back(node, !isSatellite, isSatellite);
       break;
     }
+    case ExecutionNode::JOIN: {
+      _expansions.emplace_back(node, false, false);
+      break;
+    }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto viewNode =
           ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
@@ -603,7 +607,10 @@ auto QuerySnippet::prepareFirstBranch(
   std::unordered_map<std::string, std::set<ShardID>> myExpFinal;
 
   for (auto const& exp : _expansions) {
-    if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+    if (exp.node->getType() == ExecutionNode::JOIN) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "must handle JoinNode");
+    } else if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
       // Special case, VIEWs can serve more than 1 shard per Node.
       // We need to inject them all at once.
       auto* viewNode =

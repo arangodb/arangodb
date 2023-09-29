@@ -314,10 +314,10 @@ bool TransactionalCache<Hasher>::freeMemoryWhile(
 
     if (reclaimed > 0) {
       maybeMigrate |= guard.source()->slotEmptied();
-    }
 
-    if (!cb(reclaimed)) {
-      break;
+      if (!cb(reclaimed)) {
+        break;
+      }
     }
   }
 

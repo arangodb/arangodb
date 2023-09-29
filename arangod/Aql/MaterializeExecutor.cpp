@@ -37,8 +37,8 @@
 
 namespace arangodb::aql {
 
-template<typename T, bool localDocumentId>
-MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext(Infos& infos)
+template<bool localDocumentId>
+MaterializeExecutor<localDocumentId>::ReadContext::ReadContext(Infos& infos)
     : infos{&infos} {
   if constexpr (localDocumentId) {
     callback = [this](LocalDocumentId /*id*/, VPackSlice doc) {
@@ -53,9 +53,9 @@ MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext(Infos& infos)
   }
 }
 
-template<typename T, bool localDocumentId>
-void MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext::
-    moveInto(std::unique_ptr<uint8_t[]> data) {
+template<bool localDocumentId>
+void MaterializeExecutor<localDocumentId>::ReadContext::ReadContext::moveInto(
+    std::unique_ptr<uint8_t[]> data) {
   TRI_ASSERT(infos);
   TRI_ASSERT(outputRow);
   TRI_ASSERT(inputRow);
@@ -68,15 +68,19 @@ void MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext::
                            guard);
 }
 
-template<typename T, bool localDocumentId>
-MaterializeExecutor<T, localDocumentId>::MaterializeExecutor(
-    MaterializeExecutor<T, localDocumentId>::Fetcher& /*fetcher*/, Infos& infos)
+template<bool localDocumentId>
+MaterializeExecutor<localDocumentId>::MaterializeExecutor(
+    MaterializeExecutor<localDocumentId>::Fetcher& /*fetcher*/, Infos& infos)
     : _buffer{infos.query().resourceMonitor()},
       _trx{infos.query().newTrxContext()},
-      _readCtx{infos} {}
+      _readCtx{infos} {
+  if constexpr (localDocumentId) {
+    _collection = infos.collection()->getCollection()->getPhysical();
+  }
+}
 
-template<typename T, bool localDocumentId>
-void MaterializeExecutor<T, localDocumentId>::Buffer::fill(
+template<bool localDocumentId>
+void MaterializeExecutor<localDocumentId>::Buffer::fill(
     AqlItemBlockInputRange& inputRange, ReadContext& ctx) {
   TRI_ASSERT(!localDocumentId);
   docs.clear();
@@ -148,20 +152,16 @@ void MaterializeExecutor<T, localDocumentId>::Buffer::fill(
   }
 }
 
-template<typename T, bool localDocumentId>
+template<bool localDocumentId>
 std::tuple<ExecutorState, MaterializeStats, AqlCall>
-MaterializeExecutor<T, localDocumentId>::produceRows(
+MaterializeExecutor<localDocumentId>::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   MaterializeStats stats;
 
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
   if constexpr (localDocumentId) {
-    if (!_collection) {
-      _collection = _trx.documentCollection(_readCtx.infos->collectionSource())
-                        ->getPhysical();
-      TRI_ASSERT(_collection);
-    }
+    TRI_ASSERT(_collection);
   } else {
     // buffering all LocalDocumentIds to avoid memory ping-pong
     // between iresearch and storage engine
@@ -253,9 +253,9 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
-template<typename T, bool localDocumentId>
+template<bool localDocumentId>
 std::tuple<ExecutorState, MaterializeStats, size_t, AqlCall>
-MaterializeExecutor<T, localDocumentId>::skipRowsRange(
+MaterializeExecutor<localDocumentId>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   size_t skipped = 0;
 
@@ -275,11 +275,7 @@ MaterializeExecutor<T, localDocumentId>::skipRowsRange(
   return {inputRange.upstreamState(), MaterializeStats{}, skipped, call};
 }
 
-template class MaterializeExecutor<void, false>;
-template class MaterializeExecutor<std::string const&, false>;
-template class MaterializeExecutor<std::string const&, true>;
-
-template class MaterializerExecutorInfos<void>;
-template class MaterializerExecutorInfos<std::string const&>;
+template class MaterializeExecutor<false>;
+template class MaterializeExecutor<true>;
 
 }  // namespace arangodb::aql

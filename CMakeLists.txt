@@ -1391,6 +1391,6 @@ if (USE_ENTERPRISE)
 endif ()
 
 add_custom_target(arangodb
-   DEPENDS arangod arangotools)
+   DEPENDS arangod client-tools)
 
 add_subdirectory(utils/gdb-pretty-printers/immer/test)

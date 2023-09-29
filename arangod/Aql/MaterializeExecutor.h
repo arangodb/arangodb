@@ -48,32 +48,17 @@ class InputAqlItemRow;
 class RegisterInfos;
 template<BlockPassthrough>
 class SingleRowFetcher;
+struct Collection;
 
-template<typename T>
-class CollectionNameHolder {
+class MaterializerExecutorInfos {
  public:
-  explicit CollectionNameHolder(std::string_view name) noexcept
-      : _collectionSource{name} {}
-
-  auto collectionSource() const { return _collectionSource; }
-
- protected:
-  std::string_view _collectionSource;
-};
-
-template<>
-class CollectionNameHolder<void> {};
-
-template<typename T>
-class MaterializerExecutorInfos : public CollectionNameHolder<T> {
- public:
-  template<class... _Types>
   MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
-                            aql::QueryContext& query, _Types&&... Args)
-      : CollectionNameHolder<T>(Args...),
-        _inNonMaterializedDocRegId(inNmDocId),
+                            aql::QueryContext& query,
+                            Collection const* collection)
+      : _inNonMaterializedDocRegId(inNmDocId),
         _outMaterializedDocumentRegId(outDocRegId),
-        _query(query) {}
+        _query(query),
+        _collection(collection) {}
 
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
@@ -90,15 +75,18 @@ class MaterializerExecutorInfos : public CollectionNameHolder<T> {
 
   aql::QueryContext& query() const noexcept { return _query; }
 
+  Collection const* collection() const noexcept { return _collection; }
+
  private:
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
   /// @brief register to store materialized document
   RegisterId const _outMaterializedDocumentRegId;
   aql::QueryContext& _query;
+  Collection const* _collection;
 };
 
-template<typename T, bool localDocumentId>
+template<bool localDocumentId>
 class MaterializeExecutor {
  public:
   struct Properties {
@@ -108,7 +96,7 @@ class MaterializeExecutor {
         BlockPassthrough::Disable;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = MaterializerExecutorInfos<T>;
+  using Infos = MaterializerExecutorInfos;
   using Stats = MaterializeStats;
 
   MaterializeExecutor(MaterializeExecutor&&) = default;
@@ -139,7 +127,7 @@ class MaterializeExecutor {
   }
 
  private:
-  static constexpr bool isSingleCollection = !std::is_void_v<T>;
+  static constexpr bool isSingleCollection = localDocumentId;
 
   class ReadContext {
    public:
