@@ -45,110 +45,110 @@ function ahuacatlDuplicateAttributesTestSuite () {
 
     testInsertDuplicate : function () {
       let query = "INSERT { 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 } INTO @@collection RETURN NEW";
-      let result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertEqual([{ a: 1, "": 0 }], result.json.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      let result = db._query(query, { "@collection" : cn }).toArray();
+      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
-      result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertMatch(/"a":1/, result.json[0]);
-      assertNotMatch(/"a":2/, result.json[0]);
-      assertMatch(/"":0/, result.json[0]);
-      assertNotMatch(/"":2/, result.json[0]);
+      result = db._query(query, { "@collection" : cn }).toArray();
+      assertMatch(/"a":1/, result[0]);
+      assertNotMatch(/"a":2/, result[0]);
+      assertMatch(/"":0/, result[0]);
+      assertNotMatch(/"":2/, result[0]);
     },
     
     testInsertDuplicateDynamic : function () {
       let query = "INSERT NOOPT({ 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 }) INTO @@collection RETURN NEW";
-      let result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertEqual([{ a: 1, "": 0 }], result.json.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      let result = db._query(query, { "@collection" : cn }).toArray();
+      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
-      result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertMatch(/"a":1/, result.json[0]);
-      assertNotMatch(/"a":2/, result.json[0]);
-      assertMatch(/"":0/, result.json[0]);
-      assertNotMatch(/"":2/, result.json[0]);
+      result = db._query(query, { "@collection" : cn }).toArray();
+      assertMatch(/"a":1/, result[0]);
+      assertNotMatch(/"a":2/, result[0]);
+      assertMatch(/"":0/, result[0]);
+      assertNotMatch(/"":2/, result[0]);
     },
 
     testUpdateDuplicate : function () {
       db[cn].insert({ _key: "peng", a: 9, "": 3, b: 3 });
 
       let query = "UPDATE 'peng' WITH { 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 } INTO @@collection RETURN NEW";
-      let result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertEqual([{ a: 1, "": 0, b: 3 }], result.json.map(function(doc) { return { a: doc.a, b: doc.b, "": doc[""] }; }));
+      let result = db._query(query, { "@collection" : cn }).toArray();
+      assertEqual([{ a: 1, "": 0, b: 3 }], result.map(function(doc) { return { a: doc.a, b: doc.b, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
-      result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertMatch(/"a":1/, result.json[0]);
-      assertNotMatch(/"a":2/, result.json[0]);
-      assertMatch(/"":0/, result.json[0]);
-      assertNotMatch(/"":2/, result.json[0]);
+      result = db._query(query, { "@collection" : cn }).toArray();
+      assertMatch(/"a":1/, result[0]);
+      assertNotMatch(/"a":2/, result[0]);
+      assertMatch(/"":0/, result[0]);
+      assertNotMatch(/"":2/, result[0]);
     },
     
     testUpdateDuplicateDynamic : function () {
       db[cn].insert({ _key: "peng", a: 9, "": 3, b: 3 });
 
       let query = "UPDATE 'peng' WITH NOOPT({ 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 }) INTO @@collection RETURN NEW";
-      let result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertEqual([{ a: 1, "": 0, b: 3 }], result.json.map(function(doc) { return { a: doc.a, b: doc.b, "": doc[""] }; }));
+      let result = db._query(query, { "@collection" : cn }).toArray();
+      assertEqual([{ a: 1, "": 0, b: 3 }], result.map(function(doc) { return { a: doc.a, b: doc.b, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
-      result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertMatch(/"a":1/, result.json[0]);
-      assertNotMatch(/"a":2/, result.json[0]);
-      assertMatch(/"":0/, result.json[0]);
-      assertNotMatch(/"":2/, result.json[0]);
+      result = db._query(query, { "@collection" : cn }).toArray();
+      assertMatch(/"a":1/, result[0]);
+      assertNotMatch(/"a":2/, result[0]);
+      assertMatch(/"":0/, result[0]);
+      assertNotMatch(/"":2/, result[0]);
     },
     
     testReplaceDuplicate : function () {
       db[cn].insert({ _key: "peng", a: 9, "": 3 });
 
       let query = "REPLACE 'peng' WITH { 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 } INTO @@collection RETURN NEW";
-      let result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertEqual([{ a: 1, "": 0 }], result.json.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      let result = db._query(query, { "@collection" : cn }).toArray();
+      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
-      result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertMatch(/"a":1/, result.json[0]);
-      assertNotMatch(/"a":2/, result.json[0]);
-      assertMatch(/"":0/, result.json[0]);
-      assertNotMatch(/"":2/, result.json[0]);
+      result = db._query(query, { "@collection" : cn }).toArray();
+      assertMatch(/"a":1/, result[0]);
+      assertNotMatch(/"a":2/, result[0]);
+      assertMatch(/"":0/, result[0]);
+      assertNotMatch(/"":2/, result[0]);
     },
     
     testReplaceDuplicateDynamic : function () {
       db[cn].insert({ _key: "peng", a: 9, "": 3 });
 
       let query = "REPLACE 'peng' WITH NOOPT({ 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 }) INTO @@collection RETURN NEW";
-      let result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertEqual([{ a: 1, "": 0 }], result.json.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      let result = db._query(query, { "@collection" : cn }).toArray();
+      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
-      result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertMatch(/"a":1/, result.json[0]);
-      assertNotMatch(/"a":2/, result.json[0]);
-      assertMatch(/"":0/, result.json[0]);
-      assertNotMatch(/"":2/, result.json[0]);
+      result = db._query(query, { "@collection" : cn }).toArray();
+      assertMatch(/"a":1/, result[0]);
+      assertNotMatch(/"a":2/, result[0]);
+      assertMatch(/"":0/, result[0]);
+      assertNotMatch(/"":2/, result[0]);
     },
     
     testResultsDuplicate : function () {
       let query = "RETURN { 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 }";
-      let result = AQL_EXECUTE(query);
-      assertEqual([{ a: 1, "": 0 }], result.json.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      let result = db._query(query).toArray();
+      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
     },
     
     testResultsDuplicateDynamic : function () {
       let query = "RETURN NOOPT({ 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 })";
-      let result = AQL_EXECUTE(query);
-      assertEqual([{ a: 1, "": 0 }], result.json.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      let result = db._query(query).toArray();
+      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
     },
 
     testResultsDuplicateMerge : function () {
       db[cn].insert({ _key: "peng", a: 1 });
 
       let query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(MERGE(doc, { a: 2, a: 3 }))";
-      let result = AQL_EXECUTE(query, { "@collection" : cn });
-      assertMatch(/"a":2/, result.json[0]);
-      assertNotMatch(/"a":1/, result.json[0]);
-      assertNotMatch(/"a":3/, result.json[0]);
+      let result = db._query(query, { "@collection" : cn }).toArray();
+      assertMatch(/"a":2/, result[0]);
+      assertNotMatch(/"a":1/, result[0]);
+      assertNotMatch(/"a":3/, result[0]);
     },
     
   };

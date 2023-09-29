@@ -38,12 +38,14 @@ function ahuacatlDynamicAttributesTestSuite () {
 
   function checkResult(query, expected) {
     let q = "RETURN NOOPT(" + query + ")";
-    assertEqual(expected, AQL_EXECUTE(q).json[0]);
-    assertEqual("simple", AQL_EXPLAIN(q).plan.nodes[1].expressionType);
+    assertEqual(expected, db._query(q).toArray()[0]);
+    let stmt = db._createStatement(q);
+    assertEqual("simple", stmt.explain().plan.nodes[1].expressionType);
     
     q = "RETURN " + query;
-    assertEqual(expected, AQL_EXECUTE(q).json[0]);
-    assertEqual("simple", AQL_EXPLAIN(q).plan.nodes[1].expressionType);
+    assertEqual(expected, db._query(q).toArray()[0]);
+    stmt = db._createStatement(q);
+    assertEqual("simple", stmt.explain().plan.nodes[1].expressionType);
   }
 
   return {
@@ -64,8 +66,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesReservedNames : function () {
       var expected = { LET: "LET", FILTER: "FILTER", SORT: "SORT", FOR: "FOR", "return": "RETURN" };
-      var actual = AQL_EXECUTE("RETURN { [ UPPER('let') ] : 'LET', [ 'FILTER' ] : 'FILTER', [ PASSTHRU('SORT') ] : 'SORT', [ CONCAT('F', 'O', 'R') ] : 'FOR', [ PASSTHRU(LOWER('RETURN')) ] : 'RETURN' }");
-      assertEqual(expected, actual.json[0]);
+      var actual = db._query("RETURN { [ UPPER('let') ] : 'LET', [ 'FILTER' ] : 'FILTER', [ PASSTHRU('SORT') ] : 'SORT', [ CONCAT('F', 'O', 'R') ] : 'FOR', [ PASSTHRU(LOWER('RETURN')) ] : 'RETURN' }").toArray();
+      assertEqual(expected, actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,8 +86,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesWhitespacePassthru : function () {
       var expected = { "1" : "one", " 1" : "one-1", "1 " : "1-one", " 1 " : "one-1-one" };
-      var actual = AQL_EXECUTE("RETURN { [ PASSTHRU('1') ] : 'one', [ PASSTHRU(' 1') ] : 'one-1', [ PASSTHRU('1 ') ] : '1-one', [ PASSTHRU(' 1 ') ] : 'one-1-one' }");
-      assertEqual(expected, actual.json[0]);
+      var actual = db._query("RETURN { [ PASSTHRU('1') ] : 'one', [ PASSTHRU(' 1') ] : 'one-1', [ PASSTHRU('1 ') ] : '1-one', [ PASSTHRU(' 1 ') ] : 'one-1-one' }").toArray();
+      assertEqual(expected, actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,8 +96,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesSpecialCharacters : function () {
       var expected = { "" : "empty", " " : "space", "  " : "two", "_" : "underscore", "\\" : "backslash", "\n" : "linebreak", "\t" : "tab!", "$" : "dollar", "1" : "one" };
-      var actual = AQL_EXECUTE("RETURN { [ '' ] : 'empty', [ ' ' ] : 'space', [ '  ' ] : 'two', [ '_' ] : 'underscore', [ '\\\\'] : 'backslash', '\\n' : 'linebreak', '\\t' : 'tab!', '$' : 'dollar', '1' : 'one' }");
-      assertEqual(expected, actual.json[0]);
+      var actual = db._query("RETURN { [ '' ] : 'empty', [ ' ' ] : 'space', [ '  ' ] : 'two', [ '_' ] : 'underscore', [ '\\\\'] : 'backslash', '\\n' : 'linebreak', '\\t' : 'tab!', '$' : 'dollar', '1' : 'one' }").toArray();
+      assertEqual(expected, actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,8 +106,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesWithBindParameterLikeNames : function () {
       var expected = { "@abc": "abc", "@@a": "a", "@bc": "bc", "@ax": "ax" };
-      var actual = AQL_EXECUTE("RETURN { [ '@abc' ] : 'abc', [ '@@a' ] : 'a', [ CONCAT('@', 'bc') ] : 'bc', [ PASSTHRU('@ax') ] : 'ax' }");
-      assertEqual(expected, actual.json[0]);
+      var actual = db._query("RETURN { [ '@abc' ] : 'abc', [ '@@a' ] : 'a', [ CONCAT('@', 'bc') ] : 'bc', [ PASSTHRU('@ax') ] : 'ax' }").toArray();
+      assertEqual(expected, actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,8 +116,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesWithBindParameters : function () {
       var expected = { "bind-abc": "xabc", "bind-a": "xa", "bind-bcde": "xbcde", "bind-ax": "xax" };
-      var actual = AQL_EXECUTE("RETURN { [ @abc ] : 'xabc', [ @a ] : 'xa', [ CONCAT(@bc, 'de') ] : 'xbcde', [ PASSTHRU(@ax) ] : 'xax' }", { abc: "bind-abc", "a" : "bind-a", "bc" : "bind-bc", "ax" : "bind-ax" });
-      assertEqual(expected, actual.json[0]);
+      var actual = db._query("RETURN { [ @abc ] : 'xabc', [ @a ] : 'xa', [ CONCAT(@bc, 'de') ] : 'xbcde', [ PASSTHRU(@ax) ] : 'xax' }", { abc: "bind-abc", "a" : "bind-a", "bc" : "bind-bc", "ax" : "bind-ax" }).toArray();
+      assertEqual(expected, actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,8 +126,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesUmlaut : function () {
       var expected = { "KÖTÖR": "kötör", "trötör": "tröt!", "mÄgensÄftwürzgemösch": "möglich", "FöR": "FöR", "sörtierung": "sörtierung" };
-      var actual = AQL_EXECUTE("RETURN { [ UPPER('kötör') ] : 'kötör', [ 'trötör' ] : 'tröt!', [ PASSTHRU('mÄgensÄftwürzgemösch') ] : 'möglich', [ CONCAT('F', 'ö', 'R') ] : 'FöR', [ PASSTHRU(LOWER('SÖRTIERUNG')) ] : 'sörtierung' }");
-      assertEqual(expected, actual.json[0]);
+      var actual = db._query("RETURN { [ UPPER('kötör') ] : 'kötör', [ 'trötör' ] : 'tröt!', [ PASSTHRU('mÄgensÄftwürzgemösch') ] : 'möglich', [ CONCAT('F', 'ö', 'R') ] : 'FöR', [ PASSTHRU(LOWER('SÖRTIERUNG')) ] : 'sörtierung' }").toArray();
+      assertEqual(expected, actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,8 +166,8 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     testDynamicAttributesUnicodeMixed : function () {
       var expected = { "დახმარებისთვის" : 1, "töröö !" : 2, "ジャパン は、イギリスのニュー・ウェーヴバンド。デヴィッド" : 3 };
-      var actual = AQL_EXECUTE("RETURN { [ PASSTHRU('დახმარებისთვის') ] : 1, [ PASSTHRU('töröö !') ] : 2, [ PASSTHRU('ジャパン は、イギリスのニュー・ウェーヴバンド。デヴィッド') ] : 3 }");
-      assertEqual(expected, actual.json[0]);
+      var actual = db._query("RETURN { [ PASSTHRU('დახმარებისთვის') ] : 1, [ PASSTHRU('töröö !') ] : 2, [ PASSTHRU('ジャパン は、イギリスのニュー・ウェーヴバンド。デヴィッド') ] : 3 }").toArray();
+      assertEqual(expected, actual[0]);
     },
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,8 +222,8 @@ function ahuacatlDynamicAttributesTestSuite () {
         expected.push(doc);
       }
       
-      let actual = AQL_EXECUTE("FOR i IN 1..100 RETURN { [ CONCAT('test-value-', i) ] : i }");
-      assertEqual(expected, actual.json);
+      let actual = db._query("FOR i IN 1..100 RETURN { [ CONCAT('test-value-', i) ] : i }").toArray();
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,8 +243,8 @@ function ahuacatlDynamicAttributesTestSuite () {
         doc2["two-42"] = 42;
         expected.push(doc2);
       }
-      var actual = AQL_EXECUTE("FOR i IN 1..10 FOR j IN [ 23, 42 ] RETURN { [ CONCAT('one-', i) ] : i, [ CONCAT('two-', j) ] : j }");
-      assertEqual(expected, actual.json);
+      var actual = db._query("FOR i IN 1..10 FOR j IN [ 23, 42 ] RETURN { [ CONCAT('one-', i) ] : i, [ CONCAT('two-', j) ] : j }").toArray();
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,8 +265,8 @@ function ahuacatlDynamicAttributesTestSuite () {
         lastone: "done"
       };
 
-      var actual = AQL_EXECUTE("RETURN { [ 'foo' ] : 'bar', [ CONCAT('baz', 'bar') ] : { foo2: 'foobar', [ 'bazbar' ] : { [ 1 + 1 ] : 42, [ 2 + 2 ] : 23 }, [ UPPER('bazbar') ] : LOWER('FOOFOOFOO') }, [ CONCAT('last', 'one') ] : 'done' }");
-      assertEqual(expected, actual.json[0]);
+      var actual = db._query("RETURN { [ 'foo' ] : 'bar', [ CONCAT('baz', 'bar') ] : { foo2: 'foobar', [ 'bazbar' ] : { [ 1 + 1 ] : 42, [ 2 + 2 ] : 23 }, [ UPPER('bazbar') ] : LOWER('FOOFOOFOO') }, [ CONCAT('last', 'one') ] : 'done' }").toArray();
+      assertEqual(expected, actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,8 +285,8 @@ function ahuacatlDynamicAttributesTestSuite () {
         }
         expected.push(doc);
       }
-      var actual = AQL_EXECUTE("FOR i IN 1..100 RETURN { [ i < 50 ? CONCAT('whatever', i) : CONCAT(i, 'something-completely-different') ] : i < 50 ? i : i * 2 }");
-      assertEqual(expected, actual.json);
+      var actual = db._query("FOR i IN 1..100 RETURN { [ i < 50 ? CONCAT('whatever', i) : CONCAT(i, 'something-completely-different') ] : i < 50 ? i : i * 2 }").toArray();
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,9 +305,18 @@ function ahuacatlDynamicAttributesTestSuite () {
         }
         expected.push(doc);
       }
-      var plan = AQL_EXPLAIN("FOR i IN 1..100 RETURN { [ i < 50 ? CONCAT('whatever', i) : CONCAT(i, 'something-completely-different') ] : i < 50 ? i : i * 2 }", { }, { verbosePlans: true }).plan;
-      var actual = AQL_EXECUTEJSON(plan);
-      assertEqual(expected, actual.json);
+      let query = "FOR i IN 1..100 RETURN { [ i < 50 ? CONCAT('whatever', i) : CONCAT(i, 'something-completely-different') ] : i < 50 ? i : i * 2 }";
+      let stmt = db._createStatement({query, bindVars: null, options: { verbosePlans: true }});
+
+      var plan = stmt.explain().plan;
+
+      let command = `
+        let data = ${JSON.stringify(plan)};
+        return AQL_EXECUTEJSON(data);
+      `;
+      var actual = arango.POST("/_admin/execute", command).json;
+
+      assertEqual(expected, actual);
     }
 
   };

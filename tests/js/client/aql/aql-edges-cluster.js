@@ -42,7 +42,8 @@ function ahuacatlQueryEdgesTestSuite () {
   var docs = { };
   
   var explain = function (query, params) {
-    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; });
+    let stmt = db._createStatement({query, params, options: { optimizer: { rules: [ "-all", "+use-indexes" ] } }});
+    return helper.getCompactPlan(stmt.explain()).map(function(node) { return node.type; });
   };
 
   return {
@@ -512,12 +513,12 @@ function ahuacatlQueryEdgesTestSuite () {
         "Fred->Jacob",
         "John->Fred",
         "Multi2->Multi3"
-      ], AQL_EXECUTE(query, bindParams).json);
+      ], db._query(query, bindParams).toArray());
       query = "FOR x IN @list FOR i IN " + relations.name() + " FILTER i._to == x SORT i.what RETURN i.what";
       assertEqual([
         "John->Fred",
         "Multi->Multi2"
-      ], AQL_EXECUTE(query, bindParams).json);
+      ], db._query(query, bindParams).toArray());
     }
 
 

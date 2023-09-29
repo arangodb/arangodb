@@ -44,21 +44,21 @@ function ahuacatlDocumentSuite () {
     },
     
     testDocumentEmptyKey : function () {
-      let res = AQL_EXECUTE("RETURN DOCUMENT('')").json;
+      let res = db._query("RETURN DOCUMENT('')").toArray();
       let doc = res[0];
       assertNull(doc);
       
-      res = AQL_EXECUTE("RETURN DOCUMENT('" + cn + "', '')").json;
+      res = db._query("RETURN DOCUMENT('" + cn + "', '')").toArray();
       doc = res[0];
       assertNull(doc);
     },
     
     testDocumentEmptyKeys : function () {
-      let res = AQL_EXECUTE("RETURN DOCUMENT(['', ''])").json;
+      let res = db._query("RETURN DOCUMENT(['', ''])").toArray();
       let doc = res[0];
       assertEqual([], doc);
       
-      res = AQL_EXECUTE("RETURN DOCUMENT('" + cn + "', ['', ''])").json;
+      res = db._query("RETURN DOCUMENT('" + cn + "', ['', ''])").toArray();
       doc = res[0];
       assertEqual([], doc);
     },
@@ -74,7 +74,7 @@ function ahuacatlDocumentSuite () {
         assertEqual(i, doc.value);
         assertEqual("test" + i, doc._key);
 
-        let res = AQL_EXECUTE("RETURN DOCUMENT('" + cn + "/test" + i + "')").json;
+        let res = db._query("RETURN DOCUMENT('" + cn + "/test" + i + "')").toArray();
         doc = res[0];
         assertEqual(i, doc.value);
         assertEqual("test" + i, doc._key);
@@ -92,7 +92,7 @@ function ahuacatlDocumentSuite () {
         assertEqual(i, doc.value);
         assertEqual("test" + i, doc._key);
 
-        let res = AQL_EXECUTE("RETURN DOCUMENT('" + cn + "/test" + i + "')").json;
+        let res = db._query("RETURN DOCUMENT('" + cn + "/test" + i + "')").toArray();
         doc = res[0];
         assertEqual(i, doc.value);
         assertEqual("test" + i, doc._key);
@@ -111,7 +111,7 @@ function ahuacatlDocumentSuite () {
         assertEqual(i, doc.value);
         assertEqual(key, doc._key);
 
-        let res = AQL_EXECUTE("RETURN DOCUMENT('" + cn + "/" + key + "')").json;
+        let res = db._query("RETURN DOCUMENT('" + cn + "/" + key + "')").toArray();
         doc = res[0];
         assertEqual(i, doc.value);
         assertEqual(key, doc._key);
@@ -130,7 +130,7 @@ function ahuacatlDocumentSuite () {
         assertEqual(i, doc.value);
         assertEqual(key, doc._key);
 
-        let res = AQL_EXECUTE("RETURN DOCUMENT('" + cn + "/" + key + "')").json;
+        let res = db._query("RETURN DOCUMENT('" + cn + "/" + key + "')").toArray();
         doc = res[0];
         assertEqual(i, doc.value);
         assertEqual(key, doc._key);
@@ -144,7 +144,7 @@ function ahuacatlDocumentSuite () {
         ids.push(c.insert({ value: i })._id);
       }
 
-      let res = AQL_EXECUTE("RETURN DOCUMENT(" + JSON.stringify(ids) + ")").json[0];
+      let res = db._query("RETURN DOCUMENT(" + JSON.stringify(ids) + ")").toArray()[0];
       ids.forEach(function(id, i) {
         let doc = c.document(id);
         assertEqual(i, doc.value);
@@ -161,7 +161,7 @@ function ahuacatlDocumentSuite () {
         ids.push(c.insert({ value: i })._id);
       }
 
-      let res = AQL_EXECUTE("RETURN DOCUMENT(" + JSON.stringify(ids) + ")").json[0];
+      let res = db._query("RETURN DOCUMENT(" + JSON.stringify(ids) + ")").toArray()[0];
       ids.forEach(function(id, i) {
         let doc = c.document(id);
         assertEqual(i, doc.value);
@@ -178,7 +178,7 @@ function ahuacatlDocumentSuite () {
         ids.push(c.insert({ value: i })._id);
       }
 
-      let res = AQL_EXECUTE("RETURN DOCUMENT(" + JSON.stringify(ids) + ")").json[0];
+      let res = db._query("RETURN DOCUMENT(" + JSON.stringify(ids) + ")").toArray()[0];
       ids.forEach(function(id, i) {
         let doc = c.document(id);
         assertEqual(i, doc.value);
@@ -195,7 +195,7 @@ function ahuacatlDocumentSuite () {
         ids.push(c.insert({ value: i })._id);
       }
 
-      let res = AQL_EXECUTE("RETURN DOCUMENT(" + JSON.stringify(ids) + ")").json[0];
+      let res = db._query("RETURN DOCUMENT(" + JSON.stringify(ids) + ")").toArray()[0];
       ids.forEach(function(id, i) {
         let doc = c.document(id);
         assertEqual(i, doc.value);
