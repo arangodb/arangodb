@@ -106,6 +106,16 @@ Manager::Manager(ManagerFeature& feature)
 
 Manager::~Manager() = default;
 
+void Manager::releaseTransactions() noexcept {
+  std::unique_lock<std::mutex> guard(_hotbackupMutex);
+  if (_hotbackupCommitLockHeld) {
+    LOG_TOPIC("eeddd", TRACE, Logger::TRANSACTIONS)
+        << "Releasing write lock to hold transactions.";
+    _hotbackupCommitLock.unlockWrite();
+    _hotbackupCommitLockHeld = false;
+  }
+}
+
 std::shared_ptr<CounterGuard> Manager::registerTransaction(
     TransactionId transactionId, bool isReadOnlyTransaction,
     bool isFollowerTransaction) {
