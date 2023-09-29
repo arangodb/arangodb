@@ -414,7 +414,8 @@ static void ExistsVocbaseVPack(
   bool extendedNames =
       vocbase->server().getFeature<DatabaseFeature>().extendedNames();
 
-  transaction::V8Context transactionContext(*vocbase, true);
+  auto origin = transaction::OperationOriginREST{"checking document existence"};
+  transaction::V8Context transactionContext(*vocbase, origin, true);
   VPackBuilder builder;
   std::shared_ptr<arangodb::LogicalCollection> collection(
       col, [](arangodb::LogicalCollection*) -> void {});
@@ -545,7 +546,8 @@ static void DocumentVocbaseCol(
   }
 
   VPackSlice search = searchBuilder.slice();
-  transaction::V8Context transactionContext(col->vocbase(), true);
+  auto origin = transaction::OperationOriginREST{"reading document(s)"};
+  transaction::V8Context transactionContext(col->vocbase(), origin, true);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
@@ -600,7 +602,8 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool extendedNames =
       vocbase.server().getFeature<DatabaseFeature>().extendedNames();
 
-  transaction::V8Context transactionContext(vocbase, true);
+  auto origin = transaction::OperationOriginREST{"reading document(s)"};
+  transaction::V8Context transactionContext(vocbase, origin, true);
   VPackBuilder builder;
   std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
@@ -735,7 +738,8 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                             // single document operations
 
   VPackSlice toRemove = searchBuilder.slice();
-  transaction::V8Context transactionContext(col->vocbase(), true);
+  auto origin = transaction::OperationOriginREST{"removing document(s)"};
+  transaction::V8Context transactionContext(col->vocbase(), origin, true);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::V8Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
@@ -806,7 +810,9 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool extendedNames =
       vocbase.server().getFeature<DatabaseFeature>().extendedNames();
 
-  transaction::V8Context transactionContext(vocbase, true);
+  auto origin = transaction::OperationOriginREST{"removing document(s)"};
+  ;
+  transaction::V8Context transactionContext(vocbase, origin, true);
   VPackBuilder builder;
   std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
@@ -918,7 +924,8 @@ static void JS_BinaryDocumentVocbaseCol(
   }
 
   VPackSlice search = searchBuilder.slice();
-  transaction::V8Context transactionContext(col->vocbase(), true);
+  auto origin = transaction::OperationOriginREST{"storing binary document"};
+  transaction::V8Context transactionContext(col->vocbase(), origin, true);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
@@ -985,10 +992,6 @@ static void JS_BinaryDocumentVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionDrop
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
@@ -1045,10 +1048,6 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsCollectionExists
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ExistsVocbaseVPack(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1057,10 +1056,6 @@ static void JS_ExistsVocbaseVPack(
   // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionFigures
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FiguresVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1078,9 +1073,10 @@ static void JS_FiguresVocbaseCol(
     details = TRI_ObjectToBoolean(isolate, args[0]);
   }
 
+  auto origin = transaction::OperationOriginREST{"extracing figures"};
   SingleCollectionTransaction trx(
-      transaction::V8Context::Create(collection->vocbase(), true), *collection,
-      AccessMode::Type::READ);
+      transaction::V8Context::create(collection->vocbase(), origin, true),
+      *collection, AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -1149,10 +1145,6 @@ static void JS_GetResponsibleShardVocbaseCol(
 
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionLoad
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1246,10 +1238,6 @@ static void JS_PlanIdVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionProperties
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_PropertiesVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1312,10 +1300,6 @@ static void JS_RemoveVocbaseCol(
   // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionRename
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RenameVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1531,8 +1515,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     }
   }
 
-  VPackSlice const update = updateBuilder.slice();
-  transaction::V8Context transactionContext(col->vocbase(), true);
+  VPackSlice update = updateBuilder.slice();
+  auto origin = transaction::OperationOriginREST{"modifying document(s)"};
+  transaction::V8Context transactionContext(col->vocbase(), origin, true);
 
   bool payloadIsArray = args[0]->IsArray();
   transaction::Options trxOpts;
@@ -1574,8 +1559,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsCollectionReplace
-/// Replace a document, collection method
+/// @brief Replace a document, collection method
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReplaceVocbaseCol(
@@ -1584,10 +1568,6 @@ static void JS_ReplaceVocbaseCol(
   ModifyVocbaseCol(TRI_VOC_DOCUMENT_OPERATION_REPLACE, args);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsCollectionUpdate
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UpdateVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1641,7 +1621,8 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   auto& vocbase = GetContextVocBase(isolate);
   bool extendedNames =
       vocbase.server().getFeature<DatabaseFeature>().extendedNames();
-  transaction::V8Context transactionContext(vocbase, true);
+  auto origin = transaction::OperationOriginREST{"modifying document(s)"};
+  transaction::V8Context transactionContext(vocbase, origin, true);
   VPackBuilder updateBuilder;
 
   {
@@ -1675,7 +1656,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  VPackSlice const update = updateBuilder.slice();
+  VPackSlice update = updateBuilder.slice();
 
   OperationResult opResult = (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE)
                                  ? trx.replace(collectionName, update, options)
@@ -1702,29 +1683,17 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentReplace
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ReplaceVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   ModifyVocbase(TRI_VOC_DOCUMENT_OPERATION_REPLACE, args);
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentUpdate
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_UpdateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   ModifyVocbase(TRI_VOC_DOCUMENT_OPERATION_UPDATE, args);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionRevision
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RevisionVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1969,8 +1938,9 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   trxOpts.delaySnapshot = !payloadIsArray;  // for now we only enable this for
                                             // single document operations
 
-  // load collection
-  transaction::V8Context transactionContext(collection->vocbase(), true);
+  auto origin = transaction::OperationOriginREST{"inserting document(s)"};
+  transaction::V8Context transactionContext(collection->vocbase(), origin,
+                                            true);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
@@ -2124,7 +2094,9 @@ static void JS_TruncateVocbaseCol(
   }
 
   {
-    auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
+    auto origin = transaction::OperationOriginREST{"truncating collection"};
+    auto ctx =
+        transaction::V8Context::create(collection->vocbase(), origin, true);
     SingleCollectionTransaction trx(ctx, *collection,
                                     AccessMode::Type::EXCLUSIVE);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
@@ -2155,10 +2127,6 @@ static void JS_TruncateVocbaseCol(
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionType
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2192,10 +2160,6 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(v8::Number::New(isolate, (int)type));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionUnload
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UnloadVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -2233,10 +2197,6 @@ static void JS_VersionVocbaseCol(
       v8::Number::New(isolate, static_cast<uint32_t>(collection->version())));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionDatabaseName
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CollectionVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -2277,10 +2237,6 @@ static void JS_CollectionVocbase(
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionDatabaseNameAll
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CollectionsVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -2444,20 +2400,12 @@ static void JS_CompletionsVocbase(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentRemove
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   RemoveVocbase(args);
   // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentName
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DocumentVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -2466,10 +2414,6 @@ static void JS_DocumentVocbase(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock documentsDocumentExists
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ExistsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ExistsVocbaseVPack(false, args);
@@ -2477,10 +2421,6 @@ static void JS_ExistsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionCount
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CountVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -2503,9 +2443,10 @@ static void JS_CountVocbaseCol(
   }
 
   auto& collectionName = col->name();
+  auto origin = transaction::OperationOriginREST{"counting documents"};
   SingleCollectionTransaction trx(
-      transaction::V8Context::Create(col->vocbase(), true), collectionName,
-      AccessMode::Type::READ);
+      transaction::V8Context::create(col->vocbase(), origin, true),
+      collectionName, AccessMode::Type::READ);
 
   Result res = trx.begin();
 

@@ -42,6 +42,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
+#include "Aql/JoinNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -1293,9 +1294,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
 
     auto outVar = ast->variables()->createTemporaryVariable();
     auto expression = std::make_unique<Expression>(ast, sorted);
-    ExecutionNode* calculationNode = new CalculationNode(
+    ExecutionNode* calculationNode = plan->createNode<CalculationNode>(
         plan.get(), plan->nextId(), std::move(expression), outVar);
-    plan->registerNode(calculationNode);
 
     // make the new node a parent of the original calculation node
     TRI_ASSERT(setter != nullptr);
@@ -2203,9 +2203,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
                 v.outVar, true, plan->getAst()->query().resourceMonitor()});
           }
 
-          auto sortNode =
-              new SortNode(plan.get(), plan->nextId(), sortElements, false);
-          plan->registerNode(sortNode);
+          auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
+                                                     sortElements, false);
 
           TRI_ASSERT(collectNode->hasParent());
           auto parent = collectNode->getFirstParent();
@@ -2242,9 +2241,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
               v.outVar, true, plan->getAst()->query().resourceMonitor()});
         }
 
-        auto sortNode =
-            new SortNode(newPlan.get(), newPlan->nextId(), sortElements, false);
-        newPlan->registerNode(sortNode);
+        auto sortNode = newPlan->createNode<SortNode>(
+            newPlan.get(), newPlan->nextId(), sortElements, false);
 
         TRI_ASSERT(newCollectNode->hasParent());
         auto parent = newCollectNode->getFirstParent();
@@ -2291,9 +2289,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
             v.inVar, true, plan->getAst()->query().resourceMonitor()});
       }
 
-      auto sortNode =
-          new SortNode(plan.get(), plan->nextId(), sortElements, true);
-      plan->registerNode(sortNode);
+      auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
+                                                 sortElements, true);
 
       TRI_ASSERT(collectNode->hasDependency());
       auto dep = collectNode->getFirstDependency();
@@ -3259,18 +3256,16 @@ struct SortToIndexNode final
         IndexIteratorOptions opts;
         opts.ascending = sortCondition.isAscending();
         opts.useCache = false;
-        auto newNode = std::make_unique<IndexNode>(
+        auto n = _plan->createNode<IndexNode>(
             _plan, _plan->nextId(), enumerateCollectionNode->collection(),
             outVariable, usedIndexes,
             false,  // here we could always assume false as there is no lookup
                     // condition here
             std::move(condition), opts);
 
-        auto n = newNode.release();
         enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
         enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan, *n);
 
-        _plan->registerNode(n);
         _plan->replaceNode(enumerateCollectionNode, n);
         _modified = true;
 
@@ -4664,13 +4659,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             aggregateVariables.emplace_back(AggregateVarInfo{
                 outVariable, collectNode->aggregateVariables()[0].inVar,
                 "LENGTH"});
-            auto dbCollectNode = new CollectNode(
+            auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 collectNode->groupVariables(), aggregateVariables, nullptr,
                 nullptr, std::vector<Variable const*>(),
                 collectNode->variableMap(), false);
-
-            plan->registerNode(dbCollectNode);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -4700,13 +4693,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             std::vector<GroupVarInfo> const groupVariables{
                 GroupVarInfo{out, groupVars[0].inVar}};
 
-            auto dbCollectNode = new CollectNode(
+            auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 groupVariables, collectNode->aggregateVariables(), nullptr,
                 nullptr, std::vector<Variable const*>(),
                 collectNode->variableMap(), true);
-
-            plan->registerNode(dbCollectNode);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -4761,13 +4752,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               outVars.emplace_back(GroupVarInfo{out, it.inVar});
             }
 
-            auto dbCollectNode = new CollectNode(
+            auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(), outVars,
                 dbServerAggVars, nullptr, nullptr,
                 std::vector<Variable const*>(), collectNode->variableMap(),
                 false);
-
-            plan->registerNode(dbCollectNode);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -5019,6 +5008,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::INDEX:
+        case EN::JOIN:
         case EN::TRAVERSAL:
         case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
@@ -5992,10 +5982,9 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      ExecutionNode* newNode = new CalculationNode(plan.get(), plan->nextId(),
-                                                   std::move(expr), outVar);
+      ExecutionNode* newNode = plan->createNode<CalculationNode>(
+          plan.get(), plan->nextId(), std::move(expr), outVar);
 
-      plan->registerNode(newNode);
       plan->replaceNode(cn, newNode);
       modified = true;
     }
@@ -6166,9 +6155,8 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
       auto astNode = remover.createReplacementNode(plan->getAst());
 
       auto expr = std::make_unique<Expression>(plan->getAst(), astNode);
-      ExecutionNode* newNode = new CalculationNode(plan.get(), plan->nextId(),
-                                                   std::move(expr), outVar);
-      plan->registerNode(newNode);
+      ExecutionNode* newNode = plan->createNode<CalculationNode>(
+          plan.get(), plan->nextId(), std::move(expr), outVar);
       plan->replaceNode(cn, newNode);
       modified = true;
     }
@@ -7427,14 +7415,13 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   opts.limit = limit;
   opts.evaluateFCalls = false;  // workaround to avoid evaluating "doc.geo"
   std::unique_ptr<Condition> condition(buildGeoCondition(plan, info));
-  auto inode = new IndexNode(plan, plan->nextId(), info.collection,
-                             info.collectionNodeOutVar,
-                             std::vector<transaction::Methods::IndexHandle>{
-                                 transaction::Methods::IndexHandle{info.index}},
-                             false,  // here we are not using inverted index so
-                                     // for sure no "whole" coverage
-                             std::move(condition), opts);
-  plan->registerNode(inode);
+  auto inode = plan->createNode<IndexNode>(
+      plan, plan->nextId(), info.collection, info.collectionNodeOutVar,
+      std::vector<transaction::Methods::IndexHandle>{
+          transaction::Methods::IndexHandle{info.index}},
+      false,  // here we are not using inverted index so
+              // for sure no "whole" coverage
+      std::move(condition), opts);
   plan->replaceNode(info.collectionNodeToReplace, inode);
 
   // remove expressions covered by our index
@@ -7603,6 +7590,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
@@ -7887,9 +7875,8 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
         auto expr =
             std::make_unique<Expression>(ast, ast->createNodeValueBool(true));
         Variable* outVariable = ast->variables()->createTemporaryVariable();
-        auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
-                                            std::move(expr), outVariable);
-        plan->registerNode(calcNode);
+        auto calcNode = plan->createNode<CalculationNode>(
+            plan.get(), plan->nextId(), std::move(expr), outVariable);
         plan->insertAfter(f, calcNode);
         // change the result value of the existing Return node
         TRI_ASSERT(root->getType() == EN::RETURN);
@@ -7904,8 +7891,8 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
         continue;
       }
 
-      auto limitNode = new LimitNode(plan.get(), plan->nextId(), 0, limitValue);
-      plan->registerNode(limitNode);
+      auto limitNode = plan->createNode<LimitNode>(plan.get(), plan->nextId(),
+                                                   0, limitValue);
       plan->insertAfter(f, limitNode);
       modified = true;
     }
@@ -9059,4 +9046,216 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
     plan.clearVarUsageComputed();
     plan.findVarUsage();
   }
+}
+
+void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
+                                       std::unique_ptr<ExecutionPlan> plan,
+                                       OptimizerRule const& rule) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, EN::INDEX, true);
+
+  bool modified = false;
+  if (nodes.size() >= 2) {
+    // not yet supported:
+    // - projections
+    // - post-filtering
+    // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache,
+    // waitForSync, limit, lookahead
+    // - reverse iteration
+    // - support from GatherNodes
+    auto nodeQualifies = [](IndexNode const& indexNode) {
+      if (indexNode.filter() != nullptr) {
+        // IndexNode has post-filter condition
+        return false;
+      }
+
+      if (indexNode.condition() == nullptr) {
+        // IndexNode does not have an index lookup condition
+        return false;
+      }
+
+      if (!indexNode.options().ascending) {
+        // reverse sort not yet supported
+        return false;
+      }
+
+      auto const& indexes = indexNode.getIndexes();
+      if (indexes.size() != 1) {
+        // must use exactly one index (otherwise this would be an OR condition)
+        return false;
+      }
+
+      auto const& index = indexes[0];
+      if (!index->isSorted()) {
+        // must be a sorted index
+        return false;
+      }
+
+      if (index->fields().size() != 1) {
+        // index on more than one attribute
+        return false;
+      }
+
+      if (index->hasExpansion()) {
+        // index uses expansion ([*]) operator
+        return false;
+      }
+
+      if (index->type() != Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+        // must be a persistent index. TODO: ask index if it supports join API.
+        return false;
+      }
+
+      return true;
+    };
+
+    // IndexNodes we already handled
+    containers::FlatHashSet<ExecutionNode const*> handled;
+
+    // for each IndexNode we found in the found, iterate over a potential
+    // chain of IndexNodes, from top to bottom
+    for (auto* n : nodes) {
+      auto* startNode = ExecutionNode::castTo<IndexNode*>(n);
+      // go to the first IndexNode in the chain, so we can start at the
+      // top.
+      while (true) {
+        auto* dep = startNode->getFirstDependency();
+        if (dep == nullptr || dep->getType() != EN::INDEX) {
+          break;
+        }
+        startNode = ExecutionNode::castTo<IndexNode*>(dep);
+      }
+
+      while (true) {
+        containers::SmallVector<IndexNode*, 8> candidates;
+        IndexNode* indexNode = startNode;
+
+        while (true) {
+          if (handled.contains(indexNode) || !nodeQualifies(*indexNode)) {
+            break;
+          }
+          candidates.emplace_back(indexNode);
+          auto* parent = indexNode->getFirstParent();
+          if (parent == nullptr || parent->getType() != EN::INDEX) {
+            break;
+          }
+          indexNode = ExecutionNode::castTo<IndexNode*>(parent);
+        }
+
+        if (candidates.size() >= 2) {
+          bool eligible = true;
+          size_t i = 0;
+          for (auto* c : candidates) {
+            if (i == 0) {
+              // first FOR loop. we expect it to not have any lookup condition
+              if (c->condition()->root() != nullptr) {
+                eligible = false;
+                break;
+              }
+            } else {
+              // follow-up FOR loop. we expect it to have a lookup condition
+              if (c->condition()->root() == nullptr) {
+                eligible = false;
+                break;
+              }
+              auto const* root = c->condition()->root();
+              if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_OR ||
+                  root->numMembers() != 1) {
+                eligible = false;
+                break;
+              }
+              root = root->getMember(0);
+              if (root == nullptr ||
+                  root->type != NODE_TYPE_OPERATOR_NARY_AND ||
+                  root->numMembers() != 1) {
+                eligible = false;
+                break;
+              }
+              root = root->getMember(0);
+              if (root == nullptr ||
+                  root->type != NODE_TYPE_OPERATOR_BINARY_EQ ||
+                  root->numMembers() != 2) {
+                eligible = false;
+                break;
+              }
+              auto* lhs = root->getMember(0);
+              auto* rhs = root->getMember(1);
+
+              auto matches = [](AstNode const* lhs, AstNode const* rhs,
+                                IndexNode const* i1, IndexNode const* i2) {
+                std::pair<Variable const*,
+                          std::vector<arangodb::basics::AttributeName>>
+                    usedVar;
+
+                if (!lhs->isAttributeAccessForVariable(
+                        usedVar, /*allowIndexedAccess*/ false)) {
+                  // lhs is not an attribute access
+                  return false;
+                }
+                if (usedVar.first != i1->outVariable() ||
+                    usedVar.second != i1->getIndexes()[0]->fields()[0]) {
+                  // lhs doesn't match i1's FOR loop index field
+                  return false;
+                }
+                // lhs matches i1's FOR loop index field
+                if (!rhs->isAttributeAccessForVariable(
+                        usedVar, /*allowIndexedAccess*/ false)) {
+                  // rhs is not an attribute access
+                  return false;
+                }
+                if (usedVar.first != i2->outVariable() ||
+                    usedVar.second != i2->getIndexes()[0]->fields()[0]) {
+                  // rhs doesn't match i2's FOR loop index field
+                  return false;
+                }
+                // rhs matches i2's FOR loop index field
+                return true;
+              };
+
+              if (!matches(lhs, rhs, c, candidates[i - 1]) &&
+                  !matches(lhs, rhs, candidates[i - 1], c)) {
+                eligible = false;
+                break;
+              }
+            }
+
+            if (!eligible) {
+              break;
+            }
+            ++i;
+          }
+
+          if (eligible) {
+            std::vector<JoinNode::IndexInfo> indexInfos;
+            indexInfos.reserve(candidates.size());
+            for (auto* c : candidates) {
+              indexInfos.emplace_back(
+                  JoinNode::IndexInfo{.collection = c->collection(),
+                                      .outVariable = c->outVariable(),
+                                      .condition = c->condition()->clone(),
+                                      .index = c->getIndexes()[0]});
+              handled.emplace(c);
+            }
+            JoinNode* jn = plan->createNode<JoinNode>(
+                plan.get(), plan->nextId(), std::move(indexInfos),
+                IndexIteratorOptions{});
+            plan->replaceNode(candidates[0], jn);
+            for (size_t i = 1; i < candidates.size(); ++i) {
+              plan->unlinkNode(candidates[i]);
+            }
+            modified = true;
+          }
+        }
+
+        // try starting from next start node
+        auto* parent = startNode->getFirstParent();
+        if (parent == nullptr || parent->getType() != EN::INDEX) {
+          break;
+        }
+        startNode = ExecutionNode::castTo<IndexNode*>(parent);
+      }
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
 }

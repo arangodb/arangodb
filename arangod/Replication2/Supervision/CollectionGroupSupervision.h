@@ -71,18 +71,39 @@ struct RemoveParticipantFromLog {
   LogId logId;
   ParticipantId participant;
 };
+struct UpdateCollectionPlan {
+  CollectionID cid;
+  agency::Collection::MutableProperties spec;
+};
+
+struct RemoveCollectionIndexPlan {
+  CollectionID cid;
+  arangodb::velocypack::SharedSlice index;
+};
+
+struct AddCollectionIndexPlan {
+  CollectionID cid;
+  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> index;
+  bool useIsBuilding;
+};
+
+struct IndexConvergedCurrent {
+  CollectionID cid;
+  arangodb::velocypack::SharedSlice index;
+};
+
 struct NoActionRequired {};
 struct NoActionPossible {
   std::string reason;
 };
 }  // namespace actions
 
-using Action =
-    std::variant<NoActionRequired, NoActionPossible, UpdateReplicatedLogConfig,
-                 UpdateConvergedVersion, DropCollectionPlan,
-                 DropCollectionGroup, AddCollectionToPlan,
-                 AddCollectionGroupToPlan, UpdateCollectionShardMap,
-                 AddParticipantToLog, RemoveParticipantFromLog>;
+using Action = std::variant<
+    NoActionRequired, NoActionPossible, UpdateReplicatedLogConfig,
+    UpdateConvergedVersion, DropCollectionPlan, DropCollectionGroup,
+    AddCollectionToPlan, AddCollectionGroupToPlan, UpdateCollectionShardMap,
+    AddParticipantToLog, RemoveParticipantFromLog, UpdateCollectionPlan,
+    RemoveCollectionIndexPlan, AddCollectionIndexPlan, IndexConvergedCurrent>;
 
 struct CollectionGroup {
   agency::CollectionGroupTargetSpecification target;

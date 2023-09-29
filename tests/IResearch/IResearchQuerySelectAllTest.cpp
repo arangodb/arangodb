@@ -78,8 +78,10 @@ class QuerySelectAll : public QueryTest {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-        {logicalCollection1->name()}, kEmpty, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        kEmpty, {logicalCollection1->name()}, kEmpty,
+        arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     size_t i = 0;

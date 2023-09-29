@@ -114,10 +114,9 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   }
 
   _docBuilder.clear();
+  auto cb = IndexIterator::makeDocumentCallback(_docBuilder);
   if (col->getPhysical()
-          ->lookupDocument(*_trx, idToken.localDocumentId(), _docBuilder,
-                           /*readCache*/ true, /*fillCache*/ true,
-                           ReadOwnWrites::no)
+          ->lookup(_trx, idToken.localDocumentId(), cb, {})
           .fail()) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("3acb3", ERR, arangodb::Logger::GRAPHS)
@@ -165,15 +164,15 @@ bool TraverserCache::appendVertex(std::string_view id,
   try {
     transaction::AllowImplicitCollectionsSwitcher disallower(
         _trx->state()->options(), _allowImplicitCollections);
-
-    Result res = _trx->documentFastPathLocal(
-        collectionName, id.substr(pos + 1),
-        [&](LocalDocumentId const&, VPackSlice doc) {
+    auto cb = IndexIterator::makeDocumentCallbackF(
+        [&](LocalDocumentId, VPackSlice doc) {
           ++_insertedDocuments;
           // copying...
           result.add(doc);
           return true;
         });
+    Result res =
+        _trx->documentFastPathLocal(collectionName, id.substr(pos + 1), cb);
 
     if (res.ok()) {
       return true;
@@ -241,12 +240,16 @@ bool TraverserCache::appendVertex(std::string_view id,
 
     Result res = _trx->documentFastPathLocal(
         collectionName, id.substr(pos + 1),
-        [&](LocalDocumentId const&, VPackSlice doc) {
-          ++_insertedDocuments;
-          // copying...
-          result = arangodb::aql::AqlValue(doc);
-          return true;
-        });
+        {[&](LocalDocumentId, VPackSlice doc) {
+           ++_insertedDocuments;
+           result = aql::AqlValue(doc);
+           return true;
+         },
+         [&](LocalDocumentId, std::unique_ptr<std::string>& doc) {
+           ++_insertedDocuments;
+           result = aql::AqlValue(doc);
+           return true;
+         }});
 
     if (res.ok()) {
       return true;

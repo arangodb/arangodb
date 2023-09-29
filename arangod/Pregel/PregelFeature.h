@@ -127,6 +127,7 @@ class PregelFeature final : public ArangodFeature {
                            options) override final;
   void start() override final;
   void beginShutdown() override final;
+  void stop() override final;
   void unprepare() override final;
 
   bool isStopping() const noexcept;

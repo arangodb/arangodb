@@ -21,13 +21,6 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <absl/strings/str_cat.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Options.h>
-#include <velocypack/Slice.h>
-
 #include "Methods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -55,11 +48,11 @@
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
+#include "Metrics/Counter.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
-#include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
@@ -73,6 +66,8 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/IndexesSnapshot.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Options.h"
 #include "Transaction/ReplicatedContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -85,7 +80,12 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
-#include <sstream>
+#include <absl/strings/str_cat.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::transaction;
@@ -270,13 +270,13 @@ Result buildRefusalResult(LogicalCollection const& collection,
                           std::string_view operation,
                           OperationOptions const& options,
                           std::string const& leader) {
-  std::stringstream msg;
-  msg << TRI_errno_string(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION)
-      << ": shard: " << collection.vocbase().name() << "/" << collection.name()
-      << ", operation: " << operation
-      << ", from: " << options.isSynchronousReplicationFrom
-      << ", current leader: " << leader;
-  return Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, msg.str());
+  return {TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,
+          absl::StrCat(TRI_errno_string(
+                           TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION),
+                       ": shard: ", collection.vocbase().name(), "/",
+                       collection.name(), ", operation: ", operation,
+                       ", from: ", options.isSynchronousReplicationFrom,
+                       ", current leader: ", leader)};
 }
 
 // wrap vector inside a static function to ensure proper initialization order
@@ -586,9 +586,8 @@ struct GetDocumentProcessor
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     } else {
       bool conflict = false;
-      res = _collection.getPhysical()->read(
-          &_methods, key,
-          [&](LocalDocumentId const&, VPackSlice doc) {
+      auto cb = IndexIterator::makeDocumentCallbackF(
+          [&](LocalDocumentId, VPackSlice doc) {
             if (!_options.ignoreRevs && value.isObject()) {
               RevisionId expectedRevision = RevisionId::fromSlice(value);
               if (expectedRevision.isSet()) {
@@ -612,8 +611,8 @@ struct GetDocumentProcessor
               _resultBuilder.add(VPackSlice::nullSlice());
             }
             return true;
-          },
-          ReadOwnWrites::no);
+          });
+      res = _collection.getPhysical()->lookup(&_methods, key, cb, {});
 
       if (conflict) {
         res.reset(TRI_ERROR_ARANGO_CONFLICT);
@@ -671,14 +670,41 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         _replicationType != Methods::ReplicationType::FOLLOWER;
 
     if (this->_value.isArray()) {
+      // we are processing an array of input values here.
       this->_resultBuilder.openArray();
 
+      // this result will initially be ok(), but it can be changed
+      // to TRI_ERROR_RESOURCE_LIMIT. once it is set to
+      // TRI_ERROR_RESOURCE_LIMIT, it won't change.
+      // the rationale for this is to abort all following operations
+      // in the batch quickly once we hit a resource limit (e.g.
+      // we exceed the maximum transaction size).
+      // this is safe as executing even more operations in a
+      // transaction that has already reached its resource limits
+      // won't make it better.
+      // on the plus side, quickly making all following operations
+      // fail will save us from repeatedly rolling back the following
+      // operations, which can be painfully slow for large write
+      // batches in RocksDB.
+      Result resourceRes;
+
       for (VPackSlice s : VPackArrayIterator(this->_value)) {
-        res = this->self().processValue(s, true);
+        if (resourceRes.fail()) {
+          res.reset(resourceRes);
+        } else {
+          res = this->self().processValue(s, true);
+        }
         if (res.fail()) {
+          if (res.is(TRI_ERROR_RESOURCE_LIMIT) && resourceRes.ok()) {
+            // change resourceRes from ok() to TRI_ERROR_RESOURCE_LIMIT
+            resourceRes.reset(res);
+          }
           createBabiesError(
               reportAllBabiesErrors ? &this->_resultBuilder : nullptr,
               errorCounter, res);
+          // unconditionally reset to global res(), as the API for
+          // batch operations always returns success even when individual
+          // operations fail
           res.reset();
         }
       }
@@ -889,9 +915,10 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
     if (_needToFetchOldDocument) {
       // need to read the full document, so that we can remove all
       // secondary index entries for it
-      res = _collection.getPhysical()->lookupDocument(
-          _methods, oldDocumentId, *_previousDocumentBuilder,
-          /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+      auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
+      res = _collection.getPhysical()->lookup(
+          &_methods, oldDocumentId, cb,
+          {.fillCache = false, .readOwnWrites = true});
 
       if (res.fail()) {
         return res;
@@ -1122,7 +1149,16 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         // if no overwriteMode is specified we default to Conflict
         _overwriteMode(options.isOverwriteModeSet()
                            ? options.overwriteMode
-                           : OperationOptions::OverwriteMode::Conflict) {}
+                           : OperationOptions::OverwriteMode::Conflict) {
+    if (_replicationType == Methods::ReplicationType::FOLLOWER &&
+        _overwriteMode == OperationOptions::OverwriteMode::Update) {
+      // we must turn any INSERT with overwriteMode UPDATE to overwriteMode
+      // REPLACE on followers. the reason is that the replication sends the full
+      // document as inserted on the leader, but it does not send any null
+      // attributes that were removed from the document during the UPDATE.
+      _overwriteMode = OperationOptions::OverwriteMode::Replace;
+    }
+  }
 
   auto processValue(VPackSlice value, bool isArray) -> Result {
     TRI_IF_FAILURE("insertLocal::fakeResult1") {  //
@@ -1254,9 +1290,10 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         // in case of unique constraint violation: (partially) update existing
         // document.
         previousDocumentBuilder->clear();
-        res = _collection.getPhysical()->lookupDocument(
-            _methods, oldDocumentId, *previousDocumentBuilder,
-            /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+        auto cb = IndexIterator::makeDocumentCallback(*previousDocumentBuilder);
+        res = _collection.getPhysical()->lookup(
+            &_methods, oldDocumentId, cb,
+            {.fillCache = false, .readOwnWrites = true});
 
         if (res.ok()) {
           TRI_ASSERT(previousDocumentBuilder->slice().isObject());
@@ -1463,9 +1500,10 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     if (_needToFetchOldDocument) {
       // need to read the full document, so that we can remove all
       // secondary index entries for it
-      res = _collection.getPhysical()->lookupDocument(
-          _methods, oldDocumentId, *_previousDocumentBuilder,
-          /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+      auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
+      res = _collection.getPhysical()->lookup(
+          &_methods, oldDocumentId, cb,
+          {.fillCache = false, .readOwnWrites = true});
 
       if (res.fail()) {
         return res;
@@ -1648,14 +1686,28 @@ TRI_vocbase_t& transaction::Methods::vocbase() const {
   return _state->vocbase();
 }
 
+// is this instance responsible for commit / abort
+bool transaction::Methods::isMainTransaction() const noexcept {
+  return _mainTransaction;
+}
+
+/// @brief add a transaction hint
+void transaction::Methods::addHint(transaction::Hints::Hint hint) noexcept {
+  _localHints.set(hint);
+}
+
 /// @brief whether or not the transaction consists of a single operation only
-bool transaction::Methods::isSingleOperationTransaction() const {
+bool transaction::Methods::isSingleOperationTransaction() const noexcept {
   return _state->isSingleOperation();
 }
 
 /// @brief get the status of the transaction
-transaction::Status transaction::Methods::status() const {
+transaction::Status transaction::Methods::status() const noexcept {
   return _state->status();
+}
+
+std::string_view transaction::Methods::statusString() const noexcept {
+  return transaction::statusString(status());
 }
 
 velocypack::Options const& transaction::Methods::vpackOptions() const {
@@ -1680,9 +1732,9 @@ static bool findRefusal(
   return false;
 }
 
-transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
                               transaction::Options const& options)
-    : _state(nullptr), _transactionContext(ctx), _mainTransaction(false) {
+    : _transactionContext(std::move(ctx)), _mainTransaction(false) {
   TRI_ASSERT(_transactionContext != nullptr);
   if (ADB_UNLIKELY(_transactionContext == nullptr)) {
     // in production, we must not go on with undefined behavior, so we bail out
@@ -1691,7 +1743,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
                                    "invalid transaction context pointer");
   }
 
-  // initialize the transaction
+  // initialize the transaction. this can update _mainTransaction!
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
 }
@@ -1709,12 +1761,12 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
 
 /// @brief create the transaction, used to be UserTransaction
 transaction::Methods::Methods(
-    std::shared_ptr<transaction::Context> const& ctx,
+    std::shared_ptr<transaction::Context> ctx,
     std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections,
     transaction::Options const& options)
-    : transaction::Methods(ctx, options) {
+    : transaction::Methods(std::move(ctx), options) {
   Result res;
   for (auto const& it : exclusiveCollections) {
     res = Methods::addCollection(it, AccessMode::Type::EXCLUSIVE);
@@ -1762,12 +1814,7 @@ transaction::Methods::~Methods() {
     // free the state associated with the transaction
     TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
 
-    // store result in context
-    _transactionContext->storeTransactionResult(
-        _state->id(), _state->wasRegistered(), _state->isReadOnlyTransaction(),
-        _state->isFollowerTransaction());
-
-    _state = nullptr;
+    _state.reset();
   }
 }
 
@@ -1818,6 +1865,8 @@ Result transaction::Methods::begin() {
 
     res = _state->beginTransaction(_localHints);
     if (res.ok()) {
+      _transactionContext->setCounterGuard(_state->counterGuard());
+
       res = applyStatusChangeCallbacks(*this, Status::RUNNING);
     }
   } else {
@@ -1828,31 +1877,27 @@ Result transaction::Methods::begin() {
 }
 
 auto Methods::commit() noexcept -> Result {
-  return commitInternal(MethodsApi::Synchronous)  //
+  return commitInternal(MethodsApi::Synchronous)
       .then(basics::tryToResult)
       .get();
 }
 
 /// @brief commit / finish the transaction
 auto transaction::Methods::commitAsync() noexcept -> Future<Result> {
-  return commitInternal(MethodsApi::Asynchronous)  //
-      .then(basics::tryToResult);
+  return commitInternal(MethodsApi::Asynchronous).then(basics::tryToResult);
 }
 
 auto Methods::abort() noexcept -> Result {
-  return abortInternal(MethodsApi::Synchronous)  //
-      .then(basics::tryToResult)
-      .get();
+  return abortInternal(MethodsApi::Synchronous).then(basics::tryToResult).get();
 }
 
 /// @brief abort the transaction
 auto transaction::Methods::abortAsync() noexcept -> Future<Result> {
-  return abortInternal(MethodsApi::Asynchronous)  //
-      .then(basics::tryToResult);
+  return abortInternal(MethodsApi::Asynchronous).then(basics::tryToResult);
 }
 
 auto Methods::finish(Result const& res) noexcept -> Result {
-  return finishInternal(res, MethodsApi::Synchronous)  //
+  return finishInternal(res, MethodsApi::Synchronous)
       .then(basics::tryToResult)
       .get();
 }
@@ -1860,7 +1905,7 @@ auto Methods::finish(Result const& res) noexcept -> Result {
 /// @brief finish a transaction (commit or abort), based on the previous state
 auto transaction::Methods::finishAsync(Result const& res) noexcept
     -> Future<Result> {
-  return finishInternal(res, MethodsApi::Asynchronous)  //
+  return finishInternal(res, MethodsApi::Asynchronous)
       .then(basics::tryToResult);
 }
 
@@ -1926,12 +1971,8 @@ OperationResult transaction::Methods::anyLocal(
       indexScan(monitor, collectionName, transaction::Methods::CursorType::ANY,
                 ReadOwnWrites::no);
 
-  iterator->nextDocument(
-      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
-        resultBuilder.add(slice);
-        return true;
-      },
-      1);
+  auto cb = IndexIterator::makeDocumentCallback(resultBuilder);
+  iterator->nextDocument(cb, 1);
 
   resultBuilder.close();
 
@@ -1973,7 +2014,7 @@ DataSourceId transaction::Methods::addCollectionAtRuntime(
           TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION), ": ",
           collectionName, " [", AccessMode::typeString(type), "]");
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, message);
+          TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, std::move(message));
     }
   }
 
@@ -2067,14 +2108,8 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   if (collection == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
-
-  return collection->getPhysical()->read(
-      this, key,
-      [&](LocalDocumentId const&, VPackSlice doc) {
-        result.add(doc);
-        return true;
-      },
-      ReadOwnWrites::no);
+  auto cb = IndexIterator::makeDocumentCallback(result);
+  return collection->getPhysical()->lookup(this, key, cb, {});
 }
 
 /// @brief return one document from a collection, fast path
@@ -2108,7 +2143,7 @@ Result transaction::Methods::documentFastPathLocal(
 
   // We never want to see our own writes here, otherwise we could observe
   // documents which have been inserted by a currently running query.
-  return collection->getPhysical()->read(this, key, cb, ReadOwnWrites::no);
+  return collection->getPhysical()->lookup(this, key, cb, {});
 }
 
 namespace {
@@ -2565,11 +2600,8 @@ OperationResult transaction::Methods::allLocal(
       indexScan(monitor, collectionName, transaction::Methods::CursorType::ALL,
                 ReadOwnWrites::no);
 
-  iterator->allDocuments(
-      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
-        resultBuilder.add(slice);
-        return true;
-      });
+  auto cb = IndexIterator::makeDocumentCallback(resultBuilder);
+  iterator->allDocuments(cb);
 
   resultBuilder.close();
 
@@ -3030,7 +3062,7 @@ Result transaction::Methods::addCollection(DataSourceId cid,
     throwCollectionNotFound(collectionName);
   }
 
-  const bool lockUsage = !_mainTransaction;
+  bool lockUsage = !_mainTransaction;
 
   auto addCollectionCallback = [this, &collectionName, type,
                                 lockUsage](DataSourceId cid) -> void {
@@ -3238,17 +3270,22 @@ Future<Result> Methods::replicateOperations(
             opName = "insert w/ overwriteMode ingore";
           }
         }
-        if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
-          // extra parameters only required for update
-          reqOpts.param(StaticStrings::KeepNullString,
-                        options.keepNull ? "true" : "false");
-          reqOpts.param(StaticStrings::MergeObjectsString,
-                        options.mergeObjects ? "true" : "false");
-        }
       }
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-      requestType = arangodb::fuerte::RestVerb::Patch;
+      // intentionally turn UPDATE operations on the leader into REPLACE
+      // operations on the follower.
+      // we need to do this because we are replicating the (full) document
+      // that we have written on the leader, but this does not include any
+      // removed attributes anymore. However, an UPDATE operation on the
+      // follower would merge what we have written on the leader with the
+      // existing document on the follower, which could silently cause
+      // data drift.
+      // by replicating the document as it was written on the leader and
+      // replicating the operation as a REPLACE, we ensure that we write
+      // the same document on the follower as we did on the leader.
+      requestType =
+          arangodb::fuerte::RestVerb::Put;  // this will make it a REPLACE
       opName = "update";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
@@ -3360,7 +3397,7 @@ Future<Result> Methods::replicateOperations(
               StaticStrings::ErrorCodes, found);
           if (found) {
             replicationFailureReason =
-                "got error header from follower: " + errors;
+                absl::StrCat("got error header from follower: ", errors);
           }
 
         } else {
@@ -3388,7 +3425,7 @@ Future<Result> Methods::replicateOperations(
           didRefuse = didRefuse || followerRefused;
 
           replicationFailureReason =
-              "got error from follower: " + std::string(r.errorMessage());
+              absl::StrCat("got error from follower: ", r.errorMessage());
 
           if (followerRefused) {
             ++vocbase()

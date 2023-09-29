@@ -18,7 +18,7 @@ Getting Started
 - [ArangoDB University](https://university.arangodb.com/)
 - [Free Udemy Course](https://www.udemy.com/course/getting-started-with-arangodb)
 - [Training Center](https://www.arangodb.com/learn/)
-- [Documentation](https://www.arangodb.com/docs/stable/)
+- [Documentation](https://docs.arangodb.com/)
 
 For the impatient:
 
@@ -98,8 +98,8 @@ Latest Release
 Packages for all supported platforms can be downloaded from
 <https://www.arangodb.com/download/>.
 
-For what's new in ArangoDB, see the [Highlight by Version](https://www.arangodb.com/docs/stable/highlights.html)
-and the [Release Notes](https://www.arangodb.com/docs/stable/release-notes.html).
+For what's new in ArangoDB, see the Release Notes in the
+[Documentation](https://docs.arangodb.com/).
 
 Stay in Contact
 ---------------

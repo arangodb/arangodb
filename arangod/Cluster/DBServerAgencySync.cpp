@@ -59,7 +59,7 @@ using namespace arangodb::rest;
 
 DBServerAgencySync::DBServerAgencySync(ArangodServer& server,
                                        HeartbeatThread* heartbeat)
-    : _server(server), _heartbeat(heartbeat) {}
+    : _server(server), _heartbeat(heartbeat), _requestTimeout(60.) {}
 
 void DBServerAgencySync::work() {
   LOG_TOPIC("57898", TRACE, Logger::CLUSTER) << "starting plan update handler";
@@ -365,8 +365,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
               "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
 
           AgencyWriteTransaction currentTransaction(operations, preconditions);
-          AgencyCommResult r =
-              comm.sendTransactionWithFailover(currentTransaction);
+          AgencyCommResult r = comm.sendTransactionWithFailover(
+              currentTransaction, _requestTimeout);
           if (!r.successful()) {
             LOG_TOPIC("d73b8", DEBUG, Logger::MAINTENANCE)
                 << "Error reporting to agency: _statusCode: " << r.errorCode()
@@ -454,4 +454,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   return result;
+}
+
+double DBServerAgencySync::requestTimeout() const noexcept {
+  return _requestTimeout;
 }

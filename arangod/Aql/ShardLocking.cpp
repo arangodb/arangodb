@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IResearchViewNode.h"
+#include "Aql/JoinNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
@@ -38,6 +39,8 @@
 #include "Metrics/Counter.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utilities/NameValidator.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -162,6 +165,16 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
                     colNode->isUsedAsSatellite());
       break;
     }
+    case ExecutionNode::JOIN: {
+      auto joinNode = ExecutionNode::castTo<JoinNode const*>(baseNode);
+      if (joinNode == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unable to cast node to JoinNode");
+      }
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "JoinNode not handled yet");
+      break;
+    }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto viewNode =
           ExecutionNode::castTo<iresearch::IResearchViewNode const*>(baseNode);
@@ -178,7 +191,6 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
         updateLocking(&(collection.get()), AccessMode::Type::READ, snippetId,
                       restrictedShards, false);
       }
-
       break;
     }
     case ExecutionNode::INSERT:
@@ -238,8 +250,8 @@ void ShardLocking::updateLocking(
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-          "Could not identify any shard belonging to collection: " + name +
-              ". Maybe it is dropped?");
+          absl::StrCat("Could not identify any shard belonging to collection: ",
+                       name, ". Maybe it is dropped?"));
     }
     for (auto const& s : *shards) {
       info.allShards.emplace(s);

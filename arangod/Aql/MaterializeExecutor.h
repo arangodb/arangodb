@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
+#include "Aql/MultiGet.h"
 #include "Indexes/IndexIterator.h"
 #include "IResearch/SearchDoc.h"
 #include "Transaction/Methods.h"
@@ -47,32 +48,17 @@ class InputAqlItemRow;
 class RegisterInfos;
 template<BlockPassthrough>
 class SingleRowFetcher;
+struct Collection;
 
-template<typename T>
-class CollectionNameHolder {
+class MaterializerExecutorInfos {
  public:
-  explicit CollectionNameHolder(std::string_view name) noexcept
-      : _collectionSource{name} {}
-
-  auto collectionSource() const { return _collectionSource; }
-
- protected:
-  std::string_view _collectionSource;
-};
-
-template<>
-class CollectionNameHolder<void> {};
-
-template<typename T>
-class MaterializerExecutorInfos : public CollectionNameHolder<T> {
- public:
-  template<class... _Types>
   MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
-                            aql::QueryContext& query, _Types&&... Args)
-      : CollectionNameHolder<T>(Args...),
-        _inNonMaterializedDocRegId(inNmDocId),
+                            aql::QueryContext& query,
+                            Collection const* collection)
+      : _inNonMaterializedDocRegId(inNmDocId),
         _outMaterializedDocumentRegId(outDocRegId),
-        _query(query) {}
+        _query(query),
+        _collection(collection) {}
 
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
@@ -89,15 +75,18 @@ class MaterializerExecutorInfos : public CollectionNameHolder<T> {
 
   aql::QueryContext& query() const noexcept { return _query; }
 
+  Collection const* collection() const noexcept { return _collection; }
+
  private:
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
   /// @brief register to store materialized document
   RegisterId const _outMaterializedDocumentRegId;
   aql::QueryContext& _query;
+  Collection const* _collection;
 };
 
-template<typename T, bool localDocumentId>
+template<bool localDocumentId>
 class MaterializeExecutor {
  public:
   struct Properties {
@@ -105,11 +94,9 @@ class MaterializeExecutor {
     // FIXME(gnusi): enable?
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    // TODO this could be set to true!
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = MaterializerExecutorInfos<T>;
+  using Infos = MaterializerExecutorInfos;
   using Stats = MaterializeStats;
 
   MaterializeExecutor(MaterializeExecutor&&) = default;
@@ -140,7 +127,7 @@ class MaterializeExecutor {
   }
 
  private:
-  static constexpr bool isSingleCollection = !std::is_void_v<T>;
+  static constexpr bool isSingleCollection = localDocumentId;
 
   class ReadContext {
    public:
@@ -148,33 +135,48 @@ class MaterializeExecutor {
 
     ReadContext(ReadContext&& other) = default;
 
-    Infos const* _infos;
-    InputAqlItemRow const* _inputRow{};
-    OutputAqlItemRow* _outputRow{};
-    IndexIterator::DocumentCallback _callback;
+    void moveInto(std::unique_ptr<std::string> data);
+
+    Infos const* infos;
+    InputAqlItemRow const* inputRow{};
+    OutputAqlItemRow* outputRow{};
+    IndexIterator::DocumentCallback callback;
   };
 
-  void fillBuffer(AqlItemBlockInputRange& inputRange);
+  static constexpr size_t kInvalidRecord = std::numeric_limits<size_t>::max();
 
-  struct BufferRecord {
-    explicit BufferRecord(iresearch::SearchDoc doc) noexcept
-        : segment{doc.segment()}, search{doc.doc()} {}
+  struct Buffer {
+    explicit Buffer(ResourceMonitor& monitor) noexcept : scope{monitor} {}
 
-    iresearch::ViewSegment const* segment;
-    union {
-      irs::doc_id_t search;
-      LocalDocumentId storage;
+    void fill(AqlItemBlockInputRange& inputRange, ReadContext& ctx);
+
+    struct Record {
+      explicit Record(iresearch::SearchDoc doc) noexcept
+          : segment{doc.segment()}, search{doc.doc()} {}
+
+      iresearch::ViewSegment const* segment;
+
+      union {
+        irs::doc_id_t search;
+        LocalDocumentId storage;
+        size_t executor;
+      };
     };
+
+    ResourceUsageScope scope;
+    std::vector<Record> docs;
+    std::vector<Record*> order;
   };
-  std::vector<BufferRecord> _bufferedDocs;
-  std::vector<BufferRecord*> _readOrder;
+
+  IRS_NO_UNIQUE_ADDRESS
+  irs::utils::Need<!localDocumentId, Buffer> _buffer;
+  IRS_NO_UNIQUE_ADDRESS
+  irs::utils::Need<!localDocumentId, MultiGetContext> _getCtx;
 
   transaction::Methods _trx;
-  ReadContext _readDocumentContext;
+  ReadContext _readCtx;
   IRS_NO_UNIQUE_ADDRESS
-  irs::utils::Need<isSingleCollection, PhysicalCollection*> _collection{};
-
-  ResourceUsageScope _memoryTracker;
+  irs::utils::Need<localDocumentId, PhysicalCollection*> _collection{};
 };
 
 }  // namespace arangodb::aql

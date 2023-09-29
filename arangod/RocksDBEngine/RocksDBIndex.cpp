@@ -36,6 +36,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBIndexingDisabler.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -263,7 +264,7 @@ void RocksDBIndex::truncateCommit(TruncateGuard&& guard,
 /// perform useful checks (uniqueness checks etc.) here
 Result RocksDBIndex::checkInsert(transaction::Methods& /*trx*/,
                                  RocksDBMethods* /*methods*/,
-                                 LocalDocumentId const& /*documentId*/,
+                                 LocalDocumentId /*documentId*/,
                                  arangodb::velocypack::Slice /*doc*/,
                                  OperationOptions const& /*options*/) {
   // default implementation does nothing - derived indexes can override this!
@@ -276,7 +277,7 @@ Result RocksDBIndex::checkInsert(transaction::Methods& /*trx*/,
 /// here
 Result RocksDBIndex::checkReplace(transaction::Methods& /*trx*/,
                                   RocksDBMethods* /*methods*/,
-                                  LocalDocumentId const& /*documentId*/,
+                                  LocalDocumentId /*documentId*/,
                                   arangodb::velocypack::Slice /*doc*/,
                                   OperationOptions const& /*options*/) {
   // default implementation does nothing - derived indexes can override this!
@@ -284,9 +285,9 @@ Result RocksDBIndex::checkReplace(transaction::Methods& /*trx*/,
 }
 
 Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
-                            LocalDocumentId const& oldDocumentId,
+                            LocalDocumentId oldDocumentId,
                             velocypack::Slice oldDoc,
-                            LocalDocumentId const& newDocumentId,
+                            LocalDocumentId newDocumentId,
                             velocypack::Slice newDoc,
                             OperationOptions const& options,
                             bool performChecks) {

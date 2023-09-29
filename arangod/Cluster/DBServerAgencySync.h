@@ -68,7 +68,6 @@ class DBServerAgencySync {
   explicit DBServerAgencySync(ArangodServer& server,
                               HeartbeatThread* heartbeat);
 
- public:
   void work();
 
   using LocalLogsMap = std::unordered_map<
@@ -80,11 +79,13 @@ class DBServerAgencySync {
    * @brief Get copy of current local state
    * @param  collections  Builder to fill to
    */
-  arangodb::Result getLocalCollections(
+  Result getLocalCollections(
       containers::FlatHashSet<std::string> const& dirty,
       containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>&
           collections,
       LocalLogsMap& replLogs);
+
+  double requestTimeout() const noexcept;
 
  private:
   DBServerAgencySyncResult execute();
@@ -92,5 +93,6 @@ class DBServerAgencySync {
  private:
   ArangodServer& _server;
   HeartbeatThread* _heartbeat;
+  double _requestTimeout;
 };
 }  // namespace arangodb

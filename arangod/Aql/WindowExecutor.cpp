@@ -134,7 +134,7 @@ void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input,
   for (std::unique_ptr<Aggregator> const& agg : _aggregators) {
     AqlValue r = agg->get();
     AqlValueGuard guard{r, /*destroy*/ true};
-    output.moveValueInto(/*outRegister*/ registers[j++].first, input, guard);
+    output.moveValueInto(/*outRegister*/ registers[j++].first, input, &guard);
     if (reset) {
       agg->reset();
     }
@@ -203,7 +203,7 @@ auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
           upstreamCall};
 }
 
-[[nodiscard]] auto AccuWindowExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto AccuWindowExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (input.finalState() == MainQueryState::DONE) {
@@ -440,7 +440,7 @@ WindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {state, NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
-[[nodiscard]] auto WindowExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto WindowExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (input.finalState() == MainQueryState::DONE) {

@@ -29,6 +29,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
@@ -41,6 +42,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -283,10 +286,6 @@ ErrorCode RestImportHandler::handleSingleDocument(
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_import_json
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestImportHandler::createFromJson(std::string const& type) {
   RestImportResult result;
 
@@ -355,8 +354,10 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+  auto origin = transaction::OperationOriginREST{"importing documents"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collectionName,
+                                  AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
   bool isEdgeCollection = false;
@@ -559,8 +560,10 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+  auto origin = transaction::OperationOriginREST{"importing documents"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collectionName,
+                                  AccessMode::Type::WRITE);
 
   bool isEdgeCollection = false;
   if (auto collection = trx.resolver()->getCollection(collectionName);
@@ -648,10 +651,6 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   }
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_import_document
-////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createFromKeyValueList() {
   if (_request == nullptr) {
@@ -758,8 +757,10 @@ bool RestImportHandler::createFromKeyValueList() {
   current = next + 1;
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+  auto origin = transaction::OperationOriginREST{"importing documents"};
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+  SingleCollectionTransaction trx(std::move(ctx), collectionName,
+                                  AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   bool isEdgeCollection = false;

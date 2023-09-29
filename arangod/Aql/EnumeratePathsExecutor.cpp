@@ -193,7 +193,7 @@ auto EnumeratePathsExecutor<FinderType>::skipRowsRange(
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto skipped = size_t{0};
 
-  while (call.shouldSkip()) {
+  while (call.needSkipMore()) {
     // _finder.isDone() == true means that there is currently no path available
     // from the _finder, we can try calling fetchPaths to make one available,
     // but if that fails too, we must be DONE
@@ -250,7 +250,7 @@ auto EnumeratePathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
   if (_finder.getNextPath(*tmp.builder())) {
     AqlValue path{tmp->slice()};
     AqlValueGuard guard{path, true};
-    output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+    output.moveValueInto(_infos.getOutputRegister(), _inputRow, &guard);
     output.advanceRow();
   }
 }

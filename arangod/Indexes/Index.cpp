@@ -1089,6 +1089,16 @@ std::vector<std::vector<basics::AttributeName>> Index::mergeFields(
   return result;
 }
 
+std::unique_ptr<AqlIndexStreamIterator> Index::streamForCondition(
+    transaction::Methods* trx, IndexStreamOptions const&) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string(
+          "no default implementation for streamForCondition. index type: ") +
+          typeName());
+}
+
 }  // namespace arangodb
 
 /// @brief append the index description to an output stream

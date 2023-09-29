@@ -140,8 +140,8 @@ class IResearchInvertedIndexConditionTest
 
     auto indexFields =
         arangodb::iresearch::IResearchInvertedIndex::fields(index->meta());
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase(), arangodb::transaction::OperationOriginTestCase{});
     auto query = Query::create(ctx, QueryString(queryString), bindVars);
 
     ASSERT_NE(query.get(), nullptr);
@@ -218,8 +218,8 @@ class IResearchInvertedIndexConditionTest
     ASSERT_TRUE(index);
     irs::Finally scope = [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); };
 
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase(), arangodb::transaction::OperationOriginTestCase{});
     auto query = Query::create(ctx, QueryString(queryString), bindVars);
 
     ASSERT_NE(query.get(), nullptr);

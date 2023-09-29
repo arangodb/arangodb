@@ -25,12 +25,13 @@
 
 #include "Aql/QueryCache.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Counter.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
-#include "Metrics/Counter.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 
@@ -102,12 +103,8 @@ void RocksDBTrxMethods::rollbackOperation(
 }
 
 bool RocksDBTrxMethods::isIntermediateCommitNeeded() {
-  if (hasIntermediateCommitsEnabled()) {
-    size_t currentSize =
-        _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
-    return checkIntermediateCommit(currentSize);
-  }
-  return false;
+  return hasIntermediateCommitsEnabled() &&
+         checkIntermediateCommit(_memoryTracker.memoryUsage());
 }
 
 rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -120,9 +117,8 @@ rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   if (readOwnWrites == ReadOwnWrites::no) {
     if (_readWriteBatch) {
       return _readWriteBatch->GetFromBatchAndDB(_db, ro, cf, key, val);
-    } else {
-      return _db->Get(ro, cf, key, val);
     }
+    return _db->Get(ro, cf, key, val);
   }
   return _rocksTransaction->Get(ro, cf, key, val);
 }
@@ -153,6 +149,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     iterator.reset(_rocksTransaction->GetIterator(opts, cf));
   } else {
     if (iteratorMustCheckBounds(ReadOwnWrites::no)) {
+      TRI_ASSERT(_readWriteBatch != nullptr);
       iterator.reset(
           _readWriteBatch->NewIteratorWithBase(cf, _db->NewIterator(opts, cf)));
     } else {
@@ -276,7 +273,11 @@ bool RocksDBTrxMethods::iteratorMustCheckBounds(
           _readWriteBatch->GetWriteBatch()->GetDataSize() > 0);
 }
 
-void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
+void RocksDBTrxMethods::beginQuery(ResourceMonitor* resourceMonitor,
+                                   bool isModificationQuery) {
+  // report to parent
+  RocksDBTrxBaseMethods::beginQuery(resourceMonitor, isModificationQuery);
+
   if (!_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // don't bother with query tracking in non globally managed trx
     return;
@@ -300,6 +301,7 @@ void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
     TRI_ASSERT(_hasActiveModificationQuery.load());
     TRI_ASSERT(_ownsReadWriteBatch == false);
     initializeReadWriteBatch();
+    TRI_ASSERT(_ownsReadWriteBatch == true);
   } else {
     TRI_ASSERT(_ownsReadWriteBatch == false);
     TRI_ASSERT(_hasActiveModificationQuery.load() == false);
@@ -314,8 +316,12 @@ void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
 }
 
 void RocksDBTrxMethods::endQuery(bool isModificationQuery) noexcept {
+  // report to parent
+  RocksDBTrxBaseMethods::endQuery(isModificationQuery);
+
   if (!_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // don't bother with query tracking in non globally managed trx
+    TRI_ASSERT(_memoryUsedByReadWriteBatch == 0);
     return;
   }
 
@@ -324,6 +330,10 @@ void RocksDBTrxMethods::endQuery(bool isModificationQuery) noexcept {
     TRI_ASSERT(_hasActiveModificationQuery.load());
     TRI_ASSERT(_numActiveReadOnlyQueries.load() == 0);
     _hasActiveModificationQuery.store(false, std::memory_order_relaxed);
+    // must reset memory usage here, because the above endQuery() call
+    // already resetted this transaction's memory usage to what it used
+    // to be at the start of the query we are about to end.
+    _memoryUsedByReadWriteBatch = 0;
     releaseReadWriteBatch();
     TRI_ASSERT(_readWriteBatch == nullptr && !_ownsReadWriteBatch);
     _readWriteBatch = _rocksTransaction->GetWriteBatch();
@@ -337,31 +347,43 @@ void RocksDBTrxMethods::endQuery(bool isModificationQuery) noexcept {
 
 void RocksDBTrxMethods::initializeReadWriteBatch() {
   TRI_ASSERT(_ownsReadWriteBatch == false);
+
+  // get the transaction's current WriteBatch
+  TRI_ASSERT(_rocksTransaction != nullptr);
+  rocksdb::WriteBatch* wb = _rocksTransaction->GetWriteBatch()->GetWriteBatch();
+
   _readWriteBatch = new rocksdb::WriteBatchWithIndex(
-      rocksdb::BytewiseComparator(), 0, true, 0);
+      rocksdb::BytewiseComparator(), /*reserved_bytes*/ wb->GetDataSize(),
+      /*overwrite_key*/ true, /*max_bytes*/ 0);
   _ownsReadWriteBatch = true;
 
   struct WBCloner final : public rocksdb::WriteBatch::Handler {
-    explicit WBCloner(rocksdb::WriteBatchWithIndex& target) : wbwi(target) {}
+    explicit WBCloner(rocksdb::WriteBatchWithIndex& target)
+        : wbwi(target), memoryUsage(0) {}
 
     rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                           const rocksdb::Slice& value) override {
+      memoryUsage += key.size() + fixedIndexingEntryOverhead;
       return wbwi.Put(familyId(column_family_id), key, value);
     }
 
     rocksdb::Status DeleteCF(uint32_t column_family_id,
                              const rocksdb::Slice& key) override {
+      memoryUsage += key.size() + fixedIndexingEntryOverhead;
       return wbwi.Delete(familyId(column_family_id), key);
     }
 
     rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
                                    const rocksdb::Slice& key) override {
+      memoryUsage += key.size() + fixedIndexingEntryOverhead;
       return wbwi.SingleDelete(familyId(column_family_id), key);
     }
 
     rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
                                   const rocksdb::Slice& begin_key,
                                   const rocksdb::Slice& end_key) override {
+      memoryUsage +=
+          begin_key.size() + end_key.size() + fixedIndexingEntryOverhead;
       return wbwi.DeleteRange(familyId(column_family_id), begin_key, end_key);
     }
 
@@ -370,10 +392,14 @@ void RocksDBTrxMethods::initializeReadWriteBatch() {
                             const rocksdb::Slice& value) override {
       // should never be used by our code
       TRI_ASSERT(false);
+      memoryUsage += key.size() + fixedIndexingEntryOverhead;
       return wbwi.Merge(familyId(column_family_id), key, value);
     }
 
-    void LogData(const rocksdb::Slice& blob) override { wbwi.PutLogData(blob); }
+    void LogData(const rocksdb::Slice& blob) override {
+      memoryUsage += blob.size();
+      wbwi.PutLogData(blob);
+    }
 
     rocksdb::Status MarkBeginPrepare(bool = false) override {
       TRI_ASSERT(false);
@@ -414,16 +440,24 @@ void RocksDBTrxMethods::initializeReadWriteBatch() {
     }
 
     rocksdb::WriteBatchWithIndex& wbwi;
+    uint64_t memoryUsage;
   } cloner(*_readWriteBatch);
 
-  // get the transaction's current WriteBatch
-  TRI_ASSERT(_rocksTransaction != nullptr);
-  rocksdb::WriteBatch* wb = _rocksTransaction->GetWriteBatch()->GetWriteBatch();
   rocksdb::Status s = wb->Iterate(&cloner);
 
   if (!s.ok()) {
     THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
   }
+
+  // add memory usage of underlying WriteBatch linear buffer to our own
+  // memory usage. we are going to count this memory usage down again when
+  // we release the WriteBatch.
+  TRI_ASSERT(_memoryUsedByReadWriteBatch == 0);
+  auto value =
+      _readWriteBatch->GetWriteBatch()->Data().capacity() + cloner.memoryUsage;
+  // may throw
+  _memoryTracker.increaseMemoryUsage(value);
+  _memoryUsedByReadWriteBatch = value;
 }
 
 void RocksDBTrxMethods::releaseReadWriteBatch() noexcept {
@@ -431,5 +465,9 @@ void RocksDBTrxMethods::releaseReadWriteBatch() noexcept {
     delete _readWriteBatch;
     _readWriteBatch = nullptr;
     _ownsReadWriteBatch = false;
+
+    // count down memory again
+    auto value = std::exchange(_memoryUsedByReadWriteBatch, 0);
+    _memoryTracker.decreaseMemoryUsage(value);
   }
 }

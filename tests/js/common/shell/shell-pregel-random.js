@@ -203,7 +203,7 @@ function randomTestSuite() {
       stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
       assertTrue(stats.hasOwnProperty('expires'));
       assertTrue(stats.expires > stats.created);
-      pregelTestHelpers.waitForResultsBeeingGarbageCollected(pid, 2 * ttl);
+      pregelTestHelpers.waitForResultsBeingGarbageCollected(pid, 2 * ttl);
     }
   };
 }

@@ -61,6 +61,7 @@ class TransactionStateMock : public arangodb::TransactionState {
 
   TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
                        arangodb::transaction::Options const& options,
+                       arangodb::transaction::OperationOrigin operationOrigin,
                        StorageEngineMock& engine);
   [[nodiscard]] bool ensureSnapshot() override { return false; }
   arangodb::Result abortTransaction(
@@ -141,7 +142,8 @@ class StorageEngineMock : public arangodb::StorageEngine {
       arangodb::transaction::ManagerFeature&) override;
   std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
-      arangodb::transaction::Options const& options) override;
+      arangodb::transaction::Options const& options,
+      arangodb::transaction::OperationOrigin operationOrigin) override;
   arangodb::Result createView(TRI_vocbase_t& vocbase, arangodb::DataSourceId id,
                               arangodb::LogicalView const& view) override;
   arangodb::Result compactAll(bool changeLevels,
@@ -198,7 +200,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
   ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice,
                                                 bool) override;
   std::string versionFilename(TRI_voc_tick_t) const override;
-  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
+  void waitForEstimatorSync() override;
   arangodb::WalAccess const* walAccess() const override;
 
   bool autoRefillIndexCaches() const override;

@@ -38,6 +38,7 @@
 #include "RestServer/MaxMapCountFeature.h"
 
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -51,6 +52,16 @@
 #endif
 
 #include <absl/strings/str_cat.h>
+
+// assume that basic integral types can be modified atomically
+// without ever requiring locks. if we encounter a target
+// platform that does not satisfy these requirements, the code
+// won't even compile, so we can find potential performance
+// issues quickly.
+static_assert(std::atomic<uint16_t>::is_always_lock_free);
+static_assert(std::atomic<uint32_t>::is_always_lock_free);
+static_assert(std::atomic<uint64_t>::is_always_lock_free);
+static_assert(std::atomic<void*>::is_always_lock_free);
 
 namespace {
 #ifdef __linux__
@@ -121,7 +132,7 @@ void EnvironmentFeature::prepare() {
   try {
     pid_t parentId = getppid();
     if (parentId) {
-      parent = ", parent process: " + std::to_string(parentId);
+      parent = absl::StrCat(", parent process: ", parentId);
       std::string const procFilename =
           absl::StrCat("/proc/", parentId, "/stat");
 
@@ -142,7 +153,7 @@ void EnvironmentFeature::prepare() {
 
   if (sizeof(void*) == 4) {
     // 32 bit build
-    LOG_TOPIC("ae57c", WARN, arangodb::Logger::MEMORY)
+    LOG_TOPIC("ae57c", ERR, arangodb::Logger::MEMORY)
         << "this is a 32 bit build of ArangoDB, which is unsupported. "
         << "it is recommended to run a 64 bit build instead because it can "
         << "address significantly bigger regions of memory";

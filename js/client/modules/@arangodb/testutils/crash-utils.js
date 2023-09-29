@@ -70,6 +70,107 @@ let GDB_OUTPUT = '';
 // / directory.
 // //////////////////////////////////////////////////////////////////////////////
 
+function filterStack(stack, filters) {
+  if (stack.length === 0) {
+    return;
+  }
+  let normalize = (s) => {
+    s = s.trim();
+    if (s.substr(-3) === "...") {
+      s = s.substr(0, s.length - 3);
+    }
+    return s;
+  };
+  let lineEqual = (a, b) => {
+    a = normalize(a);
+    b = normalize(b);
+    if (a.length > b.length) {
+      return a.substr(0, b.length) === b;
+    }
+    return b.substr(0, a.length) === a;
+  };
+
+  let filtered = false;
+  filters.forEach(filter => {
+    if (stack.length === filter.length) {
+      filtered = filtered || filter.every((filterLine, i) => {
+        return lineEqual(filterLine, stack[i]);
+      });
+    }
+  });
+  return filtered;
+}
+
+function readGdbFileFiltered(gdbOutputFile) {
+  try {
+    const filters = JSON.parse(fs.read(
+      fs.join(pu.JS_DIR,
+              'client/modules/@arangodb/testutils',
+              'filter_gdb_stacks.json')));
+    const buf = fs.readBuffer(gdbOutputFile);
+    let lineStart = 0;
+    let maxBuffer = buf.length;
+    let inStack = false;
+    let stack = [];
+    let longStack = [];
+    let moreMessages = [];
+    for (let j = 0; j < maxBuffer; j++) {
+      if (buf[j] === 10) { // \n
+        var line = buf.asciiSlice(lineStart, j);
+        lineStart = j + 1;
+        if (line.search('Thread ') === 0 || (!inStack && line[0] === '#')) {
+          inStack = true;
+        }
+
+        if (inStack) {
+          if (line[0] === '#') {
+            if (line[3] === ' ') {
+              line = line.substring(4);
+            }
+            if (line[0] === '0' && line[1] === 'x') {
+              line = line.substring(22);
+            }
+            longStack.push(line);
+            let paramPos = line.search(' \\(');
+            if (paramPos !== 0) {
+              line = line.substring(0, paramPos);
+            }
+            if (line.length > 1) {
+              stack.push(line);
+            }
+          } else {
+            moreMessages.push(line);
+          }
+          if (line.length === 0) {
+            if (!filterStack(stack, filters)) {
+              print("did not filter this stack: ");
+              print(stack);
+              print(moreMessages);
+              moreMessages.forEach(line => {
+                GDB_OUTPUT += line.trim() + '\n';
+              });
+              longStack.forEach(line => {
+                GDB_OUTPUT += line.trim() + '\n';
+              });
+              GDB_OUTPUT += '\n';
+            }
+
+            stack = [];
+            longStack = [];
+            moreMessages = [];
+            inStack = false;
+          }
+        } else {
+            GDB_OUTPUT += line.trim() + '\n';
+        }
+      }
+    }
+  } catch (ex) {
+    let err="failed to read " + gdbOutputFile + " -> " + ex + '\n' + ex.stack;
+    print(err);
+  }
+}
+
 function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   let gdbOutputFile = fs.getTempFile();
 
@@ -101,14 +202,14 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
   if (!fs.exists(gdbOutputFile)) {
     print("Failed to generate GDB output file?");
     return "";
   }
-  let thisDump = fs.read(gdbOutputFile);
-  GDB_OUTPUT += thisDump;
+  readGdbFileFiltered(gdbOutputFile);
   if (options.extremeVerbosity === true) {
+    let thisDump = fs.read(gdbOutputFile);
     print(thisDump);
   }
 
@@ -185,7 +286,7 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
   let thisDump = fs.read(lldbOutputFile);
   GDB_OUTPUT += thisDump;
   if (options.extremeVerbosity === true) {
@@ -347,6 +448,68 @@ function isEnabledWindowsMonitor(options, instanceInfo, pid, cmd) {
   return false;
 }
 
+function readCdbFileFiltered(cdbOutputFile) {
+  try {
+    const filters = JSON.parse(fs.read(
+      fs.join(pu.JS_DIR,
+              'client/modules/@arangodb/testutils',
+              'filter_cdb_stacks.json')));
+    const buf = fs.readBuffer(cdbOutputFile);
+    let lineStart = 0;
+    let maxBuffer = buf.length;
+    let inStack = false;
+    let stack = [];
+    let longStack = [];
+    for (let j = 0; j < maxBuffer; j++) {
+      if (buf[j] === 10) { // \n
+        var line = buf.asciiSlice(lineStart, j);
+        lineStart = j + 1;
+
+        if (line.search('RetAddr') === 0) {
+          inStack = true;
+        }
+        if (inStack) {
+          if ((line.search(' 000') !== -1) ||
+              (line.search('--------') !== -1)) {
+            // cut off left part with addresses:
+            line = line.substring(98);
+            longStack.push(line);
+            // cut off arguments only for filter string::
+            let plusPos = line.search('\\+');
+            if (plusPos > 0) {
+              line = line.substring(0, plusPos);
+            }
+            if (line.length > 1) {
+              stack.push(line);
+            }
+          }
+          if (line.length === 0) {
+            if (!filterStack(stack, filters)) {
+              print("did not filter this stack: ");
+              print(stack);
+              longStack.forEach(line => {
+                GDB_OUTPUT += line.trim() + '\n';
+              });
+              GDB_OUTPUT += '\n';
+            }
+            
+            stack = [];
+            longStack = [];
+            inStack = false;
+          }
+        } else {
+          if (line.search('NatVis') === -1) {
+            GDB_OUTPUT += line.trim() + '\n';
+          }
+        }
+      }
+    }
+  } catch (ex) {
+    let err="failed to read " + cdbOutputFile + " -> " + ex + '\n' + ex.stack;
+    print(err);
+  }
+}
+
 const core_rx = new RegExp('core_.*_.*.dmp');
 function analyzeCoreDumpWindows (instanceInfo) {
   let cdbOutputFile = fs.getTempFile();
@@ -390,9 +553,9 @@ function analyzeCoreDumpWindows (instanceInfo) {
   process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
   executeExternalAndWait('cdb', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
   // cdb will output to stdout anyways, so we can't turn this off here.
-  GDB_OUTPUT += fs.read(cdbOutputFile);
+  readCdbFileFiltered(cdbOutputFile);
   return 'cdb ' + args.join(' ');
 }
 
@@ -619,23 +782,30 @@ function aggregateDebugger(instanceInfo, options) {
 
   GDB_OUTPUT += `
 --------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
-  const buf = fs.readBuffer(instanceInfo.debuggerInfo.file);
-  let lineStart = 0;
-  let maxBuffer = buf.length;
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
 
-  for (let j = 0; j < maxBuffer; j++) {
-    if (buf[j] === 10) { // \n
-      const line = buf.asciiSlice(lineStart, j);
-      lineStart = j + 1;
-      if (line.search('bytes of data for memory region at') !== -1) {
-        continue;
-      }
-      GDB_OUTPUT += line + '\n';
-      if (options.extremeVerbosity === true && instanceInfo.debuggerInfo.verbosePrint) {
-        print(line);
+  if (platform.substr(0, 3) === 'win') {
+    readCdbFileFiltered(instanceInfo.debuggerInfo.file);
+  } else if (platform === 'darwin') {
+    const buf = fs.readBuffer(instanceInfo.debuggerInfo.file);
+    let lineStart = 0;
+    let maxBuffer = buf.length;
+
+    for (let j = 0; j < maxBuffer; j++) {
+      if (buf[j] === 10) { // \n
+        const line = buf.asciiSlice(lineStart, j);
+        lineStart = j + 1;
+        if (line.search('bytes of data for memory region at') !== -1) {
+          continue;
+        }
+        GDB_OUTPUT += line + '\n';
+        if (options.extremeVerbosity === true && instanceInfo.debuggerInfo.verbosePrint) {
+          print(line);
+        }
       }
     }
+  } else {
+    readGdbFileFiltered(instanceInfo.debuggerInfo.file);
   }
   return instanceInfo.debuggerInfo.hint;
 }

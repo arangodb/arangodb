@@ -206,7 +206,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     _edgeColls.reserve(edgeCollectionCount);
     _directions.reserve(edgeCollectionCount);
 
-    determineEnterpriseFlags(graph);
+    determineEnterpriseFlags(graph, plan->getAst()->query().operationOrigin());
 
     std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
     CollectionNameResolver const& resolver = plan->getAst()->query().resolver();
@@ -560,7 +560,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 }
 
 #ifndef USE_ENTERPRISE
-void GraphNode::determineEnterpriseFlags(AstNode const*) {
+void GraphNode::determineEnterpriseFlags(
+    AstNode const*, transaction::OperationOrigin /*operationOrigin*/) {
   _isSmart = false;
   _isDisjoint = false;
   _enabledClusterOneShardRule = false;
@@ -648,9 +649,6 @@ std::string const& GraphNode::collectionToShardName(
 }
 
 void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
-  // Vocbase
-  nodes.add("database", VPackValue(_vocbase->name()));
-
   // TODO We need Both?!
   // Graph definition
   nodes.add("graph", _graphInfo.slice());

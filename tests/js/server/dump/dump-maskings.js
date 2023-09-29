@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global assertEqual, assertTrue, assertFalse, assertNotNull */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotNull */
 
 // /////////////////////////////////////////////////////////////////////////////
 // @brief tests for dump/reload
@@ -28,18 +28,18 @@
 // @author Frank Celler
 // /////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var jsunity = require("jsunity");
-let users = require("@arangodb/users");
+const internal = require("internal");
+const jsunity = require("jsunity");
+const users = require("@arangodb/users");
 
 function dumpMaskingSuite () {
   'use strict';
-  var db = internal.db;
+  const db = internal.db;
 
   return {
     testGeneral : function () {
-      var c = db._collection("maskings1");
-      var d = c.document("1");
+      const c = db._collection("maskings1");
+      const d = c.document("1");
 
       assertNotNull(d, "document '1' was restored");
       assertEqual(d.name, "xxxxo xxxxd  xxxs xs a xxxt a xxxxxxxxl");
@@ -59,16 +59,16 @@ function dumpMaskingSuite () {
     },
 
     testRandomString : function () {
-      var c = db._collection("maskings2");
-      var d = c.document("2");
+      const c = db._collection("maskings2");
+      const d = c.document("2");
 
-      assertFalse(d.random === "a");
-      assertFalse(d.zip === "12345");
-      assertFalse(d.date === "2018-01-01");
-      assertFalse(d.integer === 100);
-      assertFalse(d.ccard === "1234 1234 1234 1234");
-      assertFalse(d.phone === "abcd 1234");
-      assertFalse(d.emil === "me@you.here");
+      assertNotEqual(d.random, "a");
+      assertNotEqual(d.zip, "12345");
+      assertNotEqual(d.date, "2018-01-01");
+      assertNotEqual(d.integer, 100);
+      assertNotEqual(d.ccard, "1234 1234 1234 1234");
+      assertNotEqual(d.phone, "abcd 1234");
+      assertNotEqual(d.emil, "me@you.here");
     }
 };
 }

@@ -493,7 +493,8 @@ std::string const& RocksDBReplicationContext::patchCount() const {
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    basics::StringBuffer& buff, uint64_t chunkSize, bool useEnvelope) {
+    basics::StringBuffer& buff, size_t docsPerBatch, uint64_t chunkSize,
+    bool useEnvelope) {
   CollectionIterator* cIter{nullptr};
   auto guard = scopeGuard([&]() noexcept {
     try {
@@ -528,7 +529,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
   basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
   velocypack::Dumper dumper(&adapter, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
-  while (cIter->hasMore() && buff.length() < chunkSize) {
+  size_t i = 0;
+  while (cIter->hasMore() && buff.length() < chunkSize && ++i <= docsPerBatch) {
     if (useEnvelope) {
       buff.appendText("{\"type\":");
       buff.appendInteger(REPLICATION_MARKER_DOCUMENT);  // set type
@@ -563,8 +565,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    VPackBuffer<uint8_t>& buffer, uint64_t chunkSize, bool useEnvelope,
-    bool singleArray) {
+    VPackBuffer<uint8_t>& buffer, size_t docsPerBatch, uint64_t chunkSize,
+    bool useEnvelope, bool singleArray) {
   TRI_ASSERT(!useEnvelope || !singleArray);
 
   CollectionIterator* cIter{nullptr};
@@ -605,7 +607,9 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     builder.openArray(true);
   }
   TRI_ASSERT(cIter->iter && !cIter->sorted());
-  while (cIter->hasMore() && buffer.length() < chunkSize) {
+  size_t i = 0;
+  while (cIter->hasMore() && buffer.length() < chunkSize &&
+         ++i <= docsPerBatch) {
     if (useEnvelope) {
       builder.openObject();
       builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));

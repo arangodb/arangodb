@@ -13,12 +13,12 @@ require('../../frontend/js/arango/arangoValidationHelper.js');
 
 // import new react views
 require('./views/analyzers/AnalyzersReactView');
+require('./views/collections/CollectionsReactView');
 require('./views/graphV2/listGraphs/GraphsListReactView');
 require('./views/databases/DatabasesReactView');
 require('./views/graphV2/viewGraph/GraphV2ReactView');
 require('./views/users/UserManagementReactView');
-require('./views/views/ViewSettingsReactView');
-require('./views/views/ViewsListReactView');
+require('./views/views/ViewsReactView');
 require('./views/collections/indices/CollectionIndicesReactView');
 require('./views/query/QueryReactView');
 require('./views/shards/distribution/ShardDistributionReactView');

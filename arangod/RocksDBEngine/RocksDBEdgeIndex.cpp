@@ -54,6 +54,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -566,7 +567,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       std::unique_ptr<rocksdb::Iterator> iterator =
           mthds->NewIterator(_index->columnFamily(), [this](ReadOptions& ro) {
             ro.fill_cache = EdgeIndexFillBlockCache;
-            ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+            ro.readOwnWrites = static_cast<bool>(canReadOwnWrites());
           });
 
       TRI_ASSERT(iterator != nullptr);
@@ -799,7 +800,7 @@ void RocksDBEdgeIndex::toVelocyPack(
 }
 
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
-                                LocalDocumentId const& documentId,
+                                LocalDocumentId documentId,
                                 velocypack::Slice doc,
                                 OperationOptions const& options,
                                 bool /*performChecks*/) {
@@ -838,7 +839,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 }
 
 Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
-                                LocalDocumentId const& documentId,
+                                LocalDocumentId documentId,
                                 velocypack::Slice doc,
                                 OperationOptions const& options) {
   VPackSlice fromTo = doc.get(_directionAttr);
@@ -994,7 +995,9 @@ Result RocksDBEdgeIndex::warmup() {
     return {};
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_collection.vocbase());
+  auto origin = transaction::OperationOriginREST{"warming up edge index"};
+  auto ctx =
+      transaction::StandaloneContext::create(_collection.vocbase(), origin);
   SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ);
   Result res = trx.begin();
 
@@ -1046,6 +1049,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   std::string previous;
   VPackBuilder builder;
   velocypack::Builder docBuilder;
+  auto callback = IndexIterator::makeDocumentCallback(docBuilder);
   std::string lz4CompressBuffer;
   std::string const* cacheKeyCollection = nullptr;
   std::string_view cacheKey;
@@ -1154,10 +1158,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       docBuilder.clear();
       LocalDocumentId const docId = RocksDBKey::edgeDocumentId(key);
       // warmup does not need to observe own writes
-      if (rocksColl
-              ->lookupDocument(*trx, docId, docBuilder, /*readCache*/ true,
-                               /*fillCache*/ true, ReadOwnWrites::no)
-              .fail()) {
+      if (!rocksColl->lookup(trx, docId, callback, {}).ok()) {
         // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);
         continue;

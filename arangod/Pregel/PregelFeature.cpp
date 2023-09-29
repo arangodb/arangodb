@@ -541,14 +541,35 @@ void PregelFeature::beginShutdown() {
 
   // cancel all conductors and workers
   for (auto& it : cs) {
-    it.second.conductor->cancel();
+    try {
+      it.second.conductor->cancel();
+    } catch (std::exception const& ex) {
+      // if an exception happens here, log it, but continue with
+      // the garbage collection. this is important, so that we
+      // can eventually get rid of some leftover conductors.
+      LOG_TOPIC("aaa06", INFO, Logger::PREGEL)
+          << "unable to cancel conductor during shutdown: " << ex.what();
+    }
   }
   for (auto it : ws) {
     it.second.second->cancelGlobalStep(VPackSlice());
   }
 }
 
+void PregelFeature::stop() {
+  // garbage collect conductors here, because it may be too
+  // late for garbage collection during unprepare().
+  // during unprepare() we are not allowed to post further items
+  // onto the scheduler anymore, but the garbage collection
+  // can post onto the scheduler.
+  garbageCollectConductors();
+}
+
 void PregelFeature::unprepare() {
+  // TODO: this may trigger an assertion failure in maintainer
+  // mode, because it is not allowed to post to the scheduler
+  // during unprepare() anymore. we are working around this by
+  // trying to garbage-collection in the stop() phase already.
   garbageCollectConductors();
 
   std::unique_lock guard{_mutex};
@@ -659,7 +680,15 @@ void PregelFeature::garbageCollectConductors() try {
   // cancel and kill conductors without holding the mutex
   // permanently
   for (auto& c : conductors) {
-    c->cancel();
+    try {
+      c->cancel();
+    } catch (std::exception const& ex) {
+      // if an exception happens here, log it, but continue with
+      // the garbage collection. this is important, so that we
+      // can eventually get rid of some leftover conductors.
+      LOG_TOPIC("517bb", INFO, Logger::PREGEL)
+          << "Unable to cancel conductor for garbage-collection: " << ex.what();
+    }
   }
 
   std::lock_guard guard{_mutex};

@@ -39,7 +39,7 @@ namespace arangodb::aql {
 MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
     Fetcher& fetcher, Infos& info)
     : _ctx(std::make_shared<transaction::StandaloneContext>(
-          info._query.vocbase())),
+          info._query.vocbase(), info._query.operationOrigin())),
       _trx(createTransaction(_ctx, info)),
       _info(info),
       _upstreamState(ExecutionState::HASMORE) {
@@ -53,7 +53,9 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
   opts.waitForSync = info._options.waitForSync;
   if (info._isExclusive) {
     // exclusive transaction
-    return {std::move(ctx), /*read*/ {}, /*write*/ {},
+    return {std::move(ctx),
+            /*read*/ {},
+            /*write*/ {},
             /*exclusive*/ {info._aqlCollection->name()}, opts};
   }
   // write transaction
@@ -218,7 +220,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
   if (_info._outputRegisterId.isValid()) {
     AqlValue value(outDocument);
     AqlValueGuard guard(value, true);
-    output.moveValueInto(_info._outputRegisterId, input, guard);
+    output.moveValueInto(_info._outputRegisterId, input, &guard);
   }
 
   // RETURN OLD: current unsupported
@@ -226,7 +228,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
     TRI_ASSERT(options.returnOld);
     AqlValue value(oldDocument);
     AqlValueGuard guard(value, true);
-    output.moveValueInto(_info._outputOldRegisterId, input, guard);
+    output.moveValueInto(_info._outputOldRegisterId, input, &guard);
   }
 
   // RETURN NEW: current unsupported
@@ -234,7 +236,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
     TRI_ASSERT(options.returnNew);
     AqlValue value(newDocument);
     AqlValueGuard guard(value, true);
-    output.moveValueInto(_info._outputNewRegisterId, input, guard);
+    output.moveValueInto(_info._outputNewRegisterId, input, &guard);
   }
 }
 }  // namespace arangodb::aql

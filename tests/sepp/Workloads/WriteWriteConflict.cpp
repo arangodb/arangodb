@@ -93,7 +93,9 @@ void WriteWriteConflict::Thread::run() {
 
   for (;;) {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(*_server.vocbase()),
+        transaction::StandaloneContext::create(
+            *_server.vocbase(),
+            transaction::OperationOriginREST{"inserting document(s)"}),
         _options.collection, AccessMode::Type::WRITE, trxOpts);
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 

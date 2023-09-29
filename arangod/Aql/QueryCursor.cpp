@@ -24,6 +24,9 @@
 
 #include "QueryCursor.h"
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlCallList.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
@@ -33,7 +36,6 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
@@ -141,9 +143,9 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // QueryStreamCursor class
 // .............................................................................
 
-QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
-                                     size_t batchSize, double ttl,
-                                     bool isRetriable)
+QueryStreamCursor::QueryStreamCursor(
+    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
+    bool isRetriable, transaction::OperationOrigin operationOrigin)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false,
              isRetriable),
       _query(std::move(q)),
@@ -490,11 +492,18 @@ ExecutionState QueryStreamCursor::prepareDump() {
   // We want to fill a result of batchSize if possible and have at least
   // one row left (or be definitively DONE) to set "hasMore" reliably.
   ExecutionState state = ExecutionState::HASMORE;
+  SkipResult skipped;
   bool const silent = _query->queryOptions().silent;
+
+  AqlCall call;
+  call.softLimit = batchSize();
+  AqlCallList callList{std::move(call)};
+  AqlCallStack callStack{std::move(callList)};
 
   while (state != ExecutionState::DONE && (silent || numRows <= batchSize())) {
     SharedAqlItemBlockPtr resultBlock;
-    std::tie(state, resultBlock) = engine->getSome(batchSize());
+    std::tie(state, skipped, resultBlock) = engine->execute(callStack);
+    TRI_ASSERT(skipped.nothingSkipped());
     if (state == ExecutionState::WAITING) {
       break;
     }
@@ -507,7 +516,7 @@ ExecutionState QueryStreamCursor::prepareDump() {
     }
   }
 
-  // remember not to call getSome() again
+  // remember not to call execute() again
   _finalization = (state == ExecutionState::DONE);
   if (_finalization) {
     cleanupStateCallback();

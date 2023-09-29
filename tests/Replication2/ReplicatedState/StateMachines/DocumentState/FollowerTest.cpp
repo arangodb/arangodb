@@ -336,9 +336,9 @@ TEST_F(DocumentStateFollowerTest,
   entries.clear();
   entries.emplace_back(
       DocumentLogEntry{ReplicatedOperation::buildModifyShardOperation(
-          myShard, myCollection, std::make_shared<VPackBuilder>(), {})});
+          myShard, myCollection, velocypack::SharedSlice())});
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
-  EXPECT_CALL(*shardHandlerMock, modifyShard(myShard, myCollection, _, _))
+  EXPECT_CALL(*shardHandlerMock, modifyShard(myShard, myCollection, _))
       .Times(1);
   EXPECT_CALL(*stream, release).Times(1);
   follower->applyEntries(std::move(entryIterator));

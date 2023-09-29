@@ -53,15 +53,15 @@ class RocksDBValue {
   static RocksDBValue Database(VPackSlice data);
   static RocksDBValue Collection(VPackSlice data);
   static RocksDBValue ReplicatedState(VPackSlice data);
-  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId,
+  static RocksDBValue PrimaryIndexValue(LocalDocumentId docId,
                                         RevisionId revision);
   static RocksDBValue EdgeIndexValue(std::string_view vertexId);
   static RocksDBValue VPackIndexValue();
   static RocksDBValue VPackIndexValue(VPackSlice data);
   static RocksDBValue ZkdIndexValue();
-  static RocksDBValue UniqueZkdIndexValue(LocalDocumentId const& docId);
-  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
-  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId,
+  static RocksDBValue UniqueZkdIndexValue(LocalDocumentId docId);
+  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId);
+  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId,
                                             VPackSlice data);
   static RocksDBValue View(VPackSlice data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice data);
@@ -160,10 +160,9 @@ class RocksDBValue {
 
  private:
   explicit RocksDBValue(RocksDBEntryType type);
-  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId docId,
                RevisionId revision);
-  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
-               VPackSlice data);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId docId, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, std::string_view data);
   RocksDBValue(RocksDBEntryType type, replication2::LogEntry const&);

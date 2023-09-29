@@ -69,7 +69,8 @@ TEST_F(ComputedValuesTest, createComputedValuesFromEmptyObject) {
   std::vector<std::string> shardKeys;
   // cannot create ComputedValues from an Object slice
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, velocypack::Slice::emptyObjectSlice());
+      vocbase, shardKeys, velocypack::Slice::emptyObjectSlice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -80,8 +81,9 @@ TEST_F(ComputedValuesTest, createComputedValuesFromNone) {
   std::vector<std::string> shardKeys;
   // when creating computed values from a None slice, we get no
   // error, but a nullptr back
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys,
-                                           velocypack::Slice::noneSlice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, velocypack::Slice::noneSlice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   ASSERT_EQ(nullptr, res.get());
 }
@@ -93,7 +95,8 @@ TEST_F(ComputedValuesTest, createComputedValuesFromEmptyArray) {
   // when creating computed values from an empty Array slice, we get no
   // error, but a nullptr back
   auto res = ComputedValues::buildInstance(
-      vocbase, shardKeys, velocypack::Slice::emptyArraySlice());
+      vocbase, shardKeys, velocypack::Slice::emptyArraySlice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   ASSERT_EQ(nullptr, res.get());
 }
@@ -109,7 +112,9 @@ TEST_F(ComputedValuesTest, createComputedValuesFromGarbledObject) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -127,7 +132,9 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectInvalidName) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -145,7 +152,9 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectEmptyName) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -162,7 +171,9 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectMissingName) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -179,7 +190,9 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectMissingExpression) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -208,7 +221,9 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectInvalidExpression) {
     b.close();
     b.close();
 
-    auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+    auto res = ComputedValues::buildInstance(
+        vocbase, shardKeys, b.slice(),
+        arangodb::transaction::OperationOriginTestCase{});
     ASSERT_FALSE(res.ok());
     ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   }
@@ -233,7 +248,9 @@ TEST_F(ComputedValuesTest,
     b.close();
     b.close();
 
-    auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+    auto res = ComputedValues::buildInstance(
+        vocbase, shardKeys, b.slice(),
+        arangodb::transaction::OperationOriginTestCase{});
     ASSERT_FALSE(res.ok());
     ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   }
@@ -251,7 +268,9 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectMissingOverwrite) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -269,7 +288,9 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectSimple) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
@@ -313,7 +334,9 @@ TEST_F(ComputedValuesTest, createComputedValuesInvalidComputeOn) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -335,7 +358,9 @@ TEST_F(ComputedValuesTest, createComputedValuesInvalidComputeOn2) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -357,7 +382,9 @@ TEST_F(ComputedValuesTest, createComputedValuesInvalidComputeOn3) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -376,7 +403,9 @@ TEST_F(ComputedValuesTest, createComputedValuesEmptyComputeOn) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -398,7 +427,9 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnInsert) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
@@ -444,7 +475,9 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnUpdate) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_FALSE(cv->mustComputeValuesOnInsert());
@@ -491,7 +524,9 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnReplace) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_FALSE(cv->mustComputeValuesOnInsert());
@@ -545,7 +580,9 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnMultiple) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
@@ -612,7 +649,9 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnMultiple2) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
@@ -670,7 +709,9 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnSystemAttributes) {
     b.close();
     b.close();
 
-    auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+    auto res = ComputedValues::buildInstance(
+        vocbase, shardKeys, b.slice(),
+        arangodb::transaction::OperationOriginTestCase{});
     ASSERT_FALSE(res.ok());
     ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   }
@@ -691,7 +732,9 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnShardKeys) {
     b.close();
     b.close();
 
-    auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+    auto res = ComputedValues::buildInstance(
+        vocbase, shardKeys, b.slice(),
+        arangodb::transaction::OperationOriginTestCase{});
     ASSERT_FALSE(res.ok());
     ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   }
@@ -716,7 +759,9 @@ TEST_F(ComputedValuesTest, createComputedValuesDuplicateNames) {
   b.close();
   b.close();
 
-  auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
+  auto res = ComputedValues::buildInstance(
+      vocbase, shardKeys, b.slice(),
+      arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(res.ok());
   ASSERT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
 }
@@ -753,8 +798,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteTrue) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options());
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -762,20 +809,22 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteTrue) {
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("test", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("test", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 
   auto doc2 = velocypack::Parser::fromJson("{\"_key\":\"test2\"}");
   EXPECT_TRUE(trx.insert("test", doc2->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test2",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("test", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("test", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 }
 
@@ -794,8 +843,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options());
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -803,19 +854,21 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("abc", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("abc", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
   auto doc2 = velocypack::Parser::fromJson("{\"_key\":\"test2\"}");
   EXPECT_TRUE(trx.insert("test", doc2->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test2",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("test", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("test", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 }
 
@@ -830,8 +883,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options());
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -839,10 +894,11 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("abc", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("abc", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 
   auto doc2 =
@@ -851,10 +907,11 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
 
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("update", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("update", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 }
 
@@ -869,8 +926,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options());
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -878,10 +937,11 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("abc", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("abc", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 
   auto doc2 =
@@ -890,10 +950,11 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
 
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("qux", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("qux", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 }
 
@@ -920,8 +981,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningDynamic) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options());
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc = velocypack::Parser::fromJson("{\"value\":42}");
@@ -940,8 +1003,10 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInvalidValuesDynamic) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options());
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc = velocypack::Parser::fromJson(
@@ -949,11 +1014,12 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInvalidValuesDynamic) {
   EXPECT_TRUE(trx.insert("test", doc->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_TRUE(doc.get("value1").isNull());
-                       EXPECT_EQ(23, doc.get("value2").getNumber<int>());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_TRUE(doc.get("value1").isNull());
+                           EXPECT_EQ(23, doc.get("value2").getNumber<int>());
+                           return true;
+                         }))
                   .ok());
 }
 
@@ -973,8 +1039,10 @@ TEST_F(ComputedValuesTest, insertKeepNullTrue) {
 
   std::vector<std::string> const EMPTY;
   std::vector<std::string> collections{"test"};
-  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                           EMPTY, collections, EMPTY, transaction::Options());
+  transaction::Methods trx(
+      transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      EMPTY, collections, EMPTY, transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc1 =
@@ -982,30 +1050,33 @@ TEST_F(ComputedValuesTest, insertKeepNullTrue) {
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_TRUE(doc.get("attr").isNull());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_TRUE(doc.get("attr").isNull());
+                           return true;
+                         }))
                   .ok());
   auto doc2 = velocypack::Parser::fromJson(
       "{\"_key\":\"test2\", \"attr\":null, \"value\": null}");
   EXPECT_TRUE(trx.insert("test", doc2->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test2",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_TRUE(doc.get("attr").isNull());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_TRUE(doc.get("attr").isNull());
+                           return true;
+                         }))
                   .ok());
   auto doc3 = velocypack::Parser::fromJson(
       "{\"_key\":\"test3\", \"attr\":null, \"value\": 1}");
   EXPECT_TRUE(trx.insert("test", doc3->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test3",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_FALSE(doc.get("attr").isNull());
-                       EXPECT_EQ(1, doc.get("attr").getNumber<int>());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_FALSE(doc.get("attr").isNull());
+                           EXPECT_EQ(1, doc.get("attr").getNumber<int>());
+                           return true;
+                         }))
                   .ok());
 }

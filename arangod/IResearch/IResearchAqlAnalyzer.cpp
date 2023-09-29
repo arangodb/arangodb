@@ -51,6 +51,7 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Transaction/Hints.h"
 #include "Transaction/SmartContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -197,12 +198,14 @@ bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
   return false;
 }
 
-irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
+irs::analysis::analyzer::ptr make_slice(VPackSlice slice) {
   arangodb::iresearch::AqlAnalyzer::Options options;
   if (parse_options_slice(slice, options)) {
     auto validationRes = arangodb::aql::StandaloneCalculation::validateQuery(
         arangodb::DatabaseFeature::getCalculationVocbase(), options.queryString,
         CALCULATION_PARAMETER_NAME, " in aql analyzer",
+        arangodb::transaction::OperationOriginInternal{
+            "validating AQL analyzer"},
         /*isComputedValue*/ false);
     if (validationRes.ok()) {
       return std::make_unique<arangodb::iresearch::AqlAnalyzer>(options);
@@ -324,17 +327,20 @@ bool AqlAnalyzer::isOptimized() const {
 AqlAnalyzer::AqlAnalyzer(Options const& options)
     : _options(options),
       _query(arangodb::aql::StandaloneCalculation::buildQueryContext(
-          arangodb::DatabaseFeature::getCalculationVocbase())),
+          arangodb::DatabaseFeature::getCalculationVocbase(),
+          transaction::OperationOriginInternal{"AQL analyzer"})),
       _itemBlockManager(_query->resourceMonitor()),
       _engine(0, *_query, _itemBlockManager, nullptr),
       _resetImpl(&resetFromQuery) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;
-  TRI_ASSERT(arangodb::aql::StandaloneCalculation::validateQuery(
-                 arangodb::DatabaseFeature::getCalculationVocbase(),
-                 _options.queryString, CALCULATION_PARAMETER_NAME,
-                 " in aql analyzer", /*isComputedValue*/ false)
-                 .ok());
+  TRI_ASSERT(
+      arangodb::aql::StandaloneCalculation::validateQuery(
+          arangodb::DatabaseFeature::getCalculationVocbase(),
+          _options.queryString, CALCULATION_PARAMETER_NAME, " in aql analyzer",
+          transaction::OperationOriginInternal{"validating AQL analyzer"},
+          /*isComputedValue*/ false)
+          .ok());
 }
 
 bool AqlAnalyzer::next() {
