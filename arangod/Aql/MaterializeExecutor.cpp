@@ -79,7 +79,11 @@ MaterializeExecutor<localDocumentId>::MaterializeExecutor(
     MaterializeExecutor<localDocumentId>::Fetcher& /*fetcher*/, Infos& infos)
     : _buffer{infos.query().resourceMonitor()},
       _trx{infos.query().newTrxContext()},
-      _readCtx{infos} {}
+      _readCtx{infos} {
+  if constexpr (localDocumentId) {
+    _collection = infos.collection()->getCollection()->getPhysical();
+  }
+}
 
 template<bool localDocumentId>
 void MaterializeExecutor<localDocumentId>::Buffer::fill(
@@ -163,11 +167,7 @@ MaterializeExecutor<localDocumentId>::produceRows(
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
   if constexpr (localDocumentId) {
-    if (!_collection) {
-      _collection = _trx.documentCollection(_readCtx.infos->collectionSource())
-                        ->getPhysical();
-      TRI_ASSERT(_collection);
-    }
+    TRI_ASSERT(_collection);
   } else {
     // buffering all LocalDocumentIds to avoid memory ping-pong
     // between iresearch and storage engine
@@ -283,8 +283,5 @@ MaterializeExecutor<localDocumentId>::skipRowsRange(
 
 template class MaterializeExecutor<false>;
 template class MaterializeExecutor<true>;
-
-template class MaterializerExecutorInfos<true>;
-template class MaterializerExecutorInfos<false>;
 
 }  // namespace arangodb::aql

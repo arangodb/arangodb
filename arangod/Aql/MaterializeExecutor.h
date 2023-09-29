@@ -48,32 +48,17 @@ class InputAqlItemRow;
 class RegisterInfos;
 template<BlockPassthrough>
 class SingleRowFetcher;
+struct Collection;
 
-template<bool T>
-class CollectionNameHolder {
+class MaterializerExecutorInfos {
  public:
-  explicit CollectionNameHolder(std::string_view name) noexcept
-      : _collectionSource{name} {}
-
-  auto collectionSource() const { return _collectionSource; }
-
- protected:
-  std::string_view _collectionSource;
-};
-
-template<>
-class CollectionNameHolder<false> {};
-
-template<bool localDocumentId>
-class MaterializerExecutorInfos : public CollectionNameHolder<localDocumentId> {
- public:
-  template<class... _Types>
   MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
-                            aql::QueryContext& query, _Types&&... Args)
-      : CollectionNameHolder<localDocumentId>(Args...),
-        _inNonMaterializedDocRegId(inNmDocId),
+                            aql::QueryContext& query,
+                            Collection const* collection)
+      : _inNonMaterializedDocRegId(inNmDocId),
         _outMaterializedDocumentRegId(outDocRegId),
-        _query(query) {}
+        _query(query),
+        _collection(collection) {}
 
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
@@ -90,12 +75,15 @@ class MaterializerExecutorInfos : public CollectionNameHolder<localDocumentId> {
 
   aql::QueryContext& query() const noexcept { return _query; }
 
+  Collection const* collection() const noexcept { return _collection; }
+
  private:
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
   /// @brief register to store materialized document
   RegisterId const _outMaterializedDocumentRegId;
   aql::QueryContext& _query;
+  Collection const* _collection;
 };
 
 template<bool localDocumentId>
@@ -108,7 +96,7 @@ class MaterializeExecutor {
         BlockPassthrough::Disable;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = MaterializerExecutorInfos<localDocumentId>;
+  using Infos = MaterializerExecutorInfos;
   using Stats = MaterializeStats;
 
   MaterializeExecutor(MaterializeExecutor&&) = default;
