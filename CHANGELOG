@@ -20,6 +20,8 @@ v3.11.4 (XXXX-XX-XX)
   `arangodb_network_connectivity_failures_dbservers`, which can be monitored
   for detecting temporary or permanent connectivity issues.
 
+* BTS-1618: Preventing the problem from ever occurring on 3.11.
+
 * Speed up incremental hotbackup upload by parallelization of
   remote-to-remote copies. Tolerate deletion of old backups during
   incremental upload.
