@@ -609,7 +609,7 @@ class CommonGatherExecutorTest
         old += (*val)++;
         AqlValue v{AqlValueHintInt(old)};
         AqlValueGuard guard(v, true);
-        output.moveValueInto(0, input, guard);
+        output.moveValueInto(0, input, &guard);
         output.advanceRow();
 
         if (*val == numDataRows) {

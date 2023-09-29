@@ -108,35 +108,25 @@ void OutputAqlItemRow::cloneValueInto(RegisterId registerId,
   bool mustDestroy = true;
   AqlValue clonedValue = value.clone();
   AqlValueGuard guard{clonedValue, mustDestroy};
-  moveValueInto(registerId, sourceRow, guard);
+  moveValueInto(registerId, sourceRow, &guard);
 }
 
 template<class ItemRowType, class ValueType>
 void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId,
-                                               ValueType& value) {
+                                               ValueType value) {
   TRI_ASSERT(isOutputRegister(registerId));
   // This is already implicitly asserted by isOutputRegister:
   TRI_ASSERT(registerId.isRegularRegister());
   TRI_ASSERT(registerId < getNumRegisters());
   TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
   TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
-
-  if constexpr (std::is_same_v<std::decay_t<ValueType>, AqlValueGuard>) {
-    block().setValue(_baseIndex, registerId, value.value());
-    value.steal();
-  } else if constexpr (  // all inlined values
-      std::is_same_v<std::decay_t<ValueType>, AqlValueHintDouble> ||
-      std::is_same_v<std::decay_t<ValueType>, AqlValueHintInt> ||
-      std::is_same_v<std::decay_t<ValueType>, AqlValueHintUInt> ||
-      std::is_same_v<std::decay_t<ValueType>, AqlValueHintZero> ||
-      std::is_same_v<std::decay_t<ValueType>, AqlValueHintNone> ||
-      std::is_same_v<std::decay_t<ValueType>, AqlValueHintNull> ||
-      std::is_same_v<std::decay_t<ValueType>, AqlValueHintEmptyArray> ||
-      std::is_same_v<std::decay_t<ValueType>, AqlValueHintEmptyObject> ||
-      std::is_same_v<std::decay_t<ValueType>, AqlValueHintBool>) {
-    block().emplaceValue(_baseIndex, registerId.value(), value);
+  using V = std::remove_pointer_t<ValueType>;
+  if constexpr (std::is_same_v<V, AqlValueGuard>) {
+    block().setValue(_baseIndex, registerId, value->value());
+    value->steal();
+  } else if constexpr (std::is_same_v<V, std::unique_ptr<std::string>>) {
+    block().emplaceValue(_baseIndex, registerId.value(), *value);
   } else {
-    static_assert(std::is_same_v<std::decay_t<ValueType>, VPackSlice>);
     block().emplaceValue(_baseIndex, registerId.value(), value);
   }
   _numValuesWritten++;
@@ -145,7 +135,7 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId,
 template<class ItemRowType, class ValueType>
 void OutputAqlItemRow::moveValueInto(RegisterId registerId,
                                      ItemRowType const& sourceRow,
-                                     ValueType& value) {
+                                     ValueType value) {
   moveValueWithoutRowCopy<ItemRowType, ValueType>(registerId, value);
 
   // allValuesWritten() must be called only *after* moveValueWithoutRowCopy(),
@@ -160,7 +150,7 @@ void OutputAqlItemRow::consumeShadowRow(RegisterId registerId,
                                         AqlValueGuard& guard) {
   TRI_ASSERT(sourceRow.isRelevant());
 
-  moveValueWithoutRowCopy<ShadowAqlItemRow>(registerId, guard);
+  moveValueWithoutRowCopy<ShadowAqlItemRow>(registerId, &guard);
   // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(allValuesWritten());
   copyOrMoveRow<ShadowAqlItemRow, CopyOrMove::MOVE,
@@ -182,7 +172,7 @@ bool OutputAqlItemRow::reuseLastStoredValue(RegisterId registerId,
   AqlValue ref = block().getValue(_lastBaseIndex, registerId);
   // The initial row is still responsible
   AqlValueGuard guard{ref, false};
-  moveValueInto(registerId, sourceRow, guard);
+  moveValueInto(registerId, sourceRow, &guard);
   return true;
 }
 
@@ -580,59 +570,59 @@ template void OutputAqlItemRow::copyRow<InputAqlItemRow>(
     InputAqlItemRow const& sourceRow, bool ignoreMissing);
 template void OutputAqlItemRow::copyRow<ShadowAqlItemRow>(
     ShadowAqlItemRow const& sourceRow, bool ignoreMissing);
+
 template void OutputAqlItemRow::cloneValueInto<InputAqlItemRow>(
     RegisterId registerId, InputAqlItemRow const& sourceRow,
     AqlValue const& value);
 template void OutputAqlItemRow::cloneValueInto<ShadowAqlItemRow>(
     RegisterId registerId, ShadowAqlItemRow const& sourceRow,
     AqlValue const& value);
-template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    AqlValueGuard& guard);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintBool const>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    AqlValueHintBool const&);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintDouble const>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    AqlValueHintDouble const&);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintInt const>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    AqlValueHintInt const&);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintUInt const>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    AqlValueHintUInt const&);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintZero const>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    AqlValueHintZero const&);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintNone const>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    AqlValueHintNone const&);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintNull const>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    AqlValueHintNull const&);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintEmptyArray const>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    AqlValueHintEmptyArray const&);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintEmptyObject const>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    AqlValueHintEmptyObject const&);
-template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, AqlValueGuard>(
+
+template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, AqlValueGuard*>(
     RegisterId registerId, ShadowAqlItemRow const& sourceRow,
-    AqlValueGuard& guard);
-template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow, VPackSlice& value);
+    AqlValueGuard* guard);
 template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, VPackSlice>(
-    RegisterId registerId, ShadowAqlItemRow const& sourceRow,
-    VPackSlice& value);
+    RegisterId registerId, ShadowAqlItemRow const& sourceRow, VPackSlice slice);
+
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard*>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow,
+    AqlValueGuard* guard);
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, VPackSlice slice);
+template void
+OutputAqlItemRow::moveValueInto<InputAqlItemRow, std::unique_ptr<std::string>*>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow,
+    std::unique_ptr<std::string>*);
+
+template void
+OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintBool>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintBool);
+template void
+OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintDouble>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow,
+    AqlValueHintDouble);
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintInt>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintInt);
+template void
+OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintUInt>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintUInt);
+template void
+OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintZero>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintZero);
+template void
+OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintNone>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintNone);
+template void
+OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintNull>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintNull);
+template void
+OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintEmptyArray>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow,
+    AqlValueHintEmptyArray);
+template void
+OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintEmptyObject>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow,
+    AqlValueHintEmptyObject);
 
 auto aql::operator<<(std::ostream& out, OutputAqlItemRow const& output)
     -> std::ostream& {

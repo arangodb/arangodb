@@ -261,7 +261,7 @@ void RocksDBBuilderIndex::toVelocyPack(
 /// insert index elements into the specified write batch.
 Result RocksDBBuilderIndex::insert(transaction::Methods& trx,
                                    RocksDBMethods* mthd,
-                                   LocalDocumentId const& documentId,
+                                   LocalDocumentId documentId,
                                    velocypack::Slice slice,
                                    OperationOptions const& /*options*/,
                                    bool /*performChecks*/) {
@@ -274,7 +274,7 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx,
 /// remove index elements and put it in the specified write batch.
 Result RocksDBBuilderIndex::remove(transaction::Methods& trx,
                                    RocksDBMethods* mthd,
-                                   LocalDocumentId const& documentId,
+                                   LocalDocumentId documentId,
                                    velocypack::Slice slice,
                                    OperationOptions const& /*options*/) {
   RocksDBLogValue val =

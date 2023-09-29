@@ -189,21 +189,22 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       return;
     }
     std::string_view vertex = id.substr(pos + 1);
+    auto cb = IndexIterator::makeDocumentCallbackF(
+        [&](LocalDocumentId, VPackSlice doc) {
+          // FOUND. short circuit.
+          read++;
+          builder.add(v);
+          if (!options().getVertexProjections().empty()) {
+            VPackObjectBuilder guard(&builder);
+            options().getVertexProjections().toVelocyPackFromDocument(
+                builder, doc, _trx.get());
+          } else {
+            builder.add(doc);
+          }
+          return true;
+        });
     for (auto const& shard : shards->second) {
-      Result res = _trx->documentFastPathLocal(
-          shard, vertex, [&](LocalDocumentId const&, VPackSlice doc) {
-            // FOUND. short circuit.
-            read++;
-            builder.add(v);
-            if (!options().getVertexProjections().empty()) {
-              VPackObjectBuilder guard(&builder);
-              options().getVertexProjections().toVelocyPackFromDocument(
-                  builder, doc, _trx.get());
-            } else {
-              builder.add(doc);
-            }
-            return true;
-          });
+      Result res = _trx->documentFastPathLocal(shard, vertex, cb);
       if (res.ok()) {
         break;
       }

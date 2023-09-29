@@ -33,16 +33,19 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+
 class CollectionNameResolver;
 class LogicalCollection;
 struct OperationOptions;
 
 namespace velocypack {
+
 class Builder;
 class Slice;
-}  // namespace velocypack
 
+}  // namespace velocypack
 namespace transaction {
+
 struct BatchOptions;
 class Context;
 class Methods;
@@ -99,8 +102,8 @@ VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
 OperationResult buildCountResult(
     OperationOptions const& options,
-    std::vector<std::pair<std::string, uint64_t>> const& count,
-    transaction::CountType type, uint64_t& total);
+    std::vector<std::pair<std::string, uint64_t>> const& count, CountType type,
+    uint64_t& total);
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string makeIdFromCustom(CollectionNameResolver const* resolver,
@@ -114,7 +117,7 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
                           std::string_view key, velocypack::Slice value,
                           RevisionId& revisionId, velocypack::Builder& builder,
                           OperationOptions const& options,
-                          transaction::BatchOptions& batchOptions);
+                          BatchOptions& batchOptions);
 
 /// @brief merge two objects for update
 Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
@@ -124,7 +127,7 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
                              RevisionId& revisionId,
                              velocypack::Builder& builder,
                              OperationOptions const& options,
-                             transaction::BatchOptions& batchOptions);
+                             BatchOptions& batchOptions);
 
 /// @brief new object for replace
 Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
@@ -132,7 +135,7 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
                            velocypack::Slice newValue, RevisionId& revisionId,
                            velocypack::Builder& builder,
                            OperationOptions const& options,
-                           transaction::BatchOptions& batchOptions);
+                           BatchOptions& batchOptions);
 
 bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames);
 
@@ -142,8 +145,17 @@ bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames);
 class StringLeaser {
  public:
   explicit StringLeaser(Methods*);
-  explicit StringLeaser(transaction::Context*);
+  explicit StringLeaser(Context*);
   ~StringLeaser();
+
+  auto release() {
+    return std::unique_ptr<std::string>{std::exchange(_string, nullptr)};
+  }
+  void acquire(std::unique_ptr<std::string> r) {
+    TRI_ASSERT(_string == nullptr);
+    _string = r.release();
+  }
+
   std::string* string() const { return _string; }
   std::string* operator->() const { return _string; }
   std::string& operator*() { return *_string; }
@@ -151,14 +163,14 @@ class StringLeaser {
   std::string* get() const { return _string; }
 
  private:
-  transaction::Context* _transactionContext;
+  Context* _transactionContext;
   std::string* _string;
 };
 
 class BuilderLeaser {
  public:
-  explicit BuilderLeaser(transaction::Context*);
-  explicit BuilderLeaser(transaction::Methods*);
+  explicit BuilderLeaser(Context*);
+  explicit BuilderLeaser(Methods*);
 
   BuilderLeaser(BuilderLeaser const&) = delete;
   BuilderLeaser& operator=(BuilderLeaser const&) = delete;
@@ -170,30 +182,16 @@ class BuilderLeaser {
 
   ~BuilderLeaser();
 
-  inline arangodb::velocypack::Builder* builder() const noexcept {
-    return _builder;
-  }
-  inline arangodb::velocypack::Builder* operator->() const noexcept {
-    return _builder;
-  }
-  inline arangodb::velocypack::Builder& operator*() noexcept {
-    return *_builder;
-  }
-  inline arangodb::velocypack::Builder& operator*() const noexcept {
-    return *_builder;
-  }
-  inline arangodb::velocypack::Builder* get() const noexcept {
-    return _builder;
-  }
-  inline arangodb::velocypack::Builder* steal() {
-    arangodb::velocypack::Builder* res = _builder;
-    _builder = nullptr;
-    return res;
-  }
+  velocypack::Builder* builder() const noexcept { return _builder; }
+  velocypack::Builder* operator->() const noexcept { return _builder; }
+  velocypack::Builder& operator*() noexcept { return *_builder; }
+  velocypack::Builder& operator*() const noexcept { return *_builder; }
+  velocypack::Builder* get() const noexcept { return _builder; }
+  velocypack::Builder* steal() { return std::exchange(_builder, nullptr); }
 
  private:
-  transaction::Context* _transactionContext;
-  arangodb::velocypack::Builder* _builder;
+  Context* _transactionContext;
+  velocypack::Builder* _builder;
 };
 
 }  // namespace transaction
