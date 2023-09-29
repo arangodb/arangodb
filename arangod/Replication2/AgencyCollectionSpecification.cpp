@@ -29,7 +29,7 @@ using namespace arangodb::replication2::agency;
 using namespace arangodb::basics;
 
 bool Collection::MutableProperties::operator==(
-    MutableProperties other) const noexcept {
+    MutableProperties const& other) const noexcept {
   if (schema.has_value() != other.schema.has_value()) {
     if (schema.has_value()) {
       if (!(schema.value().slice().isNone() ||

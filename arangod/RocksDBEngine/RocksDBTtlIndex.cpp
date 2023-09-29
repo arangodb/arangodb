@@ -70,7 +70,7 @@ void RocksDBTtlIndex::toVelocyPack(
 
 /// @brief inserts a document into the index
 Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
-                               LocalDocumentId const& documentId,
+                               LocalDocumentId documentId,
                                velocypack::Slice doc,
                                OperationOptions const& options,
                                bool performChecks) {
@@ -90,7 +90,7 @@ Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
 
 /// @brief removes a document from the index
 Result RocksDBTtlIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
-                               LocalDocumentId const& documentId,
+                               LocalDocumentId documentId,
                                velocypack::Slice doc,
                                OperationOptions const& options) {
   double timestamp = getTimestamp(doc);

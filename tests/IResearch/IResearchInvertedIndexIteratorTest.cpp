@@ -288,7 +288,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next) {
     ASSERT_TRUE(iterator->hasMore());
 
     std::vector<arangodb::LocalDocumentId> docs;
-    auto docCallback = [&docs](arangodb::LocalDocumentId const& token) {
+    auto docCallback = [&docs](arangodb::LocalDocumentId token) {
       docs.push_back(token);
       return true;
     };
@@ -316,7 +316,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next_skip) {
     ASSERT_EQ(1, skipped);
     ASSERT_TRUE(iterator->hasMore());
     std::vector<arangodb::LocalDocumentId> docs;
-    auto docCallback = [&docs](arangodb::LocalDocumentId const& token) {
+    auto docCallback = [&docs](arangodb::LocalDocumentId token) {
       docs.push_back(token);
       return true;
     };

@@ -5342,7 +5342,7 @@ void ClusterInfo::startSyncers() {
 
   if (!_planSyncer->start() || !_curSyncer->start()) {
     LOG_TOPIC("b4fa6", FATAL, Logger::CLUSTER)
-        << "unable to start PlanSyncer/CurrentSYncer";
+        << "unable to start PlanSyncer/CurrentSyncer";
     FATAL_ERROR_EXIT();
   }
 }

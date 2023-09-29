@@ -1,6 +1,8 @@
 devel
 -----
 
+* Improve logging in case hot backup locks cannot be taken on coordinators.
+
 * Speed up incremental hotbackup upload by parallelization of
   remote-to-remote copies. Tolerate deletion of old backups during
   incremental upload.

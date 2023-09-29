@@ -238,15 +238,7 @@ class Manager final : public IManager {
   }
 
   // remove the block
-  void releaseTransactions() noexcept {
-    std::unique_lock<std::mutex> guard(_hotbackupMutex);
-    if (_hotbackupCommitLockHeld) {
-      LOG_TOPIC("eeddd", TRACE, Logger::TRANSACTIONS)
-          << "Releasing write lock to hold transactions.";
-      _hotbackupCommitLock.unlockWrite();
-      _hotbackupCommitLockHeld = false;
-    }
-  }
+  void releaseTransactions() noexcept;
 
   using TransactionCommitGuard = basics::ReadLocker<basics::ReadWriteLock>;
 

@@ -809,20 +809,22 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteTrue) {
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("test", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("test", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 
   auto doc2 = velocypack::Parser::fromJson("{\"_key\":\"test2\"}");
   EXPECT_TRUE(trx.insert("test", doc2->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test2",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("test", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("test", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 }
 
@@ -852,19 +854,21 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("abc", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("abc", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
   auto doc2 = velocypack::Parser::fromJson("{\"_key\":\"test2\"}");
   EXPECT_TRUE(trx.insert("test", doc2->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test2",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("test", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("test", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 }
 
@@ -890,10 +894,11 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("abc", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("abc", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 
   auto doc2 =
@@ -902,10 +907,11 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
 
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("update", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("update", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 }
 
@@ -931,10 +937,11 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("abc", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("abc", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 
   auto doc2 =
@@ -943,10 +950,11 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
 
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_EQ("qux", doc.get("attr").stringView());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_EQ("qux", doc.get("attr").stringView());
+                           return true;
+                         }))
                   .ok());
 }
 
@@ -1006,11 +1014,12 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInvalidValuesDynamic) {
   EXPECT_TRUE(trx.insert("test", doc->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_TRUE(doc.get("value1").isNull());
-                       EXPECT_EQ(23, doc.get("value2").getNumber<int>());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_TRUE(doc.get("value1").isNull());
+                           EXPECT_EQ(23, doc.get("value2").getNumber<int>());
+                           return true;
+                         }))
                   .ok());
 }
 
@@ -1041,30 +1050,33 @@ TEST_F(ComputedValuesTest, insertKeepNullTrue) {
   EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test1",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_TRUE(doc.get("attr").isNull());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_TRUE(doc.get("attr").isNull());
+                           return true;
+                         }))
                   .ok());
   auto doc2 = velocypack::Parser::fromJson(
       "{\"_key\":\"test2\", \"attr\":null, \"value\": null}");
   EXPECT_TRUE(trx.insert("test", doc2->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test2",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_TRUE(doc.get("attr").isNull());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_TRUE(doc.get("attr").isNull());
+                           return true;
+                         }))
                   .ok());
   auto doc3 = velocypack::Parser::fromJson(
       "{\"_key\":\"test3\", \"attr\":null, \"value\": 1}");
   EXPECT_TRUE(trx.insert("test", doc3->slice(), OperationOptions()).ok());
   EXPECT_TRUE(trx.documentFastPathLocal(
                      "test", "test3",
-                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
-                       EXPECT_FALSE(doc.get("attr").isNull());
-                       EXPECT_EQ(1, doc.get("attr").getNumber<int>());
-                       return true;
-                     })
+                     IndexIterator::makeDocumentCallbackF(
+                         [&](LocalDocumentId token, velocypack::Slice doc) {
+                           EXPECT_FALSE(doc.get("attr").isNull());
+                           EXPECT_EQ(1, doc.get("attr").getNumber<int>());
+                           return true;
+                         }))
                   .ok());
 }

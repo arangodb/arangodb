@@ -79,14 +79,20 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
     written =
         _collection
-            ->read(
+            ->lookup(
                 &_trx, id,
-                [&, &input = input](LocalDocumentId /*id*/, VPackSlice doc) {
-                  TRI_ASSERT(input.isInitialized());
-                  output.moveValueInto(docOutReg, input, doc);
-                  return true;
-                },
-                ReadOwnWrites::no)
+                {[&, &input = input](LocalDocumentId /*id*/, VPackSlice doc) {
+                   TRI_ASSERT(input.isInitialized());
+                   output.moveValueInto(docOutReg, input, doc);
+                   return true;
+                 },
+                 [&, &input = input](LocalDocumentId /*id*/,
+                                     std::unique_ptr<std::string>& doc) {
+                   TRI_ASSERT(input.isInitialized());
+                   output.moveValueInto(docOutReg, input, &doc);
+                   return true;
+                 }},
+                {})
             .ok();
 
     TRI_ASSERT(written);
@@ -238,12 +244,8 @@ MaterializeSearchExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       if (it->executor != kInvalidRecord) {
         if (auto& value = _getCtx.values[it->executor]; value) {
           TRI_ASSERT(input.isInitialized());
-          AqlValue data{std::move(value)};
-          AqlValueGuard guard{data, true};
-          // TODO(MBkkt) add moveValueInto overload for
-          // std::unique_ptr<uint8_t[]>
           output.moveValueInto(_infos.outputMaterializedDocumentRegId(), input,
-                               guard);
+                               &value);
           written = true;
         }
       }
