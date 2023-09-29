@@ -3,7 +3,7 @@
 
 let db = require("@arangodb").db;
 let jsunity = require("jsunity");
-const isCluster = require("@arangodb/cluster").isCluster();
+const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 
 // The numbers hardcoded in the "cnt" values come from AQL not running properly

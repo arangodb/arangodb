@@ -31,7 +31,7 @@
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
-const isCluster = require("@arangodb/cluster").isCluster();
+const isCluster = require("internal").isCluster();
 
 function optimizerCollectMethodsTestSuite () {
   let c;

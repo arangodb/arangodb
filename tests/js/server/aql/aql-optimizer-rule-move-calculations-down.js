@@ -31,7 +31,7 @@
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var db = require("@arangodb").db;
-const isCluster = require("@arangodb/cluster").isCluster();
+const isCluster = require("internal").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

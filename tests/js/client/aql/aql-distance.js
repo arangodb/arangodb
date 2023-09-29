@@ -69,7 +69,7 @@ function distanceSuite () {
       var query = "DISTANCE(" + co1.lat + "," + co1.lon + "," + co2.lat + "," + co2.lon + ")";
       var expected    = [ 476918.89688380965  ]; // Vincenty's formula: 477.47 km
 
-      var actual = AQL_EXECUTE("RETURN " + query).json;
+      var actual = db._query("RETURN " + query).toArray();
       assertAlmostEqual(expected[0], actual[0]);
     },
 
@@ -83,7 +83,7 @@ function distanceSuite () {
       var query = "DISTANCE(" + co1.lat + "," + co1.lon + "," + co2.lat + "," + co2.lon + ")";
       var expected = [ 3938926.7382122413 ]; // Vincenty's formula: 3943.29 km
       
-      var actual = AQL_EXECUTE("RETURN " + query).json;
+      var actual = db._query("RETURN " + query).toArray();
       assertAlmostEqual(expected[0], actual[0]);
     },
 
@@ -97,7 +97,7 @@ function distanceSuite () {
       var query = "DISTANCE(" + co1.lat + "," + co1.lon + "," + co2.lat + "," + co2.lon + ")";
       var expected = [ 20015086.79602057 ]; // Half of equatorial circumference (WGS 84): 20037.5085 km
       
-      var actual = AQL_EXECUTE("RETURN " + query).json;
+      var actual = db._query("RETURN " + query).toArray();
       assertAlmostEqual(expected[0], actual[0]);
     },
 

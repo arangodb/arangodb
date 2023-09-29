@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 700 */
-/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, attribute accesses
@@ -51,7 +51,7 @@ function attributeAccessTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDirectAccess : function () {
-      var result = AQL_EXECUTE("RETURN " + JSON.stringify(values[0]) + ".name").json;
+      var result = db._query("RETURN " + JSON.stringify(values[0]) + ".name").toArray();
       assertEqual([ "sir alfred" ], result);
     },
 
@@ -60,7 +60,7 @@ function attributeAccessTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDirectAccessBind : function () {
-      var result = AQL_EXECUTE("RETURN @value.name", { value: values[0] }).json;
+      var result = db._query("RETURN @value.name", { value: values[0] }).toArray();
       assertEqual([ "sir alfred" ], result);
     },
 
@@ -69,7 +69,7 @@ function attributeAccessTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonExistingAttribute : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN value.broken", { values: values }).json;
+      var result = db._query("FOR value IN @values RETURN value.broken", { values: values }).toArray();
       assertEqual([ null, null, null, null, null ], result);
     },
 
@@ -78,7 +78,7 @@ function attributeAccessTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPartiallyExistingAttribute : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN value.name", { values: values }).json;
+      var result = db._query("FOR value IN @values RETURN value.name", { values: values }).toArray();
       assertEqual([ "sir alfred", null, "everybody", "judge", null ], result);
     },
 
@@ -87,7 +87,7 @@ function attributeAccessTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPartiallyExistingSubAttribute : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN value.person.name", { values: values }).json;
+      var result = db._query("FOR value IN @values RETURN value.person.name", { values: values }).toArray();
       assertEqual([ null, "gadgetto", null, null, null ], result);
     },
 
@@ -96,7 +96,7 @@ function attributeAccessTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFunctionCallResultAttribute : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN NOOPT(PASSTHRU(value.age))", { values: values }).json;
+      var result = db._query("FOR value IN @values RETURN NOOPT(PASSTHRU(value.age))", { values: values }).toArray();
       assertEqual([ 60, null, null, null, null ], result);
     },
 
@@ -105,7 +105,7 @@ function attributeAccessTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFunctionCallResultAttribute1 : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN NOOPT(PASSTHRU(value.person.name))", { values: values }).json;
+      var result = db._query("FOR value IN @values RETURN NOOPT(PASSTHRU(value.person.name))", { values: values }).toArray();
       assertEqual([ null, "gadgetto", null, null, null ], result);
     },
 
@@ -114,7 +114,7 @@ function attributeAccessTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFunctionCallResultAttribute2 : function () {
-      var result = AQL_EXECUTE("FOR value IN @values RETURN NOOPT(PASSTHRU(value).person).name", { values: values }).json;
+      var result = db._query("FOR value IN @values RETURN NOOPT(PASSTHRU(value).person).name", { values: values }).toArray();
       assertEqual([ null, "gadgetto", null, null, null ], result);
     },
 
@@ -124,7 +124,7 @@ function attributeAccessTestSuite () {
 
     testSubqueryResultAttribute : function () {
       // won't work (accessing an attribute of an array)
-      var result = AQL_EXECUTE("RETURN (FOR value IN @values RETURN value).name", { values: values }).json;
+      var result = db._query("RETURN (FOR value IN @values RETURN value).name", { values: values }).toArray();
       assertEqual([ null ], result);
     }
 
@@ -177,8 +177,8 @@ function nestedAttributeAccessTestSuite () {
 
       var j;
       for (j = 0; j < queryRes.length; j ++) {
-        var result = AQL_EXECUTE(queryRes[j].q, {'@cn': cn});
-        assertEqual(queryRes[j].xpRes, result.json[0]);
+        var result = db._query(queryRes[j].q, {'@cn': cn}).toArray();
+        assertEqual(queryRes[j].xpRes, result[0]);
       }
     },
 
@@ -194,13 +194,15 @@ function nestedAttributeAccessTestSuite () {
 
       var j;
       for (j = 0; j < queryRes.length; j ++) {
-        var plan = AQL_EXPLAIN(queryRes[j].q, {'@cn': cn});
+        let query = queryRes[j].q;
+        var stmt = db._createStatement({query, bindVars: {'@cn': cn}});
+        var plan = stmt.explain();
         // TODO: not yet implemented for #1:
         if (j !== 1) {
           assertEqual(plan.plan.nodes[1].type, 'IndexNode');
         }
-        var result = AQL_EXECUTE(queryRes[j].q, {'@cn': cn});
-        assertEqual(queryRes[j].xpRes, result.json[0]);
+        var result = db._query(queryRes[j].q, {'@cn': cn}).toArray();
+        assertEqual(queryRes[j].xpRes, result[0]);
       }
     }
   };

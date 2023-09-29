@@ -30,7 +30,7 @@ var errors = internal.errors;
 var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
-const isCluster = require("@arangodb/cluster").isCluster();
+const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 

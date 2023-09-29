@@ -28,7 +28,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
-const isCluster = require("@arangodb/cluster").isCluster();
+const isCluster = require("internal").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

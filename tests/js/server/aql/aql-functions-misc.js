@@ -659,7 +659,7 @@ testParseIdentifierInvalid : function () {
     },
 
     testShardId : function() {
-      const isCluster = require("@arangodb/cluster").isCluster();
+      const isCluster = require("internal").isCluster();
 
       var cl, sid, d, counts, val, vala, valb;
 

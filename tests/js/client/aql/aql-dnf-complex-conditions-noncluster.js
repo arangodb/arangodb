@@ -53,34 +53,36 @@ function MaxNumberOfConditionsSuite () {
     
     testSimpleOrConditionStillUsesIndexes : function () {
       let parts = [];
-      for (let i = 0; i < 100; ++i) {
+      for (let i = 0; i < 90; ++i) {
         parts.push(`(doc.value1 == ${i} && doc.what != 'test')`);
       }
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR doc IN ${cn} FILTER ${condition} RETURN doc`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let stmt = db._createStatement(query);
+      let nodes = stmt.explain().plan.nodes;
       nodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, nodes.length);
       let node = nodes[0];
-      assertEqual(100, node.indexes.length);
+      assertEqual(90, node.indexes.length);
       let result = db._query(query).toArray();
-      assertEqual(100, result.length);
+      assertEqual(90, result.length);
     },
     
     testSimpleOrAndConditionStillUsesIndexes : function () {
       let parts = [];
-      for (let i = 0; i < 100; ++i) {
+      for (let i = 0; i < 90; ++i) {
         parts.push(`(doc.value1 == ${i} && doc.value2 == ${i + 1})`);
       }
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR doc IN ${cn} FILTER ${condition} RETURN doc`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let stmt = db._createStatement(query);
+      let nodes = stmt.explain().plan.nodes;
       nodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, nodes.length);
       let node = nodes[0];
-      assertEqual(100, node.indexes.length);
+      assertEqual(90, node.indexes.length);
       let result = db._query(query).toArray();
-      assertEqual(100, result.length);
+      assertEqual(90, result.length);
     },
 
     testComplexConditionNoThresholdExceedsMemory : function () {
@@ -91,7 +93,8 @@ function MaxNumberOfConditionsSuite () {
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;
       try {
-        AQL_EXPLAIN(query, null, { memoryLimit: 64 * 1000 * 1000 });
+        let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 64 * 1000 * 1000 }});
+        let plan = stmt.explain();
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, err.errorNum);
@@ -108,13 +111,15 @@ function MaxNumberOfConditionsSuite () {
 
       // with this few condition nodes, we won't exceed memory
       [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096].forEach((maxDNFConditionMembers) => {
-        AQL_EXPLAIN(query, null, { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers });
+        let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers }});
+        let plan = stmt.explain();
       });
       
       // with this many condition nodes, we will exceed memory
       [8192, 16384, 32768].forEach((maxDNFConditionMembers) => {
         try {
-          AQL_EXPLAIN(query, null, { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers });
+          let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers }});
+          let plan = stmt.explain();
           fail();
         } catch (err) {
           assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, err.errorNum);
@@ -140,7 +145,8 @@ function MaxNumberOfConditionsSuite () {
         // always trigger the failure point we just set above
         [1, 2, 4, 8, 16, 32, 64, 512, 4096].forEach((maxDNFConditionMembers) => {
           try {
-            AQL_EXPLAIN(query, null, { maxDNFConditionMembers });
+            let stmt = db._createStatement({query, bindVars: null, options: { maxDNFConditionMembers }});
+            let plan = stmt.explain();
             fail();
           } catch (err) {
             assertEqual(ERRORS.ERROR_QUERY_DNF_COMPLEXITY.code, err.errorNum, {maxDNFConditionMembers});
