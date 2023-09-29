@@ -1596,6 +1596,71 @@ AqlValue functions::ToHex(ExpressionContext* expr, AstNode const&,
   return AqlValue(encoded);
 }
 
+AqlValue functions::ToChar(ExpressionContext* ctx, AstNode const&,
+                           VPackFunctionParametersView parameters) {
+  static char const* AFN = "TO_CHAR";
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  int64_t v = -1;
+  if (ADB_UNLIKELY(value.isNumber())) {
+    v = value.toInt64();
+  }
+  if (v < 0) {
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
+  }
+
+  UChar32 c = static_cast<uint32_t>(v);
+  char buffer[6];
+  int32_t offset = 0;
+  U8_APPEND_UNSAFE(&buffer[0], offset, c);
+
+  return AqlValue(std::string_view(&buffer[0], static_cast<size_t>(offset)));
+}
+
+AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
+                           VPackFunctionParametersView parameters) {
+  static char const* AFN = "REPEAT";
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  AqlValue const& repetitions = extractFunctionParameterValue(parameters, 1);
+  int64_t r = repetitions.toInt64();
+  if (r == 0) {
+    // empty string
+    return AqlValue(std::string_view("", 0));
+  }
+  if (r < 0) {
+    // negative number of repetitions
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
+  }
+
+  auto& trx = ctx->trx();
+
+  transaction::StringLeaser sepBuffer(&trx);
+  velocypack::StringSink sepAdapter(sepBuffer.get());
+  std::string_view separator;
+  if (parameters.size() > 2) {
+    // separator
+    ::appendAsString(trx.vpackOptions(), sepAdapter,
+                     extractFunctionParameterValue(parameters, 2));
+    separator = {sepBuffer->data(), sepBuffer->size()};
+  }
+
+  transaction::StringLeaser buffer(&trx);
+  velocypack::StringSink adapter(buffer.get());
+
+  for (int64_t i = 0; i < r; ++i) {
+    if (i > 0 && !separator.empty()) {
+      buffer->append(separator);
+    }
+    ::appendAsString(trx.vpackOptions(), adapter, value);
+  }
+
+  // hand over string to AqlValue
+  return AqlValue(std::string_view(buffer->data(), buffer->size()));
+}
+
 /// @brief function ENCODE_URI_COMPONENT
 AqlValue functions::EncodeURIComponent(ExpressionContext* expr, AstNode const&,
                                        VPackFunctionParametersView parameters) {

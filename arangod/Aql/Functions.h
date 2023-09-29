@@ -153,6 +153,10 @@ AqlValue ToBase64(arangodb::aql::ExpressionContext*, AstNode const&,
                   VPackFunctionParametersView);
 AqlValue ToHex(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
+AqlValue ToChar(arangodb::aql::ExpressionContext*, AstNode const&,
+                VPackFunctionParametersView);
+AqlValue Repeat(arangodb::aql::ExpressionContext*, AstNode const&,
+                VPackFunctionParametersView);
 AqlValue EncodeURIComponent(arangodb::aql::ExpressionContext*, AstNode const&,
                             VPackFunctionParametersView);
 AqlValue Uuid(arangodb::aql::ExpressionContext*, AstNode const&,
