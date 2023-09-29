@@ -331,7 +331,10 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     // Assert that the block has enough registers. This must be guaranteed by
     // the register planning.
     TRI_ASSERT(newBlock->numRegisters() ==
-               _registerInfos.numberOfOutputRegisters());
+               _registerInfos.numberOfOutputRegisters())
+        << "newBlock->numRegisters() = " << newBlock->numRegisters()
+        << " _registerInfos.numberOfOutputRegisters() = "
+        << _registerInfos.numberOfOutputRegisters();
     // Check that all output registers are empty.
     size_t const n = newBlock->numRows();
     auto const& regs = _registerInfos.getOutputRegisters();

@@ -55,6 +55,7 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
   auto docRegId = _infos.inputNonMaterializedDocRegId();
+  auto docOutReg = _infos.outputMaterializedDocumentRegId();
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool written = false;
     auto const [state, input] =
@@ -82,21 +83,17 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                 &_trx, id,
                 [&, &input = input](LocalDocumentId /*id*/, VPackSlice doc) {
                   TRI_ASSERT(input.isInitialized());
-                  output.moveValueInto(_infos.outputMaterializedDocumentRegId(),
-                                       input, doc);
+                  output.moveValueInto(docOutReg, input, doc);
                   return true;
                 },
                 ReadOwnWrites::no)
             .ok();
 
-    if (written) {
-      output.advanceRow();  // document found
-    } else {
-      stats.incrFiltered();  // document not found
-    }
+    TRI_ASSERT(written);
+    output.advanceRow();
   }
 
-  return {inputRange.upstreamState(), stats, upstreamCall};
+  return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 
 MaterializeSearchExecutor::MaterializeSearchExecutor(Fetcher&, Infos& infos)
