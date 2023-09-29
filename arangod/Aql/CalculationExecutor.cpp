@@ -180,7 +180,7 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+  output.moveValueInto(_infos.getOutputRegisterId(), input, &guard);
 }
 
 template<>
@@ -214,7 +214,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+  output.moveValueInto(_infos.getOutputRegisterId(), input, &guard);
 
   if (input.blockHasMoreDataRowsAfterThis()) {
     // We will be called again before the fetcher needs to get a new block.

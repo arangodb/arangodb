@@ -169,7 +169,7 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
-                LocalDocumentId const& documentId, VPackSlice doc,
+                LocalDocumentId documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) final {
     return IResearchDataStore::insert<
@@ -179,7 +179,7 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, VPackSlice,
+                LocalDocumentId documentId, VPackSlice,
                 OperationOptions const& /*options*/) final {
     return IResearchDataStore::remove(trx, documentId);
   }

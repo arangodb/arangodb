@@ -72,10 +72,9 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
 
   _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count",
                                                                false);
-  _readOwnWrites = arangodb::basics::VelocyPackHelper::getBooleanValue(
-                       slice, StaticStrings::ReadOwnWrites, false)
-                       ? ReadOwnWrites::yes
-                       : ReadOwnWrites::no;
+  _readOwnWrites =
+      ReadOwnWrites{arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, StaticStrings::ReadOwnWrites, false)};
 
   _useCache = arangodb::basics::VelocyPackHelper::getBooleanValue(
       slice, StaticStrings::UseCache, _useCache);

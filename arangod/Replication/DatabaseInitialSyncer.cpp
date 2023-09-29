@@ -75,6 +75,7 @@
 #include <string>
 #include <string_view>
 
+namespace arangodb {
 namespace {
 
 /// @brief maximum internal value for chunkSize
@@ -97,50 +98,45 @@ std::chrono::milliseconds sleepTimeFromWaitTime(double waitTime) {
   return std::chrono::seconds(2);
 }
 
-bool isVelocyPack(arangodb::httpclient::SimpleHttpResult const& response) {
+bool isVelocyPack(httpclient::SimpleHttpResult const& response) {
   bool found = false;
-  std::string const& cType = response.getHeaderField(
-      arangodb::StaticStrings::ContentTypeHeader, found);
-  return found && cType == arangodb::StaticStrings::MimeTypeVPack;
+  std::string const& cType =
+      response.getHeaderField(StaticStrings::ContentTypeHeader, found);
+  return found && cType == StaticStrings::MimeTypeVPack;
 }
 
 std::string const kTypeString = "type";
 std::string const kDataString = "data";
 
-arangodb::Result removeRevisions(
-    arangodb::transaction::Methods& trx,
-    arangodb::LogicalCollection& collection,
-    std::vector<arangodb::RevisionId>& toRemove,
-    arangodb::ReplicationMetricsFeature::InitialSyncStats& stats) {
-  using arangodb::PhysicalCollection;
-  using arangodb::Result;
-
-  arangodb::Result res;
+Result removeRevisions(transaction::Methods& trx, LogicalCollection& collection,
+                       std::vector<RevisionId>& toRemove,
+                       ReplicationMetricsFeature::InitialSyncStats& stats) {
+  Result res;
 
   if (!toRemove.empty()) {
-    TRI_ASSERT(trx.state()->hasHint(
-        arangodb::transaction::Hints::Hint::INTERMEDIATE_COMMITS));
+    TRI_ASSERT(
+        trx.state()->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
 
     PhysicalCollection* physical = collection.getPhysical();
 
     auto indexesSnapshot = physical->getIndexesSnapshot();
 
-    arangodb::OperationOptions options;
+    OperationOptions options;
     options.silent = true;
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
 
-    arangodb::transaction::BuilderLeaser tempBuilder(&trx);
+    transaction::BuilderLeaser tempBuilder(&trx);
+    auto callback = IndexIterator::makeDocumentCallback(*tempBuilder);
 
     double t = TRI_microtime();
     for (auto const& rid : toRemove) {
-      auto documentId = arangodb::LocalDocumentId::create(rid);
+      auto documentId = LocalDocumentId::create(rid);
 
       tempBuilder->clear();
-      res = physical->lookupDocument(trx, documentId, *tempBuilder,
-                                     /*readCache*/ true, /*fillCache*/ false,
-                                     arangodb::ReadOwnWrites::yes);
+      res = physical->lookup(&trx, documentId, callback,
+                             {.fillCache = false, .readOwnWrites = true});
 
       if (res.ok()) {
         res = physical->remove(trx, indexesSnapshot, documentId, rid,
@@ -174,27 +170,22 @@ arangodb::Result removeRevisions(
   return res;
 }
 
-arangodb::Result fetchRevisions(
-    arangodb::NetworkFeature& netFeature, arangodb::transaction::Methods& trx,
-    arangodb::DatabaseInitialSyncer::Configuration& config,
-    arangodb::Syncer::SyncerState& state,
-    arangodb::LogicalCollection& collection, std::string const& leader,
-    bool encodeAsHLC, std::vector<arangodb::RevisionId>& toFetch,
-    arangodb::ReplicationMetricsFeature::InitialSyncStats& stats) {
-  using arangodb::PhysicalCollection;
-  using arangodb::RestReplicationHandler;
-  using arangodb::Result;
-
+Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
+                      DatabaseInitialSyncer::Configuration& config,
+                      Syncer::SyncerState& state, LogicalCollection& collection,
+                      std::string const& leader, bool encodeAsHLC,
+                      std::vector<RevisionId>& toFetch,
+                      ReplicationMetricsFeature::InitialSyncStats& stats) {
   if (toFetch.empty()) {
     return Result();  // nothing to do
   }
 
-  arangodb::OperationOptions options;
+  OperationOptions options;
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
   options.validate = false;  // no validation during replication
-  options.indexOperationMode = arangodb::IndexOperationMode::internal;
+  options.indexOperationMode = IndexOperationMode::internal;
   options.checkUniqueConstraintsInPreflight = true;
   options.waitForSync = false;  // no waitForSync during replication
   if (!state.leaderId.empty()) {
@@ -204,12 +195,12 @@ arangodb::Result fetchRevisions(
   PhysicalCollection* physical = collection.getPhysical();
   auto indexesSnapshot = physical->getIndexesSnapshot();
 
-  std::string path = absl::StrCat(arangodb::replutils::ReplicationUrl, "/",
+  std::string path = absl::StrCat(replutils::ReplicationUrl, "/",
                                   RestReplicationHandler::Revisions, "/",
                                   RestReplicationHandler::Documents);
 
-  arangodb::network::Headers headers;
-  if (arangodb::ServerState::instance()->isSingleServer() &&
+  network::Headers headers;
+  if (ServerState::instance()->isSingleServer() &&
       config.applier._jwt.empty()) {
     // if we are the single-server replication and there is no JWT
     // present, inject the username/password credentials into the
@@ -217,7 +208,7 @@ arangodb::Result fetchRevisions(
     // this is not state-of-the-art, but fixes a problem in single
     // server replication when the leader uses authentication with
     // username/password
-    headers.emplace(arangodb::StaticStrings::Authorization,
+    headers.emplace(StaticStrings::Authorization,
                     "Basic " + absl::Base64Escape(
                                    absl::StrCat(config.applier._username, ":",
                                                 config.applier._password)));
@@ -227,12 +218,13 @@ arangodb::Result fetchRevisions(
       absl::StrCat("fetching documents by revision for collection '",
                    collection.name(), "' from ", path));
 
-  arangodb::transaction::BuilderLeaser tempBuilder(&trx);
+  transaction::BuilderLeaser tempBuilder(&trx);
+  auto callback = IndexIterator::makeDocumentCallback(*tempBuilder);
 
   auto removeConflict = [&](auto const& conflictingKey) -> Result {
-    std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
+    std::pair<LocalDocumentId, RevisionId> lookupResult;
     auto r = physical->lookupKey(&trx, conflictingKey, lookupResult,
-                                 arangodb::ReadOwnWrites::yes);
+                                 ReadOwnWrites::yes);
 
     if (r.ok()) {
       TRI_ASSERT(lookupResult.first.isSet());
@@ -240,9 +232,8 @@ arangodb::Result fetchRevisions(
       auto [documentId, revisionId] = lookupResult;
 
       tempBuilder->clear();
-      r = physical->lookupDocument(trx, documentId, *tempBuilder,
-                                   /*readCache*/ true, /*fillCache*/ false,
-                                   arangodb::ReadOwnWrites::yes);
+      r = physical->lookup(&trx, documentId, callback,
+                           {.fillCache = false, .readOwnWrites = true});
 
       if (r.ok()) {
         TRI_ASSERT(tempBuilder->slice().isObject());
@@ -271,14 +262,14 @@ arangodb::Result fetchRevisions(
   }();
 
   std::size_t current = 0;
-  auto guard = arangodb::scopeGuard(
+  auto guard = scopeGuard(
       [&current, &stats]() noexcept { stats.numDocsRequested += current; });
 
-  char ridBuffer[arangodb::basics::maxUInt64StringSize];
-  std::deque<arangodb::network::FutureRes> futures;
-  std::deque<std::unordered_set<arangodb::RevisionId>> shoppingLists;
+  char ridBuffer[basics::maxUInt64StringSize];
+  std::deque<network::FutureRes> futures;
+  std::deque<std::unordered_set<RevisionId>> shoppingLists;
 
-  arangodb::network::ConnectionPool* pool = netFeature.pool();
+  network::ConnectionPool* pool = netFeature.pool();
 
   std::size_t queueSize = 10;
   if ((config.leader.majorVersion < 3) ||
@@ -288,13 +279,11 @@ arangodb::Result fetchRevisions(
     queueSize = 1;
   }
 
-  arangodb::velocypack::Builder docBuilder;
-
   while (current < toFetch.size() || !futures.empty()) {
     // Send some requests off if not enough in flight and something to go
     while (futures.size() < queueSize && current < toFetch.size()) {
       VPackBuilder requestBuilder;
-      std::unordered_set<arangodb::RevisionId> shoppingList;
+      std::unordered_set<RevisionId> shoppingList;
       uint64_t count = 0;
       {
         VPackArrayBuilder list(&requestBuilder);
@@ -312,21 +301,21 @@ arangodb::Result fetchRevisions(
         current += i;
       }
 
-      arangodb::network::RequestOptions reqOptions;
+      network::RequestOptions reqOptions;
       reqOptions.param("collection", leader)
           .param("serverId", state.localServerIdString)
           .param("batchId", std::to_string(config.batch.id))
           .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
       reqOptions.database = config.vocbase.name();
-      reqOptions.timeout = arangodb::network::Timeout(25.0);
+      reqOptions.timeout = network::Timeout(25.0);
       auto buffer = requestBuilder.steal();
-      auto f = arangodb::network::sendRequestRetry(
-          pool, config.leader.endpoint, arangodb::fuerte::RestVerb::Put, path,
+      auto f = network::sendRequestRetry(
+          pool, config.leader.endpoint, fuerte::RestVerb::Put, path,
           std::move(*buffer), reqOptions, headers);
       futures.emplace_back(std::move(f));
       shoppingLists.emplace_back(std::move(shoppingList));
       ++stats.numDocsRequests;
-      LOG_TOPIC("eda42", DEBUG, arangodb::Logger::REPLICATION)
+      LOG_TOPIC("eda42", DEBUG, Logger::REPLICATION)
           << "Have requested a chunk of " << count << " revision(s) from "
           << config.leader.serverId << " at " << config.leader.endpoint
           << " for collection " << leader
@@ -368,7 +357,7 @@ arangodb::Result fetchRevisions(
                            ": response document entry is not an object"));
         }
 
-        VPackSlice keySlice = leaderDoc.get(arangodb::StaticStrings::KeyString);
+        VPackSlice keySlice = leaderDoc.get(StaticStrings::KeyString);
         if (!keySlice.isString()) {
           return Result(
               TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -376,7 +365,7 @@ arangodb::Result fetchRevisions(
                            state.leader.endpoint, ": document key is invalid"));
         }
 
-        VPackSlice revSlice = leaderDoc.get(arangodb::StaticStrings::RevString);
+        VPackSlice revSlice = leaderDoc.get(StaticStrings::RevString);
         if (!revSlice.isString()) {
           return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                         absl::StrCat("got invalid response from leader at ",
@@ -384,7 +373,7 @@ arangodb::Result fetchRevisions(
                                      ": document revision is invalid"));
         }
 
-        options.indexOperationMode = arangodb::IndexOperationMode::internal;
+        options.indexOperationMode = IndexOperationMode::internal;
 
         // we need a retry loop here for unique indexes (we will always have at
         // least one unique index, which is the primary index, but there can be
@@ -397,16 +386,16 @@ arangodb::Result fetchRevisions(
         std::size_t tries = 1 + numUniqueIndexes;
         while (tries-- > 0) {
           if (tries == 0) {
-            options.indexOperationMode = arangodb::IndexOperationMode::normal;
+            options.indexOperationMode = IndexOperationMode::normal;
           }
 
-          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
+          RevisionId rid = RevisionId::fromSlice(leaderDoc);
 
           double tInsert = TRI_microtime();
           Result res = trx.insert(collection.name(), leaderDoc, options).result;
           stats.waitedForInsertions += TRI_microtime() - tInsert;
 
-          options.indexOperationMode = arangodb::IndexOperationMode::internal;
+          options.indexOperationMode = IndexOperationMode::internal;
 
           // We must see our own writes, because we may have to remove
           if (res.ok()) {
@@ -421,12 +410,12 @@ arangodb::Result fetchRevisions(
 
           // conflicting documents (that we just inserted), as documents may be
           // replicated in unexpected order.
-          docBuilder.clear();
           if (physical
-                  ->lookupDocument(trx, arangodb::LocalDocumentId(rid.id()),
-                                   docBuilder, /*readCache*/ true,
-                                   /*fillCache*/ true,
-                                   arangodb::ReadOwnWrites::yes)
+                  ->lookup(
+                      &trx, LocalDocumentId{rid.id()},
+                      IndexIterator::makeDocumentCallbackF(
+                          [](LocalDocumentId, VPackSlice) { return true; }),
+                      {.readOwnWrites = true})
                   .ok()) {
             // already have exactly this revision. no need to insert
             sl.erase(rid);
@@ -448,9 +437,9 @@ arangodb::Result fetchRevisions(
       // another batch:
       if (!sl.empty()) {
         // Take out the nonempty list:
-        std::unordered_set<arangodb::RevisionId> newList = std::move(sl);
+        std::unordered_set<RevisionId> newList = std::move(sl);
         // Sort in ascending order to speed up iterator lookup on leader:
-        std::vector<arangodb::RevisionId> v;
+        std::vector<RevisionId> v;
         v.reserve(newList.size());
         for (auto it = newList.begin(); it != newList.end(); ++it) {
           v.push_back(*it);
@@ -469,27 +458,27 @@ arangodb::Result fetchRevisions(
           }
         }
 
-        arangodb::network::RequestOptions reqOptions;
+        network::RequestOptions reqOptions;
         reqOptions.param("collection", leader)
             .param("serverId", state.localServerIdString)
             .param("batchId", std::to_string(config.batch.id))
             .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
-        reqOptions.timeout = arangodb::network::Timeout(25.0);
+        reqOptions.timeout = network::Timeout(25.0);
         reqOptions.database = config.vocbase.name();
         auto buffer = requestBuilder.steal();
-        auto f = arangodb::network::sendRequestRetry(
-            pool, config.leader.endpoint, arangodb::fuerte::RestVerb::Put, path,
+        auto f = network::sendRequestRetry(
+            pool, config.leader.endpoint, fuerte::RestVerb::Put, path,
             std::move(*buffer), reqOptions, headers);
         futures.emplace_back(std::move(f));
         shoppingLists.emplace_back(std::move(newList));
         ++stats.numDocsRequests;
-        LOG_TOPIC("eda45", DEBUG, arangodb::Logger::REPLICATION)
+        LOG_TOPIC("eda45", DEBUG, Logger::REPLICATION)
             << "Have re-requested a chunk of " << shoppingLists.back().size()
             << " revision(s) from " << config.leader.serverId << " at "
             << config.leader.endpoint << " for collection " << leader
             << " queue length: " << futures.size();
       }
-      LOG_TOPIC("eda44", DEBUG, arangodb::Logger::REPLICATION)
+      LOG_TOPIC("eda44", DEBUG, Logger::REPLICATION)
           << "Have applied a chunk of " << docs.length() << " documents from "
           << config.leader.serverId << " at " << config.leader.endpoint
           << " for collection " << leader
@@ -498,8 +487,8 @@ arangodb::Result fetchRevisions(
       shoppingLists.pop_front();
       TRI_ASSERT(futures.size() == shoppingLists.size());
 
-      TRI_ASSERT(trx.state()->hasHint(
-          arangodb::transaction::Hints::Hint::INTERMEDIATE_COMMITS));
+      TRI_ASSERT(
+          trx.state()->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
 
       auto fut =
           trx.state()->performIntermediateCommitIfRequired(collection.id());
@@ -515,9 +504,8 @@ arangodb::Result fetchRevisions(
   toFetch.clear();
   return {};
 }
-}  // namespace
 
-namespace arangodb {
+}  // namespace
 
 /// @brief helper struct to prevent multiple starts of the replication
 /// in the same database. used for single-server replication only.
@@ -1187,11 +1175,11 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
     }
 
     // increase chunk size for next fetch
-    if (chunkSize < ::maxChunkSize) {
+    if (chunkSize < maxChunkSize) {
       chunkSize = static_cast<uint64_t>(chunkSize * 1.25);
 
-      if (chunkSize > ::maxChunkSize) {
-        chunkSize = ::maxChunkSize;
+      if (chunkSize > maxChunkSize) {
+        chunkSize = maxChunkSize;
       }
     }
 
@@ -1428,7 +1416,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
         return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
       }
 
-      std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
+      std::chrono::milliseconds sleepTime = sleepTimeFromWaitTime(waitTime);
       std::this_thread::sleep_for(sleepTime);
     }
 
@@ -1942,8 +1930,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       // chunks of 5000 and fetches them all in parallel. using a too low limit
       // here would counteract that.
       if (toFetch.size() >= 250000) {
-        res = ::fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
-                               encodeAsHLC, toFetch, stats);
+        res = fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
+                             encodeAsHLC, toFetch, stats);
         TRI_ASSERT(res.fail() || toFetch.empty());
       }
       return res;
@@ -1961,7 +1949,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       // check if we need to do something to prevent toRemove from growing too
       // much in memory
       if (toRemove.size() >= options.intermediateCommitCount) {
-        res = ::removeRevisions(*trx, *coll, toRemove, stats);
+        res = removeRevisions(*trx, *coll, toRemove, stats);
         TRI_ASSERT(res.fail() || toRemove.empty());
       }
       return res;
@@ -2014,7 +2002,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
       VPackSlice slice;
 
-      if (::isVelocyPack(*chunkResponse)) {
+      if (isVelocyPack(*chunkResponse)) {
         // velocypack body...
 
         // intentional copy of options
@@ -2204,14 +2192,14 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         }
       }
 
-      res = ::removeRevisions(*trx, *coll, toRemove, stats);
+      res = removeRevisions(*trx, *coll, toRemove, stats);
       TRI_ASSERT(res.fail() || toRemove.empty());
       if (res.fail()) {
         return res;
       }
 
-      res = ::fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
-                             encodeAsHLC, toFetch, stats);
+      res = fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
+                           encodeAsHLC, toFetch, stats);
       TRI_ASSERT(res.fail() || toFetch.empty());
       if (res.fail()) {
         return res;

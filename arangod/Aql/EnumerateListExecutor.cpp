@@ -105,7 +105,7 @@ void EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.moveValueInto(_infos.getOutputRegister(), _currentRow, guard);
+  output.moveValueInto(_infos.getOutputRegister(), _currentRow, &guard);
   output.advanceRow();
 
   // set position to +1 for next iteration
