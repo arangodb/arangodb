@@ -344,7 +344,9 @@ export const formSchema: JSONSchemaType<FormState> = {
       nullable: true
     }
   },
-  required: ['id', 'name', 'type']};
+  required: ['id', 'name', 'type'],
+  additionalProperties: true
+};
 
 export const ViewContext = createContext({
   formState: {} as FormState,
