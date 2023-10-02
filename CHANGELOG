@@ -1,16 +1,21 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* Slightly extended hot backup release lock timeout on coordinators from
+  `timeout + 5` seconds to `timeout + 30` seconds, to prevent premature release
+  of hot backup commit locks on coordinators.
+
+* Improve logging in case hot backup locks cannot be taken on coordinators.
+
 * BTS-1618: Preventing the problem from ever occurring on 3.11.
 
-* Speed up incremental hotbackup upload by parallelization of
-  remote-to-remote copies. Tolerate deletion of old backups during
-  incremental upload.
+* Speed up incremental hotbackup upload by parallelization of remote-to-remote
+  copies. Tolerate deletion of old backups during incremental upload.
 
 * Added the following metrics to improve observability of the in-memory cache
   subsystem:
-  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
-    tasks scheduled
+  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory` tasks
+    scheduled
   - `rocksdb_cache_migrate_tasks_total`: total number of `migrate` tasks
     scheduled
   - `rocksdb_cache_free_memory_tasks_duration_total`: total time (microseconds)
