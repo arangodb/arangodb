@@ -1,6 +1,8 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* FE-323: allow 'nested' property in view JSON UI.
+
 * Slightly extended hot backup release lock timeout on coordinators from
   `timeout + 5` seconds to `timeout + 30` seconds, to prevent premature release
   of hot backup commit locks on coordinators.
