@@ -75,36 +75,52 @@ void SharedQueryState::waitForAsyncWakeup() {
 
   TRI_ASSERT(!_wakeupCb);
   auto cbVersion = _cbVersion;
+  LOG_DEVEL << "ENTERING WAITFORASYNCWAKEUP WITH _NUMWAKEUPS: " << _numWakeups
+            << ", _VALID: " << _valid << ", _CBVERSION: " << _cbVersion;
   _cv.wait(guard, [&] {
     return _numWakeups > 0 || !_valid || cbVersion != _cbVersion;
   });
+  LOG_DEVEL << "WOKEN UP IN WAITFORASYNCWAKEUP WITH _NUMWAKEUPS: "
+            << _numWakeups << ", _VALID: " << _valid
+            << ", _CBVERSION: " << _cbVersion;
   TRI_ASSERT(_numWakeups > 0 || !_valid || cbVersion != _cbVersion);
   if (!_valid || cbVersion != _cbVersion) {
     // do not modify _numWakeups, because it might underflow
+    LOG_DEVEL << "NOT MODIFYING IN WAITFORASYNCWAKEUP WITH _NUMWAKEUPS: "
+              << _numWakeups << ", _VALID: " << _valid
+              << ", _CBVERSION: " << _cbVersion;
     return;
   }
   TRI_ASSERT(_numWakeups > 0);
   --_numWakeups;
+  LOG_DEVEL << "LEAVING WAITFORASYNCWAKEUP WITH _NUMWAKEUPS: " << _numWakeups
+            << ", _VALID: " << _valid << ", _CBVERSION: " << _cbVersion;
 }
 
 /// @brief setter for the continue handler:
 ///        We can either have a handler or a callback
 void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
-  std::unique_lock<std::mutex> guard(_mutex);
-  _wakeupCb = cb;
-  _numWakeups = 0;
-  ++_cbVersion;
-  guard.unlock();
+  {
+    std::lock_guard<std::mutex> guard(_mutex);
+    _wakeupCb = cb;
+    LOG_DEVEL << "CALLING SETWAKEUPHANDLER. WITH _NUMWAKEUPS: " << _numWakeups
+              << ", _VALID: " << _valid << ", _CBVERSION: " << _cbVersion;
+    _numWakeups = 0;
+    ++_cbVersion;
+  }
 
   _cv.notify_all();
 }
 
 void SharedQueryState::resetWakeupHandler() {
-  std::unique_lock<std::mutex> guard(_mutex);
-  _wakeupCb = nullptr;
-  _numWakeups = 0;
-  ++_cbVersion;
-  guard.unlock();
+  {
+    std::lock_guard<std::mutex> guard(_mutex);
+    _wakeupCb = nullptr;
+    LOG_DEVEL << "CALLING RESETWAKEUPHANDLER. WITH _NUMWAKEUPS: " << _numWakeups
+              << ", _VALID: " << _valid << ", _CBVERSION: " << _cbVersion;
+    _numWakeups = 0;
+    ++_cbVersion;
+  }
 
   _cv.notify_all();
 }
@@ -113,6 +129,8 @@ void SharedQueryState::resetWakeupHandler() {
 void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
   TRI_ASSERT(guard);
   if (!_valid) {
+    LOG_DEVEL << "NOTIFYWAITER, NOT VALID WITH _NUMWAKEUPS: " << _numWakeups
+              << ", _VALID: " << _valid << ", _CBVERSION: " << _cbVersion;
     guard.unlock();
     _cv.notify_all();
     return;
@@ -120,15 +138,24 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
 
   unsigned n = _numWakeups++;
   if (!_wakeupCb) {
+    LOG_DEVEL << "NOTIFYWAITER, NOT HAVING A WAKEUPCB WITH _NUMWAKEUPS: "
+              << _numWakeups << ", _VALID: " << _valid
+              << ", _CBVERSION: " << _cbVersion;
     guard.unlock();
     _cv.notify_one();
     return;
   }
 
   if (n > 0) {
+    LOG_DEVEL << "NOTIFYWAITER, HAVING FOUND ANOTHER WAKEUP, WITH _NUMWAKEUPS: "
+              << _numWakeups << ", _VALID: " << _valid
+              << ", _CBVERSION: " << _cbVersion;
     return;
   }
 
+  LOG_DEVEL << "NOTIFYWAITER, QUEUEING HANDLER, WITH _NUMWAKEUPS: "
+            << _numWakeups << ", _VALID: " << _valid
+            << ", _CBVERSION: " << _cbVersion;
   queueHandler();
 }
 
