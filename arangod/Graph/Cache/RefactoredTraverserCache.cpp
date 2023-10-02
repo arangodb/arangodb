@@ -161,8 +161,7 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
             transaction::BuilderLeaser builder(_trx);
             {
               VPackObjectBuilder guard(builder.get());
-              _edgeProjections.toVelocyPackFromDocument(*builder, edge,
-              _trx);
+              _edgeProjections.toVelocyPackFromDocument(*builder, edge, _trx);
             }
             result = aql::AqlValue(builder->slice());
           } else {
