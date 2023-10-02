@@ -62,6 +62,9 @@ export type LinkProperties = {
   storeValues?: 'none' | 'id';
   inBackground?: boolean;
   cache?: boolean;
+  nested?: {
+    [attributeName: string]: LinkProperties;
+  };
 };
 
 type BaseFormState = {
@@ -93,6 +96,15 @@ export const linksSchema = {
     fields: {
       type: 'object',
       nullable: false,
+      patternProperties: {
+        '.+': {
+          $recursiveRef: '#'
+        }
+      }
+    },
+    nested: {
+      type: 'object',
+      nullable: true,
       patternProperties: {
         '.+': {
           $recursiveRef: '#'
@@ -332,7 +344,9 @@ export const formSchema: JSONSchemaType<FormState> = {
       nullable: true
     }
   },
-  required: ['id', 'name', 'type']};
+  required: ['id', 'name', 'type'],
+  additionalProperties: true
+};
 
 export const ViewContext = createContext({
   formState: {} as FormState,

@@ -3,33 +3,40 @@ v3.11.4 (XXXX-XX-XX)
 
 * Add cluster-internal connectivity checks.
   This makes Coordinators and DB-Servers in a cluster periodically send check
-  requests to each other, in order to check if all servers can connect to
-  each other.
-  If a cluster-internal connection to another Coordinator or DB-Server cannot 
-  be established within 10 seconds, a warning will be logged. 
+  requests to each other, in order to check if all servers can connect to each
+  other.
+  If a cluster-internal connection to another Coordinator or DB-Server cannot be
+  established within 10 seconds, a warning will be logged.
 
-  The new startup option `--cluster.connectivity-check-interval` can be used
-  to control the frequency of the connectivity check, in seconds.
+  The new startup option `--cluster.connectivity-check-interval` can be used to
+  control the frequency of the connectivity check, in seconds.
   If set to a value greater than zero, the initial connectivity check is
-  performed approximately 15 seconds after the instance start, and subsequent 
+  performed approximately 15 seconds after the instance start, and subsequent
   connectivity checks are executed with the specified frequency.
   If set to a value of zero, connectivity checks are disabled.
 
   This change also adds the metrics
   `arangodb_network_connectivity_failures_coordinators` and
-  `arangodb_network_connectivity_failures_dbservers`, which can be monitored
-  for detecting temporary or permanent connectivity issues.
+  `arangodb_network_connectivity_failures_dbservers`, which can be monitored for
+  detecting temporary or permanent connectivity issues.
+
+* FE-323: allow 'nested' property in view JSON UI.
+
+* Slightly extended hot backup release lock timeout on coordinators from
+  `timeout + 5` seconds to `timeout + 30` seconds, to prevent premature release
+  of hot backup commit locks on coordinators.
+
+* Improve logging in case hot backup locks cannot be taken on coordinators.
 
 * BTS-1618: Preventing the problem from ever occurring on 3.11.
 
-* Speed up incremental hotbackup upload by parallelization of
-  remote-to-remote copies. Tolerate deletion of old backups during
-  incremental upload.
+* Speed up incremental hotbackup upload by parallelization of remote-to-remote
+  copies. Tolerate deletion of old backups during incremental upload.
 
 * Added the following metrics to improve observability of the in-memory cache
   subsystem:
-  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
-    tasks scheduled
+  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory` tasks
+    scheduled
   - `rocksdb_cache_migrate_tasks_total`: total number of `migrate` tasks
     scheduled
   - `rocksdb_cache_free_memory_tasks_duration_total`: total time (microseconds)
