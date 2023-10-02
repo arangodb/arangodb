@@ -360,6 +360,13 @@ devel
 
 * FE-248: Improve collections list UI.
 
+* Updated JavaScript dependencies:
+
+  qs: 6.11.0 -> 6.11.2
+  semver: 7.3.8 -> 7.5.4
+
+  This addresses CVE-2022-25883 in the semver module.
+
 * BTS-1124: wait for license to be applied locally before responding to the request.
 
 * BTS-1566: remove redundant responsibility for creating local databases on
