@@ -27,6 +27,7 @@
 #include "Aql/Collection.h"
 #include "Aql/QueryContext.h"
 #include "VocBase/LogicalCollection.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::aql;
 
@@ -60,12 +61,11 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       _strategy->reset();
     }
 
-    std::size_t projectionsOffset = 0;
     hasMore = _strategy->next([&](std::span<LocalDocumentId> docIds,
                                   std::span<VPackSlice> projections) -> bool {
       // TODO post filtering based on projections
       // TODO store projections in registers
-
+      std::size_t projectionsOffset = 0;
       for (std::size_t k = 0; k < docIds.size(); k++) {
         auto& idx = _infos.indexes[k];
         if (idx.projections.empty()) {
@@ -103,6 +103,8 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           output.moveValueInto(_infos.indexes[k].documentOutputRegister,
                                _currentRow, _projectionsBuilder.slice());
         }
+
+        projectionsOffset += idx.projections.size();
       }
 
       output.advanceRow();
@@ -158,12 +160,18 @@ void JoinExecutor::constructStrategy() {
     IndexStreamOptions options;
     // TODO right now we only support the first indexed field
     options.usedKeyFields = {0};
+    std::transform(idx.projections.projections().begin(),
+                   idx.projections.projections().end(),
+                   std::back_inserter(options.projectedFields),
+                   [&](Projections::Projection const& proj) {
+                     return proj.coveringIndexPosition;
+                   });
     auto stream = idx.index->streamForCondition(&_trx, options);
     TRI_ASSERT(stream != nullptr);
 
     auto& desc = indexDescription.emplace_back();
     desc.iter = std::move(stream);
-    desc.numProjections = 0;  // idx.projectionOutputRegisters.size();
+    desc.numProjections = idx.projections.size();
   }
 
   // TODO actually we want to have different strategies, like hash join and

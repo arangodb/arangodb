@@ -2949,7 +2949,6 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
       auto valueSlice =
           isUnique ? RocksDBValue::uniqueIndexStoredValues(_iterator->value())
                    : RocksDBValue::indexStoredValues(_iterator->value());
-
       for (auto pos : _options.projectedStoredValues) {
         projections[idx++] = valueSlice.at(pos);
       }

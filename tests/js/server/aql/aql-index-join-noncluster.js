@@ -28,6 +28,7 @@
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require('internal');
+const _ = require('lodash');
 
 const IndexJoinTestSuite = function () {
 
@@ -60,6 +61,16 @@ const IndexJoinTestSuite = function () {
         return undefined;
       }
       return {[attr]: gen(count++)};
+    };
+  };
+  const attributeGenerator = function (n, mapping) {
+    let count = 0;
+    return function () {
+      if (count >= n) {
+        return undefined;
+      }
+      const c = count++;
+      return _.mapValues(mapping, (fn) => fn(c));
     };
   };
 
@@ -194,25 +205,45 @@ const IndexJoinTestSuite = function () {
         assertEqual(a, b);
       }
     },
-/*
-    testMultipleJoins: function () {
-      const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => x));
-      A.ensureIndex({type: "persistent", fields: ["x"]});
-      const B = fillCollection("B", singleAttributeGenerator(1000, "x", x => x));
+
+    testProjections2: function () {
+      const A = fillCollection("A", attributeGenerator(10, {x: x => x, y: x => 2 * x}));
+      A.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["y"]});
+      const B = fillCollection("B", singleAttributeGenerator(10, "x", x => x));
       B.ensureIndex({type: "persistent", fields: ["x"]});
 
       const result = runAndCheckQuery(`
-        FOR i IN 1..2
-          FOR doc1 IN A
-            SORT doc1.x
-            FOR doc2 IN B
-                FILTER doc1.x == doc2.x
-                RETURN [i, doc1, doc2]
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1.y, doc2.x]
       `);
 
-      print(result);
-    }
-*/
+      assertEqual(result.length, 10);
+      for (const [a, b] of result) {
+        assertEqual(a, 2 * b);
+      }
+    },
+    /*
+        testMultipleJoins: function () {
+          const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => x));
+          A.ensureIndex({type: "persistent", fields: ["x"]});
+          const B = fillCollection("B", singleAttributeGenerator(1000, "x", x => x));
+          B.ensureIndex({type: "persistent", fields: ["x"]});
+
+          const result = runAndCheckQuery(`
+            FOR i IN 1..2
+              FOR doc1 IN A
+                SORT doc1.x
+                FOR doc2 IN B
+                    FILTER doc1.x == doc2.x
+                    RETURN [i, doc1, doc2]
+          `);
+
+          print(result);
+        }
+    */
   };
 };
 
