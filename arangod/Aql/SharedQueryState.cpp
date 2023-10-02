@@ -146,7 +146,7 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
               << _numWakeups << ", _VALID: " << _valid
               << ", _CBVERSION: " << _cbVersion;
     guard.unlock();
-    _cv.notify_one();
+    _cv.notify_all();
     return;
   }
 
