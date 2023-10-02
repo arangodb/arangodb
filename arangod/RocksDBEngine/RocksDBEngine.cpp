@@ -2997,6 +2997,14 @@ DECLARE_GAUGE(rocksdb_cache_unused_memory, uint64_t,
               "rocksdb_cache_unused_memory");
 DECLARE_GAUGE(rocksdb_cache_unused_tables, uint64_t,
               "rocksdb_cache_unused_tables");
+DECLARE_COUNTER(rocksdb_cache_migrate_tasks_total,
+                "rocksdb_cache_migrate_tasks_total");
+DECLARE_COUNTER(rocksdb_cache_free_memory_tasks_total,
+                "rocksdb_cache_free_memory_tasks_total");
+DECLARE_COUNTER(rocksdb_cache_migrate_tasks_duration_total,
+                "rocksdb_cache_migrate_tasks_duration_total");
+DECLARE_COUNTER(rocksdb_cache_free_memory_tasks_duration_total,
+                "rocksdb_cache_free_memory_tasks_duration_total");
 DECLARE_GAUGE(rocksdb_actual_delayed_write_rate, uint64_t,
               "rocksdb_actual_delayed_write_rate");
 DECLARE_GAUGE(rocksdb_background_errors, uint64_t, "rocksdb_background_errors");
@@ -3103,9 +3111,17 @@ void RocksDBEngine::getStatistics(std::string& result) const {
       if (!name.empty() && name.front() != 'r') {
         name = absl::StrCat(kEngineName, "_", name);
       }
-      result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
-                             " gauge\n", name, " ",
-                             a.value.getNumber<uint64_t>(), "\n");
+      if (name.ends_with("_total")) {
+        // counter
+        result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
+                               " counter\n", name, " ",
+                               a.value.getNumber<uint64_t>(), "\n");
+      } else {
+        // gauge
+        result += absl::StrCat("\n# HELP ", name, " ", name, "\n# TYPE ", name,
+                               " gauge\n", name, " ",
+                               a.value.getNumber<uint64_t>(), "\n");
+      }
     }
   }
 }
@@ -3258,6 +3274,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     builder.add("cache.active-tables", VPackValue(stats.activeTables));
     builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
     builder.add("cache.unused-tables", VPackValue(stats.spareTables));
+    builder.add("cache.migrate-tasks-total", VPackValue(stats.migrateTasks));
+    builder.add("cache.free-memory-tasks-total",
+                VPackValue(stats.freeMemoryTasks));
+    builder.add("cache.migrate-tasks-duration-total",
+                VPackValue(stats.migrateTasksDuration));
+    builder.add("cache.free-memory-tasks-duration-total",
+                VPackValue(stats.freeMemoryTasksDuration));
     // handle NaN
     builder.add("cache.hit-rate-lifetime",
                 VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
