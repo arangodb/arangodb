@@ -2964,7 +2964,7 @@ std::unique_ptr<ExecutionBlock> MaterializeSearchNode::createBlock(
   auto executorInfos = MaterializerExecutorInfos(
       inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr);
 
-  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<false>>>(
+  return std::make_unique<ExecutionBlockImpl<MaterializeSearchExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
@@ -3035,7 +3035,7 @@ std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
   auto executorInfos = MaterializerExecutorInfos(
       inNmDocIdRegId, outDocumentRegId, engine.getQuery(), collection());
 
-  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<true>>>(
+  return std::make_unique<ExecutionBlockImpl<MaterializeRocksDBExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
