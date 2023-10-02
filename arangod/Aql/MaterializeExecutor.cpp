@@ -204,7 +204,8 @@ MaterializeSearchExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     };
     _getCtx.multiGet(_buffer.order.size(), fillKeys);
   }
-  auto [it, end] = std::pair{_buffer.docs.begin(), _buffer.docs.end()};
+  auto it = _buffer.docs.begin();
+  auto end = _buffer.docs.end();
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool written = false;
     auto const [state, input] =

@@ -95,6 +95,10 @@ struct MaterializeExecutorBase {
 
   explicit MaterializeExecutorBase(Infos& infos);
 
+  void initializeCursor() {
+    /* do nothing here, just prevent the executor from being recreated */
+  }
+
  protected:
   transaction::Methods _trx;
   Infos& _infos;
