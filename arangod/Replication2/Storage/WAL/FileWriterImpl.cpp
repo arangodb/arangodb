@@ -61,7 +61,7 @@ FileWriterImplPosix::~FileWriterImplPosix() {
   if (_file >= 0) {
     sync();
     ADB_PROD_ASSERT(::close(_file) == 0)
-        << "failed to close replicated log file" << _path.string()
+        << "failed to close replicated log file " << _path.string()
         << " with error " << strerror(errno);
   }
 }
@@ -108,7 +108,7 @@ FileWriterImplWindows::FileWriterImplWindows(std::filesystem::path path)
                       OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
   ADB_PROD_ASSERT(_file != INVALID_HANDLE_VALUE)
-      << "failed to open replicated log file" << path.string()
+      << "failed to open replicated log file " << path.string()
       << " for writing with error " << GetLastError();
 }
 

@@ -186,7 +186,7 @@ auto LogReader::getFirstRecordHeader() -> ResultT<Record::CompressedHeader> {
   if (res.fail()) {
     return ResultT<Record::CompressedHeader>::error(
         TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-        "failed to read header" + std::string(res.errorMessage()));
+        "failed to read header: " + std::string(res.errorMessage()));
   }
   return ResultT<Record::CompressedHeader>::success(header);
 }
@@ -205,7 +205,7 @@ auto LogReader::getLastRecordHeader() -> ResultT<Record::CompressedHeader> {
   if (res.fail()) {
     return ResultT<Record::CompressedHeader>::error(
         TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-        "failed to read footer" + std::string(res.errorMessage()));
+        "failed to read footer: " + std::string(res.errorMessage()));
   }
   ADB_PROD_ASSERT(footer.size % Record::alignment == 0 &&
                   footer.size <= fileSize - sizeof(FileHeader))

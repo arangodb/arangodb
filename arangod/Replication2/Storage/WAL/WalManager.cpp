@@ -54,7 +54,6 @@ void WalManager::createDirectories(std::filesystem::path path) {
 
 #ifdef __linux__
   do {
-    LOG_DEVEL << path.string();
     auto fd = ::open(path.c_str(), O_DIRECTORY | O_RDONLY);
     ADB_PROD_ASSERT(fd >= 0) << "failed to open directory " << path.string()
                              << " with error " << strerror(errno);
