@@ -101,6 +101,11 @@ IndexNode::IndexNode(ExecutionPlan* plan,
   _options.lookahead = basics::VelocyPackHelper::getNumericValue(
       base, StaticStrings::IndexLookahead, IndexIteratorOptions{}.lookahead);
 
+  if (auto indexCoversProjections = base.get("indexCoversProjections");
+      indexCoversProjections.isBool()) {
+    _indexCoversProjections = indexCoversProjections.getBool();
+  }
+
   VPackSlice indexes = base.get("indexes");
 
   if (!indexes.isArray()) {
@@ -570,7 +575,26 @@ void IndexNode::prepareProjections() {
     return;
   }
 
-  if (idx->covers(_projections)) {
+  auto coversProjections = std::invoke([&]() {
+    if (_indexCoversProjections.has_value()) {
+      // On a DBServer, already got this information from the Coordinator.
+      if (*_indexCoversProjections) {
+        // Although we have the information, we still need to call covers() for
+        // its side effects, as it sets some _projections fields.
+        auto coveringResult = idx->covers(_projections);
+        TRI_ASSERT(coveringResult)
+            << "Coordinator thinks the index is covering the projections, but "
+               "the DBServer found that it is not.";
+        return coveringResult;
+      }
+      return false;
+    } else {
+      // On the Coordinator, let's check.
+      return idx->covers(_projections);
+    }
+  });
+
+  if (coversProjections) {
     _projections.setCoveringContext(collection()->id(), idx);
   } else if (this->hasFilter()) {
     // if we have a covering index and a post-filter condition,
