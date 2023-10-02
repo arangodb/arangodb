@@ -253,6 +253,7 @@ void Manager::shutdown() {
       std::shared_ptr<Cache> cache = _caches.begin()->second;
       SpinUnlocker unguard(SpinUnlocker::Mode::Write, _lock);
       cache->shutdown();
+      cache.reset();
     }
 
     TRI_ASSERT(_activeTables == 0);
@@ -447,12 +448,33 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::createTable(
 }
 
 void Manager::unregisterCache(std::uint64_t id) {
-  SpinLocker guard(SpinLocker::Mode::Write, _lock);
-  _accessStats.purgeRecord(id);
-  if (_caches.erase(id) > 0) {
+  std::shared_ptr<Cache> cache;
+  {
+    SpinLocker guard(SpinLocker::Mode::Write, _lock);
+
+    auto it = _caches.find(id);
+    if (it == _caches.end()) {
+      return;
+    }
+
+    // move shared_ptr into our own scope
+    cache = std::move((*it).second);
+    _caches.erase(it);
+
+    // remove access statistics
+    _accessStats.purgeRecord(id);
+
+    // count down global overhead
     TRI_ASSERT(_globalAllocation >= kCacheRecordOverhead + _fixedAllocation);
     _globalAllocation -= kCacheRecordOverhead;
   }
+
+  // let the cache go out of scope without holding the lock. this
+  // is necessary because the cache can acquire _lock in write mode
+  // in its dtor!
+  // note: the reset is not necessary here, it is just here so that
+  // the cache variable will not be identified as unused somehow.
+  cache.reset();
 }
 
 std::pair<bool, Manager::time_point> Manager::requestGrow(Cache* cache) {
