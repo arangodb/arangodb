@@ -1426,7 +1426,7 @@ function processQuery(query, explain, planIndex) {
           info.index.condition = condition;
           iterateIndexes(info.index, 0, {id: node.id, collection: info.collection}, types, false); 
         });
-        return keyword('JOIN'); 
+        return keyword('JOIN');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         if (node.filter) {
@@ -2029,6 +2029,9 @@ function processQuery(query, explain, planIndex) {
         let filter = '';
         if (info.condition && info.condition.hasOwnProperty('type')) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(info.condition);
+        }
+        if (info.projections) {
+          filter = '   ' + projections(info, "projections", "projections");
         }
         line += indent(level, false) + label + filter;
         stringBuilder.appendLine(line);

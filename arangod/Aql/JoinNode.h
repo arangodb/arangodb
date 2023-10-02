@@ -65,6 +65,7 @@ class JoinNode : public ExecutionNode {
     Variable const* outVariable;
     std::unique_ptr<Condition> condition;
     transaction::Methods::IndexHandle index;
+    Projections projections;
   };
 
   JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
