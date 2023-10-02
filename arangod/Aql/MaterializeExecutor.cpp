@@ -57,30 +57,33 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   auto docRegId = _infos.inputNonMaterializedDocRegId();
   auto docOutReg = _infos.outputMaterializedDocumentRegId();
   while (inputRange.hasDataRow() && !output.isFull()) {
-    bool written = false;
     auto const [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
-    written =
-        _collection
-            ->lookup(
-                &_trx, id,
-                {[&, &input = input](LocalDocumentId /*id*/, VPackSlice doc) {
-                   TRI_ASSERT(input.isInitialized());
-                   output.moveValueInto(docOutReg, input, doc);
-                   return true;
-                 },
-                 [&, &input = input](LocalDocumentId /*id*/,
-                                     std::unique_ptr<std::string>& doc) {
-                   TRI_ASSERT(input.isInitialized());
-                   output.moveValueInto(docOutReg, input, &doc);
-                   return true;
-                 }},
-                {})
-            .ok();
+    auto result = _collection->lookup(
+        &_trx, id,
+        {[&, &input = input](LocalDocumentId /*id*/, VPackSlice doc) {
+           TRI_ASSERT(input.isInitialized());
+           output.moveValueInto(docOutReg, input, doc);
+           return true;
+         },
+         [&, &input = input](LocalDocumentId /*id*/,
+                             std::unique_ptr<std::string>& doc) {
+           TRI_ASSERT(input.isInitialized());
+           output.moveValueInto(docOutReg, input, &doc);
+           return true;
+         }},
+        {});
 
-    TRI_ASSERT(written);
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          result.errorNumber(),
+          basics::StringUtils::concatT(
+              "failed to materialize document ", id.id(), " for collection ",
+              _infos.collection()->name(), ": ", result.errorMessage()));
+    }
+
     output.advanceRow();
   }
 
