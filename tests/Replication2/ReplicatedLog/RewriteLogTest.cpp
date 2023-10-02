@@ -27,6 +27,13 @@
 
 #include "Replication2/Helper/ReplicatedLogTestSetup.h"
 
+// TODO Remove this conditional as soon as we've upgraded MSVC.
+#ifdef DISABLE_I_HAS_SCHEDULER
+#pragma message(                                                     \
+    "Warning: Not compiling these tests due to a compiler bug, see " \
+    "IHasScheduler.h for details.")
+#else
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -103,3 +110,5 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     EXPECT_THAT(leaderLogContainer->storageContext->log, expectedEntries);
   }
 }
+
+#endif

@@ -41,6 +41,13 @@
 #include "Replication2/ReplicatedState/StateCommon.h"
 #include "Futures/Utilities.h"
 
+// TODO Remove this conditional as soon as we've upgraded MSVC.
+#ifdef DISABLE_I_HAS_SCHEDULER
+#pragma message(                                                   \
+    "Warning: Not compiling this file due to a compiler bug, see " \
+    "IHasScheduler.h for details.")
+#else
+
 namespace arangodb::replication2::test {
 
 auto inline operator"" _Lx(unsigned long long x) -> LogIndex {
@@ -628,3 +635,5 @@ MATCHER(MatchesMapLogEntry,
              partialLogEntry.payload));
 }
 }  // namespace arangodb::replication2::test
+
+#endif

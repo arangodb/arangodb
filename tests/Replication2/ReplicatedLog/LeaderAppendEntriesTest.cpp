@@ -26,6 +26,13 @@
 #include "Basics/voc-errors.h"
 #include "Replication2/ReplicatedLog/types.h"
 
+// TODO Remove this conditional as soon as we've upgraded MSVC.
+#ifdef DISABLE_I_HAS_SCHEDULER
+#pragma message(                                                     \
+    "Warning: Not compiling these tests due to a compiler bug, see " \
+    "IHasScheduler.h for details.")
+#else
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -359,3 +366,5 @@ TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
     EXPECT_EQ(request.lowestIndexToKeep, LogIndex{1});
   }
 }
+
+#endif

@@ -22,6 +22,13 @@
 
 #include "Replication2/Helper/ReplicatedLogTestSetup.h"
 
+// TODO Remove this conditional as soon as we've upgraded MSVC.
+#ifdef DISABLE_I_HAS_SCHEDULER
+#pragma message(                                                   \
+    "Warning: Not compiling this file due to a compiler bug, see " \
+    "IHasScheduler.h for details.")
+#else
+
 #include "Containers/Enumerate.h"
 #include "Futures/Utilities.h"
 
@@ -191,3 +198,5 @@ void PrintTo(arangodb::replication2::LogEntry const& entry, std::ostream* os) {
   *os << ")";
 }
 }  // namespace arangodb::replication2
+
+#endif

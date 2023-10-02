@@ -31,6 +31,13 @@
 #include <gtest/gtest.h>
 #include <optional>
 
+// TODO Remove this conditional as soon as we've upgraded MSVC.
+#ifdef DISABLE_I_HAS_SCHEDULER
+#pragma message(                                                     \
+    "Warning: Not compiling these tests due to a compiler bug, see " \
+    "IHasScheduler.h for details.")
+#else
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -190,3 +197,5 @@ auto testPayloads = testing::Values(
 INSTANTIATE_TEST_CASE_P(AppendEntriesBatchTestInstance, AppendEntriesBatchTest,
                         testing::Combine(testReplicatedLogOptions,
                                          testPayloads));
+
+#endif

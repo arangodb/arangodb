@@ -31,6 +31,15 @@
 
 namespace arangodb::replication2::test {
 
+// TODO Remove this conditional as soon as we've upgraded MSVC.
+#if defined(_MSC_VER) && _MSC_VER <= 1935
+#pragma message(                                                               \
+    "MSVC <= 19.35 has a compiler bug, failing to compile the concept below. " \
+    "Please use a more recent compiler version, or don't include this file. "  \
+    "See https://godbolt.org/z/8M1hbffEx for a minimal example.")
+#define DISABLE_I_HAS_SCHEDULER
+#else
+
 template<class T>
 concept PointerLike = requires {
   // gcc-11's STL has ::pointer defined even for non-pointers (e.g.,
@@ -50,6 +59,8 @@ static_assert(NotPointerLike<int>);
 static_assert(NotPointerLike<int const>);
 static_assert(NotPointerLike<int&>);
 static_assert(NotPointerLike<int const&>);
+
+#endif
 
 template<class T>
 concept Iterable = requires(T t) {
@@ -77,6 +88,8 @@ struct IHasScheduler {
 
   virtual auto runAll() noexcept -> std::size_t = 0;
 
+  // TODO Remove this conditional as soon as we've upgraded MSVC.
+#ifndef DISABLE_I_HAS_SCHEDULER
   // convenience function: run all tasks in all passed schedulers, until there
   // are no more tasks in any of them.
   // Schedulers can be passed by reference, pointer, or shared_ptr. nullptrs
@@ -152,6 +165,7 @@ struct IHasScheduler {
         return ischeduler;
       },
   };
+#endif
 };
 
 }  // namespace arangodb::replication2::test
