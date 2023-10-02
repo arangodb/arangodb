@@ -266,10 +266,10 @@ bool PlainCache<Hasher>::freeMemoryWhile(
     std::uint64_t reclaimed = bucket.evictCandidate();
     if (reclaimed > 0) {
       maybeMigrate |= guard.source()->slotEmptied();
-    }
 
-    if (!cb(reclaimed)) {
-      break;
+      if (!cb(reclaimed)) {
+        break;
+      }
     }
   }
 
