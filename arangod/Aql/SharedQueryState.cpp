@@ -90,17 +90,23 @@ void SharedQueryState::waitForAsyncWakeup() {
 /// @brief setter for the continue handler:
 ///        We can either have a handler or a callback
 void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
-  std::lock_guard<std::mutex> guard(_mutex);
+  std::unique_lock<std::mutex> guard(_mutex);
   _wakeupCb = cb;
   _numWakeups = 0;
   ++_cbVersion;
+  guard.unlock();
+
+  _cv.notify_all();
 }
 
 void SharedQueryState::resetWakeupHandler() {
-  std::lock_guard<std::mutex> guard(_mutex);
+  std::unique_lock<std::mutex> guard(_mutex);
   _wakeupCb = nullptr;
   _numWakeups = 0;
-  _cbVersion++;
+  ++_cbVersion;
+  guard.unlock();
+
+  _cv.notify_all();
 }
 
 /// execute the _continueCallback. must hold _mutex,
