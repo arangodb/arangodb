@@ -2924,7 +2924,7 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
       if (idx >= _options.keyPrefixSize) {
         break;
       }
-      into[idx] = k;
+      into[idx++] = k;
     }
   }
 

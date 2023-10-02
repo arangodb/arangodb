@@ -9091,7 +9091,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
         return false;
       }
 
-      if (index->fields().size() != 1) {
+      if (index->fields().empty()) {
         // index on more than one attribute
         return false;
       }
