@@ -1,0 +1,20 @@
+name: rocksdb_cache_free_memory_tasks_total
+introducedIn: "3.10.11"
+help: |
+  Total number of 'free memory' tasks scheduled by the in-memory
+  cache subsystem.
+unit: number
+type: counter
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of 'free memory' tasks that were scheduled by the
+  in-memory edge cache subsystem. This metric will be increased
+  whenever the cache subsystem schedules a task to free up memory
+  in one of the managed in-memory caches. It is expected to see
+  this metric rising when the cache subsystem hits its global
+  memory budget.

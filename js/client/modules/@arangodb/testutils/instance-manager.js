@@ -79,6 +79,7 @@ class instanceManager {
     this.rootDir = fs.join(this.tmpDir, testname);
     this.options.agency = this.options.agency || this.options.cluster || this.options.activefailover;
     this.agencyConfig = new inst.agencyConfig(options, this);
+    this.dumpedAgency = false;
     this.leader = null;
     this.urls = [];
     this.endpoints = [];
@@ -86,6 +87,7 @@ class instanceManager {
     this.restKeyFile = '';
     this.tcpdump = null;
     this.JWT = null;
+    this.memlayout = {};
     this.cleanup = options.cleanup && options.server === undefined;
     if (!options.hasOwnProperty('startupMaxCount')) {
       this.startupMaxCount = 300;
@@ -181,6 +183,40 @@ class instanceManager {
     }
     fs.removeDirectoryRecursive(this.rootDir, true);
   }
+
+  getMemLayout () {
+    if (this.options.memory !== undefined) {
+      if (this.options.cluster) {
+        // Distribute 10 % agency, 20% coordinator, 70% dbservers
+        this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (10/100) / this.options.agencySize);
+        this.memlayout[instanceRole.dbServer] = Math.round(this.options.memory * (70/100) / this.options.dbServers);
+        this.memlayout[instanceRole.coordinator] = Math.round(this.options.memory * (20/100) / this.options.coordinators);
+      } else if (this.options.activefailover) {
+        // Distribute 20% agency, 80% singles
+        this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (20/100) / this.options.agencySize);
+        this.memlayout[instanceRole.failover] = Math.round(this.options.memory * (80/100) / this.options.singles);
+      } else if (this.options.agency) {
+        this.memlayout[instanceRole.agent] = Math.round(this.options.memory / this.options.agencySize);
+      } else {
+        this.memlayout[instanceRole.single] = Math.round(this.options.memory / this.options.singles);
+      }
+    } else {
+      if (this.options.cluster) {
+        // Distribute 10 % agency, 20% coordinator, 70% dbservers
+        this.memlayout[instanceRole.agent] = 0;
+        this.memlayout[instanceRole.dbServer] = 0;
+        this.memlayout[instanceRole.coordinator] = 0;
+      } else if (this.options.activefailover) {
+        // Distribute 20% agency, 80% singles
+        this.memlayout[instanceRole.agent] = 0;
+        this.memlayout[instanceRole.failover] = 0;
+      } else if (this.options.agency) {
+        this.memlayout[instanceRole.agent] = 0;
+      } else {
+        this.memlayout[instanceRole.single] = 0;
+      }
+    }
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief prepares all instances required for a deployment
   // /
@@ -198,7 +234,7 @@ class instanceManager {
         arango.reconnect(this.endpoint, '_system', 'root', '');
         return true;
       }
-
+      this.getMemLayout();
       for (let count = 0;
            this.options.agency && count < this.agencyConfig.agencySize;
            count ++) {
@@ -210,7 +246,8 @@ class instanceManager {
                                              fs.join(this.rootDir, instanceRole.agent + "_" + count),
                                              this.restKeyFile,
                                              this.agencyConfig,
-                                             this.tmpDir));
+                                             this.tmpDir,
+                                             this.memlayout[instanceRole.agent]));
       }
       
       for (let count = 0;
@@ -224,7 +261,8 @@ class instanceManager {
                                              fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
                                              this.restKeyFile,
                                              this.agencyConfig,
-                                             this.tmpDir));
+                                             this.tmpDir,
+                                             this.memlayout[instanceRole.dbServer]));
       }
       
       for (let count = 0;
@@ -238,7 +276,8 @@ class instanceManager {
                                              fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
                                              this.restKeyFile,
                                              this.agencyConfig,
-                                             this.tmpDir));
+                                             this.tmpDir,
+                                             this.memlayout[instanceRole.coordinator] ));
         frontendCount ++;
       }
       
@@ -253,7 +292,8 @@ class instanceManager {
                                              fs.join(this.rootDir, instanceRole.failover + "_" + count),
                                              this.restKeyFile,
                                              this.agencyConfig,
-                                             this.tmpDir));
+                                             this.tmpDir,
+                                             this.memlayout[instanceRole.failover]));
         this.urls.push(this.arangods[this.arangods.length -1].url);
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
         frontendCount ++;
@@ -271,7 +311,8 @@ class instanceManager {
                                              fs.join(this.rootDir, instanceRole.single + "_" + count),
                                              this.restKeyFile,
                                              this.agencyConfig,
-                                             this.tmpDir));
+                                             this.tmpDir,
+                                             this.memlayout[instanceRole.single]));
         this.urls.push(this.arangods[this.arangods.length -1].url);
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
         frontendCount ++;
@@ -540,6 +581,7 @@ class instanceManager {
   // / @brief dump the state of the agency to disk. if we still can get one.
   // //////////////////////////////////////////////////////////////////////////////
   dumpAgency() {
+    this.dumpedAgency = true;
     const dumpdir = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}`);
     const zipfn = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}.zip`);
     if (fs.isFile(zipfn)) {
@@ -818,6 +860,19 @@ class instanceManager {
       moreReason += "Deadline reached! ";
       this.arangods.forEach(arangod => { arangod.serverCrashedLocal = true;});
       forceTerminate = true;
+    }
+    if (forceTerminate && !timeoutReached && this.options.agency && !this.dumpedAgency) {
+      // the SUT is unstable, but we want to attempt an agency dump anyways.
+      try {
+        print(CYAN + Date() + ' attempting to dump agency in forceterminate!' + RESET);
+        // set us a short deadline so we don't get stuck.
+        internal.SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 100);
+        this.dumpAgency();
+      } catch(ex) {
+        print(CYAN + Date() + ' aborted to dump agency in forceterminate! ' + ex + RESET);
+      } finally {
+        internal.SetGlobalExecutionDeadlineTo(0.0);
+      }
     }
     try {
       if (forceTerminate) {

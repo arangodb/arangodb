@@ -3,6 +3,26 @@ v3.10.11 (XXXX-XX-XX)
 
 * FE-317: add graph name validations.
 
+* Slightly extended hot backup release lock timeout on coordinators from
+  `timeout + 5` seconds to `timeout + 30` seconds, to prevent premature release
+  of hot backup commit locks on coordinators.
+
+* Improve logging in case hot backup locks cannot be taken on coordinators.
+
+* Fixed BTS-1618: Buggy AQL query returning empty results, due to incorrect use
+  of index projections.
+
+* Added the following metrics to improve observability of the in-memory cache
+  subsystem:
+  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
+    tasks scheduled
+  - `rocksdb_cache_migrate_tasks_total`: total number of `migrate` tasks
+    scheduled
+  - `rocksdb_cache_free_memory_tasks_duration_total`: total time (microseconds)
+    spent in `freeMemory` tasks
+  - `rocksdb_cache_migrate_tasks_duration_total`: total time (microseconds)
+    spent in `migrate` tasks
+
 * Improve performance of the in-memory cache's memory reclamation procedure.
   The previous implementation acquired too many locks, which could drive system
   CPU time up.

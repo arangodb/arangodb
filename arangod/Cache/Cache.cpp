@@ -404,16 +404,10 @@ bool Cache::freeMemory() {
   }
 
   auto cb = [this](std::uint64_t reclaimed) -> bool {
-    if (reclaimed > 0) {
-      bool underLimit = reclaimMemory(reclaimed);
-      if (underLimit) {
-        // we have free enough memory.
-        // don't continue
-        return false;
-      }
-    }
-    // check if shutdown is in progress. then give up
-    return !isShutdown();
+    TRI_ASSERT(reclaimed > 0);
+    bool underLimit = reclaimMemory(reclaimed);
+    // continue only if we are not under the limit yet (after reclamation)
+    return !underLimit;
   };
 
   bool underLimit = reclaimMemory(0ULL);
