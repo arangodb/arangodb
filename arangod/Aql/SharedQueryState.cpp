@@ -57,7 +57,6 @@ void SharedQueryState::invalidate() {
     _wakeupCb = nullptr;
     _cbVersion++;
     _valid = false;
-    LOG_DEVEL << this << ": INVALIDATING";
   }
   _cv.notify_all();  // wakeup everyone else
 
@@ -73,14 +72,19 @@ void SharedQueryState::waitForAsyncWakeup() {
   if (!_valid) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
-  LOG_DEVEL << this
-            << ": ENTERING WAITFORASYNCWAKEUP. NUMWAKEUPS: " << _numWakeups;
 
   TRI_ASSERT(!_wakeupCb);
-  _cv.wait(guard, [&] { return _numWakeups > 0 || !_valid; });
-  TRI_ASSERT(_numWakeups > 0 || !_valid);
-  _numWakeups--;
-  LOG_DEVEL << this << ": LEAVING WAITFORASYNCWAKEUP";
+  auto cbVersion = _cbVersion;
+  _cv.wait(guard, [&] {
+    return _numWakeups > 0 || !_valid || cbVersion != _cbVersion;
+  });
+  TRI_ASSERT(_numWakeups > 0 || !_valid || cbVersion != _cbVersion);
+  if (!_valid || cbVersion != _cbVersion) {
+    // do not modify _numWakeups, because it might underflow
+    return;
+  }
+  TRI_ASSERT(_numWakeups > 0);
+  --_numWakeups;
 }
 
 /// @brief setter for the continue handler:
@@ -89,8 +93,7 @@ void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   std::lock_guard<std::mutex> guard(_mutex);
   _wakeupCb = cb;
   _numWakeups = 0;
-  _cbVersion++;
-  LOG_DEVEL << this << ": SETWAKEUPHANDLER CALLED";
+  ++_cbVersion;
 }
 
 void SharedQueryState::resetWakeupHandler() {
@@ -98,21 +101,17 @@ void SharedQueryState::resetWakeupHandler() {
   _wakeupCb = nullptr;
   _numWakeups = 0;
   _cbVersion++;
-  LOG_DEVEL << this << ": RESETWAKEUPHANDLER CALLED";
 }
 
 /// execute the _continueCallback. must hold _mutex,
 void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
   TRI_ASSERT(guard);
   if (!_valid) {
-    LOG_DEVEL << this << ": NOTIFYWAITER. NOT VALID";
     guard.unlock();
     _cv.notify_all();
     return;
   }
 
-  LOG_DEVEL << this << ": NOTIFYWAITER. INCREASING NUMWAKEUPS TO "
-            << (_numWakeups + 1);
   unsigned n = _numWakeups++;
   if (!_wakeupCb) {
     guard.unlock();
@@ -129,7 +128,6 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
 
 void SharedQueryState::queueHandler() {
   if (_numWakeups == 0 || !_wakeupCb || !_valid) {
-    LOG_DEVEL << this << ": NOT QUEUEING HANDLER. NUMWAKEUPS: " << _numWakeups;
     return;
   }
 
@@ -143,8 +141,7 @@ void SharedQueryState::queueHandler() {
                         : RequestLane::CLUSTER_AQL;
 
   bool queued = _scheduler->tryBoundedQueue(
-      lane,
-      [this, self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
+      lane, [self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
         TRI_ASSERT(cb);
         std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
@@ -157,8 +154,6 @@ void SharedQueryState::queueHandler() {
 
           lck.lock();
           if (v == self->_cbVersion) {
-            LOG_DEVEL << this << ": EXECUTING CB AND DECREASING NUMWAKEUPS TO "
-                      << (_numWakeups - 1);
             unsigned c = self->_numWakeups--;
             TRI_ASSERT(c > 0);
             if (c == 1 || !cntn || !self->_valid) {
@@ -177,7 +172,6 @@ void SharedQueryState::queueHandler() {
   if (!queued) {  // just invalidate
     _wakeupCb = nullptr;
     _valid = false;
-    LOG_DEVEL << this << ": COULDN'T QUEUE. INVALIDATING";
     _cv.notify_all();
   }
 }

@@ -320,11 +320,9 @@ template<class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
   if (_prefetchTask && !_prefetchTask->isConsumed() &&
       !_prefetchTask->tryClaim()) {
-    LOG_DEVEL << (void*)_prefetchTask.get() << ": ENTERING WAIT IN DTOR";
     // some thread is still working on our prefetch task
     // -> we need to wait for that task to finish first!
     _prefetchTask->waitFor();
-    LOG_DEVEL << (void*)_prefetchTask.get() << ": FINISHED WAIT IN DTOR";
   }
 }
 
@@ -539,10 +537,6 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     LOG_QUERY("7289a", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
-    if (_prefetchTask) {
-      LOG_DEVEL << (void*)_prefetchTask.get() << ": CAUGHT: " << ex.what()
-                << ", IS CONSUMED: " << _prefetchTask->isConsumed();
-    }
     if (_prefetchTask && !_prefetchTask->isConsumed()) {
       _prefetchTask->waitFor();
     }
@@ -556,10 +550,6 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     LOG_QUERY("2bbd5", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
-    if (_prefetchTask) {
-      LOG_DEVEL << (void*)_prefetchTask.get() << ": CAUGHT: " << ex.what()
-                << ", IS CONSUMED: " << _prefetchTask->isConsumed();
-    }
     if (_prefetchTask && !_prefetchTask->isConsumed()) {
       _prefetchTask->waitFor();
     }
@@ -940,11 +930,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
 
     auto const result = std::invoke([&]() {
       if (_prefetchTask && !_prefetchTask->isConsumed()) {
-        LOG_DEVEL << (void*)_prefetchTask.get()
-                  << ": HAVING AN UNCONSUMED PREFETCH TASK";
         if (!_prefetchTask->tryClaim()) {
-          LOG_DEVEL << (void*)_prefetchTask.get()
-                    << ": UNABLE TO CLAIM UNCONSUMED PREFETCH TASK";
           TRI_ASSERT(!_dependencies.empty());
           if (_profileLevel >= ProfileLevel::Blocks) {
             // count the parallel invocation
@@ -952,52 +938,24 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
           }
           // some other thread is currently executing our prefetch task
           // -> wait till it has finished.
-          LOG_DEVEL << (void*)_prefetchTask.get()
-                    << ": INVOKE WAITING FOR PREFETCH TASK";
           _prefetchTask->waitFor();
-          LOG_DEVEL << (void*)_prefetchTask.get()
-                    << ": INVOKE FINSIHED WAITING FOR PREFETCH TASK";
-          auto x = _prefetchTask->stealResult();
-          LOG_DEVEL << (void*)_prefetchTask.get() << ": RESULT STOLEN";
-          return x;
+          return _prefetchTask->stealResult();
         }
 
         // we have claimed the task, but we are executing the fetcher
         // ourselves. so let's reset the task's internals properly.
         _prefetchTask->discard(/*isFinished*/ false);
       }
-      if (_prefetchTask) {
-        LOG_DEVEL << (void*)_prefetchTask.get()
-                  << ": EXECUTING FETCHER OURSELVES";
-      }
-      auto x = fetcher().execute(ctx.stack);
-      if (_prefetchTask) {
-        LOG_DEVEL << (void*)_prefetchTask.get()
-                  << ": EXECUTING FETCHER OURSELVES DONE";
-      }
-      return x;
+      return fetcher().execute(ctx.stack);
     });
-
-    if (_prefetchTask) {
-      LOG_DEVEL << (void*)_prefetchTask.get()
-                << ": RESULT IS THERE. EXECUTIONSTATE IS "
-                << std::get<0>(result);
-    }
 
     // note: SCHEDULER is a nullptr in unit tests
     if (SchedulerFeature::SCHEDULER != nullptr &&
         std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
         _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
-      LOG_DEVEL << (void*)_prefetchTask.get()
-                << ": HAVE PREFETCH TASK AND EXECUTION STATE IS "
-                << std::get<0>(result);
       if (_prefetchTask == nullptr) {
         _prefetchTask = std::make_shared<PrefetchTask>();
-        LOG_DEVEL << (void*)_prefetchTask.get()
-                  << ": CREATED NEW PREFETCH TASK";
       } else {
-        LOG_DEVEL << (void*)_prefetchTask.get()
-                  << ": RESETTING EXISTING PREFETCH TASK";
         _prefetchTask->reset();
       }
 
@@ -1006,15 +964,10 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
 
       // we can safely ignore the result here, because we will try to
       // claim the task ourselves anyway.
-      LOG_DEVEL << (void*)_prefetchTask.get()
-                << ": SCHEDULING NEW PREFETCH TASK";
-
       bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
           RequestLane::INTERNAL_LOW,
           [block = this, task = _prefetchTask, stack = ctx.stack]() mutable {
             if (!task->tryClaim()) {
-              LOG_DEVEL << (void*)task.get()
-                        << ": POSTED PREFETCH TASK COULD NOT CLAIM";
               return;
             }
             // task is a copy of the PrefetchTask shared_ptr, and we will only
@@ -1024,22 +977,14 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
             // destroyed, because in this case we will not be able to claim the
             // task and simply return early without accessing the block.
             try {
-              LOG_DEVEL << (void*)task.get()
-                        << ": POSTED PREFETCH TASK IS EXECUTING";
               task->execute(*block, stack);
-              LOG_DEVEL << (void*)task.get()
-                        << ": POSTED PREFETCH TASK HAS FULLY EXECUTED";
             } catch (basics::Exception const& ex) {
-              LOG_DEVEL << (void*)task.get()
-                        << ": POSTED PREFETCH TASK ERRORED(1): " << ex.what();
               task->setFailure(
                   {ex.code(),
                    absl::StrCat(ex.what(), " [node #",
                                 block->getPlanNode()->id().id(), ": ",
                                 block->getPlanNode()->getTypeString(), "]")});
             } catch (std::exception const& ex) {
-              LOG_DEVEL << (void*)task.get()
-                        << ": POSTED PREFETCH TASK ERRORED(2): " << ex.what();
               task->setFailure(
                   {TRI_ERROR_INTERNAL,
                    absl::StrCat(ex.what(), " [node #",
@@ -1047,8 +992,6 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                 block->getPlanNode()->getTypeString(), "]")});
             }
           });
-      LOG_DEVEL << (void*)_prefetchTask.get()
-                << ": SCHEDULING NEW PREFETCH TASK DONE. SUCCESS: " << queued;
 
       if (!queued) {
         // clear prefetch task
@@ -2440,8 +2383,6 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
 
 template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
-  LOG_DEVEL << (void*)this << ": TRYCLAIM. STATE: "
-            << (int)_state.load(std::memory_order_relaxed);
   auto expected = State::Pending;
   return _state.load(std::memory_order_relaxed) == expected &&
          _state.compare_exchange_strong(expected, State::InProgress,
@@ -2450,7 +2391,6 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::reset() noexcept {
-  LOG_DEVEL << (void*)this << ": RESETTING PREFETCH TASK TO PENDING";
   TRI_ASSERT(!_result);
   _state.store(State::Pending);
   // intentionally do not reset _firstFailure
@@ -2460,23 +2400,18 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
   // (1) - this acquire-load synchronizes with the release-store (3)
   if (_state.load(std::memory_order_acquire) == State::Finished) {
-    LOG_DEVEL << (void*)this << ": WAIT FOR. PREFETCH TASK ALREADY FINISHED";
     return;
   }
-  LOG_DEVEL << (void*)this << ": ENTERING WAITING FOR PREFETCH TASK";
   std::unique_lock<std::mutex> guard(_lock);
   _bell.wait(guard, [this]() {
     // (2) - this acquire-load synchronizes with the release-store (3)
     return _state.load(std::memory_order_acquire) == State::Finished;
   });
-  LOG_DEVEL << (void*)this << ": FINISHED WAITING FOR PREFETCH TASK";
 }
 
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::PrefetchTask::discard(
     bool isFinished) noexcept -> void {
-  LOG_DEVEL << (void*)this
-            << ": DISCARDING PREFETCH TASK RESULT. ISFINISHED: " << isFinished;
   _result.reset();
   _state.store(isFinished ? State::Finished : State::Consumed,
                std::memory_order_release);
@@ -2485,13 +2420,10 @@ auto ExecutionBlockImpl<Executor>::PrefetchTask::discard(
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::PrefetchTask::stealResult()
     -> PrefetchResult {
-  LOG_DEVEL << (void*)this << ": STEALING PREFETCH TASK RESULT";
   TRI_ASSERT(_result || _firstFailure.fail())
       << "prefetch task state: " << (int)_state.load(std::memory_order_relaxed);
   _state.store(State::Consumed, std::memory_order_relaxed);
   if (_firstFailure.fail()) {
-    LOG_DEVEL << (void*)this
-              << ": STEALING PREFETCH TASK RESULT - WE HAD A FAILURE";
     _result.reset();
     THROW_ARANGO_EXCEPTION(_firstFailure);
   }
@@ -2510,11 +2442,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute(
     TRI_ASSERT(_state.load() == State::InProgress);
     TRI_ASSERT(!_result);
 
-    LOG_DEVEL << (void*)this << ": EXECUTING PREFETCH TASK";
-
     _result = block.fetcher().execute(stack);
-
-    LOG_DEVEL << (void*)this << ": EXECUTED PREFETCH TASK";
 
     TRI_ASSERT(_result.has_value());
 
@@ -2528,7 +2456,6 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute(
 template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::setFailure(Result&& res) {
   TRI_ASSERT(res.fail());
-  LOG_DEVEL << (void*)this << ": SETTING FAILURE IN PREFETCH TASK: " << res;
   if (_firstFailure.ok()) {
     _firstFailure = std::move(res);
   }
@@ -2538,14 +2465,12 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::setFailure(Result&& res) {
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::wakeupWaiter() noexcept {
-  LOG_DEVEL << (void*)this << ": WAKING UP WAITERS IN PREFETCH TASK";
   // need to temporarily lock the mutex to enforce serialization with the
   // waiting thread
   _lock.lock();
   _lock.unlock();
 
   _bell.notify_one();
-  LOG_DEVEL << (void*)this << ": WAITERS NOTIFIED IN PREFETCH TASK";
 }
 
 template<class Executor>
