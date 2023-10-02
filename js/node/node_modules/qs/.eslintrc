@@ -15,7 +15,7 @@
         "indent": [2, 4],
         "max-lines-per-function": [2, { "max": 150 }],
         "max-params": [2, 16],
-        "max-statements": [2, 53],
+        "max-statements": [2, 100],
         "multiline-comment-style": 0,
         "no-continue": 1,
         "no-magic-numbers": 0,
