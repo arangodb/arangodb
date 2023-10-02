@@ -37,9 +37,23 @@ JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
   constructStrategy();
 }
 
+namespace {
+struct SpanCoveringData : arangodb::IndexIteratorCoveringData {
+  explicit SpanCoveringData(std::span<VPackSlice> data) : _data(data) {}
+  bool isArray() const noexcept override { return true; }
+  VPackSlice at(size_t i) const override { return _data[i]; }
+  arangodb::velocypack::ValueLength length() const override {
+    return _data.size();
+  }
+
+  std::span<VPackSlice> _data;
+};
+}  // namespace
+
 auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+  VPackBuilder projectionsBuilder;
   bool hasMore = false;
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_currentRow) {
@@ -47,28 +61,49 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       _strategy->reset();
     }
 
+    std::size_t projectionsOffset = 0;
     hasMore = _strategy->next([&](std::span<LocalDocumentId> docIds,
                                   std::span<VPackSlice> projections) -> bool {
       // TODO post filtering based on projections
       // TODO store projections in registers
 
       for (std::size_t k = 0; k < docIds.size(); k++) {
-        // TODO post filter based on document value
-        // TODO implement document projections
-        // TODO do we really want to check/populate cache?
-        _infos.indexes[k].collection->getCollection()->getPhysical()->lookup(
-            &_trx, docIds[k],
-            {[&](LocalDocumentId token, VPackSlice doc) {
-               output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                    _currentRow, doc);
-               return true;
-             },
-             [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
-               output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                    _currentRow, &doc);
-               return true;
-             }},
-            {});
+        auto& idx = _infos.indexes[k];
+        if (idx.projections.empty()) {
+          // load the whole document
+
+          // TODO post filter based on document value
+          // TODO implement document projections
+          // TODO do we really want to check/populate cache?
+          _infos.indexes[k].collection->getCollection()->getPhysical()->lookup(
+              &_trx, docIds[k],
+              {[&](LocalDocumentId token, VPackSlice doc) {
+                 output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                      _currentRow, doc);
+                 return true;
+               },
+               [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
+                 output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                      _currentRow, &doc);
+                 return true;
+               }},
+              {});
+
+        } else {
+          // build the document from projections
+          std::span<VPackSlice> projectionRange = {
+              projections.begin() + projectionsOffset,
+              projections.begin() + projectionsOffset + idx.projections.size()};
+
+          auto data = SpanCoveringData{projectionRange};
+          projectionsBuilder.clear();
+          projectionsBuilder.openObject(true);
+          idx.projections.toVelocyPackFromIndex(projectionsBuilder, data,
+                                                &_trx);
+          projectionsBuilder.close();
+          output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                               _currentRow, projectionsBuilder.slice());
+        }
       }
 
       output.advanceRow();

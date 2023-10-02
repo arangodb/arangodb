@@ -69,10 +69,12 @@ struct JoinExecutorInfos {
     Collection const* collection;
     // Index handle
     transaction::Methods::IndexHandle index;
+
+    // Values used for projection
+    Projections projections;
   };
 
   std::vector<IndexInfo> indexes;
-  std::vector<RegisterId> projectionOutputRegisters;
   QueryContext* query;
 };
 

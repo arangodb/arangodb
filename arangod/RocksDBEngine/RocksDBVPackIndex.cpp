@@ -2860,10 +2860,12 @@ namespace {
 
 struct RocksDBVPackStreamOptions {
   std::size_t keyPrefixSize;
+  std::vector<std::size_t> projectedKeyValues;
+  std::vector<std::size_t> projectedStoredValues;
 };
 
 template<bool isUnique>
-struct RocksDBVPackStreamIterator : AqlIndexStreamIterator {
+struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
   RocksDBVPackIndex const* _index;
   std::unique_ptr<rocksdb::Iterator> _iterator;
 
@@ -2935,7 +2937,24 @@ struct RocksDBVPackStreamIterator : AqlIndexStreamIterator {
   }
 
   LocalDocumentId load(std::span<VPackSlice> projections) const override {
-    // TODO implement projections
+    std::size_t idx = 0;
+    TRI_ASSERT(projections.size() == _options.projectedKeyValues.size() +
+                                         _options.projectedStoredValues.size());
+
+    auto keySlice = RocksDBKey::indexedVPack(_iterator->key());
+    for (auto pos : _options.projectedKeyValues) {
+      projections[idx++] = keySlice.at(pos);
+    }
+    if (!_options.projectedStoredValues.empty()) {
+      auto valueSlice =
+          isUnique ? RocksDBValue::uniqueIndexStoredValues(_iterator->value())
+                   : RocksDBValue::indexStoredValues(_iterator->value());
+
+      for (auto pos : _options.projectedStoredValues) {
+        projections[idx++] = valueSlice.at(pos);
+      }
+    }
+
     if constexpr (isUnique) {
       return RocksDBValue::documentId(_iterator->key());
     } else {
@@ -2978,6 +2997,16 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
 
   RocksDBVPackStreamOptions streamOptions;
   streamOptions.keyPrefixSize = opts.usedKeyFields.size();
+  for (auto idx : opts.projectedFields) {
+    if (idx < _fields.size()) {
+      streamOptions.projectedKeyValues.push_back(idx);
+    } else if (idx < _fields.size() + _storedValues.size()) {
+      streamOptions.projectedStoredValues.push_back(idx - _fields.size());
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "index does not cover field with given index");
+    }
+  }
 
   auto stream = [&]() -> std::unique_ptr<AqlIndexStreamIterator> {
     if (unique()) {
@@ -2994,10 +3023,14 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
 bool RocksDBVPackIndex::supportsStreamInterface(
     IndexStreamOptions const& streamOpts) const noexcept {
   // TODO expand this for fixed values that can be moved into the index
-  // TODO expand this for projections
-  if (!streamOpts.projectedFields.empty()) {
-    return false;
+
+  // we can only project values that are in range
+  for (auto idx : streamOpts.projectedFields) {
+    if (idx > _fields.size() + _storedValues.size()) {
+      return false;
+    }
   }
+
   // for persisted indexes, we can only use a prefix of the indexed keys
   std::size_t idx = 0;
   for (auto keyIdx : streamOpts.usedKeyFields) {

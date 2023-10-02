@@ -9233,7 +9233,8 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   JoinNode::IndexInfo{.collection = c->collection(),
                                       .outVariable = c->outVariable(),
                                       .condition = c->condition()->clone(),
-                                      .index = c->getIndexes()[0]});
+                                      .index = c->getIndexes()[0],
+                                      .projections = c->projections()});
               handled.emplace(c);
             }
             JoinNode* jn = plan->createNode<JoinNode>(
