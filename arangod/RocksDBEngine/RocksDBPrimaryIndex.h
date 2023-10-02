@@ -110,26 +110,26 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// @brief returns whether the document can be inserted into the primary index
   /// (or if there will be a conflict)
   Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
-                     LocalDocumentId const& documentId, velocypack::Slice doc,
+                     LocalDocumentId documentId, velocypack::Slice doc,
                      OperationOptions const& options) override;
 
   Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
-                      LocalDocumentId const& documentId, velocypack::Slice doc,
+                      LocalDocumentId documentId, velocypack::Slice doc,
                       OperationOptions const& options) override;
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc,
+                LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& options, bool performChecks) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc,
+                LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& /*options*/) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& oldDocumentId, velocypack::Slice oldDoc,
-                LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
+                LocalDocumentId oldDocumentId, velocypack::Slice oldDoc,
+                LocalDocumentId newDocumentId, velocypack::Slice newDoc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override;
 

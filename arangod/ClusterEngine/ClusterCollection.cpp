@@ -262,25 +262,18 @@ Result ClusterCollection::lookupKeyForUpdate(
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-Result ClusterCollection::read(transaction::Methods* /*trx*/,
-                               std::string_view /*key*/,
-                               IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites /*readOwnWrites*/) const {
+Result ClusterCollection::lookup(transaction::Methods* trx,
+                                 std::string_view key,
+                                 IndexIterator::DocumentCallback const& cb,
+                                 LookupOptions options) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-// read using a token!
-Result ClusterCollection::read(transaction::Methods* /*trx*/,
-                               LocalDocumentId const& /*documentId*/,
-                               IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites /*readOwnWrites*/) const {
-  return {TRI_ERROR_NOT_IMPLEMENTED};
-}
-
-Result ClusterCollection::lookupDocument(
-    transaction::Methods& /*trx*/, LocalDocumentId /*documentId*/,
-    velocypack::Builder& /*builder*/, bool /*readCache*/, bool /*fillCache*/,
-    ReadOwnWrites /*readOwnWrites*/) const {
+Result ClusterCollection::lookup(transaction::Methods* trx,
+                                 LocalDocumentId token,
+                                 IndexIterator::DocumentCallback const& cb,
+                                 LookupOptions options,
+                                 StorageSnapshot const* snapshot) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 

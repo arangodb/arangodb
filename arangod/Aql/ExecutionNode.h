@@ -1195,14 +1195,14 @@ class MaterializeNode : public ExecutionNode {
   Variable const* _outVariable;
 };
 
-class MaterializeMultiNode : public MaterializeNode {
+class MaterializeSearchNode : public MaterializeNode {
  public:
-  MaterializeMultiNode(ExecutionPlan* plan, ExecutionNodeId id,
-                       aql::Variable const& inDocId,
-                       aql::Variable const& outVariable);
+  MaterializeSearchNode(ExecutionPlan* plan, ExecutionNodeId id,
+                        aql::Variable const& inDocId,
+                        aql::Variable const& outVariable);
 
-  MaterializeMultiNode(ExecutionPlan* plan,
-                       arangodb::velocypack::Slice const& base);
+  MaterializeSearchNode(ExecutionPlan* plan,
+                        arangodb::velocypack::Slice const& base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -1218,17 +1218,16 @@ class MaterializeMultiNode : public MaterializeNode {
                       unsigned flags) const override final;
 };
 
-template<bool localDocumentId>
-class MaterializeSingleNode : public MaterializeNode,
-                              public CollectionAccessingNode {
+class MaterializeRocksDBNode : public MaterializeNode,
+                               public CollectionAccessingNode {
  public:
-  MaterializeSingleNode(ExecutionPlan* plan, ExecutionNodeId id,
-                        aql::Collection const* collection,
-                        aql::Variable const& inDocId,
-                        aql::Variable const& outVariable);
+  MaterializeRocksDBNode(ExecutionPlan* plan, ExecutionNodeId id,
+                         aql::Collection const* collection,
+                         aql::Variable const& inDocId,
+                         aql::Variable const& outVariable);
 
-  MaterializeSingleNode(ExecutionPlan* plan,
-                        arangodb::velocypack::Slice const& base);
+  MaterializeRocksDBNode(ExecutionPlan* plan,
+                         arangodb::velocypack::Slice const& base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

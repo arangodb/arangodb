@@ -331,68 +331,62 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
     if (!_requiresFullDocument &&
         aql::Projections::isCoveringIndexPosition(coveringPosition)) {
       // use covering index and projections
-      cursor.allCovering([&](LocalDocumentId const& token,
-                             IndexIteratorCoveringData& covering) {
-        stats.incrScannedIndex(1);
+      cursor.allCovering(
+          [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
+            stats.incrScannedIndex(1);
 
-        TRI_ASSERT(covering.isArray());
-        VPackSlice edge = covering.at(coveringPosition);
-        TRI_ASSERT(edge.isString());
+            TRI_ASSERT(covering.isArray());
+            VPackSlice edge = covering.at(coveringPosition);
+            TRI_ASSERT(edge.isString());
 
 #ifdef USE_ENTERPRISE
-        if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
-          return false;
-        }
+            if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
+              return false;
+            }
 #endif
 
+            EdgeDocumentToken edgeToken(cid, token);
+            // evaluate expression if available
+            if (expression != nullptr &&
+                !evaluateEdgeExpressionHelper(expression, edgeToken, edge)) {
+              stats.incrFiltered();
+              return false;
+            }
+
+            callback(std::move(edgeToken), edge, cursorID);
+            return true;
+          });
+    } else {
+      // fetch full documents
+      auto cb = IndexIterator::makeDocumentCallbackF([&](LocalDocumentId token,
+                                                         VPackSlice edgeDoc) {
+        stats.incrScannedIndex(1);
+#ifdef USE_ENTERPRISE
+        if (_trx->skipInaccessible()) {
+          // TODO: we only need to check one of these
+          VPackSlice from =
+              transaction::helpers::extractFromFromDocument(edgeDoc);
+          VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
+          if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+            return false;
+          }
+        }
+#endif
+        // eval depth-based expression first if available
         EdgeDocumentToken edgeToken(cid, token);
+
         // evaluate expression if available
         if (expression != nullptr &&
-            !evaluateEdgeExpressionHelper(expression, edgeToken, edge)) {
+            !evaluateEdgeExpressionHelper(expression, edgeToken, edgeDoc)) {
           stats.incrFiltered();
           return false;
         }
 
-        callback(std::move(edgeToken), edge, cursorID);
+        callback(std::move(edgeToken), edgeDoc, cursorID);
         return true;
       });
-    } else {
-      // fetch full documents
-      cursor.all([&](LocalDocumentId const& token) {
-        return collection->getPhysical()
-            ->read(
-                _trx, token,
-                [&](LocalDocumentId const&, VPackSlice edgeDoc) {
-                  stats.incrScannedIndex(1);
-#ifdef USE_ENTERPRISE
-                  if (_trx->skipInaccessible()) {
-                    // TODO: we only need to check one of these
-                    VPackSlice from =
-                        transaction::helpers::extractFromFromDocument(edgeDoc);
-                    VPackSlice to =
-                        transaction::helpers::extractToFromDocument(edgeDoc);
-                    if (CheckInaccessible(_trx, from) ||
-                        CheckInaccessible(_trx, to)) {
-                      return false;
-                    }
-                  }
-#endif
-                  // eval depth-based expression first if available
-                  EdgeDocumentToken edgeToken(cid, token);
-
-                  // evaluate expression if available
-                  if (expression != nullptr &&
-                      !evaluateEdgeExpressionHelper(expression, edgeToken,
-                                                    edgeDoc)) {
-                    stats.incrFiltered();
-                    return false;
-                  }
-
-                  callback(std::move(edgeToken), edgeDoc, cursorID);
-                  return true;
-                },
-                ReadOwnWrites::no)
-            .ok();
+      cursor.all([&](LocalDocumentId token) {
+        return collection->getPhysical()->lookup(_trx, token, cb, {}).ok();
       });
     }
 

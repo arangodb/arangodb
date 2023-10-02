@@ -37,46 +37,56 @@
 
 namespace arangodb::aql {
 
-template<typename T, bool localDocumentId>
-MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext(Infos& infos)
+template<bool localDocumentId>
+MaterializeExecutor<localDocumentId>::ReadContext::ReadContext(Infos& infos)
     : infos{&infos} {
   if constexpr (localDocumentId) {
-    callback = [this](LocalDocumentId /*id*/, VPackSlice doc) {
-      TRI_ASSERT(this->infos);
-      TRI_ASSERT(outputRow);
-      TRI_ASSERT(inputRow);
-      TRI_ASSERT(inputRow->isInitialized());
-      outputRow->moveValueInto(this->infos->outputMaterializedDocumentRegId(),
-                               *inputRow, doc);
-      return true;
-    };
+    callback = {
+        [this](LocalDocumentId /*id*/, VPackSlice doc) {
+          TRI_ASSERT(this->infos);
+          TRI_ASSERT(outputRow);
+          TRI_ASSERT(inputRow);
+          TRI_ASSERT(inputRow->isInitialized());
+          outputRow->moveValueInto(
+              this->infos->outputMaterializedDocumentRegId(), *inputRow, doc);
+          return true;
+        },
+        [this](LocalDocumentId /*id*/, std::unique_ptr<std::string>& doc) {
+          TRI_ASSERT(this->infos);
+          TRI_ASSERT(outputRow);
+          TRI_ASSERT(inputRow);
+          TRI_ASSERT(inputRow->isInitialized());
+          outputRow->moveValueInto(
+              this->infos->outputMaterializedDocumentRegId(), *inputRow, &doc);
+          return true;
+        }};
   }
 }
 
-template<typename T, bool localDocumentId>
-void MaterializeExecutor<T, localDocumentId>::ReadContext::ReadContext::
-    moveInto(std::unique_ptr<uint8_t[]> data) {
+template<bool localDocumentId>
+void MaterializeExecutor<localDocumentId>::ReadContext::ReadContext::moveInto(
+    std::unique_ptr<std::string> data) {
   TRI_ASSERT(infos);
   TRI_ASSERT(outputRow);
   TRI_ASSERT(inputRow);
   TRI_ASSERT(inputRow->isInitialized());
-  AqlValue value{std::move(data)};
-  bool mustDestroy = true;
-  AqlValueGuard guard{value, mustDestroy};
-  // TODO(MBkkt) add moveValueInto overload for std::unique_ptr<uint8_t[]>
   outputRow->moveValueInto(infos->outputMaterializedDocumentRegId(), *inputRow,
-                           guard);
+                           &data);
 }
 
-template<typename T, bool localDocumentId>
-MaterializeExecutor<T, localDocumentId>::MaterializeExecutor(
-    MaterializeExecutor<T, localDocumentId>::Fetcher& /*fetcher*/, Infos& infos)
+template<bool localDocumentId>
+MaterializeExecutor<localDocumentId>::MaterializeExecutor(
+    MaterializeExecutor<localDocumentId>::Fetcher& /*fetcher*/, Infos& infos)
     : _buffer{infos.query().resourceMonitor()},
       _trx{infos.query().newTrxContext()},
-      _readCtx{infos} {}
+      _readCtx{infos} {
+  if constexpr (localDocumentId) {
+    _collection = infos.collection()->getCollection()->getPhysical();
+  }
+}
 
-template<typename T, bool localDocumentId>
-void MaterializeExecutor<T, localDocumentId>::Buffer::fill(
+template<bool localDocumentId>
+void MaterializeExecutor<localDocumentId>::Buffer::fill(
     AqlItemBlockInputRange& inputRange, ReadContext& ctx) {
   TRI_ASSERT(!localDocumentId);
   docs.clear();
@@ -148,20 +158,16 @@ void MaterializeExecutor<T, localDocumentId>::Buffer::fill(
   }
 }
 
-template<typename T, bool localDocumentId>
+template<bool localDocumentId>
 std::tuple<ExecutorState, MaterializeStats, AqlCall>
-MaterializeExecutor<T, localDocumentId>::produceRows(
+MaterializeExecutor<localDocumentId>::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   MaterializeStats stats;
 
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
   if constexpr (localDocumentId) {
-    if (!_collection) {
-      _collection = _trx.documentCollection(_readCtx.infos->collectionSource())
-                        ->getPhysical();
-      TRI_ASSERT(_collection);
-    }
+    TRI_ASSERT(_collection);
   } else {
     // buffering all LocalDocumentIds to avoid memory ping-pong
     // between iresearch and storage engine
@@ -232,7 +238,7 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
     if constexpr (localDocumentId) {
       static_assert(isSingleCollection);
       LocalDocumentId id{input.getValue(docRegId).slice().getUInt()};
-      written = _collection->read(&_trx, id, callback, ReadOwnWrites::no).ok();
+      written = _collection->lookup(&_trx, id, callback, {}).ok();
     } else if (it != end) {
       if (it->executor != kInvalidRecord) {
         if (auto& value = _getCtx.values[it->executor]; value) {
@@ -253,9 +259,9 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
-template<typename T, bool localDocumentId>
+template<bool localDocumentId>
 std::tuple<ExecutorState, MaterializeStats, size_t, AqlCall>
-MaterializeExecutor<T, localDocumentId>::skipRowsRange(
+MaterializeExecutor<localDocumentId>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   size_t skipped = 0;
 
@@ -275,11 +281,7 @@ MaterializeExecutor<T, localDocumentId>::skipRowsRange(
   return {inputRange.upstreamState(), MaterializeStats{}, skipped, call};
 }
 
-template class MaterializeExecutor<void, false>;
-template class MaterializeExecutor<std::string const&, false>;
-template class MaterializeExecutor<std::string const&, true>;
-
-template class MaterializerExecutorInfos<void>;
-template class MaterializerExecutorInfos<std::string const&>;
+template class MaterializeExecutor<false>;
+template class MaterializeExecutor<true>;
 
 }  // namespace arangodb::aql

@@ -981,6 +981,7 @@ exports.run = {
 exports.executableExt = executableExt;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
+Object.defineProperty(exports, 'JS_DIR', {get: () => JS_DIR});
 Object.defineProperty(exports, 'ARANGOBACKUP_BIN', {get: () => ARANGOBACKUP_BIN});
 Object.defineProperty(exports, 'ARANGOBENCH_BIN', {get: () => ARANGOBENCH_BIN});
 Object.defineProperty(exports, 'ARANGODUMP_BIN', {get: () => ARANGODUMP_BIN});
