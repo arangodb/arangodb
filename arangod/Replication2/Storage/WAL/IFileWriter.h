@@ -20,36 +20,42 @@
 ///
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include <memory>
+#include <string>
+#include <string_view>
 
-namespace arangodb::replication2::storage {
+#include "Basics/Result.h"
 
-struct IteratorPosition {
-  IteratorPosition() = default;
+namespace arangodb {
+class Result;
+}
 
-  static IteratorPosition fromLogIndex(LogIndex index) {
-    return IteratorPosition(index);
+namespace arangodb::replication2::storage::wal {
+
+struct IFileReader;
+
+struct IFileWriter {
+  virtual ~IFileWriter() = default;
+
+  virtual auto path() const -> std::string = 0;
+
+  template<typename T>
+  [[nodiscard]] Result append(T const& v) {
+    static_assert(std::is_trivially_copyable_v<T>);
+    return append({reinterpret_cast<char const*>(&v), sizeof(T)});
   }
 
-  static IteratorPosition withFileOffset(LogIndex index,
-                                         std::uint64_t fileOffset) {
-    return IteratorPosition(index, fileOffset);
-  }
+  [[nodiscard]] virtual Result append(std::string_view data) = 0;
 
-  [[nodiscard]] auto index() const noexcept -> LogIndex { return _logIndex; }
+  virtual void truncate(std::uint64_t size) = 0;
 
-  [[nodiscard]] auto fileOffset() const noexcept -> std::uint64_t {
-    return _fileOffset;
-  }
+  virtual void sync() = 0;
 
- private:
-  explicit IteratorPosition(LogIndex index) : _logIndex(index) {}
-  IteratorPosition(LogIndex index, std::uint64_t fileOffset)
-      : _logIndex(index), _fileOffset(fileOffset) {}
-  LogIndex _logIndex{0};
-  std::uint64_t _fileOffset{0};
+  [[nodiscard]] virtual auto getReader() const
+      -> std::unique_ptr<IFileReader> = 0;
 };
 
-}  // namespace arangodb::replication2::storage
+}  // namespace arangodb::replication2::storage::wal

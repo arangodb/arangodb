@@ -20,36 +20,43 @@
 ///
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include <cstdint>
+#include <type_traits>
 
-namespace arangodb::replication2::storage {
+#include "Assertions/Assert.h"
 
-struct IteratorPosition {
-  IteratorPosition() = default;
+namespace arangodb::replication2::storage::wal {
 
-  static IteratorPosition fromLogIndex(LogIndex index) {
-    return IteratorPosition(index);
+struct StreamReader {
+  StreamReader(void const* data, std::size_t size)
+      : _data(static_cast<uint8_t const*>(data)), _end(_data + size) {}
+
+  auto data() const -> void const* { return _data; }
+  auto size() const -> std::size_t { return _end - _data; }
+
+  template<typename T>
+  T read() {
+    static_assert(std::is_trivially_copyable<T>::value,
+                  "T must be trivially copyable");
+    TRI_ASSERT(size() >= sizeof(T));
+
+    T result;
+    memcpy(&result, _data, sizeof(T));
+    _data += sizeof(T);
+    return result;
   }
 
-  static IteratorPosition withFileOffset(LogIndex index,
-                                         std::uint64_t fileOffset) {
-    return IteratorPosition(index, fileOffset);
-  }
-
-  [[nodiscard]] auto index() const noexcept -> LogIndex { return _logIndex; }
-
-  [[nodiscard]] auto fileOffset() const noexcept -> std::uint64_t {
-    return _fileOffset;
+  void skip(std::size_t size) {
+    TRI_ASSERT(this->size() >= size);
+    _data += size;
   }
 
  private:
-  explicit IteratorPosition(LogIndex index) : _logIndex(index) {}
-  IteratorPosition(LogIndex index, std::uint64_t fileOffset)
-      : _logIndex(index), _fileOffset(fileOffset) {}
-  LogIndex _logIndex{0};
-  std::uint64_t _fileOffset{0};
+  uint8_t const* _data;
+  uint8_t const* _end;
 };
 
-}  // namespace arangodb::replication2::storage
+}  // namespace arangodb::replication2::storage::wal

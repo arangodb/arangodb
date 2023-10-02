@@ -20,36 +20,33 @@
 ///
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Storage/WAL/IFileReader.h"
 
-namespace arangodb::replication2::storage {
+#include <cstdio>
+#include <string>
 
-struct IteratorPosition {
-  IteratorPosition() = default;
+namespace arangodb::replication2::storage::wal {
 
-  static IteratorPosition fromLogIndex(LogIndex index) {
-    return IteratorPosition(index);
-  }
+struct FileReaderImpl final : IFileReader {
+  FileReaderImpl(std::string path);
+  ~FileReaderImpl();
 
-  static IteratorPosition withFileOffset(LogIndex index,
-                                         std::uint64_t fileOffset) {
-    return IteratorPosition(index, fileOffset);
-  }
+  auto path() const -> std::string override { return _path; }
 
-  [[nodiscard]] auto index() const noexcept -> LogIndex { return _logIndex; }
+  auto read(void* buffer, std::size_t n) -> Result override;
 
-  [[nodiscard]] auto fileOffset() const noexcept -> std::uint64_t {
-    return _fileOffset;
-  }
+  void seek(std::uint64_t pos) override;
+
+  auto position() const -> std::uint64_t override;
+
+  auto size() const -> std::uint64_t override;
 
  private:
-  explicit IteratorPosition(LogIndex index) : _logIndex(index) {}
-  IteratorPosition(LogIndex index, std::uint64_t fileOffset)
-      : _logIndex(index), _fileOffset(fileOffset) {}
-  LogIndex _logIndex{0};
-  std::uint64_t _fileOffset{0};
+  std::string _path;
+  std::FILE* _file = nullptr;
 };
 
-}  // namespace arangodb::replication2::storage
+}  // namespace arangodb::replication2::storage::wal

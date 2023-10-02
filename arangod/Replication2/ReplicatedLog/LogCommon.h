@@ -151,6 +151,7 @@ struct TermIndexPair {
 };
 
 auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
+[[nodiscard]] auto to_string(TermIndexPair pair) -> std::string;
 
 template<class Inspector>
 auto inspect(Inspector& f, TermIndexPair& x) {
