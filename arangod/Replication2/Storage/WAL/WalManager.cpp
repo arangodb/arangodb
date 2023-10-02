@@ -50,7 +50,13 @@ auto WalManager::getLogPath(LogId log) const -> std::filesystem::path {
 }
 
 void WalManager::createDirectories(std::filesystem::path path) {
-  std::filesystem::create_directories(path);
+  try {
+    std::filesystem::create_directories(path);
+  } catch (std::exception& e) {
+    LOG_TOPIC("0e6d9", ERR, Logger::REPLICATED_WAL)
+        << "Failed to create directory "
+        << path.string() + " with error " + e.what();
+  }
 
 #ifdef __linux__
   do {
