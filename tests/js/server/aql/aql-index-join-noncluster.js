@@ -174,6 +174,26 @@ const IndexJoinTestSuite = function () {
         assertEqual(a.x, b.x);
       }
     },
+
+    testProjections: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10, "x", x => 0));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(10, "x", x => 0));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1.x, doc2.x]
+      `);
+
+      assertEqual(result.length, 100);
+      for (const [a, b] of result) {
+        assertEqual(a, b);
+      }
+    },
 /*
     testMultipleJoins: function () {
       const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => x));
