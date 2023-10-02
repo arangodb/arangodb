@@ -96,8 +96,6 @@ class SharedQueryState final
 
   void resetWakeupHandler();
 
-  void resetNumWakeups();
-
   /// execute a task in parallel if capacity is there
   template<typename F>
   bool asyncExecuteAndWakeup(F&& cb) {
@@ -133,7 +131,9 @@ class SharedQueryState final
     return queued;
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   bool noTasksRunning();
+#endif
 
  private:
   /// execute the _continueCallback. must hold _mutex
@@ -142,7 +142,6 @@ class SharedQueryState final
 
   bool queueAsyncTask(fu2::unique_function<void()>);
 
- private:
   ArangodServer& _server;
   Scheduler* _scheduler;
   mutable std::mutex _mutex;
