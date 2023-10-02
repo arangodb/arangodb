@@ -116,6 +116,7 @@ class JoinExecutor {
 
   InputAqlItemRow _currentRow{CreateInvalidInputRowHint()};
   ExecutorState _currentRowState{ExecutorState::HASMORE};
+  velocypack::Builder _projectionsBuilder;
 };
 
 }  // namespace aql

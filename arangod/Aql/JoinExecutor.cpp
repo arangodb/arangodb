@@ -53,7 +53,6 @@ struct SpanCoveringData : arangodb::IndexIteratorCoveringData {
 auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  VPackBuilder projectionsBuilder;
   bool hasMore = false;
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_currentRow) {
@@ -96,13 +95,13 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               projections.begin() + projectionsOffset + idx.projections.size()};
 
           auto data = SpanCoveringData{projectionRange};
-          projectionsBuilder.clear();
-          projectionsBuilder.openObject(true);
-          idx.projections.toVelocyPackFromIndex(projectionsBuilder, data,
+          _projectionsBuilder.clear();
+          _projectionsBuilder.openObject(true);
+          idx.projections.toVelocyPackFromIndex(_projectionsBuilder, data,
                                                 &_trx);
-          projectionsBuilder.close();
+          _projectionsBuilder.close();
           output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                               _currentRow, projectionsBuilder.slice());
+                               _currentRow, _projectionsBuilder.slice());
         }
       }
 
