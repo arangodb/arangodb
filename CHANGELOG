@@ -1,6 +1,8 @@
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
+* FE-323: allow 'nested' property in view JSON UI.
+
 * Improve performance of the in-memory cache's memory reclamation procedure.
   The previous implementation acquired too many locks, which could drive system
   CPU time up.
