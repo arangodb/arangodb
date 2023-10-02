@@ -387,7 +387,7 @@ struct CustomScorer final : public irs::ScorerBase<void> {
     if (!Scorer::equals(other)) {
       return false;
     }
-    auto const& p = down_cast<CustomScorer>(other);
+    auto const& p = DownCast<CustomScorer>(other);
     return p.i == i;
   }
 
