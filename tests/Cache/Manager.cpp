@@ -331,6 +331,72 @@ TEST(CacheManagerTest, test_create_and_destroy_caches) {
   }
 }
 
+TEST(CacheManagerTest, test_manager_shutdown) {
+  std::uint64_t requestLimit = 1024 * 1024;
+
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  auto postFn = [](std::function<void()>) -> bool { return false; };
+  CacheOptions co;
+  co.maxSpareAllocation = 0;
+  co.cacheSize = requestLimit;
+
+  {
+    Manager manager(sharedPRNG, postFn, co);
+
+    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    // now only manager owns cache pointer
+    cache.reset();
+
+    // make manager go out of scope. we expect that this
+    // does not cause a deadlock
+  }
+}
+
+TEST(CacheManagerTest, test_manager_shutdown_with_data_and_stats) {
+  std::uint64_t requestLimit = 1024 * 1024;
+
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  auto postFn = [](std::function<void()>) -> bool { return false; };
+  CacheOptions co;
+  co.maxSpareAllocation = 0;
+  co.cacheSize = requestLimit;
+
+  {
+    Manager manager(sharedPRNG, postFn, co);
+
+    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+
+    std::string key;
+    std::string value;
+    constexpr std::size_t n = 8192;
+    for (std::size_t i = 0; i < n; ++i) {
+      key.clear();
+      key.append("testkey").append(std::to_string(i));
+
+      value.clear();
+      value.append("testvalue").append(std::to_string(i));
+
+      CachedValue* cv = CachedValue::construct(key.data(), key.size(),
+                                               value.data(), value.size());
+      TRI_ASSERT(cv != nullptr);
+      do {
+        auto status = cache->insert(cv);
+        if (status == TRI_ERROR_NO_ERROR) {
+          break;
+        }
+      } while (true);
+    }
+
+    // now only manager owns cache pointer
+    cache.reset();
+
+    // make manager go out of scope. we expect that this
+    // does not cause a deadlock
+  }
+}
+
 TEST(CacheManagerTest, test_basic_constructor_function) {
   std::uint64_t requestLimit = 1024 * 1024;
 

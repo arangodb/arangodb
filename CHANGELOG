@@ -1,6 +1,27 @@
 devel
 -----
 
+* Improve logging in case hot backup locks cannot be taken on coordinators.
+
+* Speed up incremental hotbackup upload by parallelization of
+  remote-to-remote copies. Tolerate deletion of old backups during
+  incremental upload.
+
+* Added the following metrics to improve observability of in-memory cache
+  subsystem:
+  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
+    tasks scheduled
+  - `rocksdb_cache_migrate_tasks_total`: total number of `migrate` tasks
+    scheduled
+  - `rocksdb_cache_free_memory_tasks_duration_total`: total time (microseconds)
+    spent in `freeMemory` tasks
+  - `rocksdb_cache_migrate_tasks_duration_total`: total time (microseconds)
+    spent in `migrate` tasks
+
+* Improve performance of AQL LimitExecutor for higher limit values.
+  The LimitExecutor now fast-forwards all input rows instead of working on the
+  individual input rows.
+
 * Remove special handling for backups taken with ArangoDB 3.5 in hot backup
   restore.
 

@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IResearchViewNode.h"
+#include "Aql/JoinNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
@@ -164,6 +165,16 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
                     colNode->isUsedAsSatellite());
       break;
     }
+    case ExecutionNode::JOIN: {
+      auto joinNode = ExecutionNode::castTo<JoinNode const*>(baseNode);
+      if (joinNode == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unable to cast node to JoinNode");
+      }
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "JoinNode not handled yet");
+      break;
+    }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto viewNode =
           ExecutionNode::castTo<iresearch::IResearchViewNode const*>(baseNode);
@@ -180,7 +191,6 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
         updateLocking(&(collection.get()), AccessMode::Type::READ, snippetId,
                       restrictedShards, false);
       }
-
       break;
     }
     case ExecutionNode::INSERT:
