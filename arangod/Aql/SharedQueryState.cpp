@@ -27,7 +27,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -54,8 +53,6 @@ SharedQueryState::SharedQueryState(ArangodServer& server, Scheduler* scheduler)
 void SharedQueryState::invalidate() {
   {
     std::lock_guard<std::mutex> guard(_mutex);
-    LOG_DEVEL << this << ": INVALIDATE WITH _NUMWAKEUPS: " << _numWakeups
-              << ", _VALID: " << _valid << ", _CBVERSION: " << _cbVersion;
     _wakeupCb = nullptr;
     _cbVersion++;
     _valid = false;
@@ -76,33 +73,12 @@ void SharedQueryState::waitForAsyncWakeup() {
   }
 
   TRI_ASSERT(!_wakeupCb);
-#if 0
-  auto cbVersion = _cbVersion;
-#endif
-  LOG_DEVEL << this
-            << ": ENTERING WAITFORASYNCWAKEUP WITH _NUMWAKEUPS: " << _numWakeups
-            << ", _VALID: " << _valid << ", _CBVERSION: " << _cbVersion;
-  _cv.wait(guard, [&] {
-    return _numWakeups > 0 || !_valid;  // || cbVersion != _cbVersion;
-  });
-  LOG_DEVEL << this << ": WOKEN UP IN WAITFORASYNCWAKEUP WITH _NUMWAKEUPS: "
-            << _numWakeups << ", _VALID: " << _valid
-            << ", _CBVERSION: " << _cbVersion;
-  TRI_ASSERT(_numWakeups > 0 || !_valid);  // || cbVersion != _cbVersion);
-#if 0
-  if (!_valid || cbVersion != _cbVersion) {
-    // do not modify _numWakeups, because it might underflow
-    LOG_DEVEL << "NOT MODIFYING IN WAITFORASYNCWAKEUP WITH _NUMWAKEUPS: "
-              << _numWakeups << ", _VALID: " << _valid
-              << ", _CBVERSION: " << _cbVersion;
-    return;
+  _cv.wait(guard, [&] { return _numWakeups > 0 || !_valid; });
+  TRI_ASSERT(_numWakeups > 0 || !_valid);
+  if (_valid) {
+    TRI_ASSERT(_numWakeups > 0);
+    --_numWakeups;
   }
-  TRI_ASSERT(_numWakeups > 0);
-#endif
-  --_numWakeups;
-  LOG_DEVEL << this
-            << ": LEAVING WAITFORASYNCWAKEUP WITH _NUMWAKEUPS: " << _numWakeups
-            << ", _VALID: " << _valid << ", _CBVERSION: " << _cbVersion;
 }
 
 /// @brief setter for the continue handler:
@@ -110,9 +86,6 @@ void SharedQueryState::waitForAsyncWakeup() {
 void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   std::lock_guard<std::mutex> guard(_mutex);
   _wakeupCb = cb;
-  LOG_DEVEL << this
-            << ": CALLING SETWAKEUPHANDLER. WITH _NUMWAKEUPS: " << _numWakeups
-            << ", _VALID: " << _valid << ", _CBVERSION: " << _cbVersion;
   _numWakeups = 0;
   ++_cbVersion;
 }
@@ -120,9 +93,6 @@ void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
 void SharedQueryState::resetWakeupHandler() {
   std::lock_guard<std::mutex> guard(_mutex);
   _wakeupCb = nullptr;
-  LOG_DEVEL << this
-            << ": CALLING RESETWAKEUPHANDLER. WITH _NUMWAKEUPS: " << _numWakeups
-            << ", _VALID: " << _valid << ", _CBVERSION: " << _cbVersion;
   _numWakeups = 0;
   ++_cbVersion;
 }
@@ -131,9 +101,6 @@ void SharedQueryState::resetWakeupHandler() {
 void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
   TRI_ASSERT(guard);
   if (!_valid) {
-    LOG_DEVEL << this
-              << ": NOTIFYWAITER, NOT VALID WITH _NUMWAKEUPS: " << _numWakeups
-              << ", _VALID: " << _valid << ", _CBVERSION: " << _cbVersion;
     guard.unlock();
     _cv.notify_all();
     return;
@@ -141,27 +108,15 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
 
   unsigned n = _numWakeups++;
   if (!_wakeupCb) {
-    LOG_DEVEL << this
-              << ": NOTIFYWAITER, NOT HAVING A WAKEUPCB WITH _NUMWAKEUPS: "
-              << _numWakeups << ", _VALID: " << _valid
-              << ", _CBVERSION: " << _cbVersion;
     guard.unlock();
     _cv.notify_all();
     return;
   }
 
   if (n > 0) {
-    LOG_DEVEL
-        << this
-        << ": NOTIFYWAITER, HAVING FOUND ANOTHER WAKEUP, WITH _NUMWAKEUPS: "
-        << _numWakeups << ", _VALID: " << _valid
-        << ", _CBVERSION: " << _cbVersion;
     return;
   }
 
-  LOG_DEVEL << this << ": NOTIFYWAITER, QUEUEING HANDLER, WITH _NUMWAKEUPS: "
-            << _numWakeups << ", _VALID: " << _valid
-            << ", _CBVERSION: " << _cbVersion;
   queueHandler();
 }
 
@@ -210,7 +165,6 @@ void SharedQueryState::queueHandler() {
 
   if (!queued) {  // just invalidate
     _wakeupCb = nullptr;
-    LOG_DEVEL << this << ": COULD NOT QUEUE. INVALIDATING";
     _valid = false;
     _cv.notify_all();
   }
