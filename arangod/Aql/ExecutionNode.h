@@ -500,9 +500,9 @@ class ExecutionNode {
   void enableCallstackSplit() noexcept { _isCallstackSplitEnabled = true; }
 
   [[nodiscard]] static bool isIncreaseDepth(NodeType type);
-  [[nodiscard]] bool isIncreaseDepth() const;
+  [[nodiscard]] virtual bool isIncreaseDepth() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
-  [[nodiscard]] bool alwaysCopiesRows() const;
+  [[nodiscard]] virtual bool alwaysCopiesRows() const;
 
   auto getRegsToKeepStack() const -> RegIdSetStack;
 
@@ -1236,6 +1236,9 @@ class MaterializeRocksDBNode : public MaterializeNode,
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
+
+  bool alwaysCopiesRows() const override { return false; }
+  bool isIncreaseDepth() const override { return false; }
 
  protected:
   /// @brief export to VelocyPack
