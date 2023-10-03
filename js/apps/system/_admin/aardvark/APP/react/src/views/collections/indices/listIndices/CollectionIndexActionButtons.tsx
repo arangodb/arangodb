@@ -1,46 +1,51 @@
-import { DeleteIcon, LockIcon, ViewIcon } from "@chakra-ui/icons";
-import { IconButton, Stack } from "@chakra-ui/react";
+import { DeleteIcon, LockIcon } from "@chakra-ui/icons";
+import { Box, IconButton, Tooltip } from "@chakra-ui/react";
 import { Index } from "arangojs/indexes";
 import React from "react";
-import { Link as RouterLink, useHistory } from "react-router-dom";
+import { useHistory } from "react-router-dom";
 import { encodeHelper } from "../../../../utils/encodeHelper";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { DeleteIndexModal } from "../DeleteIndexModal";
 
-
-export function CollectionIndexActionButtons({
-  index
-}: {
-  index: Index;
-}) {
+export function CollectionIndexActionButtons({ index }: { index: Index }) {
   const { readOnly } = useCollectionIndicesContext();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const collectionName = index.id.slice(0, index.id.indexOf("/"));
   const { encoded: encodedCollectionName } = encodeHelper(collectionName);
   const history = useHistory();
+
+  const isSystem =
+    index.type === "primary" ||
+    /**
+     * @todo
+     * typecast required because arangojs
+     * doesn't support "edge" index types yet
+     */
+
+    (index.type as string) === "edge";
+
+  if (isSystem) {
+    const label = "System index can't be modified";
+    return (
+      <Box padding="2">
+        <Tooltip hasArrow label={label} placement="top">
+          <LockIcon aria-label={label} />
+        </Tooltip>
+      </Box>
+    );
+  }
+
   return (
-    <Stack direction="row" align="center">
+    <>
       <IconButton
-        colorScheme="gray"
+        colorScheme="red"
         variant="ghost"
         size="sm"
-        aria-label="View Index"
-        icon={<ViewIcon />}
-        as={RouterLink}
-        to={`/cIndices/${index.id}`} />
-      {/* TODO arangojs does not currently support "edge" index type */}
-      {index.type === "primary" || (index.type as string) === "edge" ? (
-        <LockIcon aria-label="System index can't be modified" />
-      ) : (
-        <IconButton
-          colorScheme="red"
-          variant="ghost"
-          size="sm"
-          aria-label="Delete Index"
-          icon={<DeleteIcon />}
-          disabled={readOnly}
-          onClick={() => setShowDeleteModal(true)} />
-      )}
+        aria-label="Delete Index"
+        icon={<DeleteIcon />}
+        disabled={readOnly}
+        onClick={() => setShowDeleteModal(true)}
+      />
       {showDeleteModal && (
         <DeleteIndexModal
           index={index}
@@ -49,8 +54,9 @@ export function CollectionIndexActionButtons({
           }}
           onClose={() => {
             setShowDeleteModal(false);
-          }} />
+          }}
+        />
       )}
-    </Stack>
+    </>
   );
 }
