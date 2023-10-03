@@ -942,10 +942,27 @@ const replicatedStateDocumentShardsSuite = function () {
     for (const shard in shards) {
       const servers = shards[shard];
 
-      for (const server of servers) {
-        const assocShards = dh.getAssociatedShards(lh.getServerUrl(server), database, shardsToLogs[shard]);
-        assertTrue(_.includes(assocShards, shard));
-      }
+      // The leader must have the shard already.
+      const leader = servers[0];
+      let assocShards = dh.getAssociatedShards(lh.getServerUrl(leader), database, shardsToLogs[shard]);
+      assertTrue(_.includes(assocShards, shard),
+        `Expected shard ${shard} to be already created on leader ${leader}, but got ${JSON.stringify(assocShards)}`);
+
+      // Followers may experience delays in creating the shard, and that is normal.
+      servers.slice(1).forEach((server) => {
+        lh.waitFor(() => {
+          try {
+            assocShards = dh.getAssociatedShards(lh.getServerUrl(server), database, shardsToLogs[shard]);
+          } catch (e) {
+            // The request might fail on followers in case they did not initialize the replicated state yet.
+            return e;
+          }
+          if (_.includes(assocShards, shard)) {
+            return true;
+          }
+          return Error(`Expected shard ${shard} to be created on server ${server}, but got ${JSON.stringify(assocShards)}`);
+        });
+      });
     }
   };
 
