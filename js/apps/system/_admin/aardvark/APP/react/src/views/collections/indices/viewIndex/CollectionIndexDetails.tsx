@@ -9,32 +9,35 @@ import {
   Tag
 } from "@chakra-ui/react";
 import React from "react";
-import { useHistory, useRouteMatch } from "react-router-dom";
+import { useRouteMatch } from "react-router-dom";
 import { ControlledJSONEditor } from "../../../../components/jsonEditor/ControlledJSONEditor";
-import { encodeHelper } from "../../../../utils/encodeHelper";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { TYPE_TO_LABEL_MAP } from "../CollectionIndicesHelpers";
 import { DeleteIndexModal } from "../DeleteIndexModal";
 
 export const CollectionIndexDetails = () => {
   const { params } = useRouteMatch<{
-    collectionName: string;
     indexId: string;
   }>();
   const { collectionIndices, readOnly } = useCollectionIndicesContext();
-  const { collectionName, indexId } = params;
-  const { encoded: encodedCollectionName } = encodeHelper(collectionName);
-  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
-  const currentIndex = collectionIndices?.find(
-    a => a.id === `${collectionName}/${indexId}`
+  const { indexId } = params;
+  // need to use winodw.location.hash here instead of useRouteMatch because
+  // useRouteMatch does not work with hash router
+  const fromUrl = window.location.hash.split("#cIndices/")[1];
+  const collectionNameFromUrl = fromUrl.split("/")[0];
+  const decodedCollectionNameFromUrl = decodeURIComponent(
+    collectionNameFromUrl
   );
-  const history = useHistory();
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const currentIndex = collectionIndices?.find(collectionIndex => {
+    return collectionIndex.id === `${decodedCollectionNameFromUrl}/${indexId}`;
+  });
   if (!currentIndex) {
     return null;
   }
   const isSystem =
     currentIndex.type === "primary" || (currentIndex.type as string) === "edge";
-    // TODO arangojs does not currently support "edge" index type
+  // TODO arangojs does not currently support "edge" index type
   const showDeleteButton = !isSystem && !readOnly;
 
   return (
@@ -46,15 +49,16 @@ export const CollectionIndexDetails = () => {
           size="sm"
           icon={<ArrowBackIcon width="24px" height="24px" />}
           onClick={() => {
-            history.push(`/cIndices/${encodedCollectionName}`);
+            window.location.href = `#cIndices/${collectionNameFromUrl}`;
           }}
         />
         <Heading marginLeft="2" as="h1" size="lg">
-          Index: {collectionName}
+          Index: {decodedCollectionNameFromUrl}
         </Heading>
         {showDeleteButton && (
           <Button
             size="xs"
+            flexShrink={0}
             marginLeft="auto"
             leftIcon={<DeleteIcon />}
             colorScheme="red"
@@ -83,7 +87,7 @@ export const CollectionIndexDetails = () => {
         <DeleteIndexModal
           index={currentIndex}
           onSuccess={() => {
-            history.push(`/cIndices/${encodedCollectionName}`);
+            window.location.href = `#cIndices/${collectionNameFromUrl}`;
           }}
           onClose={() => {
             setShowDeleteModal(false);

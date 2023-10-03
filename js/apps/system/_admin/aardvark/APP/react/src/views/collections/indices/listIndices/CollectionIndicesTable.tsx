@@ -1,5 +1,5 @@
-import { Stack } from "@chakra-ui/react";
-import { createColumnHelper } from "@tanstack/react-table";
+import { Link, Stack } from "@chakra-ui/react";
+import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import { Index } from "arangojs/indexes";
 import React from "react";
 import { FiltersList } from "../../../../components/table/FiltersList";
@@ -7,19 +7,34 @@ import { ReactTable } from "../../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../../components/table/useSortableReactTable";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { TYPE_TO_LABEL_MAP } from "../CollectionIndicesHelpers";
-import { CollectionIndexActionButtons } from "./CollectionIndexActionButtons";
 import { useSyncIndexCreationJob } from "../useSyncIndexCreationJob";
+import { CollectionIndexActionButtons } from "./CollectionIndexActionButtons";
 
 const columnHelper = createColumnHelper<Index>();
 
+const IdCell = ({ info }: { info: CellContext<Index, string> }) => {
+  const cellValue = info.cell.getValue();
+  const id = cellValue.slice(cellValue.lastIndexOf("/") + 1);
+  const collectionName = window.location.hash.split("#cIndices/")[1];
+  // need to use href here instead of RouteLink due to a bug in react-router
+  return (
+    <Link
+      href={`#cIndices/${collectionName}/${id}`}
+      textDecoration="underline"
+      color="blue.500"
+      _hover={{
+        color: "blue.600"
+      }}
+    >
+      {id}
+    </Link>
+  );
+};
 const TABLE_COLUMNS = [
   columnHelper.accessor("id", {
     header: "ID",
     id: "id",
-    cell: info => {
-      const cellValue = info.cell.getValue();
-      return cellValue.slice(cellValue.lastIndexOf("/") + 1);
-    },
+    cell: info => <IdCell info={info} />,
     meta: {
       filterType: "text"
     }
