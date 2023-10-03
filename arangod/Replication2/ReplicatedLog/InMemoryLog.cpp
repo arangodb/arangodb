@@ -288,6 +288,19 @@ void replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
   _log = _log.push_back(std::move(entry));
 }
 
+auto replicated_log::InMemoryLog::append(
+    std::initializer_list<InMemoryLogEntry> entries) const -> InMemoryLog {
+  ADB_PROD_ASSERT(empty() || entries.size() == 0 ||
+                  getNextIndex() == entries.begin()->entry().logIndex())
+      << ", front = " << entries.begin()->entry().logIndex()
+      << ", getNextIndex = " << getNextIndex();
+  auto transient = _log.transient();
+  for (auto const& entry : entries) {
+    transient.push_back(entry);
+  }
+  return InMemoryLog{std::move(transient).persistent()};
+}
+
 auto replicated_log::InMemoryLog::append(InMemoryLog const& entries) const
     -> InMemoryLog {
   ADB_PROD_ASSERT(empty() || entries.empty() ||

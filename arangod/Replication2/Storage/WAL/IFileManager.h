@@ -20,36 +20,28 @@
 ///
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include <memory>
+#include <string>
+#include <vector>
 
-namespace arangodb::replication2::storage {
+namespace arangodb::replication2::storage::wal {
 
-struct IteratorPosition {
-  IteratorPosition() = default;
+struct IFileReader;
+struct IFileWriter;
 
-  static IteratorPosition fromLogIndex(LogIndex index) {
-    return IteratorPosition(index);
-  }
+struct IFileManager {
+  virtual ~IFileManager() = default;
+  virtual auto listFiles() -> std::vector<std::string> = 0;
 
-  static IteratorPosition withFileOffset(LogIndex index,
-                                         std::uint64_t fileOffset) {
-    return IteratorPosition(index, fileOffset);
-  }
+  virtual auto createReader(std::string const& filename)
+      -> std::unique_ptr<IFileReader> = 0;
+  virtual auto createWriter(std::string const& filename)
+      -> std::unique_ptr<IFileWriter> = 0;
 
-  [[nodiscard]] auto index() const noexcept -> LogIndex { return _logIndex; }
-
-  [[nodiscard]] auto fileOffset() const noexcept -> std::uint64_t {
-    return _fileOffset;
-  }
-
- private:
-  explicit IteratorPosition(LogIndex index) : _logIndex(index) {}
-  IteratorPosition(LogIndex index, std::uint64_t fileOffset)
-      : _logIndex(index), _fileOffset(fileOffset) {}
-  LogIndex _logIndex{0};
-  std::uint64_t _fileOffset{0};
+  virtual void removeAll() = 0;
 };
 
-}  // namespace arangodb::replication2::storage
+}  // namespace arangodb::replication2::storage::wal

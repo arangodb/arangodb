@@ -18,41 +18,43 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <cstdint>
-#include <string_view>
 #include <velocypack/Buffer.h>
-#include <velocypack/Slice.h>
 
-namespace arangodb::replication2 {
+namespace arangodb::replication2::storage::wal {
 
-struct LogPayload {
-  using BufferType = velocypack::UInt8Buffer;
+struct Buffer {
+  template<typename T>
+  void append(T const& v) {
+    static_assert(std::is_trivially_copyable<std::decay_t<decltype(v)>>::value,
+                  "T must be trivially copyable");
 
-  explicit LogPayload(BufferType const& dummy);
-  explicit LogPayload(BufferType&& dummy);
+    _buffer.append(
+        std::string_view{reinterpret_cast<char const*>(&v), sizeof(v)});
+  }
 
-  // Named constructors, have to make copies.
-  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice)
-      -> LogPayload;
-  [[nodiscard]] static auto createFromString(std::string_view string)
-      -> LogPayload;
+  void append(void const* data, std::size_t size) {
+    _buffer.append(std::string_view{reinterpret_cast<char const*>(data), size});
+  }
 
-  friend auto operator==(LogPayload const&, LogPayload const&) -> bool;
+  void resetTo(std::size_t position) noexcept { _buffer.resetTo(position); }
 
-  [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
-  [[nodiscard]] auto slice() const noexcept -> velocypack::Slice;
-  [[nodiscard]] auto copyBuffer() const -> velocypack::UInt8Buffer;
-  [[nodiscard]] auto stealBuffer() -> velocypack::UInt8Buffer&&;
+  void advance(std::size_t value) { _buffer.advance(value); }
+
+  void clear() { _buffer.clear(); }
+
+  auto data() const -> uint8_t const* { return _buffer.data(); }
+
+  auto size() const -> std::size_t { return _buffer.size(); }
+
+  auto buffer() -> velocypack::Buffer<uint8_t>& { return _buffer; }
 
  private:
-  BufferType buffer;
+  velocypack::Buffer<uint8_t> _buffer;
 };
 
-auto operator==(LogPayload const&, LogPayload const&) -> bool;
-
-}  // namespace arangodb::replication2
+}  // namespace arangodb::replication2::storage::wal
