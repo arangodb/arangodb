@@ -24,6 +24,7 @@
       'login': 'login',
       'collection/:colid/documents/:pageid': 'documents',
       'cIndices/:colname': 'cIndices',
+      'cIndices/:colname/:indexName': 'cIndices',
       'cSettings/:colname': 'cSettings',
       'cSchema/:colname': 'cSchema',
       'cComputedValues/:colname': 'cComputedValues',
