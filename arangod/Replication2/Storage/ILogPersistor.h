@@ -61,10 +61,8 @@ struct ILogPersistor : virtual IPersistor {
       -> futures::Future<ResultT<SequenceNumber>> = 0;
   virtual auto removeBack(LogIndex start, WriteOptions const&)
       -> futures::Future<ResultT<SequenceNumber>> = 0;
-  virtual auto getObjectId() -> std::uint64_t = 0;
   virtual auto getLogId() -> LogId = 0;
 
-  virtual auto getSyncedSequenceNumber() -> SequenceNumber = 0;
   virtual auto waitForSync(SequenceNumber) -> futures::Future<Result> = 0;
 
   // waits for all ongoing requests to be done

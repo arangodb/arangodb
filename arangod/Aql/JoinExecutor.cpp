@@ -27,6 +27,7 @@
 #include "Aql/Collection.h"
 #include "Aql/QueryContext.h"
 #include "VocBase/LogicalCollection.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::aql;
 
@@ -36,6 +37,19 @@ JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
     : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {
   constructStrategy();
 }
+
+namespace {
+struct SpanCoveringData : arangodb::IndexIteratorCoveringData {
+  explicit SpanCoveringData(std::span<VPackSlice> data) : _data(data) {}
+  bool isArray() const noexcept override { return true; }
+  VPackSlice at(size_t i) const override { return _data[i]; }
+  arangodb::velocypack::ValueLength length() const override {
+    return _data.size();
+  }
+
+  std::span<VPackSlice> _data;
+};
+}  // namespace
 
 auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                OutputAqlItemRow& output)
@@ -51,24 +65,46 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                   std::span<VPackSlice> projections) -> bool {
       // TODO post filtering based on projections
       // TODO store projections in registers
-
+      std::size_t projectionsOffset = 0;
       for (std::size_t k = 0; k < docIds.size(); k++) {
-        // TODO post filter based on document value
-        // TODO implement document projections
-        // TODO do we really want to check/populate cache?
-        _infos.indexes[k].collection->getCollection()->getPhysical()->lookup(
-            &_trx, docIds[k],
-            {[&](LocalDocumentId token, VPackSlice doc) {
-               output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                    _currentRow, doc);
-               return true;
-             },
-             [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
-               output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                    _currentRow, &doc);
-               return true;
-             }},
-            {});
+        auto& idx = _infos.indexes[k];
+        if (idx.projections.empty()) {
+          // load the whole document
+
+          // TODO post filter based on document value
+          // TODO implement document projections
+          // TODO do we really want to check/populate cache?
+          _infos.indexes[k].collection->getCollection()->getPhysical()->lookup(
+              &_trx, docIds[k],
+              {[&](LocalDocumentId token, VPackSlice doc) {
+                 output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                      _currentRow, doc);
+                 return true;
+               },
+               [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
+                 output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                      _currentRow, &doc);
+                 return true;
+               }},
+              {});
+
+        } else {
+          // build the document from projections
+          std::span<VPackSlice> projectionRange = {
+              projections.begin() + projectionsOffset,
+              projections.begin() + projectionsOffset + idx.projections.size()};
+
+          auto data = SpanCoveringData{projectionRange};
+          _projectionsBuilder.clear();
+          _projectionsBuilder.openObject(true);
+          idx.projections.toVelocyPackFromIndex(_projectionsBuilder, data,
+                                                &_trx);
+          _projectionsBuilder.close();
+          output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                               _currentRow, _projectionsBuilder.slice());
+        }
+
+        projectionsOffset += idx.projections.size();
       }
 
       output.advanceRow();
@@ -124,12 +160,18 @@ void JoinExecutor::constructStrategy() {
     IndexStreamOptions options;
     // TODO right now we only support the first indexed field
     options.usedKeyFields = {0};
+    std::transform(idx.projections.projections().begin(),
+                   idx.projections.projections().end(),
+                   std::back_inserter(options.projectedFields),
+                   [&](Projections::Projection const& proj) {
+                     return proj.coveringIndexPosition;
+                   });
     auto stream = idx.index->streamForCondition(&_trx, options);
     TRI_ASSERT(stream != nullptr);
 
     auto& desc = indexDescription.emplace_back();
     desc.iter = std::move(stream);
-    desc.numProjections = 0;  // idx.projectionOutputRegisters.size();
+    desc.numProjections = idx.projections.size();
   }
 
   // TODO actually we want to have different strategies, like hash join and

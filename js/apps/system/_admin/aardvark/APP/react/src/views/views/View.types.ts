@@ -74,6 +74,9 @@ export type LinkProperties = {
   fields?: {
     [attributeName: string]: LinkProperties;
   };
+  nested?: {
+    [attributeName: string]: LinkProperties;
+  };
   includeAllFields?: boolean;
   trackListPositions?: boolean;
   storeValues?: "none" | "id";
