@@ -2,23 +2,33 @@ import { AddIcon } from "@chakra-ui/icons";
 import {
   Box,
   Button,
-  Flex,
   Heading,
   Spinner,
   Stack,
-  Text
+  Stat,
+  StatLabel,
+  StatNumber
 } from "@chakra-ui/react";
 import React from "react";
+import { useRouteMatch } from "react-router-dom";
 import { AddIndexForm } from "./addIndex/AddIndexForm";
 import { useCollectionIndicesContext } from "./CollectionIndicesContext";
 import { CollectionIndicesTable } from "./listIndices/CollectionIndicesTable";
+import { CollectionIndexDetails } from "./viewIndex/CollectionIndexDetails";
 
 export const CollectionIndicesView = () => {
   const { isFormOpen, onOpenForm, onCloseForm } = useCollectionIndicesContext();
-  return isFormOpen ? (
-    <AddIndexForm onClose={onCloseForm} />
-  ) : (
+  const match = useRouteMatch<{
+    indexId: string;
+  }>("/cIndices/:collectionName/:indexId");
+  const isCollectionDetailsOpen = !!match?.params?.indexId;
+  if (isFormOpen) {
+    return <AddIndexForm onClose={onCloseForm} />;
+  }
+
+  return (
     <Box padding="4" width="100%">
+      {isCollectionDetailsOpen && <CollectionIndexDetails />}
       <IndexViewHeader onOpen={onOpenForm} />
       <CollectionIndicesTable />
     </Box>
@@ -30,22 +40,18 @@ const IndexViewHeader = ({ onOpen }: { onOpen: () => void }) => {
   return (
     <Stack direction="row" marginBottom="4" alignItems="center" spacing="6">
       <Heading size="lg">Indexes</Heading>
-      <Flex direction="column">
-        <Text fontSize="2xl" fontWeight="bold">
-          {stats ? stats.count : <Spinner size="sm" />}
-        </Text>
-        <Text fontSize="sm" marginTop="-1">
-          Index count
-        </Text>
-      </Flex>
-      <Flex direction="column">
-        <Text fontSize="2xl" fontWeight="bold">
+      <Stat>
+        <StatNumber>{stats ? stats.count : <Spinner size="sm" />}</StatNumber>
+        <StatLabel>Index count</StatLabel>
+      </Stat>
+
+      <Stat>
+        <StatNumber>
           {stats ? window.prettyBytes(stats.size) : <Spinner size="sm" />}
-        </Text>
-        <Text fontSize="sm" marginTop="-1">
-          Estimated memory used
-        </Text>
-      </Flex>
+        </StatNumber>
+        <StatLabel>Estimated memory used</StatLabel>
+      </Stat>
+
       <Button
         size="sm"
         leftIcon={<AddIcon />}
