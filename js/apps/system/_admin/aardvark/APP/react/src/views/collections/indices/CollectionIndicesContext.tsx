@@ -1,15 +1,18 @@
+import { useDisclosure } from "@chakra-ui/react";
 import { Index } from "arangojs/indexes";
 import React, { createContext, ReactNode, useContext, useState } from "react";
-import { useFetchCollectionIndices } from "./useFetchCollectionIndices";
-import { useSupportedIndexTypes } from "./useSupportedIndexTypes";
+import { useFetchCollectionFigures } from "../figures/useFetchCollectionFigures";
+import {
+  IndexWithFigures,
+  useFetchCollectionIndices
+} from "./useFetchCollectionIndices";
 import { usePermissionsCheck } from "./usePermissionsCheck";
 import { useSetupBreadcrumbs } from "./useSetupBreadcrumbs";
 import { useSetupNav } from "./useSetupNav";
-import { useDisclosure } from "@chakra-ui/react";
-import { useFetchCollectionFigures } from "../figures/useFetchCollectionFigures";
+import { useSupportedIndexTypes } from "./useSupportedIndexTypes";
 
 type CollectionIndicesContextType = {
-  collectionIndices: Index[] | undefined;
+  collectionIndices: IndexWithFigures[] | undefined;
   collectionName: string;
   collectionId: string;
   indexTypeOptions: { value: Index["type"]; label: string }[];

@@ -4,7 +4,6 @@ import { ChakraCustomProvider } from "../../../theme/ChakraCustomProvider";
 import { useGlobalStyleReset } from "../../../utils/useGlobalStyleReset";
 import { CollectionIndicesProvider } from "./CollectionIndicesContext";
 import { CollectionIndicesView } from "./CollectionIndicesView";
-import { CollectionIndexDetails } from "./viewIndex/CollectionIndexDetails";
 
 export const CollectionIndicesViewWrap = ({
   collectionName,
@@ -22,11 +21,8 @@ export const CollectionIndicesViewWrap = ({
       >
         <HashRouter basename="/" hashType={"noslash"}>
           <Switch>
-            <Route path="/cIndices/:collectionName" exact>
+            <Route path="/cIndices/:collectionName">
               <CollectionIndicesView />
-            </Route>
-            <Route path="/cIndices/:collectionName/:indexId">
-              <CollectionIndexDetails />
             </Route>
           </Switch>
         </HashRouter>
