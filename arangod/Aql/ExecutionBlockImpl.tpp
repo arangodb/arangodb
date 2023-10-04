@@ -298,7 +298,6 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
       _rowFetcher(std::in_place, _dependencyProxy),
       _executorInfos(std::move(executorInfos)),
       _executor(std::in_place, *_rowFetcher, _executorInfos),
-      _outputItemRow(),
       _query(engine->getQuery()),
       _state(InternalState::FETCH_DATA),
       _execState{ExecState::CHECKCALL},
