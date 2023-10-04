@@ -2,6 +2,7 @@ import { AddIcon } from "@chakra-ui/icons";
 import {
   Box,
   Button,
+  Flex,
   Heading,
   Spinner,
   Stack,
@@ -40,17 +41,19 @@ const IndexViewHeader = ({ onOpen }: { onOpen: () => void }) => {
   return (
     <Stack direction="row" marginBottom="4" alignItems="center" spacing="6">
       <Heading size="lg">Indexes</Heading>
-      <Stat>
-        <StatNumber>{stats ? stats.count : <Spinner size="sm" />}</StatNumber>
-        <StatLabel>Index count</StatLabel>
-      </Stat>
+      <Flex gap="2">
+        <Stat>
+          <StatNumber>{stats ? stats.count : <Spinner size="sm" />}</StatNumber>
+          <StatLabel>Index count</StatLabel>
+        </Stat>
 
-      <Stat>
-        <StatNumber>
-          {stats ? window.prettyBytes(stats.size) : <Spinner size="sm" />}
-        </StatNumber>
-        <StatLabel>Estimated memory used</StatLabel>
-      </Stat>
+        <Stat>
+          <StatNumber>
+            {stats ? window.prettyBytes(stats.size) : <Spinner size="sm" />}
+          </StatNumber>
+          <StatLabel>Estimated memory used</StatLabel>
+        </Stat>
+      </Flex>
 
       <Button
         size="sm"
