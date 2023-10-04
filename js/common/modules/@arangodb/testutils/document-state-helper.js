@@ -296,7 +296,7 @@ const getCollectionShardsAndLogs = function (db, collection) {
 
 const isIndexInCurrent = function (database, collectionId, indexId) {
   const shards = lh.readAgencyValueAt(`Current/Collections/${database}/${collectionId}`);
-  return Object.values(shards).every(shard => shard.indexes.some(index => index.id === indexId));
+  return Object.values(shards).some(shard => shard.indexes.some(index => index.id === indexId));
 };
 
 exports.getLocalValue = getLocalValue;
