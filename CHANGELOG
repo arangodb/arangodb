@@ -62,6 +62,9 @@ devel
   still has, the more likely it is that query parts can actually run 
   concurrently.
 
+* Fix updating of collection properties (schema) when the collection has a
+  view on top.
+
 * Improve logging in case hot backup locks cannot be taken on coordinators.
 
 * Speed up incremental hotbackup upload by parallelization of

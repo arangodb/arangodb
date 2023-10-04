@@ -120,11 +120,15 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     // index
     std::string iid = it.get("index").copyString();
 
+    auto projections = Projections::fromVelocyPack(
+        it, "projections", plan->getAst()->query().resourceMonitor());
+
     _indexInfos.emplace_back(
         IndexInfo{.collection = coll,
                   .outVariable = outVariable,
                   .condition = Condition::fromVPack(plan, condition),
-                  .index = coll->indexByIdentifier(iid)});
+                  .index = coll->indexByIdentifier(iid),
+                  .projections = projections});
   }
 
   TRI_ASSERT(_indexInfos.size() >= 2);
@@ -215,7 +219,8 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
     indexInfos.emplace_back(IndexInfo{.collection = it.collection,
                                       .outVariable = outVariable,
                                       .condition = it.condition->clone(),
-                                      .index = it.index});
+                                      .index = it.index,
+                                      .projections = it.projections});
   }
 
   auto c =

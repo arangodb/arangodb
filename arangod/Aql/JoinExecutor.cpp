@@ -68,27 +68,8 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       std::size_t projectionsOffset = 0;
       for (std::size_t k = 0; k < docIds.size(); k++) {
         auto& idx = _infos.indexes[k];
-        if (idx.projections.empty()) {
-          // load the whole document
 
-          // TODO post filter based on document value
-          // TODO implement document projections
-          // TODO do we really want to check/populate cache?
-          _infos.indexes[k].collection->getCollection()->getPhysical()->lookup(
-              &_trx, docIds[k],
-              {[&](LocalDocumentId token, VPackSlice doc) {
-                 output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                      _currentRow, doc);
-                 return true;
-               },
-               [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
-                 output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                      _currentRow, &doc);
-                 return true;
-               }},
-              {});
-
-        } else {
+        if (idx.projections.usesCoveringIndex(idx.index)) {
           // build the document from projections
           std::span<VPackSlice> projectionRange = {
               projections.begin() + projectionsOffset,
@@ -102,9 +83,55 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           _projectionsBuilder.close();
           output.moveValueInto(_infos.indexes[k].documentOutputRegister,
                                _currentRow, _projectionsBuilder.slice());
-        }
 
-        projectionsOffset += idx.projections.size();
+          projectionsOffset += idx.projections.size();
+        } else {
+          // load the whole document
+
+          // TODO post filter based on document value
+          // TODO do we really want to check/populate cache?
+          _infos.indexes[k].collection->getCollection()->getPhysical()->lookup(
+              &_trx, docIds[k],
+              {[&](LocalDocumentId token, VPackSlice doc) {
+                 if (idx.projections.empty()) {
+                   output.moveValueInto(
+                       _infos.indexes[k].documentOutputRegister, _currentRow,
+                       doc);
+                 } else {
+                   _projectionsBuilder.clear();
+                   _projectionsBuilder.openObject(true);
+                   idx.projections.toVelocyPackFromDocument(_projectionsBuilder,
+                                                            doc, &_trx);
+                   _projectionsBuilder.close();
+                   output.moveValueInto(
+                       _infos.indexes[k].documentOutputRegister, _currentRow,
+                       _projectionsBuilder.slice());
+                 }
+
+                 return true;
+               },
+               [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
+                 if (idx.projections.empty()) {
+                   output.moveValueInto(
+                       _infos.indexes[k].documentOutputRegister, _currentRow,
+                       &doc);
+                 } else {
+                   _projectionsBuilder.clear();
+                   _projectionsBuilder.openObject(true);
+                   idx.projections.toVelocyPackFromDocument(
+                       _projectionsBuilder,
+                       VPackSlice(
+                           reinterpret_cast<uint8_t const*>(doc->data())),
+                       &_trx);
+                   _projectionsBuilder.close();
+                   output.moveValueInto(
+                       _infos.indexes[k].documentOutputRegister, _currentRow,
+                       _projectionsBuilder.slice());
+                 }
+                 return true;
+               }},
+              {});
+        }
       }
 
       output.advanceRow();
@@ -160,18 +187,23 @@ void JoinExecutor::constructStrategy() {
     IndexStreamOptions options;
     // TODO right now we only support the first indexed field
     options.usedKeyFields = {0};
-    std::transform(idx.projections.projections().begin(),
-                   idx.projections.projections().end(),
-                   std::back_inserter(options.projectedFields),
-                   [&](Projections::Projection const& proj) {
-                     return proj.coveringIndexPosition;
-                   });
-    auto stream = idx.index->streamForCondition(&_trx, options);
-    TRI_ASSERT(stream != nullptr);
 
     auto& desc = indexDescription.emplace_back();
+
+    if (idx.projections.usesCoveringIndex()) {
+      std::transform(idx.projections.projections().begin(),
+                     idx.projections.projections().end(),
+                     std::back_inserter(options.projectedFields),
+                     [&](Projections::Projection const& proj) {
+                       return proj.coveringIndexPosition;
+                     });
+
+      desc.numProjections = idx.projections.size();
+    }
+
+    auto stream = idx.index->streamForCondition(&_trx, options);
+    TRI_ASSERT(stream != nullptr);
     desc.iter = std::move(stream);
-    desc.numProjections = idx.projections.size();
   }
 
   // TODO actually we want to have different strategies, like hash join and
