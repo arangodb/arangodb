@@ -29,7 +29,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#ifdef USE_V8
 #include "V8/v8-vpack.h"
+#endif
 
 #include <absl/strings/numbers.h>
 
@@ -826,6 +828,7 @@ void AqlValue::setManagedSliceData(MemoryOriginType mot,
   TRI_ASSERT(memoryUsage() == length);
 }
 
+#ifdef USE_V8
 v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
                                      velocypack::Options const* options) const {
   auto context = TRI_IGETC;
@@ -856,6 +859,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
       return TRI_VPackToV8(isolate, slice(t), options);
   }
 }
+#endif
 
 void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
                             bool resolveExternals, bool allowUnindexed) const {

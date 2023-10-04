@@ -51,7 +51,9 @@
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "Transaction/V8Context.h"
+#endif
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -80,9 +82,13 @@ static bool arrayContainsCollection(VPackSlice array,
 }  // namespace
 
 std::shared_ptr<transaction::Context> GraphManager::ctx() const {
+#ifdef USE_V8
   // we must use v8
   return transaction::V8Context::createWhenRequired(_vocbase, _operationOrigin,
                                                     true);
+#else
+  return transaction::StandaloneContext::create(_vocbase, _operationOrigin);
+#endif
 }
 
 bool GraphManager::renameGraphCollection(std::string const& oldName,

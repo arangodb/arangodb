@@ -51,7 +51,9 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
@@ -1019,6 +1021,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
 
   // export v8 statistics
   builder.add("v8Context", VPackValue(VPackValueType::Object));
+#ifdef USE_V8
   V8DealerFeature::Statistics v8Counters{};
   // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
@@ -1035,6 +1038,14 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
   builder.add("free", VPackValue(v8Counters.free));
   builder.add("min", VPackValue(v8Counters.min));
   builder.add("max", VPackValue(v8Counters.max));
+#else
+  builder.add("available", VPackValue(0));
+  builder.add("busy", VPackValue(0));
+  builder.add("dirty", VPackValue(0));
+  builder.add("free", VPackValue(0));
+  builder.add("min", VPackValue(0));
+  builder.add("max", VPackValue(0));
+#endif
   /* at the time being we don't want to write this into the database so the data
   volume doesn't increase.
   {
