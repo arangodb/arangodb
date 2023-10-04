@@ -148,8 +148,7 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
     // TODO Instead of this loop, maybe have the DelayedLogFollower track/count
     //      all requests, and just "runAll" on leader+follower.
     std::size_t num_requests = 0;
-    while (
-        followerLogContainer->delayedLogFollower->hasPendingAppendEntries()) {
+    while (followerLogContainer->hasWork()) {
       followerLogContainer->runAll();
       num_requests += 1;
       leaderLogContainer->runAll();

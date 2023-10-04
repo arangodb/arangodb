@@ -272,26 +272,20 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     // we expect a retry request
     EXPECT_TRUE(
         followerLogContainer->delayedLogFollower->hasPendingAppendEntries());
-    // TODO this swapping here should be replaced by something in the test
-    //      framework (i.e. LogContainer, LogConfig etc.)
     auto oldFollower = DelayedLogFollower(followerLogContainer->serverId());
-    auto oldScheduler = DelayedScheduler();
     followerLogContainer->delayedLogFollower->swapFollowerAndQueueWith(
         oldFollower);
-    std::swap(oldScheduler, *followerLogContainer->logScheduler);
     // simulate the database server has updated its follower
     std::ignore = followerLogContainer->updateConfig(config);
 
     EXPECT_TRUE(oldFollower.hasPendingAppendEntries());
-    oldFollower.runAsyncAppendEntries();
-    oldScheduler.runAll();
+    oldFollower.scheduler.runAll();
     EXPECT_FALSE(oldFollower.hasPendingAppendEntries());
 
     ASSERT_FALSE(f2.isReady());
     IHasScheduler::runAll(leaderLogContainer, followerLogContainer);
     followerLogContainer->runAll();
     EXPECT_FALSE(oldFollower.scheduler.hasWork());
-    EXPECT_FALSE(oldScheduler.hasWork());
 
     {
       auto stats = followerLogContainer->log->getQuickStatus().local;

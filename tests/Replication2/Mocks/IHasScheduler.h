@@ -78,7 +78,7 @@ concept HasScheduler = std::derived_from<T, IHasScheduler> or
 struct IHasScheduler {
   virtual ~IHasScheduler() = default;
 
-  // // run exactly one task, crash of there is none.
+  // // run exactly one task, crash if there is none.
   // virtual void runOnce() noexcept = 0;
   //
   // // run all tasks currently in the queue, but nothing that is added

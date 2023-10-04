@@ -127,16 +127,15 @@ struct ParticipantWithFakes : ITestParticipant {
   [[nodiscard]] auto updateConfig(LogConfig const* conf)
       -> futures::Future<futures::Unit>;
   [[nodiscard]] auto getAsLeader() {
-    auto const leader = std::dynamic_pointer_cast<replicated_log::ILogLeader>(
+    auto leader = std::dynamic_pointer_cast<replicated_log::ILogLeader>(
         log->getParticipant());
     EXPECT_NE(leader, nullptr);
     return leader;
   }
   [[nodiscard]] auto getAsFollower()
       -> std::shared_ptr<replicated_log::ILogFollower> {
-    auto const follower =
-        std::dynamic_pointer_cast<replicated_log::ILogFollower>(
-            log->getParticipant());
+    auto follower = std::dynamic_pointer_cast<replicated_log::ILogFollower>(
+        log->getParticipant());
     EXPECT_NE(follower, nullptr);
     return follower;
   }
@@ -261,7 +260,7 @@ struct ParticipantFakeFollower : ITestParticipant {
   std::shared_ptr<FakeAbstractFollower> fakeAbstractFollower = nullptr;
 };
 
-// Holds one replicated log participant, together will all the necessary mocks
+// Holds one replicated log participant, together with all the necessary mocks
 // and fakes.
 struct LogContainer : IHasScheduler {
   static auto createWithParticipantWithFakes(
@@ -438,9 +437,9 @@ struct WholeLog {
     auto const term = configArguments.term;
     TRI_ASSERT(!terms.contains(term));
 
-    auto& cnt = logs.at(*leader);
     auto leaderContainer =
-        leader ? std::optional<std::reference_wrapper<LogContainer>>{cnt}
+        leader ? std::optional<std::reference_wrapper<LogContainer>>{logs.at(
+                     *leader)}
                : std::nullopt;
     auto fs = std::vector<std::reference_wrapper<LogContainer>>();
     std::transform(follower.begin(), follower.end(), std::back_inserter(fs),
@@ -465,8 +464,9 @@ struct WholeLog {
         auto const shouldBeRemoved = [&](auto other) {
           return toRemove.get() == other.get();
         };
-        std::remove_if(config.followers.begin(), config.followers.end(),
-                       shouldBeRemoved);
+        auto it = std::remove_if(config.followers.begin(),
+                                 config.followers.end(), shouldBeRemoved);
+        config.followers.erase(it, config.followers.end());
         config.participantsConfig.participants.erase(toRemove.get().serverId());
         if (config.leader && shouldBeRemoved(*config.leader)) {
           config.leader = std::nullopt;
