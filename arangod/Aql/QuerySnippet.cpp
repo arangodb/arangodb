@@ -188,8 +188,7 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node,
       // JoinNodes handles multiple collections
       auto joinNode = dynamic_cast<JoinNode*>(clone);
       if (joinNode != nullptr) {
-        // we've found a Disjoint SmartGraph node, now add the `i` th shard
-        // for used collections
+        // found a JoinNode, now add the `i` th shard for used collections
         for (auto& idx : joinNode->getIndexInfos()) {
           auto const& shards = permuter->second.at(idx.collection->name());
           idx.usedShard = *std::next(shards.begin(), _shardId);
