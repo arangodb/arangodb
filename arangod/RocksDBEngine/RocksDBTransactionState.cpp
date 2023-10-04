@@ -197,7 +197,7 @@ futures::Future<Result> RocksDBTransactionState::commitTransaction(
       //  operations, it same as reverting intermediate commits.
       std::ignore = self->abortTransaction(activeTrx);  // deletes trx
     }
-    TRI_ASSERT(self->_cacheTx.term != cache::Transaction::kInvalidTerm);
+    TRI_ASSERT(self->_cacheTx.term == cache::Transaction::kInvalidTerm);
     return std::forward<Result>(res);
   });
 }
@@ -221,7 +221,7 @@ Result RocksDBTransactionState::abortTransaction(
     clearQueryCache();
   }
 
-  TRI_ASSERT(_cacheTx.term != cache::Transaction::kInvalidTerm);
+  TRI_ASSERT(_cacheTx.term == cache::Transaction::kInvalidTerm);
   ++statistics()._transactionsAborted;
 
   return result;
