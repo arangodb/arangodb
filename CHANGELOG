@@ -1,4 +1,4 @@
-v3.11.4 (XXXX-XX-XX)
+v3.11.5 (XXXX-XX-XX)
 --------------------
 
 * Add cluster-internal connectivity checks.
@@ -19,6 +19,10 @@ v3.11.4 (XXXX-XX-XX)
   `arangodb_network_connectivity_failures_coordinators` and
   `arangodb_network_connectivity_failures_dbservers`, which can be monitored for
   detecting temporary or permanent connectivity issues.
+
+
+v3.11.4 (XXXX-XX-XX)
+--------------------
 
 * Fix updating of collection properties (schema) when the collection has a view
   on top.
