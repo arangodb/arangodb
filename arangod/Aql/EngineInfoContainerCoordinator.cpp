@@ -68,6 +68,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   engine = std::make_unique<ExecutionEngine>(_id, query,
                                              query.itemBlockManager(), sqs);
+  LOG_DEVEL << "buildEngine. sqs: " << sqs.get() << ", isfirst: " << isfirst;
 
   auto res = engine->createBlocks(_nodes, dbServerQueryIds);
   if (!res.ok()) {

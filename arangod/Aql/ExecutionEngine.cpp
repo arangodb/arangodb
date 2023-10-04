@@ -250,12 +250,13 @@ ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
       _initializeCursorCalled(false) {
   TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
-  LOG_DEVEL << this ": created engine object with sqs " << _sharedState.get();
+  LOG_DEVEL << this << ": created engine object with sqs "
+            << _sharedState.get();
 }
 
 /// @brief destroy the engine, frees all assigned blocks
 ExecutionEngine::~ExecutionEngine() {
-  LOG_DEVEL << this ": destroying engine";
+  LOG_DEVEL << this << ": destroying engine";
   if (_sharedState) {  // ensure no async task is working anymore
     _sharedState->invalidate();
   }
@@ -739,8 +740,9 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
         arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;
     auto retEngine =
         std::make_unique<ExecutionEngine>(eId, query, mgr, query.sharedState());
-    LOG_DEVEL << this << ": engine built with sqs "
-              << retEngine->sharedState.get();
+    LOG_DEVEL << retEngine.get() << ": engine built with sqs "
+              << query.sharedState().get()
+              << ", sqs eng: " << retEngine->sharedState().get();
 
 #ifdef USE_ENTERPRISE
     for (auto const& pair : aliases) {
