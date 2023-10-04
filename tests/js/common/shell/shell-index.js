@@ -1702,11 +1702,56 @@ function ParallelIndexSuite() {
   };
 }
 
+function IndexUpdateSuite() {
+  'use strict';
+
+  return {
+
+    setUp: function() {
+      internal.db._drop(cn);
+      internal.db._create(cn, { replicationFactor: 2 });
+    },
+
+    tearDown: function() {
+      internal.db._drop(cn);
+    },
+
+    testUpdateCollectionPropertiesWithView: function() {
+      let view = internal.db._createView(cn + "View", "arangosearch", {});
+
+      try {
+        view.properties({ links: { [cn] : { includeAllFields: true } } });
+
+        const schema = {
+          rule: { 
+            properties: { nums: { type: "array", items: { type: "number", maximum: 6 } } }, 
+            additionalProperties: { type: "string" },
+            required: ["nums"]
+          },
+          level: "moderate",
+          message: "The document does not contain an array of numbers in attribute 'nums', or one of the numbers is greater than 6."
+        };
+
+        internal.db[cn].properties({ cacheEnabled: true, schema }); 
+
+        let props = internal.db[cn].properties();
+        assertTrue(props.cacheEnabled);
+        let s = props.schema;
+        delete s.type;
+        assertEqual(schema, s);
+      } finally {
+        internal.db._dropView(cn + "View");
+      }
+    }
+  };
+}
+
 jsunity.run(IndexSuite);
 jsunity.run(GetIndexesSuite);
 jsunity.run(GetIndexesEdgesSuite);
 jsunity.run(DuplicateValuesSuite);
 jsunity.run(MultiIndexRollbackSuite);
 jsunity.run(ParallelIndexSuite);
+jsunity.run(IndexUpdateSuite);
 
 return jsunity.done();
