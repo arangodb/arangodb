@@ -440,7 +440,8 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
-  Transaction* tx = manager.beginTransaction(false);
+  Transaction tx;
+  manager.beginTransaction(tx, false);
 
   VPackBuilder builder;
   for (std::uint64_t i = 0; i < 1024; i++) {
@@ -498,7 +499,7 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
   }
 
   manager.endTransaction(tx);
-  tx = manager.beginTransaction(false);
+  manager.beginTransaction(tx, false);
 
   for (std::uint64_t i = 512; i < 1024; i++) {
     builder.clear();
