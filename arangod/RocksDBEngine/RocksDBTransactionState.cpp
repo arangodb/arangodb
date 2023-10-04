@@ -150,7 +150,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
 void RocksDBTransactionState::cleanupTransaction() noexcept {
   if (_cacheTx.term != cache::Transaction::kInvalidTerm) {
-    // note: endTransaction() will delete _cacheTrx!
     auto* manager =
         vocbase().server().getFeature<CacheManagerFeature>().manager();
     TRI_ASSERT(manager != nullptr);
