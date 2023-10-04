@@ -236,7 +236,8 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
                                       .outVariable = outVariable,
                                       .condition = it.condition->clone(),
                                       .index = it.index,
-                                      .projections = it.projections});
+                                      .projections = it.projections,
+                                      .usedAsSatellite = it.usedAsSatellite});
   }
 
   auto c =
