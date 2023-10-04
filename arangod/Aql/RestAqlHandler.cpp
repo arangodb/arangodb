@@ -33,6 +33,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"

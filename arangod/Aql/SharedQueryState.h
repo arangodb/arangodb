@@ -123,7 +123,7 @@ class SharedQueryState final
   bool asyncExecuteAndWakeup(F&& cb) {
     unsigned num = _numTasks.fetch_add(1);
     bool queued = false;
-    if (num + 1 > _maxTasks) {
+    if (num + 1 <= _maxTasks) {
       queued =
           queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
             if (self->_valid) {
@@ -152,7 +152,7 @@ class SharedQueryState final
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  bool noTasksRunning();
+  bool noTasksRunning() const noexcept;
 #endif
 
  private:
