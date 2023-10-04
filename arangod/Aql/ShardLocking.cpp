@@ -177,7 +177,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
 
         auto* col = idx.collection;
         updateLocking(col, AccessMode::Type::READ, snippetId, restrictedShards,
-                      /* useAsSatellite= */ false);
+                      idx.usedAsSatellite);
       }
       break;
     }

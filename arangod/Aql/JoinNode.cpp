@@ -123,12 +123,15 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     auto projections = Projections::fromVelocyPack(
         it, "projections", plan->getAst()->query().resourceMonitor());
 
+    bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
+
     auto& idx = _indexInfos.emplace_back(
         IndexInfo{.collection = coll,
                   .outVariable = outVariable,
                   .condition = Condition::fromVPack(plan, condition),
                   .index = coll->indexByIdentifier(iid),
-                  .projections = projections});
+                  .projections = projections,
+                  .usedAsSatellite = usedAsSatellite});
 
     VPackSlice usedShard = it.get("usedShard");
     if (usedShard.isString()) {
@@ -164,6 +167,7 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
     it.condition->toVelocyPack(builder, flags);
     // projections
     it.projections.toVelocyPack(builder);
+    builder.add("usedAsSatellite", VPackValue(it.usedAsSatellite));
     // index
     builder.add(VPackValue("index"));
     it.index->toVelocyPack(builder,

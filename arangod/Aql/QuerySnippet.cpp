@@ -628,30 +628,6 @@ auto QuerySnippet::prepareFirstBranch(
       auto* joinNode = ExecutionNode::castTo<JoinNode*>(exp.node);
 
       for (auto& idx : joinNode->getIndexInfos()) {
-        // Check whether `servers` is the leader for any of the shards of the
-        // prototype collection.
-        // We want to instantiate this snippet here exactly if this is the case.
-        auto needInstanceHere = std::invoke([&]() {
-          auto const* const protoCol = idx.collection;
-          auto const& shards = shardLocking.shardsForSnippet(id(), protoCol);
-
-          return std::any_of(shards.begin(), shards.end(),
-                             [&shardMapping, &server](auto const& shard) {
-                               auto mappedServerIt = shardMapping.find(shard);
-                               // If we find a shard here that is not in this
-                               // mapping, we have 1) a problem with locking
-                               // before that should have thrown 2) a problem
-                               // with shardMapping lookup that should have
-                               // thrown before
-                               TRI_ASSERT(mappedServerIt != shardMapping.end());
-                               return mappedServerIt->second == server;
-                             });
-        });
-
-        if (!needInstanceHere) {
-          return {TRI_ERROR_CLUSTER_NOT_LEADER};
-        }
-
         // It is of utmost importance that this is an ordered set of Shards.
         // We can only join identical indexes of shards for each collection
         // locally.
@@ -667,7 +643,7 @@ auto QuerySnippet::prepareFirstBranch(
           // 2) a problem with shardMapping lookup that should have thrown
           // before
           TRI_ASSERT(check != shardMapping.end());
-          if (check->second == server) {
+          if (check->second == server || idx.usedAsSatellite) {
             // add all shards on satellites.
             // and all shards where this server is the leader
             myExp.emplace(s);

@@ -67,6 +67,7 @@ class JoinNode : public ExecutionNode {
     std::unique_ptr<Condition> condition;
     transaction::Methods::IndexHandle index;
     Projections projections;
+    bool usedAsSatellite;  // TODO maybe use CollectionAccess class
   };
 
   JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
