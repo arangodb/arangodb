@@ -68,7 +68,8 @@ class SharedQueryState final
     std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
       LOG_DEVEL << this << " " << __func__
-                << ": not valid with wakeupCb: " << (_wakeupCb != nullptr)
+                << ": not valid with cbVersion: " << _cbVersion
+                << ", wakeupCb: " << (_wakeupCb != nullptr)
                 << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
       guard.unlock();
       _cv.notify_all();
@@ -76,19 +77,20 @@ class SharedQueryState final
     }
 
     LOG_DEVEL << this << " " << __func__
-              << ": executing cb with wakeupCb: " << (_wakeupCb != nullptr)
+              << ": executing cb with cbVersion: " << _cbVersion
+              << ", wakeupCb: " << (_wakeupCb != nullptr)
               << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
     if (std::forward<F>(cb)()) {
       LOG_DEVEL << this << " " << __func__
-                << ": notifying waiter with wakeupCb: "
-                << (_wakeupCb != nullptr) << ", valid: " << _valid
-                << ", numWakeups: " << _numWakeups;
+                << ": notifying waiter with cbVersion: " << _cbVersion
+                << ", wakeupCb: " << (_wakeupCb != nullptr)
+                << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
       notifyWaiter(guard);
     } else {
       LOG_DEVEL << this << " " << __func__
-                << ": not notifying waiter with wakeupCb: "
-                << (_wakeupCb != nullptr) << ", valid: " << _valid
-                << ", numWakeups: " << _numWakeups;
+                << ": not notifying waiter with cbVersion: " << _cbVersion
+                << ", wakeupCb: " << (_wakeupCb != nullptr)
+                << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
     }
   }
 
@@ -97,7 +99,8 @@ class SharedQueryState final
     std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
       LOG_DEVEL << this << " " << __func__
-                << ": not valid with wakeupCb: " << (_wakeupCb != nullptr)
+                << ": not valid with cbVersion: " << _cbVersion
+                << ", wakeupCb: " << (_wakeupCb != nullptr)
                 << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
       guard.unlock();
       _cv.notify_all();

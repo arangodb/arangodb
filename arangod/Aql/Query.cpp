@@ -215,8 +215,8 @@ void Query::destroy() {
   }
 
   // log to audit log
-  if (!_queryOptions.skipAudit && (ServerState::instance()->isCoordinator() ||
-                                   ServerState::instance()->isSingleServer())) {
+  if (!_queryOptions.skipAudit &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
       events::AqlQuery(*this);
     } catch (...) {
@@ -424,11 +424,11 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   }
 #endif
 
+  // create the transaction object
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
 
-  // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
 
@@ -1011,11 +1011,10 @@ QueryResult Query::explain() {
     // optimize and validate the ast
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
-    // create the transaction object, but do not start it yet
+    // create the transaction object
     _trx = AqlTransaction::create(_transactionContext, _collections,
                                   _queryOptions.transactionOptions);
 
-    // we have an AST
     Result res = _trx->begin();
 
     if (!res.ok()) {
