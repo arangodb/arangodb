@@ -20,50 +20,53 @@ export const IndexStats = ({
     } = figures || {};
     return (
       <Flex>
-        {indexSize && (
+        {indexSize ? (
           <Stat>
             <StatNumber>{window.prettyBytes(indexSize)}</StatNumber>
             <StatLabel>Index size</StatLabel>
           </Stat>
-        )}
-        {numDocs && (
+        ) : null}
+        {numDocs ? (
           <Stat>
             <StatNumber>{numDocs}</StatNumber>
             <StatLabel>Number of docs</StatLabel>
           </Stat>
-        )}
-        {numFiles && (
+        ) : null}
+        {numFiles ? (
           <Stat>
             <StatNumber>{numFiles}</StatNumber>
             <StatLabel>Number of files</StatLabel>
           </Stat>
-        )}
-        {numLiveDocs && (
+        ) : null}
+        {numLiveDocs ? (
           <Stat>
             <StatNumber>{numLiveDocs}</StatNumber>
             <StatLabel>Number of live docs</StatLabel>
           </Stat>
-        )}
-        {numPrimaryDocs && (
+        ) : null}
+        {numPrimaryDocs ? (
           <Stat>
             <StatNumber>{numPrimaryDocs}</StatNumber>
             <StatLabel>Number of primary docs</StatLabel>
           </Stat>
-        )}
-        {numSegments && (
+        ) : null}
+        {numSegments ? (
           <Stat>
             <StatNumber>{numSegments}</StatNumber>
             <StatLabel>Number of segments</StatLabel>
           </Stat>
-        )}
+        ) : null}
       </Flex>
     );
   }
   const memoryStat = figures?.memory;
+  if (!memoryStat) {
+    return null;
+  }
   return (
     <Flex>
       <Stat>
-        <StatNumber>{window.prettyBytes(memoryStat || 0)}</StatNumber>
+        <StatNumber>{window.prettyBytes(memoryStat)}</StatNumber>
         <StatLabel>Memory</StatLabel>
       </Stat>
     </Flex>
