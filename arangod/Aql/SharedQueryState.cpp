@@ -109,7 +109,7 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
   unsigned n = _numWakeups++;
   if (!_wakeupCb) {
     guard.unlock();
-    _cv.notify_all();
+    _cv.notify_one();
     return;
   }
 
