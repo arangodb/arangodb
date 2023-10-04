@@ -24,6 +24,7 @@
 #include "Aql/Query.h"
 
 #include "Basics/ScopeGuard.h"
+#include "Aql/SharedQueryState.h"
 #include "Cluster/ServerState.h"
 #include "Rest/GeneralResponse.h"
 #include "StorageEngine/TransactionState.h"
