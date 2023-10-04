@@ -60,16 +60,14 @@ using namespace arangodb::aql;
 
 namespace arangodb::tests::aql {
 
-using SortTestHelper = ExecutorTestHelper<1, 1>;
-using SortSplitType = SortTestHelper::SplitType;
-using SortInputParam = std::tuple<SortSplitType>;
+using SortInputParam = std::tuple<SplitType>;
 
 class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
  protected:
   arangodb::GlobalResourceMonitor _globalResourceMonitor{};
   arangodb::ResourceMonitor _resMonitor{_globalResourceMonitor};
 
-  auto getSplit() -> SortSplitType {
+  auto getSplit() -> SplitType {
     auto const& [split] = GetParam();
     return split;
   }
@@ -151,10 +149,9 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
 };
 
 template<size_t... vs>
-const SortSplitType splitIntoBlocks =
-    SortSplitType{std::vector<std::size_t>{vs...}};
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
 template<size_t step>
-const SortSplitType splitStep = SortSplitType{step};
+const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(SortExecutorTest, SortExecutorTest,
                         ::testing::Values(splitIntoBlocks<2, 3>,
