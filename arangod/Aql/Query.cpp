@@ -62,6 +62,9 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
+#include "Transaction/V8Context.h"
+#endif
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/Events.h"
