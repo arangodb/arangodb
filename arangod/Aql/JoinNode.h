@@ -43,7 +43,6 @@ class ExecutionEngine;
 class ExecutionPlan;
 
 // not yet supported:
-// - projections
 // - post-filtering
 // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache, waitForSync,
 // limit, lookahead
@@ -53,9 +52,6 @@ class ExecutionPlan;
 // - read own writes
 // - proper cost estimates
 // - profile output in explainer
-// - serialization/deserialization
-// - snippet production distribution to shards in cluster
-// - executor
 class JoinNode : public ExecutionNode {
   friend class ExecutionBlock;
 
