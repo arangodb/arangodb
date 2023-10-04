@@ -44,55 +44,127 @@ RegisterInfos MakeBaseInfos(RegisterCount numRegs, size_t subqueryDepth = 2) {
   }
   return RegisterInfos({}, {}, numRegs, numRegs, {}, regsToKeep);
 }
+
 }  // namespace
 
 constexpr bool enableQueryTrace = false;
-struct ShadowRowForwardingTest : AqlExecutorTestCase<enableQueryTrace> {};
+struct ShadowRowForwardingTest : AqlExecutorTestCase<enableQueryTrace> {
+  arangodb::ResourceMonitor monitor{global};
+  auto MakeSubqueryEndExecutorInfos(RegisterId inputRegister)
+      -> SubqueryEndExecutor::Infos {
+    auto const outputRegister =
+        RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
 
-TEST_F(ShadowRowForwardingTest, subqueryStart) {
-  makeExecutorTestHelper<1, 1>()
-      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1, 3),
-                                          MakeBaseInfos(1, 3),
-                                          ExecutionNode::SUBQUERY_START)
-      .setInputSubqueryDepth(2)
-      .setInputValue(
-          {
-              {R"("outer shadow row")"},
-              {R"("data row")"},
-              {R"("inner shadow row")"},
-              {R"("outer shadow row")"},
-          },
-          {
-              {0, 1},
-              // {1, data row}
-              {2, 0},
-              {3, 1},
-          })
-      //.setInputSplit({})
-      .setCallStack(AqlCallStack{
-          AqlCallList{AqlCall{}, AqlCall{}},
-          AqlCallList{AqlCall{}, AqlCall{}},
-          AqlCallList{AqlCall{0, true, AqlCall::Infinity{}}},
-          AqlCallList{AqlCall{}, AqlCall{}},
-      })
-      .expectedStats(ExecutionStats{})
-      .expectedState(ExecutionState::HASMORE)
-      .expectOutput(
-          {0},
-          {
-              {R"("outer shadow row")"},
-              // {R"("data row")"},
-              // {R"("data row")"},  // this is now a relevant shadow row
-              // {R"("inner shadow row")"},
-              // {R"("outer shadow row")"},
-          },
-          {
-              {0, 2},
-              // // {1, data row}
-              // {2, 0},
-              // {3, 1},
-              // {4, 2},
-          })
-      .expectSkipped(0, 0, 0, 0)
-      .run();
+    return SubqueryEndExecutor::Infos(nullptr, monitor, inputRegister,
+                                      outputRegister);
+  }
+};
+
+TEST_F(ShadowRowForwardingTest, subqueryStart1) {
+  auto const test = [&](SplitType splitType) {
+    SCOPED_TRACE("with split type " + to_string(splitType));
+
+    makeExecutorTestHelper<1, 1>()
+        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1, 3),
+                                            MakeBaseInfos(1, 3),
+                                            ExecutionNode::SUBQUERY_START)
+        .setInputSubqueryDepth(2)
+        .setInputValue(
+            {
+                {R"("outer shadow row")"},
+                {R"("data row")"},
+                {R"("inner shadow row")"},
+                {R"("outer shadow row")"},
+            },
+            {
+                {0, 1},
+                // {1, data row}
+                {2, 0},
+                {3, 1},
+            })
+        .setInputSplitType(splitType)
+        .setCallStack(AqlCallStack{
+            AqlCallList{AqlCall{}, AqlCall{}},
+            AqlCallList{AqlCall{}, AqlCall{}},
+            AqlCallList{AqlCall{0, true, AqlCall::Infinity{}}},
+            AqlCallList{AqlCall{}, AqlCall{}},
+        })
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::HASMORE)
+        .expectOutput(
+            {0},
+            {
+                {R"("outer shadow row")"},
+                // {R"("data row")"},
+                // {R"("data row")"},  // this is now a relevant shadow row
+                // {R"("inner shadow row")"},
+                // {R"("outer shadow row")"},
+            },
+            {
+                {0, 2},
+                // // {1, data row}
+                // {2, 0},
+                // {3, 1},
+                // {4, 2},
+            })
+        .expectSkipped(0, 0, 0, 0)
+        .run();
+  };
+
+  test(std::monostate{});
+  test(std::size_t{1});
+  test(std::vector<std::size_t>{1, 3});
+};
+
+TEST_F(ShadowRowForwardingTest, subqueryEnd1) {
+  auto const test = [&](SplitType splitType) {
+    SCOPED_TRACE("with split type " + to_string(splitType));
+
+    makeExecutorTestHelper<1, 1>()
+        .addConsumer<SubqueryEndExecutor>(MakeBaseInfos(1, 3),
+                                          MakeSubqueryEndExecutorInfos(1),
+                                          ExecutionNode::SUBQUERY_END)
+        .setInputSubqueryDepth(3)
+        .setInputValue(
+            {
+                {R"("outer shadow row")"},
+                {R"("relevant shadow row")"},
+                {R"("inner shadow row")"},
+                {R"("outer shadow row")"},
+            },
+            {
+                {0, 2},
+                {1, 0},
+                {2, 1},
+                {3, 2},
+            })
+        .setInputSplitType(splitType)
+        .setCallStack(AqlCallStack{
+            AqlCallList{AqlCall{}, AqlCall{}},
+            AqlCallList{AqlCall{}, AqlCall{}},
+            AqlCallList{AqlCall{0, true, AqlCall::Infinity{}}},
+        })
+        .expectedStats(ExecutionStats{})
+        .expectedState(ExecutionState::HASMORE)
+        .expectOutput(
+            {0},
+            {
+                {R"("outer shadow row")"},
+                // {R"([])"}, // data row (previously relevant shadow row)
+                // {R"("inner shadow row")"},
+                // {R"("outer shadow row")"},
+            },
+            {
+                {0, 1},
+                // // {1, data row}
+                // {2, 0},
+                // {3, 1},
+            })
+        .expectSkipped(0, 0, 0)
+        .run();
+  };
+
+  test(std::monostate{});
+  test(std::size_t{1});
+  test(std::vector<std::size_t>{1, 3});
 };

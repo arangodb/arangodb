@@ -121,6 +121,7 @@ function subquerySplicingNonRelevantShadowRowForwardingAtBlockStart() {
             // this calculation node would trigger a maintainer mode assertion (or return too few results in production)
             // when its input block didn't end with the outer shadow row, but instead contained more rows.
             LET x = innermost[0]
+            // TODO add an additional test with UPDATE here
             FILTER x == null
             COLLECT WITH COUNT INTO n
             RETURN 1

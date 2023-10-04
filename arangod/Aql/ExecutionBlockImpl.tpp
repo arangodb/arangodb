@@ -1167,7 +1167,12 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
     _executorReturnedDone = false;
 
     if (hasDoneNothing) {
-      stack.popDepthsLowerThan(shadowRow.getDepth());
+      auto didPop = stack.popDepthsLowerThan(shadowRow.getDepth());
+      if (didPop) {
+        // this case is hit by ShadowRowForwardingTest.subqueryStart1
+        LOG_DEVEL << ADB_HERE;
+        // TRI_ASSERT(false);
+      }
     }
 
     return ExecState::NEXTSUBQUERY;
@@ -1214,6 +1219,15 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
     // Done with this query
     return ExecState::DONE;
   } else if (_lastRange.hasDataRow()) {
+    if (hasDoneNothing && !shadowRow.isRelevant()) {
+      // TODO Figure out if this case is necessary and correct
+      auto didPop = stack.popDepthsLowerThan(shadowRow.getDepth());
+      if (didPop) {
+        // TODO Write a unit test for this case
+        LOG_DEVEL << ADB_HERE;
+        TRI_ASSERT(false);
+      }
+    }
     // Multiple concatenated Subqueries
     return ExecState::NEXTSUBQUERY;
   } else if (_lastRange.hasShadowRow()) {
@@ -1225,8 +1239,13 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
     // Need to return!
     return ExecState::DONE;
   } else {
-    if (hasDoneNothing and not shadowRow.isRelevant()) {
-      stack.popDepthsLowerThan(shadowRow.getDepth());
+    if (hasDoneNothing && !shadowRow.isRelevant()) {
+      auto didPop = stack.popDepthsLowerThan(shadowRow.getDepth());
+      if (didPop) {
+        // this case is hit by ShadowRowForwardingTest.subqueryEnd1
+        LOG_DEVEL << ADB_HERE;
+        // TRI_ASSERT(false);
+      }
     }
 
     // End of input, we are done for now
@@ -1286,6 +1305,15 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       // Done with this query
       return ExecState::DONE;
     } else if (_lastRange.hasDataRow()) {
+      if (hasDoneNothing && !shadowRow.isRelevant()) {
+        // TODO Figure out if this case is necessary and correct
+        auto didPop = stack.popDepthsLowerThan(shadowRow.getDepth());
+        if (didPop) {
+          // TODO Write a unit test for this case
+          LOG_DEVEL << ADB_HERE;
+          TRI_ASSERT(false);
+        }
+      }
       // Multiple concatenated Subqueries
       return ExecState::NEXTSUBQUERY;
     } else if (_lastRange.hasShadowRow()) {
@@ -1303,8 +1331,15 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       // we need to forward them
       return ExecState::SHADOWROWS;
     } else {
-      if (hasDoneNothing and not shadowRow.isRelevant()) {
-        stack.popDepthsLowerThan(shadowRow.getDepth());
+      if (hasDoneNothing && !shadowRow.isRelevant()) {
+        auto didPop = stack.popDepthsLowerThan(shadowRow.getDepth());
+        if (didPop) {
+          // this case is hit by ShadowRowForwardingTest.subqueryStart1 and
+          // ShadowRowForwardingTest.subqueryEnd1, though by accident only.
+          // TODO write a targeted test for this case
+          LOG_DEVEL << ADB_HERE;
+          // TRI_ASSERT(false);
+        }
       }
 
       // End of input, need to fetch new!

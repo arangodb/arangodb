@@ -95,11 +95,26 @@ class asserthelper {
           std::nullopt) -> void;
 };
 
+using SplitType =
+    std::variant<std::vector<std::size_t>, std::size_t, std::monostate>;
+
+auto inline to_string(SplitType const& splitType) -> std::string {
+  using namespace std::string_literals;
+  return std::visit(overload{
+                        [](std::vector<std::size_t> list) {
+                          return fmt::format("list{{{}}}",
+                                             fmt::join(list, ","));
+                        },
+                        [](std::size_t interval) {
+                          return fmt::format("interval{{{}}}", interval);
+                        },
+                        [](std::monostate) { return "none"s; },
+                    },
+                    splitType);
+}
+
 template<std::size_t inputColumns = 1, std::size_t outputColumns = 1>
 struct ExecutorTestHelper {
-  using SplitType =
-      std::variant<std::vector<std::size_t>, std::size_t, std::monostate>;
-
   ExecutorTestHelper(ExecutorTestHelper const&) = delete;
   ExecutorTestHelper(ExecutorTestHelper&&) = delete;
   explicit ExecutorTestHelper(Query& query,
