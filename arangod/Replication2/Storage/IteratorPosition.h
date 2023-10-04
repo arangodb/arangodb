@@ -33,11 +33,23 @@ struct IteratorPosition {
     return IteratorPosition(index);
   }
 
-  [[nodiscard]] auto index() const noexcept -> LogIndex { return logIndex; }
+  static IteratorPosition withFileOffset(LogIndex index,
+                                         std::uint64_t fileOffset) {
+    return IteratorPosition(index, fileOffset);
+  }
+
+  [[nodiscard]] auto index() const noexcept -> LogIndex { return _logIndex; }
+
+  [[nodiscard]] auto fileOffset() const noexcept -> std::uint64_t {
+    return _fileOffset;
+  }
 
  private:
-  explicit IteratorPosition(LogIndex index) : logIndex(index) {}
-  LogIndex logIndex{0};
+  explicit IteratorPosition(LogIndex index) : _logIndex(index) {}
+  IteratorPosition(LogIndex index, std::uint64_t fileOffset)
+      : _logIndex(index), _fileOffset(fileOffset) {}
+  LogIndex _logIndex{0};
+  std::uint64_t _fileOffset{0};
 };
 
 }  // namespace arangodb::replication2::storage

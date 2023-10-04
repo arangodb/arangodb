@@ -37,8 +37,7 @@
 #include <utility>
 #include <fmt/core.h>
 
-using namespace arangodb;
-using namespace arangodb::replication2;
+namespace arangodb::replication2 {
 
 auto LogIndex::operator+(std::uint64_t delta) const -> LogIndex {
   return LogIndex(this->value + delta);
@@ -53,7 +52,7 @@ LogIndex::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
 }
 
-auto replication2::operator<<(std::ostream& os, LogIndex idx) -> std::ostream& {
+auto operator<<(std::ostream& os, LogIndex idx) -> std::ostream& {
   return os << idx.value;
 }
 
@@ -69,7 +68,7 @@ LogTerm::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
 }
 
-auto replication2::operator<<(std::ostream& os, LogTerm term) -> std::ostream& {
+auto operator<<(std::ostream& os, LogTerm term) -> std::ostream& {
   return os << term.value;
 }
 
@@ -86,39 +85,41 @@ auto LogId::fromString(std::string_view name) noexcept -> std::optional<LogId> {
   return velocypack::Value(id());
 }
 
-auto replication2::to_string(LogId logId) -> std::string {
+auto to_string(LogId logId) -> std::string {
   return std::to_string(logId.id());
 }
 
-auto replication2::to_string(LogTerm term) -> std::string {
+auto to_string(LogTerm term) -> std::string {
   return std::to_string(term.value);
 }
 
-auto replication2::to_string(LogIndex index) -> std::string {
+auto to_string(LogIndex index) -> std::string {
   return std::to_string(index.value);
 }
 
-void replication2::TermIndexPair::toVelocyPack(
-    velocypack::Builder& builder) const {
+void TermIndexPair::toVelocyPack(velocypack::Builder& builder) const {
   serialize(builder, *this);
 }
 
-auto replication2::TermIndexPair::fromVelocyPack(velocypack::Slice slice)
-    -> TermIndexPair {
+auto TermIndexPair::fromVelocyPack(velocypack::Slice slice) -> TermIndexPair {
   return deserialize<TermIndexPair>(slice);
 }
 
-replication2::TermIndexPair::TermIndexPair(LogTerm term,
-                                           LogIndex index) noexcept
+TermIndexPair::TermIndexPair(LogTerm term, LogIndex index) noexcept
     : term(term), index(index) {
   // Index 0 has always term 0, and it is the only index with that term.
   // FIXME this should be an if and only if
   TRI_ASSERT((index != LogIndex{0}) || (term == LogTerm{0}));
 }
 
-auto replication2::operator<<(std::ostream& os, TermIndexPair pair)
-    -> std::ostream& {
+auto operator<<(std::ostream& os, TermIndexPair pair) -> std::ostream& {
   return os << '(' << pair.term << ':' << pair.index << ')';
+}
+
+auto to_string(TermIndexPair pair) -> std::string {
+  std::stringstream ss;
+  ss << pair;
+  return ss.str();
 }
 
 LogRange::LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
@@ -139,12 +140,11 @@ auto LogRange::contains(LogRange other) const noexcept -> bool {
   return from <= other.from && other.to <= to;
 }
 
-auto replication2::operator<<(std::ostream& os, LogRange const& r)
-    -> std::ostream& {
+auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream& {
   return os << "[" << r.from << ", " << r.to << ")";
 }
 
-auto replication2::intersect(LogRange a, LogRange b) noexcept -> LogRange {
+auto intersect(LogRange a, LogRange b) noexcept -> LogRange {
   auto max_from = std::max(a.from, b.from);
   auto min_to = std::min(a.to, b.to);
   if (max_from > min_to) {
@@ -154,7 +154,7 @@ auto replication2::intersect(LogRange a, LogRange b) noexcept -> LogRange {
   }
 }
 
-auto replication2::to_string(LogRange const& r) -> std::string {
+auto to_string(LogRange const& r) -> std::string {
   return basics::StringUtils::concatT("[", r.from, ", ", r.to, ")");
 }
 
@@ -165,7 +165,7 @@ auto LogRange::begin() const noexcept -> LogRange::Iterator {
   return Iterator{from};
 }
 
-auto replication2::operator==(LogRange left, LogRange right) noexcept -> bool {
+auto operator==(LogRange left, LogRange right) noexcept -> bool {
   // Two ranges compare equal iff either both are empty or _from_ and _to_ agree
   return (left.empty() && right.empty()) ||
          (left.from == right.from && left.to == right.to);
@@ -314,8 +314,7 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
   return std::visit(ToStringVisitor{}, r.value);
 }
 
-auto replication2::operator<<(std::ostream& os, ParticipantFlags const& f)
-    -> std::ostream& {
+auto operator<<(std::ostream& os, ParticipantFlags const& f) -> std::ostream& {
   os << "{ ";
   if (f.forced) {
     os << "forced ";
@@ -332,13 +331,13 @@ auto replication2::operator<<(std::ostream& os, ParticipantFlags const& f)
 GlobalLogIdentifier::GlobalLogIdentifier(std::string database, LogId id)
     : database(std::move(database)), id(id) {}
 
-auto replication2::to_string(GlobalLogIdentifier const& gid) -> std::string {
+auto to_string(GlobalLogIdentifier const& gid) -> std::string {
   VPackBuilder b;
   velocypack::serialize(b, gid);
   return b.toJson();
 }
 
-auto replication2::operator<<(std::ostream& os, GlobalLogIdentifier const& gid)
+auto operator<<(std::ostream& os, GlobalLogIdentifier const& gid)
     -> std::ostream& {
   return os << to_string(gid);
 }
@@ -393,3 +392,5 @@ auto replicated_log::to_string(CompactionStopReason const& csr) -> std::string {
 
   return std::visit(ToStringVisitor{}, csr.value);
 }
+
+}  // namespace arangodb::replication2

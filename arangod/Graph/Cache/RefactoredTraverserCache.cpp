@@ -154,21 +154,20 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
         // NOTE: Do not count this as Primary Index Scan, we
         // counted it in the edge Index before copying...
         if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-          // if (!_edgeProjections.empty()) {
-          //   // TODO: This does one unnecessary copy.
-          //   // We should be able to move the Projection into the
-          //   // AQL value.
-          //   transaction::BuilderLeaser builder(_trx);
-          //   {
-          //     VPackObjectBuilder guard(builder.get());
-          //     _edgeProjections.toVelocyPackFromDocument(*builder, edge,
-          //     _trx);
-          //   }
-          //   result = aql::AqlValue(builder->slice());
-          // } else {
-          //   result = aql::AqlValue(edge);
-          // }
-          result = aql::AqlValue(edge);
+          if (!_edgeProjections.empty()) {
+            // TODO: This does one unnecessary copy.
+            // We should be able to move the Projection into the
+            // AQL value.
+            transaction::BuilderLeaser builder(_trx);
+            {
+              VPackObjectBuilder guard(builder.get());
+              _edgeProjections.toVelocyPackFromDocument(*builder, edge, _trx);
+            }
+            result = aql::AqlValue(builder->slice());
+          } else {
+            // TODO(MBkkt) optimize case whole document
+            result = aql::AqlValue(edge);
+          }
         } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
           if (!_edgeProjections.empty()) {
             VPackObjectBuilder guard(&result);

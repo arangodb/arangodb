@@ -20,6 +20,9 @@ devel
   `arangodb_network_connectivity_failures_dbservers`, which can be monitored
   for detecting temporary or permanent connectivity issues.
 
+* Fix updating of collection properties (schema) when the collection has a
+  view on top.
+
 * Improve logging in case hot backup locks cannot be taken on coordinators.
 
 * Speed up incremental hotbackup upload by parallelization of
@@ -317,6 +320,13 @@ devel
 * Upgraded Swagger-UI to v5.4.1
 
 * FE-248: Improve collections list UI.
+
+* Updated JavaScript dependencies:
+
+  qs: 6.11.0 -> 6.11.2
+  semver: 7.3.8 -> 7.5.4
+
+  This addresses CVE-2022-25883 in the semver module.
 
 * BTS-1124: wait for license to be applied locally before responding to the request.
 
