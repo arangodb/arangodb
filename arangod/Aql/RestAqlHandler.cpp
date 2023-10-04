@@ -33,6 +33,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -709,6 +710,11 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 
   auto const rootNodeType = _engine->root()->getPlanNode()->getType();
 
+  VPackOptions const* opts = &VPackOptions::Defaults;
+  if (_engine) {  // might be destroyed on shutdown
+    opts = &_engine->getQuery().vpackOptions();
+  }
+
   VPackBuffer<uint8_t> answerBuffer;
   VPackBuilder answerBuilder(answerBuffer);
   answerBuilder.openObject(/*unindexed*/ true);
@@ -752,12 +758,17 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 
     auto result = AqlExecuteResult{state, skipped, std::move(items)};
     answerBuilder.add(VPackValue(StaticStrings::AqlRemoteResult));
-    result.toVelocyPack(answerBuilder, &_engine->getQuery().vpackOptions());
+    result.toVelocyPack(answerBuilder, opts);
     answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
   } else if (operation == "initializeCursor") {
+    // TODO: remove the following 2 lines if the assertion holds true
     auto pos = VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
+    TRI_ASSERT(pos == 0);
     Result res;
+    // TODO: remove the following if condition and blcok if the assertion
+    // does not fail
     if (VelocyPackHelper::getBooleanValue(querySlice, "done", true)) {
+      TRI_ASSERT(false);
       auto tmpRes = _engine->initializeCursor(nullptr, 0);
       if (tmpRes.first == ExecutionState::WAITING) {
         return RestStatus::WAITING;
@@ -780,11 +791,6 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   }
 
   answerBuilder.close();
-
-  VPackOptions const* opts = &VPackOptions::Defaults;
-  if (_engine) {  // might be destroyed on shutdown
-    opts = &_engine->getQuery().vpackOptions();
-  }
 
   generateResult(rest::ResponseCode::OK, std::move(answerBuffer), opts);
 
