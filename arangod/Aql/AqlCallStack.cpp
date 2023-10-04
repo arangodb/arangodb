@@ -246,9 +246,12 @@ auto AqlCallStack::requestLessDataThan(AqlCallStack const& other) const noexcept
   return true;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// For tests
 AqlCallStack::AqlCallStack(std::initializer_list<AqlCallList> calls)
     : _operations{std::move(calls)} {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   validateNoCallHasSkippedRows();
 #endif
 }
+#endif
