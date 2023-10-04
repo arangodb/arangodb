@@ -100,7 +100,7 @@ function getQueryExplanation (query, bindVars) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResults (query, bindVars, options = {}) {
-  return  db._query(query, bindVars, options).data.extra.stats;
+  return  db._createStatement({query, bindVars, options}).execute().getExtra().stats;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -275,10 +275,20 @@ function findReferencedNodes (plan, testNode) {
   return matches;
 }
 
+
 function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug) {
   var printYaml = function (plan) {
     require('internal').print(require('js-yaml').safeDump(plan));
   };
+  var execute_json = function (plan, param) {
+    let command = `
+      let plan = ${JSON.stringify(plan)};
+      let opts = ${JSON.stringify(param)};
+      return AQL_EXECUTEJSON(plan, opts);
+    `;
+    return arango.POST("/_admin/execute", command);
+  };
+
   var i;
   var plans = [];
   var allPlans = [];
@@ -299,13 +309,13 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
   if (debug) {
     require('internal').print('Analyzing Query unoptimized: ' + query);
   }
-  plans[0] = db._explain(query, bindVars, paramNone);
+  plans[0] = db._createStatement({query: query, bindVars: bindVars, options: paramNone}).explain();
   // then all of the ones permuted by by the optimizer.
   if (debug) {
     require('internal').print('Unoptimized Plan (0):');
     printYaml(plans[0]);
   }
-  allPlans = db._explain(query, bindVars, paramAllPlans);
+  allPlans = db._createStatement({query: query, bindVars: bindVars, options: paramAllPlans}).explain();
 
   for (i = 0; i < allPlans.plans.length; i++) {
     if (debug) {
@@ -330,7 +340,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
       }
     }
 
-    results[i] = AQL_EXECUTEJSON(plans[i].plan, paramNone);
+    results[i] = execute_json(plans[i].plan, paramNone);
     // ignore these statistics for comparisons
     delete results[i].stats.scannedFull;
     delete results[i].stats.scannedIndex;
