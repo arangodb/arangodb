@@ -1,6 +1,9 @@
 v3.10.11 (XXXX-XX-XX)
 ---------------------
 
+* Fix updating of collection properties (schema) when the collection has a view
+  on top.
+
 * FE-323: allow 'nested' property in view JSON UI.
 
 * FE-317: add graph name validations.
