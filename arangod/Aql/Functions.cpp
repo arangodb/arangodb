@@ -329,8 +329,8 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   formatted[22] = '0' + (millis % 10);
   formatted[23] = 'Z';
 
-  return AqlValue(&formatted[0],
-                  utc ? sizeof(formatted) : sizeof(formatted) - 1);
+  return AqlValue(std::string_view{
+      &formatted[0], utc ? sizeof(formatted) : sizeof(formatted) - 1});
 }
 
 DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
@@ -1560,7 +1560,7 @@ AqlValue functions::ToString(ExpressionContext* expr, AstNode const&,
   velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(trx.vpackOptions(), adapter, value);
-  return AqlValue(buffer->data(), buffer->length());
+  return AqlValue(std::string_view{buffer->data(), buffer->length()});
 }
 
 /// @brief function TO_BASE64
@@ -2423,7 +2423,7 @@ AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
         // convert member to a string and append
         ::appendAsString(vopts, adapter, AqlValue(it.begin()));
       }
-      return AqlValue(buffer->data(), buffer->length());
+      return AqlValue(std::string_view{buffer->data(), buffer->length()});
     }
   }
 
@@ -2438,7 +2438,7 @@ AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
     ::appendAsString(vopts, adapter, member);
   }
 
-  return AqlValue(buffer->data(), buffer->length());
+  return AqlValue(std::string_view{buffer->data(), buffer->length()});
 }
 
 /// @brief function CONCAT_SEPARATOR
@@ -2479,7 +2479,7 @@ AqlValue functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
         ::appendAsString(vopts, adapter, AqlValue(it.begin()));
         found = true;
       }
-      return AqlValue(buffer->data(), buffer->length());
+      return AqlValue(std::string_view{buffer->data(), buffer->length()});
     }
   }
 
@@ -2500,7 +2500,7 @@ AqlValue functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
     found = true;
   }
 
-  return AqlValue(buffer->data(), buffer->length());
+  return AqlValue(std::string_view{buffer->data(), buffer->length()});
 }
 
 /// @brief function CHAR_LENGTH
@@ -5301,7 +5301,7 @@ AqlValue functions::IpV4FromNumber(ExpressionContext* expressionContext,
   digit = (number & 0x0000ffULL);
   p += basics::StringUtils::itoa(digit, p);
 
-  return AqlValue(&result[0], p - &result[0]);
+  return AqlValue(std::string_view{&result[0], p});
 }
 
 /// @brief function IPV4_TO_NUMBER
@@ -5428,7 +5428,7 @@ AqlValue functions::Md5(ExpressionContext* exprCtx, AstNode const&,
   char hex[32];
   rest::SslInterface::sslHEX(hash, 16, &hex[0]);
 
-  return AqlValue(&hex[0], 32);
+  return AqlValue(std::string_view{&hex[0], 32});
 }
 
 /// @brief function SHA1
@@ -5450,7 +5450,7 @@ AqlValue functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
   char hex[40];
   rest::SslInterface::sslHEX(hash, 20, &hex[0]);
 
-  return AqlValue(&hex[0], 40);
+  return AqlValue(std::string_view{&hex[0], 40});
 }
 
 /// @brief function SHA256
@@ -5472,7 +5472,7 @@ AqlValue functions::Sha256(ExpressionContext* exprCtx, AstNode const&,
   char hex[64];
   rest::SslInterface::sslHEX(hash, 32, &hex[0]);
 
-  return AqlValue(&hex[0], 64);
+  return AqlValue(std::string_view{&hex[0], 64});
 }
 
 /// @brief function SHA512
@@ -5494,7 +5494,7 @@ AqlValue functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
   char hex[128];
   rest::SslInterface::sslHEX(hash, 64, &hex[0]);
 
-  return AqlValue(&hex[0], 128);
+  return AqlValue(std::string_view{&hex[0], 128});
 }
 
 /// @brief function Crc32
@@ -5511,7 +5511,7 @@ AqlValue functions::Crc32(ExpressionContext* exprCtx, AstNode const&,
       absl::ComputeCrc32c(std::string_view{buffer->data(), buffer->length()}));
   char out[9];
   size_t length = TRI_StringUInt32HexInPlace(crc, &out[0]);
-  return AqlValue(&out[0], length);
+  return AqlValue(std::string_view{&out[0], length});
 }
 
 /// @brief function Fnv64
@@ -5528,7 +5528,7 @@ AqlValue functions::Fnv64(ExpressionContext* exprCtx, AstNode const&,
   uint64_t hashval = FnvHashPointer(buffer->data(), buffer->length());
   char out[17];
   size_t length = TRI_StringUInt64HexInPlace(hashval, &out[0]);
-  return AqlValue(&out[0], length);
+  return AqlValue(std::string_view{&out[0], length});
 }
 
 /// @brief function HASH
@@ -6852,7 +6852,7 @@ AqlValue functions::JsonStringify(ExpressionContext* exprCtx, AstNode const&,
   VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
   dumper.dump(slice);
 
-  return AqlValue(buffer->data(), buffer->length());
+  return AqlValue(std::string_view{buffer->data(), buffer->length()});
 }
 
 /// @brief function JSON_PARSE
@@ -7765,7 +7765,7 @@ AqlValue functions::BitToString(ExpressionContext* expressionContext,
       }
     }
 
-    return AqlValue(&buffer[0], static_cast<size_t>(p - &buffer[0]));
+    return AqlValue(std::string_view{&buffer[0], p});
   }
 
   static char const* AFN = "BIT_TO_STRING";

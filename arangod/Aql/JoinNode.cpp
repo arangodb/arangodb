@@ -147,6 +147,8 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
     // condition
     builder.add(VPackValue("condition"));
     it.condition->toVelocyPack(builder, flags);
+    // projections
+    it.projections.toVelocyPack(builder);
     // index
     builder.add(VPackValue("index"));
     it.index->toVelocyPack(builder,
@@ -186,10 +188,12 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     auto documentOutputRegister = variableToRegisterId(idx.outVariable);
     writableOutputRegisters.emplace(documentOutputRegister);
 
+    // TODO probably those data structures can become one
     auto& data = infos.indexes.emplace_back();
     data.documentOutputRegister = documentOutputRegister;
     data.index = idx.index;
     data.collection = idx.collection;
+    data.projections = idx.projections;
   }
 
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);

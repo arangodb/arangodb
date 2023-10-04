@@ -35,10 +35,13 @@
 
 namespace arangodb {
 namespace velocypack {
+
 class Builder;
 class Slice;
+
 }  // namespace velocypack
 namespace aql {
+
 class ExecutionPlan;
 class Expression;
 struct Variable;
@@ -46,7 +49,7 @@ struct Variable;
 class DocumentProducingNode {
  public:
   explicit DocumentProducingNode(Variable const* outVariable);
-  DocumentProducingNode(ExecutionPlan* plan, arangodb::velocypack::Slice slice);
+  DocumentProducingNode(ExecutionPlan* plan, velocypack::Slice slice);
 
   virtual ~DocumentProducingNode() = default;
 
@@ -61,11 +64,11 @@ class DocumentProducingNode {
   /// @brief return the out variable
   Variable const* outVariable() const;
 
-  arangodb::aql::Projections const& projections() const noexcept;
+  Projections const& projections() const noexcept;
 
-  arangodb::aql::Projections& projections() noexcept;
+  Projections& projections() noexcept;
 
-  virtual void setProjections(arangodb::aql::Projections projections);
+  virtual void setProjections(Projections projections);
 
   /// @brief remember the condition to execute for early filtering
   virtual void setFilter(std::unique_ptr<Expression> filter);
@@ -73,13 +76,12 @@ class DocumentProducingNode {
   /// @brief return the early pruning condition for the node
   Expression* filter() const noexcept { return _filter.get(); }
 
-  arangodb::aql::Projections const& filterProjections() const noexcept;
+  Projections const& filterProjections() const noexcept;
 
   /// @brief whether or not the node has an early pruning filter condition
   bool hasFilter() const noexcept { return _filter != nullptr; }
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder,
-                    unsigned flags) const;
+  void toVelocyPack(velocypack::Builder& builder, unsigned flags) const;
 
   void setCountFlag() noexcept { _count = true; }
 
@@ -109,9 +111,9 @@ class DocumentProducingNode {
   Variable const* _outVariable;
 
   /// @brief produce only the following attributes
-  arangodb::aql::Projections _projections;
+  Projections _projections;
 
-  arangodb::aql::Projections _filterProjections;
+  Projections _filterProjections;
 
   /// @brief early filtering condition
   std::unique_ptr<Expression> _filter;

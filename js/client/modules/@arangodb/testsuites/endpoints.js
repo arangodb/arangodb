@@ -76,7 +76,10 @@ class endpointRunner extends tu.runInArangoshRunner {
                                         'rocksdb.debug-logging': 'true',
                                       },
                                       {}, 'tcp', this.dummyDir, '',
-                                      new inst.agencyConfig(this.options, null));
+                                      new inst.agencyConfig(this.options, null),
+                                      this.dummyDir,
+                                      this.options.memory
+                                     );
     this.endpoint = this.instance.args['server.endpoint'];
   }
   getEndpoint() {

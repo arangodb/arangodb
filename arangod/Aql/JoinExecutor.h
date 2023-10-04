@@ -69,10 +69,12 @@ struct JoinExecutorInfos {
     Collection const* collection;
     // Index handle
     transaction::Methods::IndexHandle index;
+
+    // Values used for projection
+    Projections projections;
   };
 
   std::vector<IndexInfo> indexes;
-  std::vector<RegisterId> projectionOutputRegisters;
   QueryContext* query;
 };
 
@@ -114,6 +116,7 @@ class JoinExecutor {
 
   InputAqlItemRow _currentRow{CreateInvalidInputRowHint()};
   ExecutorState _currentRowState{ExecutorState::HASMORE};
+  velocypack::Builder _projectionsBuilder;
 };
 
 }  // namespace aql

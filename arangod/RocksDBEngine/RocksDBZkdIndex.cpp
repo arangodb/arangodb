@@ -476,7 +476,7 @@ auto zkd::specializeCondition(Index const* index, aql::AstNode* condition,
 
 Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
                                    RocksDBMethods* methods,
-                                   LocalDocumentId const& documentId,
+                                   LocalDocumentId documentId,
                                    velocypack::Slice doc,
                                    OperationOptions const& options,
                                    bool performChecks) {
@@ -501,7 +501,7 @@ Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
 
 Result RocksDBZkdIndexBase::remove(transaction::Methods& trx,
                                    RocksDBMethods* methods,
-                                   LocalDocumentId const& documentId,
+                                   LocalDocumentId documentId,
                                    velocypack::Slice doc,
                                    OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == false);
@@ -579,7 +579,7 @@ std::unique_ptr<IndexIterator> RocksDBUniqueZkdIndex::iteratorForCondition(
 
 Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
                                      RocksDBMethods* methods,
-                                     LocalDocumentId const& documentId,
+                                     LocalDocumentId documentId,
                                      velocypack::Slice doc,
                                      OperationOptions const& options,
                                      bool performChecks) {
@@ -614,7 +614,7 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
 
 Result RocksDBUniqueZkdIndex::remove(transaction::Methods& trx,
                                      RocksDBMethods* methods,
-                                     LocalDocumentId const& documentId,
+                                     LocalDocumentId documentId,
                                      velocypack::Slice doc,
                                      OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == true);

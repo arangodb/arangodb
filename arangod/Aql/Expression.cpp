@@ -893,8 +893,7 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
     auto arg = member->getMemberUnchecked(i);
 
     if (arg->type == NODE_TYPE_COLLECTION) {
-      params.parameters.emplace_back(arg->getStringValue(),
-                                     arg->getStringLength());
+      params.parameters.emplace_back(arg->getStringView());
       params.destroyParameters.push_back(1);
     } else {
       bool localMustDestroy;

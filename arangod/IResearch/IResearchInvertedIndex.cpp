@@ -495,13 +495,16 @@ class IResearchInvertedIndexIterator final
 
   bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
     return nextImpl(
-        [this, &cb](LocalDocumentId const& token) {
+        [this, &cb](LocalDocumentId token) {
           // we use here just first snapshot as they are all the same here.
           // iterator operates only one iresearch datastore
           // TODO(MBkkt) use MultiGet
           return _collection->getPhysical()
-              ->readFromSnapshot(_trx, token, cb, canReadOwnWrites(),
-                                 _snapshot.snapshot(0))
+              ->lookup(_trx, token, cb,
+                       {.readCache = false,
+                        .fillCache = false,
+                        .readOwnWrites = static_cast<bool>(canReadOwnWrites())},
+                       &_snapshot.snapshot(0))
               .ok();
         },
         limit);

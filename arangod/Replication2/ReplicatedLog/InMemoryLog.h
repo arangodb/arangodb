@@ -32,6 +32,7 @@
 #include <Containers/ImmerMemoryPolicy.h>
 #include <velocypack/Builder.h>
 
+#include <initializer_list>
 #include <optional>
 
 #if (_MSC_VER >= 1)
@@ -116,6 +117,8 @@ struct InMemoryLog {
 
   void appendInPlace(LoggerContext const& logContext, InMemoryLogEntry entry);
 
+  [[nodiscard]] auto append(
+      std::initializer_list<InMemoryLogEntry> entries) const -> InMemoryLog;
   [[nodiscard]] auto append(InMemoryLog const& entries) const -> InMemoryLog;
   [[nodiscard]] auto append(log_type entries) const -> InMemoryLog;
   [[nodiscard]] auto append(log_type_persisted const& entries) const
