@@ -653,20 +653,6 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
       .followersWithSnapshot = std::move(followersWithSnapshot)};
 }
 
-auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync)
-    -> LogIndex {
-  auto index =
-      insert(std::move(payload), waitForSync, doNotTriggerAsyncReplication);
-  triggerAsyncReplication();
-  return index;
-}
-
-auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync,
-                                       DoNotTriggerAsyncReplication)
-    -> LogIndex {
-  return insertInternal(std::move(payload), waitForSync);
-}
-
 auto replicated_log::LogLeader::insertInternal(
     std::variant<LogMetaPayload, LogPayload> payload, bool waitForSync)
     -> LogIndex {
@@ -735,7 +721,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
       return _log.getLogConsumerIterator(range);
     }
     auto insert(LogPayload payload, bool waitForSync) -> LogIndex override {
-      return _log.insert(std::move(payload), waitForSync);
+      auto index = _log.insertInternal(std::move(payload), waitForSync);
+      _log.triggerAsyncReplication();
+      return index;
     }
     auto waitFor(LogIndex index) -> WaitForFuture override {
       return _log.waitFor(index);

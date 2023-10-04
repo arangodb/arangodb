@@ -108,22 +108,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
       std::shared_ptr<IRebootIdCache> rebootIdCache)
       -> std::shared_ptr<LogLeader>;
 
-  auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex;
-
-  // As opposed to the above insert methods, this one does not trigger the async
-  // replication automatically, i.e. does not call triggerAsyncReplication after
-  // the insert into the in-memory log. This is necessary for testing. It should
-  // not be necessary in production code. It might seem useful for batching, but
-  // in that case, it'd be even better to add an insert function taking a batch.
-  //
-  // This method will however not prevent the resulting log entry from being
-  // replicated, if async replication is running in the background already, or
-  // if it is triggered by someone else.
-  struct DoNotTriggerAsyncReplication {};
-  static constexpr DoNotTriggerAsyncReplication doNotTriggerAsyncReplication{};
-  auto insert(LogPayload payload, bool waitForSync,
-              DoNotTriggerAsyncReplication) -> LogIndex;
-
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
 
   [[nodiscard]] auto waitForIterator(LogIndex index)
