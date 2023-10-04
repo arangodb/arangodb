@@ -74,7 +74,7 @@ class SingleRowFetcher {
    *   DataRange => Resulting data
    */
   std::tuple<ExecutionState, SkipResult, DataRange> execute(
-      AqlCallStack& stack);
+      AqlCallStack const& stack);
 
   void setDistributeId(std::string const& id);
 

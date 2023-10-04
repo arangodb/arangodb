@@ -586,9 +586,8 @@ struct GetDocumentProcessor
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     } else {
       bool conflict = false;
-      res = _collection.getPhysical()->read(
-          &_methods, key,
-          [&](LocalDocumentId const&, VPackSlice doc) {
+      auto cb = IndexIterator::makeDocumentCallbackF(
+          [&](LocalDocumentId, VPackSlice doc) {
             if (!_options.ignoreRevs && value.isObject()) {
               RevisionId expectedRevision = RevisionId::fromSlice(value);
               if (expectedRevision.isSet()) {
@@ -612,8 +611,8 @@ struct GetDocumentProcessor
               _resultBuilder.add(VPackSlice::nullSlice());
             }
             return true;
-          },
-          ReadOwnWrites::no);
+          });
+      res = _collection.getPhysical()->lookup(&_methods, key, cb, {});
 
       if (conflict) {
         res.reset(TRI_ERROR_ARANGO_CONFLICT);
@@ -916,9 +915,10 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
     if (_needToFetchOldDocument) {
       // need to read the full document, so that we can remove all
       // secondary index entries for it
-      res = _collection.getPhysical()->lookupDocument(
-          _methods, oldDocumentId, *_previousDocumentBuilder,
-          /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+      auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
+      res = _collection.getPhysical()->lookup(
+          &_methods, oldDocumentId, cb,
+          {.fillCache = false, .readOwnWrites = true});
 
       if (res.fail()) {
         return res;
@@ -1149,7 +1149,16 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         // if no overwriteMode is specified we default to Conflict
         _overwriteMode(options.isOverwriteModeSet()
                            ? options.overwriteMode
-                           : OperationOptions::OverwriteMode::Conflict) {}
+                           : OperationOptions::OverwriteMode::Conflict) {
+    if (_replicationType == Methods::ReplicationType::FOLLOWER &&
+        _overwriteMode == OperationOptions::OverwriteMode::Update) {
+      // we must turn any INSERT with overwriteMode UPDATE to overwriteMode
+      // REPLACE on followers. the reason is that the replication sends the full
+      // document as inserted on the leader, but it does not send any null
+      // attributes that were removed from the document during the UPDATE.
+      _overwriteMode = OperationOptions::OverwriteMode::Replace;
+    }
+  }
 
   auto processValue(VPackSlice value, bool isArray) -> Result {
     TRI_IF_FAILURE("insertLocal::fakeResult1") {  //
@@ -1281,9 +1290,10 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         // in case of unique constraint violation: (partially) update existing
         // document.
         previousDocumentBuilder->clear();
-        res = _collection.getPhysical()->lookupDocument(
-            _methods, oldDocumentId, *previousDocumentBuilder,
-            /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+        auto cb = IndexIterator::makeDocumentCallback(*previousDocumentBuilder);
+        res = _collection.getPhysical()->lookup(
+            &_methods, oldDocumentId, cb,
+            {.fillCache = false, .readOwnWrites = true});
 
         if (res.ok()) {
           TRI_ASSERT(previousDocumentBuilder->slice().isObject());
@@ -1490,9 +1500,10 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     if (_needToFetchOldDocument) {
       // need to read the full document, so that we can remove all
       // secondary index entries for it
-      res = _collection.getPhysical()->lookupDocument(
-          _methods, oldDocumentId, *_previousDocumentBuilder,
-          /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+      auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
+      res = _collection.getPhysical()->lookup(
+          &_methods, oldDocumentId, cb,
+          {.fillCache = false, .readOwnWrites = true});
 
       if (res.fail()) {
         return res;
@@ -1960,12 +1971,8 @@ OperationResult transaction::Methods::anyLocal(
       indexScan(monitor, collectionName, transaction::Methods::CursorType::ANY,
                 ReadOwnWrites::no);
 
-  iterator->nextDocument(
-      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
-        resultBuilder.add(slice);
-        return true;
-      },
-      1);
+  auto cb = IndexIterator::makeDocumentCallback(resultBuilder);
+  iterator->nextDocument(cb, 1);
 
   resultBuilder.close();
 
@@ -2101,14 +2108,8 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   if (collection == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
-
-  return collection->getPhysical()->read(
-      this, key,
-      [&](LocalDocumentId const&, VPackSlice doc) {
-        result.add(doc);
-        return true;
-      },
-      ReadOwnWrites::no);
+  auto cb = IndexIterator::makeDocumentCallback(result);
+  return collection->getPhysical()->lookup(this, key, cb, {});
 }
 
 /// @brief return one document from a collection, fast path
@@ -2142,7 +2143,7 @@ Result transaction::Methods::documentFastPathLocal(
 
   // We never want to see our own writes here, otherwise we could observe
   // documents which have been inserted by a currently running query.
-  return collection->getPhysical()->read(this, key, cb, ReadOwnWrites::no);
+  return collection->getPhysical()->lookup(this, key, cb, {});
 }
 
 namespace {
@@ -2599,11 +2600,8 @@ OperationResult transaction::Methods::allLocal(
       indexScan(monitor, collectionName, transaction::Methods::CursorType::ALL,
                 ReadOwnWrites::no);
 
-  iterator->allDocuments(
-      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
-        resultBuilder.add(slice);
-        return true;
-      });
+  auto cb = IndexIterator::makeDocumentCallback(resultBuilder);
+  iterator->allDocuments(cb);
 
   resultBuilder.close();
 
@@ -3272,17 +3270,22 @@ Future<Result> Methods::replicateOperations(
             opName = "insert w/ overwriteMode ingore";
           }
         }
-        if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
-          // extra parameters only required for update
-          reqOpts.param(StaticStrings::KeepNullString,
-                        options.keepNull ? "true" : "false");
-          reqOpts.param(StaticStrings::MergeObjectsString,
-                        options.mergeObjects ? "true" : "false");
-        }
       }
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-      requestType = arangodb::fuerte::RestVerb::Patch;
+      // intentionally turn UPDATE operations on the leader into REPLACE
+      // operations on the follower.
+      // we need to do this because we are replicating the (full) document
+      // that we have written on the leader, but this does not include any
+      // removed attributes anymore. However, an UPDATE operation on the
+      // follower would merge what we have written on the leader with the
+      // existing document on the follower, which could silently cause
+      // data drift.
+      // by replicating the document as it was written on the leader and
+      // replicating the operation as a REPLACE, we ensure that we write
+      // the same document on the follower as we did on the leader.
+      requestType =
+          arangodb::fuerte::RestVerb::Put;  // this will make it a REPLACE
       opName = "update";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:

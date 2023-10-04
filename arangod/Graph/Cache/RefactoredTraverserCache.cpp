@@ -120,75 +120,66 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
     TRI_ASSERT(col != nullptr);  // for maintainer mode
     return false;
   }
-
+  auto cb = IndexIterator::makeDocumentCallbackF(
+      [&](LocalDocumentId, VPackSlice edge) -> bool {
+        if (readType == EdgeReadType::ONLYID) {
+          if constexpr (std::is_same_v<ResultType, std::string>) {
+            // If we want to expose the ID, we need to translate the
+            // custom type Unfortunately we cannot do this in slice only
+            // manner, as there is no complete slice with the _id.
+            result = transaction::helpers::extractIdString(
+                _trx->resolver(), edge, VPackSlice::noneSlice());
+            return true;
+          }
+          edge = edge.get(StaticStrings::IdString).translate();
+        } else if (readType == EdgeReadType::ID_DOCUMENT) {
+          if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+            TRI_ASSERT(result.isOpenObject());
+            TRI_ASSERT(edge.isObject());
+            // Extract and Translate the _key value
+            result.add(VPackValue(transaction::helpers::extractIdString(
+                _trx->resolver(), edge, VPackSlice::noneSlice())));
+            if (!_edgeProjections.empty()) {
+              VPackObjectBuilder guard(&result);
+              _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
+            } else {
+              result.add(edge);
+            }
+            return true;
+          } else {
+            // We can only inject key_value pairs into velocypack
+            TRI_ASSERT(false);
+          }
+        }
+        // NOTE: Do not count this as Primary Index Scan, we
+        // counted it in the edge Index before copying...
+        if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+          if (!_edgeProjections.empty()) {
+            // TODO: This does one unnecessary copy.
+            // We should be able to move the Projection into the
+            // AQL value.
+            transaction::BuilderLeaser builder(_trx);
+            {
+              VPackObjectBuilder guard(builder.get());
+              _edgeProjections.toVelocyPackFromDocument(*builder, edge, _trx);
+            }
+            result = aql::AqlValue(builder->slice());
+          } else {
+            // TODO(MBkkt) optimize case whole document
+            result = aql::AqlValue(edge);
+          }
+        } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+          if (!_edgeProjections.empty()) {
+            VPackObjectBuilder guard(&result);
+            _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
+          } else {
+            result.add(edge);
+          }
+        }
+        return true;
+      });
   auto res =
-      col->getPhysical()
-          ->read(
-              _trx, idToken.localDocumentId(),
-              [&](LocalDocumentId const&, VPackSlice edge) -> bool {
-                if (readType == EdgeReadType::ONLYID) {
-                  if constexpr (std::is_same_v<ResultType, std::string>) {
-                    // If we want to expose the ID, we need to translate the
-                    // custom type Unfortunately we cannot do this in slice only
-                    // manner, as there is no complete slice with the _id.
-                    result = transaction::helpers::extractIdString(
-                        _trx->resolver(), edge, VPackSlice::noneSlice());
-                    return true;
-                  }
-                  edge = edge.get(StaticStrings::IdString).translate();
-                } else if (readType == EdgeReadType::ID_DOCUMENT) {
-                  if constexpr (std::is_same_v<ResultType,
-                                               velocypack::Builder>) {
-                    TRI_ASSERT(result.isOpenObject());
-                    TRI_ASSERT(edge.isObject());
-                    // Extract and Translate the _key value
-                    result.add(VPackValue(transaction::helpers::extractIdString(
-                        _trx->resolver(), edge, VPackSlice::noneSlice())));
-                    if (!_edgeProjections.empty()) {
-                      VPackObjectBuilder guard(&result);
-                      _edgeProjections.toVelocyPackFromDocument(result, edge,
-                                                                _trx);
-                    } else {
-                      result.add(edge);
-                    }
-                    return true;
-                  } else {
-                    // We can only inject key_value pairs into velocypack
-                    TRI_ASSERT(false);
-                  }
-                }
-                // NOTE: Do not count this as Primary Index Scan, we
-                // counted it in the edge Index before copying...
-                if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-                  if (!_edgeProjections.empty()) {
-                    // TODO: This does one unnecessary copy.
-                    // We should be able to move the Projection into the
-                    // AQL value.
-                    transaction::BuilderLeaser builder(_trx);
-                    {
-                      VPackObjectBuilder guard(builder.get());
-                      _edgeProjections.toVelocyPackFromDocument(*builder, edge,
-                                                                _trx);
-                    }
-                    result = aql::AqlValue(builder->slice());
-                  } else {
-                    result = aql::AqlValue(edge);
-                  }
-                  result = aql::AqlValue(edge);
-                } else if constexpr (std::is_same_v<ResultType,
-                                                    velocypack::Builder>) {
-                  if (!_edgeProjections.empty()) {
-                    VPackObjectBuilder guard(&result);
-                    _edgeProjections.toVelocyPackFromDocument(result, edge,
-                                                              _trx);
-                  } else {
-                    result.add(edge);
-                  }
-                }
-                return true;
-              },
-              ReadOwnWrites::no)
-          .ok();
+      col->getPhysical()->lookup(_trx, idToken.localDocumentId(), cb, {}).ok();
   if (ADB_UNLIKELY(!res)) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("daac5", ERR, arangodb::Logger::GRAPHS)
@@ -236,38 +227,38 @@ bool RefactoredTraverserCache::appendVertex(
       transaction::AllowImplicitCollectionsSwitcher disallower(
           _trx->state()->options(), _allowImplicitCollections);
 
+      auto cb = IndexIterator::makeDocumentCallbackF([&](LocalDocumentId,
+                                                         VPackSlice doc) {
+        stats.incrScannedIndex(1);
+        // copying...
+        if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+          if (!_vertexProjections.empty()) {
+            // TODO: This does one unnecessary copy.
+            // We should be able to move the Projection into the
+            // AQL value.
+            transaction::BuilderLeaser builder(_trx);
+            {
+              VPackObjectBuilder guard(builder.get());
+              _vertexProjections.toVelocyPackFromDocument(*builder, doc, _trx);
+            }
+            result = aql::AqlValue(builder->slice());
+          } else {
+            // TODO(MBkkt) speedup this case
+            result = aql::AqlValue(doc);
+          }
+        } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+          if (!_vertexProjections.empty()) {
+            VPackObjectBuilder guard(&result);
+            _vertexProjections.toVelocyPackFromDocument(result, doc, _trx);
+          } else {
+            result.add(doc);
+          }
+        }
+        return true;
+      });
       Result res = _trx->documentFastPathLocal(
           collectionName,
-          id.substr(collectionNameResult.get().second + 1).stringView(),
-          [&](LocalDocumentId const&, VPackSlice doc) -> bool {
-            stats.incrScannedIndex(1);
-            // copying...
-            if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-              if (!_vertexProjections.empty()) {
-                // TODO: This does one unnecessary copy.
-                // We should be able to move the Projection into the
-                // AQL value.
-                transaction::BuilderLeaser builder(_trx);
-                {
-                  VPackObjectBuilder guard(builder.get());
-                  _vertexProjections.toVelocyPackFromDocument(*builder, doc,
-                                                              _trx);
-                }
-                result = aql::AqlValue(builder->slice());
-              } else {
-                result = aql::AqlValue(doc);
-              }
-            } else if constexpr (std::is_same_v<ResultType,
-                                                velocypack::Builder>) {
-              if (!_vertexProjections.empty()) {
-                VPackObjectBuilder guard(&result);
-                _vertexProjections.toVelocyPackFromDocument(result, doc, _trx);
-              } else {
-                result.add(doc);
-              }
-            }
-            return true;
-          });
+          id.substr(collectionNameResult.get().second + 1).stringView(), cb);
       if (res.ok()) {
         return true;
       }

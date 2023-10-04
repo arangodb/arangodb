@@ -484,7 +484,6 @@ class IResearchViewExecutorBase {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = IResearchViewExecutorInfos;
@@ -544,7 +543,7 @@ class IResearchViewExecutorBase {
       return documentOutReg;
     }
 
-    void moveInto(std::unique_ptr<uint8_t[]> data) noexcept;
+    void moveInto(std::unique_ptr<std::string> data) noexcept;
 
    private:
     RegisterId documentOutReg;

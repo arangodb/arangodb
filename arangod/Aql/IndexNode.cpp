@@ -55,7 +55,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-/// @brief constructor
 IndexNode::IndexNode(
     ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
     Variable const* outVariable,
@@ -102,10 +101,9 @@ IndexNode::IndexNode(ExecutionPlan* plan,
   _options.lookahead = basics::VelocyPackHelper::getNumericValue(
       base, StaticStrings::IndexLookahead, IndexIteratorOptions{}.lookahead);
 
-  if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
-    // legacy
-    _options.sorted = true;
-    _options.ascending = !base.get("reverse").getBool();
+  if (auto indexCoversProjections = base.get("indexCoversProjections");
+      indexCoversProjections.isBool()) {
+    _indexCoversProjections = indexCoversProjections.getBool();
   }
 
   VPackSlice indexes = base.get("indexes");
@@ -215,8 +213,10 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
-  // Now put info about vocbase and cid in there
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
+
+  // this attribute is never read back by arangod, but it is used a lot
+  // in tests, so it can't be removed easily
   builder.add("indexCoversProjections",
               VPackValue(_projections.usesCoveringIndex()));
 
@@ -234,7 +234,6 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // IndexIteratorOptions
   builder.add("sorted", VPackValue(_options.sorted));
   builder.add("ascending", VPackValue(_options.ascending));
-  builder.add("reverse", VPackValue(!_options.ascending));  // legacy
   builder.add("evalFCalls", VPackValue(_options.evaluateFCalls));
   builder.add(StaticStrings::UseCache, VPackValue(_options.useCache));
   builder.add(StaticStrings::WaitForSyncString,
@@ -424,9 +423,9 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
     outNonMaterializedIndVars = _outNonMaterializedIndVars;
   }
 
-  auto c = std::make_unique<IndexNode>(
-      plan, _id, collection(), outVariable, _indexes, _allCoveredByOneIndex,
-      std::unique_ptr<Condition>(_condition->clone()), _options);
+  auto c = std::make_unique<IndexNode>(plan, _id, collection(), outVariable,
+                                       _indexes, _allCoveredByOneIndex,
+                                       _condition->clone(), _options);
 
   c->_projections = _projections;
   c->_filterProjections = _filterProjections;
@@ -576,7 +575,26 @@ void IndexNode::prepareProjections() {
     return;
   }
 
-  if (idx->covers(_projections)) {
+  auto coversProjections = std::invoke([&]() {
+    if (_indexCoversProjections.has_value()) {
+      // On a DBServer, already got this information from the Coordinator.
+      if (*_indexCoversProjections) {
+        // Although we have the information, we still need to call covers() for
+        // its side effects, as it sets some _projections fields.
+        auto coveringResult = idx->covers(_projections);
+        TRI_ASSERT(coveringResult)
+            << "Coordinator thinks the index is covering the projections, but "
+               "the DBServer found that it is not.";
+        return coveringResult;
+      }
+      return false;
+    } else {
+      // On the Coordinator, let's check.
+      return idx->covers(_projections);
+    }
+  });
+
+  if (coversProjections) {
     _projections.setCoveringContext(collection()->id(), idx);
   } else if (this->hasFilter()) {
     // if we have a covering index and a post-filter condition,

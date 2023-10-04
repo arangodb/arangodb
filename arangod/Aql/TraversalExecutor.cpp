@@ -400,7 +400,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
       currentPath->lastVertexToVelocyPack(*tmp.builder());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.vertexRegister(), _inputRow, guard);
+      output.moveValueInto(_infos.vertexRegister(), _inputRow, &guard);
     }
 
     // Edge variable (e)
@@ -409,7 +409,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
       currentPath->lastEdgeToVelocyPack(*tmp.builder());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.edgeRegister(), _inputRow, guard);
+      output.moveValueInto(_infos.edgeRegister(), _inputRow, &guard);
     }
 
     // Path variable (p)
@@ -418,7 +418,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
       currentPath->toVelocyPack(*tmp.builder());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.pathRegister(), _inputRow, guard);
+      output.moveValueInto(_infos.pathRegister(), _inputRow, &guard);
     }
 
     // No output is requested from the register plan. We still need
@@ -458,7 +458,7 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto skipped = size_t{0};
 
-  while (call.shouldSkip()) {
+  while (call.needSkipMore()) {
     if (traversalEnumerator()->isDone()) {
       if (!initTraverser(input)) {
         TRI_ASSERT(!input.hasDataRow());

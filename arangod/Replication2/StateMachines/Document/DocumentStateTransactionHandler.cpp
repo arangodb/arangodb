@@ -219,17 +219,7 @@ auto DocumentStateTransactionHandler::applyOp(
 
 auto DocumentStateTransactionHandler::applyOp(
     ReplicatedOperation::ModifyShard const& op) -> Result {
-  auto shardRes = _shardHandler->modifyShard(
-      op.shard, op.collection, op.properties,
-      op.ignoreFollowersToDrop ? "" : op.followersToDrop);
-  if (shardRes.fail()) {
-    return shardRes.result();
-  }
-  if (!shardRes.get()) {
-    LOG_CTX("c8812", INFO, _logContext)
-        << "Shard " << op.shard << " does not exist";
-  }
-  return Result{};
+  return _shardHandler->modifyShard(op.shard, op.collection, op.properties);
 }
 
 auto DocumentStateTransactionHandler::applyOp(
@@ -248,6 +238,11 @@ auto DocumentStateTransactionHandler::applyOp(
     ReplicatedOperation::CreateIndex const& op) -> Result {
   return _shardHandler->ensureIndex(op.shard, op.properties,
                                     op.params.progress);
+}
+
+auto DocumentStateTransactionHandler::applyOp(
+    ReplicatedOperation::DropIndex const& op) -> Result {
+  return _shardHandler->dropIndex(op.shard, op.index);
 }
 
 auto DocumentStateTransactionHandler::applyEntry(ReplicatedOperation operation)

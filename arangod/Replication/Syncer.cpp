@@ -296,15 +296,16 @@ namespace arangodb {
 
 Syncer::JobSynchronizer::JobSynchronizer(
     std::shared_ptr<Syncer const> const& syncer)
-    : _syncer(syncer), _gotResponse(false), _time(0.0), _jobsInFlight(0) {}
+    : _syncer(syncer),
+      _gotResponse(false),
+      _time(0.0),
+      _id(0),
+      _nextId(0),
+      _jobsInFlight(0) {}
 
 Syncer::JobSynchronizer::~JobSynchronizer() {
   // signal that we have got something
-  try {
-    gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
-  } catch (...) {
-    // must not throw from here
-  }
+  gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
 
   // wait until all posted jobs have been completed/canceled
   while (hasJobInFlight()) {
@@ -350,9 +351,32 @@ void Syncer::JobSynchronizer::gotResponse(arangodb::Result&& res,
 /// there is a response or the syncer/server is shut down
 Result Syncer::JobSynchronizer::waitForResponse(
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response) {
+  // clear result response
+  response.reset();
+
   while (true) {
     {
       std::unique_lock guard{_condition.mutex};
+
+      // check if the scheduler has already executed the callback.
+      // if not, then we will execute the callback ourselves here.
+      if (_cb) {
+        auto cb = std::move(_cb);
+        _id = 0;
+        TRI_ASSERT(!_cb);
+
+        // execute callback without holding the lock
+        guard.unlock();
+
+        {
+          // must be in an extra scope because jobDone() reacquires
+          // the mutex
+          auto markAsDone = scopeGuard([this]() noexcept { jobDone(); });
+          cb();
+        }
+
+        guard.lock();
+      }
 
       if (!_gotResponse) {
         _condition.cv.wait_for(guard, std::chrono::seconds{1});
@@ -367,36 +391,57 @@ Result Syncer::JobSynchronizer::waitForResponse(
     }
 
     if (_syncer->isAborted()) {
-      // clear result response
-      response.reset();
-
       std::lock_guard guard{_condition.mutex};
       _gotResponse = false;
       _response.reset();
       _res.reset();
-
-      // will result in returning TRI_ERROR_REPLICATION_APPLIER_STOPPED
-      break;
+      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
   }
-
-  return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
 }
 
-void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
+void Syncer::JobSynchronizer::request(fu2::unique_function<void()> cb) {
+  TRI_ASSERT(cb);
+
   // by indicating that we have posted an async job, the caller
   // will block on exit until all posted jobs have finished
   if (!jobPosted()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
+  uint64_t id = 0;
+  {
+    // store callback
+    std::unique_lock guard{_condition.mutex};
+    id = ++_nextId;
+    _id = id;
+    _cb = std::move(cb);
+  }
+
   SchedulerFeature::SCHEDULER->queue(
-      RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
+      RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), id]() {
+        fu2::unique_function<void()> cb;
+
+        {
+          std::unique_lock guard{_condition.mutex};
+          // check if we are still looking at the same job that was posted,
+          // or if someone already posted a different job.
+          if (_id != id) {
+            return;
+          }
+          TRI_ASSERT(_id != 0);
+          // claim callback
+          _id = 0;
+          cb = std::move(_cb);
+          TRI_ASSERT(!_cb);
+        }
+        // execute callback without holding the lock
+
         // whatever happens next, when we leave this here, we need to indicate
         // that there is no more posted job.
         // otherwise the calling thread may block forever waiting on the
         // posted jobs to finish
-        auto guard = scopeGuard([self]() noexcept { self->jobDone(); });
+        auto markAsDone = scopeGuard([self]() noexcept { self->jobDone(); });
 
         cb();
       });

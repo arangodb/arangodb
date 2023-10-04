@@ -33,10 +33,10 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Buffer.h>
 
-#include <Logger/LogMacros.h>
 #include <utility>
 
 // Set this to true to activate devel logging
@@ -251,7 +251,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     AqlValue val = this->groupValues[i];
     AqlValueGuard guard{val, true};
 
-    output.moveValueInto(it.first, _lastInputRow, guard);
+    output.moveValueInto(it.first, _lastInputRow, &guard);
     // ownership of value is transferred into res
     this->groupValues[i].erase();
     ++i;
@@ -263,7 +263,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     AqlValue val = it->stealValue();
     AqlValueGuard guard{val, true};
     output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
-                         guard);
+                         &guard);
     ++j;
   }
 
@@ -277,13 +277,13 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     TRI_ASSERT(_buffer.size() == 0);
     _builder.clear();  // necessary
 
-    output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
+    output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard);
   }
 
   output.advanceRow();
 }
 
-[[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (input.finalState() == MainQueryState::DONE) {

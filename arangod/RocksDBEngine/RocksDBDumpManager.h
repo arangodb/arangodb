@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBDumpContext.h"
 
 #include <cstdint>
@@ -30,16 +31,26 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+struct DumpLimits;
 class RocksDBEngine;
+
+namespace metrics {
+class MetricsFeature;
+}
+
+namespace velocypack {
+struct Options;
+}
 
 class RocksDBDumpManager {
  public:
-  explicit RocksDBDumpManager(RocksDBEngine& engine);
+  explicit RocksDBDumpManager(RocksDBEngine& engine,
+                              metrics::MetricsFeature& metricsFeature,
+                              DumpLimits const& limits);
 
   ~RocksDBDumpManager();
 
@@ -72,7 +83,14 @@ class RocksDBDumpManager {
 
   void garbageCollect(bool force);
 
-  void beginShutdown();
+  std::unique_ptr<RocksDBDumpContext::Batch> requestBatch(
+      RocksDBDumpContext& context, std::string const& collectionName,
+      std::uint64_t& batchSize, bool useVPack,
+      velocypack::Options const* vpackOptions);
+
+  bool reserveCapacity(std::uint64_t value) noexcept;
+  void trackMemoryUsage(std::uint64_t size) noexcept;
+  void untrackMemoryUsage(std::uint64_t size) noexcept;
 
  private:
   using MapType =
@@ -97,6 +115,12 @@ class RocksDBDumpManager {
   // manager as shared_ptrs. if remove is called on a context, it will be
   // destroyed once the last shared_ptr to it goes out of scope.
   MapType _contexts;
+
+  DumpLimits const& _limits;
+
+  metrics::Gauge<std::uint64_t>& _dumpsOngoing;
+  metrics::Gauge<std::uint64_t>& _dumpsMemoryUsage;
+  metrics::Counter& _dumpsThreadsBlocked;
 };
 
 }  // namespace arangodb

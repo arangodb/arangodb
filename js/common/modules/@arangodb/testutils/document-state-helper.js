@@ -192,6 +192,10 @@ const getOperationPayload = function(entry) {
   return op.payload;
 };
 
+const getOperationsByType = function(entries, opType) {
+  return entries.filter(entry => getOperationType(entry) === opType);
+};
+
 /**
  * Returns the first entry with the same key and type as provided.
  * If no key is provided, all entries of the specified type are returned.
@@ -290,6 +294,11 @@ const getCollectionShardsAndLogs = function (db, collection) {
   return {shards, shardsToLogs, logs};
 };
 
+const isIndexInCurrent = function (database, collectionId, indexId) {
+  const shards = lh.readAgencyValueAt(`Current/Collections/${database}/${collectionId}`);
+  return Object.values(shards).every(shard => shard.indexes.some(index => index.id === indexId));
+};
+
 exports.getLocalValue = getLocalValue;
 exports.getLocalIndex = getLocalIndex;
 exports.getAllLocalIndexes = getAllLocalIndexes;
@@ -300,6 +309,7 @@ exports.mergeLogs = mergeLogs;
 exports.getOperation = getOperation;
 exports.getOperationType = getOperationType;
 exports.getOperationPayload = getOperationPayload;
+exports.getOperationsByType = getOperationsByType;
 exports.getDocumentEntries = getDocumentEntries;
 exports.searchDocs = searchDocs;
 exports.getArrayElements = getArrayElements;
@@ -311,3 +321,4 @@ exports.finishSnapshot = finishSnapshot;
 exports.allSnapshotsStatus = allSnapshotsStatus;
 exports.getSingleLogId = getSingleLogId;
 exports.getCollectionShardsAndLogs = getCollectionShardsAndLogs;
+exports.isIndexInCurrent = isIndexInCurrent;

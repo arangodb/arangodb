@@ -1471,7 +1471,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       skipAsserter.gotCalled(call);
 
       size_t skipped = 0;
-      while (inputRange.hasDataRow() && call.shouldSkip()) {
+      while (inputRange.hasDataRow() && call.needSkipMore()) {
         auto const& [state, input] = inputRange.nextDataRow();
         EXPECT_TRUE(input.isInitialized());
         skipped++;
@@ -1856,7 +1856,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
       -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
     skipState.gotCalled(call);
     size_t skipped = 0;
-    while (inputRange.hasDataRow() && call.shouldSkip()) {
+    while (inputRange.hasDataRow() && call.needSkipMore()) {
       auto const& [state, input] = inputRange.nextDataRow();
       EXPECT_TRUE(input.isInitialized());
       skipped++;
@@ -2438,7 +2438,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
         // Write one Row here
         AqlValue v(AqlValueHintInt{2});
         AqlValueGuard guard(v, true);
-        output.moveValueInto(depth1Reg, row, guard);
+        output.moveValueInto(depth1Reg, row, &guard);
         output.advanceRow();
       }
       if (val == 6) {
@@ -2446,13 +2446,13 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
         {
           AqlValue v(AqlValueHintInt{4});
           AqlValueGuard guard(v, true);
-          output.moveValueInto(depth1Reg, row, guard);
+          output.moveValueInto(depth1Reg, row, &guard);
           output.advanceRow();
         }
         {
           AqlValue v(AqlValueHintInt{5});
           AqlValueGuard guard(v, true);
-          output.moveValueInto(depth1Reg, row, guard);
+          output.moveValueInto(depth1Reg, row, &guard);
           output.advanceRow();
         }
       }
@@ -2486,7 +2486,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
         // Write one Row here
         AqlValue v(AqlValueHintInt{1});
         AqlValueGuard guard(v, true);
-        output.moveValueInto(outReg, row, guard);
+        output.moveValueInto(outReg, row, &guard);
         output.advanceRow();
       }
       // drop all other dataRows

@@ -339,11 +339,10 @@ void arangodb::aql::lateDocumentMaterializationRule(
         // insert a materialize node
         auto makeMaterializer = [&]() -> std::unique_ptr<ExecutionNode> {
           if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-            return std::make_unique<materialize::MaterializeSingleNode<false>>(
-                plan.get(), plan->nextId(), indexNode->collection(),
-                *localDocIdTmp, *var);
+            return std::make_unique<materialize::MaterializeSearchNode>(
+                plan.get(), plan->nextId(), *localDocIdTmp, *var);
           }
-          return std::make_unique<materialize::MaterializeSingleNode<true>>(
+          return std::make_unique<materialize::MaterializeRocksDBNode>(
               plan.get(), plan->nextId(), indexNode->collection(),
               *localDocIdTmp, *var);
         };

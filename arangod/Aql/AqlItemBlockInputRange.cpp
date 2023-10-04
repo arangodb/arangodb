@@ -24,7 +24,6 @@
 #include "AqlItemBlockInputRange.h"
 #include "Aql/ShadowAqlItemRow.h"
 
-#include <velocypack/Builder.h>
 #include <algorithm>
 #include <numeric>
 
@@ -141,20 +140,28 @@ AqlItemBlockInputRange::nextShadowRow() {
                         ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
 }
 
-size_t AqlItemBlockInputRange::skipAllRemainingDataRows() {
+size_t AqlItemBlockInputRange::skipAllRemainingDataRows() noexcept {
   while (hasDataRow()) {
     ++_rowIndex;
   }
   return 0;
 }
 
-size_t AqlItemBlockInputRange::countAndSkipAllRemainingDataRows() {
+size_t AqlItemBlockInputRange::countAndSkipAllRemainingDataRows() noexcept {
   size_t skipped = 0;
   while (hasDataRow()) {
     ++_rowIndex;
     ++skipped;
   }
   return skipped;
+}
+
+size_t AqlItemBlockInputRange::numRowsLeft() const noexcept {
+  if (_block == nullptr) {
+    return 0;
+  }
+  TRI_ASSERT(_block->numRows() >= _rowIndex);
+  return _block->numRows() - _rowIndex;
 }
 
 template<int depthOffset>

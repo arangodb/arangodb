@@ -24,16 +24,15 @@
 
 #pragma once
 
-#include "Aql/MultiGet.h"
 #include "IResearchViewExecutor.h"
 
 #include "Aql/AqlCall.h"
 #include "Aql/ExecutionStats.h"
+#include "Aql/MultiGet.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StringUtils.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -267,13 +266,9 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::ReadContext(
 
 template<typename Impl, typename ExecutionTraits>
 void IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::moveInto(
-    std::unique_ptr<uint8_t[]> data) noexcept {
+    std::unique_ptr<std::string> data) noexcept {
   static_assert(isMaterialized);
-  AqlValue value{std::move(data)};
-  bool mustDestroy = true;
-  AqlValueGuard guard{value, mustDestroy};
-  // TODO(MBkkt) add moveValueInto overload for std::unique_ptr<uint8_t[]>
-  outputRow.moveValueInto(documentOutReg, inputRow, guard);
+  outputRow.moveValueInto(documentOutReg, inputRow, &data);
 }
 
 ScoreIterator::ScoreIterator(std::span<float_t> scoreBuffer, size_t keyIdx,
@@ -665,7 +660,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
              (!this->infos().heapSort().empty() && needFullCount));
   auto& impl = static_cast<Impl&>(*this);
   IResearchViewStats stats{};
-  while (inputRange.hasDataRow() && call.shouldSkip()) {
+  while (inputRange.hasDataRow() && call.needSkipMore()) {
     if (!_inputRow.isInitialized()) {
       auto rowState = ExecutorState::HASMORE;
       std::tie(rowState, _inputRow) = inputRange.peekDataRow();
@@ -690,7 +685,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
     // only heapsort version could possibly fetch more than skip requested
     TRI_ASSERT(_indexReadBuffer.empty() || !infos().heapSort().empty());
 
-    if (call.shouldSkip()) {
+    if (call.needSkipMore()) {
       // We still need to fetch more
       // trigger refetch of new input row
       inputRange.advanceDataRow();
@@ -899,7 +894,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::writeSearchDoc(
   TRI_ASSERT(doc.isValid());
   AqlValue value{doc.encode(_buf)};
   AqlValueGuard guard{value, true};
-  ctx.outputRow.moveValueInto(reg, ctx.inputRow, guard);
+  ctx.outputRow.moveValueInto(reg, ctx.inputRow, &guard);
 }
 
 // make overload with string_view as input that not depends on SV container type
@@ -917,6 +912,7 @@ template<typename Impl, typename ExecutionTraits>
 inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
     ReadContext& ctx, irs::bytes_view storedValue,
     FieldRegisters const& fieldsRegs) {
+  // TODO(MBkkt) optimize case bstring + single field
   TRI_ASSERT(!storedValue.empty());
   auto* start = storedValue.data();
   [[maybe_unused]] auto* end = start + storedValue.size();

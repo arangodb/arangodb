@@ -942,47 +942,70 @@ const replicatedStateDocumentShardsSuite = function () {
     for (const shard in shards) {
       const servers = shards[shard];
 
-      for (const server of servers) {
-        const assocShards = dh.getAssociatedShards(lh.getServerUrl(server), database, shardsToLogs[shard]);
-        assertTrue(_.includes(assocShards, shard));
-      }
+      // The leader must have the shard already.
+      const leader = servers[0];
+      let assocShards = dh.getAssociatedShards(lh.getServerUrl(leader), database, shardsToLogs[shard]);
+      assertTrue(_.includes(assocShards, shard),
+        `Expected shard ${shard} to be already created on leader ${leader}, but got ${JSON.stringify(assocShards)}`);
+
+      // Followers may experience delays in creating the shard, and that is normal.
+      servers.slice(1).forEach((server) => {
+        lh.waitFor(() => {
+          try {
+            assocShards = dh.getAssociatedShards(lh.getServerUrl(server), database, shardsToLogs[shard]);
+          } catch (e) {
+            // The request might fail on followers in case they did not initialize the replicated state yet.
+            return e;
+          }
+          if (_.includes(assocShards, shard)) {
+            return true;
+          }
+          return Error(`Expected shard ${shard} to be created on server ${server}, but got ${JSON.stringify(assocShards)}`);
+        });
+      });
     }
   };
 
-  const createIndexTest = function (unique) {
+  /*
+   * Helper for create-drop index tests. Uses the same code for unique and non-unique indexes.
+   * First, the CreateIndex part is checked. Then, the index is dropped.
+   */
+  const indexTestHelper = function (unique, inBackground) {
     return () => {
-      let collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 2, replicationFactor: 3});
+      let collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 3, replicationFactor: 3});
       let {logs} = dh.getCollectionShardsAndLogs(db, collection);
 
       // Create an index.
-      let index = collection.ensureIndex({name: "hund", type: "persistent", fields: ["_key", "value"], unique: unique});
+      let index = collection.ensureIndex({
+        name: "hund",
+        type: "persistent",
+        fields: ["_key", "value"],
+        unique: unique,
+        inBackground: inBackground
+      });
       assertEqual(index.name, "hund");
       assertEqual(index.isNewlyCreated, true);
       if (unique) {
         assertTrue(index.unique);
       }
 
-      // Check if the CreateIndex operation appears in the log during the current term.
+      // Check if the CreateIndex operation appears in the log.
       for (let log of logs) {
-        let logContents = log.head(1000);
-        let createIndexEntryFound = _.some(logContents, entry => {
-          if (entry.payload === undefined) {
-            return false;
-          }
-          return entry.payload.operation.type === "CreateIndex";
-        });
-        assertTrue(createIndexEntryFound,
-          `Log contents for log ${log.id()}: ${JSON.stringify(logContents)}`);
+        const logContents = log.head(1000);
+        assertTrue(dh.getOperationsByType(logContents, "CreateIndex").length > 0,
+          `CreateIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`);
       }
 
       const indexId = index.id.split('/')[1];
       const shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+
+      // Check that the newly created index is available on all participants.
       for (const [shard, log] of Object.entries(shardsToLogs)) {
         const participants = lhttp.listLogs(lh.coordinators[0], database).result[log];
         for (let pid of participants) {
+          const serverUrl = lh.getServerUrl(pid);
           lh.waitFor(() => {
-            // Check that the newly created index is available
-            let res = dh.getLocalIndex(lh.getServerUrl(pid), database, `${shard}/${indexId}`);
+            let res = dh.getLocalIndex(serverUrl, database, `${shard}/${indexId}`);
             if (res.error) {
               return Error(`Error while getting index ${shard}/${indexId} ` +
                 `from server ${pid} of log ${log}: ${JSON.stringify(res)}`);
@@ -991,16 +1014,63 @@ const replicatedStateDocumentShardsSuite = function () {
           });
 
           // Check that all indexes are available (there should be two: primary and hund)
+          lh.waitFor(() => {
+            let res = dh.getAllLocalIndexes(serverUrl, database, shard);
+            if (res.error) {
+              return Error(`Error while getting all indexes from server ${pid} of log ${log}, shard ${shard}: ${JSON.stringify(res)}`);
+            }
+            if (res.indexes.length !== 2) {
+              return Error(`Expected 2 indexes, got ${JSON.stringify(res)}`);
+            }
+            for (let index of res.indexes) {
+              assertTrue(["primary", "hund"].includes(index.name),
+                `Unexpected index name ${index.name} in ${JSON.stringify(res)}`);
+            }
+            return true;
+          });
+        }
+      }
+
+      // Drop the index.
+      assertTrue(collection.dropIndex(index));
+
+      // Wait for the index to removed from Current. This is how we know that the leader dropped the index.
+      lh.waitFor(() => {
+        if (dh.isIndexInCurrent(database, collection._id, indexId)) {
+          return Error(`Index ${indexId} still in Current`);
+        }
+        return true;
+      });
+
+      // Check if the DropIndex operation appears in the log.
+      for (let log of logs) {
+        const logContents = log.head(1000);
+        assertTrue(dh.getOperationsByType(logContents, "DropIndex").length > 0,
+          `DropIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`);
+      }
+
+      // Check that the index is dropped on all participants.
+      for (const [shard, log] of Object.entries(shardsToLogs)) {
+        const participants = lhttp.listLogs(lh.coordinators[0], database).result[log];
+        for (let pid of participants) {
+          lh.waitFor(() => {
+            let res = dh.getLocalIndex(lh.getServerUrl(pid), database, `${shard}/${indexId}`);
+            if (res.error && res.code === 404) {
+              return true;
+            }
+            return Error(`Index ${shard}/${indexId} still exists on ` +
+              `server ${pid} (log ${log}): ${JSON.stringify(res)}`);
+          });
+
+          // Only the primary index should remain
           let res = dh.getAllLocalIndexes(lh.getServerUrl(pid), database, shard);
           assertFalse(res.error,
             `Error while getting all indexes from server ${pid} of log ${log}, shard ${shard}: ${JSON.stringify(res)}`);
-          assertEqual(res.indexes.length, 2, `Expected 2 indexes, got ${JSON.stringify(res)}`);
-          for (let index of res.indexes) {
-            assertTrue(["primary", "hund"].includes(index.name),
-              `Unexpected index name ${index.name} in ${JSON.stringify(res)}`);
-          }
+          assertEqual(res.indexes.length, 1, `Expected 1 index, got ${JSON.stringify(res)}`);
+          assertEqual(res.indexes[0].name, "primary");
         }
       }
+
     };
   };
 
@@ -1088,8 +1158,10 @@ const replicatedStateDocumentShardsSuite = function () {
       }
     },
 
-    testCreateIndex: createIndexTest(false),
-    testCreateUniqueIndex: createIndexTest(true),
+    testCreateDropIndex: indexTestHelper(false, false),
+    testCreateDropIndexInBackground: indexTestHelper(false, true),
+    testCreateDropUniqueIndex: indexTestHelper(true, false),
+    testCreateDropUniqueIndexInBackground: indexTestHelper(true, true),
   };
 };
 

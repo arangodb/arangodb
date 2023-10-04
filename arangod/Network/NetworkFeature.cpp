@@ -285,7 +285,7 @@ void NetworkFeature::prepare() {
 
 void NetworkFeature::start() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  if (scheduler != nullptr) {  // is nullptr in catch tests
+  if (scheduler != nullptr) {  // is nullptr in unit tests
     auto off = std::chrono::seconds(1);
     ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
   }
@@ -528,19 +528,17 @@ void NetworkFeature::retryRequest(
     }
   };
 
+  // we need the mutex during `queueDelayed` because the lambda might be
+  // executed faster than we can add the work item to the _retryRequests map.
+  std::unique_lock guard(_workItemMutex);
+
   // this will automatically cancel the request when we leave this
   // method, unless we are canceling this scopeGuard explicitly.
-  // note that the mutex lock will be unlocked before the scopeGuard
-  // fires.
   auto cancelGuard = scopeGuard([req]() noexcept {
     if (req) {
       req->cancel();
     }
   });
-
-  // we need the mutex during `queueDelayed` because the lambda might be
-  // executed faster than we can add the work item to the _retryRequests map.
-  std::unique_lock guard(_workItemMutex);
 
   if (server().isStopping()) {
     // with trigger cancelGuard - cancels request

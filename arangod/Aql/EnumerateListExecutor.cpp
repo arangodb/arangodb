@@ -105,7 +105,7 @@ void EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.moveValueInto(_infos.getOutputRegister(), _currentRow, guard);
+  output.moveValueInto(_infos.getOutputRegister(), _currentRow, &guard);
   output.advanceRow();
 
   // set position to +1 for next iteration
@@ -159,7 +159,7 @@ EnumerateListExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                      AqlCall& call) {
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
-  while (inputRange.hasDataRow() && call.shouldSkip()) {
+  while (inputRange.hasDataRow() && call.needSkipMore()) {
     if (_inputArrayLength == _inputArrayPosition) {
       // we reached either the end of an array
       // or are in our first loop iteration

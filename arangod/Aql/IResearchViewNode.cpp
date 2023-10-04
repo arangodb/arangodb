@@ -491,6 +491,7 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
       case aql::ExecutionNode::COLLECT:
       case aql::ExecutionNode::TRAVERSAL:
       case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::JOIN:
       case aql::ExecutionNode::SHORTEST_PATH:
       case aql::ExecutionNode::ENUMERATE_PATHS:
       case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
@@ -517,6 +518,7 @@ bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
     switch (dep->getType()) {
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
       case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::JOIN:
       case aql::ExecutionNode::TRAVERSAL:
       case aql::ExecutionNode::ENUMERATE_LIST:
       case aql::ExecutionNode::SHORTEST_PATH:
@@ -773,7 +775,6 @@ IResearchViewStoredValues const& storedValues(
   return viewImpl.storedValues();
 }
 
-char const* kNodeDatabaseParam = "database";
 char const* kNodeViewNameParam = "view";
 char const* kNodeViewIdParam = "viewId";
 char const* kNodeOutVariableParam = "outVariable";
@@ -1502,7 +1503,6 @@ void const* IResearchViewNode::getSnapshotKey() const noexcept {
 void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
                                        unsigned flags) const {
   // system info
-  nodes.add(kNodeDatabaseParam, VPackValue(_vocbase.name()));
   TRI_ASSERT(_view);
   TRI_ASSERT(_meta || _view->type() != ViewType::kSearchAlias);
   // need 'view' field to correctly print view name in JS explanation

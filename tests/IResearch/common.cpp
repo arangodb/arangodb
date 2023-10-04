@@ -66,6 +66,7 @@
 #include "search/ngram_similarity_filter.hpp"
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
+#include "search/granular_range_filter.hpp"
 #include "utils/string.hpp"
 #include <filesystem>
 
@@ -77,6 +78,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
+#include <absl/strings/ascii.h>
+
 #include <unordered_set>
 
 extern const char* ARGV0;  // defined in main.cpp
@@ -85,29 +88,54 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace irs {
 std::ostream& operator<<(std::ostream& os, filter const& filter);
 
-std::ostream& operator<<(std::ostream& os, by_range const& range) {
-  os << "Range(" << range.field();
-  std::string termValueMin(
-      ViewCast<char>(irs::bytes_view{range.options().range.min}));
-  std::string termValueMax(
-      ViewCast<char>(irs::bytes_view{range.options().range.max}));
-  if (!termValueMin.empty()) {
-    os << " "
-       << (range.options().range.min_type == irs::BoundType::INCLUSIVE ? ">="
-                                                                       : ">")
-       << termValueMin;
+std::string ToString(bytes_view term) {
+  std::string s;
+  for (auto c : term) {
+    if (absl::ascii_isprint(c)) {
+      s += c;
+    } else {
+      s += " ";
+      s.append(absl::AlphaNum{int{c}}.Piece());
+      s += " ";
+    }
   }
-  if (!termValueMax.empty()) {
-    if (!termValueMin.empty()) {
+  return s;
+}
+
+std::string ToString(std::vector<bstring> const& terms) {
+  std::string s = "( ";
+  for (auto& term : terms) {
+    s += ToString(term) + " ";
+  }
+  s += ")";
+  return s;
+}
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, search_range<T> const& range) {
+  if (!range.min.empty()) {
+    os << " " << (range.min_type == irs::BoundType::INCLUSIVE ? ">=" : ">")
+       << ToString(range.min);
+  }
+  if (!range.max.empty()) {
+    if (!range.min.empty()) {
       os << ", ";
     } else {
       os << " ";
     }
-    os << (range.options().range.min_type == irs::BoundType::INCLUSIVE ? "<="
-                                                                       : "<")
-       << termValueMax;
+    os << (range.min_type == irs::BoundType::INCLUSIVE ? "<=" : "<")
+       << ToString(range.max);
   }
-  return os << ")";
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, by_range const& range) {
+  return os << "Range(" << range.field() << range.options().range << ")";
+}
+
+std::ostream& operator<<(std::ostream& os, by_granular_range const& range) {
+  return os << "GranularRange(" << range.field() << range.options().range
+            << ")";
 }
 
 std::ostream& operator<<(std::ostream& os, by_term const& term) {
@@ -236,6 +264,8 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
     return os << static_cast<by_terms const&>(filter);
   } else if (type == irs::type<by_range>::id()) {
     return os << static_cast<by_range const&>(filter);
+  } else if (type == irs::type<by_granular_range>::id()) {
+    return os << static_cast<by_granular_range const&>(filter);
   } else if (type == irs::type<by_ngram_similarity>::id()) {
     return os << static_cast<by_ngram_similarity const&>(filter);
   } else if (type == irs::type<by_edit_distance>::id()) {
@@ -357,7 +387,7 @@ struct CustomScorer final : public irs::ScorerBase<void> {
     if (!Scorer::equals(other)) {
       return false;
     }
-    auto const& p = down_cast<CustomScorer>(other);
+    auto const& p = DownCast<CustomScorer>(other);
     return p.i == i;
   }
 
@@ -1101,7 +1131,10 @@ void assertFilter(
     if (execOk) {
       EXPECT_TRUE(r.ok()) << r.errorMessage();
       if (r.ok()) {
-        EXPECT_EQ(expected, actual);
+        if (expected != actual) {
+          std::cerr << expected << std::endl;
+          std::cerr << actual << std::endl;
+        }
         EXPECT_TRUE(assertFilterBoostImpl(expected, actual));
       }
     } else {

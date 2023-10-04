@@ -170,8 +170,9 @@ class SortLimitTest
     }
     auto actualFullCount =
         arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-            result.extra->slice(),
-            std::vector<std::string>{"stats", "fullCount"}, 0);
+            result.extra->slice().get(
+                std::vector<std::string_view>{"stats", "fullCount"}),
+            0);
     if (doFullCount()) {
       EXPECT_EQ(actualFullCount, fullCount);
     } else {

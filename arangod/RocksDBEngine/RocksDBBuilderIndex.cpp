@@ -261,7 +261,7 @@ void RocksDBBuilderIndex::toVelocyPack(
 /// insert index elements into the specified write batch.
 Result RocksDBBuilderIndex::insert(transaction::Methods& trx,
                                    RocksDBMethods* mthd,
-                                   LocalDocumentId const& documentId,
+                                   LocalDocumentId documentId,
                                    velocypack::Slice slice,
                                    OperationOptions const& /*options*/,
                                    bool /*performChecks*/) {
@@ -274,7 +274,7 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx,
 /// remove index elements and put it in the specified write batch.
 Result RocksDBBuilderIndex::remove(transaction::Methods& trx,
                                    RocksDBMethods* mthd,
-                                   LocalDocumentId const& documentId,
+                                   LocalDocumentId documentId,
                                    velocypack::Slice slice,
                                    OperationOptions const& /*options*/) {
   RocksDBLogValue val =
@@ -308,6 +308,11 @@ static Result fillIndex(
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
+  // When we begin the trx on Replication2 we try to load the leader state.
+  // This behavior is not desired for index creation on the follower, as it
+  // will result in an error. Using this hint we prevent loading the
+  // leaderState.
+  // The same is for background indexes.
   trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
 
   Result res = trx.begin();
@@ -634,6 +639,12 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
+  // When we begin the trx on Replication2 we try to load the leader state.
+  // This behavior is not desired for index creation on the follower, as it
+  // will result in an error. Using this hint we prevent loading the
+  // leaderState.
+  // The same is for foreground indexes.
+  trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
   Result res = trx.begin();
   if (res.fail()) {
     return res;

@@ -62,7 +62,7 @@ class CoveringUtils {
 
   size_t bufferSize() const { return _buffer.size(); }
 
-  LocalDocumentId const& getNext() const {
+  LocalDocumentId getNext() const {
     TRI_ASSERT(hasNext());
     return _buffer.front();
   }

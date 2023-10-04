@@ -239,14 +239,15 @@ struct MockMaintenanceActionExecutor
               (override));
   MOCK_METHOD(Result, executeModifyCollectionAction,
               (ShardID shard, CollectionID collection,
-               std::shared_ptr<VPackBuilder> properties,
-               std::string followersToDrop),
+               velocypack::SharedSlice properties),
               (override));
   MOCK_METHOD(Result, executeDropCollectionAction, (ShardID, CollectionID),
               (override));
   MOCK_METHOD(Result, executeCreateIndex,
               (ShardID, std::shared_ptr<VPackBuilder> const&,
                std::shared_ptr<methods::Indexes::ProgressTracker>),
+              (override));
+  MOCK_METHOD(Result, executeDropIndex, (ShardID, velocypack::SharedSlice),
               (override));
   MOCK_METHOD(void, addDirty, (), (override));
 };
@@ -256,19 +257,23 @@ struct MockDocumentStateShardHandler
   MOCK_METHOD(ResultT<bool>, ensureShard,
               (ShardID, CollectionID, std::shared_ptr<VPackBuilder>),
               (override));
-  MOCK_METHOD(ResultT<bool>, modifyShard,
+  MOCK_METHOD(Result, modifyShard,
               (ShardID shard, CollectionID collection,
-               std::shared_ptr<VPackBuilder> properties,
-               std::string followersToDrop),
+               velocypack::SharedSlice properties),
               (override));
   MOCK_METHOD(ResultT<bool>, dropShard, (ShardID const&), (override));
   MOCK_METHOD(Result, ensureIndex,
               (ShardID shard, std::shared_ptr<VPackBuilder> const& properties,
                std::shared_ptr<methods::Indexes::ProgressTracker> progress),
               (override));
+  MOCK_METHOD(Result, dropIndex, (ShardID, velocypack::SharedSlice),
+              (override));
   MOCK_METHOD(Result, dropAllShards, (), (override));
   MOCK_METHOD(bool, isShardAvailable, (ShardID const&), (override));
   MOCK_METHOD(replicated_state::document::ShardMap, getShardMap, (),
+              (override));
+  MOCK_METHOD(ResultT<std::unique_ptr<transaction::Methods>>, lockShard,
+              (ShardID const&, AccessMode::Type, transaction::OperationOrigin),
               (override));
 };
 
