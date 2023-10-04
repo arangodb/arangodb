@@ -1,6 +1,8 @@
 devel
 -----
 
+* Internal: renamed a test file.
+
 * Fix updating of collection properties (schema) when the collection has a
   view on top.
 
