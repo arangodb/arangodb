@@ -62,6 +62,7 @@ class JoinNode : public ExecutionNode {
  public:
   struct IndexInfo {
     aql::Collection const* collection;
+    std::string usedShard;
     Variable const* outVariable;
     std::unique_ptr<Condition> condition;
     transaction::Methods::IndexHandle index;
@@ -108,6 +109,7 @@ class JoinNode : public ExecutionNode {
 
   /// @brief getIndexesInfos, hand out the index infos
   std::vector<IndexInfo> const& getIndexInfos() const;
+  std::vector<IndexInfo>& getIndexInfos();
 
   /// TODO: check if this is adequate
   bool isDeterministic() override final { return true; }
