@@ -291,7 +291,7 @@ jobs:
           name: "Build"
           shell: powershell.exe
           command: |
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:latest cmake --build . --config `"RelWithDebInfo`" --parallel
+            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:latest cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24
 
       # - run:
       #     name: Configure
