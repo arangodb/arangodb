@@ -418,6 +418,16 @@ workflows:
           enterprise: true
           publish-artifacts: false
           build-tests: false
+      - compile-linux:
+          context:
+            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
+          resource-class: xlarge
+          name: build-ee-no-v8-x64
+          preset: enterprise-pr-no-v8
+          enterprise: true
+          publish-artifacts: false
+          build-tests: false
+
       - run-cppcheck:
           name: cppcheck
           requires:
