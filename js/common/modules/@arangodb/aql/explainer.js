@@ -2012,10 +2012,17 @@ function processQuery(query, explain, planIndex) {
         if (info.condition && info.condition.hasOwnProperty('type')) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(info.condition);
         }
+        let projectString = '';
         if (info.projections) {
-          filter = '   ' + projections(info, "projections", "projections");
+          projectString = '   /*' + projections(info, "projections", "projections");
+          if (!info.indexCoversProjections) {
+            projectString += " index scan + document lookup";
+          } else {
+            projectString += " index scan";
+          }
+          projectString += ' */';
         }
-        line += indent(level, false) + label + filter;
+        line += indent(level, false) + label + filter + projectString;
         stringBuilder.appendLine(line);
       });
       --level;
