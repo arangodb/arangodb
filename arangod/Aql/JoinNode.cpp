@@ -167,6 +167,8 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
     it.condition->toVelocyPack(builder, flags);
     // projections
     it.projections.toVelocyPack(builder);
+    builder.add("indexCoversProjections",
+                VPackValue(it.projections.usesCoveringIndex()));
     builder.add("usedAsSatellite", VPackValue(it.usedAsSatellite));
     // index
     builder.add(VPackValue("index"));
