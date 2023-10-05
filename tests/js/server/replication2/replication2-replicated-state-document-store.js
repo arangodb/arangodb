@@ -973,7 +973,7 @@ const replicatedStateDocumentShardsSuite = function () {
   const indexTestHelper = function (unique, inBackground) {
     return () => {
       let collection = db._create(collectionName, {numberOfShards: 2, writeConcern: 3, replicationFactor: 3});
-      let {logs} = dh.getCollectionShardsAndLogs(db, collection);
+      let {shardsToLogs, logs} = dh.getCollectionShardsAndLogs(db, collection);
 
       // Create an index.
       let index = collection.ensureIndex({
@@ -988,6 +988,7 @@ const replicatedStateDocumentShardsSuite = function () {
       if (unique) {
         assertTrue(index.unique);
       }
+      const indexId = index.id.split('/')[1];
 
       // Check if the CreateIndex operation appears in the log.
       for (let log of logs) {
@@ -995,9 +996,6 @@ const replicatedStateDocumentShardsSuite = function () {
         assertTrue(dh.getOperationsByType(logContents, "CreateIndex").length > 0,
           `CreateIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`);
       }
-
-      const indexId = index.id.split('/')[1];
-      const shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
 
       // Check that the newly created index is available on all participants.
       for (const [shard, log] of Object.entries(shardsToLogs)) {
