@@ -298,9 +298,69 @@ const IndexJoinTestSuite = function () {
       }
     },
 
+    testProjectionsFromStoredValueUniqueIndex: function () {
+      const A = fillCollection("A", attributeGenerator(10, {x: x => x, y: x => 2 * x}));
+      A.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["y"], unique: true});
+      const B = fillCollection("B", singleAttributeGenerator(10, "x", x => x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1.y, doc2.x]
+      `;
+
+      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const join = plan.nodes[1];
+
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos[0].projections, ["x", "y"]);
+      assertEqual(join.indexInfos[1].projections, ["x"]);
+
+      const result = runAndCheckQuery(query);
+
+      assertEqual(result.length, 10);
+      for (const [a, b] of result) {
+        assertEqual(a, 2 * b);
+      }
+    },
+
     testProjectionsFromKeyField: function () {
       const A = fillCollection("A", attributeGenerator(10, {x: x => x, y: x => 2 * x}));
       A.ensureIndex({type: "persistent", fields: ["x", "y"]});
+      const B = fillCollection("B", singleAttributeGenerator(10, "x", x => x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1.y, doc2.x]
+      `;
+
+      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const join = plan.nodes[1];
+
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos[0].projections, ["x", "y"]);
+      assertEqual(join.indexInfos[1].projections, ["x"]);
+
+      const result = runAndCheckQuery(query);
+
+      assertEqual(result.length, 10);
+      for (const [a, b] of result) {
+        assertEqual(a, 2 * b);
+      }
+    },
+
+    testProjectionsFromKeyFieldUniqueIndex: function () {
+      const A = fillCollection("A", attributeGenerator(10, {x: x => x, y: x => 2 * x}));
+      A.ensureIndex({type: "persistent", fields: ["x", "y"], unique: true});
       const B = fillCollection("B", singleAttributeGenerator(10, "x", x => x));
       B.ensureIndex({type: "persistent", fields: ["x"]});
 
