@@ -447,7 +447,11 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
           VPackObjectBuilder ob(&projectionsBuilder);
           for (auto const& [projKey, path] : *_options.projections) {
             auto value = documentSlice.get(path);
-            if (!value.isNone()) {
+            if (path.size() == 1 && path[0] == "_id") {
+              auto id = _customTypeHandler->toString(value, &vpackOptions,
+                                                     documentSlice);
+              projectionsBuilder.add(projKey, VPackValue(id));
+            } else if (!value.isNone()) {
               projectionsBuilder.add(projKey, value);
             }
           }
