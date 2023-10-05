@@ -9057,7 +9057,6 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
   bool modified = false;
   if (nodes.size() >= 2) {
     // not yet supported:
-    // - projections
     // - post-filtering
     // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache,
     // waitForSync, limit, lookahead
@@ -9211,6 +9210,20 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   !matches(lhs, rhs, candidates[i - 1], c)) {
                 eligible = false;
                 break;
+              }
+
+              // if there is a post filter, make sure it only accesses variables
+              // that are available before all index nodes
+              if (c->hasFilter()) {
+                VarSet vars;
+                c->filter()->variables(vars);
+
+                for (auto* other : candidates) {
+                  if (other != c && other->setsVariable(vars)) {
+                    eligible = false;
+                    break;
+                  }
+                }
               }
             }
 
