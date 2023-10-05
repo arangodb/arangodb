@@ -43,7 +43,6 @@ class ExecutionEngine;
 class ExecutionPlan;
 
 // not yet supported:
-// - projections
 // - post-filtering
 // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache, waitForSync,
 // limit, lookahead
@@ -53,19 +52,18 @@ class ExecutionPlan;
 // - read own writes
 // - proper cost estimates
 // - profile output in explainer
-// - serialization/deserialization
-// - snippet production distribution to shards in cluster
-// - executor
 class JoinNode : public ExecutionNode {
   friend class ExecutionBlock;
 
  public:
   struct IndexInfo {
     aql::Collection const* collection;
+    std::string usedShard;
     Variable const* outVariable;
     std::unique_ptr<Condition> condition;
     transaction::Methods::IndexHandle index;
     Projections projections;
+    bool usedAsSatellite;  // TODO maybe use CollectionAccess class
   };
 
   JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -108,6 +106,7 @@ class JoinNode : public ExecutionNode {
 
   /// @brief getIndexesInfos, hand out the index infos
   std::vector<IndexInfo> const& getIndexInfos() const;
+  std::vector<IndexInfo>& getIndexInfos();
 
   /// TODO: check if this is adequate
   bool isDeterministic() override final { return true; }
