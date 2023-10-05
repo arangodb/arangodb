@@ -61,7 +61,7 @@ void TransactionalStore::Document::clear() {
 
 bool TransactionalStore::Document::empty() const { return (key == 0); }
 
-TransactionalStore::Transaction::Transaction(arangodb::cache::Transaction* c,
+TransactionalStore::Transaction::Transaction(arangodb::cache::Transaction c,
                                              rocksdb::Transaction* r)
     : cache(c), rocks(r) {}
 
@@ -105,7 +105,8 @@ Cache* TransactionalStore::cache() { return _cache.get(); }
 
 TransactionalStore::Transaction* TransactionalStore::beginTransaction(
     bool readOnly) {
-  auto cache = _manager->beginTransaction(readOnly);
+  arangodb::cache::Transaction cache;
+  _manager->beginTransaction(cache, readOnly);
   auto rocks = _db->BeginTransaction(_writeOptions, _txOptions);
   rocks->SetSnapshot();
   return new Transaction(cache, rocks);
