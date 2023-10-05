@@ -48,6 +48,7 @@
       'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
+      'user/:name/permissionOld': 'userPermissionOld',
       'user/:name/permission': 'userPermission',
       'cluster': 'cluster',
       'nodes': 'nodes',
@@ -1174,6 +1175,15 @@
     },
 
     userPermission: function (name) {
+      this.checkUser();
+      this.init.then(() =>
+        ReactDOM.render(
+          React.createElement(window.UserPermissionsReactView),
+          document.getElementById("content-react")
+        )
+      );
+    },
+    userPermissionOld: function (name) {
       this.checkUser();
 
       this.init.then(() => {

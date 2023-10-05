@@ -348,7 +348,7 @@
         }
       };
 
-      var someFunction = function (permissions) {
+      var doShadowMagic = function (permissions) {
         $('.db-row input').css('box-shadow', 'none');
         // var cssShadow = '#2ecc71 0px 1px 4px 4px';
         var cssShadow = 'rgba(0, 0, 0, 0.3) 0px 1px 4px 4px';
@@ -399,14 +399,14 @@
           url: url,
           contentType: 'application/json',
           success: function (data) {
-            someFunction(data.result);
+            doShadowMagic(data.result);
           },
           error: function (data) {
             arangoHelper.arangoError('User', 'Could not fetch user permissions');
           }
         });
       } else {
-        someFunction(permissions);
+        doShadowMagic(permissions);
       }
       window.modalView.hide();
     },
