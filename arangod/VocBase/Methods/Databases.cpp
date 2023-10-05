@@ -562,10 +562,9 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
       events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
       return Result(TRI_ERROR_INTERNAL, dropError);
     }
-  } else {
-#else
-  {
+  } else
 #endif
+  {
     if (ServerState::instance()->isCoordinator()) {
       // If we are a coordinator in a cluster, we have to behave differently:
       auto& df = server.getFeature<DatabaseFeature>();

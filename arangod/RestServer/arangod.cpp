@@ -130,8 +130,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 #ifdef USE_V8
               std::array { ArangodServer::id<ScriptFeature>() }
 #else
-              // just a random feature specified here, so the array isn't empty.
-              std::array { ArangodServer::id<ServerFeature>() }
+              std::array { ArangodServer::id<AgencyFeaturePhase>() }
 #endif
           );
         },
