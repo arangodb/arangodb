@@ -543,7 +543,7 @@ class IResearchViewExecutorBase {
       return documentOutReg;
     }
 
-    void moveInto(std::unique_ptr<std::string> data) noexcept;
+    void moveInto(aql::DocumentData data) noexcept;
 
    private:
     RegisterId documentOutReg;
