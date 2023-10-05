@@ -29,6 +29,7 @@
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
@@ -50,7 +51,11 @@ std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(false);
+#ifdef USE_V8
   startsAfter<V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
 
   startsAfter<AqlFeature>();
 }
