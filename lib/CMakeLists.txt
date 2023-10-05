@@ -249,7 +249,6 @@ target_link_libraries(arango
          velocypack
          linenoise-ng
          date_interface
-         #         ${V8_LIBS}
          ${SYSTEM_LIBRARIES}
          ${ICU_LIBS}
          absl::crc32c
