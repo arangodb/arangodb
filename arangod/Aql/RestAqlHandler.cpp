@@ -761,30 +761,15 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     result.toVelocyPack(answerBuilder, opts);
     answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
   } else if (operation == "initializeCursor") {
-    // TODO: remove the following 2 lines if the assertion holds true
-    auto pos = VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
-    TRI_ASSERT(pos == 0);
-    Result res;
-    // TODO: remove the following if condition and blcok if the assertion
-    // does not fail
-    if (VelocyPackHelper::getBooleanValue(querySlice, "done", true)) {
-      TRI_ASSERT(false);
-      auto tmpRes = _engine->initializeCursor(nullptr, 0);
-      if (tmpRes.first == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
-      res = tmpRes.second;
-    } else {
-      auto items = _engine->itemBlockManager().requestAndInitBlock(
-          querySlice.get("items"));
-      auto tmpRes = _engine->initializeCursor(std::move(items), pos);
-      if (tmpRes.first == ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
-      res = tmpRes.second;
+    auto items = _engine->itemBlockManager().requestAndInitBlock(
+        querySlice.get("items"));
+    auto tmpRes = _engine->initializeCursor(std::move(items), /*pos*/ 0);
+    if (tmpRes.first == ExecutionState::WAITING) {
+      return RestStatus::WAITING;
     }
-    answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
-    answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
+    answerBuilder.add(StaticStrings::Error, VPackValue(tmpRes.second.fail()));
+    answerBuilder.add(StaticStrings::Code,
+                      VPackValue(tmpRes.second.errorNumber()));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return RestStatus::DONE;

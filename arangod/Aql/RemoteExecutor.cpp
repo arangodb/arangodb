@@ -140,11 +140,12 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
   VPackBuilder builder(buffer, &options);
   builder.openObject(/*unindexed*/ true);
 
+  // always false. currently still needed in mixed environments of
+  // 3.11 and higher. can be removed for 3.13.
   builder.add("done", VPackValue(false));
 
   builder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
   builder.add(StaticStrings::Error, VPackValue(false));
-  builder.add("pos", VPackValue(0));
   builder.add(VPackValue("items"));
   builder.openObject(/*unindexed*/ true);
   input.toVelocyPack(&_engine->getQuery().vpackOptions(), builder);
