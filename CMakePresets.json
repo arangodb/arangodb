@@ -147,6 +147,15 @@
       "displayName": "PR Build ArangoDB Community Edition"
     },
     {
+      "name": "community-pr-no-v8",
+      "inherits": [
+        "pr",
+        "community",
+				"no-v8"
+      ],
+      "displayName": "PR Build ArangoDB Community Edition (without V8)"
+    },
+    {
       "name": "community-pr",
       "inherits": [
         "maintainer",
@@ -155,11 +164,11 @@
       "displayName": "PR Build ArangoDB Community Edition Maintainer Mode"
     },
     {
-      "name": "enterprise-pr-non-v8",
+      "name": "enterprise-pr-no-v8",
       "inherits": [
         "pr",
         "enterprise",
-				"non-v8"
+				"no-v8"
       ],
       "displayName": "PR Build ArangoDB Enterprise Edition (without V8)"
     },
