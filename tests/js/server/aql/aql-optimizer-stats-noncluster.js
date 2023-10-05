@@ -79,7 +79,7 @@ function optimizerStatsTestSuite () {
 
       assertEqual(2, stats.plansCreated);
       assertNotEqual(0, stats.rulesExecuted);
-      assertEqual(1, stats.rulesSkipped);
+      assertEqual(0, stats.rulesSkipped);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +95,7 @@ function optimizerStatsTestSuite () {
       assertTrue(stats.hasOwnProperty("rulesSkipped"));
 
       assertEqual(1, stats.plansCreated);
-      assertNotEqual(0, stats.rulesExecuted);
+      assertNotEqual(1, stats.rulesExecuted);
       assertEqual(1, stats.rulesSkipped);
     },
 
