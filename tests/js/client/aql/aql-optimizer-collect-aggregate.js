@@ -99,15 +99,15 @@ function optimizerAggregateTestSuite () {
     testAggregateAll : function () {
       const query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(i.value1), min = MIN(i.value1), max = MAX(i.value1), sum = SUM(i.value1), avg = AVERAGE(i.value1) RETURN { group, length, min, max, sum, avg }";
 
-      let results = db._query(query);
-      assertEqual(10, results.toArray().length);
+      let results = db._query(query).toArray();
+      assertEqual(10, results.length);
       for (let i = 0; i < 10; ++i) {
-        assertEqual("test" + i, results.toArray()[i].group);
-        assertEqual(200, results.toArray()[i].length);
-        assertEqual(i, results.toArray()[i].min);
-        assertEqual(1990 + i, results.toArray()[i].max);
-        assertEqual(199000 + i * 200, results.toArray()[i].sum);
-        assertEqual(995 + i, results.toArray()[i].avg);
+        assertEqual("test" + i, results[i].group);
+        assertEqual(200, results[i].length);
+        assertEqual(i, results[i].min);
+        assertEqual(1990 + i, results[i].max);
+        assertEqual(199000 + i * 200, results[i].sum);
+        assertEqual(995 + i, results[i].avg);
       }
 
       let plan = db._createStatement(query).explain().plan;
@@ -159,13 +159,13 @@ function optimizerAggregateTestSuite () {
     testAggregateExpression : function () {
       const query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(1), min = MIN(i.value1 + 1), max = MAX(i.value1 * 2) RETURN { group, length, min, max }";
 
-      let results = db._query(query);
-      assertEqual(10, results.toArray().length);
+      let results = db._query(query).toArray();
+      assertEqual(10, results.length);
       for (let i = 0; i < 10; ++i) {
-        assertEqual("test" + i, results.toArray()[i].group);
-        assertEqual(200, results.toArray()[i].length);
-        assertEqual(i + 1, results.toArray()[i].min);
-        assertEqual((1990 + i) * 2, results.toArray()[i].max);
+        assertEqual("test" + i, results[i].group);
+        assertEqual(200, results[i].length);
+        assertEqual(i + 1, results[i].min);
+        assertEqual((1990 + i) * 2, results[i].max);
       }
 
       let plan = db._createStatement(query).explain().plan;
@@ -211,14 +211,14 @@ function optimizerAggregateTestSuite () {
     testAggregateUnique : function () {
       const query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(1), unique1 = UNIQUE(i.value1), unique2 = UNIQUE(i.value2), uniqueGroup = UNIQUE(i.group) RETURN { group, length, unique1, unique2, uniqueGroup }";
 
-      let results = db._query(query);
-      assertEqual(10, results.toArray().length);
+      let results = db._query(query).toArray();
+      assertEqual(10, results.length);
       for (let i = 0; i < 10; ++i) {
-        assertEqual("test" + i, results.toArray()[i].group);
-        assertEqual(200, results.toArray()[i].length);
-        assertEqual(200, results.toArray()[i].unique1.length);
-        assertEqual([ i % 5 ], results.toArray()[i].unique2);
-        assertEqual([ "test" + i ], results.toArray()[i].uniqueGroup);
+        assertEqual("test" + i, results[i].group);
+        assertEqual(200, results[i].length);
+        assertEqual(200, results[i].unique1.length);
+        assertEqual([ i % 5 ], results[i].unique2);
+        assertEqual([ "test" + i ], results[i].uniqueGroup);
       }
 
       let plan = db._createStatement(query).explain().plan;
@@ -263,14 +263,14 @@ function optimizerAggregateTestSuite () {
     testAggregateUnique2 : function () {
       const query = "FOR i IN " + c.name() + " COLLECT AGGREGATE unique1 = UNIQUE(i.value1), unique2 = UNIQUE(i.value2) RETURN { unique1, unique2 }";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
       let expected = [];
       for (let i = 0; i < 2000; ++i) {
         expected.push(i);
       }
-      assertEqual(expected.sort(), results.toArray()[0].unique1.sort());
-      assertEqual([ 0, 1, 2, 3, 4 ], results.toArray()[0].unique2.sort());
+      assertEqual(expected.sort(), results[0].unique1.sort());
+      assertEqual([ 0, 1, 2, 3, 4 ], results[0].unique2.sort());
 
       let plan = db._createStatement(query).explain().plan;
 
@@ -303,19 +303,19 @@ function optimizerAggregateTestSuite () {
     testAggregateSortedUnique : function () {
       const query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(1), unique1 = SORTED_UNIQUE(i.value1), unique2 = SORTED_UNIQUE(i.value2), uniqueGroup = SORTED_UNIQUE(i.group) RETURN { group, length, unique1, unique2, uniqueGroup }";
 
-      let results = db._query(query);
-      assertEqual(10, results.toArray().length);
+      let results = db._query(query).toArray();
+      assertEqual(10, results.length);
       for (let i = 0; i < 10; ++i) {
         let values = [];
         for (let j = 0; j < 200; ++j) {
           values.push((10 * j) + i);
         }
-        assertEqual("test" + i, results.toArray()[i].group);
-        assertEqual(200, results.toArray()[i].length);
-        assertEqual(200, results.toArray()[i].unique1.length);
-        assertEqual(values, results.toArray()[i].unique1);
-        assertEqual([ i % 5 ], results.toArray()[i].unique2);
-        assertEqual([ "test" + i ], results.toArray()[i].uniqueGroup);
+        assertEqual("test" + i, results[i].group);
+        assertEqual(200, results[i].length);
+        assertEqual(200, results[i].unique1.length);
+        assertEqual(values, results[i].unique1);
+        assertEqual([ i % 5 ], results[i].unique2);
+        assertEqual([ "test" + i ], results[i].uniqueGroup);
       }
 
       let plan = db._createStatement(query).explain().plan;
@@ -360,14 +360,14 @@ function optimizerAggregateTestSuite () {
     testAggregateCountUnique : function () {
       const query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(1), unique1 = COUNT_UNIQUE(i.value1), unique2 = COUNT_UNIQUE(i.value2), uniqueGroup = COUNT_DISTINCT(i.group) RETURN { group, length, unique1, unique2, uniqueGroup }";
 
-      let results = db._query(query);
-      assertEqual(10, results.toArray().length);
+      let results = db._query(query).toArray();
+      assertEqual(10, results.length);
       for (let i = 0; i < 10; ++i) {
-        assertEqual("test" + i, results.toArray()[i].group);
-        assertEqual(200, results.toArray()[i].length);
-        assertEqual(200, results.toArray()[i].unique1);
-        assertEqual(1, results.toArray()[i].unique2);
-        assertEqual(1, results.toArray()[i].uniqueGroup);
+        assertEqual("test" + i, results[i].group);
+        assertEqual(200, results[i].length);
+        assertEqual(200, results[i].unique1);
+        assertEqual(1, results[i].unique2);
+        assertEqual(1, results[i].uniqueGroup);
       }
 
       let plan = db._createStatement(query).explain().plan;
@@ -426,14 +426,14 @@ function optimizerAggregateTestSuite () {
     testAggregateFiltered : function () {
       const query = "FOR i IN " + c.name() + " FILTER i.group == 'test4' COLLECT group = i.group AGGREGATE length = LENGTH(i.value1), min = MIN(i.value1), max = MAX(i.value1), sum = SUM(i.value1), avg = AVERAGE(i.value1) RETURN { group, length, min, max, sum, avg }";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual("test4", results.toArray()[0].group);
-      assertEqual(200, results.toArray()[0].length);
-      assertEqual(4, results.toArray()[0].min);
-      assertEqual(1994, results.toArray()[0].max);
-      assertEqual(199800, results.toArray()[0].sum);
-      assertEqual(999, results.toArray()[0].avg);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual("test4", results[0].group);
+      assertEqual(200, results[0].length);
+      assertEqual(4, results[0].min);
+      assertEqual(1994, results[0].max);
+      assertEqual(199800, results[0].sum);
+      assertEqual(999, results[0].avg);
 
       let plan = db._createStatement(query).explain().plan;
       // must have a SortNode
@@ -482,15 +482,15 @@ function optimizerAggregateTestSuite () {
     testAggregateFilteredMulti : function () {
       const query = "FOR i IN " + c.name() + " FILTER i.group >= 'test2' && i.group <= 'test4' COLLECT group = i.group AGGREGATE length = LENGTH(i.value1), min = MIN(i.value1), max = MAX(i.value1), sum = SUM(i.value1), avg = AVERAGE(i.value1) RETURN { group, length, min, max, sum, avg }";
 
-      let results = db._query(query);
-      assertEqual(3, results.toArray().length);
+      let results = db._query(query).toArray();
+      assertEqual(3, results.length);
       for (let i = 2; i <= 4; ++i) {
-        assertEqual("test" + i, results.toArray()[i - 2].group);
-        assertEqual(200, results.toArray()[i - 2].length);
-        assertEqual(i, results.toArray()[i - 2].min);
-        assertEqual(1990 + i, results.toArray()[i - 2].max);
-        assertEqual(199000 + i * 200, results.toArray()[i - 2].sum);
-        assertEqual(995 + i, results.toArray()[i - 2].avg);
+        assertEqual("test" + i, results[i - 2].group);
+        assertEqual(200, results[i - 2].length);
+        assertEqual(i, results[i - 2].min);
+        assertEqual(1990 + i, results[i - 2].max);
+        assertEqual(199000 + i * 200, results[i - 2].sum);
+        assertEqual(995 + i, results[i - 2].avg);
       }
 
       let plan = db._createStatement(query).explain().plan;
@@ -537,8 +537,8 @@ function optimizerAggregateTestSuite () {
     testAggregateFilteredEmpty : function () {
       const query = "FOR i IN " + c.name() + " FILTER i.group >= 'test99' COLLECT group = i.group AGGREGATE length = LENGTH(i.value1), min = MIN(i.value1), max = MAX(i.value1), sum = SUM(i.value1), avg = AVERAGE(i.value1) RETURN { group, length, min, max, sum, avg }";
 
-      let results = db._query(query);
-      assertEqual(0, results.toArray().length);
+      let results = db._query(query).toArray();
+      assertEqual(0, results.length);
 
       let plan = db._createStatement(query).explain().plan;
       // must have a SortNode
@@ -588,11 +588,11 @@ function optimizerAggregateTestSuite () {
       const query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT AGGREGATE sum = SUM(1) RETURN sum";
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
-      let results = db._query(query, null, opts);
-      assertEqual(1, results.toArray().length);
-      assertEqual(4000, results.toArray()[0]);
+      let results = db._query(query, null, opts).toArray();
+      assertEqual(1, results.length);
+      assertEqual(4000, results[0]);
 
-      let plan = db._createStatement(query, null, opts).explain().plan;
+      let plan = db._createStatement({query: query, bindVars:  null, options:  opts}).explain().plan;
       // must not have a SortNode
       assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
 
@@ -626,11 +626,11 @@ function optimizerAggregateTestSuite () {
       const query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT AGGREGATE length = LENGTH(j) RETURN length";
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
-      let results = db._query(query, null, opts);
-      assertEqual(1, results.toArray().length);
-      assertEqual(4000, results.toArray()[0]);
+      let results = db._query(query, null, opts).toArray();
+      assertEqual(1, results.length);
+      assertEqual(4000, results[0]);
 
-      let plan = db._createStatement(query, null, opts).explain().plan;
+      let plan = db._createStatement({query: query, bindVars:  null, options:  opts}).explain().plan;
       // must not have a SortNode
       assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
 
@@ -666,10 +666,10 @@ function optimizerAggregateTestSuite () {
     testAggregateSimple : function () {
       const query = "FOR i IN " + c.name() + " COLLECT class = i.group AGGREGATE length = LENGTH(i) RETURN [ class, length ]";
 
-      let results = db._query(query);
-      assertEqual(10, results.toArray().length);
-      for (let i = 0; i < results.toArray().length; ++i) {
-        let group = results.toArray()[i];
+      let results = db._query(query).toArray();
+      assertEqual(10, results.length);
+      for (let i = 0; i < results.length; ++i) {
+        let group = results[i];
         assertTrue(Array.isArray(group));
         assertEqual("test" + i, group[0]);
         assertEqual(200, group[1]);
@@ -712,9 +712,9 @@ function optimizerAggregateTestSuite () {
     testAggregateShaped : function () {
       const query = "FOR j IN " + c.name() + " COLLECT doc = j AGGREGATE length = LENGTH(j) RETURN { doc, length }";
 
-      let results = db._query(query);
+      let results = db._query(query).toArray();
       // expectation is that we get 1000 different docs and do not crash (issue #1265)
-      assertEqual(2000, results.toArray().length);
+      assertEqual(2000, results.length);
 
       let plan = db._createStatement(query).explain().plan;
       // must have a SortNode
@@ -752,12 +752,12 @@ function optimizerAggregateTestSuite () {
     testMultiKey : function () {
       const query = "FOR i IN " + c.name() + " COLLECT group1 = i.group, group2 = i.value2 AGGREGATE length = LENGTH(i.value1) RETURN { group1, group2, length }";
 
-      let results = db._query(query);
-      assertEqual(10, results.toArray().length);
+      let results = db._query(query).toArray();
+      assertEqual(10, results.length);
       for (let i = 0; i < 10; ++i) {
-        assertEqual("test" + i, results.toArray()[i].group1);
-        assertEqual(i % 5, results.toArray()[i].group2);
-        assertEqual(200, results.toArray()[i].length);
+        assertEqual("test" + i, results[i].group1);
+        assertEqual(i % 5, results[i].group2);
+        assertEqual(200, results[i].length);
       }
 
       let plan = db._createStatement(query).explain().plan;
@@ -797,14 +797,14 @@ function optimizerAggregateTestSuite () {
     testCross : function () {
       const query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE total = LENGTH(1), c100 = SUM(i.value1 >= 100 ? 1 : 0), c500 = SUM(i.value1 >= 500 ? 1 : 0), c1000 = SUM(i.value1 >= 1000 ? 1 : null) RETURN { group, total, c100, c500, c1000 }";
 
-      let results = db._query(query);
-      assertEqual(10, results.toArray().length);
+      let results = db._query(query).toArray();
+      assertEqual(10, results.length);
       for (let i = 0; i < 10; ++i) {
-        assertEqual("test" + i, results.toArray()[i].group);
-        assertEqual(200, results.toArray()[i].total);
-        assertEqual(190, results.toArray()[i].c100);
-        assertEqual(150, results.toArray()[i].c500);
-        assertEqual(100, results.toArray()[i].c1000);
+        assertEqual("test" + i, results[i].group);
+        assertEqual(200, results[i].total);
+        assertEqual(190, results[i].c100);
+        assertEqual(150, results[i].c500);
+        assertEqual(100, results[i].c1000);
       }
 
       let plan = db._createStatement(query).explain().plan;
@@ -852,10 +852,10 @@ function optimizerAggregateTestSuite () {
     testMinEmpty : function () {
       const query = "FOR i IN [ ] COLLECT AGGREGATE m = MIN(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN MIN([ ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN MIN([ ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -865,10 +865,10 @@ function optimizerAggregateTestSuite () {
     testMinOnlyNull : function () {
       const query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = MIN(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN MIN([ null, null, null, null ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN MIN([ null, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -878,10 +878,10 @@ function optimizerAggregateTestSuite () {
     testMinNotOnlyNullButStartsWithNull : function () {
       const query = "FOR i IN [ null, null, null, null, 35 ] COLLECT AGGREGATE m = MIN(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(35, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN MIN([ null, null, null, null, 35 ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(35, results[0]);
+      assertEqual(results[0], db._query("RETURN MIN([ null, null, null, null, 35 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -891,9 +891,9 @@ function optimizerAggregateTestSuite () {
     testMinMixed : function () {
       const query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 15 }, { zzz: 2 }, 9999, -9999 ] COLLECT AGGREGATE m = MIN(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(false, results.toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(false, results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -917,9 +917,9 @@ function optimizerAggregateTestSuite () {
     testMinStrings : function () {
       const query = "FOR i IN [ 'foo', 'bar', 'baz', 'bachelor' ] COLLECT AGGREGATE m = MIN(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual('bachelor', results.toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual('bachelor', results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -943,10 +943,10 @@ function optimizerAggregateTestSuite () {
     testMaxEmpty : function () {
       const query = "FOR i IN [ ] COLLECT AGGREGATE m = MAX(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN MAX([ ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN MAX([ ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -956,10 +956,10 @@ function optimizerAggregateTestSuite () {
     testMaxOnlyNull : function () {
       const query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = MAX(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN MAX([ null, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN MAX([ null, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -969,9 +969,9 @@ function optimizerAggregateTestSuite () {
     testMaxMixed : function () {
       const query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 15 }, { zzz : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = MAX(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual({ zzz : 15 }, results.toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual({ zzz : 15 }, results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -995,9 +995,9 @@ function optimizerAggregateTestSuite () {
     testMaxStrings : function () {
       const query = "FOR i IN [ 'foo', 'bar', 'baz', 'bachelor' ] COLLECT AGGREGATE m = MAX(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual('foo', results.toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual('foo', results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -1021,9 +1021,9 @@ function optimizerAggregateTestSuite () {
     testSumEmpty : function () {
       const query = "FOR i IN [ ] COLLECT AGGREGATE m = SUM(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
       // notable difference: regular SUM([ ]) returns 0, but as an aggregate
       // function it returns null
       assertEqual(0, db._query("RETURN SUM([ ])").toArray()[0]);
@@ -1036,10 +1036,10 @@ function optimizerAggregateTestSuite () {
     testSumOnlyNull : function () {
       const query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = SUM(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(0, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN SUM([ null, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(0, results[0]);
+      assertEqual(results[0], db._query("RETURN SUM([ null, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1049,9 +1049,9 @@ function optimizerAggregateTestSuite () {
     testSumMixed : function () {
       const query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = SUM(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -1077,9 +1077,9 @@ function optimizerAggregateTestSuite () {
       const expected = values.reduce(function(a, b) { return a + b; }, 0);
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = SUM(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(expected, results.toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(expected, results[0]);
       assertEqual(expected, db._query("RETURN SUM(" + JSON.stringify(values) + ")").toArray()[0]);
     },
 
@@ -1090,10 +1090,10 @@ function optimizerAggregateTestSuite () {
     testAvgEmpty : function () {
       const query = "FOR i IN [ ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN AVERAGE([ ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN AVERAGE([ ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1103,10 +1103,10 @@ function optimizerAggregateTestSuite () {
     testAvgOnlyNull : function () {
       const query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN AVERAGE([ null, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN AVERAGE([ null, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1116,10 +1116,10 @@ function optimizerAggregateTestSuite () {
     testAvgSingle : function () {
       const query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(-42.5, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN AVERAGE([ -42.5 ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(-42.5, results[0]);
+      assertEqual(results[0], db._query("RETURN AVERAGE([ -42.5 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1129,10 +1129,10 @@ function optimizerAggregateTestSuite () {
     testAvgSingleString : function () {
       const query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN AVERAGE([ '-42.5foo' ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN AVERAGE([ '-42.5foo' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1142,10 +1142,10 @@ function optimizerAggregateTestSuite () {
     testAvgSingleWithNulls : function () {
       const query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(-42.5, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN AVERAGE([ -42.5, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(-42.5, results[0]);
+      assertEqual(results[0], db._query("RETURN AVERAGE([ -42.5, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1155,9 +1155,9 @@ function optimizerAggregateTestSuite () {
     testAvgMixed : function () {
       const query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -1183,10 +1183,10 @@ function optimizerAggregateTestSuite () {
       const expected = values.reduce(function(a, b) { return a + b; }, 0);
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(expected / 6, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN AVERAGE(" + JSON.stringify(values) + ")").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(expected / 6, results[0]);
+      assertEqual(results[0], db._query("RETURN AVERAGE(" + JSON.stringify(values) + ")").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1196,10 +1196,10 @@ function optimizerAggregateTestSuite () {
     testVarianceEmpty : function () {
       const query = "FOR i IN [ ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE([ ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE([ ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1209,10 +1209,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSampleEmpty : function () {
       const query = "FOR i IN [ ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE_SAMPLE([ ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE_SAMPLE([ ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1222,10 +1222,10 @@ function optimizerAggregateTestSuite () {
     testVarianceOnlyNull : function () {
       const query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE([ null, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE([ null, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1235,10 +1235,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSampleOnlyNull : function () {
       const query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE_SAMPLE([ null, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE_SAMPLE([ null, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1248,10 +1248,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSingle : function () {
       const query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(0, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE([ -42.5 ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(0, results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE([ -42.5 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1261,10 +1261,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSampleSingle : function () {
       const query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE_SAMPLE([ -42.5 ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE_SAMPLE([ -42.5 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1274,10 +1274,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSampleSingleWithNull : function () {
       const query = "FOR i IN [ -42.5, null ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE_SAMPLE([ -42.5, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE_SAMPLE([ -42.5, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1287,10 +1287,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSampleTwoValues : function () {
       const query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(4, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE([ 19, 23 ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(4, results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE([ 19, 23 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1300,10 +1300,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSampleSingleTwoValues : function () {
       const query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(8, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE_SAMPLE([ 19, 23 ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(8, results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE_SAMPLE([ 19, 23 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1313,10 +1313,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSingleString : function () {
       const query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE([ '-42.5foo' ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE([ '-42.5foo' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1326,10 +1326,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSampleSingleString : function () {
       const query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE_SAMPLE([ '-42.5foo' ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE_SAMPLE([ '-42.5foo' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1339,10 +1339,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSampleTwoStrings : function () {
       const query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE_SAMPLE([ '-42.5foo', '99baz' ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE_SAMPLE([ '-42.5foo', '99baz' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1352,10 +1352,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSingleWithNulls : function () {
       const query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(0, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE([ -42.5, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(0, results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE([ -42.5, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1365,10 +1365,10 @@ function optimizerAggregateTestSuite () {
     testVarianceSampleSingleWithNulls : function () {
       const query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN VARIANCE_SAMPLE([ -42.5, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN VARIANCE_SAMPLE([ -42.5, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1378,9 +1378,9 @@ function optimizerAggregateTestSuite () {
     testVarianceMixed : function () {
       const query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -1406,10 +1406,10 @@ function optimizerAggregateTestSuite () {
       const expected = 495.03999999999996;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertTrue(Math.abs(expected - results.toArray()[0]) < 0.01);
-      assertTrue(Math.abs(results.toArray()[0] - db._query("RETURN VARIANCE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertTrue(Math.abs(expected - results[0]) < 0.01);
+      assertTrue(Math.abs(results[0] - db._query("RETURN VARIANCE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1421,10 +1421,10 @@ function optimizerAggregateTestSuite () {
       const expected = 550.0444444444444;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertTrue(Math.abs(expected - results.toArray()[0]) < 0.01);
-      assertTrue(Math.abs(results.toArray()[0] - db._query("RETURN VARIANCE_SAMPLE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertTrue(Math.abs(expected - results[0]) < 0.01);
+      assertTrue(Math.abs(results[0] - db._query("RETURN VARIANCE_SAMPLE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1436,10 +1436,10 @@ function optimizerAggregateTestSuite () {
       const expected = 473.9791666666667;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertTrue(Math.abs(expected - results.toArray()[0]) < 0.01);
-      assertTrue(Math.abs(results.toArray()[0] - db._query("RETURN VARIANCE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertTrue(Math.abs(expected - results[0]) < 0.01);
+      assertTrue(Math.abs(results[0] - db._query("RETURN VARIANCE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1451,10 +1451,10 @@ function optimizerAggregateTestSuite () {
       const expected = 568.775;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertTrue(Math.abs(expected - results.toArray()[0]) < 0.01);
-      assertTrue(Math.abs(results.toArray()[0] - db._query("RETURN VARIANCE_SAMPLE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertTrue(Math.abs(expected - results[0]) < 0.01);
+      assertTrue(Math.abs(results[0] - db._query("RETURN VARIANCE_SAMPLE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1464,10 +1464,10 @@ function optimizerAggregateTestSuite () {
     testStddevEmpty : function () {
       const query = "FOR i IN [ ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV([ ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV([ ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1477,10 +1477,10 @@ function optimizerAggregateTestSuite () {
     testStddevSampleEmpty : function () {
       const query = "FOR i IN [ ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV_SAMPLE([ ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV_SAMPLE([ ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1490,10 +1490,10 @@ function optimizerAggregateTestSuite () {
     testStddevOnlyNull : function () {
       const query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV([ null, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV([ null, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1503,10 +1503,10 @@ function optimizerAggregateTestSuite () {
     testStddevSampleOnlyNull : function () {
       const query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV_SAMPLE([ null, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV_SAMPLE([ null, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1516,10 +1516,10 @@ function optimizerAggregateTestSuite () {
     testStddevSingle : function () {
       const query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(0, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV([ -42.5 ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(0, results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV([ -42.5 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1529,10 +1529,10 @@ function optimizerAggregateTestSuite () {
     testStddevSampleSingle : function () {
       const query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV_SAMPLE([ -42.5 ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV_SAMPLE([ -42.5 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1542,10 +1542,10 @@ function optimizerAggregateTestSuite () {
     testStddevSampleSingleWithNull : function () {
       const query = "FOR i IN [ -42.5, null ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV_SAMPLE([ -42.5, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV_SAMPLE([ -42.5, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1555,10 +1555,10 @@ function optimizerAggregateTestSuite () {
     testStddevSampleTwoValues : function () {
       const query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(2, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV([ 19, 23 ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(2, results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV([ 19, 23 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1569,10 +1569,10 @@ function optimizerAggregateTestSuite () {
       const expected = 2.8284271247461903;
       const query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertTrue(Math.abs(results.toArray()[0] - expected) < 0.01);
-      assertTrue(Math.abs(results.toArray()[0] - db._query("RETURN STDDEV_SAMPLE([ 19, 23 ])").toArray()[0]) < 0.01);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertTrue(Math.abs(results[0] - expected) < 0.01);
+      assertTrue(Math.abs(results[0] - db._query("RETURN STDDEV_SAMPLE([ 19, 23 ])").toArray()[0]) < 0.01);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1582,10 +1582,10 @@ function optimizerAggregateTestSuite () {
     testStddevSingleString : function () {
       const query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV([ '-42.5foo' ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV([ '-42.5foo' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1595,10 +1595,10 @@ function optimizerAggregateTestSuite () {
     testStddevSampleSingleString : function () {
       const query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV_SAMPLE([ '-42.5foo' ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV_SAMPLE([ '-42.5foo' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1608,10 +1608,10 @@ function optimizerAggregateTestSuite () {
     testStddevSampleTwoStrings : function () {
       const query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV_SAMPLE([ '-42.5foo', '99baz' ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV_SAMPLE([ '-42.5foo', '99baz' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1621,10 +1621,10 @@ function optimizerAggregateTestSuite () {
     testStddevSingleWithNulls : function () {
       const query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(0, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV([ -42.5, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(0, results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV([ -42.5, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1634,10 +1634,10 @@ function optimizerAggregateTestSuite () {
     testStddevSampleSingleWithNulls : function () {
       const query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN STDDEV_SAMPLE([ -42.5, null, null, null ])").toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN STDDEV_SAMPLE([ -42.5, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1647,9 +1647,9 @@ function optimizerAggregateTestSuite () {
     testStddevMixed : function () {
       const query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -1675,10 +1675,10 @@ function optimizerAggregateTestSuite () {
       const expected = 22.249494376277408;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertTrue(Math.abs(expected - results.toArray()[0]) < 0.01);
-      assertTrue(Math.abs(results.toArray()[0] - db._query("RETURN STDDEV(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertTrue(Math.abs(expected - results[0]) < 0.01);
+      assertTrue(Math.abs(results[0] - db._query("RETURN STDDEV(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1690,10 +1690,10 @@ function optimizerAggregateTestSuite () {
       const expected = 23.453026338714675;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertTrue(Math.abs(expected - results.toArray()[0]) < 0.01);
-      assertTrue(Math.abs(results.toArray()[0] - db._query("RETURN STDDEV_SAMPLE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertTrue(Math.abs(expected - results[0]) < 0.01);
+      assertTrue(Math.abs(results[0] - db._query("RETURN STDDEV_SAMPLE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1705,10 +1705,10 @@ function optimizerAggregateTestSuite () {
       const expected = 21.771062598473844;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
-      const results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertTrue(Math.abs(expected - results.toArray()[0]) < 0.01);
-      assertTrue(Math.abs(results.toArray()[0] - db._query("RETURN STDDEV(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
+      const results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertTrue(Math.abs(expected - results[0]) < 0.01);
+      assertTrue(Math.abs(results[0] - db._query("RETURN STDDEV(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1720,10 +1720,10 @@ function optimizerAggregateTestSuite () {
       const expected = 23.84900417208232;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertTrue(Math.abs(expected - results.toArray()[0]) < 0.01);
-      assertTrue(Math.abs(results.toArray()[0] - db._query("RETURN STDDEV_SAMPLE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertTrue(Math.abs(expected - results[0]) < 0.01);
+      assertTrue(Math.abs(results[0] - db._query("RETURN STDDEV_SAMPLE(" + JSON.stringify(values) + ")").toArray()[0]) < 0.01);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1733,10 +1733,10 @@ function optimizerAggregateTestSuite () {
     testBitAndEmpty : function () {
       const query = "FOR i IN [ ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_AND([ ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_AND([ ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1746,10 +1746,10 @@ function optimizerAggregateTestSuite () {
     testBitAndOnlyNull : function () {
       const query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_AND([ null, null, null, null ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_AND([ null, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1759,10 +1759,10 @@ function optimizerAggregateTestSuite () {
     testBitAndSingleWithNull : function () {
       const query = "FOR i IN [ 42, null ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(42, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_AND([ 42, null ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(42, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_AND([ 42, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1772,10 +1772,10 @@ function optimizerAggregateTestSuite () {
     testBitAndSingleWithNulls : function () {
       const query = "FOR i IN [ 42, null, null, null ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(42, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_AND([ 42, null, null, null ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(42, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_AND([ 42, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1785,10 +1785,10 @@ function optimizerAggregateTestSuite () {
     testBitAndTwoValues : function () {
       const query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(19, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_AND([ 19, 23 ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(19, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_AND([ 19, 23 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1798,10 +1798,10 @@ function optimizerAggregateTestSuite () {
     testBitAndSingleString : function () {
       const query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_AND([ '-42.5foo' ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_AND([ '-42.5foo' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1811,10 +1811,10 @@ function optimizerAggregateTestSuite () {
     testBitAndTwoStrings : function () {
       const query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_AND([ '-42.5foo', '99baz' ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_AND([ '-42.5foo', '99baz' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1824,10 +1824,10 @@ function optimizerAggregateTestSuite () {
     testBitAndOutOfRange : function () {
       const query = "FOR i IN [ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_AND([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_AND([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1837,9 +1837,9 @@ function optimizerAggregateTestSuite () {
     testBitAndMixed : function () {
       const query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -1865,10 +1865,10 @@ function optimizerAggregateTestSuite () {
       const expected = 0;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(expected, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_AND(" + JSON.stringify(values) + ")").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(expected, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_AND(" + JSON.stringify(values) + ")").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1880,10 +1880,10 @@ function optimizerAggregateTestSuite () {
       const expected = 0;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(expected, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_AND(" + JSON.stringify(values) + ")").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(expected, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_AND(" + JSON.stringify(values) + ")").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1894,9 +1894,9 @@ function optimizerAggregateTestSuite () {
       const expected = 0;
       const query = "FOR i IN 1..10000 COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(expected, results.toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(expected, results[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1906,10 +1906,10 @@ function optimizerAggregateTestSuite () {
     testBitOrEmpty : function () {
       const query = "FOR i IN [ ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_OR([ ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_OR([ ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1919,10 +1919,10 @@ function optimizerAggregateTestSuite () {
     testBitOrOnlyNull : function () {
       const query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_OR([ null, null, null, null ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_OR([ null, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1932,10 +1932,10 @@ function optimizerAggregateTestSuite () {
     testBitOrSingleWithNull : function () {
       const query = "FOR i IN [ 42, null ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(42, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_OR([ 42, null ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(42, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_OR([ 42, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1945,10 +1945,10 @@ function optimizerAggregateTestSuite () {
     testBitOrTwoValues : function () {
       const query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(23, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_OR([ 19, 23 ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(23, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_OR([ 19, 23 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1958,10 +1958,10 @@ function optimizerAggregateTestSuite () {
     testBitOrSingleString : function () {
       const query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_OR([ '-42.5foo' ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_OR([ '-42.5foo' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1971,10 +1971,10 @@ function optimizerAggregateTestSuite () {
     testBitOrTwoStrings : function () {
       const query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_OR([ '-42.5foo', '99baz' ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_OR([ '-42.5foo', '99baz' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1984,10 +1984,10 @@ function optimizerAggregateTestSuite () {
     testBitOrOutOfRange : function () {
       const query = "FOR i IN [ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_OR([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_OR([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1997,9 +1997,9 @@ function optimizerAggregateTestSuite () {
     testBitOrMixed : function () {
       const query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -2025,10 +2025,10 @@ function optimizerAggregateTestSuite () {
       const expected = 63;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(expected, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_OR(" + JSON.stringify(values) + ")").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(expected, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_OR(" + JSON.stringify(values) + ")").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2040,10 +2040,10 @@ function optimizerAggregateTestSuite () {
       const expected = 63;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(expected, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_OR(" + JSON.stringify(values) + ")").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(expected, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_OR(" + JSON.stringify(values) + ")").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2054,9 +2054,9 @@ function optimizerAggregateTestSuite () {
       const expected = 16383;
       const query = "FOR i IN 1..10000 COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(expected, results.toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(expected, results[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2066,10 +2066,10 @@ function optimizerAggregateTestSuite () {
     testBitXOrEmpty : function () {
       const query = "FOR i IN [ ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_XOR([ ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_XOR([ ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2079,10 +2079,10 @@ function optimizerAggregateTestSuite () {
     testBitXOrOnlyNull : function () {
       const query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_XOR([ null, null, null, null ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_XOR([ null, null, null, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2092,10 +2092,10 @@ function optimizerAggregateTestSuite () {
     testBitXOrSingleWithNull : function () {
       const query = "FOR i IN [ 42, null ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(42, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_XOR([ 42, null ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(42, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_XOR([ 42, null ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2105,10 +2105,10 @@ function optimizerAggregateTestSuite () {
     testBitXOrTwoValues : function () {
       const query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(4, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_XOR([ 19, 23 ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(4, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_XOR([ 19, 23 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2118,10 +2118,10 @@ function optimizerAggregateTestSuite () {
     testBitXOrSingleString : function () {
       const query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_XOR([ '-42.5foo' ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_XOR([ '-42.5foo' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2131,10 +2131,10 @@ function optimizerAggregateTestSuite () {
     testBitXOrTwoStrings : function () {
       const query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_XOR([ '-42.5foo', '99baz' ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_XOR([ '-42.5foo', '99baz' ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2144,10 +2144,10 @@ function optimizerAggregateTestSuite () {
     testBitXOrOutOfRange : function () {
       const query = "FOR i IN [ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_XOR([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_XOR([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2157,9 +2157,9 @@ function optimizerAggregateTestSuite () {
     testBitXOrMixed : function () {
       const query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertNull(results.toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertNull(results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -2185,10 +2185,10 @@ function optimizerAggregateTestSuite () {
       const expected = 4;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(expected, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_XOR(" + JSON.stringify(values) + ")").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(expected, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_XOR(" + JSON.stringify(values) + ")").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2200,10 +2200,10 @@ function optimizerAggregateTestSuite () {
       const expected = 55;
       const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(expected, results.toArray()[0]);
-      assertEqual(results.toArray()[0], db._query("RETURN BIT_XOR(" + JSON.stringify(values) + ")").toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(expected, results[0]);
+      assertEqual(results[0], db._query("RETURN BIT_XOR(" + JSON.stringify(values) + ")").toArray()[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2214,9 +2214,9 @@ function optimizerAggregateTestSuite () {
       const expected = 10000;
       const query = "FOR i IN 1..10000 COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(expected, results.toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(expected, results[0]);
     },
 
   };
@@ -2258,9 +2258,9 @@ function optimizerAggregateModifyTestSuite () {
 
       const query = "FOR i IN " + c.name() + " FILTER i.age >= 20 && i.age < 50 && i.type == 1 COLLECT AGGREGATE length = LENGTH(i) RETURN length";
 
-      let results = db._query(query);
-      assertEqual(1, results.toArray().length);
-      assertEqual(125 * 30, results.toArray()[0]);
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      assertEqual(125 * 30, results[0]);
 
       let plan = db._createStatement(query).explain().plan;
       // must not have a SortNode
@@ -2357,7 +2357,7 @@ function optimizerAggregateResultsSuite () {
       expected = expected.toFixed(6);
     }
 
-    let plan = db._createStatement(query, null, opt).explain().plan;
+    let plan = db._createStatement({query: query, bindVars:  null, options:  opt}).explain().plan;
     let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
     assertEqual(1, collectNodes.length);
     assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));

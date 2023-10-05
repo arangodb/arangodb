@@ -29,7 +29,6 @@ const db = require('@arangodb').db;
 const expect = require('chai').expect;
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
-const { getResponsibleServers } = global.ArangoClusterInfo;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @file common variables and functions for aql-profiler* tests
@@ -657,8 +656,7 @@ function runClusterChecks (
     return countByShard;
   };
   const getRowsPerServer = rowsByShard => {
-    const shardIds = Object.keys(rowsByShard);
-    const shardToServerMapping = getResponsibleServers(shardIds);
+    const shardToServerMapping = Object.fromEntries(Object.entries(col.shards(true)).map(([shardId,[leader, ...followers]]) => [shardId, leader]));
     const result = {};
     for (const [shard, server] of Object.entries(shardToServerMapping)) {
       // Init with 0

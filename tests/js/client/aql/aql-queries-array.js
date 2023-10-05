@@ -75,7 +75,7 @@ function ArrayIndexSuite () {
   };
 
   var validateIndexNotUsed = function (query, bindVars) {
-    var plan = db._createStatement(query, bindVars || {}).explain().plan;
+    var plan = db._createStatement({query: query, bindVars:  bindVars || {}}).explain().plan;
     var nodeTypes = plan.nodes.map(function(node) {
       return node.type;
     });

@@ -55,7 +55,7 @@ function PrimaryIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       // will do a full scan
       assertEqual(0, indexNodes.length);
@@ -78,7 +78,7 @@ function PrimaryIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       // will use the primary index to do a scan
       assertEqual(1, indexNodes.length);
@@ -111,7 +111,7 @@ function PrimaryIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       // will use the primary index to do a scan
       assertEqual(1, indexNodes.length);
@@ -144,7 +144,7 @@ function PrimaryIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -167,7 +167,7 @@ function PrimaryIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -190,7 +190,7 @@ function PrimaryIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -213,7 +213,7 @@ function PrimaryIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -236,7 +236,7 @@ function PrimaryIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -282,7 +282,7 @@ function EdgeIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       // will do a full scan
       assertEqual(0, indexNodes.length);
@@ -305,7 +305,7 @@ function EdgeIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -328,7 +328,7 @@ function EdgeIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -351,7 +351,7 @@ function EdgeIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -377,7 +377,7 @@ function EdgeIndexSuite () {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -436,7 +436,7 @@ function VPackIndexRearmingSuite (unique) {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -460,7 +460,7 @@ function VPackIndexRearmingSuite (unique) {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -486,7 +486,7 @@ function VPackIndexRearmingSuite (unique) {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -511,7 +511,7 @@ function VPackIndexRearmingSuite (unique) {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -536,7 +536,7 @@ function VPackIndexRearmingSuite (unique) {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -561,7 +561,7 @@ function VPackIndexRearmingSuite (unique) {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -586,7 +586,7 @@ function VPackIndexRearmingSuite (unique) {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -611,7 +611,7 @@ function VPackIndexRearmingSuite (unique) {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
@@ -750,7 +750,7 @@ function VPackIndexInRearmingSuite (unique) {
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
 
-      let nodes = db._createStatement(q, null, opts).explain().plan.nodes;
+      let nodes = db._createStatement({query: q, bindVars:  null, options:  opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);

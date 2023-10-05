@@ -65,7 +65,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
   const explainMultipleSorts = function (query, params) {
     return helper.removeClusterNodes(
       helper.getCompactPlan(
-        db._createStatement(query, params).explain()).map(function (node) {
+        db._createStatement({query: query, bindVars:  params}).explain()).map(function (node) {
         return node.type;
       })
     );

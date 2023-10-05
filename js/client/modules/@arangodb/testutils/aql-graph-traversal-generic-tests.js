@@ -1318,12 +1318,12 @@ function testOpenDiamondPathVarOptimization(testGraph, mode) {
   }
 
   for (const query of queryList) {
-    const optPlans = AQL_EXPLAIN(query, {}, { optimizer: { rules: optimizerRuleToDeactivate } }).plan;
+    const optPlans = db._createStatement({query: query, bindVars:{}, options: { optimizer: { rules: optimizerRuleToDeactivate } }}).explain().plan;
     assertTrue(optPlans.rules.includes("remove-redundant-path-var"));
   }
 
   // Now return p, to make sure the rule is not being executed.
-  const optPlans = AQL_EXPLAIN(buildQuery('[p]'), {}, { optimizer: { rules: optimizerRuleToDeactivate } }).plan;
+  const optPlans = db._createStatement({query: buildQuery('[p]'), bindVars:{}, options: { optimizer: { rules: optimizerRuleToDeactivate }}}).explain().plan;
   assertFalse(optPlans.rules.includes("remove-redundant-path-var"));
 }
 
@@ -3158,7 +3158,7 @@ function testSmallCircleFilterOptimization(testGraph) {
         ${filterCondition}
         return v
     `;
-    const plan = AQL_EXPLAIN(query, {});
+    const plan = db._createStatement({query: query}).explain();
 
 
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query + " Still has FilterNode");
@@ -3221,7 +3221,7 @@ function testSmallCircleFilterOptimization(testGraph) {
         ${filterCondition}
         return v
     `;
-    const plan = AQL_EXPLAIN(query, {});
+    const plan = db._createStatement({query: query}).explain();
 
     const filters = findExecutionNodes(plan, "FilterNode");
 
@@ -3300,7 +3300,7 @@ function testSmallCircleFilterOptimizationOverlappingVariable(testGraph) {
         ${filterCondition}
         return v
     `;
-    const plan = AQL_EXPLAIN(query, {});
+    const plan = db._createStatement({query: query}).explain();
 
 
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query + " Still has FilterNode");

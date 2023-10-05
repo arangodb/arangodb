@@ -197,7 +197,7 @@ function aqlSkippingIndexTestsuite () {
   const skipCollection = 'skipCollection';
 
   const explainPlanNodes = (q, b, o) => {
-    var res =  db._createStatement(q, b, o).explain();
+    var res =  db._createStatement({query: q, bindVars:  b, options:  o}).explain();
 
     return res.plan.nodes;
   };
@@ -687,7 +687,7 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
     //    + "SORT doc.a "
     //    + "LIMIT 3,3 RETURN doc";
 
-    //  result = db._createStatement(query, {}, opts).explain();
+    //  result = db._createStatement({query: query, bindVars:  {}, options:  opts}).explain();
     //  assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("constrained-heap"));
 
     //  // skip 3, return 3, out of 10

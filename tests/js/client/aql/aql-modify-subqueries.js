@@ -95,7 +95,7 @@ function ahuacatlModifySuite () {
         let query = "UPDATE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2 } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
-        let plan = db._createStatement(query, {}, disableSingleDocOpRestrictToSingleShard).explain().plan;
+        let plan = db._createStatement({query: query, bindVars:  {}, options:  disableSingleDocOpRestrictToSingleShard}).explain().plan;
 
         //assertTrue(hasDistributeNode(plan.nodes)); // the distribute node is not required here
         assertFalse(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'UpdateNode', c));
@@ -114,7 +114,7 @@ function ahuacatlModifySuite () {
       let query = "UPDATE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
-      let plan = db._createStatement(query, {}, disableSingleDocOp).explain().plan;
+      let plan = db._createStatement({query: query, bindVars:  {}, options:  disableSingleDocOp}).explain().plan;
 
       assertFalse(hasDistributeNode(plan.nodes));
       assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'UpdateNode', c));
@@ -148,7 +148,7 @@ function ahuacatlModifySuite () {
         let query = "REPLACE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { id: 'test', value: 2 } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
-        let plan = db._createStatement(query, {}, disableSingleDocOpRestrictToSingleShard).explain().plan;
+        let plan = db._createStatement({query: query, bindVars:  {}, options:  disableSingleDocOpRestrictToSingleShard}).explain().plan;
         assertTrue(hasDistributeNode(plan.nodes));
         assertFalse(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'ReplaceNode', c));
         assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
@@ -162,7 +162,7 @@ function ahuacatlModifySuite () {
       let query = "REPLACE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { id: 'test', value: 2 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
-      let plan = db._createStatement(query, {}, disableSingleDocOp).explain().plan;
+      let plan = db._createStatement({query: query, bindVars:  {}, options:  disableSingleDocOp}).explain().plan;
       assertFalse(hasDistributeNode(plan.nodes));
       assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'ReplaceNode', c));
       assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
@@ -193,7 +193,7 @@ function ahuacatlModifySuite () {
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
         if (isCluster) {
-          let plan = db._createStatement(query, {}, disableSingleDocOpRestrictToSingleShard).explain().plan;
+          let plan = db._createStatement({query: query, bindVars:  {}, options:  disableSingleDocOpRestrictToSingleShard}).explain().plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -211,7 +211,7 @@ function ahuacatlModifySuite () {
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = db._createStatement(query,{}, disableSingleDocOp).explain().plan;
+          let plan = db._createStatement({query: query, bindVars: {}, options:  disableSingleDocOp}).explain().plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -238,7 +238,7 @@ function ahuacatlModifySuite () {
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = db._createStatement(query,{}, disableSingleDocOp).explain().plan;
+          let plan = db._createStatement({query: query, bindVars: {}, options:  disableSingleDocOp}).explain().plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -256,7 +256,7 @@ function ahuacatlModifySuite () {
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = db._createStatement(query, {}, disableSingleDocOp).explain().plan;
+          let plan = db._createStatement({query: query, bindVars:  {}, options:  disableSingleDocOp}).explain().plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -282,7 +282,7 @@ function ahuacatlModifySuite () {
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
         if (isCluster) {
-          let plan = db._createStatement(query, {}, disableSingleDocOpRestrictToSingleShard).explain().plan;
+          let plan = db._createStatement({query: query, bindVars:  {}, options:  disableSingleDocOpRestrictToSingleShard}).explain().plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -312,7 +312,7 @@ function ahuacatlModifySuite () {
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = db._createStatement(query,{}, disableSingleDocOp).explain().plan;
+          let plan = db._createStatement({query: query, bindVars: {}, options:  disableSingleDocOp}).explain().plan;
           assertFalse(hasDistributeNode(plan.nodes));
           assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -344,7 +344,7 @@ function ahuacatlModifySuite () {
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
-          let plan = db._createStatement(query,{}, disableSingleDocOp).explain().plan;
+          let plan = db._createStatement({query: query, bindVars: {}, options:  disableSingleDocOp}).explain().plan;
           assertTrue(hasDistributeNode(plan.nodes));
           assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
@@ -376,7 +376,7 @@ function ahuacatlModifySuite () {
         let actual = getModifyQueryResultsRaw(query);
 
         if (isCluster) {
-          let nodes = db._createStatement(query, {}, disableRestrictToSingleShard).explain().plan.nodes;
+          let nodes = db._createStatement({query: query, bindVars:  {}, options:  disableRestrictToSingleShard}).explain().plan.nodes;
           assertTrue(hasDistributeNode(nodes));
         }
 
@@ -520,7 +520,7 @@ function ahuacatlModifySuite () {
       let query = "FOR d IN " + cn + " FILTER d._key == 'test93' REMOVE d IN " + cn;
       let actual = db._query(query, {}, disableSingleDocOp);
       if (isCluster) {
-        let plan = db._createStatement(query, {}, disableSingleDocOp).explain().plan;
+        let plan = db._createStatement({query: query, bindVars:  {}, options:  disableSingleDocOp}).explain().plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'IndexNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
@@ -542,7 +542,7 @@ function ahuacatlModifySuite () {
       let query = "FOR d IN " + cn + " FILTER d._key == 'test93' REMOVE d IN " + cn + " RETURN OLD";
       let actual = db._query(query, {}, disableSingleDocOp);
       if (isCluster) {
-        let plan = db._createStatement(query,{}, disableSingleDocOp).explain().plan;
+        let plan = db._createStatement({query: query, bindVars: {}, options:  disableSingleDocOp}).explain().plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'IndexNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
@@ -726,7 +726,7 @@ function ahuacatlModifySuite () {
         let query = "FOR d IN " + cn + " REMOVE { _key: d._key } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableRestrictToSingleShard);
         if (isCluster) {
-          let plan = db._createStatement(query, {}, disableRestrictToSingleShard).explain().plan;
+          let plan = db._createStatement({query: query, bindVars:  {}, options:  disableRestrictToSingleShard}).explain().plan;
           assertFalse(hasDistributeNode(plan.nodes));
           assertNotEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
         }
