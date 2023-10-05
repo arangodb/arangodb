@@ -282,12 +282,20 @@
       "configurePreset": "community-pr"
     },
     {
+      "name": "community-pr-no-v8",
+      "configurePreset": "community-pr-no-v8"
+    },
+    {
       "name": "community-pr-non-maintainer",
       "configurePreset": "community-pr-non-maintainer"
     },
     {
       "name": "enterprise-pr",
       "configurePreset": "enterprise-pr"
+    },
+    {
+      "name": "enterprise-pr-no-v8",
+      "configurePreset": "enterprise-pr-no-v8"
     },
     {
       "name": "enterprise-pr-non-maintainer",
