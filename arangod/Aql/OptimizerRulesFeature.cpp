@@ -796,11 +796,10 @@ optimizations.)");
 
   // replace adjacent index nodes with a join node if the indexes qualify
   // for it.
-  registerRule(
-      "join-index-nodes", joinIndexNodesRule, OptimizerRule::joinIndexNodesRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                               OptimizerRule::Flags::DisabledByDefault),
-      R"(Join adjacent index nodes and replace them with a join node
+  registerRule("join-index-nodes", joinIndexNodesRule,
+               OptimizerRule::joinIndexNodesRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Join adjacent index nodes and replace them with a join node
 in case the indexes qualify for it.)");
 
   // allow nodes to asynchronously prefetch the next batch while processing the

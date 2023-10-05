@@ -9275,12 +9275,13 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
             std::vector<JoinNode::IndexInfo> indexInfos;
             indexInfos.reserve(candidates.size());
             for (auto* c : candidates) {
-              indexInfos.emplace_back(
-                  JoinNode::IndexInfo{.collection = c->collection(),
-                                      .outVariable = c->outVariable(),
-                                      .condition = c->condition()->clone(),
-                                      .index = c->getIndexes()[0],
-                                      .projections = c->projections()});
+              indexInfos.emplace_back(JoinNode::IndexInfo{
+                  .collection = c->collection(),
+                  .outVariable = c->outVariable(),
+                  .condition = c->condition()->clone(),
+                  .index = c->getIndexes()[0],
+                  .projections = c->projections(),
+                  .usedAsSatellite = c->isUsedAsSatellite()});
               handled.emplace(c);
             }
             JoinNode* jn = plan->createNode<JoinNode>(
