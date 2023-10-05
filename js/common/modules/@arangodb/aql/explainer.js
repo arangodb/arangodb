@@ -383,34 +383,16 @@ function printIndexes(indexes) {
     var maxFieldsLen = String('Fields').length;
     var maxStoredValuesLen = String('Stored values').length;
     indexes.forEach(function (index) {
-      var l = String(index.node).length;
-      if (l > maxIdLen) {
-        maxIdLen = l;
-      }
-      l = index.name ? index.name.length : 0;
-      if (l > maxNameLen) {
-        maxNameLen = l;
-      }
-      l = index.type.length;
-      if (l > maxTypeLen) {
-        maxTypeLen = l;
-      }
-      l = index.fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      if (l > maxFieldsLen) {
-        maxFieldsLen = l;
-      }
-      var storedValuesFields = index.storedValues || [];
+      maxIdLen = Math.max(maxIdLen, String(index.node).length);
+      maxNameLen = Math.max(maxNameLen, index.name ? index.name.length : 0);
+      maxTypeLen = Math.max(maxTypeLen, index.type.length);
+      maxFieldsLen = Math.max(maxFieldsLen, index.fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length);
+      let storedValuesFields = index.storedValues || [];
       if (index.type === 'inverted') {
         storedValuesFields = Array.isArray(index.storedValues) && index.storedValues.flatMap(s => s.fields) || [];
       }
-      l = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      if (l > maxStoredValuesLen) {
-        maxStoredValuesLen = l;
-      }
-      l = index.collection.length;
-      if (l > maxCollectionLen) {
-        maxCollectionLen = l;
-      }
+      maxStoredValuesLen = Math.max(maxStoredValuesLen, storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length);
+      maxCollectionLen = Math.max(maxCollectionLen, index.collection.length);
     });
     var line = ' ' + pad(1 + maxIdLen - String('By').length) + header('By') + '   ' +
       header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +

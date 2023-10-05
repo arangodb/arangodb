@@ -397,7 +397,6 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
           std::unique_ptr<fuerte::Response> res) {
         // `this` is only valid as long as sharedState is valid.
         // So we must execute this under sharedState's mutex.
-        LOG_DEVEL << "waking up sqs: " << sqs.get();
         sqs->executeAndWakeup([&] {
           std::lock_guard<std::mutex> guard(_communicationMutex);
           if (_lastTicket == ticket) {

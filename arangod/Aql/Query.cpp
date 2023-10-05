@@ -129,8 +129,6 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
         TRI_ERROR_INTERNAL, "failed to create query transaction context");
   }
 
-  LOG_DEVEL << this << ": created query with " << _sharedState.get();
-
   if (_contextOwnedByExterior) {
     // copy transaction options from global state into our local query options
     auto state = transaction::V8Context::getParentState();
@@ -189,7 +187,6 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
                                                scheduler)) {}
 
 Query::~Query() {
-  LOG_DEVEL << this << ": destroying query";
   if (_planSliceCopy != nullptr) {
     _resourceMonitor.decreaseMemoryUsage(_planSliceCopy->size());
   }
@@ -1760,9 +1757,6 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
         .thenValue([ss = _sharedState, this](Result r) {
           LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES,
                        r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
-              << "received error from DBServer on query finalization: "
-              << r.errorNumber() << ", '" << r.errorMessage() << "'";
-          LOG_DEVEL_IF(r.fail())
               << "received error from DBServer on query finalization: "
               << r.errorNumber() << ", '" << r.errorMessage() << "'";
           _sharedState->executeAndWakeup([&] {
