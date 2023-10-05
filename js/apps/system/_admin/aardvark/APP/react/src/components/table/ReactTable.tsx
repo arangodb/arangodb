@@ -25,13 +25,15 @@ type ReactTableProps<Data extends object> = {
   emptyStateMessage?: string;
   onRowSelect?: (row: Row<Data>) => void;
   children?: React.ReactNode;
+  renderSubComponent?: (row: Row<Data>) => React.ReactNode;
 };
 
 export function ReactTable<Data extends object>({
   emptyStateMessage = "No data found.",
   onRowSelect,
   children,
-  table
+  table,
+  renderSubComponent
 }: ReactTableProps<Data>) {
   const rows = table.getRowModel().rows;
   return (
@@ -55,11 +57,18 @@ export function ReactTable<Data extends object>({
           <Tbody>
             {rows.length > 0 ? (
               rows.map(row => (
-                <SelectableTr<Data>
-                  key={row.id}
-                  row={row}
-                  onRowSelect={onRowSelect}
-                />
+                <>
+                  <SelectableTr<Data>
+                    key={row.id}
+                    row={row}
+                    onRowSelect={onRowSelect}
+                  />
+                  <Tr>
+                    {row.getIsExpanded() && renderSubComponent
+                      ? renderSubComponent(row)
+                      : null}
+                  </Tr>
+                </>
               ))
             ) : (
               <Box padding="4">{emptyStateMessage}</Box>
