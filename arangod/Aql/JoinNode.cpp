@@ -102,7 +102,7 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     std::string collection = it.get("collection").copyString();
     auto* coll = collections.get(collection);
     if (!coll) {
-      TRI_ASSERT(false);
+      TRI_ASSERT(false) << "collection: " << collection << " not found.";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
@@ -118,17 +118,25 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     }
 
     // index
-    std::string iid = it.get("index").copyString();
+    std::string iid = it.get("index").get("id").copyString();
 
     auto projections = Projections::fromVelocyPack(
         it, "projections", plan->getAst()->query().resourceMonitor());
 
-    _indexInfos.emplace_back(
+    bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
+
+    auto& idx = _indexInfos.emplace_back(
         IndexInfo{.collection = coll,
                   .outVariable = outVariable,
                   .condition = Condition::fromVPack(plan, condition),
                   .index = coll->indexByIdentifier(iid),
-                  .projections = projections});
+                  .projections = projections,
+                  .usedAsSatellite = usedAsSatellite});
+
+    VPackSlice usedShard = it.get("usedShard");
+    if (usedShard.isString()) {
+      idx.usedShard = usedShard.copyString();
+    }
   }
 
   TRI_ASSERT(_indexInfos.size() >= 2);
@@ -144,7 +152,13 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
     builder.openObject();
     // TODO: check if this works in cluster, where we likely need shards and not
     // collections
-    builder.add("collection", VPackValue(it.collection->name()));
+    if (!it.usedShard.empty()) {
+      builder.add("collection", VPackValue(it.usedShard));
+      builder.add("usedShard", VPackValue(it.usedShard));
+    } else {
+      builder.add("collection", VPackValue(it.collection->name()));
+    }
+
     // out variable
     builder.add(VPackValue("outVariable"));
     it.outVariable->toVelocyPack(builder);
@@ -153,6 +167,7 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
     it.condition->toVelocyPack(builder, flags);
     // projections
     it.projections.toVelocyPack(builder);
+    builder.add("usedAsSatellite", VPackValue(it.usedAsSatellite));
     // index
     builder.add(VPackValue("index"));
     it.index->toVelocyPack(builder,
@@ -217,10 +232,12 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
       outVariable = plan->getAst()->variables()->createVariable(outVariable);
     }
     indexInfos.emplace_back(IndexInfo{.collection = it.collection,
+                                      .usedShard = it.usedShard,
                                       .outVariable = outVariable,
                                       .condition = it.condition->clone(),
                                       .index = it.index,
-                                      .projections = it.projections});
+                                      .projections = it.projections,
+                                      .usedAsSatellite = it.usedAsSatellite});
   }
 
   auto c =
@@ -287,6 +304,10 @@ std::vector<Variable const*> JoinNode::getVariablesSetHere() const {
 }
 
 std::vector<JoinNode::IndexInfo> const& JoinNode::getIndexInfos() const {
+  return _indexInfos;
+}
+
+std::vector<JoinNode::IndexInfo>& JoinNode::getIndexInfos() {
   return _indexInfos;
 }
 
