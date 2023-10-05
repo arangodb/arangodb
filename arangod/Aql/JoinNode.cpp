@@ -260,14 +260,14 @@ CostEstimate JoinNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
   size_t incoming = estimate.estimatedNrItems;
 
-  size_t totalItems = 0;
-  double totalCost = 0.0;
+  size_t totalItems = 1;
+  double totalCost = 1.0;
 
   for (auto const& it : _indexInfos) {
     Index::FilterCosts costs = costsForIndexInfo(it);
     // TODO: perhaps we should multiply here
-    totalItems += costs.estimatedItems;
-    totalCost += costs.estimatedCosts;
+    totalItems *= costs.estimatedItems;
+    totalCost *= costs.estimatedCosts;
   }
 
   estimate.estimatedNrItems *= totalItems;
