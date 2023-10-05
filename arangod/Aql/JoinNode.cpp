@@ -125,6 +125,12 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
 
     bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
 
+    std::unique_ptr<Expression> filter = nullptr;
+    if (auto fs = it.get("filter"); !fs.isNone()) {
+      filter = std::make_unique<Expression>(plan->getAst(),
+                                            plan->getAst()->createNode(fs));
+    }
+
     auto& idx = _indexInfos.emplace_back(
         IndexInfo{.collection = coll,
                   .outVariable = outVariable,
@@ -170,6 +176,11 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
     builder.add("indexCoversProjections",
                 VPackValue(it.projections.usesCoveringIndex()));
     builder.add("usedAsSatellite", VPackValue(it.usedAsSatellite));
+    // filter
+    if (it.filter) {
+      builder.add(VPackValue("filter"));
+      it.filter->toVelocyPack(builder, false);
+    }
     // index
     builder.add(VPackValue("index"));
     it.index->toVelocyPack(builder,

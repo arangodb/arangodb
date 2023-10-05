@@ -9064,11 +9064,6 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
     // - reverse iteration
     // - support from GatherNodes
     auto nodeQualifies = [](IndexNode const& indexNode) {
-      if (indexNode.filter() != nullptr) {
-        // IndexNode has post-filter condition
-        return false;
-      }
-
       if (indexNode.condition() == nullptr) {
         // IndexNode does not have an index lookup condition
         return false;
@@ -9233,6 +9228,8 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   .collection = c->collection(),
                   .outVariable = c->outVariable(),
                   .condition = c->condition()->clone(),
+                  .filter = c->hasFilter() ? c->filter()->clone(plan->getAst())
+                                           : nullptr,
                   .index = c->getIndexes()[0],
                   .projections = c->projections(),
                   .usedAsSatellite = c->isUsedAsSatellite()});

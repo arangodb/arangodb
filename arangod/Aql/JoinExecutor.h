@@ -72,6 +72,9 @@ struct JoinExecutorInfos {
 
     // Values used for projection
     Projections projections;
+
+    // post filter expression
+    std::unique_ptr<Expression> filter;
   };
 
   std::vector<IndexInfo> indexes;
