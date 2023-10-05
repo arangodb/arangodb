@@ -418,6 +418,8 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   std::uint64_t batchesProduced = 0;
   std::uint64_t batchSize = _options.batchSize;
 
+  VPackBuilder projectionsBuilder;
+
   for (it->Seek(lowerBound.string()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(ci.upper) < 0);
 
@@ -435,8 +437,29 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
 
     TRI_ASSERT(batch != nullptr);
 
-    batch->add(velocypack::Slice(
-        reinterpret_cast<std::uint8_t const*>(it->value().data())));
+    auto documentSlice = velocypack::Slice(
+        reinterpret_cast<std::uint8_t const*>(it->value().data()));
+
+    auto storedSlice = [&]() -> VPackSlice {
+      if (_options.projections) {
+        projectionsBuilder.clear();
+        {
+          VPackObjectBuilder ob(&projectionsBuilder);
+          for (auto const& [projKey, path] : *_options.projections) {
+            auto value = documentSlice.get(path);
+            if (!value.isNone()) {
+              projectionsBuilder.add(projKey, value);
+            }
+          }
+        }
+
+        return projectionsBuilder.slice();
+      }
+
+      return documentSlice;
+    }();
+
+    batch->add(storedSlice);
     ++docsProduced;
 
     if (batch->byteSize() >= batchSize ||
