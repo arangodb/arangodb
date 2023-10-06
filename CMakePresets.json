@@ -102,6 +102,13 @@
       }
     },
     {
+      "hidden": true,
+      "name": "no-v8",
+      "cacheVariables": {
+        "USE_V8": "Off"
+      }
+    },
+    {
       "name": "community",
       "inherits": "release-base",
       "displayName": "Build ArangoDB Community Edition (Release Build)",
@@ -140,12 +147,30 @@
       "displayName": "PR Build ArangoDB Community Edition"
     },
     {
+      "name": "community-pr-no-v8",
+      "inherits": [
+        "pr",
+        "community",
+				"no-v8"
+      ],
+      "displayName": "PR Build ArangoDB Community Edition (without V8)"
+    },
+    {
       "name": "community-pr",
       "inherits": [
         "maintainer",
         "community-pr-non-maintainer"
       ],
       "displayName": "PR Build ArangoDB Community Edition Maintainer Mode"
+    },
+    {
+      "name": "enterprise-pr-no-v8",
+      "inherits": [
+        "pr",
+        "enterprise",
+				"no-v8"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition (without V8)"
     },
     {
       "name": "enterprise-pr-non-maintainer",
@@ -257,12 +282,20 @@
       "configurePreset": "community-pr"
     },
     {
+      "name": "community-pr-no-v8",
+      "configurePreset": "community-pr-no-v8"
+    },
+    {
       "name": "community-pr-non-maintainer",
       "configurePreset": "community-pr-non-maintainer"
     },
     {
       "name": "enterprise-pr",
       "configurePreset": "enterprise-pr"
+    },
+    {
+      "name": "enterprise-pr-no-v8",
+      "configurePreset": "enterprise-pr-no-v8"
     },
     {
       "name": "enterprise-pr-non-maintainer",

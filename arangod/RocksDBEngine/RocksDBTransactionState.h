@@ -29,6 +29,7 @@
 #include <limits>
 
 #include "Basics/Common.h"
+#include "Cache/Transaction.h"
 #include "Containers/SmallVector.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -51,10 +52,6 @@ class Iterator;
 }  // namespace rocksdb
 
 namespace arangodb {
-
-namespace cache {
-struct Transaction;
-}
 
 class LogicalCollection;
 class LogicalDataSource;
@@ -154,11 +151,11 @@ class RocksDBTransactionState : public TransactionState {
   void cleanupTransaction() noexcept;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::atomic<uint32_t> _users;
+  std::atomic<uint32_t> _users{0};
 #endif
 
   /// @brief cache transaction to unblock banished keys
-  cache::Transaction* _cacheTx;
+  cache::Transaction _cacheTx;
 };
 
 /// @brief a struct that makes sure that the same RocksDBTransactionState

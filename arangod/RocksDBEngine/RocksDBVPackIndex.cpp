@@ -2955,7 +2955,7 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
     }
 
     if constexpr (isUnique) {
-      return RocksDBValue::documentId(_iterator->key());
+      return RocksDBValue::documentId(_iterator->value());
     } else {
       return RocksDBKey::indexDocumentId(_iterator->key());
     }
