@@ -1,6 +1,8 @@
 # -*- mode: CMAKE; -*-
 
-include(InstallArangoDBJSClient)
+if (USE_V8)
+  include(InstallArangoDBJSClient)
+endif ()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
@@ -29,8 +31,11 @@ target_link_libraries(arango_shell
   boost_system
   boost_boost
   fuerte
-  v8_interface
 )
+
+if (USE_V8)
+  target_link_libraries(arango_shell v8_interface)
+endif()
 
 target_include_directories(arango_shell PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -358,71 +363,74 @@ endif ()
 ## arangosh
 ################################################################################
 
-if (MSVC AND NOT(SKIP_PACKAGING))
-  generate_product_version(ProductVersionFiles_arangosh
-    NAME arangosh
-    FILE_DESCRIPTION ${ARANGOSH_FRIENDLY_STRING}
-    ICON ${ARANGO_ICON}
-    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
-    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
-    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
-    VERSION_REVISION ${BUILD_ID}
+if (USE_V8)
+  if (MSVC AND NOT(SKIP_PACKAGING))
+    generate_product_version(ProductVersionFiles_arangosh
+      NAME arangosh
+      FILE_DESCRIPTION ${ARANGOSH_FRIENDLY_STRING}
+      ICON ${ARANGO_ICON}
+      VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+      VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+      VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+      VERSION_REVISION ${BUILD_ID}
+    )
+  endif ()
+
+  set(FUZZER "")
+  if (USE_FAILURE_TESTS)
+      set(FUZZER "Shell/RequestFuzzer.cpp")
+  endif()
+  add_executable(${BIN_ARANGOSH}
+    ${ProductVersionFiles_arangosh}
+    ../cmake/activeCodePage.manifest
+    Import/AutoTuneThread.cpp
+    Import/ImportHelper.cpp
+    Import/SenderThread.cpp
+    Shell/ShellFeature.cpp
+    Shell/TelemetricsHandler.cpp
+    Shell/V8ClientConnection.cpp
+    Shell/V8ShellFeature.cpp
+    Shell/ProcessMonitoringFeature.cpp
+    Shell/arangosh.cpp
+    Shell/v8-deadline.cpp
+    ${FUZZER}
   )
+
+  target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
+
+  target_link_libraries(${BIN_ARANGOSH}
+    arango
+    arango_v8
+    ${V8_LIBS}
+    fuerte
+    ${MSVC_LIBS}
+    ${SYSTEM_LIBRARIES}
+    boost_system
+    boost_boost
+    arango_shell
+  )
+
+  install(
+    TARGETS ${BIN_ARANGOSH}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+  install_config(arangosh)
+
+  if (NOT USE_PRECOMPILED_V8)
+    add_dependencies(arangosh zlibstatic v8_build)
+  else ()
+    add_dependencies(arangosh zlibstatic)
+  endif ()
+
+  if (USE_JEMALLOC)
+    add_dependencies(arangosh jemalloc_build)
+  endif ()
+
 endif ()
-
-set(FUZZER "")
-if (USE_FAILURE_TESTS)
-    set(FUZZER "Shell/RequestFuzzer.cpp")
-endif()
-add_executable(${BIN_ARANGOSH}
-  ${ProductVersionFiles_arangosh}
-  ../cmake/activeCodePage.manifest
-  Import/AutoTuneThread.cpp
-  Import/ImportHelper.cpp
-  Import/SenderThread.cpp
-  Shell/ShellFeature.cpp
-  Shell/TelemetricsHandler.cpp
-  Shell/V8ClientConnection.cpp
-  Shell/V8ShellFeature.cpp
-  Shell/ProcessMonitoringFeature.cpp
-  Shell/arangosh.cpp
-  Shell/v8-deadline.cpp
-  ${FUZZER}
-)
-
-target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
-
-target_link_libraries(${BIN_ARANGOSH}
-  arango
-  arango_v8
-  ${V8_LIBS}
-  fuerte
-  ${MSVC_LIBS}
-  ${SYSTEM_LIBRARIES}
-  boost_system
-  boost_boost
-  arango_shell
-)
-
+  
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})
-
-install(
-  TARGETS ${BIN_ARANGOSH}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-install_config(arangosh)
-
-if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangosh zlibstatic v8_build)
-else ()
-  add_dependencies(arangosh zlibstatic)
-endif ()
-
-if (USE_JEMALLOC)
-  add_dependencies(arangosh jemalloc_build)
-endif ()
 
 ################################################################################
 ## arangovpack
@@ -476,32 +484,38 @@ endif ()
 ## foxx-manager
 ################################################################################
 
-install_command_alias(${BIN_ARANGOSH}
-  ${CMAKE_INSTALL_BINDIR}
-  foxx-manager)
+if (USE_V8)
+  install_command_alias(${BIN_ARANGOSH}
+    ${CMAKE_INSTALL_BINDIR}
+    foxx-manager)
 
-install_config(foxx-manager)
+  install_config(foxx-manager)
+endif ()
 
 ################################################################################
 ## arangoinspect
 ################################################################################
 
-install_command_alias(${BIN_ARANGOSH}
-  ${CMAKE_INSTALL_BINDIR}
-  arangoinspect)
+if (USE_V8)
+  install_command_alias(${BIN_ARANGOSH}
+    ${CMAKE_INSTALL_BINDIR}
+    arangoinspect)
 
-install_config(arangoinspect)
+  install_config(arangoinspect)
+endif ()
 
 add_custom_target(client-tools
-    DEPENDS arangosh
-            arangodump
+    DEPENDS arangodump
             arangoexport
             arangoimport
             arangorestore
             arangobench
             arangovpack)
 
+if (USE_V8)
+  add_dependencies(client-tools arangosh)
+endif ()
+
 if (USE_ENTERPRISE)
   add_dependencies(client-tools arangobackup)
 endif ()
-

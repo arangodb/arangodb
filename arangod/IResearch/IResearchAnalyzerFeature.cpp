@@ -58,6 +58,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearchAqlAnalyzer.h"
@@ -1085,7 +1086,11 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(true);
+#ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
   // used for registering IResearch analyzer functions
   startsAfter<aql::AqlFunctionFeature>();
   // used for getting the system database
