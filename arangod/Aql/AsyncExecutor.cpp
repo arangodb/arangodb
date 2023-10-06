@@ -103,7 +103,7 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
 
   _internalState = AsyncState::InProgress;
   bool queued =
-      _sharedState->asyncExecuteAndWakeup([this, stack](bool const isAsync) {
+      _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
         std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
 
         try {
