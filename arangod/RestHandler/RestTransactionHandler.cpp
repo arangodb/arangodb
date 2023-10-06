@@ -42,10 +42,12 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
 #include "Utils/ExecContext.h"
+#ifdef USE_V8
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Transactions.h"
+#endif
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -333,6 +335,7 @@ void RestTransactionHandler::generateTransactionResult(
 
 /// start a legacy JS transaction
 void RestTransactionHandler::executeJSTransaction() {
+#ifdef USE_V8
   if (!server().isEnabled<V8DealerFeature>()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_NOT_IMPLEMENTED,
@@ -411,18 +414,25 @@ void RestTransactionHandler::executeJSTransaction() {
   } catch (...) {
     generateError(Result(TRI_ERROR_INTERNAL));
   }
+#else
+  generateError(
+      rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+      "JavaScript operations are not available in this build of ArangoDB");
+#endif
 }
 
 void RestTransactionHandler::cancel() {
   // cancel v8 transaction
   WRITE_LOCKER(writeLock, _lock);
   _canceled.store(true);
+#ifdef USE_V8
   if (_v8Context != nullptr) {
     auto isolate = _v8Context->_isolate;
     if (!isolate->IsExecutionTerminating()) {
       isolate->TerminateExecution();
     }
   }
+#endif
 }
 
 /// @brief returns the short id of the server which should handle this

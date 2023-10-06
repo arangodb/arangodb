@@ -79,7 +79,13 @@ struct CalculationExecutorInfos {
   std::vector<std::pair<VariableId, RegisterId>> _expVarToRegs;
 };
 
-enum class CalculationType { Condition, V8Condition, Reference };
+enum class CalculationType {
+  Condition,
+#ifdef USE_V8
+  V8Condition,
+#endif
+  Reference
+};
 
 template<CalculationType calculationType>
 class CalculationExecutor {
@@ -109,6 +115,7 @@ class CalculationExecutor {
   // specialized implementations
   void doEvaluation(InputAqlItemRow& input, OutputAqlItemRow& output);
 
+#ifdef USE_V8
   // Only for V8Conditions
   template<CalculationType U = calculationType,
            typename = std::enable_if_t<U == CalculationType::V8Condition>>
@@ -118,6 +125,7 @@ class CalculationExecutor {
   template<CalculationType U = calculationType,
            typename = std::enable_if_t<U == CalculationType::V8Condition>>
   void exitContext() noexcept;
+#endif
 
   [[nodiscard]] bool shouldExitContextBetweenBlocks() const noexcept;
 

@@ -27,7 +27,9 @@
 #include <string>
 #include <unordered_map>
 
+#ifdef USE_V8
 #include <v8.h>
+#endif
 #include <velocypack/Slice.h>
 
 #include "Aql/types.h"
@@ -116,12 +118,14 @@ class Expression {
   std::string typeString();
 
   // @brief invoke JavaScript aql functions with args as param.
+#ifdef USE_V8
   static AqlValue invokeV8Function(ExpressionContext& expressionContext,
                                    std::string const& jsName,
                                    std::string const& ucInvokeFN,
                                    char const* AFN, bool rethrowV8Exception,
                                    size_t callArgs, v8::Handle<v8::Value>* args,
                                    bool& mustDestroy);
+#endif
 
   /// @brief check whether this is an attribute access of any degree (e.g. a.b,
   /// a.b.c, ...)

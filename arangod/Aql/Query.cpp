@@ -62,13 +62,17 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "Transaction/V8Context.h"
+#endif
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/Events.h"
+#ifdef USE_V8
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -103,7 +107,9 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _queryString(std::move(queryString)),
       _transactionContext(std::move(ctx)),
       _sharedState(std::move(sharedState)),
+#ifdef USE_V8
       _v8Context(nullptr),
+#endif
       _bindParameters(_resourceMonitor, bindParameters),
       _queryOptions(std::move(options)),
       _trx(nullptr),
@@ -114,11 +120,13 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
       _resultCode(std::nullopt),
+#ifdef USE_V8
       _contextOwnedByExterior(_transactionContext->isV8Context() &&
                               v8::Isolate::GetCurrent() != nullptr),
       _embeddedQuery(_transactionContext->isV8Context() &&
                      transaction::V8Context::isEmbedded()),
       _registeredInV8Context(false),
+#endif
       _queryHashCalculated(false),
       _registeredQueryInTrx(false),
       _allowDirtyReads(false),
@@ -128,6 +136,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
         TRI_ERROR_INTERNAL, "failed to create query transaction context");
   }
 
+#ifdef USE_V8
   if (_contextOwnedByExterior) {
     // copy transaction options from global state into our local query options
     auto state = transaction::V8Context::getParentState();
@@ -135,6 +144,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _queryOptions.transactionOptions = state->options();
     }
   }
+#endif
 
   ProfileLevel level = _queryOptions.profile;
   if (level >= ProfileLevel::TraceOne) {
@@ -707,6 +717,7 @@ QueryResult Query::executeSync() {
   } while (true);
 }
 
+#ifdef USE_V8
 // execute an AQL query: may only be called with an active V8 handle scope
 QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
@@ -915,6 +926,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
   logAtEnd(queryResult);
   return queryResult;
 }
+#endif
 
 ExecutionState Query::finalize(VPackBuilder& extras) {
   ensureExecutionTime();
@@ -1144,6 +1156,7 @@ bool Query::isAsyncQuery() const noexcept {
 
 /// @brief enter a V8 context
 void Query::enterV8Context() {
+#ifdef USE_V8
   auto registerCtx = [&] {
     // register transaction in context
     if (_transactionContext->isV8Context()) {
@@ -1184,10 +1197,12 @@ void Query::enterV8Context() {
     registerCtx();
     _registeredInV8Context = true;
   }
+#endif
 }
 
 /// @brief return a V8 context
 void Query::exitV8Context() {
+#ifdef USE_V8
   auto unregister = [&] {
     if (_transactionContext->isV8Context()) {  // necessary for stream trx
       auto ctx =
@@ -1216,6 +1231,7 @@ void Query::exitV8Context() {
     unregister();
     _registeredInV8Context = false;
   }
+#endif
 }
 
 /// @brief initializes the query
