@@ -42,7 +42,6 @@ SharedQueryState::SharedQueryState(ArangodServer& server, Scheduler* scheduler)
       _scheduler(scheduler),
       _wakeupCb(nullptr),
       _numWakeups(0),
-      _cbVersion(0),
       _maxTasks(static_cast<unsigned>(
           _server.getFeature<QueryRegistryFeature>().maxParallelism())),
       _numTasks(0),
@@ -53,7 +52,6 @@ void SharedQueryState::invalidate() {
     std::lock_guard<std::mutex> guard(_mutex);
     _wakeupCb = nullptr;
     _valid = false;
-    ++_cbVersion;
   }
   _cv.notify_all();  // wakeup everyone else
 
@@ -93,14 +91,12 @@ void SharedQueryState::waitForAsyncWakeup() {
 void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   std::lock_guard<std::mutex> guard(_mutex);
   _wakeupCb = cb;
-  ++_cbVersion;
   // intentionally do not clobber _numWakeups here
 }
 
 void SharedQueryState::resetWakeupHandler() {
   std::lock_guard<std::mutex> guard(_mutex);
   _wakeupCb = nullptr;
-  ++_cbVersion;
   // intentionally do not clobber _numWakeups here
 }
 

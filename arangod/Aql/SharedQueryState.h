@@ -153,7 +153,6 @@ class SharedQueryState final
   std::function<bool()> _wakeupCb;
 
   unsigned _numWakeups;  // number of times
-  unsigned _cbVersion;   // increased once callstack is done
 
   unsigned const _maxTasks;
   std::atomic<unsigned> _numTasks;
