@@ -90,47 +90,59 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
           // TODO post filter based on document value
           // TODO do we really want to check/populate cache?
-          _infos.indexes[k].collection->getCollection()->getPhysical()->lookup(
-              &_trx, docIds[k],
-              {[&](LocalDocumentId token, VPackSlice doc) {
-                 if (idx.projections.empty()) {
-                   output.moveValueInto(
-                       _infos.indexes[k].documentOutputRegister, _currentRow,
-                       doc);
-                 } else {
-                   _projectionsBuilder.clear();
-                   _projectionsBuilder.openObject(true);
-                   idx.projections.toVelocyPackFromDocument(_projectionsBuilder,
-                                                            doc, &_trx);
-                   _projectionsBuilder.close();
-                   output.moveValueInto(
-                       _infos.indexes[k].documentOutputRegister, _currentRow,
-                       _projectionsBuilder.slice());
-                 }
+          auto result =
+              _infos.indexes[k]
+                  .collection->getCollection()
+                  ->getPhysical()
+                  ->lookup(&_trx, docIds[k],
+                           {[&](LocalDocumentId token, VPackSlice doc) {
+                              if (idx.projections.empty()) {
+                                output.moveValueInto(
+                                    _infos.indexes[k].documentOutputRegister,
+                                    _currentRow, doc);
+                              } else {
+                                _projectionsBuilder.clear();
+                                _projectionsBuilder.openObject(true);
+                                idx.projections.toVelocyPackFromDocument(
+                                    _projectionsBuilder, doc, &_trx);
+                                _projectionsBuilder.close();
+                                output.moveValueInto(
+                                    _infos.indexes[k].documentOutputRegister,
+                                    _currentRow, _projectionsBuilder.slice());
+                              }
 
-                 return true;
-               },
-               [&](LocalDocumentId token, std::unique_ptr<std::string>& doc) {
-                 if (idx.projections.empty()) {
-                   output.moveValueInto(
-                       _infos.indexes[k].documentOutputRegister, _currentRow,
-                       &doc);
-                 } else {
-                   _projectionsBuilder.clear();
-                   _projectionsBuilder.openObject(true);
-                   idx.projections.toVelocyPackFromDocument(
-                       _projectionsBuilder,
-                       VPackSlice(
-                           reinterpret_cast<uint8_t const*>(doc->data())),
-                       &_trx);
-                   _projectionsBuilder.close();
-                   output.moveValueInto(
-                       _infos.indexes[k].documentOutputRegister, _currentRow,
-                       _projectionsBuilder.slice());
-                 }
-                 return true;
-               }},
-              {});
+                              return true;
+                            },
+                            [&](LocalDocumentId token,
+                                std::unique_ptr<std::string>& doc) {
+                              if (idx.projections.empty()) {
+                                output.moveValueInto(
+                                    _infos.indexes[k].documentOutputRegister,
+                                    _currentRow, &doc);
+                              } else {
+                                _projectionsBuilder.clear();
+                                _projectionsBuilder.openObject(true);
+                                idx.projections.toVelocyPackFromDocument(
+                                    _projectionsBuilder,
+                                    VPackSlice(reinterpret_cast<uint8_t const*>(
+                                        doc->data())),
+                                    &_trx);
+                                _projectionsBuilder.close();
+                                output.moveValueInto(
+                                    _infos.indexes[k].documentOutputRegister,
+                                    _currentRow, _projectionsBuilder.slice());
+                              }
+                              return true;
+                            }},
+                           {});
+          if (result.fail()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                result.errorNumber(),
+                basics::StringUtils::concatT(
+                    "failed to lookup indexed document ", docIds[k].id(),
+                    " for collection ", idx.collection->name(), ": ",
+                    result.errorMessage()));
+          }
         }
       }
 

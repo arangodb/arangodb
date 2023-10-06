@@ -31,6 +31,7 @@
 #include "IResearch/IResearchViewStoredValues.h"
 #include "IResearch/IResearchViewSort.h"
 #include "Containers/FlatHashMap.h"
+#include "Containers/NodeHashMap.h"
 #include "Containers/FlatHashSet.h"
 
 #include <unicode/locid.h>
@@ -177,12 +178,11 @@ struct IResearchInvertedIndexMetaIndexingContext {
 
   bool hasNested() const noexcept { return _hasNested; }
 
-  absl::flat_hash_map<std::string_view,
-                      IResearchInvertedIndexMetaIndexingContext>
-      _fields;
-  absl::flat_hash_map<std::string_view,
-                      IResearchInvertedIndexMetaIndexingContext>
-      _nested;
+  using Fields =
+      containers::NodeHashMap<std::string_view,
+                              IResearchInvertedIndexMetaIndexingContext>;
+  Fields _fields;
+  Fields _nested;
   std::array<FieldMeta::Analyzer, 1> const* _analyzers;
   size_t _primitiveOffset;
   IResearchInvertedIndexMeta const* _meta;

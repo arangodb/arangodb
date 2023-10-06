@@ -53,10 +53,10 @@ class TransactionalStore {
   };
 
   struct Transaction {
-    arangodb::cache::Transaction* cache;
+    arangodb::cache::Transaction cache;
     rocksdb::Transaction* rocks;
 
-    Transaction(arangodb::cache::Transaction* c, rocksdb::Transaction* r);
+    Transaction(arangodb::cache::Transaction c, rocksdb::Transaction* r);
   };
 
  public:
