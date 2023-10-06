@@ -27,9 +27,6 @@
 #include <condition_variable>
 #include <function2.hpp>
 
-#if 0
-#include "Logger/LogMacros.h"
-#endif
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -52,6 +49,8 @@ class SharedQueryState final
 
   void invalidate();
 
+  bool consumeWakeup();
+
   /// @brief executeAndWakeup is to be called on the query object to
   /// continue execution in this query part, if the query got paused
   /// because it is waiting for network responses. The idea is that a
@@ -69,38 +68,13 @@ class SharedQueryState final
   void executeAndWakeup(F&& cb) {
     std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
-#if 0
-      LOG_DEVEL << this << " " << __func__
-                << ": not valid with cbVersion: " << _cbVersion
-                << ", wakeupCb: " << (_wakeupCb != nullptr)
-                << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
       guard.unlock();
       _cv.notify_all();
       return;
     }
 
-#if 0
-    LOG_DEVEL << this << " " << __func__
-              << ": executing cb with cbVersion: " << _cbVersion
-              << ", wakeupCb: " << (_wakeupCb != nullptr)
-              << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
     if (std::forward<F>(cb)()) {
-#if 0
-      LOG_DEVEL << this << " " << __func__
-                << ": notifying waiter with cbVersion: " << _cbVersion
-                << ", wakeupCb: " << (_wakeupCb != nullptr)
-                << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
       notifyWaiter(guard);
-    } else {
-#if 0
-      LOG_DEVEL << this << " " << __func__
-                << ": not notifying waiter with cbVersion: " << _cbVersion
-                << ", wakeupCb: " << (_wakeupCb != nullptr)
-                << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
     }
   }
 
@@ -108,12 +82,6 @@ class SharedQueryState final
   void executeLocked(F&& cb) {
     std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
-#if 0
-      LOG_DEVEL << this << " " << __func__
-                << ": not valid with cbVersion: " << _cbVersion
-                << ", wakeupCb: " << (_wakeupCb != nullptr)
-                << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
       guard.unlock();
       _cv.notify_all();
       return;

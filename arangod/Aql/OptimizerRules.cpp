@@ -8432,7 +8432,7 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
   };
 
   struct AsyncPrefetchEnabler : WalkerWorkerBase<ExecutionNode> {
-    AsyncPrefetchEnabler() { stack.emplace_back(0); }
+    AsyncPrefetchEnabler() { stack.push_back(0); }
 
     bool before(ExecutionNode* n) override {
       auto eligibility = n->canUseAsyncPrefetching();
@@ -8450,13 +8450,11 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
     }
 
     void after(ExecutionNode* n) override {
-      TRI_ASSERT(!stack.empty());
-      if (n->getType() == EN::REMOTE) {
-        ++stack.back();
-      }
       auto eligibility = n->canUseAsyncPrefetching();
+      TRI_ASSERT(!stack.empty());
       if (stack.back() == 0 &&
           eligibility == AsyncPrefetchEligibility::kEnableForNode &&
+          !n->isInSubquery() &&
           (!n->hasParent() || n->getFirstParent()->getType() != EN::REMOTE)) {
         // we are currently excluding any node inside a subquery and all
         // nodes that are direct dependencies of REMOTE nodes from the
@@ -8473,8 +8471,7 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
     }
 
     bool enterSubquery(ExecutionNode*, ExecutionNode*) override {
-      // this will disable the optimization for subqueries right now
-      stack.push_back(1);
+      stack.push_back(0);
       return true;
     }
 

@@ -25,14 +25,11 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
+#include "GeneralServer/RequestLane.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Context.h"
-#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -54,12 +51,6 @@ SharedQueryState::SharedQueryState(ArangodServer& server, Scheduler* scheduler)
 void SharedQueryState::invalidate() {
   {
     std::lock_guard<std::mutex> guard(_mutex);
-#if 0
-    LOG_DEVEL << this << " " << __func__
-              << ": enter with cbVersion: " << _cbVersion
-              << ", wakeupCb: " << (_wakeupCb != nullptr)
-              << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
     _wakeupCb = nullptr;
     _valid = false;
     ++_cbVersion;
@@ -72,15 +63,18 @@ void SharedQueryState::invalidate() {
   }
 }
 
+bool SharedQueryState::consumeWakeup() {
+  std::lock_guard<std::mutex> guard(_mutex);
+  if (_numWakeups > 0) {
+    --_numWakeups;
+    return true;
+  }
+  return false;
+}
+
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
 void SharedQueryState::waitForAsyncWakeup() {
   std::unique_lock<std::mutex> guard(_mutex);
-#if 0
-  LOG_DEVEL << this << " " << __func__
-            << ": enter with cbVersion: " << _cbVersion
-            << ", wakeupCb: " << (_wakeupCb != nullptr) << ", valid: " << _valid
-            << ", numWakeups: " << _numWakeups;
-#endif
   if (!_valid) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
@@ -92,12 +86,6 @@ void SharedQueryState::waitForAsyncWakeup() {
     TRI_ASSERT(_numWakeups > 0);
     --_numWakeups;
   }
-#if 0
-  LOG_DEVEL << this << " " << __func__
-            << ": exit with cbVersion: " << _cbVersion
-            << ", wakeupCb: " << (_wakeupCb != nullptr) << ", valid: " << _valid
-            << ", numWakeups: " << _numWakeups;
-#endif
 }
 
 /// @brief setter for the continue handler:
@@ -105,39 +93,21 @@ void SharedQueryState::waitForAsyncWakeup() {
 void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   std::lock_guard<std::mutex> guard(_mutex);
   _wakeupCb = cb;
-  _numWakeups = 0;
   ++_cbVersion;
-#if 0
-  LOG_DEVEL << this << " " << __func__
-            << ": done with cbVersion: " << _cbVersion
-            << ", wakeupCb: " << (_wakeupCb != nullptr) << ", valid: " << _valid
-            << ", numWakeups: " << _numWakeups;
-#endif
+  // intentionally do not clobber _numWakeups here
 }
 
 void SharedQueryState::resetWakeupHandler() {
   std::lock_guard<std::mutex> guard(_mutex);
   _wakeupCb = nullptr;
-  _numWakeups = 0;
   ++_cbVersion;
-#if 0
-  LOG_DEVEL << this << " " << __func__
-            << ": done with cbVersion: " << _cbVersion
-            << ", wakeupCb: " << (_wakeupCb != nullptr) << ", valid: " << _valid
-            << ", numWakeups: " << _numWakeups;
-#endif
+  // intentionally do not clobber _numWakeups here
 }
 
 /// execute the _continueCallback. must hold _mutex,
 void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
   TRI_ASSERT(guard);
   if (!_valid) {
-#if 0
-    LOG_DEVEL << this << " " << __func__
-              << ": not valid with cbVersion: " << _cbVersion
-              << ", wakeupCb: " << (_wakeupCb != nullptr)
-              << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
     guard.unlock();
     _cv.notify_all();
     return;
@@ -145,45 +115,20 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
 
   unsigned n = _numWakeups++;
   if (!_wakeupCb) {
-#if 0
-    LOG_DEVEL << this << " " << __func__
-              << ": no callback with cbVersion: " << _cbVersion
-              << ", wakeupCb: " << (_wakeupCb != nullptr)
-              << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
     guard.unlock();
     _cv.notify_one();
     return;
   }
 
   if (n > 0) {
-#if 0    
-    LOG_DEVEL << this << " " << __func__
-              << ": n > 0 with cbVersion: " << _cbVersion
-              << ", wakeupCb: " << (_wakeupCb != nullptr)
-              << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
     return;
   }
-
-#if 0
-  LOG_DEVEL << this << " " << __func__
-            << ": queuing handler with cbVersion: " << _cbVersion
-            << ", wakeupCb: " << (_wakeupCb != nullptr) << ", valid: " << _valid
-            << ", numWakeups: " << _numWakeups;
-#endif
 
   queueHandler();
 }
 
 void SharedQueryState::queueHandler() {
   if (_numWakeups == 0 || !_wakeupCb || !_valid) {
-#if 0
-    LOG_DEVEL << this << " " << __func__
-              << ": not queuing handler with cbVersion: " << _cbVersion
-              << ", wakeupCb: " << (_wakeupCb != nullptr)
-              << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
     return;
   }
 
@@ -196,66 +141,42 @@ void SharedQueryState::queueHandler() {
                         ? RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR
                         : RequestLane::CLUSTER_AQL;
 
-  bool queued = _scheduler->tryBoundedQueue(
-      lane, [self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
-        TRI_ASSERT(cb);
-        std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
+  bool queued =
+      _scheduler->tryBoundedQueue(lane, [this, self = shared_from_this()]() {
+        std::unique_lock<std::mutex> lck(self->_mutex);
 
-        do {
-          bool cntn = false;
-          try {
-            cntn = cb();
-          } catch (...) {
+        // check if we have a wakeup callback, and copy it under the
+        // lock if we have one
+        if (!_wakeupCb) {
+          return;
+        }
+
+        auto cb = _wakeupCb;
+        // execute callback without holding the lock
+        lck.unlock();
+
+        bool cntn = false;
+        try {
+          cntn = cb();
+        } catch (...) {
+        }
+
+        // re-acquire the lock
+        lck.lock();
+
+        if (!cntn || !self->_valid) {
+          self->queueHandler();
+        } else {
+          unsigned c = self->_numWakeups--;
+          TRI_ASSERT(c > 0);
+          if (c == 1) {
+            self->queueHandler();
           }
-
-          lck.lock();
-          if (v == self->_cbVersion) {
-#if 0      
-        LOG_DEVEL << this << " " << __func__
-                  << ": found callback with cbVersion: " << _cbVersion
-                  << ", wakeupCb: " << (_wakeupCb != nullptr)
-                  << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
-            unsigned c = self->_numWakeups--;
-            TRI_ASSERT(c > 0);
-            if (c == 1 || !cntn || !self->_valid) {
-#if 0
-          LOG_DEVEL << this << " " << __func__
-                    << ": breaking from loop with cbVersion: " << _cbVersion
-                    << ", wakeupCb: " << (_wakeupCb != nullptr)
-                    << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
-              break;
-            }
-          } else {
-#if 0
-        LOG_DEVEL << this << " " << __func__
-                  << ": wrong callback version with cbVersion: " << _cbVersion
-                  << ", wakeupCb: " << (_wakeupCb != nullptr)
-                  << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
-            return;
-          }
-          lck.unlock();
-        } while (true);
-
-        TRI_ASSERT(lck);
-#if 0
-    LOG_DEVEL << this << " " << __func__
-              << ": requeuing handler with cbVersion: " << _cbVersion
-              << ", wakeupCb: " << (_wakeupCb != nullptr)
-              << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
-        self->queueHandler();
+        }
       });
 
-  if (!queued) {  // just invalidate
-#if 0
-    LOG_DEVEL << this << " " << __func__
-              << ": not queued with cbVersion: " << _cbVersion
-              << ", wakeupCb: " << (_wakeupCb != nullptr)
-              << ", valid: " << _valid << ", numWakeups: " << _numWakeups;
-#endif
+  if (!queued) {
+    // just invalidate
     _wakeupCb = nullptr;
     _valid = false;
     _cv.notify_all();

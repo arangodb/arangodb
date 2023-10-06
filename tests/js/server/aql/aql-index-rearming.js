@@ -646,10 +646,6 @@ function VPackIndexRearmingSuite (unique) {
       assertEqual(2, indexNodes[0].indexes.length);
       assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
       assertEqual("UnitTestsIndex", indexNodes[0].indexes[1].name);
-      
-      require("console").error("explaining query");
-      db._explain(q, null, opts);
-      require("console").error("running query");
 
       let qr = db._query(q, null, opts);
       let stats = qr.getExtra().stats;
@@ -679,10 +675,6 @@ function VPackIndexRearmingSuite (unique) {
       assertEqual(2, indexNodes[0].indexes.length);
       assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
       assertEqual("UnitTestsIndex", indexNodes[0].indexes[1].name);
-      
-      require("console").error("explaining query");
-      db._explain(q, null, opts);
-      require("console").error("running query");
 
       let qr = db._query(q, null, opts);
       let stats = qr.getExtra().stats;

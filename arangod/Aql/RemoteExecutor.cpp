@@ -319,7 +319,7 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
     VPackSlice slice = response->slice();
     if (slice.isObject()) {
       VPackSlice errSlice = slice.get(StaticStrings::Error);
-      if (errSlice.isBool() && errSlice.getBool()) {
+      if (errSlice.isTrue()) {
         res = VelocyPackHelper::getNumericValue<ErrorCode>(
             slice, StaticStrings::ErrorNum, res);
         std::string_view ref = VelocyPackHelper::getStringView(
@@ -390,6 +390,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
     // a network timeout triggered and not continue with the query.
     req->timeout(std::chrono::seconds(2));
   }
+
   conn->sendRequest(
       std::move(req),
       [this, ticket, spec, sqs = _engine->sharedState()](
