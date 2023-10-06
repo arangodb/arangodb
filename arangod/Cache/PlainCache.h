@@ -118,6 +118,11 @@ class PlainCache final : public Cache {
       Table::HashOrId bucket, std::uint64_t maxTries,
       bool singleOperation = true);
 
+  std::pair<::ErrorCode, Table::BucketLocker> getBucket(Table* table,
+                                                        Table::HashOrId bucket,
+                                                        std::uint64_t maxTries,
+                                                        bool singleOperation);
+
   static Table::BucketClearer bucketClearer(Cache* cache, Metadata* metadata);
 };
 

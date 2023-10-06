@@ -34,7 +34,10 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+
+#ifdef USE_V8
 #include "V8/v8-globals.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -85,13 +88,11 @@ CalculationExecutor<calculationType>::produceRows(
   TRI_IF_FAILURE("CalculationExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  ExecutorState state = ExecutorState::HASMORE;
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.
     TRI_ASSERT(!output.isFull());
-    std::tie(state, input) =
+    auto [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
 
@@ -118,6 +119,7 @@ CalculationExecutor<calculationType>::produceRows(
   return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
 }
 
+#ifdef USE_V8
 template<CalculationType calculationType>
 template<CalculationType U, typename>
 void CalculationExecutor<calculationType>::enterContext() {
@@ -135,6 +137,7 @@ void CalculationExecutor<calculationType>::exitContext() noexcept {
     _hasEnteredContext = false;
   }
 }
+#endif
 
 template<CalculationType calculationType>
 bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks()
@@ -182,9 +185,10 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+  output.moveValueInto(_infos.getOutputRegisterId(), input, &guard);
 }
 
+#ifdef USE_V8
 template<>
 void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     InputAqlItemRow& input, OutputAqlItemRow& output) {
@@ -216,7 +220,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+  output.moveValueInto(_infos.getOutputRegisterId(), input, &guard);
 
   if (input.blockHasMoreDataRowsAfterThis()) {
     // We will be called again before the fetcher needs to get a new block.
@@ -226,8 +230,11 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     contextGuard.cancel();
   }
 }
+#endif
 
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Condition>;
+#ifdef USE_V8
 template class ::arangodb::aql::CalculationExecutor<
     CalculationType::V8Condition>;
+#endif
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Reference>;

@@ -51,7 +51,9 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
+#ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
+#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "IResearch/AgencyMock.h"
@@ -91,8 +93,10 @@
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "V8/V8SecurityFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
@@ -181,9 +185,11 @@ static void SetupCommunicationFeaturePhase(MockServer& server) {
 
 static void SetupV8Phase(MockServer& server) {
   SetupCommunicationFeaturePhase(server);
+#ifdef USE_V8
   server.addFeature<V8FeaturePhase>(false);
   server.addFeature<V8DealerFeature>(false);
   server.addFeature<V8SecurityFeature>(false);
+#endif
 }
 
 static void SetupAqlPhase(MockServer& server) {

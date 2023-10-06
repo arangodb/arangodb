@@ -21,6 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "Aql/Query.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
@@ -242,9 +246,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto iterator =
       trx.indexScan(monitor, collectionName,
                     transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
-
-  iterator->allDocuments(
-      [&resultBuilder, &memoryScope](LocalDocumentId const&, VPackSlice slice) {
+  auto cb = IndexIterator::makeDocumentCallbackF(
+      [&resultBuilder, &memoryScope](LocalDocumentId, VPackSlice slice) {
         auto const& buffer = resultBuilder.bufferRef();
         size_t memoryUsageOld = buffer.size();
         resultBuilder.add(slice);
@@ -252,6 +255,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
         memoryScope.increase(buffer.size() - memoryUsageOld);
         return true;
       });
+  iterator->allDocuments(cb);
 
   resultBuilder.close();
 

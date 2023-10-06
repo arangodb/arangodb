@@ -135,6 +135,11 @@ class TransactionalCache final : public Cache {
       Table::HashOrId bucket, std::uint64_t maxTries,
       bool singleOperation = true);
 
+  std::tuple<::ErrorCode, Table::BucketLocker> getBucket(Table* table,
+                                                         Table::HashOrId bucket,
+                                                         std::uint64_t maxTries,
+                                                         bool singleOperation);
+
   static Table::BucketClearer bucketClearer(Cache* cache, Metadata* metadata);
 };
 

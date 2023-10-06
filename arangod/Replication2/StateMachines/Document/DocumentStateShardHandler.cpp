@@ -27,13 +27,21 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocBaseLogManager.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
+#include "Transaction/V8Context.h"
+#endif
+#include "Utils/SingleCollectionTransaction.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateShardHandler::DocumentStateShardHandler(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
     std::shared_ptr<IMaintenanceActionExecutor> maintenance)
-    : _gid(std::move(gid)), _maintenance(std::move(maintenance)) {
+    : _gid(std::move(gid)),
+      _maintenance(std::move(maintenance)),
+      _vocbase(vocbase) {
   auto manager = vocbase._logManager;
   // TODO this is more like a hack than an actual solution
   //  but for now its good enough
@@ -73,25 +81,33 @@ auto DocumentStateShardHandler::ensureShard(
   return true;
 }
 
-auto DocumentStateShardHandler::modifyShard(
-    ShardID shard, CollectionID collection,
-    std::shared_ptr<VPackBuilder> properties, std::string followersToDrop)
-    -> ResultT<bool> {
-  std::unique_lock lock(_shardMap.mutex);
+auto DocumentStateShardHandler::modifyShard(ShardID shard,
+                                            CollectionID collection,
+                                            velocypack::SharedSlice properties)
+    -> Result {
+  // The shard map is not updated with the new properties.
+  // We are in progress of reworking the snapshot transfer to accomodate such
+  // changes. I am not even sure whether this map is still needed at all, we'll
+  // figure it out in an upcoming PR.
+  std::shared_lock lock(_shardMap.mutex);
   if (!_shardMap.shards.contains(shard)) {
-    return false;
+    LOG_TOPIC("5de59", TRACE, arangodb::Logger::REPLICATED_STATE)
+        << "Shard " << shard << " not found in database " << _vocbase.name()
+        << " while trying to modifying it";
+
+    // Don't fail if the shard is not found.
+    return {};
   }
 
   if (auto res = _maintenance->executeModifyCollectionAction(
-          std::move(shard), std::move(collection), std::move(properties),
-          std::move(followersToDrop));
+          std::move(shard), std::move(collection), std::move(properties));
       res.fail()) {
     return res;
   }
   lock.unlock();
 
   _maintenance->addDirty();
-  return true;
+  return {};
 }
 
 auto DocumentStateShardHandler::dropShard(ShardID const& shard)
@@ -183,6 +199,42 @@ auto DocumentStateShardHandler::dropIndex(ShardID shard,
                     res.errorMessage(), std::move(shard), std::move(indexId))};
   }
   return res;
+}
+
+auto DocumentStateShardHandler::lockShard(ShardID const& shard,
+                                          AccessMode::Type accessType,
+                                          transaction::OperationOrigin origin)
+    -> ResultT<std::unique_ptr<transaction::Methods>> {
+  auto col = _vocbase.lookupCollection(shard);
+  if (col == nullptr) {
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  fmt::format("Failed to lookup shard {} in database {} while "
+                              "locking it for operation {}",
+                              shard, _vocbase.name(), origin.description)};
+  }
+
+#ifdef USE_V8
+  auto ctx =
+      transaction::V8Context::createWhenRequired(_vocbase, origin, false);
+#else
+  auto ctx = transaction::StandaloneContext::create(_vocbase, origin);
+#endif
+
+  // Not replicating this transaction
+  transaction::Options options;
+  options.requiresReplication = false;
+
+  auto trx = std::make_unique<SingleCollectionTransaction>(std::move(ctx), *col,
+                                                           accessType, options);
+  Result res = trx->begin();
+  if (res.fail()) {
+    return Result{res.errorNumber(),
+                  fmt::format("Failed to lock shard {} in database "
+                              "{} for operation {}. Error: {}",
+                              shard, _vocbase.name(), origin.description,
+                              res.errorMessage())};
+  }
+  return trx;
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

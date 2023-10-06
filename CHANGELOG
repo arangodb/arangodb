@@ -1,6 +1,57 @@
 devel
 -----
-    
+
+* Fix updating of collection properties (schema) when the collection has a
+  view on top.
+
+* Improve logging in case hot backup locks cannot be taken on coordinators.
+
+* Speed up incremental hotbackup upload by parallelization of
+  remote-to-remote copies. Tolerate deletion of old backups during
+  incremental upload.
+
+* Added the following metrics to improve observability of in-memory cache
+  subsystem:
+  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory`
+    tasks scheduled
+  - `rocksdb_cache_migrate_tasks_total`: total number of `migrate` tasks
+    scheduled
+  - `rocksdb_cache_free_memory_tasks_duration_total`: total time (microseconds)
+    spent in `freeMemory` tasks
+  - `rocksdb_cache_migrate_tasks_duration_total`: total time (microseconds)
+    spent in `migrate` tasks
+
+* Improve performance of AQL LimitExecutor for higher limit values.
+  The LimitExecutor now fast-forwards all input rows instead of working on the
+  individual input rows.
+
+* Remove special handling for backups taken with ArangoDB 3.5 in hot backup
+  restore.
+
+* Extend the internal state of ReadWriteLocks from 32-bit to 64-bit to prevent
+  potential overflows. Previously creating more than 64k streaming transactions
+  at the same time could produce an overflow that would effectively result in
+  undefined behavior.
+
+* Remove "database" attribute from the serialized version of AQL IndexNodes,
+  EnumerateCollectionNodes, EnumerateViewNodes, GraphNodes and RemoteNodes.
+  That attribute was never read back.
+
+  Also removed the "reverse" attribute from the serialized version of AQL 
+  IndexNodes, because it was also not read back except from tests.
+
+* Fixed issue with `keepNull=false` updates not being properly replicated
+  to followers.
+
+* FE-376: Fix Query UI crash on null values.
+
+* FE-375: Adds document counts to collection info screen.
+
+* Make replication WAL tailing schedule prefetch requests via the global
+  scheduler, in the same way as the initial dump phase does. In the best
+  case, this can speed up the getting-in-sync phase when getting shards in
+  sync.
+
 * FE-365: fix query import breaking due to extra fields.
 
 * Fixed BTS-1239: Restoring a single server dump with system collections
@@ -250,6 +301,13 @@ devel
 * Upgraded Swagger-UI to v5.4.1
 
 * FE-248: Improve collections list UI.
+
+* Updated JavaScript dependencies:
+
+  qs: 6.11.0 -> 6.11.2
+  semver: 7.3.8 -> 7.5.4
+
+  This addresses CVE-2022-25883 in the semver module.
 
 * BTS-1124: wait for license to be applied locally before responding to the request.
 

@@ -351,6 +351,7 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
       .run(true);
 }
 
+#ifdef USE_V8
 // Could be fixed and enabled if one enabled the V8 engine
 TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
   AqlCall call{};
@@ -377,6 +378,7 @@ TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
       .expectedState(ExecutionState::DONE)
       .run(true);
 }
+#endif
 
 }  // namespace aql
 }  // namespace tests

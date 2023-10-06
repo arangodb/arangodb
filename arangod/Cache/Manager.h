@@ -89,6 +89,8 @@ class Manager {
     std::uint64_t spareTables = 0;
     std::uint64_t migrateTasks = 0;
     std::uint64_t freeMemoryTasks = 0;
+    std::uint64_t migrateTasksDuration = 0;     // total, micros
+    std::uint64_t freeMemoryTasksDuration = 0;  // total, micros
   };
 
   static constexpr std::size_t kFindStatsCapacity = 8192;
@@ -190,12 +192,14 @@ class Manager {
   /// to the backing store. A read-only transaction may, however, write to the
   /// cache.
   //////////////////////////////////////////////////////////////////////////////
-  Transaction* beginTransaction(bool readOnly);
+  void beginTransaction(Transaction& tx, bool readOnly) {
+    return _transactions.begin(tx, readOnly);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Signal the end of a transaction. Deletes the passed Transaction.
   //////////////////////////////////////////////////////////////////////////////
-  void endTransaction(Transaction* tx) noexcept;
+  void endTransaction(Transaction& tx) noexcept { _transactions.end(tx); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Post a function to the scheduler
@@ -207,6 +211,11 @@ class Manager {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void freeUnusedTablesForTesting();
 #endif
+
+  // track duration of migrate task, in ms
+  void trackMigrateTaskDuration(std::uint64_t duration) noexcept;
+  // track duration of free memory task, in ms
+  void trackFreeMemoryTaskDuration(std::uint64_t duration) noexcept;
 
  private:
   // assume at most 16 slots in each stack -- TODO: check validity
@@ -256,6 +265,8 @@ class Manager {
   std::uint64_t _spareTables;
   std::uint64_t _migrateTasks;
   std::uint64_t _freeMemoryTasks;
+  std::uint64_t _migrateTasksDuration;     // total, micros
+  std::uint64_t _freeMemoryTasksDuration;  // total, micros
 
   // transaction management
   TransactionManager _transactions;

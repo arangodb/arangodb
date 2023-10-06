@@ -51,7 +51,9 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
+#ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
+#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AgencyMock.h"
 #include "IResearch/ExpressionContextMock.h"
@@ -79,7 +81,9 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -2635,7 +2639,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     newServer.addFeature<arangodb::QueryRegistryFeature>();
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
     newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
     newServer.addFeature<
         arangodb::application_features::CommunicationFeaturePhase>();
     auto& feature =
@@ -2721,7 +2727,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     newServer.addFeature<arangodb::QueryRegistryFeature>();
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
     newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
     newServer.addFeature<
         arangodb::application_features::CommunicationFeaturePhase>();
     auto& feature =
@@ -3232,7 +3240,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sharding = newServer.addFeature<arangodb::ShardingFeature>();
   auto& systemdb = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
   newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
 
   auto cleanup = arangodb::scopeGuard([&dbfeature, this]() noexcept {
     dbfeature.unprepare();
@@ -3335,8 +3345,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
                          "::test_analyzer");
     std::string_view data("abcdefghijklmnopqrstuvwxyz");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.data(), data.size());
-    args->emplace_back(analyzer.c_str(), analyzer.size());
+    args->emplace_back(data);
+    args->emplace_back(analyzer);
     AqlValueWrapper result(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(26, result->length());
@@ -3354,7 +3364,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   {
     std::string_view data("abcdefghijklmnopqrstuvwxyz");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.data(), data.size());
+    args->emplace_back(data);
     AqlValueWrapper result(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(1, result->length());
@@ -3371,8 +3381,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
                          "::test_number_analyzer");
     std::string_view data("123");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.data(), data.size());
-    args->emplace_back(analyzer.c_str(), analyzer.size());
+    args->emplace_back(data);
+    args->emplace_back(analyzer);
     AqlValueWrapper result(impl(&exprCtx, node, *args));
     ASSERT_TRUE(result->isArray());
     ASSERT_EQ(3, result->length());
@@ -3399,8 +3409,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
                          "::test_bool_analyzer");
     std::string_view data("123");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.data(), data.size());
-    args->emplace_back(analyzer.c_str(), analyzer.size());
+    args->emplace_back(data);
+    args->emplace_back(analyzer);
     AqlValueWrapper result(impl(&exprCtx, node, *args));
     ASSERT_TRUE(result->isArray());
     ASSERT_EQ(3, result->length());
@@ -3428,9 +3438,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     std::string_view analyzer("identity");
     std::string_view unexpectedParameter("something");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.data(), data.size());
-    args->emplace_back(analyzer.data(), analyzer.size());
-    args->emplace_back(unexpectedParameter.data(), unexpectedParameter.size());
+    args->emplace_back(data);
+    args->emplace_back(analyzer);
+    args->emplace_back(unexpectedParameter);
     EXPECT_THROW(AqlValueWrapper(impl(&exprCtx, node, *args)),
                  arangodb::basics::Exception);
   }
@@ -3523,7 +3533,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
                          "::test_analyzer");
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
-    args->emplace_back(analyzer.c_str(), analyzer.size());
+    args->emplace_back(analyzer);
     auto result = AqlValueWrapper(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(std::size(expected123P4), result->length());
@@ -3540,7 +3550,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     std::string_view analyzer("invalid_analyzer");
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
-    args->emplace_back(analyzer.data(), analyzer.size());
+    args->emplace_back(analyzer);
     EXPECT_THROW(AqlValueWrapper(impl(&exprCtx, node, *args)),
                  arangodb::basics::Exception);
   }
@@ -3549,8 +3559,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     std::string_view analyzer("invalid");
     std::string_view data("abcdefghijklmnopqrstuvwxyz");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(data.data(), data.size());
-    args->emplace_back(analyzer.data(), analyzer.size());
+    args->emplace_back(data);
+    args->emplace_back(analyzer);
     EXPECT_THROW(AqlValueWrapper(impl(&exprCtx, node, *args)),
                  arangodb::basics::Exception);
   }
@@ -3633,7 +3643,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     VPackFunctionParametersWrapper args;
     args->push_back(std::move(aqlValue));
     std::string_view analyzer("text_en");
-    args->emplace_back(analyzer.data(), analyzer.size());
+    args->emplace_back(analyzer);
     auto result = AqlValueWrapper(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(3, result->length());
@@ -3707,7 +3717,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     auto aqlValue = arangodb::aql::AqlValue(std::move(buffer));
     args->push_back(std::move(aqlValue));
     std::string_view analyzer("text_en");
-    args->emplace_back(analyzer.data(), analyzer.size());
+    args->emplace_back(analyzer);
     auto result = AqlValueWrapper(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(9, result->length());
@@ -4300,7 +4310,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   newServer.addFeature<arangodb::ClusterFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
   newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
 
   // create system vocbase (before feature start)
   {
@@ -4632,7 +4644,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   newServer.addFeature<arangodb::ClusterFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
   newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
   auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>().prepare();
@@ -4767,7 +4781,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   newServer.addFeature<arangodb::ClusterFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
+#ifdef USE_V8
   newServer.addFeature<arangodb::V8DealerFeature>();
+#endif
   auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>()

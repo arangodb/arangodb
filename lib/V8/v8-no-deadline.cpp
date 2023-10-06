@@ -20,8 +20,14 @@
 ///
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <optional>
 #include "v8-deadline.h"
+
 // arangod dummy implementation doing nothing
 void setExecutionDeadlineInMS(uint64_t timeout) {}
 

@@ -31,6 +31,8 @@
 #include "Cache/Metadata.h"
 #include "Random/RandomGenerator.h"
 
+#include <chrono>
+
 namespace arangodb::cache {
 
 FreeMemoryTask::FreeMemoryTask(Manager::TaskEnvironment environment,
@@ -94,7 +96,12 @@ void FreeMemoryTask::run() {
     TRI_ASSERT(!metadata.isResizing());
   });
 
+  // execute freeMemory() with timing
+  auto now = std::chrono::steady_clock::now();
   bool ran = _cache->freeMemory();
+  auto diff = std::chrono::steady_clock::now() - now;
+  _manager.trackFreeMemoryTaskDuration(
+      std::chrono::duration_cast<std::chrono::microseconds>(diff).count());
 
   // flag must still be set after freeMemory()
   TRI_ASSERT(_cache->isResizingFlagSet());
@@ -171,7 +178,11 @@ void MigrateTask::run() {
   TRI_ASSERT(_cache->isMigratingFlagSet());
 
   // do the actual migration
+  auto now = std::chrono::steady_clock::now();
   bool ran = _cache->migrate(_table);
+  auto diff = std::chrono::steady_clock::now() - now;
+  _manager.trackMigrateTaskDuration(
+      std::chrono::duration_cast<std::chrono::microseconds>(diff).count());
 
   // migrate() must have unset the migrating flag, but we
   // cannot check it here because another MigrateTask may

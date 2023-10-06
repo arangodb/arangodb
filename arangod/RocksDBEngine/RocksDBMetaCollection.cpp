@@ -620,9 +620,13 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(
     rocksdb::SequenceNumber maxCommitSeq,
     std::unique_lock<std::mutex> const& lock) const {
   TRI_ASSERT(lock.owns_lock());
-  TRI_ASSERT(_logicalCollection.useSyncByRevision());
 
-  if (!_revisionTreeCanBeSerialized) {
+  if (!_revisionTreeCanBeSerialized ||
+      !_logicalCollection.useSyncByRevision()) {
+    // note: useSyncByRevision() can return false nowadays once a collection
+    // is marked as deleted. the deletion can even happen while
+    // RocksDBSettingsManager::sync() is running. we can thus ignore all
+    // collections here for which useSyncByRevision() returns false.
     return false;
   }
 

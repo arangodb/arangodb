@@ -98,17 +98,17 @@ class ReadWriteLock {
   /// @brief a condition variable to wake up one writer thread
   std::condition_variable _writers_bell;
 
-  /// @brief _state, lowest bit is write_lock, the next 15 bits is the number of
-  /// queued writers, the last 16 bits the number of active readers.
-  std::atomic<uint32_t> _state;
+  /// @brief _state, lowest bit is write_lock, the next 31 bits is the number of
+  /// queued writers, the last 32 bits the number of active readers.
+  std::atomic<uint64_t> _state;
 
-  static constexpr uint32_t WRITE_LOCK = 1;
+  static constexpr uint64_t WRITE_LOCK = 1;
 
-  static constexpr uint32_t READER_INC = 1 << 16;
-  static constexpr uint32_t READER_MASK = ~(READER_INC - 1);
+  static constexpr uint64_t READER_INC = std::uint64_t{1} << 32;
+  static constexpr uint64_t READER_MASK = ~(READER_INC - 1);
 
-  static constexpr uint32_t QUEUED_WRITER_INC = 1 << 1;
-  static constexpr uint32_t QUEUED_WRITER_MASK = (READER_INC - 1) & ~WRITE_LOCK;
+  static constexpr uint64_t QUEUED_WRITER_INC = 1 << 1;
+  static constexpr uint64_t QUEUED_WRITER_MASK = (READER_INC - 1) & ~WRITE_LOCK;
 
   static_assert((READER_MASK & WRITE_LOCK) == 0,
                 "READER_MASK and WRITE_LOCK conflict");

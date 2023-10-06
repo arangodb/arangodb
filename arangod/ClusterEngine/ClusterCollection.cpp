@@ -143,7 +143,8 @@ Result ClusterCollection::updateProperties(velocypack::Slice slice) {
     // note: we have to exclude inverted indexes here,
     // as they are a different class type (no relationship to
     // ClusterIndex).
-    if (idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+    if (idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX &&
+        idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
       TRI_ASSERT(dynamic_cast<ClusterIndex*>(idx.get()) != nullptr);
       std::static_pointer_cast<ClusterIndex>(idx)->updateProperties(
           _info.slice());
@@ -262,25 +263,18 @@ Result ClusterCollection::lookupKeyForUpdate(
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-Result ClusterCollection::read(transaction::Methods* /*trx*/,
-                               std::string_view /*key*/,
-                               IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites /*readOwnWrites*/) const {
+Result ClusterCollection::lookup(transaction::Methods* trx,
+                                 std::string_view key,
+                                 IndexIterator::DocumentCallback const& cb,
+                                 LookupOptions options) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-// read using a token!
-Result ClusterCollection::read(transaction::Methods* /*trx*/,
-                               LocalDocumentId const& /*documentId*/,
-                               IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites /*readOwnWrites*/) const {
-  return {TRI_ERROR_NOT_IMPLEMENTED};
-}
-
-Result ClusterCollection::lookupDocument(
-    transaction::Methods& /*trx*/, LocalDocumentId /*documentId*/,
-    velocypack::Builder& /*builder*/, bool /*readCache*/, bool /*fillCache*/,
-    ReadOwnWrites /*readOwnWrites*/) const {
+Result ClusterCollection::lookup(transaction::Methods* trx,
+                                 LocalDocumentId token,
+                                 IndexIterator::DocumentCallback const& cb,
+                                 LookupOptions options,
+                                 StorageSnapshot const* snapshot) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 

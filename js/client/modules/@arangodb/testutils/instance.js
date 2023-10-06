@@ -186,7 +186,7 @@ class agencyConfig {
 
 class instance {
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig, tmpDir) {
+  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig, tmpDir, mem) {
     if (! PORTMANAGER) {
       PORTMANAGER = new portManager(options);
     }
@@ -208,6 +208,7 @@ class instance {
     this.url = '';
     this.endpoint = '';
     this.assertLines = [];
+    this.useableMemory = mem;
     this.memProfCounter = 0;
 
     this.topLevelTmpDir = tmpDir;
@@ -363,6 +364,10 @@ class instance {
       'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
+
+    if (require("@arangodb/test-helper").isEnterprise()) {
+      this.args['arangosearch.columns-cache-limit'] = '100000';
+    }
     if (this.options.auditLoggingEnabled) {
       this.args['audit.output'] = 'file://' + fs.join(this.rootDir, 'audit.log');
       this.args['server.statistics'] = false;
@@ -701,13 +706,24 @@ class instance {
         process.env[key] = oneSet;
       }
     }
-
+    if ((this.useableMemory === undefined) && (this.options.memory !== undefined)){
+      throw new Error(`${this.name} don't have planned memory though its configured!`);
+    }
+    if ((this.useableMemory !== 0) && (this.options.memory !== undefined)) {
+      if (this.options.extremeVerbosity) {
+        print(`appointed ${this.name} memory: ${this.useableMemory}`);
+      }
+      process.env['ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY'] = this.useableMemory;
+    }
     process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
     let ret = executeExternal(cmd, argv, false, pu.coverageEnvironment());
     if (this.options.isSan) {
       for (const [key, value] of Object.entries(backup)) {
         process.env[key] = value;
       }
+    }
+    if (this.useableMemory !== 0) {
+      delete process.env['ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY'];
     }
     return ret;
   }
