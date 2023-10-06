@@ -101,6 +101,12 @@ function setColors(useSystemColors) {
 
 /* colorizer and output helper functions */
 
+function netLength(value) {
+  'use strict';
+  return String(value).replace(/\x1b\[.+?m/g, '').length;
+}
+
+
 function bracketize(node, v) {
   'use strict';
   if (node && node.subNodes && node.subNodes.length > 1) {
@@ -371,85 +377,86 @@ function printIndexes(indexes) {
 
   if (indexes.length === 0) {
     stringBuilder.appendLine(' ' + value('none'));
-  } else {
-    var maxIdLen = String('By').length;
-    var maxCollectionLen = String('Collection').length;
-    var maxUniqueLen = String('Unique').length;
-    var maxSparseLen = String('Sparse').length;
-    var maxCacheLen = String('Cache').length;
-    var maxNameLen = String('Name').length;
-    var maxTypeLen = String('Type').length;
-    var maxSelectivityLen = String('Selectivity').length;
-    var maxFieldsLen = String('Fields').length;
-    var maxStoredValuesLen = String('Stored values').length;
-    indexes.forEach(function (index) {
-      maxIdLen = Math.max(maxIdLen, String(index.node).length);
-      maxNameLen = Math.max(maxNameLen, index.name ? index.name.length : 0);
-      maxTypeLen = Math.max(maxTypeLen, index.type.length);
-      maxFieldsLen = Math.max(maxFieldsLen, index.fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length);
-      let storedValuesFields = index.storedValues || [];
-      if (index.type === 'inverted') {
-        storedValuesFields = Array.isArray(index.storedValues) && index.storedValues.flatMap(s => s.fields) || [];
-      }
-      maxStoredValuesLen = Math.max(maxStoredValuesLen, storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length);
-      maxCollectionLen = Math.max(maxCollectionLen, index.collection.length);
-    });
-    var line = ' ' + pad(1 + maxIdLen - String('By').length) + header('By') + '   ' +
-      header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
-      header('Type') + pad(1 + maxTypeLen - 'Type'.length) + '   ' +
-      header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
-      header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
-      header('Sparse') + pad(1 + maxSparseLen - 'Sparse'.length) + '   ' +
-      header('Cache') + pad(1 + maxCacheLen - 'Cache'.length) + '   ' +
-      header('Selectivity') + '   ' +
-      header('Fields') + pad(1 + maxFieldsLen - 'Fields'.length) + '   ' +
-      header('Stored values') + pad(1 + maxStoredValuesLen - 'Stored values'.length) + '   ' +
-      header('Ranges');
+    return;
+  }
+
+  let maxIdLen = String('By').length;
+  let maxCollectionLen = String('Collection').length;
+  let maxUniqueLen = String('Unique').length;
+  let maxSparseLen = String('Sparse').length;
+  let maxCacheLen = String('Cache').length;
+  let maxNameLen = String('Name').length;
+  let maxTypeLen = String('Type').length;
+  let maxSelectivityLen = String('Selectivity').length;
+  let maxFieldsLen = String('Fields').length;
+  let maxStoredValuesLen = String('Stored values').length;
+  indexes.forEach(function (index) {
+    maxIdLen = Math.max(maxIdLen, String(index.node).length);
+    maxNameLen = Math.max(maxNameLen, index.name ? index.name.length : 0);
+    maxTypeLen = Math.max(maxTypeLen, index.type.length);
+    maxFieldsLen = Math.max(maxFieldsLen, index.fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length);
+    let storedValuesFields = index.storedValues || [];
+    if (index.type === 'inverted') {
+      storedValuesFields = Array.isArray(index.storedValues) && index.storedValues.flatMap(s => s.fields) || [];
+    }
+    maxStoredValuesLen = Math.max(maxStoredValuesLen, storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length);
+    maxCollectionLen = Math.max(maxCollectionLen, index.collection.length);
+  });
+  let line = ' ' + pad(1 + maxIdLen - String('By').length) + header('By') + '   ' +
+    header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
+    header('Type') + pad(1 + maxTypeLen - 'Type'.length) + '   ' +
+    header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
+    header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
+    header('Sparse') + pad(1 + maxSparseLen - 'Sparse'.length) + '   ' +
+    header('Cache') + pad(1 + maxCacheLen - 'Cache'.length) + '   ' +
+    header('Selectivity') + '   ' +
+    header('Fields') + pad(1 + maxFieldsLen - 'Fields'.length) + '   ' +
+    header('Stored values') + pad(1 + maxStoredValuesLen - 'Stored values'.length) + '   ' +
+    header('Ranges');
+
+  stringBuilder.appendLine(line);
+
+  for (let i = 0; i < indexes.length; ++i) {
+    let uniqueness = (indexes[i].unique ? 'true' : 'false');
+    let sparsity = (indexes[i].hasOwnProperty('sparse') ? (indexes[i].sparse ? 'true' : 'false') : 'n/a');
+    let cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
+    let fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
+    let fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+    let storedValuesFields = indexes[i].storedValues || [];
+    if (indexes[i].type === 'inverted') {
+      storedValuesFields = Array.isArray(indexes[i].storedValues) && indexes[i].storedValues.flatMap(s => s.fields) || [];
+    }
+    let storedValues = '[ ' + storedValuesFields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
+    let storedValuesLen = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+    let ranges = '';
+    if (indexes[i].hasOwnProperty('condition')) {
+      ranges = indexes[i].condition;
+    }
+
+    let estimate;
+    if (indexes[i].hasOwnProperty('selectivityEstimate')) {
+      estimate = (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %';
+    } else if (indexes[i].unique) {
+      // hard-code estimate to 100%
+      estimate = '100.00 %';
+    } else {
+      estimate = 'n/a';
+    }
+
+    line = ' ' +
+      pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + '   ' +
+      collection(indexes[i].name) + pad(1 + maxNameLen - indexes[i].name.length) + '   ' +
+      keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + '   ' +
+      collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
+      value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
+      value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
+      value(cache) + pad(1 + maxCacheLen - cache.length) + '   ' +
+      pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
+      fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
+      storedValues + pad(1 + maxStoredValuesLen - storedValuesLen) + '   ' +
+      ranges;
 
     stringBuilder.appendLine(line);
-
-    for (var i = 0; i < indexes.length; ++i) {
-      var uniqueness = (indexes[i].unique ? 'true' : 'false');
-      var sparsity = (indexes[i].hasOwnProperty('sparse') ? (indexes[i].sparse ? 'true' : 'false') : 'n/a');
-      var cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
-      var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
-      var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      var storedValuesFields = indexes[i].storedValues || [];
-      if (indexes[i].type === 'inverted') {
-        storedValuesFields = Array.isArray(indexes[i].storedValues) && indexes[i].storedValues.flatMap(s => s.fields) || [];
-      }
-      var storedValues = '[ ' + storedValuesFields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
-      var storedValuesLen = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      let ranges = '';
-      if (indexes[i].hasOwnProperty('condition')) {
-        ranges = indexes[i].condition;
-      }
-
-      let estimate;
-      if (indexes[i].hasOwnProperty('selectivityEstimate')) {
-        estimate = (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %';
-      } else if (indexes[i].unique) {
-        // hard-code estimate to 100%
-        estimate = '100.00 %';
-      } else {
-        estimate = 'n/a';
-      }
-
-      line = ' ' +
-        pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + '   ' +
-        collection(indexes[i].name) + pad(1 + maxNameLen - indexes[i].name.length) + '   ' +
-        keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + '   ' +
-        collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
-        value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
-        value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
-        value(cache) + pad(1 + maxCacheLen - cache.length) + '   ' +
-        pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
-        fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
-        storedValues + pad(1 + maxStoredValuesLen - storedValuesLen) + '   ' +
-        ranges;
-
-      stringBuilder.appendLine(line);
-    }
   }
 }
 
@@ -521,7 +528,7 @@ class PrintedTable {
   addCell(index, value, valueLength) {
     // Value might be empty
     value = value || "";
-    valueLength = valueLength || value.length;
+    valueLength = valueLength || netLength(value);
     this.content[index].cells.push({ formatted: value, size: valueLength });
     this.content[index].size = Math.max(this.content[index].size, valueLength);
   }
@@ -539,24 +546,35 @@ class PrintedTable {
     let rowsNeeded = Math.max(...this.content.map(c => c.cells.length));
     // Print the header
     let line = ' ';
-    let isFirst = true;
+    let col = 0;
     for (let c of this.content) {
-      line += (isFirst ? '' : pad(3)) + header(c.header) + pad(1 + c.size - c.header.length);
-      isFirst = false;
+      line += (col === 0 ? '' : pad(3)) + header(c.header);
+      if (col + 1 < this.content.length) {
+        // Don't pad rightmost column
+        line += pad(1 + c.size - c.header.length);
+      }
+      ++col;
     }
     builder.appendLine(line);
 
     // Print the cells
     for (let i = 0; i < rowsNeeded; ++i) {
       let line = ' ';
-      let isFirst = true;
+      let col = 0;
       for (let c of this.content) {
+        line += (col === 0 ? '' : pad(3));
         if (c.cells.length > i) {
-          line += (isFirst ? '' : pad(3)) + c.cells[i].formatted + pad(1 + c.size - c.cells[i].size);
+          line += c.cells[i].formatted;
+          if (col + 1 < this.content.length) {
+            line += pad(1 + c.size - c.cells[i].size);
+          }
         } else {
-          line += (isFirst ? '' : pad(3)) + pad(1 + c.size);
+          if (col + 1 < this.content.length) {
+            // Don't pad rightmost column
+            line += pad(1 + c.size);
+          }
         }
-        isFirst = false;
+        ++col;
       }
       builder.appendLine(line);
     }
