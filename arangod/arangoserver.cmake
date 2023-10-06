@@ -75,7 +75,6 @@ add_library(arangoserver STATIC
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
-  RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
@@ -191,6 +190,7 @@ if (USE_V8)
     FeaturePhases/V8FeaturePhase.cpp
     RestHandler/RestAdminExecuteHandler.cpp
     RestHandler/RestAdminRoutingHandler.cpp
+    RestHandler/RestAqlUserFunctionsHandler.cpp
     RestHandler/RestTasksHandler.cpp
     RestServer/ConsoleFeature.cpp
     RestServer/ConsoleThread.cpp
