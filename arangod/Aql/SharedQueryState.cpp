@@ -170,6 +170,7 @@ void SharedQueryState::queueHandler() {
           unsigned c = self->_numWakeups--;
           TRI_ASSERT(c > 0);
           if (c == 1) {
+            // we have consumed the last wakeup
             self->queueHandler();
           }
         }
