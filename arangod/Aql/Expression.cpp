@@ -1265,8 +1265,6 @@ AqlValue Expression::executeSimpleExpressionNaryAndOr(ExpressionContext& ctx,
     }
   }
 
-  // anything else... we shouldn't get here
-  TRI_ASSERT(false);
   return AqlValue(AqlValueHintBool(false));
 }
 

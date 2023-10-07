@@ -39,6 +39,9 @@ class Expression;
 class QueryContext;
 class InputAqlItemRow;
 
+// in contrast to its name, the PruneExpressionEvaluator is used to
+// compute both the results of PRUNE expressions and inline traversal
+// FILTER conditions.
 class PruneExpressionEvaluator {
  public:
   PruneExpressionEvaluator(transaction::Methods& trx, QueryContext& query,
@@ -56,15 +59,15 @@ class PruneExpressionEvaluator {
   }
   void unPrepareContext() { _ctx.invalidateInputRow(); }
 
-  bool needsVertex() const { return _ctx.needsVertexValue(); }
+  bool needsVertex() const noexcept { return _ctx.needsVertexValue(); }
   void injectVertex(velocypack::Slice v) { _ctx.setVertexValue(v); }
-  bool needsEdge() const { return _ctx.needsEdgeValue(); }
+  bool needsEdge() const noexcept { return _ctx.needsEdgeValue(); }
   void injectEdge(velocypack::Slice e) { _ctx.setEdgeValue(e); }
-  bool needsPath() const { return _ctx.needsPathValue(); }
+  bool needsPath() const noexcept { return _ctx.needsPathValue(); }
   void injectPath(velocypack::Slice p) { _ctx.setPathValue(p); }
 
  private:
-  /// @brief The condition given in PRUNE (might be empty)
+  /// @brief The condition given in PRUNE or inline FILTER (might be empty)
   ///        The Node keeps responsibility
   aql::Expression* _pruneExpression;
 

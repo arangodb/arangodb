@@ -57,9 +57,9 @@ class InAndOutRowExpressionContext final : public QueryExpressionContext {
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
 
-  bool needsVertexValue() const;
-  bool needsEdgeValue() const;
-  bool needsPathValue() const;
+  bool needsVertexValue() const noexcept;
+  bool needsEdgeValue() const noexcept;
+  bool needsPathValue() const noexcept;
 
   /// @brief inject the result value when asked for the Vertex data
   /// This will not copy ownership of slice content. caller needs to make sure

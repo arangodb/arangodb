@@ -27,8 +27,8 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
+class TraversalNode;
 
 /// @brief Traversal condition finder
 class TraversalConditionFinder final
@@ -43,13 +43,18 @@ class TraversalConditionFinder final
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
 
  private:
+  std::unique_ptr<Condition> optimizeForNode(TraversalNode* node,
+                                             bool& conditionIsImpossible);
+
   bool isTrueOnNull(AstNode* condition, Variable const* pathVar) const;
 
- private:
+  void ensureCondition();
+  void resetCondition() noexcept;
+  bool haveNonEmptyCondition() const noexcept;
+
   ExecutionPlan* _plan;
   std::unique_ptr<Condition> _condition;
   ::arangodb::containers::HashSet<VariableId> _filterVariables;
   bool* _planAltered;
 };
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

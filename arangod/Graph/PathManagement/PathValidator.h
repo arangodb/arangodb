@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
@@ -31,6 +30,9 @@
 #include "Graph/Types/ValidationResult.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/HashedStringRef.h>
+
+#include <memory>
 
 namespace arangodb {
 namespace aql {
@@ -92,6 +94,9 @@ class PathValidator {
   void unpreparePostFilterContext();
 
  private:
+  void ensureBuilder(std::unique_ptr<velocypack::Builder>& builder);
+  void clearBuilder(std::unique_ptr<velocypack::Builder>& builder);
+
   // TODO [GraphRefactor]: const of _store has been removed as it is now
   // necessary to build a PathResult in place. Please double check if we find a
   // better and more elegant solution.
@@ -113,7 +118,16 @@ class PathValidator {
       _uniqueEdges;
 
   PathValidatorOptions _options;
-  arangodb::velocypack::Builder _tmpObjectBuilder;
+
+  // each of these Builders is allocated at most once during the
+  // lifetime of the PathValidator instance. each Builder can
+  // be recycled and reused between multiple calls to evaluateVertexCondition,
+  // so that we can avoid repeated allocations for Builders when the
+  // conditions need to be evaluated a lot of times.
+  // each Builder is only allocated upon first usage via ensureBuilder().
+  std::unique_ptr<velocypack::Builder> _vertexBuilder;
+  std::unique_ptr<velocypack::Builder> _edgeBuilder;
+  std::unique_ptr<velocypack::Builder> _pathBuilder;
 
  private:
   [[nodiscard]] auto handleValidationResult(ValidationResult validationResult,

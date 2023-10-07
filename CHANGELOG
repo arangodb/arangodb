@@ -1,6 +1,11 @@
 devel
 -----
 
+* Support pulling more complex FILTER conditions into traversals.
+  Previously, filter conditions that contained logical ORs were not pulled
+  into traversals. Now such filter conditions can be pulled into traversals
+  too.
+
 * Fix updating of collection properties (schema) when the collection has a
   view on top.
 

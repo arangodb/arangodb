@@ -6503,8 +6503,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(
             if (outVariable == nullptr) {
               return false;
             }
-            if (varsUsedByCondition.find(outVariable) ==
-                varsUsedByCondition.end()) {
+            if (!varsUsedByCondition.contains(outVariable)) {
               return false;
             }
 

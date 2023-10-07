@@ -156,9 +156,6 @@ describe('Rule optimize-traversals', () => {
       FILTER p.edges[-1].theTruth == true
       RETURN {v:v,e:e,p:p}`,
       `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}'
-      FILTER p.edges[*].theTruth == true or p.edges[1].label == 'bar'
-      RETURN {v:v,e:e,p:p}`,
-      `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}'
       FILTER p.edges[RAND()].theFalse == false
       RETURN {v:v,e:e,p:p}`,
       `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}'
@@ -196,6 +193,9 @@ describe('Rule optimize-traversals', () => {
       `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}'
       FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'bar'
       RETURN {v,e,p}`,
+      `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}'
+      FILTER p.edges[*].theTruth == true or p.edges[1].label == 'bar'
+      RETURN {v:v,e:e,p:p}`,
       `FOR snippet IN ['a', 'b']
       LET test = CONCAT(snippet, 'ar')
       FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}'

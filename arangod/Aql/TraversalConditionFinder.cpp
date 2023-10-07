@@ -553,12 +553,10 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
 
 TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
                                                    bool* planAltered)
-    : _plan(plan),
-      _condition(std::make_unique<Condition>(plan->getAst())),
-      _planAltered(planAltered) {}
+    : _plan(plan), _planAltered(planAltered) {}
 
 bool TraversalConditionFinder::before(ExecutionNode* en) {
-  if (!_condition->isEmpty() && !en->isDeterministic()) {
+  if (haveNonEmptyCondition() && !en->isDeterministic()) {
     // we already found a FILTER and
     // something that is not deterministic is not safe to optimize
 
@@ -597,7 +595,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::UPDATE:
     case EN::UPSERT: {
       // modification invalidates the filter expression we already found
-      _condition = std::make_unique<Condition>(_plan->getAst());
+      resetCondition();
       _filterVariables.clear();
       break;
     }
@@ -618,12 +616,13 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::CALCULATION: {
       auto calcNode = ExecutionNode::castTo<CalculationNode const*>(en);
       Variable const* outVar = calcNode->outVariable();
-      if (_filterVariables.find(outVar->id) != _filterVariables.end()) {
+      if (_filterVariables.contains(outVar->id)) {
         // This calculationNode is directly part of a filter condition
         // So we have to iterate through it.
         TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
+        ensureCondition();
         _condition->andCombine(calcNode->expression()->node());
       }
       break;
@@ -631,178 +630,26 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
     case EN::TRAVERSAL: {
       auto node = ExecutionNode::castTo<TraversalNode*>(en);
-      if (_condition->isEmpty()) {
-        // No condition, no optimize
-        break;
-      }
-      auto options = node->options();
-      auto const& varsValidInTraversal = node->getVarsValid();
 
       bool conditionIsImpossible = false;
-      auto vertexVar = node->vertexOutVariable();
-      auto edgeVar = node->edgeOutVariable();
-      auto pathVar = node->pathOutVariable();
-
-      _condition->normalize();
-
-      TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      // _condition is now in disjunctive normal form
-      auto orNode = _condition->root();
-      TRI_ASSERT(orNode->type == NODE_TYPE_OPERATOR_NARY_OR);
-      if (orNode->numMembers() != 1) {
-        // Multiple OR statements.
-        // => No optimization
-        break;
-      }
-
-      auto andNode = orNode->getMemberUnchecked(0);
-      TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-      // edit in-place; TODO: replace node instead
-      TEMPORARILY_UNLOCK_NODE(andNode);
-      VarSet varsUsedByCondition;
-
-      auto coveredCondition = std::make_unique<Condition>(_plan->getAst());
-
-      // Method to identify which optimization case we need to take care of.
-      // We can only optimize if we have a single variable (vertex / edge /
-      // path) per condition.
-      auto identifyCase = [&]() -> OptimizationCase {
-        OptimizationCase result = OptimizationCase::NON_OPTIMIZABLE;
-        for (auto const& var : varsUsedByCondition) {
-          if (varsValidInTraversal.find(var) == varsValidInTraversal.end()) {
-            // Found a variable that is not in the scope
-            return OptimizationCase::NON_OPTIMIZABLE;
-          }
-          if (var == edgeVar) {
-            if (result != OptimizationCase::NON_OPTIMIZABLE) {
-              return OptimizationCase::NON_OPTIMIZABLE;
-            }
-            result = OptimizationCase::EDGE;
-          } else if (var == vertexVar) {
-            if (result != OptimizationCase::NON_OPTIMIZABLE) {
-              return OptimizationCase::NON_OPTIMIZABLE;
-            }
-            result = OptimizationCase::VERTEX;
-          } else if (var == pathVar) {
-            if (result != OptimizationCase::NON_OPTIMIZABLE) {
-              return OptimizationCase::NON_OPTIMIZABLE;
-            }
-            result = OptimizationCase::PATH;
-          }
-        }
-        return result;
-      };
-
-      for (size_t i = andNode->numMembers(); i > 0; --i) {
-        // Whenever we do not support a of the condition we have to throw it out
-
-        auto cond = andNode->getMemberUnchecked(i - 1);
-        // We now iterate over all condition-parts  we found, and check if we
-        // can optimize them
-        varsUsedByCondition.clear();
-        Ast::getReferencedVariables(cond, varsUsedByCondition);
-        OptimizationCase usedCase = identifyCase();
-
-        switch (usedCase) {
-          case OptimizationCase::NON_OPTIMIZABLE:
-            // we found a variable created after the
-            // traversal. Cannot optimize this condition
-            andNode->removeMemberUnchecked(i - 1);
-            break;
-          case OptimizationCase::PATH: {
-            AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
-            int64_t indexedAccessDepth = -1;
-
-            size_t swappedIndex = 0;
-            // If we get here we can optimize this condition
-            if (!checkPathVariableAccessFeasible(
-                    _plan->getAst(), _plan, andNode, i - 1, node, pathVar,
-                    conditionIsImpossible, swappedIndex, indexedAccessDepth)) {
-              if (conditionIsImpossible) {
-                // If we get here we cannot fulfill the condition
-                // So clear
-                andNode->clearMembers();
-                break;
-              }
-              andNode->removeMemberUnchecked(i - 1);
-            } else {
-              TRI_ASSERT(!conditionIsImpossible);
-
-              // remember the original filter conditions if we can remove them
-              // later
-              if (indexedAccessDepth == -1) {
-                coveredCondition->andCombine(cloned);
-              } else if ((uint64_t)indexedAccessDepth <= options->maxDepth) {
-                // if we had an  index access then indexedAccessDepth
-                // is in [0..maxDepth], if the depth is not a concrete value
-                // then indexedAccessDepth would be INT64_MAX
-                coveredCondition->andCombine(cloned);
-
-                if ((int64_t)options->minDepth < indexedAccessDepth &&
-                    !isTrueOnNull(cloned, pathVar)) {
-                  // do not return paths shorter than the deepest path access
-                  // unless the condition evaluates to true on `null`.
-                  options->minDepth = indexedAccessDepth;
-                }
-              }  // otherwise do not remove the filter statement
-            }
-            break;
-          }
-          case OptimizationCase::VERTEX:
-          case OptimizationCase::EDGE: {
-            // We have the Vertex or Edge variable in the statement
-            AstNode* expr = andNode->getMemberUnchecked(i - 1);
-
-            // check if the filter condition can be executed on a DB server,
-            // deterministically
-            if (expr != nullptr &&
-                expr->canBeUsedInFilter(
-                    _plan->getAst()->query().vocbase().isOneShard())) {
-              // Only do register this condition in case it can be executed
-              // inside a TraversalNode. We need to check here and abort in
-              // cases which are just not allowed, e.g. execution of user
-              // defined JavaScript method or V8 based methods.
-
-              auto conditionToOptimize =
-                  conditionWithInlineCalculations(_plan, expr);
-
-              // Create a clone before we modify the Condition
-              AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
-              // Retain original condition, as covered by this Node
-              coveredCondition->andCombine(cloned);
-              node->registerPostFilterCondition(conditionToOptimize);
-            }
-            break;
-          }
-        }
-
-        if (conditionIsImpossible) {
-          // Abort iteration through nodes
-          break;
-        }
-      }
+      auto coveredCondition = optimizeForNode(node, conditionIsImpossible);
 
       if (conditionIsImpossible) {
         // condition is always false
         for (auto const& x : node->getParents()) {
-          auto noRes = new NoResultsNode(_plan, _plan->nextId());
-          _plan->registerNode(noRes);
+          auto noRes = _plan->createNode<NoResultsNode>(_plan, _plan->nextId());
           _plan->insertDependency(x, noRes);
-          *_planAltered = true;
         }
-        break;
-      }
-      if (!coveredCondition->isEmpty()) {
+        resetCondition();
+        *_planAltered = true;
+      } else if (coveredCondition && !coveredCondition->isEmpty()) {
         coveredCondition->normalize();
         node->setCondition(std::move(coveredCondition));
         // We restart here with an empty condition.
         // All Filters that have been collected thus far
         // depend on sth issued by this traverser or later
         // specifically they cannot be used by any earlier traversal
-        _condition = std::make_unique<Condition>(_plan->getAst());
+        resetCondition();
         *_planAltered = true;
       }
       break;
@@ -816,6 +663,229 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
   return false;
 }
 
+std::unique_ptr<Condition> TraversalConditionFinder::optimizeForNode(
+    TraversalNode* node, bool& impossibleCondition) {
+  impossibleCondition = false;
+
+  if (!haveNonEmptyCondition()) {
+    // No condition, no optimize
+    return nullptr;
+  }
+
+  _condition->normalize();
+  // _condition is now in disjunctive normal form
+
+  TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  auto options = node->options();
+  auto const& varsValidInTraversal = node->getVarsValid();
+
+  auto vertexVar = node->vertexOutVariable();
+  auto edgeVar = node->edgeOutVariable();
+  auto pathVar = node->pathOutVariable();
+
+  // will be recycled
+  VarSet varsUsedByCondition;
+
+  // Method to identify which optimization case we need to take care of.
+  // We can only optimize if we have a single variable (vertex / edge /
+  // path) per condition.
+  auto identifyCase = [&]() -> OptimizationCase {
+    OptimizationCase result = OptimizationCase::NON_OPTIMIZABLE;
+    for (auto const& var : varsUsedByCondition) {
+      if (!varsValidInTraversal.contains(var)) {
+        // Found a variable that is not in the scope
+        return OptimizationCase::NON_OPTIMIZABLE;
+      }
+      if (var == edgeVar) {
+        if (result != OptimizationCase::NON_OPTIMIZABLE) {
+          return OptimizationCase::NON_OPTIMIZABLE;
+        }
+        result = OptimizationCase::EDGE;
+      } else if (var == vertexVar) {
+        if (result != OptimizationCase::NON_OPTIMIZABLE) {
+          return OptimizationCase::NON_OPTIMIZABLE;
+        }
+        result = OptimizationCase::VERTEX;
+      } else if (var == pathVar) {
+        if (result != OptimizationCase::NON_OPTIMIZABLE) {
+          return OptimizationCase::NON_OPTIMIZABLE;
+        }
+        result = OptimizationCase::PATH;
+      }
+    }
+    return result;
+  };
+
+  auto ensureNewCondition = [&](AstNode* mainCondition, AstNode* other,
+                                AstNodeType type) {
+    if (mainCondition == nullptr) {
+      // first sub-part
+      return other;
+    }
+    // AND-combine with existing sub-part(s)
+    return _plan->getAst()->createNodeBinaryOperator(type, mainCondition,
+                                                     other);
+  };
+
+  // this will contain a pointer to the overall condition at the end
+  AstNode* newOrCondition = nullptr;
+  // subset of newOrCondition that is eligible for post-filtering.
+  // this excludes all sub-conditions that refer to the path.
+  AstNode* newOrConditionPostFilter = nullptr;
+
+  auto orNode = _condition->root();
+  TRI_ASSERT(orNode->type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  // iterate over all branches of the OR. each branch
+  // must be an AND
+  for (size_t j = 0; j < orNode->numMembers(); ++j) {
+    // get jth AND branch
+    auto andNode = orNode->getMemberUnchecked(j);
+    TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+    // edit in-place; TODO: replace node instead
+    TEMPORARILY_UNLOCK_NODE(andNode);
+
+    // reset for every AND branch
+    AstNode* newAndCondition = nullptr;
+    AstNode* newAndConditionPostFilter = nullptr;
+    bool branchIsImpossible = false;
+
+    for (size_t i = andNode->numMembers(); i > 0; --i) {
+      // Whenever we do not support a part of the condition we have to throw it
+      // out
+
+      auto cond = andNode->getMemberUnchecked(i - 1);
+      // We now iterate over all condition-parts we found, and check if we
+      // can optimize them
+      varsUsedByCondition.clear();
+      Ast::getReferencedVariables(cond, varsUsedByCondition);
+      OptimizationCase usedCase = identifyCase();
+
+      switch (usedCase) {
+        case OptimizationCase::NON_OPTIMIZABLE:
+          // we found a variable created after the
+          // traversal. Cannot optimize this condition
+          andNode->removeMemberUnchecked(i - 1);
+          break;
+        case OptimizationCase::PATH: {
+          AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
+          int64_t indexedAccessDepth = -1;
+
+          size_t swappedIndex = 0;
+          // If we get here we can optimize this condition
+          if (!checkPathVariableAccessFeasible(
+                  _plan->getAst(), _plan, andNode, i - 1, node, pathVar,
+                  branchIsImpossible, swappedIndex, indexedAccessDepth)) {
+            if (branchIsImpossible) {
+              // If we get here we cannot fulfill the condition
+              // So clear
+              andNode->clearMembers();
+              break;
+            }
+            andNode->removeMemberUnchecked(i - 1);
+          } else {
+            TRI_ASSERT(!branchIsImpossible);
+
+            // remember the original filter conditions if we can remove them
+            // later
+            if (indexedAccessDepth == -1) {
+              newAndCondition = ensureNewCondition(
+                  newAndCondition, cloned, NODE_TYPE_OPERATOR_BINARY_AND);
+            } else if (static_cast<uint64_t>(indexedAccessDepth) <=
+                       options->maxDepth) {
+              // if we had an  index access then indexedAccessDepth
+              // is in [0..maxDepth], if the depth is not a concrete value
+              // then indexedAccessDepth would be INT64_MAX
+              newAndCondition = ensureNewCondition(
+                  newAndCondition, cloned, NODE_TYPE_OPERATOR_BINARY_AND);
+
+              if (static_cast<int64_t>(options->minDepth) <
+                      indexedAccessDepth &&
+                  !isTrueOnNull(cloned, pathVar)) {
+                // do not return paths shorter than the deepest path access
+                // unless the condition evaluates to true on `null`.
+                options->minDepth = indexedAccessDepth;
+              }
+            }  // otherwise do not remove the filter statement
+          }
+          break;
+        }
+        case OptimizationCase::VERTEX:
+        case OptimizationCase::EDGE: {
+          // We have the Vertex or Edge variable in the statement
+          AstNode* expr = andNode->getMemberUnchecked(i - 1);
+
+          // check if the filter condition can be executed on a DB server,
+          // deterministically
+          if (expr != nullptr &&
+              expr->canBeUsedInFilter(
+                  _plan->getAst()->query().vocbase().isOneShard())) {
+            // Only do register this condition in case it can be executed
+            // inside a TraversalNode. We need to check here and abort in
+            // cases which are just not allowed, e.g. execution of user
+            // defined JavaScript method or V8 based methods.
+
+            auto conditionToOptimize =
+                conditionWithInlineCalculations(_plan, expr);
+
+            // Create a clone before we modify the Condition
+            AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
+            // Retain original condition, as covered by this Node
+            newAndCondition = ensureNewCondition(newAndCondition, cloned,
+                                                 NODE_TYPE_OPERATOR_BINARY_AND);
+
+            newAndConditionPostFilter =
+                ensureNewCondition(newAndConditionPostFilter, cloned,
+                                   NODE_TYPE_OPERATOR_BINARY_AND);
+          }
+          break;
+        }
+      }
+
+      if (branchIsImpossible) {
+        // Abort iteration through nodes
+        break;
+      }
+      // done with a member of the current AND branch
+    }
+
+    if (!branchIsImpossible && newAndCondition != nullptr) {
+      // have something to add
+      newOrCondition = ensureNewCondition(newOrCondition, newAndCondition,
+                                          NODE_TYPE_OPERATOR_BINARY_OR);
+
+      if (newAndConditionPostFilter != nullptr) {
+        newOrConditionPostFilter = ensureNewCondition(
+            newOrConditionPostFilter, newAndConditionPostFilter,
+            NODE_TYPE_OPERATOR_BINARY_OR);
+      }
+    } else if (branchIsImpossible && orNode->numMembers() == 1) {
+      // only a single condition branch, and it is impossible to satisfy
+      impossibleCondition = true;
+      // we only have one AND branch anyway, so technically the following break
+      // statement is not necessary
+      break;
+    }
+
+    // done with a full AND branch
+  }
+
+  std::unique_ptr<Condition> coveredCondition;
+  if (newOrCondition != nullptr && !impossibleCondition) {
+    coveredCondition = std::make_unique<Condition>(_plan->getAst());
+    coveredCondition->andCombine(newOrCondition);
+
+    if (newOrConditionPostFilter != nullptr) {
+      node->registerPostFilterCondition(newOrConditionPostFilter);
+    }
+  }
+
+  return coveredCondition;
+}
+
 bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
@@ -825,7 +895,7 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node,
   VarSet vars;
   Ast::getReferencedVariables(node, vars);
   if (vars.size() > 1) {
-    // More then one variable.
+    // More than one variable.
     // Too complex, would require to figure out all
     // possible values for all others vars and play them through
     // Do not opt.
@@ -846,4 +916,17 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node,
   AqlValue res = tmpExp.execute(&ctxt, mustDestroy);
   AqlValueGuard guard(res, mustDestroy);
   return res.toBoolean();
+}
+
+void TraversalConditionFinder::ensureCondition() {
+  if (!_condition) {
+    _condition = std::make_unique<Condition>(_plan->getAst());
+  }
+  TRI_ASSERT(_condition != nullptr);
+}
+
+void TraversalConditionFinder::resetCondition() noexcept { _condition.reset(); }
+
+bool TraversalConditionFinder::haveNonEmptyCondition() const noexcept {
+  return _condition && !_condition->isEmpty();
 }

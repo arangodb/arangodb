@@ -121,15 +121,15 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(
       });
 }
 
-bool InAndOutRowExpressionContext::needsVertexValue() const {
+bool InAndOutRowExpressionContext::needsVertexValue() const noexcept {
   return _vertexVarIdx < _regs.size();
 }
 
-bool InAndOutRowExpressionContext::needsEdgeValue() const {
+bool InAndOutRowExpressionContext::needsEdgeValue() const noexcept {
   return _edgeVarIdx < _regs.size();
 }
 
-bool InAndOutRowExpressionContext::needsPathValue() const {
+bool InAndOutRowExpressionContext::needsPathValue() const noexcept {
   return _pathVarIdx < _regs.size();
 }
 

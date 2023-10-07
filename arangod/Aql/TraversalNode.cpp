@@ -877,10 +877,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           }
         }
 
-        auto expr = opts->createPruneEvaluator(
+        evaluator = opts->createPruneEvaluator(
             std::move(pruneVars), std::move(pruneRegs), vertexRegIdx,
             edgeRegIdx, pathRegIdx, pruneExpression());
-        evaluator = std::move(expr);
       };
 
   auto checkPostFilterAvailability =
@@ -908,10 +907,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           }
         }
 
-        auto expr = opts->createPostFilterEvaluator(
+        evaluator = opts->createPostFilterEvaluator(
             std::move(postFilterVars), std::move(postFilterRegs), vertexRegIdx,
             edgeRegIdx, postFilterExpression());
-        evaluator = std::move(expr);
       };
 
   if (postFilterExpression() != nullptr) {
@@ -1295,7 +1293,7 @@ void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
 }
 
 void TraversalNode::registerPostFilterCondition(AstNode const* condition) {
-  // We cannot modify the postFilterExpression after it was build
+  // We cannot modify the postFilterExpression after it was built
   TRI_ASSERT(_postFilterExpression == nullptr);
   TRI_ASSERT(condition != nullptr);
   TRI_ASSERT(!condition->willUseV8());
@@ -1375,11 +1373,18 @@ auto TraversalNode::options() const -> TraverserOptions* {
 Expression* TraversalNode::postFilterExpression() const {
   if (!_postFilterExpression && !_postFilterConditions.empty()) {
     auto ast = _plan->getAst();
-    AstNode* ands = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-    for (auto it : _postFilterConditions) {
-      ands->addMember(it);
+    if (_postFilterConditions.size() == 1) {
+      // single condition, simply create a flat expression
+      _postFilterExpression = std::make_unique<Expression>(
+          ast, const_cast<AstNode*>(_postFilterConditions[0]));
+    } else {
+      // multiple conditions, combine them with logical AND
+      AstNode* ands = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+      for (auto it : _postFilterConditions) {
+        ands->addMember(it);
+      }
+      _postFilterExpression = std::make_unique<Expression>(ast, ands);
     }
-    _postFilterExpression = std::make_unique<Expression>(ast, ands);
   }
   return _postFilterExpression.get();
 }

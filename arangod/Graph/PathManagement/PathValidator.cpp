@@ -24,6 +24,7 @@
 #include "PathValidator.h"
 #include "Aql/AstNode.h"
 #include "Aql/PruneExpressionEvaluator.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
@@ -41,8 +42,6 @@
 // For additional information, please read PathValidatorEE.cpp
 #include "Enterprise/Graph/PathValidatorEE.cpp"
 #endif
-
-#include "Basics/Exceptions.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -249,30 +248,33 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
   }
 
-  VPackBuilder vertexBuilder, edgeBuilder;
+  clearBuilder(_vertexBuilder);
+  clearBuilder(_edgeBuilder);
 
   // evaluate if vertex needs to be pruned
   ValidationResult res{ValidationResult::Type::TAKE};
   if (_options.usesPrune()) {
-    VPackBuilder pathBuilder;
-
     auto& evaluator = _options.getPruneEvaluator();
 
     if (evaluator->needsVertex()) {
-      _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
-      evaluator->injectVertex(vertexBuilder.slice());
+      ensureBuilder(_vertexBuilder);
+      _provider.addVertexToBuilder(step.getVertex(), *_vertexBuilder);
+      evaluator->injectVertex(_vertexBuilder->slice());
     }
     if (evaluator->needsEdge()) {
-      _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
-      evaluator->injectEdge(edgeBuilder.slice());
+      ensureBuilder(_edgeBuilder);
+      _provider.addEdgeToBuilder(step.getEdge(), *_edgeBuilder);
+      evaluator->injectEdge(_edgeBuilder->slice());
     }
     if (evaluator->needsPath()) {
       using ResultPathType =
           SingleProviderPathResult<ProviderType, PathStore, Step>;
       std::unique_ptr<PathResultInterface> currentPath =
           std::make_unique<ResultPathType>(step, _provider, _store);
-      currentPath->toVelocyPack(pathBuilder);
-      evaluator->injectPath(pathBuilder.slice());
+      ensureBuilder(_pathBuilder);
+      clearBuilder(_pathBuilder);
+      currentPath->toVelocyPack(*_pathBuilder);
+      evaluator->injectPath(_pathBuilder->slice());
     }
     if (evaluator->evaluate()) {
       res.combine(ValidationResult::Type::PRUNE);
@@ -286,13 +288,14 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   // Evaluate depth-based vertex expressions
   auto vertexExpr = _options.getVertexExpression(step.getDepth());
   if (vertexExpr != nullptr) {
-    if (vertexBuilder.isEmpty()) {
-      _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
+    ensureBuilder(_vertexBuilder);
+    if (_vertexBuilder->isEmpty()) {
+      _provider.addVertexToBuilder(step.getVertex(), *_vertexBuilder);
     }
 
     // evaluate expression
     bool satifiesCondition =
-        evaluateVertexExpression(vertexExpr, vertexBuilder.slice());
+        evaluateVertexExpression(vertexExpr, _vertexBuilder->slice());
     if (!satifiesCondition) {
       if (_options.bfsResultHasToIncludeFirstVertex() && step.isFirst()) {
         res.combine(ValidationResult::Type::PRUNE);
@@ -310,18 +313,20 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     auto& evaluator = _options.getPostFilterEvaluator();
 
     if (evaluator->needsVertex()) {
-      if (vertexBuilder.isEmpty()) {  // already added a vertex in case
-                                      // _options.usesPrune() == true
-        _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
+      ensureBuilder(_vertexBuilder);
+      if (_vertexBuilder->isEmpty()) {  // already added a vertex in case
+                                        // _options.usesPrune() == true
+        _provider.addVertexToBuilder(step.getVertex(), *_vertexBuilder);
       }
-      evaluator->injectVertex(vertexBuilder.slice());
+      evaluator->injectVertex(_vertexBuilder->slice());
     }
     if (evaluator->needsEdge()) {
-      if (edgeBuilder.isEmpty()) {  // already added an edge in case
-                                    // _options.usesPrune() == true
-        _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
+      ensureBuilder(_edgeBuilder);
+      if (_edgeBuilder->isEmpty()) {  // already added an edge in case
+                                      // _options.usesPrune() == true
+        _provider.addEdgeToBuilder(step.getEdge(), *_edgeBuilder);
       }
-      evaluator->injectEdge(edgeBuilder.slice());
+      evaluator->injectEdge(_edgeBuilder->slice());
     }
 
     TRI_ASSERT(!evaluator->needsPath());
@@ -340,10 +345,7 @@ template<class ProviderType, class PathStore,
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     evaluateVertexExpression(arangodb::aql::Expression* expression,
                              VPackSlice value) -> bool {
-  if (expression == nullptr) {
-    return true;
-  }
-
+  TRI_ASSERT(expression != nullptr);
   TRI_ASSERT(value.isObject() || value.isNull());
   auto tmpVar = _options.getTempVar();
   bool mustDestroy = false;
@@ -424,6 +426,26 @@ void PathValidator<ProviderType, PathStore, vertexUniqueness,
                    edgeUniqueness>::unpreparePostFilterContext() {
   TRI_ASSERT(_options.usesPostFilter());
   _options.unpreparePostFilterContext();
+}
+
+template<class ProviderType, class PathStore,
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
+    ensureBuilder(std::unique_ptr<velocypack::Builder>& builder) {
+  if (builder == nullptr) {
+    builder = std::make_unique<velocypack::Builder>();
+  }
+}
+
+template<class ProviderType, class PathStore,
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
+    clearBuilder(std::unique_ptr<velocypack::Builder>& builder) {
+  if (builder != nullptr) {
+    builder->clear();
+  }
 }
 
 #ifndef USE_ENTERPRISE
