@@ -166,15 +166,13 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   }
 
   TRI_ASSERT(info.isObject());
-
-  bool extendedNames =
-      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
-  if (auto res = CollectionNameValidator::validateName(system(), extendedNames,
-                                                       name());
-      res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
+  /*
+    bool extendedNames =
+        vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+    if (auto res = CollectionNameValidator::validateName(system(),
+    extendedNames, name()); res.fail()) { THROW_ARANGO_EXCEPTION(res);
+    }
+  */
   if (_version < minimumVersion()) {
     // collection is too "old"
     std::string errorMsg(std::string("collection '") + name() +
