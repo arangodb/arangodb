@@ -1,14 +1,13 @@
 /* jshint strict: false, maxlen: 300 */
 /* global arango */
 
-var db = require('@arangodb').db,
-  internal = require('internal'),
-  _ = require('lodash'),
-  systemColors = internal.COLORS,
-  print = internal.print,
-  output = internal.output,
-  colors = {};
-var console = require('console');
+const db = require('@arangodb').db;
+const internal = require('internal');
+const _ = require('lodash');
+const systemColors = internal.COLORS;
+const output = internal.output;
+
+let colors = {};
 
 // max elements to print from array/objects
 const maxMembersToPrint = 20;
@@ -204,7 +203,8 @@ function printQuery(query, cacheable) {
   'use strict';
   // restrict max length of printed query to avoid endless printing for
   // very long query strings
-  var maxLength = 4096, headline = 'Query String (' + query.length + ' chars';
+  const maxLength = 4096
+  let headline = 'Query String (' + query.length + ' chars';
   if (query.length > maxLength) {
     headline += ' - truncated...';
     query = query.substr(0, maxLength / 2) + ' ... ' + query.substr(query.length - maxLength / 2);
@@ -223,11 +223,10 @@ function printModificationFlags(flags) {
     return;
   }
   stringBuilder.appendLine(section('Write query options:'));
-  var keys = Object.keys(flags), maxLen = 'Option'.length;
+  const keys = Object.keys(flags);
+  let maxLen = 'Option'.length;
   keys.forEach(function (k) {
-    if (k.length > maxLen) {
-      maxLen = k.length;
-    }
+    maxLen = Math.max(maxLen, k.length);
   });
   stringBuilder.appendLine(' ' + header('Option') + pad(1 + maxLen - 'Option'.length) + '   ' + header('Value'));
   keys.forEach(function (k) {
@@ -240,14 +239,37 @@ function printModificationFlags(flags) {
 function printRules(rules, stats) {
   'use strict';
 
-  const maxIdLen = String('Id').length;
   stringBuilder.appendLine(section('Optimization rules applied:'));
   if (rules.length === 0) {
     stringBuilder.appendLine(' ' + value('none'));
   } else {
-    stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' + header('RuleName'));
-    for (let i = 0; i < rules.length; ++i) {
-      stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + '   ' + keyword(rules[i]));
+    let maxIdLen = 'Id'.length;
+    let maxRuleLen = 'Rule Name'.length;
+    rules.forEach((rule, i) => {
+      maxIdLen = Math.max(maxIdLen, String(i + 1).length);
+      maxRuleLen = Math.max(maxRuleLen, rule.length);
+    });
+    const cols = 3;
+    const off = Math.ceil(rules.length / cols);
+    let parts = [];
+    for (let j = 0; j < Math.min(rules.length, cols); ++j) {
+      const idx = j * off;
+      if (idx < rules.length) {
+        parts.push(pad(1 + maxIdLen - 'Id'.length) + header('Id') + '   ' + header('Rule Name') + pad(1 + maxRuleLen - 'Rule Name'.length));
+      }
+    }
+    stringBuilder.appendLine(' ' + parts.join('         '));
+
+    for (let i = 0; i < off; ++i) {
+      parts = [];
+      for (let j = 0; j < cols; ++j) {
+        const idx = i + j * off;
+        if (idx < rules.length) {
+          parts.push(pad(1 + maxIdLen - String(idx + 1).length) + variable(String(idx + 1)) + '   ' + keyword(rules[idx]) + pad(1 + maxRuleLen - rules[idx].length)); 
+        }
+      }
+    
+      stringBuilder.appendLine(' ' + parts.join('         '));
     }
   }
   stringBuilder.appendLine();
@@ -258,9 +280,7 @@ function printRules(rules, stats) {
 
   let maxNameLength = 0;
   let times = Object.keys(stats.rules).map(function(key) {
-    if (key.length > maxNameLength) {
-      maxNameLength = key.length;
-    }
+    maxNameLength = Math.max(maxNameLength, key.length);
     return { name: key, time: stats.rules[key] };
   });
   // filter out everything that was reasonably fast
@@ -303,9 +323,9 @@ function printWarnings(warnings) {
   }
 
   stringBuilder.appendLine(section('Warnings:'));
-  var maxIdLen = String('Code').length;
-  stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Code').length) + header('Code') + '   ' + header('Message'));
-  for (var i = 0; i < warnings.length; ++i) {
+  let maxIdLen = 'Code'.length;
+  stringBuilder.appendLine(' ' + pad(1 + maxIdLen - 'Code'.length) + header('Code') + '   ' + header('Message'));
+  for (let i = 0; i < warnings.length; ++i) {
     stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + '   ' + keyword(warnings[i].message));
   }
   stringBuilder.appendLine();
@@ -318,30 +338,32 @@ function printStats(stats, isCoord) {
     return;
   }
 
-  stringBuilder.appendLine(section('Query Statistics:'));
-  var maxWELen = String('Writes Exec').length;
-  var maxWILen = String('Writes Ign').length;
-  var maxSFLen = String('Scan Full').length;
-  var maxSILen = String('Scan Index').length;
-  var maxCHMLen = String('Cache Hits/Misses').length;
-  var maxFLen = String('Filtered').length;
-  var maxRLen = String('Requests').length;
-  var maxMem = String('Peak Mem [b]').length;
-  var maxETen = String('Exec Time [s]').length;
-  stats.executionTime = stats.executionTime.toFixed(5);
-  stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') +
-    header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
+  const spc = '      ';
 
-  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
-    pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
-    pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
-    pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
-    pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + '   ' +
-    pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + '   ' +
-    (isCoord ? pad(1 + maxRLen - String(stats.httpRequests).length) + value(stats.httpRequests) + '   ' : '') +
-    pad(1 + maxMem - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + '   ' +
-    pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
+  stringBuilder.appendLine(section('Query Statistics:'));
+  let maxWELen = 'Writes Exec'.length;
+  let maxWILen = 'Writes Ign'.length;
+  let maxSFLen = 'Scan Full'.length;
+  let maxSILen = 'Scan Index'.length;
+  let maxCHMLen = 'Cache Hits/Misses'.length;
+  let maxFLen = 'Filtered'.length;
+  let maxRLen = 'Requests'.length;
+  let maxMemLen = 'Peak Mem [b]'.length;
+  let maxETLen = 'Exec Time [s]'.length;
+  stats.executionTime = stats.executionTime.toFixed(5);
+  stringBuilder.appendLine(' ' + header('Writes Exec') + spc + header('Writes Ign') + spc + header('Scan Full') + spc +
+    header('Scan Index') + spc + header('Cache Hits/Misses') + spc + header('Filtered') + spc + (isCoord ? header('Requests') + spc : '') +
+    header('Peak Mem [b]') + spc + header('Exec Time [s]'));
+
+  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + spc +
+    pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + spc +
+    pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + spc +
+    pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + spc +
+    pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + spc +
+    pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + spc +
+    (isCoord ? pad(1 + maxRLen - String(stats.httpRequests).length) + value(stats.httpRequests) + spc : '') +
+    pad(1 + maxMemLen - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + spc +
+    pad(1 + maxETLen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
 }
 
@@ -352,20 +374,33 @@ function printProfile(profile) {
   }
 
   stringBuilder.appendLine(section('Query Profile:'));
+  let keys = Object.keys(profile);
   let maxHeadLen = 0;
   let maxDurLen = 'Duration [s]'.length;
-  Object.keys(profile).forEach(key => {
-    if (key.length > maxHeadLen) {
-      maxHeadLen = key.length;
-    }
-    if (profile[key].toFixed(5).length > maxDurLen) {
-      maxDurLen = profile[key].toFixed(5).length;
-    }
+  keys.forEach(key => {
+    maxHeadLen = Math.max(maxHeadLen, key.length);
+    maxDurLen = Math.max(maxDurLen, profile[key].toFixed(5).length);
   });
-  stringBuilder.appendLine(' ' + header('Query Stage') + pad(1 + maxHeadLen - String('Query Stage').length) + '   ' + pad(1 + maxDurLen - 'Duration [s]'.length) + header('Duration [s]'));
-  Object.keys(profile).forEach(key => {
-    stringBuilder.appendLine(' ' + keyword(key) + pad(1 + maxHeadLen - String(key).length) + '   ' + pad(1 + maxDurLen - profile[key].toFixed(5).length) + value(profile[key].toFixed(5)));
-  });
+
+  const cols = 3;
+  const off = Math.ceil(keys.length / cols);
+  let parts = [];
+  for (let j = 0; j < cols; ++j) {
+    parts.push(header('Query Stage') + pad(1 + maxHeadLen - 'Query Stage'.length) + '    ' + pad(1 + maxDurLen - 'Duration [s]'.length) + header('Duration [s]'));
+  }
+  stringBuilder.appendLine(' ' + parts.join('         '));
+
+  for (let i = 0; i < off; ++i) {
+    parts = [];
+    for (let j = 0; j < cols; ++j) {
+      let key = keys[i + j * off];
+      if (key !== undefined) {
+        parts.push(keyword(key) + pad(1 + maxHeadLen - String(key).length) + '    ' + pad(1 + maxDurLen - profile[key].toFixed(5).length) + value(profile[key].toFixed(5)));
+      }
+    }
+    
+    stringBuilder.appendLine(' ' + parts.join('         '));
+  }
   stringBuilder.appendLine();
 }
 
@@ -474,15 +509,12 @@ function printFunctions(functions) {
   stringBuilder.appendLine();
   stringBuilder.appendLine(section('Functions used:'));
 
-  let maxNameLen = String('Name').length;
-  let maxDeterministicLen = String('Deterministic').length;
-  let maxCacheableLen = String('Cacheable').length;
-  let maxV8Len = String('Uses V8').length;
+  let maxNameLen = 'Name'.length;
+  let maxDeterministicLen = 'Deterministic'.length;
+  let maxCacheableLen = 'Cacheable'.length;
+  let maxV8Len = 'Uses V8'.length;
   funcArray.forEach(function (f) {
-    let l = String(f.name).length;
-    if (l > maxNameLen) {
-      maxNameLen = l;
-    }
+    maxNameLength = Math.max(maxNameLen, String(f.name).length);
   });
   let line = ' ' +
     header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
@@ -492,7 +524,7 @@ function printFunctions(functions) {
 
   stringBuilder.appendLine(line);
 
-  for (var i = 0; i < funcArray.length; ++i) {
+  for (let i = 0; i < funcArray.length; ++i) {
     // prevent "undefined"
     let deterministic = String(funcArray[i].isDeterministic || false);
     let cacheable = String(funcArray[i].cacheable || false);
@@ -599,8 +631,7 @@ function printTraversalDetails(traversals) {
   outTable.setHeader(4, 'Options');
   outTable.setHeader(5, 'Filter / Prune Conditions');
 
-
-  var optify = function (options, colorize) {
+  let optify = function (options, colorize) {
     let opts = {
       bfs: options.bfs || undefined, /* only print if set to true to save room */
       neighbors: options.neighbors || undefined, /* only print if set to true to save room */
@@ -610,8 +641,8 @@ function printTraversalDetails(traversals) {
       weightAttribute: options.order === 'weighted' && options.weightAttribute || undefined,
     };
 
-    var result = '';
-    for (var att in opts) {
+    let result = '';
+    for (let att in opts) {
       if (opts[att] === undefined) {
         continue;
       }
@@ -669,15 +700,12 @@ function printShortestPathDetails(shortestPaths) {
   stringBuilder.appendLine();
   stringBuilder.appendLine(section('Shortest paths on graphs:'));
 
-  var maxIdLen = String('Id').length;
-  var maxVertexCollectionNameStrLen = String('Vertex collections').length;
-  var maxEdgeCollectionNameStrLen = String('Edge collections').length;
+  let maxIdLen = 'Id'.length;
+  let maxVertexCollectionNameStrLen = 'Vertex collections'.length;
+  let maxEdgeCollectionNameStrLen = 'Edge collections'.length;
 
   shortestPaths.forEach(function (node) {
-    var l = String(node.id).length;
-    if (l > maxIdLen) {
-      maxIdLen = l;
-    }
+    maxIdLen = Math.max(maxIdLen, String(node.id).length);
 
     if (node.hasOwnProperty('vertexCollectionNameStr')) {
       if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
@@ -691,7 +719,7 @@ function printShortestPathDetails(shortestPaths) {
     }
   });
 
-  var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
+  let line = ' ' + pad(1 + maxIdLen - 'Id'.length) + header('Id') + '   ' +
     header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
     header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
 
@@ -731,15 +759,12 @@ function printKShortestPathsDetails(shortestPaths) {
   stringBuilder.appendLine();
   stringBuilder.appendLine(section('k shortest paths on graphs:'));
 
-  var maxIdLen = String('Id').length;
-  var maxVertexCollectionNameStrLen = String('Vertex collections').length;
-  var maxEdgeCollectionNameStrLen = String('Edge collections').length;
+  let maxIdLen = 'Id'.length;
+  let maxVertexCollectionNameStrLen = 'Vertex collections'.length;
+  let maxEdgeCollectionNameStrLen = 'Edge collections'.length;
 
   shortestPaths.forEach(function (node) {
-    var l = String(node.id).length;
-    if (l > maxIdLen) {
-      maxIdLen = l;
-    }
+    maxIdLen = Math.max(maxIdLen, String(node.id).length);
 
     if (node.hasOwnProperty('vertexCollectionNameStr')) {
       if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
@@ -753,7 +778,7 @@ function printKShortestPathsDetails(shortestPaths) {
     }
   });
 
-  var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
+  let line = ' ' + pad(1 + maxIdLen - 'Id'.length) + header('Id') + '   ' +
     header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
     header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
 
@@ -810,7 +835,7 @@ function processQuery(query, explain, planIndex) {
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
-  var recursiveWalk = function (partNodes, level, site) {
+  let recursiveWalk = function (partNodes, level, site) {
     let n = _.clone(partNodes);
     n.reverse();
     n.forEach(function (node) {
@@ -922,7 +947,7 @@ function processQuery(query, explain, planIndex) {
     return (node) => variableName(node);
   };
 
-  var unfoldRawData = function (value) {
+  const unfoldRawData = function (value) {
     let node = {};
     if (Array.isArray(value)) {
       node.type = 'array';
@@ -947,7 +972,7 @@ function processQuery(query, explain, planIndex) {
     return node;
   };
 
-  var checkRawData = function (node) {
+  const checkRawData = function (node) {
     if (node.hasOwnProperty('raw')) {
       node = unfoldRawData(node.raw);
     } else {
@@ -2222,7 +2247,7 @@ function explain(data, options, shouldPrint) {
   }
 
   if (shouldPrint === undefined || shouldPrint) {
-    print(stringBuilder.getOutput());
+    internal.print(stringBuilder.getOutput());
   } else {
     return stringBuilder.getOutput();
   }
@@ -2249,7 +2274,7 @@ function profileQuery(data, shouldPrint) {
   processQuery(data.query, extra, undefined);
 
   if (shouldPrint === undefined || shouldPrint) {
-    print(stringBuilder.getOutput());
+    internal.print(stringBuilder.getOutput());
   } else {
     return stringBuilder.getOutput();
   }
@@ -2454,7 +2479,7 @@ function debugDump(filename, query, bindVars, options) {
 }
 
 function inspectDump(filename, outfile) {
-  let internal = require('internal');
+  let print = internal.print;
   if (outfile !== undefined) {
     internal.startCaptureMode();
   }
@@ -2587,6 +2612,7 @@ function inspectDump(filename, outfile) {
 }
 
 function explainQueryRegisters(plan) {
+  let print = internal.print;
 
   /**
    * @typedef Node
@@ -2959,7 +2985,8 @@ function explainQueryRegisters(plan) {
 function explainRegisters(data, options, shouldPrint) {
   'use strict';
 
-  console.warn("explainRegisters() is purposefully undocumented and may be changed or removed without notice.");
+  let print = internal.print;
+  require('console').warn("explainRegisters() is purposefully undocumented and may be changed or removed without notice.");
 
   if (typeof data === 'string') {
     data = { query: data, options: options };
