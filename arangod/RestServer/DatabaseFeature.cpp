@@ -684,13 +684,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   }
   result = nullptr;
 
-  // bool extendedNames = this->extendedNames();
-  // if (auto res = DatabaseNameValidator::validateName(/*allowSystem*/ false,
-  //                                                   extendedNames, name);
-  //    res.fail()) {
-  //  return res;
-  //}
-
   std::unique_ptr<TRI_vocbase_t> vocbase;
 
   // create database in storage engine

@@ -271,14 +271,6 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   auto name = basics::StringUtils::urlDecode(suffixes[0]);
 
-  // bool extendedNames =
-  // server().getFeature<DatabaseFeature>().extendedNames(); auto r =
-  // ViewNameValidator::validateName(
-  //    /*allowSystem*/ false, extendedNames, name);
-  // if (!r.ok()) {
-  //  return generateError(r);
-  //}
-
   CollectionNameResolver resolver{_vocbase};
   auto view = resolver.getView(name);
   if (!view) {
@@ -371,19 +363,6 @@ void RestViewHandler::deleteView() {
   }
 
   auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
-
-  // if (name.empty() || name[0] < '0' || name[0] > '9') {
-  //  // not a numeric view id. now validate view name
-  //  bool extendedNames =
-  //      _vocbase.server().getFeature<DatabaseFeature>().extendedNames();
-  //  if (auto res = ViewNameValidator::validateName(
-  //          /*allowSystem*/ false, extendedNames, name);
-  //      res.fail()) {
-  //    generateError(res);
-  //    events::DropView(_vocbase.name(), name, res.errorNumber());
-  //    return;
-  //  }
-  //}
 
   auto allowDropSystem =
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
