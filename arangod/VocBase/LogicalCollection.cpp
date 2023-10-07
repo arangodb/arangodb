@@ -1241,7 +1241,7 @@ uint64_t LogicalCollection::getInternalValidatorTypes() const noexcept {
 
 void LogicalCollection::addInternalValidator(
     std::unique_ptr<ValidatorBase> validator) {
-  // For the time beeing we only allow ONE internal validator.
+  // For the time being we only allow ONE internal validator.
   // This however is a non-necessary restriction and can be leveraged at any
   // time. The code is prepared to handle any number of validators, and this
   // assert is only to make sure we do not create one twice.
