@@ -1,3 +1,10 @@
+v3.11.5 (XXXX-XX-XX)
+--------------------
+
+* Fix ineffective startup option `--rocksdb.partition-files-for-documents`.
+  Setting this option had no effect unless RocksDB version 8 was used.
+
+
 v3.11.4 (XXXX-XX-XX)
 --------------------
 
