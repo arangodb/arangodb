@@ -417,6 +417,70 @@ const IndexJoinTestSuite = function () {
         assertEqual(a, 2 * b);
       }
     },
+
+    testJoinWithDocumentPostFilter: function () {
+      const A = fillCollection("A", attributeGenerator(20, {x: x => 2 * x, y: x => x}));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(20, "x", x => x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              FILTER doc1.y % 2 == 0
+              RETURN [doc1.x, doc1.y, doc2.x]
+      `;
+
+      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const join = plan.nodes[1];
+
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos[0].projections, ["x", "y"]);
+      assertEqual(join.indexInfos[1].projections, ["x"]);
+
+      const result = runAndCheckQuery(query);
+
+      assertEqual(result.length, 5);
+      for (const [a, b, c] of result) {
+        assertEqual(a, c);
+        assertEqual(b % 2, 0);
+      }
+    },
+
+    testJoinWithDocumentPostFilterProduceDocument: function () {
+      const A = fillCollection("A", attributeGenerator(20, {x: x => 2 * x, y: x => x}));
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      const B = fillCollection("B", singleAttributeGenerator(20, "x", x => x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              FILTER doc1.y % 2 == 0
+              RETURN [doc1, doc2.x]
+      `;
+
+      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const join = plan.nodes[1];
+
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos[0].projections, []);
+      assertEqual(join.indexInfos[1].projections, ["x"]);
+
+      const result = runAndCheckQuery(query);
+
+      assertEqual(result.length, 5);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b);
+        assertEqual(a.y % 2, 0);
+      }
+    },
     /*
         testMultipleJoins: function () {
           const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => x));

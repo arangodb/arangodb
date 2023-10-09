@@ -226,6 +226,23 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     data.index = idx.index;
     data.collection = idx.collection;
     data.projections = idx.projections;
+
+    if (idx.filter) {
+      auto& filter = data.filter.emplace();
+      filter.documentVariable = idx.outVariable;
+      filter.expression = idx.filter->clone(engine.getQuery().ast());
+
+      VarSet inVars;
+      filter.expression->variables(inVars);
+
+      filter.filterVarsToRegs.reserve(inVars.size());
+
+      for (auto& var : inVars) {
+        TRI_ASSERT(var != nullptr);
+        auto regId = variableToRegisterId(var);
+        filter.filterVarsToRegs.emplace_back(var->id, regId);
+      }
+    }
   }
 
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);

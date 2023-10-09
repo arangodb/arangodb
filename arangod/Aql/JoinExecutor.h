@@ -73,8 +73,18 @@ struct JoinExecutorInfos {
     // Values used for projection
     Projections projections;
 
-    // post filter expression
-    std::unique_ptr<Expression> filter;
+    struct FilterInformation {
+      // post filter expression
+      std::unique_ptr<Expression> expression;
+
+      // variable in the expression referring to the current document
+      Variable const* documentVariable;
+
+      // mapping of other variables to register in the input row
+      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+    };
+
+    std::optional<FilterInformation> filter;
   };
 
   std::vector<IndexInfo> indexes;
@@ -111,6 +121,7 @@ class JoinExecutor {
  private:
   void constructStrategy();
 
+  aql::AqlFunctionsInternalCache _functionsCache;
   Fetcher& _fetcher;
   Infos& _infos;
   std::unique_ptr<AqlIndexJoinStrategy> _strategy;

@@ -28,7 +28,9 @@
 #include "Aql/QueryContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "Logger/LogMacros.h"
+#include "DocumentExpressionContext.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 JoinExecutor::~JoinExecutor() = default;
@@ -51,6 +53,53 @@ struct SpanCoveringData : arangodb::IndexIteratorCoveringData {
 };
 }  // namespace
 
+namespace {
+
+VPackSlice extractSlice(VPackSlice slice) { return slice; }
+
+VPackSlice extractSlice(std::unique_ptr<std::string>& ptr) {
+  return VPackSlice{reinterpret_cast<uint8_t*>(ptr->data())};
+}
+
+void moveValueIntoRegister(OutputAqlItemRow& output, RegisterId reg,
+                           InputAqlItemRow& inputRow, VPackSlice slice) {
+  output.moveValueInto(reg, inputRow, slice);
+}
+
+void moveValueIntoRegister(OutputAqlItemRow& output, RegisterId reg,
+                           InputAqlItemRow& inputRow,
+                           std::unique_ptr<std::string>& ptr) {
+  output.moveValueInto(reg, inputRow, &ptr);
+}
+
+void pushDocumentToVector(std::vector<std::unique_ptr<std::string>>& vec,
+                          VPackSlice doc) {
+  // TODO use string leaser for transaction here?
+  auto ptr = std::make_unique<std::string>(doc.startAs<char>(), doc.byteSize());
+  vec.emplace_back(std::move(ptr));
+}
+
+void pushDocumentToVector(std::vector<std::unique_ptr<std::string>>& vec,
+                          std::unique_ptr<std::string>& doc) {
+  vec.emplace_back(std::move(doc));
+}
+
+template<typename F>
+struct DocumentCallbackOverload : F {
+  DocumentCallbackOverload(F&& f) : F(std::forward<F>(f)) {}
+
+  bool operator()(LocalDocumentId token, VPackSlice doc) const {
+    return F::template operator()<VPackSlice>(token, doc);
+  }
+
+  bool operator()(LocalDocumentId token,
+                  std::unique_ptr<std::string>& docPtr) const {
+    return F::template operator()<std::unique_ptr<std::string>&>(token, docPtr);
+  }
+};
+
+}  // namespace
+
 auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
@@ -63,8 +112,71 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
     hasMore = _strategy->next([&](std::span<LocalDocumentId> docIds,
                                   std::span<VPackSlice> projections) -> bool {
-      // TODO post filtering based on projections
-      // TODO store projections in registers
+      auto lookupDocument = [&](std::size_t index, LocalDocumentId id,
+                                auto cb) {
+        auto result =
+            _infos.indexes[index]
+                .collection->getCollection()
+                ->getPhysical()
+                ->lookup(&_trx, id,
+                         {DocumentCallbackOverload{
+                             [&](LocalDocumentId token, auto docPtr) {
+                               cb.template operator()<decltype(docPtr)>(docPtr);
+                               return true;
+                             }}},
+                         {});
+        if (result.fail()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              result.errorNumber(),
+              basics::StringUtils::concatT(
+                  "failed to lookup indexed document ", id.id(),
+                  " for collection ", _infos.indexes[index].collection->name(),
+                  ": ", result.errorMessage()));
+        }
+      };
+
+      // first do all the filtering and only if all indexes produced a
+      // value write it into the aql output block
+      std::vector<std::unique_ptr<std::string>> documents;
+      documents.reserve(docIds.size());
+      for (std::size_t k = 0; k < docIds.size(); k++) {
+        auto& idx = _infos.indexes[k];
+        // evaluate filter conditions
+        if (!idx.filter.has_value()) {
+          documents.push_back(nullptr);
+          continue;
+        }
+
+        bool filtered = false;
+
+        auto filterCallback = [&](auto docPtr) {
+          auto doc = extractSlice(docPtr);
+          GenericDocumentExpressionContext ctx{_trx,
+                                               *_infos.query,
+                                               _functionsCache,
+                                               idx.filter->filterVarsToRegs,
+                                               _currentRow,
+                                               idx.filter->documentVariable};
+          ctx.setCurrentDocument(doc);
+          bool mustDestroy;
+          AqlValue result = idx.filter->expression->execute(&ctx, mustDestroy);
+          AqlValueGuard guard(result, mustDestroy);
+          filtered = !result.toBoolean();
+          if (!filtered) {
+            // add document to the list
+            pushDocumentToVector(documents, docPtr);
+          }
+        };
+
+        // TODO add filtering projections
+        lookupDocument(k, docIds[k], filterCallback);
+        if (filtered) {
+          // forget about this row
+          return true;
+        }
+      }
+
+      // Now produce the documents
       std::size_t projectionsOffset = 0;
       for (std::size_t k = 0; k < docIds.size(); k++) {
         auto& idx = _infos.indexes[k];
@@ -86,62 +198,28 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
           projectionsOffset += idx.projections.size();
         } else {
-          // load the whole document
+          auto docProduceCallback = [&](auto docPtr) {
+            auto doc = extractSlice(docPtr);
+            if (idx.projections.empty()) {
+              moveValueIntoRegister(output,
+                                    _infos.indexes[k].documentOutputRegister,
+                                    _currentRow, docPtr);
+            } else {
+              _projectionsBuilder.clear();
+              _projectionsBuilder.openObject(true);
+              idx.projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
+                                                       &_trx);
+              _projectionsBuilder.close();
+              output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                   _currentRow, _projectionsBuilder.slice());
+            }
+          };
 
-          // TODO post filter based on document value
-          // TODO do we really want to check/populate cache?
-          auto result =
-              _infos.indexes[k]
-                  .collection->getCollection()
-                  ->getPhysical()
-                  ->lookup(&_trx, docIds[k],
-                           {[&](LocalDocumentId token, VPackSlice doc) {
-                              if (idx.projections.empty()) {
-                                output.moveValueInto(
-                                    _infos.indexes[k].documentOutputRegister,
-                                    _currentRow, doc);
-                              } else {
-                                _projectionsBuilder.clear();
-                                _projectionsBuilder.openObject(true);
-                                idx.projections.toVelocyPackFromDocument(
-                                    _projectionsBuilder, doc, &_trx);
-                                _projectionsBuilder.close();
-                                output.moveValueInto(
-                                    _infos.indexes[k].documentOutputRegister,
-                                    _currentRow, _projectionsBuilder.slice());
-                              }
-
-                              return true;
-                            },
-                            [&](LocalDocumentId token,
-                                std::unique_ptr<std::string>& doc) {
-                              if (idx.projections.empty()) {
-                                output.moveValueInto(
-                                    _infos.indexes[k].documentOutputRegister,
-                                    _currentRow, &doc);
-                              } else {
-                                _projectionsBuilder.clear();
-                                _projectionsBuilder.openObject(true);
-                                idx.projections.toVelocyPackFromDocument(
-                                    _projectionsBuilder,
-                                    VPackSlice(reinterpret_cast<uint8_t const*>(
-                                        doc->data())),
-                                    &_trx);
-                                _projectionsBuilder.close();
-                                output.moveValueInto(
-                                    _infos.indexes[k].documentOutputRegister,
-                                    _currentRow, _projectionsBuilder.slice());
-                              }
-                              return true;
-                            }},
-                           {});
-          if (result.fail()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                result.errorNumber(),
-                basics::StringUtils::concatT(
-                    "failed to lookup indexed document ", docIds[k].id(),
-                    " for collection ", idx.collection->name(), ": ",
-                    result.errorMessage()));
+          if (auto& docPtr = documents[k]; docPtr) {
+            docProduceCallback.operator()<std::unique_ptr<std::string>&>(
+                docPtr);
+          } else {
+            lookupDocument(k, docIds[k], docProduceCallback);
           }
         }
       }
