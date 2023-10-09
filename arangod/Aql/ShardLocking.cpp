@@ -171,8 +171,14 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unable to cast node to JoinNode");
       }
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "JoinNode not handled yet");
+      for (auto const& idx : joinNode->getIndexInfos()) {
+        std::unordered_set<std::string> restrictedShards;
+        TRI_ASSERT(!useRestrictedShard);
+
+        auto* col = idx.collection;
+        updateLocking(col, AccessMode::Type::READ, snippetId, restrictedShards,
+                      idx.usedAsSatellite);
+      }
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {

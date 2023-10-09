@@ -18,9 +18,7 @@ target_link_libraries(fuertetest
 )
 
 target_include_directories(fuertetest SYSTEM PRIVATE
-  ${V8_INTERNAL_INCLUDE_DIR}
   ${INCLUDE_DIRECTORIES}
   ${CMAKE_SOURCE_DIR}/3rdParty/fuerte/src
   ${PROJECT_SOURCE_DIR}/lib
 )
-

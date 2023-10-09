@@ -74,7 +74,7 @@ auto FileWriterImplPosix::append(std::string_view data) -> Result {
   if (static_cast<std::size_t>(n) != data.size()) {
     // try to revert the partial write. this is only best effort - we have to
     // abort anyway!
-    ::ftruncate(_file, _size);
+    std::ignore = ::ftruncate(_file, _size);
     ADB_PROD_ASSERT(false) << "write to log file " << _path.string()
                            << " was incomplete; could only write " << n
                            << " of " << data.size() << " bytes - "
