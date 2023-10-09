@@ -38,13 +38,19 @@ JoinExecutor::~JoinExecutor() = default;
 JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
     : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {
   constructStrategy();
+  _documents.resize(_infos.indexes.size());
 }
 
 namespace {
 struct SpanCoveringData : arangodb::IndexIteratorCoveringData {
   explicit SpanCoveringData(std::span<VPackSlice> data) : _data(data) {}
   bool isArray() const noexcept override { return true; }
-  VPackSlice at(size_t i) const override { return _data[i]; }
+  VPackSlice at(size_t i) const override {
+    TRI_ASSERT(i < _data.size())
+        << "accessing index " << i << " but covering data has size "
+        << _data.size();
+    return _data[i];
+  }
   arangodb::velocypack::ValueLength length() const override {
     return _data.size();
   }
@@ -137,16 +143,35 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
       // first do all the filtering and only if all indexes produced a
       // value write it into the aql output block
-      std::vector<std::unique_ptr<std::string>> documents;
-      documents.reserve(docIds.size());
+      // TODO make a member
+
+      std::size_t projectionsOffset = 0;
+
+      auto buildProjections = [&](size_t k, aql::Projections& proj) {
+        // build the document from projections
+        std::span<VPackSlice> projectionRange = {
+            projections.begin() + projectionsOffset,
+            projections.begin() + projectionsOffset + proj.size()};
+
+        auto data = SpanCoveringData{projectionRange};
+        _projectionsBuilder.clear();
+        _projectionsBuilder.openObject(true);
+        proj.toVelocyPackFromIndexCompactArray(_projectionsBuilder, data,
+                                               &_trx);
+        _projectionsBuilder.close();
+      };
+
       for (std::size_t k = 0; k < docIds.size(); k++) {
         auto& idx = _infos.indexes[k];
+
         // evaluate filter conditions
         if (!idx.filter.has_value()) {
-          documents.push_back(nullptr);
+          projectionsOffset += idx.projections.size();
           continue;
         }
 
+        bool const useFilterProjections =
+            idx.filter->projections.usesCoveringIndex();
         bool filtered = false;
 
         auto filterCallback = [&](auto docPtr) {
@@ -162,14 +187,25 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           AqlValue result = idx.filter->expression->execute(&ctx, mustDestroy);
           AqlValueGuard guard(result, mustDestroy);
           filtered = !result.toBoolean();
-          if (!filtered) {
+
+          if (!filtered && !useFilterProjections) {
             // add document to the list
-            pushDocumentToVector(documents, docPtr);
+            pushDocumentToVector(_documents, docPtr);
           }
         };
 
-        // TODO add filtering projections
-        lookupDocument(k, docIds[k], filterCallback);
+        if (idx.projections.usesCoveringIndex()) {
+          buildProjections(k, idx.projections);
+          filterCallback(_projectionsBuilder.slice());
+          projectionsOffset += idx.projections.size();
+        } else if (useFilterProjections) {
+          buildProjections(k, idx.filter->projections);
+          filterCallback(_projectionsBuilder.slice());
+          projectionsOffset += idx.filter->projections.size();
+        } else {
+          lookupDocument(k, docIds[k], filterCallback);
+        }
+
         if (filtered) {
           // forget about this row
           return true;
@@ -177,50 +213,43 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       }
 
       // Now produce the documents
-      std::size_t projectionsOffset = 0;
+      projectionsOffset = 0;
       for (std::size_t k = 0; k < docIds.size(); k++) {
         auto& idx = _infos.indexes[k];
 
-        if (idx.projections.usesCoveringIndex(idx.index)) {
-          // build the document from projections
-          std::span<VPackSlice> projectionRange = {
-              projections.begin() + projectionsOffset,
-              projections.begin() + projectionsOffset + idx.projections.size()};
+        auto docProduceCallback = [&](auto docPtr) {
+          auto doc = extractSlice(docPtr);
+          if (idx.projections.empty()) {
+            moveValueIntoRegister(output,
+                                  _infos.indexes[k].documentOutputRegister,
+                                  _currentRow, docPtr);
+          } else {
+            _projectionsBuilder.clear();
+            _projectionsBuilder.openObject(true);
+            idx.projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
+                                                     &_trx);
+            _projectionsBuilder.close();
+            output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                 _currentRow, _projectionsBuilder.slice());
+          }
+        };
 
-          auto data = SpanCoveringData{projectionRange};
-          _projectionsBuilder.clear();
-          _projectionsBuilder.openObject(true);
-          idx.projections.toVelocyPackFromIndex(_projectionsBuilder, data,
-                                                &_trx);
-          _projectionsBuilder.close();
-          output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                               _currentRow, _projectionsBuilder.slice());
-
-          projectionsOffset += idx.projections.size();
+        if (auto& docPtr = _documents[k]; docPtr) {
+          docProduceCallback.operator()<std::unique_ptr<std::string>&>(docPtr);
         } else {
-          auto docProduceCallback = [&](auto docPtr) {
-            auto doc = extractSlice(docPtr);
-            if (idx.projections.empty()) {
-              moveValueIntoRegister(output,
-                                    _infos.indexes[k].documentOutputRegister,
-                                    _currentRow, docPtr);
-            } else {
-              _projectionsBuilder.clear();
-              _projectionsBuilder.openObject(true);
-              idx.projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
-                                                       &_trx);
-              _projectionsBuilder.close();
-              output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                                   _currentRow, _projectionsBuilder.slice());
-            }
-          };
+          if (idx.projections.usesCoveringIndex(idx.index)) {
+            buildProjections(k, idx.projections);
+            output.moveValueInto(_infos.indexes[k].documentOutputRegister,
+                                 _currentRow, _projectionsBuilder.slice());
 
-          if (auto& docPtr = documents[k]; docPtr) {
-            docProduceCallback.operator()<std::unique_ptr<std::string>&>(
-                docPtr);
+            projectionsOffset += idx.projections.size();
           } else {
             lookupDocument(k, docIds[k], docProduceCallback);
           }
+        }
+
+        if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
+          projectionsOffset += idx.filter->projections.size();
         }
       }
 
@@ -289,6 +318,14 @@ void JoinExecutor::constructStrategy() {
                      });
 
       desc.numProjections = idx.projections.size();
+    } else if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
+      std::transform(idx.filter->projections.projections().begin(),
+                     idx.filter->projections.projections().end(),
+                     std::back_inserter(options.projectedFields),
+                     [&](Projections::Projection const& proj) {
+                       return proj.coveringIndexPosition;
+                     });
+      desc.numProjections = idx.filter->projections.size();
     }
 
     auto stream = idx.index->streamForCondition(&_trx, options);

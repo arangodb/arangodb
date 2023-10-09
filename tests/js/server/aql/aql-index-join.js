@@ -30,10 +30,28 @@ const db = require("@arangodb").db;
 const internal = require('internal');
 const _ = require('lodash');
 
+const isCluster = internal.isCluster();
+const isEnterprise = internal.isEnterprise();
+
 const IndexJoinTestSuite = function () {
 
+  if (isCluster && !isEnterprise) {
+    return {};
+  }
+
+  const createCollection = function (name) {
+    if (isCluster) {
+      if (!db.prototype) {
+        db._create("prototype", {numberOfShards: 3, shardKeys: ["x"]});
+      }
+      return db._create(name, {numberOfShards: 3, shardKeys: ["x"], distributeShardsLike: "prototype"});
+    } else {
+      return db._create(name);
+    }
+  };
+
   const fillCollection = function (name, generator) {
-    const collection = db[name] || db._create(name);
+    const collection = db[name] || createCollection(name);
     let docs = [];
     while (true) {
       let v = generator();
@@ -471,6 +489,70 @@ const IndexJoinTestSuite = function () {
       assertEqual(join.type, "JoinNode");
 
       assertEqual(join.indexInfos[0].projections, []);
+      assertEqual(join.indexInfos[1].projections, ["x"]);
+
+      const result = runAndCheckQuery(query);
+
+      assertEqual(result.length, 5);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b);
+        assertEqual(a.y % 2, 0);
+      }
+    },
+
+    testJoinWithDocumentPostFilterProjections: function () {
+      const A = fillCollection("A", attributeGenerator(20, {x: x => 2 * x, y: x => x}));
+      A.ensureIndex({type: "persistent", fields: ["x", "y"]});
+      const B = fillCollection("B", singleAttributeGenerator(20, "x", x => x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              FILTER doc1.y % 2 == 0
+              RETURN [doc1.x, doc2.x]
+      `;
+
+      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const join = plan.nodes[1];
+
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos[0].projections, ["x", "y"]);
+      assertEqual(join.indexInfos[1].projections, ["x"]);
+
+      const result = runAndCheckQuery(query);
+
+      assertEqual(result.length, 5);
+      for (const [a, b] of result) {
+        assertEqual(a, b);
+      }
+    },
+
+    testJoinWithDocumentPostFilterFilterProjections: function () {
+      const A = fillCollection("A", attributeGenerator(20, {x: x => 2 * x, y: x => x}));
+      A.ensureIndex({type: "persistent", fields: ["x", "y"]});
+      const B = fillCollection("B", singleAttributeGenerator(20, "x", x => x));
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+
+      const query = `
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              FILTER doc1.y % 2 == 0
+              RETURN [doc1, doc2.x]
+      `;
+
+      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const join = plan.nodes[1];
+
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos[0].projections, []);
+      assertEqual(join.indexInfos[0].filterProjections, ["y"]);
       assertEqual(join.indexInfos[1].projections, ["x"]);
 
       const result = runAndCheckQuery(query);

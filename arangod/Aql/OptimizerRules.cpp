@@ -9245,6 +9245,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                                            : nullptr,
                   .index = c->getIndexes()[0],
                   .projections = c->projections(),
+                  .filterProjections = c->filterProjections(),
                   .usedAsSatellite = c->isUsedAsSatellite()});
               handled.emplace(c);
             }

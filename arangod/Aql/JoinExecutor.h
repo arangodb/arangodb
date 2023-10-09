@@ -82,6 +82,9 @@ struct JoinExecutorInfos {
 
       // mapping of other variables to register in the input row
       std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+
+      // projections used for filtering
+      Projections projections;
     };
 
     std::optional<FilterInformation> filter;
@@ -131,6 +134,7 @@ class JoinExecutor {
   InputAqlItemRow _currentRow{CreateInvalidInputRowHint()};
   ExecutorState _currentRowState{ExecutorState::HASMORE};
   velocypack::Builder _projectionsBuilder;
+  std::vector<std::unique_ptr<std::string>> _documents;
 };
 
 }  // namespace aql

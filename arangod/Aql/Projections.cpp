@@ -273,6 +273,60 @@ void Projections::toVelocyPackFromIndex(
   TRI_ASSERT(levelsOpen == 0);
 }
 
+/// @brief projections from a covering index
+void Projections::toVelocyPackFromIndexCompactArray(
+    velocypack::Builder& b, IndexIteratorCoveringData& covering,
+    transaction::Methods const* trxPtr) const {
+  TRI_ASSERT(_index != nullptr);
+  TRI_ASSERT(covering.isArray());
+  TRI_ASSERT(b.isOpenObject());
+
+  size_t levelsOpen = 0;
+
+  for (size_t k = 0; k < _projections.size(); k++) {
+    auto& it = _projections[k];
+    // _id cannot be part of a user-defined index
+    TRI_ASSERT(it.type != AttributeNamePath::Type::IdAttribute);
+
+    // we will get a Slice with an array of index values. now we need
+    // to look up the array values from the correct positions to
+    // populate the result with the projection values. this case will
+    // be triggered for indexes that can be set up on any number of
+    // attributes (persistent/hash/skiplist)
+    VPackSlice found = covering.at(k);
+    if (found.isNone()) {
+      found = VPackSlice::nullSlice();
+    }
+
+    TRI_ASSERT(levelsOpen <= it.startsAtLevel);
+    size_t level = 0;
+    size_t const n =
+        std::min(it.path.size(), static_cast<size_t>(it.coveringIndexCutoff));
+    while (level < n) {
+      if (level == n - 1) {
+        break;
+      }
+      if (level >= levelsOpen) {
+        b.add(it.path[level], VPackValue(VPackValueType::Object));
+        ++levelsOpen;
+      }
+      ++level;
+    }
+    if (level >= it.startsAtLevel) {
+      b.add(it.path[level], found);
+    }
+
+    TRI_ASSERT(it.path.size() > it.levelsToClose);
+    size_t closeUntil = it.path.size() - it.levelsToClose;
+    while (levelsOpen >= closeUntil) {
+      b.close();
+      --levelsOpen;
+    }
+  }
+
+  TRI_ASSERT(levelsOpen == 0);
+}
+
 void Projections::toVelocyPack(velocypack::Builder& b) const {
   toVelocyPack(b, ::projectionsKey);
 }

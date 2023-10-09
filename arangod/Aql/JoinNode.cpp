@@ -122,6 +122,8 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
 
     auto projections = Projections::fromVelocyPack(
         it, "projections", plan->getAst()->query().resourceMonitor());
+    auto filterProjections = Projections::fromVelocyPack(
+        it, "filterProjections", plan->getAst()->query().resourceMonitor());
 
     bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
 
@@ -135,8 +137,10 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
         IndexInfo{.collection = coll,
                   .outVariable = outVariable,
                   .condition = Condition::fromVPack(plan, condition),
+                  .filter = std::move(filter),
                   .index = coll->indexByIdentifier(iid),
                   .projections = projections,
+                  .filterProjections = filterProjections,
                   .usedAsSatellite = usedAsSatellite});
 
     VPackSlice usedShard = it.get("usedShard");
@@ -179,7 +183,8 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
     // filter
     if (it.filter) {
       builder.add(VPackValue("filter"));
-      it.filter->toVelocyPack(builder, false);
+      it.filter->toVelocyPack(builder, true);
+      it.filterProjections.toVelocyPack(builder, "filterProjections");
     }
     // index
     builder.add(VPackValue("index"));
@@ -231,6 +236,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
       auto& filter = data.filter.emplace();
       filter.documentVariable = idx.outVariable;
       filter.expression = idx.filter->clone(engine.getQuery().ast());
+      filter.projections = idx.filterProjections;
 
       VarSet inVars;
       filter.expression->variables(inVars);
