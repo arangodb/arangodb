@@ -1101,11 +1101,11 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
                 *errMsg = "Error during index creation: " + *errMsg;
                 // Returns the specific error number if set, or the general
                 // error otherwise
-                auto errNum = ErrorCode{
+                auto errNum =
                     arangodb::basics::VelocyPackHelper::getNumericValue<
-                        ErrorCode::ValueType>(
+                        ErrorCode, ErrorCode::ValueType>(
                         v, StaticStrings::ErrorNum,
-                        TRI_ERROR_ARANGO_INDEX_CREATION_FAILED.value())};
+                        TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
                 dbServerResult->store(errNum, std::memory_order_release);
                 return true;
               }
