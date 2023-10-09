@@ -2135,17 +2135,17 @@ function processQuery(query, explain, planIndex) {
         if (info.condition && info.condition.hasOwnProperty('type')) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(info.condition);
         }
-        let projectString = '';
-        if (info.projections) {
-          projectString = '   /*' + projections(info, "projections", "projections");
-          if (!info.indexCoversProjections) {
-            projectString += " index scan + document lookup";
-          } else {
-            projectString += " index scan";
-          }
-          projectString += ' */';
+        let accessString = '';
+        if (!info.indexCoversProjections) {
+          accessString += "index scan + document lookup";
+        } else {
+          accessString += "index scan";
         }
-        line += indent(level, false) + label + filter + projectString;
+        if (info.projections) {
+          accessString += projections(info, "projections", "projections");
+        }
+        accessString = '   ' + annotation('/* ' + accessString + ' */');
+        line += indent(level, false) + label + filter + accessString;
         stringBuilder.appendLine(line);
       });
       --level;
