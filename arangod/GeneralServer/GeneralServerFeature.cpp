@@ -72,7 +72,9 @@
 #include "RestHandler/RestAdminStatisticsHandler.h"
 #include "RestHandler/RestAnalyzerHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
+#ifdef USE_V8
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
+#endif
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
 #include "RestHandler/RestBatchHandler.h"

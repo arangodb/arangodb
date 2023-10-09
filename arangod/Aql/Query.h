@@ -35,7 +35,6 @@
 #include "Aql/QueryResultV8.h"
 #endif
 #include "Aql/QueryString.h"
-#include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
@@ -73,6 +72,7 @@ class ExecutionEngine;
 struct ExecutionStats;
 struct QueryCacheResultEntry;
 struct QueryProfile;
+class SharedQueryState;
 
 /// @brief an AQL query
 class Query : public QueryContext, public std::enable_shared_from_this<Query> {
