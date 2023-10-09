@@ -270,10 +270,10 @@ auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(
                  slice, StaticStrings::Code, TRI_ERROR_INTERNAL));
 
   if (ADB_UNLIKELY(!slice.isObject())) {
-    using namespace std::string_literals;
-    return Result{TRI_ERROR_TYPE_ERROR,
-                  "When parsing execute result: expected object, got "s +
-                      slice.typeName()};
+    return Result{
+        TRI_ERROR_TYPE_ERROR,
+        absl::StrCat("When parsing execute result: expected object, got ",
+                     slice.typeName())};
   }
 
   if (auto value = slice.get(StaticStrings::AqlRemoteResult); !value.isNone()) {
@@ -423,9 +423,9 @@ void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(
     VPackSlice slice, AqlCallStack const& callStack) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
-    // only stringify if profile level requires us
-    using namespace std::string_literals;
-    traceRequest("execute", slice, "callStack="s + callStack.toString());
+    // only stringify if profile level requires it
+    traceRequest("execute", slice,
+                 absl::StrCat("callStack=", callStack.toString()));
   }
 }
 
@@ -443,11 +443,10 @@ void ExecutionBlockImpl<RemoteExecutor>::traceRequest(std::string_view rpc,
                                                       std::string_view args) {
   if (_profileLevel == ProfileLevel::TraceOne ||
       _profileLevel == ProfileLevel::TraceTwo) {
-    auto const queryId = this->_engine->getQuery().id();
-    auto const remoteQueryId = _queryId;
+    auto queryId = _engine->getQuery().id();
     LOG_TOPIC("92c71", INFO, Logger::QUERIES)
         << "[query#" << queryId << "] remote request sent: " << rpc
-        << (args.empty() ? "" : " ") << args << " registryId=" << remoteQueryId;
+        << (args.empty() ? "" : " ") << args << " registryId=" << _queryId;
     LOG_TOPIC_IF("e0ae6", INFO, Logger::QUERIES,
                  _profileLevel == ProfileLevel::TraceTwo)
         << "[query#" << queryId << "] data: " << slice.toJson();
@@ -457,7 +456,7 @@ void ExecutionBlockImpl<RemoteExecutor>::traceRequest(std::string_view rpc,
 unsigned ExecutionBlockImpl<RemoteExecutor>::generateRequestTicket() {
   // Assumes that _communicationMutex is locked in the caller
   ++_lastTicket;
-  _lastError.reset(TRI_ERROR_NO_ERROR);
+  _lastError.reset();
   _lastResponse.reset();
 
   return _lastTicket;

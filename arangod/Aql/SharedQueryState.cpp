@@ -162,7 +162,7 @@ void SharedQueryState::queueHandler() {
 
         if (!cntn || !self->_valid) {
           self->queueHandler();
-        } else {
+        } else if (self->_numWakeups > 0) {
           unsigned c = self->_numWakeups--;
           TRI_ASSERT(c > 0);
           if (c == 1) {
