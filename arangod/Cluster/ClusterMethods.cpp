@@ -2187,7 +2187,7 @@ Result fetchEdgesFromEngines(
     network::Response const& r = f.get();
 
     auto res = r.combinedResult();
-    if (r.fail()) {
+    if (res.fail()) {
       return res;
     }
 
