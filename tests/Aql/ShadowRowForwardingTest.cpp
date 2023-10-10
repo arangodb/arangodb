@@ -45,6 +45,19 @@ RegisterInfos MakeBaseInfos(RegisterCount numRegs, size_t subqueryDepth = 2) {
   return RegisterInfos({}, {}, numRegs, numRegs, {}, regsToKeep);
 }
 
+auto generateCallStack(size_t nestedSubqueryLevels, size_t indexWithoutContinueCall) -> AqlCallStack {
+  // MainQuery never has continue call
+  AqlCallStack stack{AqlCallList{AqlCall{}}};
+  for (size_t i = 0; i < nestedSubqueryLevels; ++i) {
+    if (i == indexWithoutContinueCall) {
+      stack.pushCall(AqlCallList{AqlCall{}}); // no continue call
+    } else {
+      stack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
+    }
+  }
+  return stack;
+}
+
 }  // namespace
 
 constexpr bool enableQueryTrace = false;
@@ -83,12 +96,7 @@ TEST_F(ShadowRowForwardingTest, subqueryStart1) {
                 {3, 1},
             })
         .setInputSplitType(splitType)
-        .setCallStack(AqlCallStack{
-            AqlCallList{AqlCall{}, AqlCall{}},
-            AqlCallList{AqlCall{}, AqlCall{}},
-            AqlCallList{AqlCall{0, true, AqlCall::Infinity{}}},
-            AqlCallList{AqlCall{}, AqlCall{}},
-        })
+        .setCallStack(generateCallStack(3, 1))
         .expectedStats(ExecutionStats{})
         .expectedState(ExecutionState::HASMORE)
         .expectOutput(
@@ -139,11 +147,7 @@ TEST_F(ShadowRowForwardingTest, subqueryEnd1) {
                 {3, 2},
             })
         .setInputSplitType(splitType)
-        .setCallStack(AqlCallStack{
-            AqlCallList{AqlCall{}, AqlCall{}},
-            AqlCallList{AqlCall{}, AqlCall{}},
-            AqlCallList{AqlCall{0, true, AqlCall::Infinity{}}},
-        })
+        .setCallStack(generateCallStack(2, 1))
         .expectedStats(ExecutionStats{})
         .expectedState(ExecutionState::HASMORE)
         .expectOutput(

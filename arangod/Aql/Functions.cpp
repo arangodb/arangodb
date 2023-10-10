@@ -33,7 +33,9 @@
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
+#ifdef USE_V8
 #include "Aql/V8Executor.h"
+#endif
 #include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
@@ -73,7 +75,9 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#ifdef USE_V8
 #include "V8/v8-vpack.h"
+#endif
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -1128,6 +1132,7 @@ AqlValue dateFromParameters(ExpressionContext* expressionContext,
   return ::timeAqlValue(expressionContext, AFN, tp);
 }
 
+#ifdef USE_V8
 AqlValue callApplyBackend(ExpressionContext* expressionContext,
                           AstNode const& node, char const* AFN,
                           AqlValue const& invokeFN,
@@ -1221,6 +1226,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
                                         dummy);
   }
 }
+#endif
 
 AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
                               AstNode const&,
@@ -8763,14 +8769,21 @@ AqlValue functions::Call(ExpressionContext* expressionContext,
     }
   }
 
+#ifdef USE_V8
   return ::callApplyBackend(expressionContext, node, AFN, invokeFN,
                             invokeParams);
+#else
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "CALL() function is not supported in this build of ArangoDB");
+#endif
 }
 
 /// @brief function APPLY
 AqlValue functions::Apply(ExpressionContext* expressionContext,
                           AstNode const& node,
                           VPackFunctionParametersView parameters) {
+#ifdef USE_V8
   static char const* AFN = "APPLY";
 
   AqlValue const& invokeFN = extractFunctionParameterValue(parameters, 0);
@@ -8814,6 +8827,11 @@ AqlValue functions::Apply(ExpressionContext* expressionContext,
 
   return ::callApplyBackend(expressionContext, node, AFN, invokeFN,
                             invokeParams);
+#else
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "APPLY() function is not supported in this build of ArangoDB");
+#endif
 }
 
 /// @brief function VERSION
