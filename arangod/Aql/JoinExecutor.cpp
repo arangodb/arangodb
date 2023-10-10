@@ -94,7 +94,11 @@ template<typename F>
 struct DocumentCallbackOverload : F {
   DocumentCallbackOverload(F&& f) : F(std::forward<F>(f)) {}
 
-  bool operator()(LocalDocumentId token, VPackSlice doc) const {
+  bool operator()(LocalDocumentId token, aql::DocumentData&& data,
+                  VPackSlice doc) const {
+    if (data) {
+      return F::template operator()<std::unique_ptr<std::string>&>(token, data);
+    }
     return F::template operator()<VPackSlice>(token, doc);
   }
 

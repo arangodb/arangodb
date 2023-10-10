@@ -212,9 +212,6 @@ void Projections::toVelocyPackFromIndex(
   bool const isArray = covering.isArray();
   for (auto const& it : _projections) {
     if (isArray) {
-      // _id cannot be part of a user-defined index
-      TRI_ASSERT(it.type != AttributeNamePath::Type::IdAttribute);
-
       // we will get a Slice with an array of index values. now we need
       // to look up the array values from the correct positions to
       // populate the result with the projection values. this case will
@@ -241,7 +238,16 @@ void Projections::toVelocyPackFromIndex(
         ++level;
       }
       if (level >= it.startsAtLevel) {
-        b.add(it.path[level], found);
+        // _id cannot be part of a user-defined index, but can be used
+        // from within stored values
+        if (it.type == AttributeNamePath::Type::IdAttribute) {
+          // _id attribute
+          b.add(it.path[level],
+                VPackValue(transaction::helpers::makeIdFromParts(
+                    trxPtr->resolver(), _datasourceId, found)));
+        } else {
+          b.add(it.path[level], found);
+        }
       }
 
       TRI_ASSERT(it.path.size() > it.levelsToClose);
