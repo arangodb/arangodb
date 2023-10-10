@@ -9057,7 +9057,6 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
   bool modified = false;
   if (nodes.size() >= 2) {
     // not yet supported:
-    // - post-filtering
     // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache,
     // waitForSync, limit, lookahead
     // - reverse iteration
