@@ -24,6 +24,9 @@
 #pragma once
 
 #include "Aql/QueryExpressionContext.h"
+#include "Aql/RegisterId.h"
+#include "Aql/Variable.h"
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 namespace transaction {
@@ -42,12 +45,13 @@ class DocumentProducingExpressionContext : public QueryExpressionContext {
   DocumentProducingExpressionContext(
       transaction::Methods& trx, QueryContext& query,
       aql::AqlFunctionsInternalCache& cache,
-      std::vector<std::pair<VariableId, RegisterId>> const&
-          filterVarsToRegister,
+      std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
       InputAqlItemRow const& inputRow) noexcept
-      : QueryExpressionContext(trx, query, cache),
-        _filterVarsToRegister(filterVarsToRegister),
-        _inputRow(inputRow) {}
+      : QueryExpressionContext(trx, query, cache), _inputRow(inputRow) {
+    for (auto const& it : varsToRegister) {
+      _varsToRegister.emplace(it.first, it.second);
+    }
+  }
 
   ~DocumentProducingExpressionContext() = default;
 
@@ -56,8 +60,16 @@ class DocumentProducingExpressionContext : public QueryExpressionContext {
   virtual bool isLateMaterialized() const noexcept = 0;
 #endif
 
+  RegisterId registerForVariable(VariableId id) const noexcept {
+    auto it = _varsToRegister.find(id);
+    if (it != _varsToRegister.end()) {
+      return it->second;
+    }
+    return RegisterId::maxRegisterId;
+  }
+
  protected:
-  std::vector<std::pair<VariableId, RegisterId>> const& _filterVarsToRegister;
+  containers::FlatHashMap<VariableId, RegisterId> _varsToRegister;
 
   InputAqlItemRow const& _inputRow;
 };

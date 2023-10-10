@@ -2199,8 +2199,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
           // add the post-SORT
           SortElementVector sortElements;
           for (auto const& v : collectNode->groupVariables()) {
-            sortElements.emplace_back(SortElement{
-                v.outVar, true, plan->getAst()->query().resourceMonitor()});
+            sortElements.emplace_back(v.outVar, true);
           }
 
           auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
@@ -2237,8 +2236,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // add the post-SORT
         SortElementVector sortElements;
         for (auto const& v : newCollectNode->groupVariables()) {
-          sortElements.emplace_back(SortElement{
-              v.outVar, true, plan->getAst()->query().resourceMonitor()});
+          sortElements.emplace_back(v.outVar, true);
         }
 
         auto sortNode = newPlan->createNode<SortNode>(
@@ -2285,8 +2283,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     if (!groupVariables.empty()) {
       SortElementVector sortElements;
       for (auto const& v : groupVariables) {
-        sortElements.emplace_back(SortElement{
-            v.inVar, true, plan->getAst()->query().resourceMonitor()});
+        sortElements.emplace_back(v.inVar, true);
       }
 
       auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
@@ -3878,11 +3875,8 @@ auto insertGatherNode(
       // also check if we actually need to bother about the sortedness of the
       // result, or if we use the index for filtering only
       if (first->isSorted() && idxNode->needsGatherNodeSort()) {
-        for (auto const& path : first->trackedFieldNames(
-                 plan.getAst()->query().resourceMonitor())) {
-          elements.emplace_back(
-              SortElement{sortVariable, isSortAscending, path,
-                          plan.getAst()->query().resourceMonitor()});
+        for (auto const& path : first->fieldNames()) {
+          elements.emplace_back(sortVariable, isSortAscending, path);
         }
         for (auto const& it : allIndexes) {
           if (first != it) {
