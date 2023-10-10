@@ -319,7 +319,15 @@ void Projections::toVelocyPackFromIndexCompactArray(
       ++level;
     }
     if (level >= it.startsAtLevel) {
-      b.add(it.path[level], found);
+      // _id cannot be part of a user-defined index, but can be used
+      // from within stored values
+      if (it.type == AttributeNamePath::Type::IdAttribute) {
+        // _id attribute
+        b.add(it.path[level], VPackValue(transaction::helpers::makeIdFromParts(
+                                  trxPtr->resolver(), _datasourceId, found)));
+      } else {
+        b.add(it.path[level], found);
+      }
     }
 
     TRI_ASSERT(it.path.size() > it.levelsToClose);
