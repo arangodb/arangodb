@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.19.4-preview-8.
+
 * Fix updating of collection properties (schema) when the collection has a
   view on top.
 
