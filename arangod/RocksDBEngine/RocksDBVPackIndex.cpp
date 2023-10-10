@@ -1731,7 +1731,15 @@ Result RocksDBVPackIndex::insertUnique(
     transaction::BuilderLeaser leased(&trx);
     leased->openArray(true);
     for (auto const& it : _storedValuesPaths) {
-      VPackSlice s = doc.get(it);
+      VPackSlice s;
+      if (it.size() == 1 && it[0] == StaticStrings::IdString) {
+        // instead of storing the value of _id, we instead store the
+        // value of _key. we will retranslate the value to an _id later
+        // again upon retrieval
+        s = transaction::helpers::extractKeyFromDocument(doc);
+      } else {
+        s = doc.get(it);
+      }
       if (s.isNone()) {
         s = VPackSlice::nullSlice();
       }
@@ -1845,7 +1853,15 @@ Result RocksDBVPackIndex::insertNonUnique(
     transaction::BuilderLeaser leased(&trx);
     leased->openArray(true);
     for (auto const& it : _storedValuesPaths) {
-      VPackSlice s = doc.get(it);
+      VPackSlice s;
+      if (it.size() == 1 && it[0] == StaticStrings::IdString) {
+        // instead of storing the value of _id, we instead store the
+        // value of _key. we will retranslate the value to an _id later
+        // again upon retrieval
+        s = transaction::helpers::extractKeyFromDocument(doc);
+      } else {
+        s = doc.get(it);
+      }
       if (s.isNone()) {
         s = VPackSlice::nullSlice();
       }
