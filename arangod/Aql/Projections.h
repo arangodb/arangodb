@@ -134,6 +134,12 @@ class Projections {
   void toVelocyPackFromIndex(velocypack::Builder& b,
                              IndexIteratorCoveringData& covering,
                              transaction::Methods const* trxPtr) const;
+  /// @brief extract projections from a covering index
+  /// this variant accesses the covering data using the projection index
+  // instead of coveringIndexPosition attribute.
+  void toVelocyPackFromIndexCompactArray(
+      velocypack::Builder& b, IndexIteratorCoveringData& covering,
+      transaction::Methods const* trxPtr) const;
 
   /// @brief serialize the projections to velocypack, under the attribute
   /// name "projections"

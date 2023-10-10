@@ -1070,7 +1070,7 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
 
 AqlValue::AqlValue() noexcept { erase(); }
 
-AqlValue::AqlValue(std::unique_ptr<std::string>& data) noexcept {
+AqlValue::AqlValue(DocumentData& data) noexcept {
   TRI_ASSERT(data);
   auto size = data->size();
   TRI_ASSERT(size >= 1);

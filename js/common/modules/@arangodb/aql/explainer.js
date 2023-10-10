@@ -2143,8 +2143,8 @@ function processQuery(query, explain, planIndex) {
         }
         let label = keyword('FOR ') + variableName(info.outVariable) + keyword(' IN ') + collection(info.collection);
         let filter = '';
-        if (info.condition && info.condition.hasOwnProperty('type')) {
-          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(info.condition);
+        if (info.filter && info.filter.hasOwnProperty('type')) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(info.filter);
         }
         let accessString = '';
         if (!info.indexCoversProjections) {
@@ -2154,6 +2154,9 @@ function processQuery(query, explain, planIndex) {
         }
         if (info.projections) {
           accessString += projections(info, "projections", "projections");
+        }
+        if (info.filterProjections) {
+          accessString += projections(info, 'filterProjections', 'filter projections');
         }
         accessString = '   ' + annotation('/* ' + accessString + ' */');
         line += indent(level, false) + label + filter + accessString;

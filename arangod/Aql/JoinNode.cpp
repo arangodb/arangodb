@@ -123,15 +123,26 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     auto projections =
         Projections::fromVelocyPack(plan->getAst(), it, "projections",
                                     plan->getAst()->query().resourceMonitor());
+    auto filterProjections =
+        Projections::fromVelocyPack(plan->getAst(), it, "filterProjections",
+                                    plan->getAst()->query().resourceMonitor());
 
     bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
+
+    std::unique_ptr<Expression> filter = nullptr;
+    if (auto fs = it.get("filter"); !fs.isNone()) {
+      filter = std::make_unique<Expression>(plan->getAst(),
+                                            plan->getAst()->createNode(fs));
+    }
 
     auto& idx = _indexInfos.emplace_back(
         IndexInfo{.collection = coll,
                   .outVariable = outVariable,
                   .condition = Condition::fromVPack(plan, condition),
+                  .filter = std::move(filter),
                   .index = coll->indexByIdentifier(iid),
                   .projections = projections,
+                  .filterProjections = filterProjections,
                   .usedAsSatellite = usedAsSatellite});
 
     VPackSlice usedShard = it.get("usedShard");
@@ -171,6 +182,12 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
     builder.add("indexCoversProjections",
                 VPackValue(it.projections.usesCoveringIndex()));
     builder.add("usedAsSatellite", VPackValue(it.usedAsSatellite));
+    // filter
+    if (it.filter) {
+      builder.add(VPackValue("filter"));
+      it.filter->toVelocyPack(builder, true);
+      it.filterProjections.toVelocyPack(builder, "filterProjections");
+    }
     // index
     builder.add(VPackValue("index"));
     it.index->toVelocyPack(builder,
@@ -216,6 +233,24 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     data.index = idx.index;
     data.collection = idx.collection;
     data.projections = idx.projections;
+
+    if (idx.filter) {
+      auto& filter = data.filter.emplace();
+      filter.documentVariable = idx.outVariable;
+      filter.expression = idx.filter->clone(engine.getQuery().ast());
+      filter.projections = idx.filterProjections;
+
+      VarSet inVars;
+      filter.expression->variables(inVars);
+
+      filter.filterVarsToRegs.reserve(inVars.size());
+
+      for (auto& var : inVars) {
+        TRI_ASSERT(var != nullptr);
+        auto regId = variableToRegisterId(var);
+        filter.filterVarsToRegs.emplace_back(var->id, regId);
+      }
+    }
   }
 
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
