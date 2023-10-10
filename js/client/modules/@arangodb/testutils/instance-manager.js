@@ -187,10 +187,10 @@ class instanceManager {
   getMemLayout () {
     if (this.options.memory !== undefined) {
       if (this.options.cluster) {
-        // Distribute 10 % agency, 20% coordinator, 70% dbservers
-        this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (10/100) / this.options.agencySize);
-        this.memlayout[instanceRole.dbServer] = Math.round(this.options.memory * (70/100) / this.options.dbServers);
-        this.memlayout[instanceRole.coordinator] = Math.round(this.options.memory * (20/100) / this.options.coordinators);
+        // Distribute 8 % agency, 23% coordinator, 69% dbservers
+        this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (8/100) / this.options.agencySize);
+        this.memlayout[instanceRole.dbServer] = Math.round(this.options.memory * (69/100) / this.options.dbServers);
+        this.memlayout[instanceRole.coordinator] = Math.round(this.options.memory * (23/100) / this.options.coordinators);
       } else if (this.options.activefailover) {
         // Distribute 20% agency, 80% singles
         this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (20/100) / this.options.agencySize);
