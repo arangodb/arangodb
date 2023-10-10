@@ -2095,12 +2095,12 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
       // use whatever block cache we use for blobs as well
       result.blob_cache = getTableOptions().block_cache;
     }
+#endif
     if (_partitionFilesForDocumentsCf) {
       // partition .sst files by object id prefix
       result.sst_partitioner_factory =
           rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
     }
-#endif
   }
 
   if (family == RocksDBColumnFamilyManager::Family::PrimaryIndex) {
