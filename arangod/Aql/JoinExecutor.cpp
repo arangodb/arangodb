@@ -68,6 +68,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       std::size_t projectionsOffset = 0;
       for (std::size_t k = 0; k < docIds.size(); k++) {
         auto& idx = _infos.indexes[k];
+        auto reg = idx.documentOutputRegister;
 
         if (idx.projections.usesCoveringIndex(idx.index)) {
           // build the document from projections
@@ -81,8 +82,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           idx.projections.toVelocyPackFromIndex(_projectionsBuilder, data,
                                                 &_trx);
           _projectionsBuilder.close();
-          output.moveValueInto(_infos.indexes[k].documentOutputRegister,
-                               _currentRow, _projectionsBuilder.slice());
+          output.moveValueInto(reg, _currentRow, _projectionsBuilder.slice());
 
           projectionsOffset += idx.projections.size();
         } else {
@@ -90,51 +90,30 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
           // TODO post filter based on document value
           // TODO do we really want to check/populate cache?
-          auto result =
-              _infos.indexes[k]
-                  .collection->getCollection()
-                  ->getPhysical()
-                  ->lookup(&_trx, docIds[k],
-                           {[&](LocalDocumentId token, VPackSlice doc) {
-                              if (idx.projections.empty()) {
-                                output.moveValueInto(
-                                    _infos.indexes[k].documentOutputRegister,
-                                    _currentRow, doc);
-                              } else {
-                                _projectionsBuilder.clear();
-                                _projectionsBuilder.openObject(true);
-                                idx.projections.toVelocyPackFromDocument(
-                                    _projectionsBuilder, doc, &_trx);
-                                _projectionsBuilder.close();
-                                output.moveValueInto(
-                                    _infos.indexes[k].documentOutputRegister,
-                                    _currentRow, _projectionsBuilder.slice());
-                              }
+          auto cb = [&](LocalDocumentId token, aql::DocumentData&& data,
+                        VPackSlice doc) {
+            if (idx.projections.empty()) {
+              if (data) {
+                output.moveValueInto(reg, _currentRow, &data);
+              } else {
+                output.moveValueInto(reg, _currentRow, doc);
+              }
+            } else {
+              _projectionsBuilder.clear();
+              _projectionsBuilder.openObject(true);
+              idx.projections.toVelocyPackFromDocument(_projectionsBuilder, doc,
+                                                       &_trx);
+              _projectionsBuilder.close();
+              output.moveValueInto(reg, _currentRow,
+                                   _projectionsBuilder.slice());
+            }
 
-                              return true;
-                            },
-                            [&](LocalDocumentId token,
-                                std::unique_ptr<std::string>& doc) {
-                              if (idx.projections.empty()) {
-                                output.moveValueInto(
-                                    _infos.indexes[k].documentOutputRegister,
-                                    _currentRow, &doc);
-                              } else {
-                                _projectionsBuilder.clear();
-                                _projectionsBuilder.openObject(true);
-                                idx.projections.toVelocyPackFromDocument(
-                                    _projectionsBuilder,
-                                    VPackSlice(reinterpret_cast<uint8_t const*>(
-                                        doc->data())),
-                                    &_trx);
-                                _projectionsBuilder.close();
-                                output.moveValueInto(
-                                    _infos.indexes[k].documentOutputRegister,
-                                    _currentRow, _projectionsBuilder.slice());
-                              }
-                              return true;
-                            }},
-                           {});
+            return true;
+          };
+          auto result = _infos.indexes[k]
+                            .collection->getCollection()
+                            ->getPhysical()
+                            ->lookup(&_trx, docIds[k], cb, {});
           if (result.fail()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 result.errorNumber(),
