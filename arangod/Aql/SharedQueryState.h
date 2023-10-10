@@ -29,6 +29,9 @@
 
 #include "RestServer/arangod.h"
 
+#define SHARED_STATE_LOGGING 1
+#include "Logger/LogMacros.h"
+
 namespace arangodb {
 class Scheduler;
 namespace application_features {
@@ -68,10 +71,17 @@ class SharedQueryState final
   void executeAndWakeup(F&& cb) {
     std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
+#if SHARED_STATE_LOGGING
+      LOG_DEVEL << this << ", " << __func__ << ", not valid";
+#endif
       guard.unlock();
       _cv.notify_all();
       return;
     }
+
+#if SHARED_STATE_LOGGING
+    LOG_DEVEL << this << ", " << __func__ << ", executing cb";
+#endif
 
     if (std::forward<F>(cb)()) {
       notifyWaiter(guard);
@@ -82,10 +92,17 @@ class SharedQueryState final
   void executeLocked(F&& cb) {
     std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
+#if SHARED_STATE_LOGGING
+      LOG_DEVEL << this << ", " << __func__ << ", not valid";
+#endif
       guard.unlock();
       _cv.notify_all();
       return;
     }
+
+#if SHARED_STATE_LOGGING
+    LOG_DEVEL << this << ", " << __func__ << ", executing cb";
+#endif
     std::forward<F>(cb)();
   }
 
@@ -102,30 +119,62 @@ class SharedQueryState final
   template<typename F>
   bool asyncExecuteAndWakeup(F&& cb) {
     unsigned num = _numTasks.fetch_add(1);
+#if SHARED_STATE_LOGGING
+    LOG_DEVEL << this << ", " << __func__ << ", increased tasks to "
+              << (num + 1);
+#endif
     bool queued = false;
     if (num + 1 <= _maxTasks) {
-      queued =
-          queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
-            if (self->_valid) {
-              try {
-                cb(true);
-              } catch (...) {
-                TRI_ASSERT(false);
-              }
-              std::unique_lock<std::mutex> guard(self->_mutex);
+#if SHARED_STATE_LOGGING
+      LOG_DEVEL << this << ", " << __func__ << ", queueing async task";
+#endif
+      queued = queueAsyncTask([this, cb(std::forward<F>(cb)),
+                               self = shared_from_this()] {
+        if (self->_valid) {
+          try {
+#if SHARED_STATE_LOGGING
+            LOG_DEVEL << this << ", " << __func__
+                      << ", in async lambda, valid, executing callback";
+#endif
+            cb(true);
+          } catch (...) {
+            TRI_ASSERT(false);
+          }
+          std::unique_lock<std::mutex> guard(self->_mutex);
+          auto v =
               self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
-              self->notifyWaiter(guard);
-            } else {  // need to wakeup everybody
-              std::unique_lock<std::mutex> guard(self->_mutex);
+          TRI_ASSERT(v > 0);
+#if SHARED_STATE_LOGGING
+          LOG_DEVEL << this << ", " << __func__
+                    << ", in async lambda, valid, _numTasks: " << (v - 1)
+                    << ", notifying waiter";
+#endif
+          self->notifyWaiter(guard);
+        } else {  // need to wakeup everybody
+          std::unique_lock<std::mutex> guard(self->_mutex);
+          auto v =
               self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
-              guard.unlock();
-              self->_cv.notify_all();
-            }
-          });
+          TRI_ASSERT(v > 0);
+#if SHARED_STATE_LOGGING
+          LOG_DEVEL << this << ", " << __func__
+                    << ", in async lambda, not valid, _numTasks: " << (v - 1)
+                    << ", notifying all";
+#endif
+          guard.unlock();
+          self->_cv.notify_all();
+        }
+      });
     }
     if (!queued) {
       // revert and execute directly
-      _numTasks.fetch_sub(1);
+      auto v = _numTasks.fetch_sub(1);
+      TRI_ASSERT(v > 0);
+#if SHARED_STATE_LOGGING
+      LOG_DEVEL
+          << this << ", " << __func__
+          << ", could not queue async task. executing cb directly, _numTasks: "
+          << (v - 1);
+#endif
       std::forward<F>(cb)(false);
     }
     return queued;
