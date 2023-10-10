@@ -70,6 +70,12 @@ function normalizeRow (row, recursive) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getParseResults (query) {
+
+  // let command = `
+  //   let query = ${JSON.stringify(query)};
+  //   return AQL_PARSE(query);
+  // `;
+  // return arango.POST("/_admin/execute", command);
   return db._parse(query);
 }
 

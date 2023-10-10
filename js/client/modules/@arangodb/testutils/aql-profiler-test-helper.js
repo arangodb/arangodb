@@ -563,9 +563,9 @@ function runDefaultChecks (
   for (const rows of testRowCounts) {
     prepare(rows);
     
-    const queryResults = db._query(query, bind(rows),
-      _.merge(options, {profile, defaultBatchSize})
-    ).getExtra();
+    const queryResults = db._createStatement({query: query, bindVars: bind(rows),
+      options: _.merge(options, {profile, defaultBatchSize}),
+    }).execute().getExtra();
 
     const batches = Math.ceil(rows / defaultBatchSize);
 
@@ -668,9 +668,8 @@ function runClusterChecks (
   for (const rowCount of testRowCounts) {
     const rowsByShard = prepareCollection(rowCount);
     const rowsByServer = getRowsPerServer(rowsByShard);
-    const profile = db._query(query, {},
-      _.merge(options, {profile: 2, defaultBatchSize})
-    ).getExtra();
+    const profile = db._createStatement({query: query, bindVars: {},
+      options: _.merge(options, {profile: 2, defaultBatchSize})}).execute.getExtra();
 
     assertIsLevel2Profile(profile);
     assertStatsNodesMatchPlanNodes(profile);
