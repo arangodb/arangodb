@@ -20,6 +20,9 @@ v3.11.5 (XXXX-XX-XX)
   `arangodb_network_connectivity_failures_dbservers`, which can be monitored for
   detecting temporary or permanent connectivity issues.
 
+* Fix ineffective startup option `--rocksdb.partition-files-for-documents`.
+  Setting this option had no effect unless RocksDB version 8 was used.
+
 
 v3.11.4 (2023-10-04)
 --------------------
