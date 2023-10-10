@@ -139,6 +139,58 @@ TEST(IndexMerger, some_results) {
   ASSERT_EQ(count, 1);
 }
 
+TEST(IndexMerger, one_empty) {
+  std::vector<MyKeyValue> a = {};
+
+  std::vector<MyKeyValue> b = {
+      2, 4, 6, 8, 10,
+  };
+
+  std::vector<Desc> iters;
+  iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0);
+  iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0);
+
+  Strategy merger{std::move(iters), 1};
+
+  bool hasMore = true;
+  std::size_t count = 0;
+  while (hasMore) {
+    hasMore =
+        merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
+          EXPECT_EQ(docs[0], docs[1]);
+          count += 1;
+          return true;
+        });
+  }
+
+  ASSERT_EQ(count, 0);
+}
+
+TEST(IndexMerger, both_empty) {
+  std::vector<MyKeyValue> a = {};
+
+  std::vector<MyKeyValue> b = {};
+
+  std::vector<Desc> iters;
+  iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0);
+  iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0);
+
+  Strategy merger{std::move(iters), 1};
+
+  bool hasMore = true;
+  std::size_t count = 0;
+  while (hasMore) {
+    hasMore =
+        merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
+          EXPECT_EQ(docs[0], docs[1]);
+          count += 1;
+          return true;
+        });
+  }
+
+  ASSERT_EQ(count, 0);
+}
+
 TEST(IndexMerger, product_result) {
   std::vector<MyKeyValue> a = {1, 1};
   std::vector<MyKeyValue> b = {1, 1};

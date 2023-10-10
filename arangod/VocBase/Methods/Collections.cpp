@@ -1368,8 +1368,8 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
       trx.indexScan(monitor, collection.name(),
                     transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
-  auto cb = IndexIterator::makeDocumentCallbackF([&](LocalDocumentId /*token*/,
-                                                     VPackSlice slice) {
+  iterator->allDocuments([&](LocalDocumentId, aql::DocumentData&&,
+                             VPackSlice slice) {
     uint64_t localHash =
         transaction::helpers::extractKeyFromDocument(slice).hashString();
 
@@ -1405,7 +1405,6 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
     checksum ^= localHash;
     return true;
   });
-  iterator->allDocuments(cb);
 
   return trx.finish(res);
 }

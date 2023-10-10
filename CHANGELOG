@@ -62,6 +62,9 @@ devel
   still has, the more likely it is that query parts can actually run 
   concurrently.
 
+* Allow the usage of the `_id` attribute in the stored values of persistent
+  indexes.
+
 * Updated arangosync to v2.19.4-preview-8.
 
 * Fix updating of collection properties (schema) when the collection has a

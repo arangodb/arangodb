@@ -358,8 +358,8 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
           });
     } else {
       // fetch full documents
-      auto cb = IndexIterator::makeDocumentCallbackF([&](LocalDocumentId token,
-                                                         VPackSlice edgeDoc) {
+      auto cb = [&](LocalDocumentId token, aql::DocumentData&&,
+                    VPackSlice edgeDoc) {
         stats.incrScannedIndex(1);
 #ifdef USE_ENTERPRISE
         if (_trx->skipInaccessible()) {
@@ -384,7 +384,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
 
         callback(std::move(edgeToken), edgeDoc, cursorID);
         return true;
-      });
+      };
       cursor.all([&](LocalDocumentId token) {
         return collection->getPhysical()->lookup(_trx, token, cb, {}).ok();
       });

@@ -61,8 +61,10 @@ class JoinNode : public ExecutionNode {
     std::string usedShard;
     Variable const* outVariable;
     std::unique_ptr<Condition> condition;
+    std::unique_ptr<Expression> filter;
     transaction::Methods::IndexHandle index;
     Projections projections;
+    Projections filterProjections;
     bool usedAsSatellite;  // TODO maybe use CollectionAccess class
   };
 
