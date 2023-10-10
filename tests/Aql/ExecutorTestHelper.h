@@ -256,6 +256,12 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto expectSkipped(SkipResult expectedSkip)
+      -> ExecutorTestHelper& {
+    _expectedSkip = std::move(expectedSkip);
+    return *this;
+  }
+
   auto expectedState(ExecutionState state) -> ExecutorTestHelper& {
     _expectedState = state;
     return *this;
