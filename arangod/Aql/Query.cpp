@@ -42,6 +42,7 @@
 #include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SharedQueryState.h"
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
