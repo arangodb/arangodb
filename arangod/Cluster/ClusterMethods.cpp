@@ -1390,8 +1390,9 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
-    if (r.fail()) {
-      return r.combinedResult();
+    auto res = r.combinedResult();
+    if (res.fail()) {
+      return res;
     }
 
     VPackSlice answer = r.slice();
@@ -1411,7 +1412,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
       if (split != shardIndexId.end()) {
         std::string index(split + 1, shardIndexId.end());
         double estimate = Helper::getNumericValue(pair.value, 0.0);
-        indexEstimates[index].push_back(estimate);
+        indexEstimates[std::move(index)].push_back(estimate);
       }
     }
   }
@@ -2185,21 +2186,19 @@ Result fetchEdgesFromEngines(
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
-    if (r.fail()) {
-      return network::fuerteToArangoErrorCode(r);
+    auto res = r.combinedResult();
+    if (res.fail()) {
+      return res;
     }
 
     auto payload = r.response().stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
-      return TRI_ERROR_HTTP_CORRUPTED_JSON;
+      return {TRI_ERROR_HTTP_CORRUPTED_JSON,
+              "unexpected response structure for edges response"};
     }
 
-    Result res = network::resultFromBody(resSlice, TRI_ERROR_NO_ERROR);
-    if (res.fail()) {
-      return res;
-    }
     filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
 
@@ -2285,19 +2284,17 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
-    if (r.fail()) {
-      return network::fuerteToArangoErrorCode(r);
+    auto res = r.combinedResult();
+    if (res.fail()) {
+      return res;
     }
 
     auto payload = r.response().stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
-      return TRI_ERROR_HTTP_CORRUPTED_JSON;
-    }
-    Result res = network::resultFromBody(resSlice, TRI_ERROR_NO_ERROR);
-    if (res.fail()) {
-      return res;
+      return {TRI_ERROR_HTTP_CORRUPTED_JSON,
+              "invalid response structure for edges response"};
     }
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
 
@@ -2382,22 +2379,19 @@ void fetchVerticesFromEngines(
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
-    if (r.fail()) {
-      THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
+    auto res = r.combinedResult();
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     auto payload = r.response().stealPayload();
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
       // Response has invalid format
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_CORRUPTED_JSON,
+          "invalid response structure for vertices response");
     }
-    if (r.statusCode() != fuerte::StatusOK) {
-      // We have an error case here. Throw it.
-      THROW_ARANGO_EXCEPTION(
-          network::resultFromBody(resSlice, TRI_ERROR_INTERNAL));
-    }
-
     bool cached = false;
     for (auto pair : VPackObjectIterator(resSlice, /*sequential*/ true)) {
       arangodb::velocypack::HashedStringRef key(pair.key);
@@ -2712,10 +2706,9 @@ Result flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
-
-    if (r.fail() || r.statusCode() != fuerte::StatusOK) {
-      return r.combinedResult();
+    Result res = f.get().combinedResult();
+    if (res.fail()) {
+      return res;
     }
   }
   return {};
@@ -2805,14 +2798,9 @@ Result compactOnAllDBServers(ClusterFeature& feature, bool changeLevel,
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
-
-    if (r.fail()) {
-      return {network::fuerteToArangoErrorCode(r),
-              network::fuerteToArangoErrorMessage(r)};
-    }
-    if (r.statusCode() != fuerte::StatusOK) {
-      return network::resultFromBody(r.slice(), TRI_ERROR_INTERNAL);
+    Result res = f.get().combinedResult();
+    if (res.fail()) {
+      return res;
     }
   }
   return {};
