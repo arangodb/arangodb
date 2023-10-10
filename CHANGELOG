@@ -1,6 +1,14 @@
 devel
 -----
 
+* Allow the usage of the `_id` attribute in the stored values of persistent
+  indexes.
+
+* Updated arangosync to v2.19.4-preview-8.
+
+* Fix updating of collection properties (schema) when the collection has a
+  view on top.
+
 * Improve logging in case hot backup locks cannot be taken on coordinators.
 
 * Speed up incremental hotbackup upload by parallelization of

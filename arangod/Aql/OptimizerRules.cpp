@@ -9057,18 +9057,11 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
   bool modified = false;
   if (nodes.size() >= 2) {
     // not yet supported:
-    // - projections
-    // - post-filtering
     // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache,
     // waitForSync, limit, lookahead
     // - reverse iteration
     // - support from GatherNodes
     auto nodeQualifies = [](IndexNode const& indexNode) {
-      if (indexNode.filter() != nullptr) {
-        // IndexNode has post-filter condition
-        return false;
-      }
-
       if (indexNode.condition() == nullptr) {
         // IndexNode does not have an index lookup condition
         return false;
@@ -9217,6 +9210,20 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                 eligible = false;
                 break;
               }
+
+              // if there is a post filter, make sure it only accesses variables
+              // that are available before all index nodes
+              if (c->hasFilter()) {
+                VarSet vars;
+                c->filter()->variables(vars);
+
+                for (auto* other : candidates) {
+                  if (other != c && other->setsVariable(vars)) {
+                    eligible = false;
+                    break;
+                  }
+                }
+              }
             }
 
             if (!eligible) {
@@ -9229,12 +9236,16 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
             std::vector<JoinNode::IndexInfo> indexInfos;
             indexInfos.reserve(candidates.size());
             for (auto* c : candidates) {
-              indexInfos.emplace_back(
-                  JoinNode::IndexInfo{.collection = c->collection(),
-                                      .outVariable = c->outVariable(),
-                                      .condition = c->condition()->clone(),
-                                      .index = c->getIndexes()[0],
-                                      .projections = c->projections()});
+              indexInfos.emplace_back(JoinNode::IndexInfo{
+                  .collection = c->collection(),
+                  .outVariable = c->outVariable(),
+                  .condition = c->condition()->clone(),
+                  .filter = c->hasFilter() ? c->filter()->clone(plan->getAst())
+                                           : nullptr,
+                  .index = c->getIndexes()[0],
+                  .projections = c->projections(),
+                  .filterProjections = c->filterProjections(),
+                  .usedAsSatellite = c->isUsedAsSatellite()});
               handled.emplace(c);
             }
             JoinNode* jn = plan->createNode<JoinNode>(

@@ -192,12 +192,14 @@ class Manager {
   /// to the backing store. A read-only transaction may, however, write to the
   /// cache.
   //////////////////////////////////////////////////////////////////////////////
-  Transaction* beginTransaction(bool readOnly);
+  void beginTransaction(Transaction& tx, bool readOnly) {
+    return _transactions.begin(tx, readOnly);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Signal the end of a transaction. Deletes the passed Transaction.
   //////////////////////////////////////////////////////////////////////////////
-  void endTransaction(Transaction* tx) noexcept;
+  void endTransaction(Transaction& tx) noexcept { _transactions.end(tx); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Post a function to the scheduler

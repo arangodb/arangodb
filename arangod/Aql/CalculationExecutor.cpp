@@ -34,7 +34,10 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+
+#ifdef USE_V8
 #include "V8/v8-globals.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -116,6 +119,7 @@ CalculationExecutor<calculationType>::produceRows(
   return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
 }
 
+#ifdef USE_V8
 template<CalculationType calculationType>
 template<CalculationType U, typename>
 void CalculationExecutor<calculationType>::enterContext() {
@@ -133,6 +137,7 @@ void CalculationExecutor<calculationType>::exitContext() noexcept {
     _hasEnteredContext = false;
   }
 }
+#endif
 
 template<CalculationType calculationType>
 bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks()
@@ -183,6 +188,7 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(
   output.moveValueInto(_infos.getOutputRegisterId(), input, &guard);
 }
 
+#ifdef USE_V8
 template<>
 void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     InputAqlItemRow& input, OutputAqlItemRow& output) {
@@ -224,8 +230,11 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     contextGuard.cancel();
   }
 }
+#endif
 
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Condition>;
+#ifdef USE_V8
 template class ::arangodb::aql::CalculationExecutor<
     CalculationType::V8Condition>;
+#endif
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Reference>;
