@@ -395,7 +395,8 @@ std::string const& ShardingInfo::distributeShardsLike() const noexcept {
 }
 
 size_t ShardingInfo::replicationFactor() const noexcept {
-  TRI_ASSERT(isSatellite() || _writeConcern <= _replicationFactor);
+  TRI_ASSERT(isSatellite() || !ServerState::instance()->isCoordinator() ||
+             _writeConcern <= _replicationFactor);
   return _replicationFactor;
 }
 
