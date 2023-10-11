@@ -1326,7 +1326,7 @@ void AqlValue::initFromSlice(VPackSlice slice, VPackValueLength length) {
 }
 
 void AqlValue::initFromUint(uint64_t v) {
-  // We want int instead of uint because it allow us to use it without checks
+  // We want int instead of uint because it allows us to use it without checks
   if (v <= std::numeric_limits<int64_t>::max()) {
     return initFromInt(static_cast<int64_t>(v));
   }
