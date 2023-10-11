@@ -7,7 +7,7 @@
 
 #include "Logger/LogMacros.h"
 
-#include "Aql/IndexJoin/GenericMerge.h"
+#include "Aql/IndexJoin/TwoIndicesUniqueMergeJoin.h"
 
 using namespace arangodb;
 
@@ -15,7 +15,8 @@ namespace {
 using MyKeyValue = std::size_t;
 using MyDocumentId = std::size_t;
 
-using Strategy = arangodb::aql::GenericMergeJoin<MyKeyValue, MyDocumentId>;
+using Strategy =
+    arangodb::aql::TwoIndicesUniqueMergeJoin<MyKeyValue, MyDocumentId>;
 using MyIndexStreamIterator = Strategy::StreamIteratorType;
 
 using Desc = Strategy::Descriptor;
@@ -79,8 +80,8 @@ struct MyVectorIterator : MyIndexStreamIterator {
 
 }  // namespace
 
-TEST(IndexMerger, no_results) {
-  bool isUnique = false;
+TEST(UniqueIndexMerger, no_results) {
+  bool isUnique = true;
   std::vector<MyKeyValue> a = {
       1,
       3,
@@ -111,8 +112,8 @@ TEST(IndexMerger, no_results) {
   ASSERT_EQ(count, 0);
 }
 
-TEST(IndexMerger, some_results) {
-  bool isUnique = false;
+TEST(UniqueIndexMerger, some_results) {
+  bool isUnique = true;
   std::vector<MyKeyValue> a = {
       1, 3, 5, 7, 8, 9,
   };
@@ -141,8 +142,8 @@ TEST(IndexMerger, some_results) {
   ASSERT_EQ(count, 1);
 }
 
-TEST(IndexMerger, one_empty) {
-  bool isUnique = false;
+TEST(UniqueIndexMerger, one_empty) {
+  bool isUnique = true;
   std::vector<MyKeyValue> a = {};
 
   std::vector<MyKeyValue> b = {
@@ -169,8 +170,8 @@ TEST(IndexMerger, one_empty) {
   ASSERT_EQ(count, 0);
 }
 
-TEST(IndexMerger, both_empty) {
-  bool isUnique = false;
+TEST(UniqueIndexMerger, both_empty) {
+  bool isUnique = true;
   std::vector<MyKeyValue> a = {};
 
   std::vector<MyKeyValue> b = {};
@@ -195,8 +196,8 @@ TEST(IndexMerger, both_empty) {
   ASSERT_EQ(count, 0);
 }
 
-TEST(IndexMerger, product_result) {
-  bool isUnique = false;
+TEST(UniqueIndexMerger, product_result) {
+  bool isUnique = true;
   std::vector<MyKeyValue> a = {1, 1};
   std::vector<MyKeyValue> b = {1, 1};
 
@@ -220,8 +221,8 @@ TEST(IndexMerger, product_result) {
   ASSERT_EQ(count, 4);
 }
 
-TEST(IndexMerger, two_phase_product_result) {
-  bool isUnique = false;
+TEST(UniqueIndexMerger, two_phase_product_result) {
+  bool isUnique = true;
   std::vector<MyKeyValue> a = {1, 1, 3, 4};
 
   std::vector<MyKeyValue> b = {1, 1, 2, 4};
@@ -246,8 +247,8 @@ TEST(IndexMerger, two_phase_product_result) {
   ASSERT_EQ(count, 5);
 }
 
-TEST(IndexMerger, two_phase_product_result_two_streaks) {
-  bool isUnique = false;
+TEST(UniqueIndexMerger, two_phase_product_result_two_streaks) {
+  bool isUnique = true;
   std::vector<MyKeyValue> a = {1, 1, 2, 2};
 
   std::vector<MyKeyValue> b = {1, 1, 2, 2};
@@ -272,82 +273,8 @@ TEST(IndexMerger, two_phase_product_result_two_streaks) {
   ASSERT_EQ(count, 4 + 4);
 }
 
-TEST(IndexMerger, three_iterators) {
-  bool isUnique = false;
-  std::vector<MyKeyValue> a = {
-      1, 1, 3, 4, 6, 7, 8, 9,
-  };
-
-  std::vector<MyKeyValue> b = {
-      1, 1, 2, 4, 6, 7, 8, 10,
-  };
-
-  std::vector<MyKeyValue> c = {
-      2, 2, 2, 4, 7, 8, 10,
-  };
-
-  std::vector<Desc> iters;
-  iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
-  iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
-  iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0, isUnique);
-
-  Strategy merger{std::move(iters), 1};
-
-  bool hasMore = true;
-  std::size_t count = 0;
-  while (hasMore) {
-    hasMore =
-        merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
-          EXPECT_EQ(docs.size(), 3);
-          LOG_DEVEL << docs[0] << " - " << docs[1] << " - " << docs[2];
-          EXPECT_EQ(docs[0], docs[1]);
-          EXPECT_EQ(docs[1], docs[2]);
-          count += 1;
-          return true;
-        });
-  }
-
-  ASSERT_EQ(count, 3);
-}
-
-TEST(IndexMerger, three_iterators_2) {
-  bool isUnique = false;
-  std::vector<MyKeyValue> a = {
-      1,
-      2,
-      3,
-  };
-
-  std::vector<MyKeyValue> b = {0, 2, 2, 4};
-
-  std::vector<MyKeyValue> c = {0, 2, 5};
-
-  std::vector<Desc> iters;
-  iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
-  iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
-  iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0, isUnique);
-
-  Strategy merger{std::move(iters), 1};
-
-  bool hasMore = true;
-  std::size_t count = 0;
-  while (hasMore) {
-    hasMore =
-        merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
-          EXPECT_EQ(docs.size(), 3);
-          LOG_DEVEL << docs[0] << " - " << docs[1] << " - " << docs[2];
-          EXPECT_EQ(docs[0], docs[1]);
-          EXPECT_EQ(docs[1], docs[2]);
-          count += 1;
-          return true;
-        });
-  }
-
-  ASSERT_EQ(count, 2);
-}
-
-TEST(IndexMerger, one_iterator_corner_case) {
-  bool isUnique = false;
+TEST(UniqueIndexMerger, one_iterator_corner_case) {
+  bool isUnique = true;
   std::vector<MyKeyValue> a = {0, 1, 2, 3};
 
   std::vector<Desc> iters;

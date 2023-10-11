@@ -312,6 +312,7 @@ void JoinExecutor::constructStrategy() {
     options.usedKeyFields = {0};
 
     auto& desc = indexDescription.emplace_back();
+    desc.isUnique = idx.index->unique();
 
     if (idx.projections.usesCoveringIndex()) {
       std::transform(idx.projections.projections().begin(),
