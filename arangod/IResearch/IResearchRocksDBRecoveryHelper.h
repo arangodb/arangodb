@@ -71,11 +71,6 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
                 rocksdb::SequenceNumber tick) final;
 
-  void SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
-                      rocksdb::SequenceNumber tick) final {
-    DeleteCF(column_family_id, key, tick);
-  }
-
   void LogData(const rocksdb::Slice& blob, rocksdb::SequenceNumber tick) final;
 
  private:

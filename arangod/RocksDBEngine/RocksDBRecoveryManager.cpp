@@ -37,6 +37,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -65,6 +66,7 @@
 
 #include <absl/cleanup/cleanup.h>
 #include <atomic>
+#include <filesystem>
 
 using namespace arangodb::application_features;
 
@@ -127,11 +129,96 @@ rocksdb::SequenceNumber RocksDBRecoveryManager::recoverySequenceNumber()
   return _currentSequenceNumber.load(std::memory_order_relaxed);
 }
 
-class WBReader final : public rocksdb::WriteBatch::Handler {
- private:
-  WBReader(WBReader const&) = delete;
-  WBReader const& operator=(WBReader const&) = delete;
+class WALReaderBase : public rocksdb::WriteBatch::Handler {
+ public:
+  WALReaderBase() = default;
+  WALReaderBase(WALReaderBase const&) = delete;
+  WALReaderBase const& operator=(WALReaderBase const&) = delete;
 
+  rocksdb::Status MarkBeginPrepare(bool = false) final {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkBeginPrepare() handler not defined.");
+  }
+
+  rocksdb::Status MarkEndPrepare(rocksdb::Slice const& /*xid*/) final {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkEndPrepare() handler not defined.");
+  }
+
+  rocksdb::Status MarkNoop(bool /*empty_batch*/) final {
+    return rocksdb::Status::OK();
+  }
+
+  rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) final {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkRollback() handler not defined.");
+  }
+
+  rocksdb::Status MarkCommit(rocksdb::Slice const& /*xid*/) final {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkCommit() handler not defined.");
+  }
+
+  // MergeCF is not used
+};
+
+using IdSet = containers::FlatHashSet<uint64_t>;
+
+class WALReaderUpdates final : public WALReaderBase {
+  uint32_t _documentCF = RocksDBColumnFamilyManager::get(
+                             RocksDBColumnFamilyManager::Family::Documents)
+                             ->GetID();
+
+  IdSet _inserts;
+
+ public:
+  IdSet skippedCF;
+
+  void startNewBatch(rocksdb::SequenceNumber startSequence) {}
+
+  rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
+                        const rocksdb::Slice& value) final {
+    if (column_family_id != _documentCF) {
+      return {};
+    }
+    auto const documentId = RocksDBKey::documentId(key).id();
+    _inserts.emplace(documentId);
+    return {};
+  }
+
+  rocksdb::Status DeleteCF(uint32_t column_family_id,
+                           const rocksdb::Slice& key) final {
+    if (column_family_id != _documentCF) {
+      return {};
+    }
+
+    auto const documentId = RocksDBKey::documentId(key).id();
+    if (_inserts.erase(documentId) != 0) {
+      skippedCF.insert(documentId);
+    }
+    return {};
+  }
+
+  rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
+                                 const rocksdb::Slice& key) final {
+    return DeleteCF(column_family_id, key);
+  }
+
+  rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
+                                const rocksdb::Slice& begin_key,
+                                const rocksdb::Slice& end_key) final {
+    return {};
+  }
+
+  void LogData(const rocksdb::Slice& blob) final {}
+};
+
+class WALReader final : public WALReaderBase {
+ private:
   ArangodServer& _server;
 
   struct ProgressState {
@@ -168,12 +255,15 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   // whether we are currently at the start of a batch
   bool _startOfBatch = false;
 
+  IdSet _skippedCF;
+
  public:
   /// @param seqs sequence number from which to count operations
-  explicit WBReader(ArangodServer& server,
-                    rocksdb::SequenceNumber recoveryStartSequence,
-                    rocksdb::SequenceNumber latestSequence,
-                    std::atomic<rocksdb::SequenceNumber>& currentSequence)
+  explicit WALReader(ArangodServer& server,
+                     rocksdb::SequenceNumber recoveryStartSequence,
+                     rocksdb::SequenceNumber latestSequence,
+                     std::atomic<rocksdb::SequenceNumber>& currentSequence,
+                     IdSet&& skippedCF)
       : _server(server),
         _progressState{recoveryStartSequence, latestSequence},
         _minimumServerTick(TRI_NewTickServer()),
@@ -184,7 +274,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         _batchStartSequence(0),
         _currentSequence(currentSequence),
         _engine(_server.getFeature<EngineSelectorFeature>()
-                    .engine<RocksDBEngine>()) {}
+                    .engine<RocksDBEngine>()),
+        _skippedCF{std::move(skippedCF)} {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     TRI_ASSERT(_currentSequence <= startSequence);
@@ -392,7 +483,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
  public:
   rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
-                        const rocksdb::Slice& value) override {
+                        const rocksdb::Slice& value) final {
     ++_entriesScanned;
 
     LOG_TOPIC("3e5c5", TRACE, Logger::ENGINES)
@@ -410,10 +501,15 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
             transaction::helpers::extractRevFromDocument(
                 RocksDBValue::data(value)),
             1);
-
+      }
+      auto documentId = RocksDBKey::documentId(key).id();
+      if (_skippedCF.contains(documentId)) {
+        return {};
+      }
+      if (coll) {
         std::vector<std::uint64_t> inserts;
         std::vector<std::uint64_t> removes;
-        inserts.emplace_back(RocksDBKey::documentId(key).id());
+        inserts.emplace_back(documentId);
         coll->bufferUpdates(_currentSequence, std::move(inserts),
                             std::move(removes));
       }
@@ -451,15 +547,22 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     return rocksdb::Status();
   }
 
-  void handleDeleteCF(uint32_t cfId, const rocksdb::Slice& key) {
+  rocksdb::Status DeleteCF(uint32_t column_family_id,
+                           const rocksdb::Slice& key) final {
+    ++_entriesScanned;
+
+    LOG_TOPIC("5f341", TRACE, Logger::ENGINES)
+        << "recovering DELETE @ " << _currentSequence << " " << RocksDBKey(key);
+
     incTick();
 
-    if (cfId == RocksDBColumnFamilyManager::get(
-                    RocksDBColumnFamilyManager::Family::Documents)
-                    ->GetID()) {
-      uint64_t objectId = RocksDBKey::objectId(key);
+    if (column_family_id == RocksDBColumnFamilyManager::get(
+                                RocksDBColumnFamilyManager::Family::Documents)
+                                ->GetID()) {
+      auto objectId = RocksDBKey::objectId(key);
+      auto documentId = RocksDBKey::documentId(key).id();
 
-      storeMaxHLC(RocksDBKey::documentId(key).id());
+      storeMaxHLC(documentId);
       storeMaxTick(objectId);
 
       auto coll = findCollection(RocksDBKey::objectId(key));
@@ -467,32 +570,39 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (coll) {
         coll->meta().adjustNumberDocumentsInRecovery(_currentSequence,
                                                      _lastRemovedDocRid, -1);
-
-        std::vector<std::uint64_t> inserts;
-        std::vector<std::uint64_t> removes;
-        removes.emplace_back(RocksDBKey::documentId(key).id());
-        coll->bufferUpdates(_currentSequence, std::move(inserts),
-                            std::move(removes));
       }
       _lastRemovedDocRid = RevisionId::none();  // reset in any case
 
+      if (_skippedCF.contains(documentId)) {
+        return {};
+      }
+
+      if (coll) {
+        std::vector<std::uint64_t> inserts;
+        std::vector<std::uint64_t> removes;
+        removes.emplace_back(documentId);
+        coll->bufferUpdates(_currentSequence, std::move(inserts),
+                            std::move(removes));
+      }
     } else {
       // We have to adjust the estimate with an insert
       uint64_t hashval = 0;
-      if (cfId == RocksDBColumnFamilyManager::get(
-                      RocksDBColumnFamilyManager::Family::VPackIndex)
-                      ->GetID()) {
+      if (column_family_id ==
+          RocksDBColumnFamilyManager::get(
+              RocksDBColumnFamilyManager::Family::VPackIndex)
+              ->GetID()) {
         hashval = RocksDBVPackIndex::HashForKey(key);
-      } else if (cfId == RocksDBColumnFamilyManager::get(
-                             RocksDBColumnFamilyManager::Family::EdgeIndex)
-                             ->GetID()) {
+      } else if (column_family_id ==
+                 RocksDBColumnFamilyManager::get(
+                     RocksDBColumnFamilyManager::Family::EdgeIndex)
+                     ->GetID()) {
         hashval = RocksDBEdgeIndex::HashForKey(key);
       }
 
       if (hashval != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx) {
-          RocksDBCuckooIndexEstimatorType* est = idx->estimator();
+          auto* est = idx->estimator();
           if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
             est->remove(hashval);
@@ -500,51 +610,28 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         }
       }
     }
-  }
 
-  rocksdb::Status DeleteCF(uint32_t column_family_id,
-                           const rocksdb::Slice& key) override {
-    ++_entriesScanned;
-
-    LOG_TOPIC("5f341", TRACE, Logger::ENGINES)
-        << "recovering DELETE @ " << _currentSequence << " " << RocksDBKey(key);
-    handleDeleteCF(column_family_id, key);
     for (auto helper : _engine.recoveryHelpers()) {
       helper->DeleteCF(column_family_id, key, _currentSequence);
     }
 
-    return rocksdb::Status();
+    return {};
   }
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
-                                 const rocksdb::Slice& key) override {
-    ++_entriesScanned;
-
-    LOG_TOPIC("aa997", TRACE, Logger::ENGINES)
-        << "recovering SINGLE DELETE @ " << _currentSequence << " "
-        << RocksDBKey(key);
-    handleDeleteCF(column_family_id, key);
-    for (auto helper : _engine.recoveryHelpers()) {
-      helper->SingleDeleteCF(column_family_id, key, _currentSequence);
-    }
-
-    return rocksdb::Status();
+                                 const rocksdb::Slice& key) final {
+    return DeleteCF(column_family_id, key);
   }
 
   rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
                                 const rocksdb::Slice& begin_key,
-                                const rocksdb::Slice& end_key) override {
+                                const rocksdb::Slice& end_key) final {
     ++_entriesScanned;
 
     LOG_TOPIC("ed6f5", TRACE, Logger::ENGINES)
         << "recovering DELETE RANGE @ " << _currentSequence << " from "
         << RocksDBKey(begin_key) << " to " << RocksDBKey(end_key);
     incTick();
-    // drop and truncate can use this, truncate is handled via a Log marker
-    for (auto helper : _engine.recoveryHelpers()) {
-      helper->DeleteRangeCF(column_family_id, begin_key, end_key,
-                            _currentSequence);
-    }
 
     // check for a range-delete of the primary index
     if (column_family_id == RocksDBColumnFamilyManager::get(
@@ -555,7 +642,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
       auto coll = findCollection(objectId);
       if (!coll) {
-        return rocksdb::Status();
+        return {};
       }
 
       uint64_t currentCount = coll->meta().numberDocuments();
@@ -575,14 +662,14 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       coll->bufferTruncate(_currentSequence);
     }
 
-    return rocksdb::Status();  // make WAL iterator happy
+    return {};
   }
 
-  void LogData(const rocksdb::Slice& blob) override {
+  void LogData(const rocksdb::Slice& blob) final {
     ++_entriesScanned;
 
     // a delete log message appears directly before a Delete
-    RocksDBLogType type = RocksDBLogValue::type(blob);
+    auto type = RocksDBLogValue::type(blob);
     switch (type) {
       case RocksDBLogType::DocumentRemoveV2:  // remove within a trx
       case RocksDBLogType::SingleRemoveV2:    // single remove
@@ -591,42 +678,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         break;
       default:
         _lastRemovedDocRid = RevisionId::none();  // reset in any other case
+        for (auto helper : _engine.recoveryHelpers()) {
+          helper->LogData(blob, _currentSequence);
+        }
         break;
     }
-    for (auto helper : _engine.recoveryHelpers()) {
-      helper->LogData(blob, _currentSequence);
-    }
   }
-
-  rocksdb::Status MarkBeginPrepare(bool = false) override {
-    TRI_ASSERT(false);
-    return rocksdb::Status::InvalidArgument(
-        "MarkBeginPrepare() handler not defined.");
-  }
-
-  rocksdb::Status MarkEndPrepare(rocksdb::Slice const& /*xid*/) override {
-    TRI_ASSERT(false);
-    return rocksdb::Status::InvalidArgument(
-        "MarkEndPrepare() handler not defined.");
-  }
-
-  rocksdb::Status MarkNoop(bool /*empty_batch*/) override {
-    return rocksdb::Status::OK();
-  }
-
-  rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {
-    TRI_ASSERT(false);
-    return rocksdb::Status::InvalidArgument(
-        "MarkRollbackPrepare() handler not defined.");
-  }
-
-  rocksdb::Status MarkCommit(rocksdb::Slice const& /*xid*/) override {
-    TRI_ASSERT(false);
-    return rocksdb::Status::InvalidArgument(
-        "MarkCommit() handler not defined.");
-  }
-
-  // MergeCF is not used
 };
 
 /// parse the WAL with the above handler parser class
@@ -664,11 +721,11 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
       size_t filesInArchive = 0;
       try {
         // number of active log files
-        std::string active = db->GetOptions().wal_dir;
+        auto active = db->GetOptions().wal_dir;
         filesActive = TRI_FilesDirectory(active.c_str()).size();
 
         // number of log files in the archive
-        std::string archive = basics::FileUtils::buildFilename(
+        auto archive = basics::FileUtils::buildFilename(
             db->GetOptions().wal_dir, "archive");
         filesInArchive = TRI_FilesDirectory(archive.c_str()).size();
       } catch (...) {
@@ -685,56 +742,66 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
           << ", files in archive: " << filesInArchive;
     }
 
-    // Tell the WriteBatch reader the transaction markers to look for
-    TRI_ASSERT(_currentSequenceNumber == 0);
-    WBReader handler(server, recoveryStartSequence, latestSequenceNumber,
-                     _currentSequenceNumber);
-
     // prevent purging of WAL files while we are in here
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
 
-    std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
-    rocksdb::Status s =
-        db->GetUpdatesSince(recoveryStartSequence, &iterator,
-                            rocksdb::TransactionLogIterator::ReadOptions(true));
+    auto recovery = [&](auto& reader) {
+      std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
+      auto s = db->GetUpdatesSince(
+          recoveryStartSequence, &iterator,
+          rocksdb::TransactionLogIterator::ReadOptions(true));
 
-    rv = rocksutils::convertStatus(s);
-
-    if (rv.ok()) {
+      rv = rocksutils::convertStatus(s);
+      if (!rv.ok()) {
+        return;
+      }
       while (iterator->Valid()) {
         s = iterator->status();
         if (s.ok()) {
-          rocksdb::BatchResult batch = iterator->GetBatch();
-          handler.startNewBatch(batch.sequence);
-          s = batch.writeBatchPtr->Iterate(&handler);
+          auto batch = iterator->GetBatch();
+          reader.startNewBatch(batch.sequence);
+          s = batch.writeBatchPtr->Iterate(&reader);
         }
-
         if (!s.ok()) {
           rv = rocksutils::convertStatus(s);
-          std::string msg = basics::StringUtils::concatT(
-              "error during WAL scan: ", rv.errorMessage());
+          auto msg = absl::StrCat("error during WAL scan: ", rv.errorMessage());
           LOG_TOPIC("ee333", ERR, Logger::ENGINES) << msg;
           rv.reset(rv.errorNumber(), std::move(msg));  // update message
-          break;
+          return;
         }
-
         iterator->Next();
       }
+    };
+
+    IdSet skippedCF;
+    auto& feature = server.getFeature<DatabasePathFeature>();
+    auto path = std::filesystem::path{feature.directory()} / "_recovery_helper";
+    if (!std::filesystem::exists(path)) {
+      std::filesystem::create_directory(path);
+      WALReaderUpdates readerUpdates;
+      recovery(readerUpdates);
+      if (!rv.ok()) {
+        return rv;
+      }
+      skippedCF = std::move(readerUpdates.skippedCF);
     }
 
-    shutdownRv = handler.shutdownWBReader();
+    // Tell the WriteBatch reader the transaction markers to look for
+    TRI_ASSERT(_currentSequenceNumber == 0);
+    WALReader reader(server, recoveryStartSequence, latestSequenceNumber,
+                     _currentSequenceNumber, std::move(skippedCF));
+    recovery(reader);
+    shutdownRv = reader.shutdownWBReader();
+    std::filesystem::remove(path);
 
     return rv;
   });
 
   if (res.ok()) {
     res = std::move(shutdownRv);
-  } else {
-    if (shutdownRv.fail()) {
-      res.reset(res.errorNumber(),
-                basics::StringUtils::concatT(res.errorMessage(), " - ",
-                                             shutdownRv.errorMessage()));
-    }
+  } else if (shutdownRv.fail()) {
+    res.reset(res.errorNumber(), absl::StrCat(res.errorMessage(), " - ",
+                                              shutdownRv.errorMessage()));
   }
 
   return res;
