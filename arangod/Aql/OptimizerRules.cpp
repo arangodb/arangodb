@@ -43,6 +43,7 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/JoinNode.h"
+#include "Aql/IndexStreamIterator.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -9140,11 +9141,6 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
         return false;
       }
 
-      if (index->type() != Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
-        // must be a persistent index. TODO: ask index if it supports join API.
-        return false;
-      }
-
       return true;
     };
 
@@ -9256,19 +9252,35 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                 eligible = false;
                 break;
               }
+            }
 
-              // if there is a post filter, make sure it only accesses variables
-              // that are available before all index nodes
-              if (c->hasFilter()) {
-                VarSet vars;
-                c->filter()->variables(vars);
+            // if there is a post filter, make sure it only accesses variables
+            // that are available before all index nodes
+            if (c->hasFilter()) {
+              VarSet vars;
+              c->filter()->variables(vars);
 
-                for (auto* other : candidates) {
-                  if (other != c && other->setsVariable(vars)) {
-                    eligible = false;
-                    break;
-                  }
+              for (auto* other : candidates) {
+                if (other != c && other->setsVariable(vars)) {
+                  eligible = false;
                 }
+              }
+            }
+
+            // check if filter supports streaming interface
+            {
+              IndexStreamOptions opts;
+              opts.usedKeyFields = {0};  // for now only 0 is supported
+              if (c->projections().usesCoveringIndex()) {
+                opts.projectedFields.reserve(c->projections().size());
+                auto& proj = c->projections().projections();
+                std::transform(
+                    proj.begin(), proj.end(),
+                    std::back_inserter(opts.projectedFields),
+                    [](auto const& p) { return p.coveringIndexPosition; });
+              }
+              if (!c->getIndexes()[0]->supportsStreamInterface(opts)) {
+                eligible = false;
               }
             }
 
