@@ -308,10 +308,13 @@ Result CreateDatabaseInfo::checkOptions() {
            "and then restore the data.";
   }
 
-  bool isSystem = _name == StaticStrings::SystemDatabase;
-  bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNames();
+  if (_validateNames) {
+    bool isSystem = _name == StaticStrings::SystemDatabase;
+    bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNames();
 
-  return DatabaseNameValidator::validateName(isSystem, extendedNames, _name);
+    return DatabaseNameValidator::validateName(isSystem, extendedNames, _name);
+  }
+  return {};
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
