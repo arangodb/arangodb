@@ -861,10 +861,21 @@ TEST_F(IResearchAnalyzerFeatureTest,
 }
 
 TEST_F(IResearchAnalyzerFeatureTest,
+       test_emplace_creation_name_extended_character) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
+  std::string invalidName = analyzerName() + "+";  // '+' is extended, but valid
+  auto res = feature.emplace(result, invalidName, "TestAnalyzer",
+                             VPackParser::fromJson("\"abc\"")->slice(),
+                             arangodb::transaction::OperationOriginTestCase{});
+  EXPECT_TRUE(res.ok());
+}
+
+TEST_F(IResearchAnalyzerFeatureTest,
        test_emplace_creation_name_invalid_character) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
-  std::string invalidName = analyzerName() + "+";  // '+' is invalid
+  std::string invalidName = analyzerName() + "/";  // '/' is invalid
   auto res = feature.emplace(result, invalidName, "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice(),
                              arangodb::transaction::OperationOriginTestCase{});

@@ -499,15 +499,6 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  bool extendedNames =
-      systemVocbase->server().getFeature<DatabaseFeature>().extendedNames();
-
-  if (auto res = DatabaseNameValidator::validateName(
-          /*allowSystem*/ false, extendedNames, dbName);
-      res.fail()) {
-    return res;
-  }
-
   Result res;
   auto& server = systemVocbase->server();
 #ifdef USE_V8

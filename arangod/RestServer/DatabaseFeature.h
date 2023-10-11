@@ -196,7 +196,7 @@ class DatabaseFeature final : public ArangodFeature {
   bool _checkVersion{false};
   bool _upgrade{false};
   // allow extended names for databases, collections, views and indexes
-  bool _extendedNames{false};
+  bool _extendedNames{true};
   bool _performIOHeartbeat{true};
   std::atomic_bool _started{false};
 

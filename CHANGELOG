@@ -20,6 +20,22 @@ devel
   `arangodb_network_connectivity_failures_dbservers`, which can be monitored
   for detecting temporary or permanent connectivity issues.
 
+* Change default value for `--database.extended-names` from `false` to `true`.
+  This will allow end users to use Unicode characters inside database names,
+  collection names, view names and index names by default, unless the
+  functionality is explicitly turned off.
+
+  Note: once a server in the deployment has been started with the flag set
+  to `true`, it will store that setting permanently. Switching the startup
+  option back to `false` will raise a warning about the option change at
+  startup, but not block the startup. Existing databases, collections, views
+  and indexes with extended names can still be used even with the option set
+  back to `false`, but no new database objects with extended names can be 
+  created with the option set back to `false`. So this state is only meant
+  to facilitate downgrading or reverting the option change. When the option
+  is supposed to be left at a value of `false`, all database objects with
+  extended names that were created in the meantime should be removed manually.
+
 * Allow the usage of the `_id` attribute in the stored values of persistent
   indexes.
 
