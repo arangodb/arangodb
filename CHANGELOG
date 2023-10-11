@@ -1,6 +1,8 @@
 v3.11.5 (XXXX-XX-XX)
 --------------------
 
+* Backport multiple fixes for the scheduler behavior during ArangoDB shutdown.
+
 * Add cluster-internal connectivity checks.
   This makes Coordinators and DB-Servers in a cluster periodically send check
   requests to each other, in order to check if all servers can connect to each
@@ -190,8 +192,6 @@ v3.11.4 (2023-10-04)
 
 v3.11.3 (2023-08-17)
 --------------------
-
-* Backport multiple fixes for the scheduler behavior during ArangoDB shutdown.
 
 * Fixed BTS-1553: Fixed a rare occuring issue during AQL queries where the inner
   amount of a limit in the LimitExecutor is set to a wrong value which lead to
