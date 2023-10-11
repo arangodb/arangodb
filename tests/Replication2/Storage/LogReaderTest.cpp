@@ -103,8 +103,10 @@ TEST(LogReaderTest, create_should_throw_if_header_cannot_be_read) {
     FAIL();
   } catch (const basics::Exception& e) {
     EXPECT_EQ(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, e.code());
-    EXPECT_EQ("failed to read file header from log file in-memory file",
-              e.message());
+    EXPECT_EQ(
+        "failed to read file header from log file in-memory file - end of file "
+        "reached",
+        e.message());
   }
 }
 
@@ -189,8 +191,9 @@ TEST(LogReaderTest,
   LogReader reader(std::make_unique<InMemoryFileReader>(buffer));
   auto res = reader.readNextLogEntry();
   ASSERT_FALSE(res.ok());
-  EXPECT_EQ(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, res.errorNumber());
-  EXPECT_EQ("failed to read record header", res.errorMessage());
+  EXPECT_EQ(TRI_ERROR_END_OF_FILE, res.errorNumber());
+  EXPECT_EQ("failed to read record header - end of file reached",
+            res.errorMessage());
 }
 
 TEST(LogReaderTest,
@@ -203,7 +206,8 @@ TEST(LogReaderTest,
   auto res = reader.readNextLogEntry();
   ASSERT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, res.errorNumber());
-  EXPECT_EQ("failed to read record payload", res.errorMessage());
+  EXPECT_EQ("failed to read record payload - end of file reached",
+            res.errorMessage());
 }
 
 TEST(LogReaderTest,
@@ -217,7 +221,8 @@ TEST(LogReaderTest,
   auto res = reader.readNextLogEntry();
   ASSERT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, res.errorNumber());
-  EXPECT_EQ("failed to read record footer", res.errorMessage());
+  EXPECT_EQ("failed to read record footer - end of file reached",
+            res.errorMessage());
 }
 
 TEST(LogReaderTest,
@@ -329,7 +334,8 @@ TEST(LogReaderTest,
   auto res = reader.getFirstRecordHeader();
   ASSERT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR, res.errorNumber());
-  EXPECT_EQ("failed to read record header", res.errorMessage());
+  EXPECT_EQ("failed to read record header - end of file reached",
+            res.errorMessage());
 }
 
 TEST(LogReaderTest, getFirstRecordHeader) {
@@ -382,7 +388,7 @@ TEST(LogReaderTest,
   auto res = reader.getLastRecordHeader();
   ASSERT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_REPLICATION_REPLICATED_WAL_CORRUPT, res.errorNumber());
-  EXPECT_EQ("log file is too small", res.errorMessage());
+  EXPECT_EQ("log file in-memory file is too small", res.errorMessage());
 }
 
 TEST(

@@ -103,8 +103,9 @@ TEST(FileIteratorTest,
 TEST(FileIteratorTest,
      next_should_call_moveToNextFile_when_reaching_end_of_file) {
   std::vector<std::string> buffers{
-      createBufferWithLogEntries(1, 3, LogTerm{1}), createEmptyBuffer(),
-      createBufferWithLogEntries(4, 4, LogTerm{1}), createEmptyBuffer()};
+      createBufferWithLogEntries(1, 3, LogTerm{1}),  //
+      createBufferWithLogEntries(4, 4, LogTerm{1}),  //
+      createEmptyBuffer()};
 
   auto buffersIt = buffers.begin();
   auto reader = std::make_unique<InMemoryFileReader>(*buffersIt);
@@ -123,7 +124,7 @@ TEST(FileIteratorTest,
   EXPECT_EQ(LogIndex{3}, res->position().index());
 
   res = it.next();
-  EXPECT_EQ(buffersIt, buffers.begin() + 2);
+  EXPECT_EQ(buffersIt, buffers.begin() + 1);
   ASSERT_TRUE(res.has_value());
   EXPECT_EQ(LogIndex{4}, res->position().index());
 

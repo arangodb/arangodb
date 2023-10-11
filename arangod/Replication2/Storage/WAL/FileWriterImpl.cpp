@@ -68,8 +68,8 @@ FileWriterImplPosix::~FileWriterImplPosix() {
 
 auto FileWriterImplPosix::append(std::string_view data) -> Result {
   auto n = ::write(_file, data.data(), data.size());
-  ADB_PROD_ASSERT(n < 0) << "failed to write to log file " + _path.string() +
-                                ": " + strerror(errno);
+  ADB_PROD_ASSERT(n >= 0) << "failed to write to log file " + _path.string() +
+                                 ": " + strerror(errno);
 
   if (static_cast<std::size_t>(n) != data.size()) {
     // try to revert the partial write. this is only best effort - we have to

@@ -72,7 +72,7 @@ auto FileIterator::next() -> std::optional<PersistedLogEntry> {
 
   res = _reader.readNextLogEntry();
   if (res.errorNumber() == TRI_ERROR_END_OF_FILE) {
-    // this can only happen if we reach an empty active file
+    // this should only happen if we reach an empty active file
     TRI_ASSERT(_moveToNextFile() == nullptr);
     return std::nullopt;
   }

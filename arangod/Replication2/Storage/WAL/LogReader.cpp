@@ -54,7 +54,7 @@ LogReader::LogReader(std::unique_ptr<IFileReader> reader)
   auto res = _reader->read(header);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-                                   "failed to read header from log file " +
+                                   "failed to read file header from log file " +
                                        _reader->path() + " - " +
                                        std::string(res.errorMessage()));
   }
@@ -217,7 +217,7 @@ auto LogReader::getFirstRecordHeader() -> ResultT<Record::CompressedHeader> {
   if (res.fail()) {
     return ResultT<Record::CompressedHeader>::error(
         TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR,
-        "failed to read record header: " + std::string(res.errorMessage()));
+        "failed to read record header - " + std::string(res.errorMessage()));
   }
   return ResultT<Record::CompressedHeader>::success(header);
 }
