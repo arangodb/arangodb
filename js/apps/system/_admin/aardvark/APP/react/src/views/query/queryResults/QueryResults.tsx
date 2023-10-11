@@ -19,7 +19,6 @@ export const QueryResults = () => {
           size="sm"
           colorScheme="gray"
           onClick={onRemoveAllResults}
-          color="red.500"
         >
           Remove all results
         </Button>

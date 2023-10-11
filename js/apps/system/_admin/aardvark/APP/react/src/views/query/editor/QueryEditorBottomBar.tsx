@@ -1,16 +1,4 @@
-import { ChevronDownIcon } from "@chakra-ui/icons";
-import {
-  Button,
-  ButtonGroup,
-  Flex,
-  IconButton,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
-  Stack,
-  Text
-} from "@chakra-ui/react";
+import { Button, Flex, Stack, Text } from "@chakra-ui/react";
 import React from "react";
 import { useQueryContext } from "../QueryContextProvider";
 import { SaveAsModal } from "./SaveAsModal";
@@ -86,86 +74,35 @@ export const QueryEditorBottomBar = () => {
         >
           Explain
         </Button>
-        <ActionButton
-          actions={{
-            execute: {
-              method: () =>
-                onExecute({
-                  queryValue,
-                  queryBindParams,
-                  queryOptions,
-                  disabledRules
-                }),
-              label: "Execute"
-            },
-            profile: {
-              method: () =>
-                onProfile({
-                  queryValue,
-                  queryBindParams,
-                  queryOptions,
-                  disabledRules
-                }),
-              label: "Profile"
-            }
-          }}
-        />
-      </Stack>
-    </Flex>
-  );
-};
-
-const ActionButton = ({
-  actions,
-  initialDefaultAction = "execute"
-}: {
-  actions: {
-    [key: string]: {
-      method: () => void;
-      label: string;
-    };
-  };
-  initialDefaultAction?: string;
-}) => {
-  const [defaultAction, setDefaultAction] =
-    React.useState<string>(initialDefaultAction);
-  const restActions = Object.keys(actions).filter(
-    action => action !== defaultAction
-  );
-  return (
-    <ButtonGroup isAttached>
-      <Button
-        size="sm"
-        colorScheme="green"
-        onClick={actions[defaultAction].method}
-      >
-        {actions[defaultAction].label}
-      </Button>
-      <Menu>
-        <MenuButton
-          as={IconButton}
+        <Button
+          size="sm"
+          colorScheme="gray"
+          onClick={() =>
+            onProfile({
+              queryValue,
+              queryBindParams,
+              queryOptions,
+              disabledRules
+            })
+          }
+        >
+          Profile
+        </Button>
+        <Button
           size="sm"
           colorScheme="green"
-          aria-label="Query execution options"
-          icon={<ChevronDownIcon />}
-        />
-        <MenuList zIndex="500">
-          {restActions.map(
-            (action, index) =>
-              actions[action] && (
-                <MenuItem
-                  key={index}
-                  onClick={() => {
-                    setDefaultAction(action);
-                    actions[action].method();
-                  }}
-                >
-                  {actions[action].label}
-                </MenuItem>
-              )
-          )}
-        </MenuList>
-      </Menu>
-    </ButtonGroup>
+          onClick={() =>
+            onExecute({
+              queryValue,
+              queryBindParams,
+              queryOptions,
+              disabledRules
+            })
+          }
+        >
+          Execute
+        </Button>
+      </Stack>
+    </Flex>
   );
 };
