@@ -740,6 +740,10 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
   } else if (platform === 'darwin') {
     instanceInfo.debuggerInfo = generateCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
+  } else if (options.coreAbrt){
+    instanceInfo.debuggerInfo = {binary: binary};
+    instanceInfo.exitStatus = killExternal(instanceInfo.pid, abortSignal);
+    return;
   } else {
     instanceInfo.debuggerInfo = generateCoreDumpGDB(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
@@ -754,6 +758,10 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
 
 function aggregateDebugger(instanceInfo, options) {
   print("collecting debugger info for: " + JSON.stringify(instanceInfo.getStructure()));
+  if (options.coreAbrt) {
+    analyzeCrash (instanceInfo.binary, instanceInfo, options, "aggregateDebugger");
+    return true;
+  }
   if (!instanceInfo.hasOwnProperty('debuggerInfo')) {
     print("No debugger info persisted to " + JSON.stringify(instanceInfo.getStructure()));
     return false;
