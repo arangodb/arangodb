@@ -184,6 +184,16 @@ void AttributeNamePath::add(std::string part) {
   }
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+void AttributeNamePath::pop() {
+  auto previous = memoryUsage();
+  TRI_ASSERT(!_path.empty());
+  _path.pop_back();
+  auto now = memoryUsage();
+  _resourceMonitor.decreaseMemoryUsage(previous - now);
+}
+#endif
+
 AttributeNamePath& AttributeNamePath::reverse() {
   // no change in memory usage
   std::reverse(_path.begin(), _path.end());

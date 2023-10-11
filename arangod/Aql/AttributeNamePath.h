@@ -96,6 +96,10 @@ class AttributeNamePath {
   /// @brief add an attribute to the path
   void add(std::string part);
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void pop();
+#endif
+
   /// @brief reverse the attributes in the path
   AttributeNamePath& reverse();
 
