@@ -565,7 +565,7 @@ class WALReader final : public WALReaderBase {
       storeMaxHLC(documentId);
       storeMaxTick(objectId);
 
-      auto coll = findCollection(RocksDBKey::objectId(key));
+      auto coll = findCollection(objectId);
 
       if (coll) {
         coll->meta().adjustNumberDocumentsInRecovery(_currentSequence,
