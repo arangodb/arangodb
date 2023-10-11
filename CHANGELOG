@@ -1,5 +1,84 @@
-v3.11.4 (XXXX-XX-XX)
+v3.11.5 (XXXX-XX-XX)
 --------------------
+
+* Add cluster-internal connectivity checks.
+  This makes Coordinators and DB-Servers in a cluster periodically send check
+  requests to each other, in order to check if all servers can connect to each
+  other.
+  If a cluster-internal connection to another Coordinator or DB-Server cannot be
+  established within 10 seconds, a warning will be logged.
+
+  The new startup option `--cluster.connectivity-check-interval` can be used to
+  control the frequency of the connectivity check, in seconds.
+  If set to a value greater than zero, the initial connectivity check is
+  performed approximately 15 seconds after the instance start, and subsequent
+  connectivity checks are executed with the specified frequency.
+  If set to a value of zero, connectivity checks are disabled.
+
+  This change also adds the metrics
+  `arangodb_network_connectivity_failures_coordinators` and
+  `arangodb_network_connectivity_failures_dbservers`, which can be monitored for
+  detecting temporary or permanent connectivity issues.
+
+* Fix ineffective startup option `--rocksdb.partition-files-for-documents`.
+  Setting this option had no effect unless RocksDB version 8 was used.
+
+
+v3.11.4 (2023-10-04)
+--------------------
+
+* Fix updating of collection properties (schema) when the collection has a view
+  on top.
+
+* FE-323: allow 'nested' property in view JSON UI.
+
+* Slightly extended hot backup release lock timeout on coordinators from
+  `timeout + 5` seconds to `timeout + 30` seconds, to prevent premature release
+  of hot backup commit locks on coordinators.
+
+* Improve logging in case hot backup locks cannot be taken on coordinators.
+
+* BTS-1618: Preventing the problem from ever occurring on 3.11.
+
+* Speed up incremental hotbackup upload by parallelization of remote-to-remote
+  copies. Tolerate deletion of old backups during incremental upload.
+
+* Added the following metrics to improve observability of the in-memory cache
+  subsystem:
+  - `rocksdb_cache_free_memory_tasks_total`: total number of `freeMemory` tasks
+    scheduled
+  - `rocksdb_cache_migrate_tasks_total`: total number of `migrate` tasks
+    scheduled
+  - `rocksdb_cache_free_memory_tasks_duration_total`: total time (microseconds)
+    spent in `freeMemory` tasks
+  - `rocksdb_cache_migrate_tasks_duration_total`: total time (microseconds)
+    spent in `migrate` tasks
+
+* Improve performance of the in-memory cache's memory reclamation procedure.
+  The previous implementation acquired too many locks, which could drive system
+  CPU time up.
+
+* Fix MDS-1157: taking hot backups with --allow-inconsistent=false option always
+  reported a warning that the backup was potentially inconsistent, although
+  taking the backup actually succeeded.
+
+  The warning message was `Failed to get write lock before proceeding with
+  backup. Backup may contain some inconsistencies.`, but it was a false positive
+  and the backups taken were actually consistent.
+
+* Fixed issue with `keepNull=false` updates not being properly replicated to
+  followers.
+
+* Updated JavaScript dependencies:
+
+  qs: 6.11.0 -> 6.11.2
+  semver: 7.3.8 -> 7.5.4
+
+  This addresses CVE-2022-25883 in the semver module.
+
+* FE-355: fix ctrl + A for search box.
+
+* FE-365: fix query import breaking due to extra fields.
 
 * Fixed BTS-1613: Fixed processing analyzers imported from Cluster dump to the
   Single server database.
@@ -74,15 +153,13 @@ v3.11.4 (XXXX-XX-XX)
 * Fixed BTS-1556: Potential shutdown race, when the server is shutting down and
   still AgencyCommunication was going on it could use the scheduler which was
   already deleted, causing a crash right before a normal shutdown.
+
+* Fixed BTS-1556: Potential shutdown race, when the server is shutting down
+  and still AgencyCommunication was going on it could use the scheduler
+  which was already deleted, causing a crash right before a normal shutdown.
+
   This should not have any negative effect, as all state preserving operations
   are done by then, it just wasn't a clean exit.
-
-* Fix issue #19630: wildcard automaton sometime accepts more symbols than 
-  required.
-
-* Fix BTS-1583: search-alias view sometimes was unavailable in cluster.
-
-* Fix BTS-1379: add inverted index to collection figures.
 
 * Updated ArangoDB Starter to 0.17.1.
 
@@ -10300,6 +10377,8 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.environment-variables-whitelist`: control environment variables visible in JavaScript
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
+
+  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 

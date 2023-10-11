@@ -186,7 +186,7 @@ class agencyConfig {
 
 class instance {
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig, tmpDir) {
+  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig, tmpDir, mem) {
     if (! PORTMANAGER) {
       PORTMANAGER = new portManager(options);
     }
@@ -208,6 +208,7 @@ class instance {
     this.url = '';
     this.endpoint = '';
     this.assertLines = [];
+    this.useableMemory = mem;
     this.memProfCounter = 0;
 
     this.topLevelTmpDir = tmpDir;
@@ -331,11 +332,17 @@ class instance {
   _makeArgsArangod () {
     console.assert(this.tmpDir !== undefined);
     let endpoint;
+    let bindEndpoint;
     if (!this.args.hasOwnProperty('server.endpoint')) {
       this.port = PORTMANAGER.findFreePort(this.options.minPort, this.options.maxPort);
       this.endpoint = this.protocol + '://127.0.0.1:' + this.port;
+      bindEndpoint = this.endpoint;
+      if (this.options.bindBroadcast) {
+        bindEndpoint = this.protocol + '://0.0.0.0:' + this.port;
+      }
     } else {
       this.endpoint = this.args['server.endpoint'];
+      bindEndpoint = this.endpoint;
       this.port = this.endpoint.split(':').pop();
     }
     this.url = pu.endpointToURL(this.endpoint);
@@ -352,11 +359,15 @@ class instance {
       'javascript.copy-installation': false,
       'http.trusted-origin': this.options.httpTrustedOrigin || 'all',
       'temp.path': this.tmpDir,
-      'server.endpoint': this.endpoint,
+      'server.endpoint': bindEndpoint,
       'database.directory': this.dataDir,
       'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
+
+    if (require("@arangodb/test-helper").isEnterprise()) {
+      this.args['arangosearch.columns-cache-limit'] = '100000';
+    }
     if (this.options.auditLoggingEnabled) {
       this.args['audit.output'] = 'file://' + fs.join(this.rootDir, 'audit.log');
       this.args['server.statistics'] = false;
@@ -695,13 +706,24 @@ class instance {
         process.env[key] = oneSet;
       }
     }
-
+    if ((this.useableMemory === undefined) && (this.options.memory !== undefined)){
+      throw new Error(`${this.name} don't have planned memory though its configured!`);
+    }
+    if ((this.useableMemory !== 0) && (this.options.memory !== undefined)) {
+      if (this.options.extremeVerbosity) {
+        print(`appointed ${this.name} memory: ${this.useableMemory}`);
+      }
+      process.env['ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY'] = this.useableMemory;
+    }
     process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
     let ret = executeExternal(cmd, argv, false, pu.coverageEnvironment());
     if (this.options.isSan) {
       for (const [key, value] of Object.entries(backup)) {
         process.env[key] = value;
       }
+    }
+    if (this.useableMemory !== 0) {
+      delete process.env['ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY'];
     }
     return ret;
   }
@@ -831,7 +853,7 @@ class instance {
     this.pid = null;
     this.upAndRunning = false;
 
-    print(CYAN + Date()  + " relaunching: " + this.name + RESET);
+    print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs);
     while(true) {
       const reply = download(this.url + '/_api/version', '');
@@ -852,7 +874,7 @@ class instance {
         throw new Error("restart failed! " + this.name);
       }
     }
-    print(CYAN + Date() + this.name + " running again with PID " + this.pid + RESET);
+    print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief periodic checks whether spawned arangod processes are still alive
@@ -864,7 +886,7 @@ class instance {
     let res = statusExternal(this.pid, false);
     if (res.status === 'NOT-FOUND') {
       print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
-      time.sleep(0.2);
+      sleep(0.2);
       res = statusExternal(this.pid, false);
     }
     const running = res.status === 'RUNNING';
@@ -994,7 +1016,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownArangod (forceTerminate) {
-    print(CYAN + Date() +' stopping ' + this.name + ' force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
+    print(CYAN + Date() +' stopping ' + this.name + ', url: ' + this.url + ', force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
@@ -1196,7 +1218,7 @@ class instance {
       print(CYAN + Date() + ' NOT suspending "' + this.name + " again!" + RESET);
       return;
     }
-    print(CYAN + Date() + ' suspending ' + this.name + RESET);
+    print(CYAN + Date() + ' suspending ' + this.name + ', url: ' + this.url + RESET);
     if (this.options.enableAliveMonitor) {
       internal.removePidFromMonitor(this.pid);
     }
@@ -1212,7 +1234,7 @@ class instance {
       print(CYAN + Date() + ' NOT resuming "' + this.name + " again!" + RESET);
       return;
     }
-    print(CYAN + Date() + ' resuming ' + this.name + RESET);
+    print(CYAN + Date() + ' resuming ' + this.name + ', url: ' + this.url + RESET);
     if (!continueExternal(this.pid)) {
       throw new Error("Failed to resume " + this.name);
     }
