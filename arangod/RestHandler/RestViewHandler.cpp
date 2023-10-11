@@ -270,12 +270,6 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   auto name = basics::StringUtils::urlDecode(suffixes[0]);
-  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
-  auto r = ViewNameValidator::validateName(
-      /*allowSystem*/ false, extendedNames, name);
-  if (!r.ok()) {
-    return generateError(r);
-  }
 
   CollectionNameResolver resolver{_vocbase};
   auto view = resolver.getView(name);
@@ -292,7 +286,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   auto& analyzers = server().getFeature<iresearch::IResearchAnalyzerFeature>();
   // First refresh our analyzers cache to see all latest changes in analyzers
-  r = analyzers.loadAvailableAnalyzers(
+  auto r = analyzers.loadAvailableAnalyzers(
       _vocbase.name(), transaction::OperationOriginREST{"modifiying view"});
   if (!r.ok()) {
     return generateError(r);
@@ -323,7 +317,10 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   if (isRename) {
     // handle rename functionality
-    r = view->rename(body.copyString());
+    if (view->name() != body.stringView()) {
+      // only carry out an actual name change
+      r = view->rename(body.copyString());
+    }
   } else {
     // handle update functionality
     r = view->properties(body, true, partialUpdate);
@@ -366,19 +363,6 @@ void RestViewHandler::deleteView() {
   }
 
   auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
-
-  if (name.empty() || name[0] < '0' || name[0] > '9') {
-    // not a numeric view id. now validate view name
-    bool extendedNames =
-        _vocbase.server().getFeature<DatabaseFeature>().extendedNames();
-    if (auto res = ViewNameValidator::validateName(
-            /*allowSystem*/ false, extendedNames, name);
-        res.fail()) {
-      generateError(res);
-      events::DropView(_vocbase.name(), name, res.errorNumber());
-      return;
-    }
-  }
 
   auto allowDropSystem =
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
