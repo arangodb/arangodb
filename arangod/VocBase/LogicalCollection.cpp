@@ -973,7 +973,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
       }
 
       writeConcern = writeConcernSlice.getNumber<size_t>();
-      if (writeConcern > replicationFactor) {
+      if (ServerState::instance()->isCoordinator() &&
+          writeConcern > replicationFactor) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for writeConcern. writeConcern cannot be "
                       "higher than replicationFactor");
@@ -1007,7 +1008,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
     } else {
       return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
     }
-    TRI_ASSERT((writeConcern <= replicationFactor && !isSatellite()) ||
+    TRI_ASSERT((!ServerState::instance()->isCoordinator() ||
+                (writeConcern <= replicationFactor && !isSatellite())) ||
                (writeConcern == 0 && isSatellite()));
   }
 
