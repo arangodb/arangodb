@@ -106,13 +106,47 @@ function CollectionPropertiesPropagationSuite() {
       });
     },
     
+    testCreateOtherWithDifferentWriteConcern : function () {
+      let c = db._create(other, { distributeShardsLike: proto, writeConcern: 1 });
+
+      let p = c.properties();
+      assertEqual(proto, p.distributeShardsLike);
+      assertEqual(3, p.replicationFactor);
+      assertEqual(1, p.writeConcern);
+      assertEqual(3, p.numberOfShards);
+
+      p = propertiesOnDBServers(c);
+      let keys = Object.keys(p);
+      assertTrue(keys.length > 0);
+      keys.forEach((s) => {
+        // DB servers do not have distributeShardsLike property
+        assertUndefined(p[s].distributeShardsLike, {s, p});
+        assertEqual(3, p[s].replicationFactor, {s, p});
+        assertEqual(1, p[s].writeConcern, {s, p});
+        assertEqual(3, p[s].numberOfShards, {s, p});
+      });
+    },
+    
     testCreateOtherChangeReplicationFactorForProto : function () {
       let c = db._create(other, { distributeShardsLike: proto });
+
+      let shards = db[proto].shards(true);
+      // just focus on one of the shards. should be enough
+      let shard = Object.keys(shards)[0]; 
+      let servers = Object.values(shards)[0];
+      assertEqual(3, servers.length);
 
       db[proto].properties({ replicationFactor: 2 });
       
       let p = db[proto].properties();
       assertEqual(2, p.replicationFactor);
+  
+      internal.sleep(2);
+      shards = db[proto].shards(true);
+      // just focus on one of the shards. should be enough
+      shard = Object.keys(shards)[0]; 
+      servers = Object.values(shards)[0];
+      assertEqual(2, servers.length);
       
       // shards do not see the replicationFactor update
       p = propertiesOnDBServers(db[proto]);
