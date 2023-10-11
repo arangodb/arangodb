@@ -102,7 +102,7 @@ const IndexJoinTestSuite = function () {
 
   const runAndCheckQuery = function (query) {
 
-    const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+    const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
     let planNodes = plan.nodes.map(function (node) {
       return node.type;
     });
@@ -112,8 +112,8 @@ const IndexJoinTestSuite = function () {
     }
     assertNotEqual(planNodes.indexOf("JoinNode"), -1);
 
-    const result = AQL_EXECUTE(query, null, queryOptions);
-    return result.json;
+    const result = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).execute();
+    return result.toArray();
   };
 
   const databaseName = "IndexJoinDB";
@@ -240,7 +240,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x]
       `;
 
-      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -270,7 +270,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x]
       `;
 
-      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -300,7 +300,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.y, doc2.x]
       `;
 
-      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -330,7 +330,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.y, doc2.x]
       `;
 
-      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -360,7 +360,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.y, doc2.x]
       `;
 
-      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -390,7 +390,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.y, doc2.x]
       `;
 
-      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -420,7 +420,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.y, doc2.x]
       `;
 
-      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -451,7 +451,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc1.y, doc2.x]
       `;
 
-      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -483,7 +483,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1, doc2.x]
       `;
 
-      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -515,7 +515,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x]
       `;
 
-      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");
@@ -546,7 +546,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1, doc2.x]
       `;
 
-      const plan = AQL_EXPLAIN(query, null, queryOptions).plan;
+      const plan = db._createStatement({query: query, bindVars:  null, options:  queryOptions}).explain().plan;
       const join = plan.nodes[1];
 
       assertEqual(join.type, "JoinNode");

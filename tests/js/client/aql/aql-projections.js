@@ -766,7 +766,7 @@ function projectionsExtractionTestSuite () {
         "FILTER doc.p.k == 'hund' " +
         "SORT doc.p.s DESC " +
         "RETURN doc.p.s";
-      let result = db._createStatement({query: q, bindVars: bindVars});
+      let result = db._createStatement({query: q, bindVars: bindVars}).execute();
       assertEqual(result.toArray(), [1234]);
     }
   };
