@@ -167,21 +167,13 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   TRI_ASSERT(info.isObject());
 
-  bool extendedNames =
-      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
-  if (auto res = CollectionNameValidator::validateName(system(), extendedNames,
-                                                       name());
-      res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
   if (_version < minimumVersion()) {
     // collection is too "old"
-    std::string errorMsg(std::string("collection '") + name() +
-                         "' has a too old version. Please start the server "
-                         "with the --database.auto-upgrade option.");
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FAILED,
+        absl::StrCat("collection '", name(),
+                     "' has a too old version. Please start the server "
+                     "with the --database.auto-upgrade option."));
   }
 
   if (auto res = updateSchema(info.get(StaticStrings::Schema)); res.fail()) {
