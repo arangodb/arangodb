@@ -16,6 +16,7 @@ export const useSyncIndexCreationJob = () => {
     },
     onSuccess: () => {
       mutate(`/collection/${encodedCollectionName}/indices`);
+      mutate(`/collection/${encodedCollectionName}/figures`);
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.body?.errorMessage;
