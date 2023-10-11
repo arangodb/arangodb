@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-378: fix fields containing spaces during index creation on web UI.
+
 * Allow the usage of the `_id` attribute in the stored values of persistent
   indexes.
 
