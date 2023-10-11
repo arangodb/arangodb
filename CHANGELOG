@@ -20,6 +20,9 @@ devel
   `arangodb_network_connectivity_failures_dbservers`, which can be monitored
   for detecting temporary or permanent connectivity issues.
 
+* Allow the usage of the `_id` attribute in the stored values of persistent
+  indexes.
+
 * Updated arangosync to v2.19.4-preview-8.
 
 * Fix updating of collection properties (schema) when the collection has a
