@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-321: add validation for query name in web UI.
+
 * Allow the usage of the `_id` attribute in the stored values of persistent
   indexes.
 
