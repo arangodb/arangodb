@@ -2132,20 +2132,23 @@ function processQuery(query, explain, planIndex) {
         }
         let label = keyword('FOR ') + variableName(info.outVariable) + keyword(' IN ') + collection(info.collection);
         let filter = '';
-        if (info.condition && info.condition.hasOwnProperty('type')) {
-          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(info.condition);
+        if (info.filter && info.filter.hasOwnProperty('type')) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(info.filter);
         }
-        let projectString = '';
+        let accessString = '';
+        if (!info.indexCoversProjections) {
+          accessString += "index scan + document lookup";
+        } else {
+          accessString += "index scan";
+        }
         if (info.projections) {
-          projectString = '   /*' + projections(info, "projections", "projections");
-          if (!info.indexCoversProjections) {
-            projectString += " index scan + document lookup";
-          } else {
-            projectString += " index scan";
-          }
-          projectString += ' */';
+          accessString += projections(info, "projections", "projections");
         }
-        line += indent(level, false) + label + filter + projectString;
+        if (info.filterProjections) {
+          accessString += projections(info, 'filterProjections', 'filter projections');
+        }
+        accessString = '   ' + annotation('/* ' + accessString + ' */');
+        line += indent(level, false) + label + filter + accessString;
         stringBuilder.appendLine(line);
       });
       --level;

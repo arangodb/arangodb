@@ -331,7 +331,9 @@ void ClusterIndexFactory::prepareIndexes(
   TRI_ASSERT(indexesSlice.isArray());
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
-    if (!validateFieldsDefinition(v, StaticStrings::IndexFields, 0, SIZE_MAX)
+    if (!validateFieldsDefinition(v, StaticStrings::IndexFields, 0, SIZE_MAX,
+                                  /*allowSubAttributes*/ true,
+                                  /*allowIdAttribute*/ false)
              .ok()) {
       // We have an error here. Do not add.
       continue;
