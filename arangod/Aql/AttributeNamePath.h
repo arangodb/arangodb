@@ -37,7 +37,8 @@ namespace arangodb::aql {
 /// a top-level attribute (e.g. _key) will be stored in a vector with a single
 /// element. nested attributes (e.g. a.b.c) will be stored in a vector with
 /// multiple elements
-struct AttributeNamePath {
+class AttributeNamePath {
+ public:
   enum class Type : uint8_t {
     IdAttribute,      // _id
     KeyAttribute,     // _key
@@ -92,17 +93,21 @@ struct AttributeNamePath {
   /// @brief clear all path attributes
   void clear() noexcept;
 
+  /// @brief add an attribute to the path
+  void add(std::string part);
+
   /// @brief reverse the attributes in the path
   AttributeNamePath& reverse();
 
   /// @brief shorten the attributes in the path to the specified length
   AttributeNamePath& shortenTo(size_t length);
 
-  size_t memoryUsage() const noexcept;
-
   /// @brief determines the length of common prefixes
   static size_t commonPrefixLength(AttributeNamePath const& lhs,
                                    AttributeNamePath const& rhs);
+
+ private:
+  size_t memoryUsage() const noexcept;
 
   arangodb::ResourceMonitor& _resourceMonitor;
   std::vector<std::string> _path;

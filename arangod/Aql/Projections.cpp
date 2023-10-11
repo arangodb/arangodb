@@ -138,7 +138,7 @@ void Projections::toVelocyPackFromDocument(
       // projection for any other top-level attribute
       TRI_ASSERT(levelsOpen == 0);
       TRI_ASSERT(it.path.size() == 1);
-      VPackSlice found = slice.get(it.path._path.at(0));
+      VPackSlice found = slice.get(it.path.get().at(0));
       if (found.isNone()) {
         // attribute not found
         b.add(it.path[0], VPackValue(VPackValueType::Null));
@@ -348,7 +348,7 @@ void Projections::toVelocyPack(velocypack::Builder& b,
   for (auto const& it : _projections) {
     b.openObject();
     b.add("path", VPackValueType::Array);
-    for (auto const& attribute : it.path._path) {
+    for (auto const& attribute : it.path.get()) {
       b.add(VPackValue(attribute));
     }
     b.close();  // path
@@ -380,7 +380,7 @@ void Projections::toVelocyPack(velocypack::Builder& b,
         // { path: [...], variable: ... }
         AttributeNamePath path{resourceMonitor};
         for (auto it2 : velocypack::ArrayIterator(it.get("path"))) {
-          path._path.emplace_back(it2.copyString());
+          path.add(it2.copyString());
         }
         if (auto v = it.get("variable"); !v.isNone()) {
           Variable const* variable =
@@ -394,7 +394,7 @@ void Projections::toVelocyPack(velocypack::Builder& b,
       } else if (it.isArray()) {
         AttributeNamePath path{resourceMonitor};
         for (auto it2 : velocypack::ArrayIterator(it)) {
-          path._path.emplace_back(it2.copyString());
+          path.add(it2.copyString());
         }
         projections.emplace_back(std::move(path));
       }

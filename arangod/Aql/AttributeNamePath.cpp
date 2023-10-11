@@ -167,9 +167,25 @@ std::vector<std::string> const& AttributeNamePath::get() const noexcept {
   return _path;
 }
 
-void AttributeNamePath::clear() noexcept { _path.clear(); }
+void AttributeNamePath::clear() noexcept {
+  _resourceMonitor.decreaseMemoryUsage(memoryUsage());
+  _path.clear();
+}
+
+void AttributeNamePath::add(std::string part) {
+  auto previous = memoryUsage();
+  _path.emplace_back(std::move(part));
+  auto now = memoryUsage();
+  try {
+    _resourceMonitor.increaseMemoryUsage(now - previous);
+  } catch (...) {
+    _path.pop_back();
+    throw;
+  }
+}
 
 AttributeNamePath& AttributeNamePath::reverse() {
+  // no change in memory usage
   std::reverse(_path.begin(), _path.end());
   return *this;
 }
@@ -210,7 +226,7 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
 
 std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path) {
   stream << "[";
-  for (auto const& it : path._path) {
+  for (auto const& it : path.get()) {
     stream << ' ' << std::string_view{it};
   }
   stream << " ]";

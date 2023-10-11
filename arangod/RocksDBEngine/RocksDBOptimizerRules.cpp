@@ -275,7 +275,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       } else {
         // store projections in DocumentProducingNode
         e->setProjections(std::move(projections));
-
+#if 0
         auto& p = e->projections();
         std::vector<std::string_view> path;
         for (size_t i = 0; i < p.size(); ++i) {
@@ -292,6 +292,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
                                            p[i].variable);
           plan->root()->walk(replacer);
         }
+#endif
       }
 
       modified = true;

@@ -1170,7 +1170,7 @@ function processQuery(query, explain, planIndex) {
       let fields = value[attributeName].map(function(p) {
         if (Array.isArray(p)) {
           return '`' + p.join('`.`') + '`';
-        } else if (typeof p === 'String') {
+        } else if (typeof p === 'string') {
           return '`' + p + '`';
         } else if (p.hasOwnProperty('path')) {
           let path = '`' + p.path.join('`.`') + '`';

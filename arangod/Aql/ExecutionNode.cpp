@@ -1761,6 +1761,8 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   RegisterId outputRegister = variableToRegisterId(_outVariable);
 
   auto outputRegisters = RegIdSet{};
+  outputRegisters.emplace(outputRegister);
+#if 0
   if (projections().empty()) {
     outputRegisters.emplace(outputRegister);
   } else {
@@ -1773,6 +1775,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
       outputRegisters.emplace(regId);
     }
   }
+#endif
   auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
   auto executorInfos = EnumerateCollectionExecutorInfos(
       outputRegister, engine.getQuery(), collection(), _outVariable,
@@ -1845,6 +1848,9 @@ void EnumerateCollectionNode::getVariablesUsedHere(VarSet& vars) const {
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere()
     const {
+  std::vector<Variable const*> result;
+  result.push_back(_outVariable);
+#if 0
   // determine number of variables first
   size_t n = 0;
   auto& p = _projections;
@@ -1867,7 +1873,7 @@ std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere()
     }
     TRI_ASSERT(result.size() == n + 1);
   }
-
+#endif
   return result;
 }
 

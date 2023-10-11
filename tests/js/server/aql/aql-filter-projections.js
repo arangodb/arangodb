@@ -3,6 +3,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const ruleName = "reduce-extraction-to-projection";
 const cn = "UnitTestsOptimizer";
 
@@ -43,8 +44,8 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].filterProjections, query);
-        assertEqual(query[3], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
+        assertEqual(normalize(query[3]), normalize(nodes[0].projections), query);
         if (nodes[0].projections.length > 0) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         }
@@ -71,8 +72,8 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
-        assertEqual([], nodes[0].filterProjections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
+        assertEqual(normalize([]), normalize(nodes[0].filterProjections), query);
         if (nodes[0].projections.length > 0) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         }
@@ -96,8 +97,8 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].filterProjections, query);
-        assertEqual(query[3], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
+        assertEqual(normalize(query[3]), normalize(nodes[0].projections), query);
         if (nodes[0].projections.length > 0) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         }
@@ -123,8 +124,8 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].projections, query);
-        assertEqual([], nodes[0].filterProjections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
+        assertEqual(normalize([]), normalize(nodes[0].filterProjections), query);
         if (nodes[0].projections.length > 0) {
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
         }
@@ -144,8 +145,8 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].filterProjections, query);
-        assertEqual(query[3], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
+        assertEqual(normalize(query[3]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -164,8 +165,8 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].filterProjections, query);
-        assertEqual(query[3], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
+        assertEqual(normalize(query[3]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         
         // query must not contain any FILTER nodes
@@ -187,8 +188,8 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].filterProjections, query);
-        assertEqual(query[3], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
+        assertEqual(normalize(query[3]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
       });
     },
@@ -207,8 +208,8 @@ function filterProjectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(query[2], nodes[0].filterProjections, query);
-        assertEqual(query[3], nodes[0].projections, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].filterProjections), query);
+        assertEqual(normalize(query[3]), normalize(nodes[0].projections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         
         // query must not contain any FILTER nodes
@@ -253,7 +254,7 @@ function filterProjectionsResultsTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual("persistent", nodes[0].indexes[0].type, query);
-        assertNotEqual([], nodes[0].filterProjections, query);
+        assertNotEqual(normalize([]), normalize(nodes[0].filterProjections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         
         // query must not contain any FILTER nodes
@@ -279,7 +280,7 @@ function filterProjectionsResultsTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual("persistent", nodes[0].indexes[0].type, query);
-        assertNotEqual([], nodes[0].filterProjections, query);
+        assertNotEqual(normalize([]), normalize(nodes[0].filterProjections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         
         // query must not contain any FILTER nodes

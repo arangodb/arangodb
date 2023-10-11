@@ -1067,18 +1067,16 @@ bool optimizeTraversalPathVariable(
   bool producePathsWeights = false;
 
   for (auto const& it : attributes) {
-    TRI_ASSERT(!it._path.empty());
+    TRI_ASSERT(!it.empty());
     if (!producePathsVertices &&
-        it._path[0] == std::string_view{StaticStrings::GraphQueryVertices}) {
+        it[0] == std::string_view{StaticStrings::GraphQueryVertices}) {
       producePathsVertices = true;
     } else if (!producePathsEdges &&
-               it._path[0] ==
-                   std::string_view{StaticStrings::GraphQueryEdges}) {
+               it[0] == std::string_view{StaticStrings::GraphQueryEdges}) {
       producePathsEdges = true;
     } else if (!producePathsWeights &&
                options->mode == traverser::TraverserOptions::Order::WEIGHTED &&
-               it._path[0] ==
-                   std::string_view{StaticStrings::GraphQueryWeights}) {
+               it[0] == std::string_view{StaticStrings::GraphQueryWeights}) {
       producePathsWeights = true;
     }
   }
