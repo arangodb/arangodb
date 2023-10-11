@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix propagation of collection `writeConcern` changes to DB servers.
+
 * Allow the usage of the `_id` attribute in the stored values of persistent
   indexes.
 
