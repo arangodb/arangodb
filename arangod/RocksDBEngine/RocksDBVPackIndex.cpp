@@ -2953,6 +2953,7 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
   }
 
   LocalDocumentId load(std::span<VPackSlice> projections) const override {
+    TRI_ASSERT(_iterator->Valid());
     std::size_t idx = 0;
     TRI_ASSERT(projections.size() == _options.projectedKeyValues.size() +
                                          _options.projectedStoredValues.size());
