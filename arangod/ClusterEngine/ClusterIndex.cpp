@@ -21,19 +21,20 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterIndex.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "Cluster/ClusterFeature.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "ClusterIndex.h"
 #include "Futures/Utilities.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
+#include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -512,6 +513,21 @@ bool ClusterIndex::inProgress() const {
       }
     }
   } catch (...) {
+  }
+  return false;
+}
+
+bool ClusterIndex::supportsStreamInterface(
+    IndexStreamOptions const& opts) const noexcept {
+  switch (_indexType) {
+    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
+        return RocksDBVPackIndex::checkSupportsStreamInterface(_coveredFields,
+                                                               opts);
+      }
+
+    default:
+      break;
   }
   return false;
 }

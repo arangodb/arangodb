@@ -370,3 +370,12 @@ Index::FilterCosts JoinNode::costsForIndexInfo(
   }
   return costs;
 }
+
+std::ostream& arangodb::operator<<(std::ostream& os,
+                                   IndexStreamOptions const& opts) {
+  os << "{";
+  os << "keyFields = [ " << opts.usedKeyFields << "], ";
+  os << "projectedFields = [ " << opts.projectedFields << "]";
+  os << "}";
+  return os;
+}
