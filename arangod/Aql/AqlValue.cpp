@@ -46,48 +46,6 @@
 using namespace arangodb;
 using namespace aql;
 
-// some functionality borrowed from 3rdParty/velocypack/include/velocypack
-// this is a copy of that functionality, because the functions in velocypack
-// are not accessible from here
-namespace {
-
-static inline uint64_t toUInt64(int64_t v) noexcept {
-  // If v is negative, we need to add 2^63 to make it positive,
-  // before we can cast it to an uint64_t:
-  constexpr uint64_t shift2 = 1ULL << 63;
-  int64_t shift = static_cast<int64_t>(shift2 - 1);
-  return v >= 0 ? static_cast<uint64_t>(v)
-                : static_cast<uint64_t>((v + shift) + 1) + shift2;
-  // Note that g++ and clang++ with -O3 compile this away to
-  // nothing. Further note that a plain cast from int64_t to
-  // uint64_t is not guaranteed to work for negative values!
-}
-
-// returns number of bytes required to store the value in 2s-complement
-static inline uint8_t intLength(int64_t value) noexcept {
-  if (value >= -0x80 && value <= 0x7f) {
-    // shortcut for the common case
-    return 1;
-  }
-  uint64_t x = value >= 0 ? static_cast<uint64_t>(value)
-                          : static_cast<uint64_t>(-(value + 1));
-  // check  4 MSB bytes - if there is at least one 1 than all  4 LSB should be
-  // kept and we could add 4 to counter and then check how many of 4 MSB we
-  // actually need. if 4 MSB bytes are all 0 then we should check only 4 LSB we
-  // actually set (5 : 1) as we at the end will anyway need to do +1 for last
-  // byte - so do it here.
-  uint8_t nSize = (x & UINT64_C(0xFFFFFFFF80000000)) ? x >>= 32, 5 : 1;
-
-  // same trick but with 4 left bytes now checking by 2 bytes
-  nSize += (x & UINT64_C(0xFFFF8000)) ? x >>= 16, 2 : 0;
-
-  // same trick with 2 last bytes
-  nSize += (x & 0xFF80) ? 1 : 0;
-  return nSize;
-}
-
-}  // namespace
-
 template<bool isManagedDoc>
 void AqlValue::setPointer(uint8_t const* pointer) noexcept {
   _data.slicePointerMeta.pointer = pointer;
