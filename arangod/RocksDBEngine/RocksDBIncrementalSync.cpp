@@ -969,11 +969,11 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     uint64_t documentsFound = 0;
     auto iterator = createPrimaryIndexIterator(trx.get(), col);
     RevisionId docRev;
-    auto callbackFunc = IndexIterator::makeDocumentCallbackF(
-        [&](LocalDocumentId, VPackSlice doc) {
-          docRev = RevisionId::fromSlice(doc);
-          return true;
-        });
+    auto callbackFunc = [&](LocalDocumentId, aql::DocumentData&&,
+                            VPackSlice doc) {
+      docRev = RevisionId::fromSlice(doc);
+      return true;
+    };
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           ++documentsFound;

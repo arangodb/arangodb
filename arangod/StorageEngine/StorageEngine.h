@@ -318,8 +318,10 @@ class StorageEngine : public ArangodFeature {
   /// @brief Add engine-specific optimizer rules
   virtual void addOptimizerRules(aql::OptimizerRulesFeature&);
 
+#ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   virtual void addV8Functions();
+#endif
 
   /// @brief Add engine-specific REST handlers
   virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory);

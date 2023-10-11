@@ -24,6 +24,10 @@
 
 #pragma once
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "Basics/Common.h"
 
 #include <v8.h>

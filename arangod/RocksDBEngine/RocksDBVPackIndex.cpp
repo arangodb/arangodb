@@ -1652,19 +1652,19 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
         }
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         // find conflicting document's key
-        auto callback = IndexIterator::makeDocumentCallbackF(
-            [&](LocalDocumentId, VPackSlice doc) {
-              auto key = transaction::helpers::extractKeyFromDocument(doc);
-              if (mode == IndexOperationMode::internal) {
-                // in this error mode, we return the conflicting document's key
-                // inside the error message string (and nothing else)!
-                res = Result{res.errorNumber(), key.copyString()};
-              } else {
-                // normal mode: build a proper error message
-                addErrorMsg(res, key.copyString());
-              }
-              return true;  // return value does not matter here
-            });
+        auto callback = [&](LocalDocumentId, aql::DocumentData&&,
+                            VPackSlice doc) {
+          auto key = transaction::helpers::extractKeyFromDocument(doc);
+          if (mode == IndexOperationMode::internal) {
+            // in this error mode, we return the conflicting document's key
+            // inside the error message string (and nothing else)!
+            res = Result{res.errorNumber(), key.copyString()};
+          } else {
+            // normal mode: build a proper error message
+            addErrorMsg(res, key.copyString());
+          }
+          return true;  // return value does not matter here
+        };
         // modifications always need to observe all changes
         // in order to validate uniqueness constraints
         auto readResult = _collection.getPhysical()->lookup(
@@ -1731,7 +1731,15 @@ Result RocksDBVPackIndex::insertUnique(
     transaction::BuilderLeaser leased(&trx);
     leased->openArray(true);
     for (auto const& it : _storedValuesPaths) {
-      VPackSlice s = doc.get(it);
+      VPackSlice s;
+      if (it.size() == 1 && it[0] == StaticStrings::IdString) {
+        // instead of storing the value of _id, we instead store the
+        // value of _key. we will retranslate the value to an _id later
+        // again upon retrieval
+        s = transaction::helpers::extractKeyFromDocument(doc);
+      } else {
+        s = doc.get(it);
+      }
       if (s.isNone()) {
         s = VPackSlice::nullSlice();
       }
@@ -1783,20 +1791,20 @@ Result RocksDBVPackIndex::insertUnique(
     if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
       // find conflicting document's key
       LocalDocumentId docId = RocksDBValue::documentId(existing);
-      auto callback = IndexIterator::makeDocumentCallbackF(
-          [&](LocalDocumentId, VPackSlice doc) {
-            IndexOperationMode mode = options.indexOperationMode;
-            VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
-            if (mode == IndexOperationMode::internal) {
-              // in this error mode, we return the conflicting document's key
-              // inside the error message string (and nothing else)!
-              res = Result{res.errorNumber(), key.copyString()};
-            } else {
-              // normal mode: build a proper error message
-              addErrorMsg(res, key.copyString());
-            }
-            return true;  // return value does not matter here
-          });
+      auto callback = [&](LocalDocumentId, aql::DocumentData&&,
+                          VPackSlice doc) {
+        IndexOperationMode mode = options.indexOperationMode;
+        VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
+        if (mode == IndexOperationMode::internal) {
+          // in this error mode, we return the conflicting document's key
+          // inside the error message string (and nothing else)!
+          res = Result{res.errorNumber(), key.copyString()};
+        } else {
+          // normal mode: build a proper error message
+          addErrorMsg(res, key.copyString());
+        }
+        return true;  // return value does not matter here
+      };
       // modifications always need to observe all changes
       // in order to validate uniqueness constraints
       auto readResult = _collection.getPhysical()->lookup(
@@ -1845,7 +1853,15 @@ Result RocksDBVPackIndex::insertNonUnique(
     transaction::BuilderLeaser leased(&trx);
     leased->openArray(true);
     for (auto const& it : _storedValuesPaths) {
-      VPackSlice s = doc.get(it);
+      VPackSlice s;
+      if (it.size() == 1 && it[0] == StaticStrings::IdString) {
+        // instead of storing the value of _id, we instead store the
+        // value of _key. we will retranslate the value to an _id later
+        // again upon retrieval
+        s = transaction::helpers::extractKeyFromDocument(doc);
+      } else {
+        s = doc.get(it);
+      }
       if (s.isNone()) {
         s = VPackSlice::nullSlice();
       }
@@ -2860,10 +2876,12 @@ namespace {
 
 struct RocksDBVPackStreamOptions {
   std::size_t keyPrefixSize;
+  std::vector<std::size_t> projectedKeyValues;
+  std::vector<std::size_t> projectedStoredValues;
 };
 
 template<bool isUnique>
-struct RocksDBVPackStreamIterator : AqlIndexStreamIterator {
+struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
   RocksDBVPackIndex const* _index;
   std::unique_ptr<rocksdb::Iterator> _iterator;
 
@@ -2922,7 +2940,7 @@ struct RocksDBVPackStreamIterator : AqlIndexStreamIterator {
       if (idx >= _options.keyPrefixSize) {
         break;
       }
-      into[idx] = k;
+      into[idx++] = k;
     }
   }
 
@@ -2935,9 +2953,26 @@ struct RocksDBVPackStreamIterator : AqlIndexStreamIterator {
   }
 
   LocalDocumentId load(std::span<VPackSlice> projections) const override {
-    // TODO implement projections
+    TRI_ASSERT(_iterator->Valid());
+    std::size_t idx = 0;
+    TRI_ASSERT(projections.size() == _options.projectedKeyValues.size() +
+                                         _options.projectedStoredValues.size());
+
+    auto keySlice = RocksDBKey::indexedVPack(_iterator->key());
+    for (auto pos : _options.projectedKeyValues) {
+      projections[idx++] = keySlice.at(pos);
+    }
+    if (!_options.projectedStoredValues.empty()) {
+      auto valueSlice =
+          isUnique ? RocksDBValue::uniqueIndexStoredValues(_iterator->value())
+                   : RocksDBValue::indexStoredValues(_iterator->value());
+      for (auto pos : _options.projectedStoredValues) {
+        projections[idx++] = valueSlice.at(pos);
+      }
+    }
+
     if constexpr (isUnique) {
-      return RocksDBValue::documentId(_iterator->key());
+      return RocksDBValue::documentId(_iterator->value());
     } else {
       return RocksDBKey::indexDocumentId(_iterator->key());
     }
@@ -2978,6 +3013,16 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
 
   RocksDBVPackStreamOptions streamOptions;
   streamOptions.keyPrefixSize = opts.usedKeyFields.size();
+  for (auto idx : opts.projectedFields) {
+    if (idx < _fields.size()) {
+      streamOptions.projectedKeyValues.push_back(idx);
+    } else if (idx < _fields.size() + _storedValues.size()) {
+      streamOptions.projectedStoredValues.push_back(idx - _fields.size());
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "index does not cover field with given index");
+    }
+  }
 
   auto stream = [&]() -> std::unique_ptr<AqlIndexStreamIterator> {
     if (unique()) {
@@ -2994,10 +3039,14 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
 bool RocksDBVPackIndex::supportsStreamInterface(
     IndexStreamOptions const& streamOpts) const noexcept {
   // TODO expand this for fixed values that can be moved into the index
-  // TODO expand this for projections
-  if (!streamOpts.projectedFields.empty()) {
-    return false;
+
+  // we can only project values that are in range
+  for (auto idx : streamOpts.projectedFields) {
+    if (idx > _fields.size() + _storedValues.size()) {
+      return false;
+    }
   }
+
   // for persisted indexes, we can only use a prefix of the indexed keys
   std::size_t idx = 0;
   for (auto keyIdx : streamOpts.usedKeyFields) {

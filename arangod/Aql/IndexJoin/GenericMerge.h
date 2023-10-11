@@ -86,6 +86,7 @@ struct GenericMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   std::vector<DocIdType> documentIds;
   std::vector<SliceType> sliceBuffer;
   std::vector<SliceType> currentKeySet;
+  std::span<SliceType> projectionsSpan;
 
   IndexMinHeap minHeap;
   IndexStreamData* maxIter = nullptr;
@@ -200,6 +201,7 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
 
   auto keySliceIter = sliceBuffer.begin();
   auto projectionsIter = sliceBuffer.begin() + numKeyComponents * descs.size();
+  projectionsSpan = {projectionsIter, sliceBuffer.end()};
   auto docIdIter = documentIds.begin();
   for (auto& desc : descs) {
     auto projections = projectionsIter;
@@ -210,19 +212,18 @@ GenericMergeJoin<SliceType, DocIdType, KeyCompare>::GenericMergeJoin(
         std::move(desc.iter), std::span<SliceType>{keyBuffer, keySliceIter},
         std::span<SliceType>{projections, projectionsIter}, *(docIdIter++));
 
-    if (maxIter == nullptr) {
-      maxIter = &idx;
-    } else if (IndexStreamCompare{}.cmp(*maxIter, idx) ==
-               std::weak_ordering::less) {
+    if (maxIter == nullptr ||
+        IndexStreamCompare{}.cmp(*maxIter, idx) == std::weak_ordering::less) {
       maxIter = &idx;
     }
     minHeap.push(&idx);
   }
 
-  positionAligned = IndexStreamCompare{}.cmp(*maxIter, *minHeap.top()) ==
-                    std::weak_ordering::equivalent;
-  if (positionAligned) {
+  auto isAligned = IndexStreamCompare{}.cmp(*maxIter, *minHeap.top()) ==
+                   std::weak_ordering::equivalent;
+  if (!maxIter->exhausted && isAligned) {
     fillInitialMatch();
+    positionAligned = true;
   }
 }
 
@@ -324,9 +325,7 @@ auto GenericMergeJoin<SliceType, DocIdType, KeyCompare>::produceCrossProduct(
 
   while (readMore && hasMore) {
     // produce current position
-    LOG_INDEX_MERGER << "calling produce function " << documentIds[0] << " "
-                     << documentIds[1];
-    readMore = cb(documentIds, sliceBuffer);
+    readMore = cb(documentIds, projectionsSpan);
     hasMore = advanceIndexes();
 
     LOG_INDEX_MERGER << std::boolalpha << "readMore = " << readMore
@@ -357,6 +356,10 @@ bool GenericMergeJoin<SliceType, DocIdType, KeyCompare>::findCommonPosition() {
     LOG_INDEX_MERGER << "max is " << maxIter->_position[0]
                      << " exhausted = " << std::boolalpha
                      << minIndex->exhausted;
+
+    if (maxIter->exhausted) {
+      return false;
+    }
 
     // check if min == max
     if (IndexStreamCompare::cmp(*minIndex, *maxIter) ==

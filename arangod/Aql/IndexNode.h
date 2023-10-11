@@ -193,9 +193,8 @@ class IndexNode : public ExecutionNode,
   /// @brief We have single index and this index covered whole condition
   bool _allCoveredByOneIndex;
 
-  /// @brief if the (post) filter condition is fully covered by the index
-  /// attributes
-  bool _indexCoversFilterCondition;
+  /// @brief if the projections are fully covered by the index attributes
+  std::optional<bool> _indexCoversProjections;
 
   /// @brief the index iterator options - same for all indexes
   IndexIteratorOptions _options;

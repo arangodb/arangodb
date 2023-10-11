@@ -202,52 +202,23 @@ class IndexIterator {
   using LocalDocumentIdCallback =
       fu2::function<bool(LocalDocumentId token) const>;
 
-  // TODO(MBkkt) Try to replace bool with void, or explain it purpose here
-  using DocumentCallback = CallbackImplStrict<
-      bool(LocalDocumentId token, velocypack::Slice doc) const,
-      bool(LocalDocumentId token, std::unique_ptr<std::string>& doc) const>;
-  // makeDocumentCallback* is marker for code readers
-  // that code potentially make unneecessary copy in case of unique_ptr
+  // the bool return value of the callback indicates whether the callback
+  // has ignored or used the document.
+  // if the callback returns true, it means the callback has done something
+  // meaningful with the document, e.g. used it to write a result row into
+  // some output block in AQL. the caller can then use the returned true
+  // value as an indicator to count up the number of rows produced.
+  // if the callback returns false, it means the callback has ignored the
+  // document. this is true for example for callbacks that actively filter
+  // out certain documents.
+  using DocumentCallback = fu2::function<bool(
+      LocalDocumentId token, aql::DocumentData&& data, VPackSlice doc) const>;
 
   static DocumentCallback makeDocumentCallback(velocypack::Builder& builder) {
-    struct Read2Builder {
-      bool operator()(LocalDocumentId, velocypack::Slice doc) const {
-        builder.add(doc);
-        return true;
-      }
-
-      bool operator()(LocalDocumentId,
-                      std::unique_ptr<std::string>& doc) const {
-        TRI_ASSERT(doc);
-        VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
-        builder.add(slice);
-        return true;
-      }
-
-      VPackBuilder& builder;
+    return [&](LocalDocumentId, aql::DocumentData&&, VPackSlice doc) {
+      builder.add(doc);
+      return true;
     };
-
-    return {Read2Builder{builder}};
-  }
-
-  template<typename Func>
-  struct SingleFunc2MultiFunc {
-    bool operator()(LocalDocumentId token, velocypack::Slice doc) const {
-      return func(token, doc);
-    }
-    bool operator()(LocalDocumentId token,
-                    std::unique_ptr<std::string>& doc) const {
-      TRI_ASSERT(doc);
-      VPackSlice slice{reinterpret_cast<uint8_t const*>(doc->data())};
-      return func(token, slice);
-    }
-
-    Func func;
-  };
-
-  template<typename Func>
-  static DocumentCallback makeDocumentCallbackF(Func&& func) {
-    return {SingleFunc2MultiFunc<std::decay_t<Func>>{std::forward<Func>(func)}};
   }
 
   using CoveringCallback =

@@ -1300,7 +1300,8 @@ arangodb::Result PhysicalCollectionMock::lookup(
   before();
   auto it = _documents.find(key);
   if (it != _documents.end()) {
-    cb(it->second.docId(), arangodb::velocypack::Slice(it->second.vptr()));
+    cb(it->second.docId(), nullptr,
+       arangodb::velocypack::Slice(it->second.vptr()));
     return arangodb::Result(TRI_ERROR_NO_ERROR);
   }
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
@@ -1313,7 +1314,7 @@ arangodb::Result PhysicalCollectionMock::lookup(
   for (auto const& entry : _documents) {
     auto& doc = entry.second;
     if (doc.docId() == token) {
-      cb(token, doc.data());
+      cb(token, nullptr, doc.data());
       return arangodb::Result{};
     }
   }

@@ -244,7 +244,8 @@ TEST(CacheRebalancerTest,
   auto worker = [&manager, &caches, cacheCount, initialInserts, operationCount,
                  &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
-    Transaction* tx = manager.beginTransaction(false);
+    Transaction tx;
+    manager.beginTransaction(tx, false);
     // fill with some initial data
     for (std::uint64_t i = 0; i < initialInserts; i++) {
       std::uint64_t item = lower + i;
@@ -393,7 +394,8 @@ TEST(
   auto worker = [&manager, &caches, cacheCount, initialInserts, operationCount,
                  &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
-    Transaction* tx = manager.beginTransaction(false);
+    Transaction tx;
+    manager.beginTransaction(tx, false);
     // fill with some initial data
     for (std::uint64_t i = 0; i < initialInserts; i++) {
       std::uint64_t item = lower + i;
