@@ -34,7 +34,7 @@ function explainSuite () {
   const cn = "UnitTestsAhuacatlExplain";
 
   function query_explain(query, bindVars = null, options = {}) {
-    let stmt = db._createStatement({query: {query, bindVars:  bindVars: bindVars, options: options}});
+    let stmt = db._createStatement({query:query, bindVars: bindVars, options: options});
     return stmt.explain();
   };
 

@@ -211,106 +211,108 @@
                       " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c  RETURN c ";
           let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = db._query(query, {}, {count:true});
-          assertEqual(1, result.toArray().length);
-          assertEqual(300, result.toArray()[0]);
-          assertEqual(6216, result.stats.fullCount);
-          assertEqual(6216, result.stats.scannedIndex);
+          let result = db._query(query, {}, {fullCount:true});
+          let res = result.toArray();
+          assertEqual(1, res.length);
+          assertEqual(300, res[0]);
+          assertEqual(6216, result.getExtra().stats.fullCount);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testApplyWithNoFullCount() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
                       " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c  RETURN c ";
           let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = db._query(query, {}, {count:false});
-          assertEqual(1, result.toArray().length);
-          assertEqual(300, result.toArray()[0]);
-          assertEqual(6216, result.stats.scannedIndex);
+          let result = db._query(query, {}, {fullCount:false});
+          let res = result.toArray();
+          assertEqual(1, res.length);
+          assertEqual(300, res[0]);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testApplyWithFullCountDocs() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
                       " DESC LIMIT 1000, 300 RETURN d ";
           let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = db._query(query, {}, {count:true});
+          let result = db._query(query, {}, {fullCount:true});
           assertEqual(300, result.toArray().length);
-          assertEqual(6216, result.stats.fullCount);
-          assertEqual(6216, result.stats.scannedIndex);
+          assertEqual(6216, result.getExtra().stats.fullCount);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testApplyWithNoFullCountDocs() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
                       " DESC LIMIT 1000, 300 RETURN d";
           let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = db._query(query, {}, {count:false});
+          let result = db._query(query, {}, {fullCount:false});
           assertEqual(300, result.toArray().length);
-          assertEqual(6216, result.stats.scannedIndex);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testApplyWithFullCountDocsNoOffset() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
                       " DESC LIMIT 1500 RETURN d ";
           let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = db._query(query, {}, {count:true});
+          let result = db._query(query, {}, {fullCount:true});
           assertEqual(1500, result.toArray().length);
-          assertEqual(6216, result.stats.fullCount);
-          assertEqual(6216, result.stats.scannedIndex);
+          assertEqual(6216, result.getExtra().stats.fullCount);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testApplyWithNoFullCountDocsNoOffset() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
                       " DESC LIMIT 1500 RETURN d";
           let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = db._query(query, {}, {count:false});
+          let result = db._query(query, {}, {fullCount:false});
           assertEqual(1500, result.toArray().length);
-          assertEqual(6216, result.stats.scannedIndex);
+          assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testAppliedWithNonDetermAfter() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3'  SORT BM25(d) LIMIT 10 LET a = NOOPT(d.b.b1) RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        let result = db._query(query, {}, {count:true});
+        let result = db._query(query, {}, {fullCount:true});
         assertEqual(10, result.toArray().length);
-        assertEqual(6216, result.stats.scannedIndex);
-        assertEqual(6216, result.stats.fullCount);
+        assertEqual(6216, result.getExtra().stats.scannedIndex);
+        assertEqual(6216, result.getExtra().stats.fullCount);
       },
       testAppliedDeterministicUsedBetweenSort() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3'  SORT BM25(d) LET a = UPPER(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
-        let result = db._query(query, {}, {count:true, optimizer:{rules:['-move-calculations-down']}});
+        let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
         assertEqual(10, result.toArray().length);
-        assertEqual(3784, result.stats.scannedIndex);
-        assertEqual(3784, result.stats.fullCount);
+        assertEqual(3784, result.getExtra().stats.scannedIndex);
+        assertEqual(3784, result.getExtra().stats.fullCount);
       },
       testAppliedDeterministicUsedBeforeSort() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = UPPER(d.b.b1) SORT BM25(d)  LIMIT 10 RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
-        let result = db._query(query, {}, {count:true, optimizer:{rules:['-move-calculations-down']}});
+        let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
         assertEqual(10, result.toArray().length);
-        assertEqual(3784, result.stats.scannedIndex);
-        assertEqual(3784, result.stats.fullCount);
+        assertEqual(3784, result.getExtra().stats.scannedIndex);
+        assertEqual(3784, result.getExtra().stats.fullCount);
       },
       testAppliedDeterministicUsedBeforeSortTwoSorts() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = UPPER(d.b.b1) SORT BM25(d) ASC "
                     + "LIMIT 10 SORT TFIDF(d) DESC RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
-        let result = db._query(query, {}, {count:true, optimizer:{rules:['-move-calculations-down']}});
+        let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
         assertEqual(10, result.toArray().length);
-        assertEqual(3784, result.stats.scannedIndex);
-        assertEqual(3784, result.stats.fullCount);
+        assertEqual(3784, result.getExtra().stats.scannedIndex);
+        assertEqual(3784, result.getExtra().stats.fullCount);
       },
       testAppliedMultiSorts() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = TFIDF(d) LET b = BM25(d) LET t = a + b SORT b ASC, a DESC "
                     + "LIMIT 10 RETURN {dD:d, aA:t}";
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
-        let result = db._query(query, {}, {count:true, optimizer:{rules:['-move-calculations-down']}});
+        let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
         assertEqual(10, result.toArray().length);
-        assertEqual(3784, result.stats.scannedIndex);
-        assertEqual(3784, result.stats.fullCount);
+        assertEqual(3784, result.getExtra().stats.scannedIndex);
+        assertEqual(3784, result.getExtra().stats.fullCount);
       },
       testAppliedSort() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) DESC LIMIT 10, 10 "
@@ -318,10 +320,11 @@
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query);
-        assertEqual(10, result.toArray().length);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 4994;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.toArray()[i].idx, expectedIdx);
+          assertEqual(res[i].idx, expectedIdx);
           if (i % 2 === 1) {
             expectedIdx--;
           }
@@ -333,10 +336,11 @@
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query);
-        assertEqual(10, result.toArray().length);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 501;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.toArray()[i].idx, expectedIdx);
+          assertEqual(res[i].idx, expectedIdx);
           if (i % 2 === 1) {
             expectedIdx++;
           }
@@ -348,10 +352,11 @@
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query);
-        assertEqual(10, result.toArray().length);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 501;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.toArray()[i].dv, longValue + expectedIdx);
+          assertEqual(res[i].dv, longValue + expectedIdx);
           if (i % 2 === 1) {
             expectedIdx++;
           }
@@ -363,10 +368,11 @@
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query);
-        assertEqual(10, result.toArray().length);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 0;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.toArray()[i].dv, longValue + expectedIdx);
+          assertEqual(res[i].dv, longValue + expectedIdx);
           if (i % 2 === 1) {
             if (expectedIdx === 0) {
                 expectedIdx = 1;
@@ -382,10 +388,11 @@
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query);
-        assertEqual(10, result.toArray().length);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 0;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.toArray()[i].dv, expectedIdx);
+          assertEqual(res[i].dv, expectedIdx);
           if (i % 2 === 1) {
             if (expectedIdx === 0) {
                 expectedIdx = 1;
@@ -401,13 +408,14 @@
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query);
-        assertEqual(10, result.toArray().length);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 1;
         let score = 0;
         for (let i = 0; i < 10; ++i) {
-          assertTrue(score <= result.toArray()[i].score);
-          score = result.toArray()[i].score;
-          assertEqual(result.toArray()[i].dv, expectedIdx);
+          assertTrue(score <= res[i].score);
+          score = res[i].score;
+          assertEqual(res[i].dv, expectedIdx);
           if (expectedIdx === 0) {
             expectedIdx = 1;
           } else {
@@ -421,13 +429,14 @@
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query);
-        assertEqual(10, result.toArray().length);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 0;
         let score = 0;
         for (let i = 0; i < 10; ++i) {
-          assertTrue(score <= result.toArray()[i].score);
-          score = result.toArray()[i].score;
-          assertEqual(result.toArray()[i].dv, expectedIdx);
+          assertTrue(score <= res[i].score);
+          score = res[i].score;
+          assertEqual(res[i].dv, expectedIdx);
           if (expectedIdx === 0) {
             expectedIdx = 1;
           } else {
@@ -441,10 +450,11 @@
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query);
-        assertEqual(10, result.toArray().length);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 10;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.toArray()[i].dv, expectedIdx);
+          assertEqual(res[i].dv, expectedIdx);
           expectedIdx = expectedIdx + 1;
         }
       },
@@ -454,10 +464,11 @@
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query);
-        assertEqual(10, result.toArray().length);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 9989;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.toArray()[i].dv, expectedIdx);
+          assertEqual(res[i].dv, expectedIdx);
           expectedIdx = expectedIdx - 1;
         }
       },
@@ -467,10 +478,11 @@
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query);
-        assertEqual(10, result.toArray().length);
+        let res = result.toArray();
+        assertEqual(10, res.length);
         let expectedIdx = 9989;
         for (let i = 0; i < 10; ++i) {
-          assertEqual(result.toArray()[i].stored, expectedIdx);
+          assertEqual(res[i].stored, expectedIdx);
           expectedIdx = expectedIdx - 1;
         }
       }
