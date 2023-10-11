@@ -583,13 +583,20 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(
 
 void GatherNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
-  for (auto& variable : _elements) {
-    auto v = Variable::replace(variable.var, replacements);
-    if (v != variable.var) {
-      variable.var = v;
+  for (auto& it : _elements) {
+    auto v = Variable::replace(it.var, replacements);
+    if (v != it.var) {
+      it.var = v;
     }
-    variable.attributePath.clear();
+    it.attributePath.clear();
   }
+}
+
+void GatherNode::replaceAttributeAccess(ExecutionNode const* self,
+                                        Variable const* searchVariable,
+                                        std::span<std::string_view> attribute,
+                                        Variable const* replaceVariable) {
+  // TODO!!!
 }
 
 void GatherNode::getVariablesUsedHere(VarSet& vars) const {

@@ -26,6 +26,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const cn = "UnitTestsOptimizer";
 const isCluster = require("internal").isCluster();
 
@@ -179,14 +180,6 @@ function projectionsTestSuite () {
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} OPTIONS {maxProjections: 4} ${returnProjections("e", 3)}`, [], [], false, false, false],
       ];
 
-
-      // normalize projections
-      const normalize = (v) => {
-        if (v === undefined || v === null) {
-          return [];
-        }
-        return v.sort();
-      };
 
       queries.forEach(function (q) {
         let [query, vertexProjections, edgeProjections, produceVertices, producePathsVertices, producePathsEdges] = q;
