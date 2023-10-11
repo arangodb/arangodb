@@ -129,26 +129,30 @@ const _ = require('lodash');
 
       try {
         const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-      let indexMeta = {};
-      if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+        col.save({name_1: "foo", "value_nested": [{"nested_1": [{"nested_2": "foo123"}]}]});
+        let indexMeta = {};
+        if (isEnterprise) {
+          indexMeta = {
+            type: 'inverted', name: 'inverted', fields: [
               {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
               "value"
-          ]};
-      } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            ]
+          };
+        } else {
+          indexMeta = {
+            type: 'inverted', name: 'inverted', fields: [
               {"name": "value_nested[*]"},
               "value"
-          ]};
-      }
-      col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-        col.ensureIndex({ type: "persistent", fields: ["value", "other", "more"]});
-        
+            ]
+          };
+        }
+        col.ensureIndex(indexMeta);
+        col.save({name_1: "bar", "value_nested": [{"nested_1": [{"nested_2": "foo321"}]}]});
+        col.ensureIndex({type: "persistent", fields: ["value", "other", "more"]});
+
         const bind = () => ({'@col': colName});
         const prepare = (rows) => {
-          col.truncate({ compact: false });
+          col.truncate({compact: false});
           col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
         };
         const query = `FOR d IN @@col FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
@@ -159,23 +163,22 @@ const _ = require('lodash');
             {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
             {type: SortBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
             {type: LimitBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
-            {type: MaterializeBlock, calls: 1, items: 0, filtered: Math.min(rows, 3)},
-            {type: ReturnBlock, calls: 1, items: 0, filtered: 0}
+            {type: MaterializeBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
+            {type: ReturnBlock, calls: 1, items: Math.min(rows, 3), filtered: 0}
           ];
         };
-        
-        internal.debugSetFailAt("MaterializeExecutor::all_fail_and_count");
+
         profHelper.runDefaultChecks(
-          {query, genNodeList, prepare, bind}
+            {query, genNodeList, prepare, bind}
         );
 
         // collection was truncated. Insert them again
-        col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-        const iiQuery = `FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
-          FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
+        col.save({name_1: "foo", "value_nested": [{"nested_1": [{"nested_2": "foo123"}]}]});
+        col.save({name_1: "bar", "value_nested": [{"nested_1": [{"nested_2": "foo321"}]}]});
+        const iiQuery = `FOR d IN ${colName} OPTIONS {indexHint: 'inverted', 
+         forceIndexHint: true, waitForSync: true} FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
         let iiQueryRes = db._query(iiQuery).toArray();
-        assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+        assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
 
       } finally {
         // clear failure points!

@@ -670,29 +670,7 @@ function lateDocumentMaterializationRuleTestSuite () {
         result = db._query(query, {limit: 1}, options);
         assertEqual(1, result.toArray().length);
         assertEqual(500, result.getExtra().stats.fullCount);
-        
-        if (!internal.debugCanUseFailAt()) {
-          return;
-        }
-        internal.debugClearFailAt();
-        internal.debugSetFailAt('MaterializeExecutor::all_fail');
-        result = db._query(query, {limit: 100}, options);
-        assertEqual(0, result.toArray().length);
-        assertEqual(500, result.getExtra().stats.fullCount);
-        
-        internal.debugClearFailAt();
-        internal.debugSetFailAt('MaterializeExecutor::only_one');
-        result = db._query(query, {limit: 100}, options);
-        if (isCluster) {
-          // for cluster it depends on db servers number as each materializer will issue only one document
-          // to not bother with accurate number  - let's check it is not all 100
-          // we anyway want to check it just not breaks in case of materialization failure
-          assertTrue(result.toArray().length < 100);
-        } else {
-          assertEqual(1, result.toArray().length);
-        }
-        assertEqual(500, result.getExtra().stats.fullCount);
-        
+                
       } finally {
         db._drop(withIndexCollectionName);
         internal.debugClearFailAt();

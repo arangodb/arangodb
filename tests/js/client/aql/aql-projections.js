@@ -752,6 +752,23 @@ function projectionsExtractionTestSuite () {
         assertEqual(query[3], results);
       });
     },
+
+    testExtractSecondSubAttribute : function () {
+      // While the index is created on [p.s, p.k], the query filters by p.k but only extracts p.s.
+      c.ensureIndex({ type: "persistent", fields: ["p.s", "p.k"]});
+      c.insert({"p": {"s": 1234, "k": "hund"}});
+      c.insert({"p": {"s": 1235, "k": "katze"}});
+      c.insert({"p": {"s": 1236, "k": "schnecke"}});
+      c.insert({"p": {"s": 1237, "k": "kuh"}});
+      let bindVars = {'@coll': cn};
+      let q = "" +
+        "FOR doc in @@coll " +
+        "FILTER doc.p.k == 'hund' " +
+        "SORT doc.p.s DESC " +
+        "RETURN doc.p.s";
+      let result = db._createStatement({query: q, bindVars: bindVars});
+      assertEqual(result.toArray(), [1234]);
+    }
   };
 }
 
