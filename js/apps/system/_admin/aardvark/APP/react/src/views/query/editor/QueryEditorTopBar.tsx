@@ -76,7 +76,6 @@ export const QueryEditorTopBar = () => {
         </ExternalLink>
         <Tooltip label="Create debug package">
           <IconButton
-            size="sm"
             colorScheme="gray"
             onClick={onOpenDebugPackageModal}
             icon={<Icon as={Bug} />}
