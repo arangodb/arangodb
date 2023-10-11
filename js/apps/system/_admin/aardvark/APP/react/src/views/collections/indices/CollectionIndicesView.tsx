@@ -41,7 +41,7 @@ const IndexViewHeader = ({ onOpen }: { onOpen: () => void }) => {
   return (
     <Stack direction="row" marginBottom="4" alignItems="center" spacing="6">
       <Heading size="lg">Indexes</Heading>
-      <Flex gap="2">
+      <Flex gap="2" alignItems="center">
         <Stat>
           <StatNumber>{stats ? stats.count : <Spinner size="sm" />}</StatNumber>
           <StatLabel>Index count</StatLabel>
