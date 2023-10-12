@@ -52,11 +52,7 @@ using namespace arangodb::aql;
 namespace {
 auto createAttributeNamePath = [](std::vector<std::string>&& vec,
                                   arangodb::ResourceMonitor& resMonitor) {
-  arangodb::MonitoredStringVector myVector{resMonitor};
-  for (auto& s : vec) {
-    myVector.emplace_back(s);
-  }
-  return AttributeNamePath(std::move(myVector));
+  return AttributeNamePath(std::move(vec), resMonitor);
 };
 }
 

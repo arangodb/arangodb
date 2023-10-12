@@ -22,6 +22,7 @@
 #include <vector>
 #include <span>
 #include <cstddef>
+#include <iosfwd>
 
 namespace arangodb {
 namespace velocypack {
@@ -33,6 +34,8 @@ struct IndexStreamOptions {
   std::vector<std::size_t> usedKeyFields;
   std::vector<std::size_t> projectedFields;
 };
+
+std::ostream& operator<<(std::ostream&, IndexStreamOptions const&);
 
 template<typename SliceType, typename DocIdType>
 struct IndexStreamIterator {
