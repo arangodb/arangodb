@@ -32,7 +32,6 @@ const arango = require('@arangodb').arango;
 const internal = require('internal');
 const isCluster = internal.isCluster();
 const isEnterprise = internal.isEnterprise();
-const TestDatabaseName = "TestDatabase";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,20 +46,8 @@ function iResearchFeatureAqlTestSuite () {
   };
 
   return {
-
-    setUpAll: function () {
-      db._createDatabase(TestDatabaseName);
-    },
-
-    tearDownAll : function () {
-      db._useDatabase('_system');
-      db._dropDatabase(TestDatabaseName);
-    },
-
-
     setUp : function () {
       cleanup();
-      db._useDatabase(TestDatabaseName);
     },
 
     tearDown : function () {
@@ -71,7 +58,6 @@ function iResearchFeatureAqlTestSuite () {
 /// @brief IResearchAnalyzerFeature tests
 ////////////////////////////////////////////////////////////////////////////////
     testAnalyzersCollectionPresent: function() {
-      db._useDatabase("_system");
       let dbName = "analyzersCollTestDb";
       try { 
         db._dropDatabase(dbName); 
@@ -244,7 +230,6 @@ function iResearchFeatureAqlTestSuite () {
     },
 
     testAnalyzerRemovalWithDatabaseName_InSystem: function() {
-      db._useDatabase("_system");
       let dbName = "analyzerWrongDbName1";
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
@@ -268,7 +253,6 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     testAnalyzerCreateRemovalWithDatabaseName_InDb: function() {
-      db._useDatabase("_system");
       let dbName = "analyzerWrongDbName2";
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
@@ -289,7 +273,6 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     testAnalyzerUseOnDBServer_InDb: function() {
-      db._useDatabase("_system");
       let dbName = "analyzerUseOnDbServer";
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
@@ -320,7 +303,6 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     testAnalyzerCreateRemovalWithDatabaseName_InSystem: function() {
-      db._useDatabase("_system");
       let dbName = "analyzerWrongDbName3";
       try { db._dropDatabase(dbName); } catch (e) {}
       try { analyzers.remove("MyTrigram"); } catch (e) {}
@@ -356,7 +338,6 @@ function iResearchFeatureAqlTestSuite () {
     },
     testAnalyzerInvalidName: function() {
       let dbName = "analyzerWrongDbName4";
-      db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);
       try {
@@ -375,7 +356,6 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     testAnalyzerGetFromOtherDatabase: function() {
-      db._useDatabase("_system");
       let dbName = "analyzerDbName";
       let anotherDbName = "anotherDbName";
       try { db._dropDatabase(dbName); } catch (e) {}
@@ -536,7 +516,6 @@ function iResearchFeatureAqlTestSuite () {
     },
 
     testAnalyzersPrefix: function() {
-      db._useDatabase("_system");
       let dbName = "TestDB";
       try { db._dropDatabase(dbName); } catch (e) {}
       db._createDatabase(dbName);

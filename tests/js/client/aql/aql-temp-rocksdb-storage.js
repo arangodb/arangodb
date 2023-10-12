@@ -30,7 +30,6 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 const db = internal.db;
 const fs = require('fs');
-const dbName = "TestDatabase";
 
 function StorageForQueryWithCollectionSortSuite() {
   const cn = 'UnitTestCollection';
@@ -51,8 +50,6 @@ function StorageForQueryWithCollectionSortSuite() {
   return {
 
     setUpAll: function() {
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
       db._drop(cn);
       let c = db._create(cn);
 
@@ -68,8 +65,6 @@ function StorageForQueryWithCollectionSortSuite() {
 
     tearDownAll: function() {
       db._drop(cn);
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
     },
 
     testSortComparePeakMemoryUsageAscCollection: function() {
@@ -146,16 +141,6 @@ function StorageForQueryWithoutCollectionSortSuite() {
   };
 
   return {
-
-    setUpAll: function () {
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
-    },
-
-    tearDownAll : function () {
-      db._useDatabase('_system');
-      db._dropDatabase(dbName);
-    },
 
     testSortComparePeakMemoryUsageAscRange: function() {
       let query = `FOR i IN 1..500000 SORT i ASC RETURN i`;
@@ -237,16 +222,6 @@ function StorageForQueryCleanUpWhenFailureSuite() {
   };
 
   return {
-
-    setUpAll: function () {
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
-    },
-
-    tearDownAll : function () {
-      db._useDatabase('_system');
-      db._dropDatabase(dbName);
-    },
 
     tearDown: function() {
       const tree = fs.listTree(tempDir);
