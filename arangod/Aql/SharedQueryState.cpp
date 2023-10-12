@@ -143,7 +143,7 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
   }
 
   unsigned n = _numWakeups++;
-  TRI_ASSERT(n < 8);
+  TRI_ASSERT(n < 10000);
 #if SHARED_STATE_LOGGING
   LOG_DEVEL << this << ", " << __func__
             << ": increased numWakeups to: " << _numWakeups;

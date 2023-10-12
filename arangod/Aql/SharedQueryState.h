@@ -29,7 +29,7 @@
 
 #include "RestServer/arangod.h"
 
-#define SHARED_STATE_LOGGING 1
+#define SHARED_STATE_LOGGING 0
 #include "Logger/LogMacros.h"
 
 namespace arangodb {
@@ -128,7 +128,7 @@ class SharedQueryState final
 #if SHARED_STATE_LOGGING
       LOG_DEVEL << this << ", " << __func__ << ", queueing async task";
 #endif
-      queued = queueAsyncTask([this, cb(std::forward<F>(cb)),
+      queued = queueAsyncTask([cb(std::forward<F>(cb)),
                                self = shared_from_this()] {
         if (self->_valid) {
           try {
