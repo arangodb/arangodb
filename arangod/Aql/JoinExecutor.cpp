@@ -339,11 +339,6 @@ void JoinExecutor::constructStrategy() {
     options.usedKeyFields = {0};
 
     auto& desc = indexDescription.emplace_back();
-    if (idx.filter) {
-      VPackBuilder builder;
-      idx.filter->expression->toVelocyPack(builder, true);
-      LOG_DEVEL << builder.toJson();
-    }
     desc.numProjections = 0;
     if (idx.projections.usesCoveringIndex()) {
       std::transform(idx.projections.projections().begin(),
