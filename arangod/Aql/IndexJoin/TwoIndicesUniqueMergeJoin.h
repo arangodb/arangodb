@@ -196,9 +196,8 @@ bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::next(
                           << std::boolalpha << rightIteratorHasMore;
 
   bool isDocsPopulated = false;
-  size_t removeMeCounter = 0;
-  while (leftIteratorHasMore && rightIteratorHasMore && removeMeCounter < 15) {
-    removeMeCounter++;
+
+  while (leftIteratorHasMore && rightIteratorHasMore) {
     LOG_INDEX_UNIQUE_MERGER << "In the while loop";
     LOG_INDEX_UNIQUE_MERGER << "Left iterator has more: " << std::boolalpha
                             << leftIteratorHasMore
@@ -236,8 +235,8 @@ bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::next(
 
       bool readMore = cb(documentCache, projectionsSpan);
 
-      LOG_DEVEL << "Value Left: " << keyCache[0]
-                << ", Value Right: " << keyCache[1];
+      LOG_INDEX_UNIQUE_MERGER << "Value Left: " << keyCache[0]
+                              << ", Value Right: " << keyCache[1];
       leftIteratorHasMore = leftIndex->_iter->next(
           {keyCache.begin(), keyCache.begin() + 1}, documentCache[0], {});
       rightIteratorHasMore = rightIndex->_iter->next(
@@ -245,12 +244,14 @@ bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::next(
       isDocsPopulated = true;
 
       if (!readMore) {
+        LOG_INDEX_UNIQUE_MERGER << "next() returned true";
         return true;  // potentially more data available
       }
     }
   }
 
   // either left or right iterators are exhausted
+  LOG_INDEX_UNIQUE_MERGER << "next() returned false";
   return false;
 }
 

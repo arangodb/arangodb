@@ -166,7 +166,27 @@ const IndexJoinTestSuite = function () {
       }
     },
 
-    testEveryOtherMatchUnique: function () {
+    testEveryOtherMatchUniqueSmall: function () {
+      const A = fillCollection("A", singleAttributeGenerator(10, "x", x => x));
+      A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
+      const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x));
+      B.ensureIndex({type: "persistent", fields: ["x"], unique: true});
+
+      const result = runAndCheckQuery(`
+        FOR doc1 IN A
+          SORT doc1.x
+          FOR doc2 IN B
+              FILTER doc1.x == doc2.x
+              RETURN [doc1, doc2]
+      `);
+
+      assertEqual(result.length, 5);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
+      }
+    },
+
+    testEveryOtherMatchUniqueMedium: function () {
       const A = fillCollection("A", singleAttributeGenerator(1000, "x", x => x));
       A.ensureIndex({type: "persistent", fields: ["x"], unique: true});
       const B = fillCollection("B", singleAttributeGenerator(500, "x", x => 2 * x));
