@@ -722,14 +722,14 @@ TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues48Bit_140737488355327) {
 // sure that none of the test data includes 0xa5!
 TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_281474976710654) {
   // ff ff ff ff ff fe
-  uint8_t const expected[] = {AqlValue::AqlValueType::VPACK_INLINE_UINT64,
+  uint8_t const expected[] = {AqlValue::AqlValueType::VPACK_INLINE_INT64,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
-                              0x2f,
+                              0x27,
                               0xfe,
                               0xff,
                               0xff,
@@ -743,14 +743,14 @@ TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_281474976710654) {
 
 TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_281474976710655) {
   // ff ff ff ff ff ff
-  uint8_t const expected[] = {AqlValue::AqlValueType::VPACK_INLINE_UINT64,
+  uint8_t const expected[] = {AqlValue::AqlValueType::VPACK_INLINE_INT64,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
-                              0x2f,
+                              0x27,
                               0xff,
                               0xff,
                               0xff,
@@ -764,14 +764,14 @@ TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_281474976710655) {
 
 TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_72057594037927935) {
   // ff ff ff ff ff ff ff
-  uint8_t const expected[] = {AqlValue::AqlValueType::VPACK_INLINE_UINT64,
+  uint8_t const expected[] = {AqlValue::AqlValueType::VPACK_INLINE_INT64,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
-                              0x2f,
+                              0x27,
                               0xff,
                               0xff,
                               0xff,
@@ -785,14 +785,14 @@ TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_72057594037927935) {
 
 TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_72057594037927936) {
   // 01 00 00 00 00 00 00 00
-  uint8_t const expected[] = {AqlValue::AqlValueType::VPACK_INLINE_UINT64,
+  uint8_t const expected[] = {AqlValue::AqlValueType::VPACK_INLINE_INT64,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
                               UNINITIALIZED,
-                              0x2f,
+                              0x27,
                               0x00,
                               0x00,
                               0x00,
@@ -807,14 +807,14 @@ TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_72057594037927936) {
 TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_9223372036854775807) {
   // 7f ff ff ff ff ff ff ff
   uint8_t const expected[] = {
-      AqlValue::AqlValueType::VPACK_INLINE_UINT64,
+      AqlValue::AqlValueType::VPACK_INLINE_INT64,
       UNINITIALIZED,
       UNINITIALIZED,
       UNINITIALIZED,
       UNINITIALIZED,
       UNINITIALIZED,
       UNINITIALIZED,
-      0x2f,
+      0x27,
       0xff,
       0xff,
       0xff,
@@ -950,14 +950,14 @@ TEST(AqlValueMemoryLayoutTest, Slice_Unsigned64Bit_72057594037927936) {
   auto value = "72057594037927936"_vpack;
   // 00 00 00 00 00 00 00 01
   uint8_t const expected[] = {
-      AqlValue::AqlValueType::VPACK_INLINE_UINT64,
+      AqlValue::AqlValueType::VPACK_INLINE_INT64,
       UNINITIALIZED,
       UNINITIALIZED,
       UNINITIALIZED,
       UNINITIALIZED,
       UNINITIALIZED,
       UNINITIALIZED,
-      0x2f,
+      0x27,
       0x00,
       0x00,
       0x00,
