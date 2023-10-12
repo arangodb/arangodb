@@ -122,7 +122,7 @@ void FreeMemoryTask::run() {
     toggleResizingGuard.cancel();
   }
 
-  LOG_TOPIC("f4c44", TRACE, Logger::CACHE)
+  LOG_TOPIC("dce52", TRACE, Logger::CACHE)
       << "freeMemory task took "
       << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count()
       << "ms";
