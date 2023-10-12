@@ -814,13 +814,6 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
   // TODO(MBkkt) remove resolveExternals?
   auto t = type();
   switch (t) {
-    case VPACK_SLICE_POINTER:
-      if (!resolveExternals && isManagedDocument()) {
-        builder.addExternal(_data.slicePointerMeta.pointer);
-        break;
-      }
-      [[fallthrough]];
-    case VPACK_INLINE:
     case VPACK_INLINE_INT64:
       builder.add(VPackValue{absl::little_endian::ToHost(
           _data.longNumberMeta.data.intLittleEndian.val)});
@@ -829,6 +822,13 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
       builder.add(VPackValue{absl::little_endian::ToHost(
           _data.longNumberMeta.data.uintLittleEndian.val)});
       break;
+    case VPACK_SLICE_POINTER:
+      if (!resolveExternals && isManagedDocument()) {
+        builder.addExternal(_data.slicePointerMeta.pointer);
+        break;
+      }
+      [[fallthrough]];
+    case VPACK_INLINE:
     case VPACK_INLINE_DOUBLE:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_STRING:
