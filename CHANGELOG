@@ -1,6 +1,8 @@
 v3.11.5 (XXXX-XX-XX)
 --------------------
 
+* FE-374: Query UI - fix switching from table to JSON.
+
 * Add cluster-internal connectivity checks.
   This makes Coordinators and DB-Servers in a cluster periodically send check
   requests to each other, in order to check if all servers can connect to each
