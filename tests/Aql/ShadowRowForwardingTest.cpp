@@ -466,22 +466,23 @@ TEST_F(ShadowRowForwardingTest, subqueryStartExecutor) {
       // With a full run everything has to eventually be returned.
       // This tests if we get into undefined behaviour if we continue after
       // the first block is returned.
+      auto outputVal = generateOutputRowData(config.nestedSubqueries, config.skippedRowsAtFront, 0, ExecutionNode::SUBQUERY_START);
 
       makeExecutorTestHelper<1, 1>()
-          .addConsumer<TestLambdaSkipExecutor>(MakeBaseInfos(1, config.nestedSubqueries),
-                                               MakeNonPassThroughInfos(),
-                                               ExecutionNode::CALCULATION)
+          .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1, config.nestedSubqueries + 1),
+                                              MakeBaseInfos(1, config.nestedSubqueries + 1),
+                                              ExecutionNode::SUBQUERY_START)
           .setInputSubqueryDepth(config.nestedSubqueries)
           .setInputValue(inputVal.data,inputVal.shadowRows)
           .setInputSplitType(splitType)
-          .setCallStack(generateCallStack(config.nestedSubqueries, config.callWithoutContinue))
+          .setCallStack(generateCallStack(config.nestedSubqueries, config.callWithoutContinue, ExecutionNode::SUBQUERY_START))
           .expectedStats(ExecutionStats{})
           .expectedState(ExecutionState::DONE)
           .expectOutput(
               {0},
-              std::move(inputVal.data),
-              std::move(inputVal.shadowRows))
-          .expectSkipped(std::move(inputVal.skip))
+              std::move(outputVal.data),
+              std::move(outputVal.shadowRows))
+          .expectSkipped(std::move(outputVal.skip))
           .run(true);
     }
 
