@@ -92,6 +92,32 @@ IndexIterator::DocumentCallback aql::getCallback(
       return true;
     }
 
+    InputAqlItemRow const& input = context.getInputRow();
+    OutputAqlItemRow& output = context.getOutputRow();
+    TRI_ASSERT(!output.isFull());
+
+#if 0
+    auto const& p = context.getProjections();
+    for (size_t i = 0; i < p.size(); ++i) {
+      RegisterId registerId = context.registerForVariable(p[i].variable->id);
+      TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+      VPackSlice s = slice.get(p[i].path.get());
+      if (p[i].type == AttributeNamePath::Type::IdAttribute) {
+        // _id attribute
+        TRI_ASSERT(s.isCustom());
+        auto v = AqlValue(transaction::helpers::extractIdString(
+            context.getTrxPtr()->resolver(), s, slice));
+        AqlValueGuard guard{v, true};
+        output.moveValueInto(registerId, input, &guard);
+      } else {
+        TRI_ASSERT(!s.isCustom());
+        if (s.isNone()) {
+          s = VPackSlice::nullSlice();
+        }
+        output.moveValueInto(registerId, input, s);
+      }
+    } else {
+#endif
     // recycle our Builder object
     VPackBuilder& objectBuilder = context.getBuilder();
     objectBuilder.clear();
@@ -100,13 +126,13 @@ IndexIterator::DocumentCallback aql::getCallback(
                                                       context.getTrxPtr());
     objectBuilder.close();
 
-    InputAqlItemRow const& input = context.getInputRow();
-    OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
 
-    TRI_ASSERT(!output.isFull());
     VPackSlice s = objectBuilder.slice();
     output.moveValueInto(registerId, input, s);
+#if 0
+    }
+#endif
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -339,6 +365,11 @@ PhysicalCollection& DocumentProducingFunctionContext::getPhysical()
 
 velocypack::Builder& DocumentProducingFunctionContext::getBuilder() noexcept {
   return _objectBuilder;
+}
+
+RegisterId DocumentProducingFunctionContext::registerForVariable(
+    VariableId id) const noexcept {
+  return _expressionContext->registerForVariable(id);
 }
 
 bool DocumentProducingFunctionContext::getAllowCoveringIndexOptimization()

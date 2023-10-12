@@ -120,10 +120,12 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     // index
     std::string iid = it.get("index").get("id").copyString();
 
-    auto projections = Projections::fromVelocyPack(
-        it, "projections", plan->getAst()->query().resourceMonitor());
-    auto filterProjections = Projections::fromVelocyPack(
-        it, "filterProjections", plan->getAst()->query().resourceMonitor());
+    auto projections =
+        Projections::fromVelocyPack(plan->getAst(), it, "projections",
+                                    plan->getAst()->query().resourceMonitor());
+    auto filterProjections =
+        Projections::fromVelocyPack(plan->getAst(), it, "filterProjections",
+                                    plan->getAst()->query().resourceMonitor());
 
     bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
 
@@ -367,4 +369,13 @@ Index::FilterCosts JoinNode::costsForIndexInfo(
                                                 itemsInCollection);
   }
   return costs;
+}
+
+std::ostream& arangodb::operator<<(std::ostream& os,
+                                   IndexStreamOptions const& opts) {
+  os << "{";
+  os << "keyFields = [ " << opts.usedKeyFields << "], ";
+  os << "projectedFields = [ " << opts.projectedFields << "]";
+  os << "}";
+  return os;
 }
