@@ -619,7 +619,7 @@ function AqlQueryCacheSuite () {
     
     testMaxResultsSize1 : function () {
       const query = "FOR i IN 1..@value RETURN i";
-      cache.properties({ mode: "demand", maxResults: 10, maxResultsSize: 8192 });
+      cache.properties({ mode: "demand", maxResults: 10, maxResultsSize: 9000 });
       
       let q = query + " // 1000";
       let res = db._query(q, { value: 1000 }, cached);
