@@ -822,7 +822,13 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
       [[fallthrough]];
     case VPACK_INLINE:
     case VPACK_INLINE_INT64:
+      builder.add(VPackValue{absl::little_endian::ToHost(
+          _data.longNumberMeta.data.intLittleEndian.val)});
+      break;
     case VPACK_INLINE_UINT64:
+      builder.add(VPackValue{absl::little_endian::ToHost(
+          _data.longNumberMeta.data.uintLittleEndian.val)});
+      break;
     case VPACK_INLINE_DOUBLE:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_STRING:
