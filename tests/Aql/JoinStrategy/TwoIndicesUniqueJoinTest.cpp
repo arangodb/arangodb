@@ -112,7 +112,7 @@ TEST(UniqueIndexMerger, no_results) {
   ASSERT_EQ(count, 0);
 }
 
-TEST(UniqueIndexMerger, some_results) {
+TEST(UniqueIndexMerger, some_results_a) {
   bool isUnique = true;
   std::vector<MyKeyValue> a = {
       1, 3, 5, 7, 8, 9,
@@ -142,6 +142,38 @@ TEST(UniqueIndexMerger, some_results) {
   }
 
   ASSERT_EQ(count, 1);
+}
+
+TEST(UniqueIndexMerger, some_results_b) {
+  bool isUnique = true;
+  std::vector<MyKeyValue> a = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+  };
+
+  std::vector<MyKeyValue> b = {
+      2, 4, 6, 8, 10,
+  };
+
+  std::vector<Desc> iters;
+  iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
+  iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
+
+  Strategy merger{std::move(iters), 1};
+
+  bool hasMore = true;
+  std::size_t count = 0;
+
+  while (hasMore) {
+    hasMore =
+        merger.next([&](std::span<MyDocumentId> docs, std::span<MyKeyValue>) {
+          EXPECT_EQ(docs[0], docs[1]);
+
+          count += 1;
+          return true;
+        });
+  }
+
+  ASSERT_EQ(count, 5);
 }
 
 TEST(UniqueIndexMerger, one_empty) {
