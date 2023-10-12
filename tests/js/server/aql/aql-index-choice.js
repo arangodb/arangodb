@@ -4,6 +4,7 @@
 const jsunity = require("jsunity");
 const db = require("internal").db;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const cn = 'UnitTestsCollection';
 
 let setupCollection = function(cn, n) {
@@ -136,7 +137,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -156,7 +157,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(["uid"], indexNode.projections);
+        assertEqual(normalize(["uid"]), normalize(indexNode.projections));
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -177,7 +178,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -201,7 +202,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(["uid"], indexNode.projections);
+        assertEqual(normalize(["uid"]), normalize(indexNode.projections));
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -220,7 +221,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(["dt"], indexNode.projections);
+        assertEqual(normalize(["dt"]), normalize(indexNode.projections));
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -239,7 +240,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(["dt", "uid"], indexNode.projections.sort());
+        assertEqual(normalize(["dt", "uid"]), normalize(indexNode.projections));
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -263,7 +264,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -284,7 +285,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertTrue(["uid"], indexNode.projections);
+        assertTrue(normalize(["uid"]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -301,7 +302,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(["dt"], indexNode.projections);
+        assertEqual(normalize(["dt"]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -323,7 +324,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -345,7 +346,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(["uid"], indexNode.projections);
+        assertEqual(normalize(["uid"]), normalize(indexNode.projections));
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -362,7 +363,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(["dt"], indexNode.projections);
+        assertEqual(normalize(["dt"]), normalize(indexNode.projections));
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -376,7 +377,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(["dt", "uid"], indexNode.projections.sort());
+        assertEqual(normalize(["dt", "uid"]), normalize(indexNode.projections));
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -392,7 +393,7 @@ function BaseTestConfig () {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(["dt", "uid"], indexNode.projections.sort());
+        assertEqual(normalize(["dt", "uid"]), normalize(indexNode.projections));
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -413,7 +414,7 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(1, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -434,7 +435,7 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -454,7 +455,7 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -470,7 +471,7 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(1, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -493,7 +494,7 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -511,7 +512,7 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -529,7 +530,7 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(1, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -549,7 +550,7 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(1, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -566,7 +567,7 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual([], indexNode.projections);
+        assertEqual(normalize([]), normalize(indexNode.projections));
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -588,7 +589,7 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(["dt"], indexNode.projections);
+        assertEqual(normalize(["dt"]), normalize(indexNode.projections));
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
@@ -611,7 +612,7 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(["dt"], indexNode.projections);
+        assertEqual(normalize(["dt"]), normalize(indexNode.projections));
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];

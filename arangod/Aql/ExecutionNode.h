@@ -55,6 +55,9 @@
 #pragma once
 
 #include <memory>
+#include <span>
+#include <string>
+#include <string_view>
 #include <vector>
 #include <unordered_map>
 
@@ -117,12 +120,11 @@ enum class AsyncPrefetchEligibility {
 struct SortElement {
   Variable const* var;
   bool ascending;
-  MonitoredStringVector attributePath;
+  std::vector<std::string> attributePath;
 
-  SortElement(Variable const* v, bool asc, arangodb::ResourceMonitor& monitor);
+  SortElement(Variable const* v, bool asc);
 
-  SortElement(Variable const* v, bool asc, MonitoredStringVector const& path,
-              arangodb::ResourceMonitor& monitor);
+  SortElement(Variable const* v, bool asc, std::vector<std::string> path);
 
   /// @brief stringify a sort element. note: the output of this should match the
   /// stringification output of an AstNode for an attribute access
@@ -363,6 +365,13 @@ class ExecutionNode {
   /// replacements are { old variable id => new variable }
   virtual void replaceVariables(
       std::unordered_map<VariableId, Variable const*> const& replacements);
+
+  /// @brief replaces an attribute access in the internals of the execution
+  /// node with a simple variable access
+  virtual void replaceAttributeAccess(ExecutionNode const* self,
+                                      Variable const* searchVariable,
+                                      std::span<std::string_view> attribute,
+                                      Variable const* replaceVariable);
 
   /// @brief check equality of ExecutionNodes
   virtual bool isEqualTo(ExecutionNode const& other) const;
@@ -692,6 +701,13 @@ class EnumerateCollectionNode : public ExecutionNode,
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  /// @brief replaces an attribute access in the internals of the execution
+  /// node with a simple variable access
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
+
   /// @brief the cost of an enumerate collection node is a multiple of the cost
   /// of its unique dependency
   CostEstimate estimateCost() const override final;
@@ -713,6 +729,8 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
+
+  void setProjections(Projections projections) override;
 
  protected:
   /// @brief export to VelocyPack
@@ -885,6 +903,13 @@ class CalculationNode : public ExecutionNode {
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  /// @brief replaces an attribute access in the internals of the execution
+  /// node with a simple variable access
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;

@@ -42,20 +42,20 @@
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                        \
-  throw ::arangodb::basics::Exception::createWithParams(ADB_HERE, code, \
+#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                          \
+  throw ::arangodb::basics::Exception::createWithParams(ADB_HERE, (code), \
                                                         __VA_ARGS__)
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                \
-  throw ::arangodb::basics::Exception::createWithFormat(ADB_HERE, code, \
-                                                        format, __VA_ARGS__)
+#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                  \
+  throw ::arangodb::basics::Exception::createWithFormat(ADB_HERE, (code), \
+                                                        (format), __VA_ARGS__)
 
 /// @brief throws an arango exception with an error code and an already-built
 /// error message
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
-  throw ::arangodb::basics::Exception(code, message, ADB_HERE)
+  throw ::arangodb::basics::Exception((code), (message), ADB_HERE)
 
 namespace arangodb::futures {
 template<typename T>
