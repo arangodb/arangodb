@@ -366,6 +366,9 @@ struct OptimizerRule {
     lateMaterialiationOffsetInfoRule,
 #endif
 
+    // remove unnecessary projections
+    removeUnnecessaryProjections,
+
     // replace adjacent index nodes with a join node if the indexes qualify
     // for it.
     joinIndexNodesRule,

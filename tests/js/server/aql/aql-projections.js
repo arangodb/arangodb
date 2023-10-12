@@ -665,23 +665,25 @@ function projectionsExtractionTestSuite () {
       let two = [ 93 ];
 
       let queries = [
-        [`FOR doc IN ${cn} RETURN doc.value1`, 'persistent', ['value1'], true, one ],
-        [`FOR doc IN ${cn} RETURN doc.value2`, 'persistent', ['value2'], true, one ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value1`, 'persistent', ['value1'], true, two ],
-        [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value1`, 'persistent', ['value1', 'value2'], true, two ],
-        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value2`, 'persistent', ['value2'], true, two ],
-        [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value2`, 'persistent', ['value2'], true, two ],
-        [`FOR doc IN ${cn} FILTER doc._key == 'test93' RETURN doc.value1`, 'primary', ['value1'], false, two ],
-        [`FOR doc IN ${cn} FILTER doc._key == 'test93' RETURN doc.value2`, 'primary', ['value2'], false, two ],
+        [`FOR doc IN ${cn} RETURN doc.value1`, 'persistent', ['value1'], true, one, [] ],
+        [`FOR doc IN ${cn} RETURN doc.value2`, 'persistent', ['value2'], true, one, [] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value1`, 'persistent', ['value1'], true, two, [] ],
+        [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value1`, 'persistent', ['value1'], true, two, ['value2'] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc.value2`, 'persistent', ['value2'], true, two, [] ],
+        [`FOR doc IN ${cn} FILTER doc.value2 == 93 RETURN doc.value2`, 'persistent', ['value2'], true, two, ['value2'] ],
+        [`FOR doc IN ${cn} FILTER doc._key == 'test93' RETURN doc.value1`, 'primary', ['value1'], false, two, ['_key'] ],
+        [`FOR doc IN ${cn} FILTER doc._key == 'test93' RETURN doc.value2`, 'primary', ['value2'], false, two, ['_key'] ],
       ];
 
       queries.forEach(function(query) {
+        db._explain(query[0]);
         let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
         assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
+        assertEqual(normalize(query[5]), normalize(nodes[0].filterProjections), query);
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let results = db._query(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).toArray();
@@ -769,7 +771,30 @@ function projectionsExtractionTestSuite () {
         "RETURN doc.p.s";
       let result = AQL_EXECUTE(q, bindVars);
       assertEqual(result.json, [1234]);
-    }
+    },
+
+    testRemoveUnnecessaryProjectionsIndex : function () {
+      // While the index is created on [p.s, p.k], the query filters by p.k but only extracts p.s.
+      c.ensureIndex({ type: "persistent", fields: ["x", "y"], storedValues: ["z", "w"]});
+      let q = `for doc1 in ${cn} filter doc1.x == 5 AND doc1.z == 8 return doc1.w`;
+      db._explain(q);
+      let plan = AQL_EXPLAIN(q).plan;
+      const index = plan.nodes[1];
+      assertEqual(index.type, "IndexNode");
+      assertEqual(normalize(index.projections), normalize(["w"]));
+      assertEqual(normalize(index.filterProjections), normalize(["z"]));
+    },
+
+    testRemoveUnnecessaryProjectionsCollection : function () {
+      // While the index is created on [p.s, p.k], the query filters by p.k but only extracts p.s.
+      let q = `for doc1 in ${cn} filter doc1.x == 5 AND doc1.z == 8 return doc1.w`;
+      db._explain(q);
+      let plan = AQL_EXPLAIN(q).plan;
+      const ec = plan.nodes[1];
+      assertEqual(ec.type, "EnumerateCollectionNode");
+      assertEqual(normalize(ec.projections), normalize(["w"]));
+      assertEqual(normalize(ec.filterProjections), normalize(["x", "z"]));
+    },
   };
 }
 

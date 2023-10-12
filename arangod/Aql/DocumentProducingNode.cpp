@@ -32,6 +32,8 @@
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "OptimizerUtils.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -173,4 +175,30 @@ void DocumentProducingNode::setFilterProjections(aql::Projections projections) {
 
 bool DocumentProducingNode::doCount() const noexcept {
   return _count && !hasFilter();
+}
+
+void DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
+  _filterProjections.clear();
+  _projections.clear();
+  LOG_DEVEL << __PRETTY_FUNCTION__;
+  containers::FlatHashSet<AttributeNamePath> attributes;
+  if (hasFilter()) {
+    if (Ast::getReferencedAttributesRecursive(
+            this->filter()->node(), this->outVariable(),
+            /*expectedAttribute*/ "", attributes,
+            plan->getAst()->query().resourceMonitor())) {
+      _filterProjections = aql::Projections{std::move(attributes)};
+      LOG_DEVEL << "found filter projections: " << _filterProjections;
+    }
+  }
+
+  attributes.clear();
+  if (utils::findProjections(dynamic_cast<ExecutionNode*>(this), outVariable(),
+                             /*expectedAttribute*/ "",
+                             /*excludeStartNodeFilterCondition*/ true,
+                             attributes)) {
+    _projections = Projections(std::move(attributes));
+
+    LOG_DEVEL << "found projections: " << _projections;
+  }
 }

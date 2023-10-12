@@ -109,6 +109,8 @@ class DocumentProducingNode {
   // arbitrary default value for the maximum number of projected attributes
   static constexpr size_t kMaxProjections = 5;
 
+  virtual void recalculateProjections(ExecutionPlan* plan);
+
  protected:
   Variable const* _outVariable;
 

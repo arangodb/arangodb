@@ -167,6 +167,8 @@ class IndexNode : public ExecutionNode,
   // prepare projections for usage with an index
   void prepareProjections();
 
+  void recalculateProjections(ExecutionPlan*) override;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,

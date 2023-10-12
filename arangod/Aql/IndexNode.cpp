@@ -578,6 +578,8 @@ transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {
 }
 
 void IndexNode::prepareProjections() {
+  recalculateProjections(plan());
+#if 0
   // by default, we do not use projections for the filter condition
   _filterProjections.clear();
 
@@ -607,7 +609,9 @@ void IndexNode::prepareProjections() {
 
   if (coversProjections) {
     _projections.setCoveringContext(collection()->id(), idx);
-  } else if (this->hasFilter()) {
+  }
+
+  if (this->hasFilter()) {
     // if we have a covering index and a post-filter condition,
     // extract which projections we will need just to execute
     // the filter condition
@@ -618,8 +622,11 @@ void IndexNode::prepareProjections() {
             /*expectedAttribute*/ "", attributes,
             plan()->getAst()->query().resourceMonitor())) {
       if (!attributes.empty()) {
+        LOG_DEVEL << "index filter referenced the following attributes: "
+                  << attributes;
         Projections filterProjections(std::move(attributes));
         if (idx->covers(filterProjections)) {
+          LOG_DEVEL << "and the index covers it: " << filterProjections;
           _filterProjections = std::move(filterProjections);
           _filterProjections.setCoveringContext(collection()->id(), idx);
 
@@ -630,11 +637,38 @@ void IndexNode::prepareProjections() {
                   this, outVariable(), /*expectedAttribute*/ "",
                   /*excludeStartNodeFilterCondition*/ true, attributes)) {
             _projections = Projections(std::move(attributes));
+            LOG_DEVEL << "reduced projections to " << _projections;
+            LOG_DEVEL << "filter projections are  " << _filterProjections;
             // note: idx->covers(...) modifies the projections object!
             idx->covers(_projections);
+          } else {
+            LOG_DEVEL << "no projections are filter only projections";
           }
         }
       }
+    }
+  }
+#endif
+}
+
+void IndexNode::recalculateProjections(ExecutionPlan* plan) {
+  // by default, we do not use projections for the filter condition
+  _filterProjections.clear();
+
+  auto idx = getSingleIndex();
+  if (idx == nullptr) {
+    return;
+  }
+
+  DocumentProducingNode::recalculateProjections(plan);
+
+  if (idx->covers(_projections)) {
+    _projections.setCoveringContext(collection()->id(), idx);
+  }
+
+  if (hasFilter()) {
+    if (idx->covers(_filterProjections)) {
+      _filterProjections.setCoveringContext(collection()->id(), idx);
     }
   }
 }
