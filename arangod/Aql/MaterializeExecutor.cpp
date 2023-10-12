@@ -64,7 +64,7 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     auto result = _collection->lookup(
         &_trx, id,
         [&, &inputRef = input](LocalDocumentId, aql::DocumentData&& data,
-                            VPackSlice doc) {
+                               VPackSlice doc) {
           TRI_ASSERT(inputRef.isInitialized());
           if (data) {
             output.moveValueInto(docOutReg, inputRef, &data);
