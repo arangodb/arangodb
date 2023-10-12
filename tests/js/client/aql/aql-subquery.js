@@ -36,14 +36,24 @@ const findExecutionNodes = helper.findExecutionNodes;
 const { db } = require("@arangodb");
 const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlSubqueryTestSuite () {
+  const dbName = "TestDatabase";
 
   return {
+
+    setUpAll: function () {
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+    },
+
+    tearDownAll : function () {
+      db._useDatabase('_system');
+      db._dropDatabase(dbName);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test subquery evaluation
@@ -182,10 +192,12 @@ function ahuacatlSubqueryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryOutVariableName : function () {
+      db._useDatabase("_system");
       const explainResult = db._createStatement("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable").explain();
       const subqueryNode = findExecutionNodes(explainResult, "SubqueryStartNode")[0];
 
       assertEqual(subqueryNode.subqueryOutVariable.name, "theLetVariable");
+      db._useDatabase(dbName);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,11 +205,13 @@ function ahuacatlSubqueryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSpliceSubqueryOutVariableName : function () {
+      db._useDatabase("_system");
       const explainResult = db._createStatement("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable").explain();
 
       const subqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode")[0];
 
       assertEqual(subqueryEndNode.outVariable.name, "theLetVariable");
+      db._useDatabase(dbName);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -459,7 +473,7 @@ function ahuacatlSubqueryTestSuite () {
     },
 
     testOneShardDBAndSpliceSubquery: function () {
-      const dbName = "SingleShardDB";
+      const SingleShardDBName = "SingleShardDB";
       const docs = [];
       for (let i = 0; i < 100; ++i) {
         docs.push({foo: i});
@@ -475,8 +489,10 @@ function ahuacatlSubqueryTestSuite () {
           RETURN {x, subquery}
       `;
       try {
-        db._createDatabase(dbName, {sharding: "single"});
-        db._useDatabase(dbName);
+        db._useDatabase("_system");
+        db._createDatabase(SingleShardDBName, {sharding: "single"});
+        db._useDatabase(SingleShardDBName);
+
         const a = db._create("a");
         const b = db._create("b");
         a.save(docs);
@@ -496,9 +512,11 @@ function ahuacatlSubqueryTestSuite () {
           assertEqual(result[i].subquery.length, 1);
           assertEqual(result[i].subquery[0].foo, i);
         }
+      } catch (e) {
       } finally {
         db._useDatabase("_system");
-        db._dropDatabase(dbName);
+        db._dropDatabase(SingleShardDBName);
+        db._useDatabase(dbName);
       }
     }
   }; 
