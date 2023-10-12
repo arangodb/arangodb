@@ -815,12 +815,10 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
   auto t = type();
   switch (t) {
     case VPACK_INLINE_INT64:
+      // We handle it separatly because all small int/uint converted to int64
+      // But we want to use vpack compaction for them
       builder.add(VPackValue{absl::little_endian::ToHost(
           _data.longNumberMeta.data.intLittleEndian.val)});
-      break;
-    case VPACK_INLINE_UINT64:
-      builder.add(VPackValue{absl::little_endian::ToHost(
-          _data.longNumberMeta.data.uintLittleEndian.val)});
       break;
     case VPACK_SLICE_POINTER:
       if (!resolveExternals && isManagedDocument()) {
@@ -829,6 +827,7 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
       }
       [[fallthrough]];
     case VPACK_INLINE:
+    case VPACK_INLINE_UINT64:
     case VPACK_INLINE_DOUBLE:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_STRING:
