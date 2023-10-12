@@ -3645,6 +3645,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                 VPackValue(stats->migrateTasksDuration));
     builder.add("cache.free-memory-tasks-duration-total",
                 VPackValue(stats->freeMemoryTasksDuration));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // only here for debugging. the value is not exposed by
+    // default to make calls to the `table` function more lightweight,
+    // and because we would need to put a metrics description into
+    // Documentation/Metrics otherwise.
+    builder.add("cache.table-calls", VPackValue(stats->tableCalls));
+#endif
 
     // edge cache compression ratio
     double compressionRatio = 0.0;

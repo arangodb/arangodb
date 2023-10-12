@@ -99,6 +99,9 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _freeMemoryTasks(0),
       _migrateTasksDuration(0),
       _freeMemoryTasksDuration(0),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _tableCalls(0),
+#endif
       _schedulerPost(std::move(schedulerPost)),
       _outstandingTasks(0),
       _rebalancingTasks(0),
@@ -339,6 +342,9 @@ std::optional<Manager::MemoryStats> Manager::memoryStats(
     result.freeMemoryTasks = _freeMemoryTasks;
     result.migrateTasksDuration = _migrateTasksDuration;
     result.freeMemoryTasksDuration = _freeMemoryTasksDuration;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    result.tableCalls = _tableCalls;
+#endif
     return result;
   }
 
@@ -774,6 +780,12 @@ void Manager::trackFreeMemoryTaskDuration(std::uint64_t duration) noexcept {
   SpinLocker guard(SpinLocker::Mode::Write, _lock);
   _freeMemoryTasksDuration += duration;
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void Manager::trackTableCall() noexcept {
+  _tableCalls.fetch_add(1, std::memory_order_relaxed);
+}
+#endif
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void Manager::freeUnusedTablesForTesting() {
