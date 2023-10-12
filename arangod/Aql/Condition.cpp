@@ -659,6 +659,27 @@ std::unique_ptr<Condition> Condition::clone() const {
   return copy;
 }
 
+/// @brief replace variables in the condition with other variables
+void Condition::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_root == nullptr) {
+    return;
+  }
+
+  _root = Ast::replaceVariables(_root, replacements);
+}
+
+void Condition::replaceAttributeAccess(Variable const* searchVariable,
+                                       std::span<std::string_view> attribute,
+                                       Variable const* replaceVariable) {
+  if (_root == nullptr) {
+    return;
+  }
+
+  _root = Ast::replaceAttributeAccess(_ast, _root, searchVariable, attribute,
+                                      replaceVariable);
+}
+
 /// @brief add a sub-condition to the condition
 /// the sub-condition will be AND-combined with the existing condition(s)
 void Condition::andCombine(AstNode const* node) {
