@@ -125,6 +125,10 @@ AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
       return _accessor->get(*resolver, ctx, mustDestroy);
     }
 
+    case EXTERNAL_VALUE_REFERENCE: {
+      return AqlValue(ctx->getExternalValueReference(_externalValueIndex));
+    }
+
     case UNPROCESSED: {
       // fall-through to exception
     }
@@ -189,6 +193,7 @@ void Expression::freeInternals() noexcept {
       break;
     }
 
+    case EXTERNAL_VALUE_REFERENCE:
     case SIMPLE:
     case UNPROCESSED: {
       // nothing to do
@@ -1998,6 +2003,8 @@ std::string Expression::typeString() {
       return "simple";
     case ATTRIBUTE_ACCESS:
       return "attribute";
+    case EXTERNAL_VALUE_REFERENCE:
+      return "external-value-reference";
     case UNPROCESSED: {
     }
   }

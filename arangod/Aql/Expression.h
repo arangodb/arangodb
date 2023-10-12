@@ -65,7 +65,8 @@ class Expression {
     UNPROCESSED,
     JSON,
     SIMPLE,
-    ATTRIBUTE_ACCESS
+    ATTRIBUTE_ACCESS,
+    EXTERNAL_VALUE_REFERENCE,
   };
 
   Expression(Expression const&) = delete;
@@ -309,6 +310,7 @@ class Expression {
   union {
     uint8_t* _data;
     AttributeAccessor* _accessor;
+    std::uint64_t _externalValueIndex;
   };
 
   // we keep the amount of used bytes by the buffer stored in "_data" here.

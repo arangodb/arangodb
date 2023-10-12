@@ -24,9 +24,12 @@
 #pragma once
 
 #include "Basics/ErrorCode.h"
+#include "velocypack/Slice.h"
 
 #include <string_view>
 #include <unicode/regex.h>
+#include <span>
+#include <cstdint>
 
 struct TRI_vocbase_t;
 
@@ -37,7 +40,6 @@ class Methods;
 }
 namespace velocypack {
 struct Options;
-class Slice;
 }  // namespace velocypack
 
 namespace aql {
@@ -78,6 +80,16 @@ class ExpressionContext {
 
   // unregister a temporary variable from the ExpressionContext.
   virtual void clearVariable(Variable const* variable) noexcept = 0;
+
+  velocypack::Slice getExternalValueReference(uint64_t idx) {
+    // TRI_ASSERT(idx < _externalValueReferences.size())
+    //     << "idx = " << idx << " size() = " <<
+    //     _externalValueReferences.size();
+    return _externalValueReferences[idx];
+  }
+
+ protected:
+  std::span<velocypack::Slice> _externalValueReferences;
 };
 }  // namespace aql
 }  // namespace arangodb
