@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.19.4.
+
 * Add cluster-internal connectivity checks.
   This makes Coordinators and DB-Servers in a cluster periodically send check
   requests to each other, in order to check if all servers can connect to
