@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for produces result
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -30,6 +28,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations"] } };
 
 function optimizerIndexOnlyPrimaryTestSuite () {
@@ -63,7 +62,7 @@ function optimizerIndexOnlyPrimaryTestSuite () {
         let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
-        assertEqual([], nodes[0].projections, query);
+        assertEqual(normalize([]), normalize(nodes[0].projections), query);
         assertTrue(nodes[0].producesResult);
         assertFalse(nodes[0].indexCoversProjections);
       });
@@ -84,7 +83,7 @@ function optimizerIndexOnlyPrimaryTestSuite () {
         let plan = AQL_EXPLAIN(query[0], {}, disableSingleDocOp).plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
-        assertEqual(query[1], nodes[0].projections.sort(), query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertFalse(nodes[0].indexCoversProjections);
       });
     },
@@ -98,7 +97,7 @@ function optimizerIndexOnlyPrimaryTestSuite () {
       let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
-      assertEqual(["_key"], nodes[0].projections);
+      assertEqual(normalize(["_key"]), normalize(nodes[0].projections));
       assertTrue(nodes[0].indexCoversProjections);
     },
     
@@ -110,7 +109,7 @@ function optimizerIndexOnlyPrimaryTestSuite () {
       let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
-      assertEqual(["_key"], nodes[0].projections);
+      assertEqual(normalize(["_key"]), normalize(nodes[0].projections));
       assertTrue(nodes[0].indexCoversProjections);
     }
 
@@ -155,7 +154,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
         let plan = AQL_EXPLAIN(query).plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
-        assertEqual([], nodes[0].projections, query);
+        assertEqual(normalize([]), normalize(nodes[0].projections), query);
         assertTrue(nodes[0].producesResult);
         assertFalse(nodes[0].indexCoversProjections);
       });
@@ -184,7 +183,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
-        assertEqual(query[1], nodes[0].projections.sort(), query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertFalse(nodes[0].indexCoversProjections);
       });
     },
@@ -202,7 +201,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
-        assertEqual(query[1], nodes[0].projections);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertTrue(nodes[0].indexCoversProjections);
       });
     },
@@ -213,7 +212,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
-      assertEqual(["_from"], nodes[0].projections);
+      assertEqual(normalize(["_from"]), normalize(nodes[0].projections));
       assertTrue(nodes[0].indexCoversProjections);
     },
     
@@ -223,7 +222,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
-      assertEqual(["_to"], nodes[0].projections);
+      assertEqual(normalize(["_to"]), normalize(nodes[0].projections));
       assertTrue(nodes[0].indexCoversProjections);
     },
     
@@ -234,7 +233,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
-      assertEqual(["_to"], nodes[0].projections);
+      assertEqual(normalize(["_to"]), normalize(nodes[0].projections));
       assertTrue(nodes[0].indexCoversProjections);
     }
 
@@ -293,7 +292,7 @@ function optimizerIndexOnlyVPackTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
         assertEqual(1, nodes.length);
-        assertEqual(query[1], nodes[0].projections.sort());
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections));
         assertTrue(nodes[0].producesResult);
       });
     },
@@ -333,7 +332,7 @@ function optimizerIndexOnlyVPackTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
-        assertEqual(query[1], nodes[0].projections.sort());
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections));
         assertFalse(nodes[0].indexCoversProjections);
       });
     },
@@ -348,7 +347,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
-      assertEqual(["a"], nodes[0].projections);
+      assertEqual(normalize(["a"]), normalize(nodes[0].projections));
       assertTrue(nodes[0].indexCoversProjections);
     },
     
@@ -362,7 +361,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
-      assertEqual(["a"], nodes[0].projections);
+      assertEqual(normalize(["a"]), normalize(nodes[0].projections));
       assertTrue(nodes[0].indexCoversProjections);
     },
     
@@ -376,7 +375,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
-      assertEqual(["b"], nodes[0].projections);
+      assertEqual(normalize(["b"]), normalize(nodes[0].projections));
       assertTrue(nodes[0].indexCoversProjections);
     },
     
@@ -400,7 +399,7 @@ function optimizerIndexOnlyVPackTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
-        assertEqual(query[1], nodes[0].projections.sort(), query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertTrue(nodes[0].indexCoversProjections);
       });
     },
@@ -425,7 +424,7 @@ function optimizerIndexOnlyVPackTestSuite () {
         let plan = AQL_EXPLAIN(query[0]).plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
-        assertEqual(query[1], nodes[0].projections.sort(), query);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
         assertTrue(nodes[0].indexCoversProjections);
       });
     }

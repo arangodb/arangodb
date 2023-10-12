@@ -261,8 +261,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
   for (VPackSlice it : VPackArrayIterator(elementsSlice)) {
     bool ascending = it.get("ascending").getBoolean();
     Variable* v = Variable::varFromVPack(plan->getAst(), it, "inVariable");
-    elements.emplace_back(
-        SortElement{v, ascending, plan->getAst()->query().resourceMonitor()});
+    elements.emplace_back(v, ascending);
     // Is there an attribute path?
     VPackSlice path = it.get("path");
     if (path.isArray()) {
@@ -270,8 +269,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
       auto& element = elements.back();
       for (auto const& it2 : VPackArrayIterator(path)) {
         if (it2.isString()) {
-          element.attributePath.emplace_back(MonitoredString{
-              it2.copyString(), plan->getAst()->query().resourceMonitor()});
+          element.attributePath.emplace_back(it2.copyString());
         }
       }
     }
@@ -729,6 +727,13 @@ void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
 /// replacements are { old variable id => new variable }
 void ExecutionNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& /*replacements*/) {
+  // default implementation does nothing
+}
+
+void ExecutionNode::replaceAttributeAccess(
+    ExecutionNode const* /*self*/, Variable const* /*searchVariable*/,
+    std::span<std::string_view> /*attribute*/,
+    Variable const* /*replaceVariable*/) {
   // default implementation does nothing
 }
 
@@ -1751,10 +1756,27 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     }
   }
 
-  auto const produceResult =
-      this->isVarUsedLater(_outVariable) || this->_filter != nullptr;
-  auto outputRegister = variableToRegisterId(_outVariable);
-  auto registerInfos = createRegisterInfos({}, RegIdSet{outputRegister});
+  auto const produceResult = this->isVarUsedLater(_outVariable) ||
+                             this->_filter != nullptr || !projections().empty();
+  RegisterId outputRegister = variableToRegisterId(_outVariable);
+
+  auto outputRegisters = RegIdSet{};
+  outputRegisters.emplace(outputRegister);
+#if 0
+  if (projections().empty()) {
+    outputRegisters.emplace(outputRegister);
+  } else {
+    auto const& p = projections();
+    for (size_t i = 0; i < p.size(); ++i) {
+      Variable const* var = p[i].variable;
+      TRI_ASSERT(var != nullptr);
+      auto regId = variableToRegisterId(var);
+      filterVarsToRegs.emplace_back(var->id, regId);
+      outputRegisters.emplace(regId);
+    }
+  }
+#endif
+  auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
   auto executorInfos = EnumerateCollectionExecutorInfos(
       outputRegister, engine.getQuery(), collection(), _outVariable,
       produceResult, this->_filter.get(), this->projections(),
@@ -1777,7 +1799,6 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateCollectionNode>(
       plan, _id, collection(), outVariable, _random, _hint);
 
-  c->_projections = _projections;
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
 
@@ -1789,6 +1810,15 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 void EnumerateCollectionNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   DocumentProducingNode::replaceVariables(replacements);
+}
+
+void EnumerateCollectionNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+  if (hasFilter() && self != this) {
+    filter()->replaceAttributeAccess(searchVariable, attribute,
+                                     replaceVariable);
+  }
 }
 
 void EnumerateCollectionNode::setRandom() { _random = true; }
@@ -1805,12 +1835,50 @@ void EnumerateCollectionNode::getVariablesUsedHere(VarSet& vars) const {
     // planning's assumption is that all variables that are used in a
     // node must also be used later.
     vars.erase(outVariable());
+
+    auto const& p = _projections;
+    for (size_t i = 0; i < p.size(); ++i) {
+      if (p[i].variable == nullptr) {
+        continue;
+      }
+      vars.erase(p[i].variable);
+    }
   }
 }
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere()
     const {
-  return std::vector<Variable const*>{_outVariable};
+  std::vector<Variable const*> result;
+  result.push_back(_outVariable);
+#if 0
+  // determine number of variables first
+  size_t n = 0;
+  auto& p = _projections;
+  for (size_t i = 0; i < p.size(); ++i) {
+    TRI_ASSERT(p[i].variable != nullptr);
+    ++n;
+  }
+
+  std::vector<Variable const*> result;
+  if (n == 0) {
+    result.push_back(_outVariable);
+  } else {
+    result.reserve(n + 1);
+    result.push_back(_outVariable);
+    for (size_t i = 0; i < p.size(); ++i) {
+      if (p[i].variable == nullptr) {
+        continue;
+      }
+      result.push_back(p[i].variable);
+    }
+    TRI_ASSERT(result.size() == n + 1);
+  }
+#endif
+  return result;
+}
+
+void EnumerateCollectionNode::setProjections(Projections projections) {
+  DocumentProducingNode::setProjections(std::move(projections));
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
@@ -2226,7 +2294,7 @@ void CalculationNode::replaceVariables(
   // check if the calculation uses any of the variables that we want to
   // replace
   for (auto const& it : variables) {
-    if (replacements.find(it->id) != replacements.end()) {
+    if (replacements.contains(it->id)) {
       // calculation uses a to-be-replaced variable
       expression()->replaceVariables(replacements);
       return;
@@ -2234,8 +2302,15 @@ void CalculationNode::replaceVariables(
   }
 }
 
+void CalculationNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+  expression()->replaceAttributeAccess(searchVariable, attribute,
+                                       replaceVariable);
+}
+
 void CalculationNode::getVariablesUsedHere(VarSet& vars) const {
-  _expression->variables(vars);
+  expression()->variables(vars);
 }
 
 std::vector<Variable const*> CalculationNode::getVariablesSetHere() const {
@@ -2745,18 +2820,12 @@ ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 size_t NoResultsNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
-SortElement::SortElement(Variable const* v, bool asc,
-                         arangodb::ResourceMonitor& resourceMonitor)
-    : var(v),
-      ascending(asc),
-      attributePath(
-          ResourceUsageAllocator<MonitoredStringVector, ResourceMonitor>{
-              resourceMonitor}) {}
+SortElement::SortElement(Variable const* v, bool asc)
+    : var(v), ascending(asc) {}
 
 SortElement::SortElement(Variable const* v, bool asc,
-                         MonitoredStringVector const& path,
-                         arangodb::ResourceMonitor& resourceMonitor)
-    : var(v), ascending(asc), attributePath(path, resourceMonitor) {}
+                         std::vector<std::string> path)
+    : var(v), ascending(asc), attributePath(std::move(path)) {}
 
 std::string SortElement::toString() const {
   std::string result("$");

@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for sparse index usage
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -30,6 +28,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 
 function optimizerSparseTestSuite () {
   let c;
@@ -423,7 +422,7 @@ function optimizerSparseTestSuite () {
       assertEqual([], collections[0].projections);
       assertEqual(c.name(), collections[1].collection);
       assertEqual("doc2", collections[1].outVariable.name);
-      assertEqual(["value1"], collections[1].projections);
+      assertEqual(normalize(["value1"]), normalize(collections[1].projections));
     },
     
     testSparseJoinFuncNeNull : function () {
@@ -446,7 +445,7 @@ function optimizerSparseTestSuite () {
       assertEqual(1, collections.length);
       assertEqual(c.name(), collections[0].collection);
       assertEqual("doc2", collections[0].outVariable.name);
-      assertEqual(["value1"], collections[0].projections);
+      assertEqual(normalize(["value1"]), normalize(collections[0].projections));
     },
     
     testSparseJoinFuncNeNullNeNull : function () {
@@ -483,7 +482,7 @@ function optimizerSparseTestSuite () {
       assertEqual(1, collections.length);
       assertEqual(c.name(), collections[0].collection);
       assertEqual("doc2", collections[0].outVariable.name);
-      assertEqual(["value1"], collections[0].projections);
+      assertEqual(normalize(["value1"]), normalize(collections[0].projections));
     },
     
     testSparseJoinFuncGtNullGtNull : function () {

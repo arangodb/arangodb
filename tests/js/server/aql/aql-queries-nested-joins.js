@@ -26,6 +26,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 
 function nestedJoinsTestSuite () {
   const cn = "UnitTestsCollection";
@@ -66,7 +67,7 @@ function nestedJoinsTestSuite () {
         let nodes = AQL_EXPLAIN(q).plan.nodes.filter((node) => node.type === 'IndexNode');
         assertEqual(1, nodes.length);
         assertEqual(1, nodes[0].indexes.length);
-        assertEqual(["value"], nodes[0].projections);
+        assertEqual(normalize(["value"]), normalize(nodes[0].projections));
 
         let results = db._query(q).toArray();
         assertEqual(max, results.length);
@@ -81,8 +82,8 @@ function nestedJoinsTestSuite () {
         assertEqual(2, nodes.length);
         assertEqual(1, nodes[0].indexes.length);
         assertEqual(1, nodes[1].indexes.length);
-        assertEqual([], nodes[0].projections);
-        assertEqual(["value"], nodes[1].projections);
+        assertEqual(normalize([]), normalize(nodes[0].projections));
+        assertEqual(normalize(["value"]), normalize(nodes[1].projections));
 
         let results = db._query(q).toArray();
         assertEqual(1, results.length);
@@ -97,8 +98,8 @@ function nestedJoinsTestSuite () {
         assertEqual(2, nodes.length);
         assertEqual(1, nodes[0].indexes.length);
         assertEqual(1, nodes[1].indexes.length);
-        assertEqual(["value"], nodes[0].projections);
-        assertEqual(["value"], nodes[1].projections);
+        assertEqual(normalize(["value"]), normalize(nodes[0].projections));
+        assertEqual(normalize(["value"]), normalize(nodes[1].projections));
 
         let results = db._query(q).toArray();
         assertEqual(max, results.length);
@@ -113,8 +114,8 @@ function nestedJoinsTestSuite () {
         assertEqual(2, nodes.length);
         assertEqual(1, nodes[0].indexes.length);
         assertEqual(1, nodes[1].indexes.length);
-        assertEqual([], nodes[0].projections);
-        assertEqual(["value"], nodes[1].projections);
+        assertEqual(normalize([]), normalize(nodes[0].projections));
+        assertEqual(normalize(["value"]), normalize(nodes[1].projections));
 
         let results = db._query(q).toArray();
         assertEqual(1, results.length);
@@ -129,8 +130,8 @@ function nestedJoinsTestSuite () {
         assertEqual(2, nodes.length);
         assertEqual(1, nodes[0].indexes.length);
         assertEqual(1, nodes[1].indexes.length);
-        assertEqual(["value"], nodes[0].projections);
-        assertEqual(["value"], nodes[1].projections);
+        assertEqual(normalize(["value"]), normalize(nodes[0].projections));
+        assertEqual(normalize(["value"]), normalize(nodes[1].projections));
 
         let results = db._query(q).toArray();
         assertEqual(1, results.length);

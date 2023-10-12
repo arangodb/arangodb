@@ -498,7 +498,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
 }
 
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
-                       MonitoredStringVector const& names, bool& mustDestroy,
+                       std::vector<std::string> const& names, bool& mustDestroy,
                        bool doCopy) const {
   mustDestroy = false;
   if (names.empty()) {

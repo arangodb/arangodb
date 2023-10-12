@@ -31,6 +31,21 @@ const errors = internal.errors;
   
 const cn = "UnitTestsCollectionIdx";
 
+const normalize = (p) => {
+  return (p || []).map((p) => {
+    if (Array.isArray(p)) {
+      return p;
+    }
+    if (typeof p === 'string') {
+      return [p];
+    }
+    if (p.hasOwnProperty("path")) {
+      return p.path;
+    }
+    return [];
+  }).sort();
+};
+
 function indexStoredValuesCreateSuite() {
   'use strict';
   let c;
@@ -340,7 +355,7 @@ function indexStoredValuesPlanSuite() {
       const query =" FOR doc IN " + cn + " RETURN doc.value2"; 
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-      assertEqual(["value2"], nodes[1].projections);
+      assertEqual(normalize(["value2"]), normalize(nodes[1].projections));
       assertTrue(nodes[1].indexCoversProjections);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
     },
@@ -351,7 +366,7 @@ function indexStoredValuesPlanSuite() {
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
-      assertEqual(["value1", "value2"], nodes[1].projections);
+      assertEqual(normalize(["value1", "value2"]), normalize(nodes[1].projections));
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
     },
     
@@ -361,7 +376,7 @@ function indexStoredValuesPlanSuite() {
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
-      assertEqual(["value1", "value2"], nodes[1].projections);
+      assertEqual(normalize(["value1", "value2"]), normalize(nodes[1].projections));
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
     },
     
@@ -371,7 +386,7 @@ function indexStoredValuesPlanSuite() {
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertFalse(nodes[1].indexCoversProjections);
-      assertEqual([], nodes[1].projections);
+      assertEqual(normalize([]), normalize(nodes[1].projections));
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertEqual(1, nodes.filter((n) => n.type === 'MaterializeNode').length);
     },
@@ -382,7 +397,7 @@ function indexStoredValuesPlanSuite() {
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertFalse(nodes[1].indexCoversProjections);
-      assertEqual([], nodes[1].projections);
+      assertEqual(normalize([]), normalize(nodes[1].projections));
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertEqual(1, nodes.filter((n) => n.type === 'MaterializeNode').length);
     },
@@ -395,7 +410,7 @@ function indexStoredValuesPlanSuite() {
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
-      assertEqual(["value1", "value2"], nodes[1].projections);
+      assertEqual(normalize(["value1", "value2"]), normalize(nodes[1].projections));
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
     },
     
@@ -687,7 +702,7 @@ function indexStoredValuesResultsSuite() {
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
-      assertEqual([["value", "sub1"], ["value", "sub2"], ["value", "sub3"], ["value", "sub4"]], nodes[1].projections.sort());
+      assertEqual(normalize([["value", "sub1"], ["value", "sub2"], ["value", "sub3"], ["value", "sub4"]]), normalize(nodes[1].projections));
       
       for (let i = 0; i < 10; ++i) {
         let result = db._query(query, { value: i }).toArray();
@@ -711,7 +726,7 @@ function indexStoredValuesResultsSuite() {
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
-      assertEqual([["value", "sub1"], ["value", "sub2"], ["value", "sub3"], ["value", "sub4"]], nodes[1].projections.sort());
+      assertEqual(normalize([["value", "sub1"], ["value", "sub2"], ["value", "sub3"], ["value", "sub4"]]), normalize(nodes[1].projections));
       
       for (let i = 0; i < 10; ++i) {
         let result = db._query(query, { value: i }).toArray();
@@ -735,7 +750,7 @@ function indexStoredValuesResultsSuite() {
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
-      assertEqual([["value", "a"], ["value", "sub1", "a"], ["value", "sub1", "sub2", "sub3"]], nodes[1].projections);
+      assertEqual(normalize([["value", "a"], ["value", "sub1", "a"], ["value", "sub1", "sub2", "sub3"]]), normalize(nodes[1].projections));
       
       for (let i = 0; i < 10; ++i) {
         let result = db._query(query, { value: i }).toArray();
