@@ -600,7 +600,9 @@
 
       // refactor this
       if (string === 'JSON') {
+        const editorInstance = ace.edit('outputEditor' + count);
         $('#outputEditor' + count).show();
+        editorInstance.renderer.updateFull();
 
         $('#outputGraph' + count).hide();
         $('#outputTable' + count).hide();
