@@ -413,7 +413,8 @@ void ShardingInfo::replicationFactor(size_t replicationFactor) {
 }
 
 size_t ShardingInfo::writeConcern() const noexcept {
-  TRI_ASSERT(isSatellite() || _writeConcern <= _replicationFactor);
+  TRI_ASSERT(isSatellite() || !ServerState::instance()->isCoordinator() ||
+             _writeConcern <= _replicationFactor);
   return _writeConcern;
 }
 
