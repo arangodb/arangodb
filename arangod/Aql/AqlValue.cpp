@@ -25,7 +25,6 @@
 
 #include "Aql/Arithmetic.h"
 #include "Aql/Range.h"
-#include "Basics/Endian.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
