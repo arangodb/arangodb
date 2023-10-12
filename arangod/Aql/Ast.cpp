@@ -2254,7 +2254,7 @@ AstNode* Ast::replaceAttributeAccess(Ast* ast, AstNode* node,
       return origNode;
     }
     for (size_t i = 0; i < attribute.size(); ++i) {
-      if (attributePath[i] != attribute[i]) {
+      if (attributePath[i] != attribute[attribute.size() - i - 1]) {
         // different attribute
         return origNode;
       }

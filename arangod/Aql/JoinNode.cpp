@@ -250,6 +250,19 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
         auto regId = variableToRegisterId(var);
         filter.filterVarsToRegs.emplace_back(var->id, regId);
       }
+
+      for (auto const& p : filter.projections.projections()) {
+        auto const& path = p.path.get();
+        auto var = infos.query->ast()->variables()->createTemporaryVariable();
+        std::vector<std::string_view> pathView;
+        std::transform(
+            path.begin(), path.begin() + p.coveringIndexCutoff,
+            std::back_inserter(pathView),
+            [](std::string const& str) -> std::string_view { return str; });
+        filter.expression->replaceAttributeAccess(filter.documentVariable,
+                                                  pathView, var);
+        filter.filterProjectionVars.push_back(var);
+      }
     }
   }
 
