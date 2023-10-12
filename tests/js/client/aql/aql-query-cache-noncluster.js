@@ -63,11 +63,12 @@ function ahuacatlQueryCacheTestSuite () {
 
     setUp : function () {
       let command = `
-        let cacheProperties = query_cache_properties();
+        let cacheProperties = AQL_QUERY_CACHE_PROPERTIES();
         AQL_QUERY_CACHE_INVALIDATE();
         return cacheProperties;
       `;
       cacheProperties = arango.POST("/_admin/execute", command);
+      print("setUp = ", cacheProperties);
 
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
@@ -91,7 +92,7 @@ function ahuacatlQueryCacheTestSuite () {
         AQL_QUERY_CACHE_PROPERTIES(${JSON.stringify(cacheProperties)});
         AQL_QUERY_CACHE_INVALIDATE();
       `;
-      arango.POST("/_admin/execute", command);
+      print("tearDown = ", arango.POST("/_admin/execute", command));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1015,7 +1016,7 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
 
     setUp: function () {
       let command = `
-        let cacheProperties = query_cache_properties();
+        let cacheProperties = AQL_QUERY_CACHE_PROPERTIES();
         AQL_QUERY_CACHE_INVALIDATE();
         return cacheProperties;
       `;
