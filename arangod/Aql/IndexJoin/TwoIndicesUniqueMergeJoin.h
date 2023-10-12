@@ -28,6 +28,8 @@
 
 namespace arangodb::aql {
 
+constexpr size_t FIXED_INDEX_SIZE_VAR = 2;
+
 struct DefaultCmp {
   template<typename U, typename V>
   auto operator()(U&& left, V&& right) const {
@@ -60,72 +62,36 @@ struct TwoIndicesUniqueMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
     IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
                     std::span<SliceType> position,
                     std::span<SliceType> projections, DocIdType& docId);
-    void seekTo(std::span<SliceType> target);
     bool next();
     void reset();
   };
 
   struct IndexStreamCompare {
-    static std::weak_ordering cmp(IndexStreamData const& left,
-                                  IndexStreamData const& right);
     static std::weak_ordering cmp(std::span<SliceType> left,
                                   std::span<SliceType> right);
 
     bool operator()(IndexStreamData* left, IndexStreamData* right) const;
   };
 
-  struct IndexMinHeap
-      : std::priority_queue<IndexStreamData*, std::vector<IndexStreamData*>,
-                            IndexStreamCompare> {
-    void clear() { this->c.clear(); }
-  };
+  std::vector<SliceType> keyCache;
+  std::vector<DocIdType> documentCache;
 
-  std::vector<IndexStreamData> indexes;
-
-  bool positionAligned = false;
-
-  std::vector<DocIdType> documentIds;
   std::vector<SliceType> sliceBuffer;
-  std::vector<SliceType> currentKeySet;
   std::span<SliceType> projectionsSpan;
 
-  IndexMinHeap minHeap;
-  IndexStreamData* maxIter = nullptr;
-
-  void updateHeap();
-  bool advanceIndexes();
-
-  struct ProduceProductResult {
-    bool readMore;  // user want to read more data
-    bool hasMore;   // iterator has more data
-  };
-
-  ProduceProductResult produceCrossProduct(
-      std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const&
-          cb);
-
-  void fillInitialMatch();
-  bool findCommonPosition();
+  // We do have exactly two IndexStreams
+  std::unique_ptr<IndexStreamData> leftIndex;
+  std::unique_ptr<IndexStreamData> rightIndex;
 };
 
-#define LOG_INDEX_MERGER LOG_DEVEL_IF(false)
+#define LOG_INDEX_UNIQUE_MERGER LOG_DEVEL_IF(false)
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 void TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::reset() {
-  for (auto& idx : indexes) {
-    idx.reset();
-  }
-}
-
-template<typename SliceType, typename DocIdType, typename KeyCompare>
-std::weak_ordering TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::
-    IndexStreamCompare::cmp(IndexStreamData const& left,
-                            IndexStreamData const& right) {
-  if (!left.exhausted && right.exhausted) {
-    return std::weak_ordering::less;
-  }
-
-  return cmp(left._position, right._position);
+  TRI_ASSERT(leftIndex != nullptr);
+  leftIndex->reset();
+  TRI_ASSERT(rightIndex != nullptr);
+  rightIndex->reset();
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
@@ -161,18 +127,8 @@ TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
       _projections(projections),
       _docId(docId) {
   exhausted = !_iter->position(_position);
-  LOG_INDEX_MERGER << "iter at " << _position[0];
-}
-
-template<typename SliceType, typename DocIdType, typename KeyCompare>
-void TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::
-    IndexStreamData::seekTo(std::span<SliceType> target) {
-  LOG_INDEX_MERGER << "iterator seeking to " << target[0];
-  std::copy(target.begin(), target.end(), _position.begin());
-  exhausted = !_iter->seek(_position);
-
-  LOG_INDEX_MERGER << "iterator seeked to " << _position[0]
-                   << " exhausted = " << exhausted;
+  LOG_INDEX_UNIQUE_MERGER << "iterator pointing to " << _position[0] << " ("
+                          << this << ")";
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
@@ -191,9 +147,9 @@ template<typename SliceType, typename DocIdType, typename KeyCompare>
 TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::
     TwoIndicesUniqueMergeJoin(std::vector<Descriptor> descs,
                               std::size_t numKeyComponents) {
-  indexes.reserve(descs.size());
-  documentIds.resize(descs.size());
-  currentKeySet.resize(numKeyComponents);
+  TRI_ASSERT(descs.size() == 2);
+  keyCache.resize(FIXED_INDEX_SIZE_VAR);
+  documentCache.resize(FIXED_INDEX_SIZE_VAR);
 
   std::size_t bufferSize = 0;
   for (auto const& desc : descs) {
@@ -203,208 +159,99 @@ TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::
   sliceBuffer.resize(bufferSize);
 
   auto keySliceIter = sliceBuffer.begin();
-  auto projectionsIter = sliceBuffer.begin() + numKeyComponents * descs.size();
+  auto projectionsIter =
+      sliceBuffer.begin() + numKeyComponents * FIXED_INDEX_SIZE_VAR;
   projectionsSpan = {projectionsIter, sliceBuffer.end()};
-  auto docIdIter = documentIds.begin();
+  auto docIdIter = documentCache.begin();
   for (auto& desc : descs) {
     auto projections = projectionsIter;
     projectionsIter += desc.numProjections;
     auto keyBuffer = keySliceIter;
     keySliceIter += numKeyComponents;
-    auto& idx = indexes.emplace_back(
-        std::move(desc.iter), std::span<SliceType>{keyBuffer, keySliceIter},
-        std::span<SliceType>{projections, projectionsIter}, *(docIdIter++));
-
-    if (maxIter == nullptr ||
-        IndexStreamCompare{}.cmp(*maxIter, idx) == std::weak_ordering::less) {
-      maxIter = &idx;
+    if (leftIndex == nullptr) {
+      leftIndex = std::make_unique<IndexStreamData>(
+          std::move(desc.iter), std::span<SliceType>{keyBuffer, keySliceIter},
+          std::span<SliceType>{projections, projectionsIter}, *(docIdIter++));
+      LOG_INDEX_UNIQUE_MERGER << "Set left iterator";
+    } else {
+      rightIndex = std::make_unique<IndexStreamData>(
+          std::move(desc.iter), std::span<SliceType>{keyBuffer, keySliceIter},
+          std::span<SliceType>{projections, projectionsIter}, *(docIdIter++));
+      LOG_INDEX_UNIQUE_MERGER << "Set right iterator";
     }
-    minHeap.push(&idx);
-  }
-
-  auto isAligned = IndexStreamCompare{}.cmp(*maxIter, *minHeap.top()) ==
-                   std::weak_ordering::equivalent;
-  if (!maxIter->exhausted && isAligned) {
-    fillInitialMatch();
-    positionAligned = true;
   }
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::next(
     const std::function<bool(std::span<DocIdType>, std::span<SliceType>)>& cb) {
-  while (true) {
-    if (positionAligned) {
-      auto result = produceCrossProduct(cb);
-      if (!result.hasMore) {
-        positionAligned = false;
-        updateHeap();
-        if (maxIter->exhausted) {
-          return false;
-        }
+  LOG_INDEX_UNIQUE_MERGER << "Calling main next() method";
+  bool leftIteratorHasMore =
+      leftIndex->_iter->position({keyCache.begin(), keyCache.begin() + 1});
+  bool rightIteratorHasMore =
+      rightIndex->_iter->position({keyCache.begin() + 1, keyCache.begin() + 2});
+  LOG_INDEX_UNIQUE_MERGER << "Initial Left iterator has more: "
+                          << std::boolalpha << leftIteratorHasMore
+                          << ", Initial Right iterator has more: "
+                          << std::boolalpha << rightIteratorHasMore;
+
+  bool isDocsPopulated = false;
+  size_t removeMeCounter = 0;
+  while (leftIteratorHasMore && rightIteratorHasMore && removeMeCounter < 15) {
+    removeMeCounter++;
+    LOG_INDEX_UNIQUE_MERGER << "In the while loop";
+    LOG_INDEX_UNIQUE_MERGER << "Left iterator has more: " << std::boolalpha
+                            << leftIteratorHasMore
+                            << ", Right iterator has more: " << std::boolalpha
+                            << rightIteratorHasMore;
+    LOG_INDEX_UNIQUE_MERGER << "Key cache left: " << keyCache[0]
+                            << ", Key cache right: " << keyCache[1];
+
+    auto leftKeySpan =
+        std::span<SliceType>{keyCache.begin(), keyCache.begin() + 1};
+    auto rightKeySpan =
+        std::span<SliceType>{keyCache.begin() + 1, keyCache.begin() + 2};
+    auto cmpResult = IndexStreamCompare{}.cmp(leftKeySpan, rightKeySpan);
+
+    if (cmpResult == std::weak_ordering::less /*keyCache[0] < keyCache[1]*/) {
+      LOG_INDEX_UNIQUE_MERGER << "Case: less";
+      keyCache[0] = keyCache[1];
+      leftIteratorHasMore =
+          leftIndex->_iter->seek({keyCache.begin(), keyCache.begin() + 1});
+      isDocsPopulated = false;
+    } else if (cmpResult ==
+               std::weak_ordering::greater /*keyCache[0] > keyCache[1]*/) {
+      LOG_INDEX_UNIQUE_MERGER << "Case: greater";
+      keyCache[1] = keyCache[0];
+      rightIteratorHasMore =
+          rightIndex->_iter->seek({keyCache.begin() + 1, keyCache.begin() + 2});
+      isDocsPopulated = false;
+    } else {
+      LOG_INDEX_UNIQUE_MERGER << "Case: equal";
+      TRI_ASSERT(cmpResult == std::weak_ordering::equivalent);
+      if (!isDocsPopulated) {
+        documentCache[0] = leftIndex->_iter->load(leftIndex->_projections);
+        documentCache[1] = rightIndex->_iter->load(rightIndex->_projections);
       }
-      if (!result.readMore) {
+
+      bool readMore = cb(documentCache, projectionsSpan);
+
+      LOG_DEVEL << "Value Left: " << keyCache[0]
+                << ", Value Right: " << keyCache[1];
+      leftIteratorHasMore = leftIndex->_iter->next(
+          {keyCache.begin(), keyCache.begin() + 1}, documentCache[0], {});
+      rightIteratorHasMore = rightIndex->_iter->next(
+          {keyCache.begin() + 1, keyCache.begin() + 2}, documentCache[1], {});
+      isDocsPopulated = true;
+
+      if (!readMore) {
         return true;  // potentially more data available
       }
-    } else {
-      if (!findCommonPosition()) {
-        return false;
-      }
-      positionAligned = true;
-      fillInitialMatch();
     }
   }
-}
 
-template<typename SliceType, typename DocIdType, typename KeyCompare>
-void TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::updateHeap() {
-  // clear and rebuild heap
-  minHeap.clear();
-  for (auto& idx : indexes) {
-    if (IndexStreamCompare{}.cmp(*maxIter, idx) == std::weak_ordering::less) {
-      maxIter = &idx;
-    }
-    minHeap.push(&idx);
-  }
-}
-
-template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType,
-                               KeyCompare>::advanceIndexes() {
-  std::size_t where = 0;
-
-  while (true) {
-    if (where == indexes.size()) {
-      // reached the end of this streak
-      positionAligned = false;
-      return false;
-    }
-
-    auto& idx = indexes[where];
-    bool exhausted = idx.next();
-    if (!exhausted) {
-      LOG_INDEX_MERGER << "at position " << where;
-      for (auto k : indexes[where]._position) {
-        LOG_INDEX_MERGER << k;
-      }
-
-      LOG_INDEX_MERGER << "at rbegin ";
-      for (auto k : indexes.rbegin()->_position) {
-        LOG_INDEX_MERGER << k;
-      }
-
-      LOG_INDEX_MERGER << "diff = "
-                       << (0 == IndexStreamCompare{}.cmp(
-                                    indexes[where]._position, currentKeySet));
-
-      if (0 ==
-          IndexStreamCompare{}.cmp(indexes[where]._position, currentKeySet)) {
-        break;
-      }
-    }
-
-    where += 1;
-  }
-
-  while (where > 0) {
-    where -= 1;
-    auto& idx = indexes[where];
-    LOG_INDEX_MERGER << "seeking iterator at " << where << " to";
-    for (auto k : currentKeySet) {
-      LOG_INDEX_MERGER << k;
-    }
-    idx.seekTo(currentKeySet);
-    documentIds[where] = idx._iter->load(idx._projections);
-  }
-
-  return true;
-}
-
-template<typename SliceType, typename DocIdType, typename KeyCompare>
-auto TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::
-    produceCrossProduct(const std::function<bool(std::span<DocIdType>,
-                                                 std::span<SliceType>)>& cb)
-        -> ProduceProductResult {
-  bool readMore = true;
-  bool hasMore = true;
-
-  while (readMore && hasMore) {
-    // produce current position
-    readMore = cb(documentIds, projectionsSpan);
-    hasMore = advanceIndexes();
-
-    LOG_INDEX_MERGER << std::boolalpha << "readMore = " << readMore
-                     << " hasMore = " << hasMore;
-  }
-
-  return {.readMore = readMore, .hasMore = hasMore};
-}
-
-template<typename SliceType, typename DocIdType, typename KeyCompare>
-void TwoIndicesUniqueMergeJoin<SliceType, DocIdType,
-                               KeyCompare>::fillInitialMatch() {
-  for (std::size_t i = 0; i < indexes.size(); i++) {
-    auto& index = indexes[i];
-    documentIds[i] = index._iter->load(index._projections);
-  }
-  indexes.rbegin()->_iter->cacheCurrentKey(currentKeySet);
-}
-
-template<typename SliceType, typename DocIdType, typename KeyCompare>
-bool TwoIndicesUniqueMergeJoin<SliceType, DocIdType,
-                               KeyCompare>::findCommonPosition() {
-  LOG_INDEX_MERGER << "find common position";
-  while (true) {
-    // get the minimum
-    auto minIndex = minHeap.top();
-    LOG_INDEX_MERGER << "min is " << minIndex->_position[0]
-                     << " exhausted = " << std::boolalpha
-                     << minIndex->exhausted;
-    LOG_INDEX_MERGER << "max is " << maxIter->_position[0]
-                     << " exhausted = " << std::boolalpha
-                     << minIndex->exhausted;
-
-    if (maxIter->exhausted) {
-      return false;
-    }
-
-    // check if min == max
-    if (IndexStreamCompare::cmp(*minIndex, *maxIter) ==
-        std::weak_ordering::equivalent) {
-      // all iterators are at the same position
-      break;
-    }
-
-    // remove the minimum, we want to modify it
-    minHeap.pop();
-
-    // seek this index to the maximum
-
-    LOG_INDEX_MERGER << "seeking to " << maxIter->_position[0];
-    minIndex->seekTo(maxIter->_position);
-
-    if (minIndex->exhausted) {
-      LOG_INDEX_MERGER << "iterator exhausted ";
-      return false;  // we are done
-    }
-
-    LOG_INDEX_MERGER << "seeked to position " << minIndex->_position[0];
-    // check if we have a new maximum
-    if (IndexStreamCompare{}.cmp(*maxIter, *minIndex) ==
-        std::weak_ordering::less) {
-      LOG_INDEX_MERGER << "new max iter ";
-      maxIter = minIndex;
-    }
-
-    // insert with updated position into heap
-    minHeap.push(minIndex);
-  }
-
-  LOG_INDEX_MERGER << "common position found: ";
-  for (auto const& idx : indexes) {
-    LOG_INDEX_MERGER << idx._position[0];
-  }
-  return true;
+  // either left or right iterators are exhausted
+  return false;
 }
 
 }  // namespace arangodb::aql
