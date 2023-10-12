@@ -41,7 +41,7 @@
 #include <limits>
 #include <map>
 #include <memory>
-#include <optional>
+#include <mutex>
 #include <stack>
 #include <utility>
 
@@ -180,8 +180,7 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return some statistics about available caches
   //////////////////////////////////////////////////////////////////////////////
-  [[nodiscard]] std::optional<MemoryStats> memoryStats(
-      std::uint64_t maxTries) const noexcept;
+  [[nodiscard]] MemoryStats memoryStats(std::uint64_t maxTries) const noexcept;
 
   [[nodiscard]] std::pair<double, double> globalHitRates();
 
@@ -285,6 +284,10 @@ class Manager {
   // function when the cache runs a "free memory" task.
   std::atomic<std::uint64_t> _tableCalls;
 #endif
+
+  // last memory stats returned.
+  std::mutex mutable _lastMemoryStatsMutex;
+  MemoryStats mutable _lastMemoryStatsResult;
 
   // transaction management
   TransactionManager _transactions;

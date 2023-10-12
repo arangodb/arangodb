@@ -323,7 +323,7 @@ std::uint64_t Manager::globalAllocation() const noexcept {
   return _globalAllocation;
 }
 
-std::optional<Manager::MemoryStats> Manager::memoryStats(
+Manager::MemoryStats Manager::memoryStats(
     std::uint64_t maxTries) const noexcept {
   SpinLocker guard(SpinLocker::Mode::Read, _lock,
                    static_cast<size_t>(maxTries));
@@ -345,10 +345,21 @@ std::optional<Manager::MemoryStats> Manager::memoryStats(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     result.tableCalls = _tableCalls;
 #endif
+
+    guard.release();
+    {
+      // store result for next time
+      std::lock_guard<std::mutex> statsGuard(_lastMemoryStatsMutex);
+      _lastMemoryStatsResult = result;
+    }
     return result;
   }
 
-  return std::nullopt;
+  // couldn't acquire the cache manager mutex in time.
+  // in this case, we simply return the last memory stats that we
+  // previously returned. this is better than returning no data at all.
+  std::lock_guard<std::mutex> statsGuard(_lastMemoryStatsMutex);
+  return _lastMemoryStatsResult;
 }
 
 std::pair<double, double> Manager::globalHitRates() {

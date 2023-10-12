@@ -161,38 +161,35 @@ auto EdgeCache::Thread::report() const -> ThreadReport {
     auto stats = manager->memoryStats(cache::Cache::triesGuarantee);
 
     data.openObject();
-    if (stats.has_value()) {
-      data.add("peakMemoryUsage", VPackValue(stats->peakGlobalAllocation));
-      data.add("peakSpareAllocation", VPackValue(stats->peakSpareAllocation));
-      data.add("migrateTasks", VPackValue(stats->migrateTasks));
-      data.add("freeMemoryTasks", VPackValue(stats->freeMemoryTasks));
-      data.add("lifeTimeHitrate", VPackValue(rates.first));
+    data.add("peakMemoryUsage", VPackValue(stats.peakGlobalAllocation));
+    data.add("peakSpareAllocation", VPackValue(stats.peakSpareAllocation));
+    data.add("migrateTasks", VPackValue(stats.migrateTasks));
+    data.add("freeMemoryTasks", VPackValue(stats.freeMemoryTasks));
+    data.add("lifeTimeHitrate", VPackValue(rates.first));
 
-      auto& engine = _server.vocbase()
-                         ->server()
-                         .getFeature<EngineSelectorFeature>()
-                         .engine<RocksDBEngine>();
-      auto [entriesSizeTotal, entriesSizeEffective, inserts, compressedInserts,
-            emptyInserts] = engine.getCacheMetrics();
-      data.add("inserts", VPackValue(inserts));
-      data.add("compressedInserts", VPackValue(compressedInserts));
-      data.add(
-          "compressedInsertsRate",
-          VPackValue(inserts > 0
-                         ? 100.0 * (static_cast<double>(compressedInserts) /
-                                    static_cast<double>(inserts))
-                         : 0.0));
-      data.add("emptyInserts", VPackValue(emptyInserts));
-      data.add("payloadSizeBeforeCompression", VPackValue(entriesSizeTotal));
-      data.add("payloadSizeAfterCompression", VPackValue(entriesSizeEffective));
-      data.add(
-          "payloadCompressionRate",
-          VPackValue(
-              entriesSizeTotal > 0
-                  ? 100.0 * (1.0 - (static_cast<double>(entriesSizeEffective) /
-                                    static_cast<double>(entriesSizeTotal)))
-                  : 0.0));
-    }
+    auto& engine = _server.vocbase()
+                       ->server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>();
+    auto [entriesSizeTotal, entriesSizeEffective, inserts, compressedInserts,
+          emptyInserts] = engine.getCacheMetrics();
+    data.add("inserts", VPackValue(inserts));
+    data.add("compressedInserts", VPackValue(compressedInserts));
+    data.add("compressedInsertsRate",
+             VPackValue(inserts > 0
+                            ? 100.0 * (static_cast<double>(compressedInserts) /
+                                       static_cast<double>(inserts))
+                            : 0.0));
+    data.add("emptyInserts", VPackValue(emptyInserts));
+    data.add("payloadSizeBeforeCompression", VPackValue(entriesSizeTotal));
+    data.add("payloadSizeAfterCompression", VPackValue(entriesSizeEffective));
+    data.add(
+        "payloadCompressionRate",
+        VPackValue(entriesSizeTotal > 0
+                       ? 100.0 *
+                             (1.0 - (static_cast<double>(entriesSizeEffective) /
+                                     static_cast<double>(entriesSizeTotal)))
+                       : 0.0));
     data.close();
     std::cout << "cache stats: " << data.slice().toJson() << std::endl;
   }
